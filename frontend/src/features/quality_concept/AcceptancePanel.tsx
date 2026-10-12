@@ -60,7 +60,7 @@ import {
   VocabSelect,
   inputCls,
 } from './QualityBits';
-import { ACCEPTANCE_ACTIONS, isAccepted, lines, type AcceptanceAction } from './rules';
+import { ACCEPTANCE_ACTIONS, RECORDING_UNIT_ACTIONS, isAccepted, lines, type AcceptanceAction } from './rules';
 
 const KINDS = ['partial_package', 'partial_section', 'total', 'handover_to_operation', 'authority'] as const;
 
@@ -79,7 +79,7 @@ function effectName(labels: LabelContext, effect: RegimeEffect): string {
 }
 
 export function AcceptancePanel(props: PanelProps) {
-  const { projectId, concept, labels } = props;
+  const { projectId, concept, labels, manage } = props;
   const { t } = useTranslation();
   const write = useQcWrite(projectId);
   const units = useAcceptanceUnits(projectId);
@@ -145,10 +145,14 @@ export function AcceptancePanel(props: PanelProps) {
             defaultValue:
               'An acceptance unit is a part of the works that is formally accepted: a package, a section, the whole works or the handover to operation. Plan at least the whole works and the handover to operation.',
           })}
-          action={{
-            label: t('qualityConcept.acceptance.add', { defaultValue: 'Add acceptance unit' }),
-            onClick: () => setDialog({ kind: 'unit', unit: null }),
-          }}
+          action={
+            manage
+              ? {
+                  label: t('qualityConcept.acceptance.add', { defaultValue: 'Add acceptance unit' }),
+                  onClick: () => setDialog({ kind: 'unit', unit: null }),
+                }
+              : undefined
+          }
         />
         {dialogs}
       </div>
@@ -159,7 +163,7 @@ export function AcceptancePanel(props: PanelProps) {
     <div className="space-y-4" data-testid="acceptance-panel">
       <div className="flex flex-wrap items-center justify-end gap-2">
         <ExportButtons projectId={projectId} what="acceptance" />
-        <Button icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'unit', unit: null })} data-testid="unit-add">
+        <Button icon={<Plus size={14} />} disabled={!manage} onClick={() => setDialog({ kind: 'unit', unit: null })} data-testid="unit-add">
           {t('qualityConcept.acceptance.add', { defaultValue: 'Add acceptance unit' })}
         </Button>
       </div>
@@ -190,6 +194,7 @@ export function AcceptancePanel(props: PanelProps) {
                   size="sm"
                   icon={<Pencil size={14} />}
                   aria-label={t('qualityConcept.common.edit', { defaultValue: 'Edit' })}
+                  disabled={!manage}
                   onClick={() => setDialog({ kind: 'unit', unit: u })}
                 />
                 <Button
@@ -197,6 +202,7 @@ export function AcceptancePanel(props: PanelProps) {
                   size="sm"
                   icon={<Trash2 size={14} />}
                   aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
+                  disabled={!manage}
                   onClick={() => setRemoving(u)}
                 />
               </div>
@@ -327,7 +333,7 @@ export function AcceptancePanel(props: PanelProps) {
                           <span className="text-content-primary">{effectName(labels, e)}</span>
                           {e.value && <span className="text-xs text-content-secondary">{e.value}</span>}
                           <ReviewBadge status={e.review_status} />
-                          <Button size="sm" variant="secondary" className="ml-auto" onClick={() => setDialog({ kind: 'effect', unit: u, effect: e })} data-testid="effect-confirm">
+                          <Button size="sm" variant="secondary" className="ml-auto" disabled={!manage} onClick={() => setDialog({ kind: 'effect', unit: u, effect: e })} data-testid="effect-confirm">
                             {t('qualityConcept.actions.confirmEffect', { defaultValue: 'Confirm effect' })}
                           </Button>
                         </li>
@@ -346,6 +352,7 @@ export function AcceptancePanel(props: PanelProps) {
                     size="sm"
                     variant={action === 'request' ? 'primary' : action === 'refuse' || action === 'withdraw' ? 'ghost' : 'secondary'}
                     loading={write.pending}
+                    disabled={!manage && !RECORDING_UNIT_ACTIONS.has(action)}
                     onClick={() => run(u, action)}
                     data-testid={`unit-action-${action}`}
                   >

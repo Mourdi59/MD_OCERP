@@ -19,6 +19,8 @@ export interface PanelProps {
   personName: (userId: string | null | undefined) => string | null;
   /** Whether the plan can be edited in the concept's current state. */
   editable: boolean;
+  /** The server lets this reader change the plan at all (`concept.can.manage`). */
+  manage: boolean;
   openTab: (tab: QcTab) => void;
 }
 

@@ -321,3 +321,44 @@ describe('acceptance tab', () => {
     expect(mocked.confirmEffect.mock.calls[0]![2]).toMatchObject({ effect: 'risk_transfer' });
   });
 });
+
+describe('a reader who may not manage the plan', () => {
+  beforeEach(() => {
+    mocked.getConcept.mockResolvedValue(concept({ can: NOT_MANAGER }));
+  });
+
+  it('can request an acceptance and record dates, and nothing that changes the plan', async () => {
+    mocked.listUnits.mockResolvedValue(page([unit({ state: 'requested' }), unit({ id: 'u2', code: 'AU-2' })]));
+    renderPage('acceptance');
+    const cards = await screen.findAllByTestId('acceptance-unit');
+    expect(screen.getByTestId('unit-add')).toBeDisabled();
+    expect(within(cards[0]!).getByTestId('unit-action-record_dates')).toBeEnabled();
+    expect(within(cards[0]!).getByTestId('unit-action-refuse')).toBeDisabled();
+    expect(within(cards[0]!).getByTestId('unit-action-schedule_inspection')).toBeDisabled();
+    expect(within(cards[0]!).getByTestId('unit-action-withdraw')).toBeDisabled();
+    expect(within(cards[1]!).getByTestId('unit-action-request')).toBeEnabled();
+  });
+
+  it('gets no add button on an empty acceptance plan', async () => {
+    renderPage('acceptance');
+    expect(await screen.findByText('No acceptance planned yet')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add acceptance unit' })).toBeNull();
+  });
+
+  it('can run a stage test but not take the stage out of the plan', async () => {
+    mocked.getStageMatrix.mockResolvedValue(
+      matrix([progress({ state: 'ready', computed_state: 'ready', preconditions: [] })]),
+    );
+    renderPage('stages');
+    fireEvent.click(await screen.findByTestId('matrix-cell'));
+    expect(screen.getByTestId('stage-action-open_test')).toBeEnabled();
+    expect(screen.getByTestId('stage-action-not_applicable')).toBeDisabled();
+    expect(screen.getByTestId('stage-depends')).toBeDisabled();
+  });
+
+  it('cannot add a certification target', async () => {
+    renderPage('certification');
+    expect(await screen.findByText('No certification target')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add certification target' })).toBeNull();
+  });
+});

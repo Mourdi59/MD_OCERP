@@ -29,7 +29,7 @@ const MANDATES = ['statute', 'contract', 'voluntary'] as const;
 const METHODS = ['inspection', 'analysis', 'demonstration', 'test', 'document_review', 'model_check'] as const;
 
 export function StandardsSection(props: PanelProps) {
-  const { projectId, catalogue, labels, editable } = props;
+  const { projectId, catalogue, labels, editable, manage } = props;
   const { t } = useTranslation();
   const write = useQcWrite(projectId);
   const standards = useStandards(projectId);
@@ -99,7 +99,7 @@ export function StandardsSection(props: PanelProps) {
           defaultValue: 'What the finished works must achieve, each with the way it will be checked.',
         })}
         action={
-          <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setAddingRequirement(true)} data-testid="requirement-add">
+          <Button size="sm" variant="secondary" icon={<Plus size={14} />} disabled={!manage} onClick={() => setAddingRequirement(true)} data-testid="requirement-add">
             {t('qualityConcept.requirements.add', { defaultValue: 'Add requirement' })}
           </Button>
         }

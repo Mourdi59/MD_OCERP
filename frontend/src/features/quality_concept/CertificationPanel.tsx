@@ -72,7 +72,7 @@ type Dialog =
   | null;
 
 export function CertificationPanel(props: PanelProps) {
-  const { projectId, catalogue, labels, personName } = props;
+  const { projectId, catalogue, labels, personName, manage } = props;
   const { t } = useTranslation();
   const write = useQcWrite(projectId);
   const query = useCertifications(projectId);
@@ -111,16 +111,20 @@ export function CertificationPanel(props: PanelProps) {
             defaultValue:
               'Certification is optional. If the owner wants a sustainability or quality label, name the scheme and the level here, then track the credits that are meant to reach it.',
           })}
-          action={{
-            label: t('qualityConcept.certification.add', { defaultValue: 'Add certification target' }),
-            onClick: () => setDialog({ kind: 'target', target: null }),
-          }}
+          action={
+            manage
+              ? {
+                  label: t('qualityConcept.certification.add', { defaultValue: 'Add certification target' }),
+                  onClick: () => setDialog({ kind: 'target', target: null }),
+                }
+              : undefined
+          }
         />
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-end gap-2">
             <ExportButtons projectId={projectId} what="certification" />
-            <Button icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'target', target: null })} data-testid="certification-add">
+            <Button icon={<Plus size={14} />} disabled={!manage} onClick={() => setDialog({ kind: 'target', target: null })} data-testid="certification-add">
               {t('qualityConcept.certification.add', { defaultValue: 'Add certification target' })}
             </Button>
           </div>
@@ -145,6 +149,7 @@ export function CertificationPanel(props: PanelProps) {
                       size="sm"
                       icon={<Pencil size={14} />}
                       aria-label={t('qualityConcept.common.edit', { defaultValue: 'Edit' })}
+                      disabled={!manage}
                       onClick={() => setDialog({ kind: 'target', target })}
                     />
                     <Button
@@ -152,6 +157,7 @@ export function CertificationPanel(props: PanelProps) {
                       size="sm"
                       icon={<Trash2 size={14} />}
                       aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
+                      disabled={!manage}
                       onClick={() => setRemoving({ target })}
                     />
                   </div>
@@ -211,6 +217,7 @@ export function CertificationPanel(props: PanelProps) {
                       key={action}
                       size="sm"
                       variant={action === 'abandon' ? 'ghost' : 'secondary'}
+                      disabled={!manage}
                       onClick={() => setDialog({ kind: 'transition', target, action })}
                       data-testid={`certification-action-${action}`}
                     >
@@ -259,6 +266,7 @@ export function CertificationPanel(props: PanelProps) {
                               variant="ghost"
                               icon={<Trash2 size={14} />}
                               aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
+                              disabled={!manage}
                               onClick={() => setRemoving({ credit: c })}
                             />
                           </span>
@@ -273,7 +281,7 @@ export function CertificationPanel(props: PanelProps) {
                   </ul>
                 )}
                 <div className="mt-2">
-                  <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'credit', target })} data-testid="credit-add">
+                  <Button size="sm" variant="secondary" icon={<Plus size={14} />} disabled={!manage} onClick={() => setDialog({ kind: 'credit', target })} data-testid="credit-add">
                     {t('qualityConcept.credits.add', { defaultValue: 'Add credit' })}
                   </Button>
                 </div>

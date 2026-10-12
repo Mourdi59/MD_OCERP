@@ -239,6 +239,7 @@ export function QualityConceptPage() {
     labels,
     personName,
     editable: concept.can.edit_plan,
+    manage: concept.can.manage,
     openTab,
   };
   const blocking = concept.findings.filter((f) => f.severity === 'error').length;

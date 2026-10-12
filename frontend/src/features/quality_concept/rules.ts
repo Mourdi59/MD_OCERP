@@ -89,6 +89,9 @@ export const STAGE_ACTIONS: Record<StageState, StageAction[]> = {
   not_applicable: ['reinstate'],
 };
 
+/** Stage steps that change the plan rather than record progress; the server keeps them for a manager. */
+export const PLAN_STAGE_ACTIONS: ReadonlySet<StageAction> = new Set<StageAction>(['not_applicable', 'reinstate']);
+
 export type AcceptanceAction =
   | 'request'
   | 'schedule_inspection'
@@ -107,6 +110,12 @@ export const ACCEPTANCE_ACTIONS: Record<AcceptanceState, AcceptanceAction[]> = {
   accepted_with_reservations: ['confirm_effects'],
   deemed_accepted: ['confirm_effects'],
 };
+
+/** Unit steps anyone who may edit can record; every other step is kept for a manager. */
+export const RECORDING_UNIT_ACTIONS: ReadonlySet<AcceptanceAction> = new Set<AcceptanceAction>([
+  'request',
+  'record_dates',
+]);
 
 export function isAccepted(state: AcceptanceState): boolean {
   return state === 'accepted' || state === 'accepted_with_reservations' || state === 'deemed_accepted';

@@ -55,7 +55,7 @@ import {
 } from './labels';
 import type { PanelProps } from './panel';
 import { Field, FormDialog, Hint, RefusalNote, STAGE_TONE, Section, StateBadge, VocabSelect, inputCls } from './QualityBits';
-import { STAGE_ACTIONS, preconditionNotApplicable, type StageAction } from './rules';
+import { PLAN_STAGE_ACTIONS, STAGE_ACTIONS, preconditionNotApplicable, type StageAction } from './rules';
 
 const PARTIES = ['qc', 'qa', 'tpi', 'ahj'] as const;
 const SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
@@ -68,7 +68,7 @@ type Dialog =
   | null;
 
 export function StagesPanel(props: PanelProps) {
-  const { projectId, catalogue, labels, personName, editable } = props;
+  const { projectId, catalogue, labels, personName, editable, manage } = props;
   const { t } = useTranslation();
   const write = useQcWrite(projectId);
   const matrix = useStageMatrix(projectId);
@@ -347,13 +347,14 @@ export function StagesPanel(props: PanelProps) {
                 size="sm"
                 variant={action === 'not_applicable' ? 'ghost' : 'secondary'}
                 loading={write.pending}
+                disabled={!manage && PLAN_STAGE_ACTIONS.has(action)}
                 onClick={() => run(current, action)}
                 data-testid={`stage-action-${action}`}
               >
                 {vocab(t as TFn, STAGE_ACTION, action)}
               </Button>
             ))}
-            <Button size="sm" variant="ghost" onClick={() => setDialog({ kind: 'depends', progress: current })} data-testid="stage-depends">
+            <Button size="sm" variant="ghost" disabled={!manage} onClick={() => setDialog({ kind: 'depends', progress: current })} data-testid="stage-depends">
               {t('qualityConcept.stages.depends', { defaultValue: 'Systems it depends on' })}
             </Button>
           </div>
