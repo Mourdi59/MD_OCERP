@@ -7,14 +7,18 @@ person names: a 12 000 m2 site in two stages (earthworks, structure) whose area
 balance closes; power for two tower cranes and the site offices against a
 contracted connection with the reserve; a water connection still on request; a
 concept with stock, kanban and direct-install flows; a heavy transformer
-transport whose oversize permit is applied for and whose night window needs a
-night-work permit too; a spoil run and a regular inbound delivery; an import
+transport that is scheduled on a granted oversize permit (which also lifts the
+gate's load limit for it) and a granted night-work permit for its night window;
+a spoil run and a regular inbound delivery; an import
 case under FCA with HS-coded lines and its document checklist; the neighbourhood
 plan with quiet hours, two complaints and two coordination entries.
 
 Everything goes through :class:`LogisticsPlanService`, so the rows obey the same
-rules a user meets. Dates are anchored to the day the demo is seeded. A project
-that already has a stage is skipped, so a re-run adds nothing.
+rules a user meets. Dates are anchored to the day the demo is seeded, and the
+permit windows cover every weekday, so the plan is valid whatever day that is.
+The site clock is set to UTC explicitly: a demo project states no location, and
+the time rules do not run without a zone. A project that already has a stage is
+skipped, so a re-run adds nothing.
 """
 
 from __future__ import annotations
@@ -29,6 +33,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+
+DEMO_SITE_TIMEZONE = "UTC"
+_EVERY_WEEKDAY = [0, 1, 2, 3, 4, 5, 6]
 
 
 def _square(x0: int, y0: int, w: int, h: int) -> dict[str, Any]:
@@ -85,7 +93,10 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
     today = datetime.now(UTC).date()
     actor = None
 
-    # Stages: earthworks now, structure from week 8.
+    # The site clock first: every window below is checked on it.
+    await svc.put_concept(pid, {"site_timezone": DEMO_SITE_TIMEZONE}, actor)
+
+    # Stages: earthworks now, structure from week 8. The first write above created the initial stage.
     stage1 = (await svc.stages(pid))[0]
     await svc.update_stage(
         pid,
@@ -296,22 +307,28 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             "reference": "OS-2026-118",
             "valid_from": day - timedelta(days=3),
             "valid_to": day + timedelta(days=10),
-            "allowed_windows": [{"weekdays": [0, 1, 2, 3, 4, 6], "from": "22:00", "to": "05:00"}],
+            "allowed_windows": [{"weekdays": _EVERY_WEEKDAY, "from": "22:00", "to": "05:00"}],
         },
         actor,
     )
-    await svc.transition_permit(pid, oversize.id, "applied", actor)
-    await svc.create_permit(
+    night = await svc.create_permit(
         pid,
         {
             "transport_id": heavy.id,
             "permit_kind": "night_work",
             "authority": "Environmental authority",
+            "reference": "NW-2026-031",
             "valid_from": day,
             "valid_to": day + timedelta(days=1),
         },
         actor,
     )
+    for permit in (oversize, night):
+        await svc.transition_permit(pid, permit.id, "applied", actor)
+        await svc.transition_permit(pid, permit.id, "granted", actor)
+    # 62 t through a 44 t gate: the granted oversize permit covers this transport and
+    # this window, so the gate limit is lifted for it and it can hold its slot.
+    await svc.transition_transport(pid, heavy.id, "scheduled", actor)
     await svc.create_transport(
         pid,
         {
@@ -346,7 +363,11 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
     )
     await svc.transition_transport(pid, rebar.id, "scheduled", actor)
 
-    # Customs: imported switchgear under FCA, the buyer (us) clears import.
+    # Customs: imported switchgear under FCA, the buyer (us) clears import. Values are
+    # in the project's currency; a project without one gets the case without values.
+    from app.modules.projects.models import Project
+
+    currency = (await session.execute(select(Project.currency).where(Project.id == pid))).scalar_one_or_none() or None
     case = await svc.create_customs(
         pid,
         {
@@ -358,8 +379,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             "country_of_origin": "CH",
             "declarant_party": "buyer",
             "broker_name": "Customs broker",
-            "customs_value": Decimal("184500.00"),
-            "currency": "EUR",
+            **({"customs_value": Decimal("184500.00"), "currency": currency} if currency else {}),
         },
         actor,
         can_see_values=True,
@@ -376,7 +396,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
                 "hs_code": hs,
                 "quantity": Decimal(qty),
                 "unit": "pcs",
-                "value": Decimal(value),
+                **({"value": Decimal(value), "currency": currency} if currency else {}),
                 "origin_country": "CH",
             },
             actor,

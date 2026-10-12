@@ -355,9 +355,7 @@ def is_heavy(
     return all(exceeded_limits(vehicle, limits) for limits in class_limits.values())
 
 
-def window_in_allowed(
-    windows: Sequence[Mapping[str, Any]] | None, start: datetime, end: datetime, tz: tzinfo
-) -> bool:
+def window_in_allowed(windows: Sequence[Mapping[str, Any]] | None, start: datetime, end: datetime, tz: tzinfo) -> bool:
     """Rule 6: ``[start, end]`` lies inside one occurrence of one allowed window, on the site clock.
 
     A window is ``{"weekdays": [0..6], "from": "HH:MM", "to": "HH:MM"}`` (Monday 0, the
@@ -485,9 +483,7 @@ def quiet_hours_conflict(quiet: Sequence[str] | None, start: datetime, end: date
     """Rule 13: ``[start, end)`` touches the site's quiet hours ``(from, to)``, overnight when ``to <= from``."""
     if not quiet or len(quiet) != 2:
         return False
-    return any(
-        o_start < end and start < o_end for o_start, o_end in _occurrences(quiet[0], quiet[1], start, end, tz)
-    )
+    return any(o_start < end and start < o_end for o_start, o_end in _occurrences(quiet[0], quiet[1], start, end, tz))
 
 
 def starts_per_hour(starts: Iterable[datetime], tz: tzinfo) -> dict[datetime, int]:

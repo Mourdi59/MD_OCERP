@@ -426,6 +426,7 @@ _EXTEND: list[tuple[str, Callable[[], sa.Column], tuple[str, str, str] | None, s
     ("oe_site_logistics_delivery", lambda: _num("gross_weight_t", 10, 2), None, None),
     ("oe_site_logistics_delivery", lambda: _guid("plant_item_id"), None, None),
     ("oe_site_logistics_delivery", lambda: _guid("takt_location_id"), None, None),
+    ("oe_site_logistics_delivery", lambda: _nstr("flow_code", 40), None, None),
 ]
 
 

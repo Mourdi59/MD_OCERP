@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, tzinfo
 from typing import Any
 
 from app.core.validation.engine import (
@@ -39,7 +39,7 @@ from app.modules.site_logistics.coverage import (
     to_decimal,
 )
 from app.modules.site_logistics.messages import translate
-from app.modules.site_logistics.planning import narrower_hours
+from app.modules.site_logistics.planning import narrower_hours, site_zone
 
 logger = logging.getLogger(__name__)
 
@@ -68,17 +68,26 @@ def parse_hhmm(value: str | None) -> int | None:
     return hours * 60 + minutes
 
 
+TIMEZONE_MISSING = "site_timezone_missing"
+
+
 def delivery_within_gate_hours(
     open_time: str | None,
     close_time: str | None,
     window_start: datetime,
     window_end: datetime,
+    tz: tzinfo | None = None,
 ) -> tuple[bool, str | None]:
     """Check a delivery window falls inside a gate's daily operating hours.
 
     Returns ``(ok, reason)``. ``reason`` is a plain-English explanation when the
     window is rejected, and ``None`` when it passes. A gate with no configured
     hours (either bound missing/malformed) is treated as unrestricted -> passes.
+
+    Gate hours are times on the site's wall clock, so the window is converted to
+    ``tz``, the site time zone, before it is compared. Without a zone the check
+    cannot be made: it answers ``site_timezone_missing`` and never reads the
+    clock of whatever offset the window happened to arrive with.
     """
     if window_end <= window_start:
         return False, "Delivery window end must be after its start"
@@ -91,6 +100,11 @@ def delivery_within_gate_hours(
     if close_min <= open_min:
         # Non-sensical gate window; don't block deliveries on gate misconfig.
         return True, None
+
+    if tz is None:
+        return False, f"{TIMEZONE_MISSING}: set the site time zone, gate hours are checked on the site clock"
+    window_start = window_start.astimezone(tz)
+    window_end = window_end.astimezone(tz)
 
     # Gate hours are a time-of-day window, so a booking that crosses midnight
     # cannot sit inside a single day's opening hours.
@@ -168,6 +182,12 @@ def _gates(context: ValidationContext) -> dict[str, dict[str, Any]]:
     return {}
 
 
+def _site_tz(context: ValidationContext) -> tzinfo | None:
+    """The site time zone carried by the context (``site_timezone``: an IANA name), if any."""
+    data = context.data
+    return site_zone(data.get("site_timezone")) if isinstance(data, dict) else None
+
+
 def _concept_hours(context: ValidationContext) -> tuple[str | None, str | None] | None:
     """The concept delivery hours carried by the context (``concept_hours: [open, close]``), if any."""
     data = context.data
@@ -239,7 +259,9 @@ class SiteLogisticsGateHoursRule(ValidationRule):
 
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         gates = _gates(context)
+        tz = _site_tz(context)
         results: list[RuleResult] = []
+        missing_zone = False
         for d in _deliveries(context):
             gate_id = d.get("gate_id")
             gate = gates.get(str(gate_id)) if gate_id is not None else None
@@ -253,7 +275,11 @@ class SiteLogisticsGateHoursRule(ValidationRule):
             open_time, close_time = narrower_hours(
                 (gate.get("open_time"), gate.get("close_time")), _concept_hours(context)
             )
-            ok, reason = delivery_within_gate_hours(open_time, close_time, start, end)
+            ok, reason = delivery_within_gate_hours(open_time, close_time, start, end, tz)
+            if not ok and tz is None and str(reason).startswith(TIMEZONE_MISSING):
+                # One row for the plan, not one per delivery: nothing was compared.
+                missing_zone = True
+                continue
             supplier = d.get("supplier_name") or "delivery"
             results.append(
                 RuleResult(
@@ -265,6 +291,19 @@ class SiteLogisticsGateHoursRule(ValidationRule):
                     message="OK" if ok else f"{supplier}: {reason}",
                     element_ref=str(d.get("id") or ""),
                     suggestion=None if ok else "Move the delivery inside the gate's operating hours",
+                )
+            )
+        if missing_zone:
+            results.append(
+                RuleResult(
+                    rule_id=self.rule_id,
+                    rule_name=self.name,
+                    severity=self.severity,
+                    category=self.category,
+                    passed=False,
+                    message=f"{TIMEZONE_MISSING}: gate hours were not checked, the site has no time zone",
+                    element_ref=None,
+                    suggestion="Set the site time zone in the logistics concept",
                 )
             )
         return results
@@ -431,6 +470,18 @@ def _plan_rule(key: str, name: str, severity: Severity, description: str) -> typ
 
 
 _PLAN_RULE_SPECS: tuple[tuple[str, str, Severity, str], ...] = (
+    (
+        "site_timezone_set",
+        "Site time zone set",
+        Severity.ERROR,
+        "Time-of-day rules are evaluated on the site clock, so the site states its time zone",
+    ),
+    (
+        "delivery_rate_respected",
+        "Delivery rate respected",
+        Severity.ERROR,
+        "No site clock hour holds more approved deliveries than the concept allows",
+    ),
     (
         "area_balance_closed",
         "Area balance closed",

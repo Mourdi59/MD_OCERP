@@ -41,7 +41,7 @@ written down in the module's API notes; see the section further down.
 import logging
 import uuid
 from collections.abc import Awaitable
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -637,10 +637,10 @@ def _sees_values(payload: dict[str, Any]) -> bool:
     """Decision 12: customs values only with ``site_logistics.customs``."""
     from app.core.permissions import permission_registry
 
-    try:
-        return permission_registry.role_has_permission(str(payload.get("role") or ""), "site_logistics.customs")
-    except Exception:
-        return False
+    # Same sources RequirePermission reads: the permissions of the token, then the live role mapping.
+    if "site_logistics.customs" in (payload.get("permissions") or []):
+        return True
+    return bool(permission_registry.role_has_permission(str(payload.get("role") or ""), "site_logistics.customs"))
 
 
 # ── catalogue ─────────────────────────────────────────────────────────────
@@ -652,9 +652,13 @@ async def plan_catalogue(project_id: uuid.UUID, session: SessionDep, user_id: Cu
     await verify_project_access(project_id, user_id, session)
     svc = LogisticsPlanService(session)
     cat = await _plan_run(svc.catalogue(project_id))
-    concept = await svc.concept(project_id)
+    concept = await _plan_run(svc.concept_view(project_id))
     body = cat.model_dump(mode="json")
-    body["pin"] = {"source": concept.catalogue_source, "id": concept.catalogue_id, "version": concept.catalogue_version}
+    body["pin"] = {
+        "source": concept["catalogue_source"],
+        "id": concept["catalogue_id"],
+        "version": concept["catalogue_version"],
+    }
     body["resolved_thresholds"] = cat.resolved_thresholds().model_dump(mode="json")
     return body
 
@@ -927,7 +931,7 @@ async def plan_sync_plant_demand(
 @router.get("/projects/{project_id}/concept", dependencies=[PLAN_READ])
 async def plan_get_concept(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
-    return plan_concept_out(await _plan_run(LogisticsPlanService(session).concept(project_id)))
+    return await _plan_run(LogisticsPlanService(session).concept_view(project_id))
 
 
 @router.put("/projects/{project_id}/concept", dependencies=[PLAN_WRITE])
@@ -960,7 +964,8 @@ async def plan_list_transports(
     svc = LogisticsPlanService(session)
     cat = await _plan_run(svc.catalogue(project_id))
     rows = await svc._list(Transport, project_id, Transport.planned_window_start, direction=direction, state=state)
-    return _plan_page([await svc.transport_view(t, cat) for t in rows], offset, limit)
+    tz = await svc.site_tz(project_id)
+    return _plan_page([await svc.transport_view(t, cat, tz) for t in rows], offset, limit)
 
 
 @router.post("/projects/{project_id}/transports", status_code=201, dependencies=[PLAN_WRITE])
@@ -970,7 +975,9 @@ async def plan_create_transport(
     await verify_project_access(project_id, user_id, session)
     svc = LogisticsPlanService(session)
     row = await _plan_run(svc.create_transport(project_id, body.model_dump(exclude_unset=True), user_id))
-    return await svc.transport_view(row, await svc.catalogue(project_id))
+    return await _plan_run(
+        svc.transport_view(row, await _plan_run(svc.catalogue(project_id)), await svc.site_tz(project_id))
+    )
 
 
 @router.get("/projects/{project_id}/transports/{transport_id}", dependencies=[PLAN_READ])
@@ -982,7 +989,9 @@ async def plan_get_transport(
     await verify_project_access(project_id, user_id, session)
     svc = LogisticsPlanService(session)
     row = await _plan_run(svc._get(Transport, project_id, transport_id, "transport_not_found"))
-    return await svc.transport_view(row, await svc.catalogue(project_id))
+    return await _plan_run(
+        svc.transport_view(row, await _plan_run(svc.catalogue(project_id)), await svc.site_tz(project_id))
+    )
 
 
 @router.patch("/projects/{project_id}/transports/{transport_id}", dependencies=[PLAN_WRITE])
@@ -992,7 +1001,9 @@ async def plan_update_transport(
     await verify_project_access(project_id, user_id, session)
     svc = LogisticsPlanService(session)
     row = await _plan_run(svc.update_transport(project_id, transport_id, body.model_dump(exclude_unset=True), user_id))
-    return await svc.transport_view(row, await svc.catalogue(project_id))
+    return await _plan_run(
+        svc.transport_view(row, await _plan_run(svc.catalogue(project_id)), await svc.site_tz(project_id))
+    )
 
 
 @router.post("/projects/{project_id}/transports/{transport_id}/transition", dependencies=[PLAN_APPROVE])
@@ -1003,7 +1014,9 @@ async def plan_transition_transport(
     await verify_project_access(project_id, user_id, session)
     svc = LogisticsPlanService(session)
     row = await _plan_run(svc.transition_transport(project_id, transport_id, body.target, user_id))
-    return await svc.transport_view(row, await svc.catalogue(project_id))
+    return await _plan_run(
+        svc.transport_view(row, await _plan_run(svc.catalogue(project_id)), await svc.site_tz(project_id))
+    )
 
 
 @router.delete("/projects/{project_id}/transports/{transport_id}", status_code=204, dependencies=[PLAN_WRITE])
@@ -1250,8 +1263,7 @@ async def plan_update_document(
 @router.get("/projects/{project_id}/neighbourhood", dependencies=[PLAN_READ])
 async def plan_get_neighbourhood(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
-    row = await LogisticsPlanService(session).neighbourhood(project_id, create=False)
-    return {"plan": neighbourhood_out(row) if row is not None else None}
+    return {"plan": await _plan_run(LogisticsPlanService(session).neighbourhood_view(project_id))}
 
 
 @router.put("/projects/{project_id}/neighbourhood", dependencies=[PLAN_WRITE])
@@ -1372,21 +1384,32 @@ async def plan_delete_coordination(
 
 @router.get("/projects/{project_id}/readiness", dependencies=[PLAN_READ])
 async def plan_readiness(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
-    """Readiness of area ``m06_logistics`` for ``development_to_execution`` with every finding."""
+    """Readiness of the plan for the gate into construction, with every finding. Reads only."""
     await verify_project_access(project_id, user_id, session)
     return await _plan_run(LogisticsPlanService(session).readiness(project_id))
+
+
+@router.post("/projects/{project_id}/validate", dependencies=[PLAN_READ])
+async def plan_validate(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """Run the ``site_logistics`` rule set over the plan: every plan rule and the delivery rules."""
+    await verify_project_access(project_id, user_id, session)
+    return await _plan_run(
+        LogisticsPlanService(session).validate(project_id, locale=get_locale() or "en", actor_id=user_id)
+    )
 
 
 @router.post("/projects/{project_id}/sweep", dependencies=[PLAN_WRITE])
 async def plan_sweep(
     project_id: uuid.UUID, body: SweepIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
-    """Run the dated rules now: permit expiry (7), overdue complaints (18), arrivals from goods receipts (19)."""
+    """Run the dated rules now: permit expiry (7), overdue complaints (18), arrivals from goods receipts (19).
+
+    The date is the server's date on the site clock; the request carries none.
+    """
     await verify_project_access(project_id, user_id, session)
     svc = LogisticsPlanService(session)
-    today = body.today or datetime.now(UTC).date()
-    permits = await _plan_run(svc.sweep_permits(project_id, today, user_id))
-    overdue = await _plan_run(svc.sweep_complaints(project_id, today, user_id))
+    permits = await _plan_run(svc.sweep_permits(project_id, user_id))
+    overdue = await _plan_run(svc.sweep_complaints(project_id, user_id))
     arrived = await _plan_run(svc.sync_arrivals(project_id, user_id))
     return {"permits": permits, "complaints_overdue": overdue, "transports_arrived": arrived}
 
@@ -1395,7 +1418,7 @@ async def plan_sweep(
 async def plan_frame_summary(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    """The content of governance frame document ``m06_logistics_frame``."""
+    """The content of the governance frame document for logistics."""
     await verify_project_access(project_id, user_id, session)
     return await _plan_run(
         LogisticsPlanService(session).frame_summary(project_id, can_see_values=_sees_values(payload))

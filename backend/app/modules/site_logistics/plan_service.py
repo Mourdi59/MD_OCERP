@@ -402,14 +402,15 @@ class LogisticsPlanService:
         if owner != project_id:
             raise not_found(f"{kind}_not_found")
 
-    async def _port(self, kind: str, value: Any, project_id: uuid.UUID) -> None:
+    async def _port(self, kind: str, value: Any, project_id: uuid.UUID, current: Any = None) -> None:
         """A soft link into a module that plugs its resolver in (plant register, authority permits).
 
         Without a resolver nothing can say whose row the id names, so the link is
-        refused rather than stored unchecked.
+        refused rather than stored unchecked. ``current`` is the stored value on
+        an update: sending it again is not a new link and is not checked again.
         """
         rid = _uuid(value)
-        if rid is None:
+        if rid is None or (current is not None and rid == current):
             return
         resolver = links.resolver(kind)
         if resolver is None:
@@ -971,7 +972,7 @@ class LogisticsPlanService:
         if "stage_id" in data:
             self._require(data, "stage_id")
             await self._get(ExpansionStage, project_id, data["stage_id"], "stage_not_found")
-        await self._port("plant_item", data.get("plant_item_id"), project_id)
+        await self._port("plant_item", data.get("plant_item_id"), project_id, row.plant_item_id)
         if data.get("media_connection_id") is not None:
             media = await self._get(MediaConnection, project_id, data["media_connection_id"], "media_not_found")
             data = {**data, "media_kind": media.media_kind}
@@ -1220,6 +1221,21 @@ class LogisticsPlanService:
         await self._audit(actor_id, "logistics_concept", row.id, "concept_saved", metadata={"flows": len(row.strategy)})
         return row
 
+    async def assert_delivery_links(
+        self,
+        project_id: uuid.UUID,
+        *,
+        takt_location_id: Any = None,
+        plant_item_id: Any = None,
+        flow_code: str | None = None,
+        current_plant_item_id: Any = None,
+    ) -> None:
+        """The soft links of a delivery booking belong to its project (rule 20) and its flow exists."""
+        await self._soft("takt_location", takt_location_id, project_id)
+        await self._port("plant_item", plant_item_id, project_id, current_plant_item_id)
+        if flow_code is not None and flow_code not in await self.flow_codes(project_id):
+            raise LogisticsError("flow_code_unknown", 422, detail=flow_code)
+
     async def flow_codes(self, project_id: uuid.UUID) -> set[str]:
         """The flow codes of the concept, what a delivery's ``flow_code`` may name."""
         concept = await self.concept(project_id)
@@ -1313,7 +1329,10 @@ class LogisticsPlanService:
         kinds = cat.permit_kinds_for("gate_load")
         permits = await self._permits_of(project_id, transport_id) if transport_id is not None else []
         granted = [p for p in permits if p["permit_kind"] in kinds and p["state"] == "granted"]
-        if granted and tz is None and start is not None and end is not None:
+        if start is None or end is None:
+            # No window, nothing a permit could cover.
+            pass
+        elif granted and tz is None:
             out["needs_timezone"] = True
         elif tz is not None:
             out["lifted_by"] = pl.covering_permit(granted, start, end, kinds, tz)
@@ -1415,7 +1434,9 @@ class LogisticsPlanService:
         ).scalars()
         return [permit_facts(p) for p in rows]
 
-    async def _transport_checks(self, project_id: uuid.UUID, cat: SiteLogisticsCatalogue, data: dict[str, Any]) -> None:
+    async def _transport_checks(
+        self, project_id: uuid.UUID, cat: SiteLogisticsCatalogue, data: dict[str, Any], row: Transport | None = None
+    ) -> None:
         if "transport_kind" in data:
             self._need(cat, "transport_kinds", data["transport_kind"], "unknown_transport_kind")
         if data.get("direction") is not None and data["direction"] not in pl_directions():
@@ -1425,7 +1446,7 @@ class LogisticsPlanService:
         await self._soft("gate", data.get("gate_id"), project_id)
         await self._soft("po", data.get("po_id"), project_id)
         await self._soft("customs_case", data.get("customs_case_id"), project_id)
-        await self._port("plant_item", data.get("plant_item_id"), project_id)
+        await self._port("plant_item", data.get("plant_item_id"), project_id, row.plant_item_id if row else None)
         for key in ("planned_window_start", "planned_window_end"):
             if data.get(key) is not None:
                 data[key] = _aware(data[key])
@@ -1454,7 +1475,7 @@ class LogisticsPlanService:
         if row.state in ("closed", "cancelled"):
             raise conflict("transport_closed")
         data = dict(data)
-        await self._transport_checks(project_id, cat, data)
+        await self._transport_checks(project_id, cat, data, row)
         if row.state in _ONWARD:
             # Under way, what the rules were checked against no longer moves.
             frozen = sorted(
@@ -1604,11 +1625,19 @@ class LogisticsPlanService:
 
     # ── transport permits (rules 6, 7) ─────────────────────────────────────
 
-    async def _permit_checks(self, project_id: uuid.UUID, cat: SiteLogisticsCatalogue, data: dict[str, Any]) -> None:
+    async def _permit_checks(
+        self,
+        project_id: uuid.UUID,
+        cat: SiteLogisticsCatalogue,
+        data: dict[str, Any],
+        row: TransportPermit | None = None,
+    ) -> None:
         if "permit_kind" in data:
             self._need(cat, "permit_kinds", data["permit_kind"], "unknown_permit_kind")
         await self._soft("transport", data.get("transport_id"), project_id)
-        await self._port("authority_permit", data.get("authority_permit_id"), project_id)
+        await self._port(
+            "authority_permit", data.get("authority_permit_id"), project_id, row.authority_permit_id if row else None
+        )
         if "allowed_windows" in data:
             self._require(data, "allowed_windows")
             data["allowed_windows"] = _windows(data["allowed_windows"])
@@ -1646,7 +1675,7 @@ class LogisticsPlanService:
         cat = await self.catalogue(project_id)
         row = await self._get(TransportPermit, project_id, permit_id, "permit_not_found", lock=True)
         data = dict(data)
-        await self._permit_checks(project_id, cat, data)
+        await self._permit_checks(project_id, cat, data, row)
         if row.state not in _PERMIT_OPEN_STATES:
             frozen = [k for k in _PERMIT_FROZEN_FIELDS if k in data and not _same(getattr(row, k), data[k])]
             if "covers_transport_ids" in data:
@@ -2059,9 +2088,7 @@ class LogisticsPlanService:
         await self._audit(actor_id, "logistics_customs", case.id, "document_added", metadata={"kind": kind})
         return row
 
-    async def transition_customs(
-        self, project_id: uuid.UUID, case_id: Any, target: str, actor_id: Any
-    ) -> CustomsCase:
+    async def transition_customs(self, project_id: uuid.UUID, case_id: Any, target: str, actor_id: Any) -> CustomsCase:
         cat = await self.catalogue(project_id)
         row = await self._get(CustomsCase, project_id, case_id, "customs_not_found", lock=True)
         if not pl.can_move(pl.CUSTOMS_FSM, row.state, target):
@@ -2410,6 +2437,9 @@ class LogisticsPlanService:
         concept = await self.concept(project_id)
         flows = {str(f.get("flow_code")): f for f in ((concept.strategy or []) if concept is not None else [])}
         night_kinds = cat.permit_kinds_for("quiet_hours")
+        concept_hours = None
+        if concept is not None and concept.delivery_open and concept.delivery_close:
+            concept_hours = (concept.delivery_open, concept.delivery_close)
         takt_of: dict[uuid.UUID, uuid.UUID | None] = {}
         deliveries = await self._list(DeliveryBooking, project_id, DeliveryBooking.window_start)
         for d in deliveries:
@@ -2417,6 +2447,10 @@ class LogisticsPlanService:
                 continue
             gate = gate_by_id.get(d.gate_id) if d.gate_id else None
             start, end = _aware(d.window_start), _aware(d.window_end)
+            if tz is None and gate is not None:
+                # Gate hours are a site clock rule (see validators.delivery_within_gate_hours).
+                o, c = pl.narrower_hours((gate.open_time, gate.close_time), concept_hours)
+                needs_tz = needs_tz or (pl.hhmm(o) is not None and pl.hhmm(c) is not None)
             load = await self.gate_load(
                 project_id,
                 cat,

@@ -259,9 +259,10 @@ class DeliveryCreate(BaseModel):
     # The transport this slot belongs to (Decision 3) and the load it carries (rule 5).
     transport_id: UUID | None = None
     direction: str = Field(default="inbound", pattern=r"^(inbound|outbound)$")
-    gross_weight_t: Decimal | None = Field(default=None, ge=0)
+    gross_weight_t: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     plant_item_id: UUID | None = None
     takt_location_id: UUID | None = None
+    flow_code: str | None = Field(default=None, max_length=40)
     lines: list[DeliveryLineInput] = Field(default_factory=list, max_length=MAX_DELIVERY_LINES)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -296,9 +297,10 @@ class DeliveryUpdate(BaseModel):
     # The transport this slot belongs to (Decision 3) and the load it carries (rule 5).
     transport_id: UUID | None = None
     direction: str | None = Field(default=None, pattern=r"^(inbound|outbound)$")
-    gross_weight_t: Decimal | None = Field(default=None, ge=0)
+    gross_weight_t: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=2)
     plant_item_id: UUID | None = None
     takt_location_id: UUID | None = None
+    flow_code: str | None = Field(default=None, max_length=40)
     lines: list[DeliveryLineInput] | None = Field(default=None, max_length=MAX_DELIVERY_LINES)
     metadata: dict[str, Any] | None = None
 
@@ -334,6 +336,7 @@ class DeliveryResponse(BaseModel):
     gross_weight_t: Decimal | None = None
     plant_item_id: UUID | None = None
     takt_location_id: UUID | None = None
+    flow_code: str | None = None
     created_by: str | None = None
     lines: list[DeliveryLineResponse] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")

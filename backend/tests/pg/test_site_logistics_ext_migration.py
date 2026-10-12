@@ -130,7 +130,9 @@ async def test_revision_reproduces_the_model_schema_up_down_up() -> None:
         # Server defaults exist only on the revision side (the ORM supplies the same
         # values itself), so they are compared between the two upgrades.
         assert first[table]["defaults"] == second[table]["defaults"], table
-    plant = [i for i in first["oe_site_logistics_media_demand"]["indexes"] if i[0] == "uq_oe_site_demand_plant_position"]
+    plant = [
+        i for i in first["oe_site_logistics_media_demand"]["indexes"] if i[0] == "uq_oe_site_demand_plant_position"
+    ]
     assert plant == [
         (
             "uq_oe_site_demand_plant_position",
@@ -161,5 +163,6 @@ async def test_downgrade_removes_every_new_column_and_index_it_added() -> None:
     transport = built["oe_site_logistics_transport"]["columns"]
     assert transport["in_transit_on"] == ("DATE", True)
     assert transport["load_class"] == ("VARCHAR(40)", True)
+    assert built["oe_site_logistics_delivery"]["columns"]["flow_code"] == ("VARCHAR(40)", True)
     assert built["oe_site_logistics_customs_line"]["columns"]["currency"] == ("VARCHAR(3)", True)
     assert ("uq_oe_site_concept_project", ("project_id",)) in built["oe_site_logistics_concept"]["unique"]

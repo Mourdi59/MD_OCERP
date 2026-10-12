@@ -252,4 +252,4 @@ class CoordinationIn(_In):
 
 
 class SweepIn(_In):
-    today: date | None = None
+    """No fields: the sweep runs on the server's date."""

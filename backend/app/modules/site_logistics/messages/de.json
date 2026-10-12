@@ -80,18 +80,23 @@
       "activity_not_found": "Terminplanvorgang in diesem Projekt nicht gefunden.",
       "allocation_exceeds_area": "Die Zuordnung ist groesser als die Flaeche.",
       "allocation_negative": "Eine Zuordnung kann nicht negativ sein.",
+      "allocations_changed": "Die Zuordnungen wurden zwischenzeitlich geaendert. Neu laden und erneut versuchen.",
       "area_not_found": "Flaeche nicht gefunden.",
+      "authority_permit_not_found": "Behoerdliche Genehmigung in diesem Projekt nicht gefunden.",
       "buffer_days_negative": "Puffertage koennen nicht negativ sein.",
       "catalogue_invalid": "Der festgelegte Logistikkatalog ist nicht aufloesbar.",
       "catalogue_retired": "Diese Katalogfassung ist ausser Kraft.",
       "code_required": "Ein Kuerzel ist erforderlich.",
       "code_taken": "Dieses Kuerzel ist im Projekt bereits vergeben.",
+      "commodity_code_not_found": "Warennummer nicht gefunden.",
+      "complaint_closed": "Eine abgeschlossene Beschwerde kann nicht geaendert werden.",
       "complaint_not_found": "Beschwerde nicht gefunden.",
       "contracted_capacity_required": "Zuerst die vertraglich gesicherte Leistung eintragen.",
       "correspondence_not_found": "Korrespondenz in diesem Projekt nicht gefunden.",
       "correspondence_thread_not_found": "Korrespondenz in diesem Projekt nicht gefunden.",
       "country_invalid": "Einen zweistelligen ISO-Laendercode verwenden.",
       "currency_invalid": "Einen dreistelligen ISO-Waehrungscode verwenden.",
+      "currency_required": "Ein Betrag braucht seine Waehrung.",
       "customs_case_not_found": "Zollvorgang nicht gefunden.",
       "customs_closed": "Ein abgefertigter oder abgeschlossener Vorgang kann nicht geaendert werden.",
       "customs_declared": "Ein angemeldeter Vorgang kann nicht geloescht werden.",
@@ -99,6 +104,7 @@
       "customs_without_lines": "Zuerst mindestens eine Warenposition anlegen.",
       "declarant_invalid": "Anmelder ist der Kaeufer oder der Verkaeufer.",
       "delivery_not_found": "Anlieferung in diesem Projekt nicht gefunden.",
+      "delivery_rate_exceeded": "Diese Stunde hat bereits die im Konzept zulaessige Zahl an Anlieferungen.",
       "demand_not_found": "Bedarf nicht gefunden.",
       "demand_owned_by_plant_position": "Dieser Bedarf stammt aus einer Geraeteposition; dort aendern.",
       "direction_invalid": "Unbekannte Richtung.",
@@ -107,7 +113,9 @@
       "document_ref_required": "Vor dem Eingangsvermerk das Dokument verknuepfen.",
       "duplicate_stage": "Jede Ausbaustufe kann je Flaeche einmal zugeordnet werden.",
       "entry_not_found": "Eintrag nicht gefunden.",
+      "field_required": "Dieses Feld darf nicht leer sein.",
       "flow_code_invalid": "Jeder Materialfluss braucht ein eigenes Kuerzel.",
+      "flow_code_unknown": "Das Logistikkonzept hat keinen Materialfluss mit diesem Kuerzel.",
       "flow_mode_invalid": "Unbekannte Materialfluss-Art.",
       "frame_invalid": "Unbekanntes Koordinatensystem.",
       "gate_load_exceeded": "Die Last ueberschreitet die Grenzen der Baustellenzufahrt.",
@@ -123,12 +131,17 @@
       "jit_without_takt": "Ein Just-in-time-Fluss braucht einen Taktplan.",
       "last_stage": "Ein Projekt behaelt mindestens eine Ausbaustufe.",
       "line_not_found": "Zollposition nicht gefunden.",
+      "link_target_unavailable": "Diese Verknuepfung ist noch nicht pruefbar, das Zielmodul ist nicht installiert.",
       "media_not_found": "Medienanschluss nicht gefunden.",
       "money_not_decimal": "Den Betrag als Dezimalzahl eingeben.",
+      "money_out_of_range": "Einen Betrag mit hoechstens zwei Nachkommastellen eingeben.",
       "noise_limit_needs_project_value": "Diese Rechtsordnung legt keine festen Werte fest; die genehmigten Projektwerte eintragen.",
       "not_found": "Nicht gefunden.",
       "owner_not_member": "Der Verantwortliche muss Mitglied dieses Projekts sein.",
+      "permit_frozen": "Eine erteilte, abgelehnte oder abgelaufene Genehmigung behaelt Gueltigkeit, Zeitfenster und Transporte.",
       "permit_not_found": "Genehmigung nicht gefunden.",
+      "plant_item_not_found": "Geraet in diesem Projekt nicht gefunden.",
+      "plant_position_not_found": "Geraeteposition in diesem Projekt nicht gefunden.",
       "plant_position_required": "Eine Geraeteposition ist erforderlich.",
       "po_not_found": "Bestellung in diesem Projekt nicht gefunden.",
       "project_not_found": "Projekt nicht gefunden.",
@@ -136,9 +149,12 @@
       "required_document_missing": "Ein erforderliches Dokument fehlt noch.",
       "response_required": "Zuerst die Antwort eintragen.",
       "simultaneity_factor_range": "Der Gleichzeitigkeitsfaktor liegt zwischen 0 und 1.",
+      "site_timezone_missing": "Zuerst die Zeitzone der Baustelle festlegen; Zeiten werden nach Baustellenzeit geprueft.",
+      "stage_active": "Eine aktive Ausbaustufe kann nicht geloescht werden. Zuerst abschliessen.",
       "stage_not_found": "Ausbaustufe nicht gefunden.",
       "takt_location_not_found": "Taktbereich in diesem Projekt nicht gefunden.",
       "takt_schedule_not_found": "Taktplan in diesem Projekt nicht gefunden.",
+      "timezone_invalid": "Unbekannte Zeitzone. Einen Namen wie Europe/Berlin verwenden.",
       "transport_closed": "Ein abgeschlossener oder stornierter Transport kann nicht geaendert werden.",
       "transport_mode_invalid": "Unbekannter Verkehrstraeger.",
       "transport_not_found": "Transport nicht gefunden.",
@@ -147,12 +163,14 @@
       "unknown_catalogue": "Unbekannter Katalog.",
       "unknown_document_kind": "Unbekannte Dokumentart.",
       "unknown_issue_kind": "Unbekannte Beschwerdeart.",
+      "unknown_load_class": "Unbekannte Lastklasse.",
       "unknown_media_kind": "Unbekanntes Medium.",
       "unknown_noise_limit": "Unbekannter Laermgrenzwert-Eintrag.",
       "unknown_permit_kind": "Unbekannte Genehmigungsart.",
       "unknown_transport_kind": "Unbekannte Transportart.",
       "validity_invalid": "Die Genehmigung endet vor ihrem Beginn.",
       "validity_required": "Vor der Erteilung die Gueltigkeitsdaten eintragen.",
+      "vendor_not_found": "Lieferant nicht gefunden.",
       "window_invalid": "Das Zeitfenster ist ungueltig.",
       "window_outside_permit": "Das Transportfenster liegt ausserhalb der Gueltigkeit oder der erlaubten Zeiten der Genehmigung.",
       "zone_not_found": "Lagerflaeche in diesem Projekt nicht gefunden.",
@@ -162,9 +180,11 @@
       "balance_closed": "Flaechenbilanz fuer jede offene Ausbaustufe geschlossen",
       "concept_saved_and_exported": "Logistikkonzept gespeichert und abgelegt",
       "first_stage_media_contracted": "Medien fuer die erste Ausbaustufe gesichert",
+      "gate_loads_admitted": "Jede Last von der Zufahrt zugelassen oder durch eine Sondergenehmigung gedeckt",
       "heavy_transports_applied": "Genehmigungen fuer jeden Schwertransport beantragt",
       "neighbourhood_limit_source": "Quelle der Laermgrenzwerte festgelegt",
-      "no_errors": "Keine offenen Logistikfehler"
+      "no_errors": "Keine offenen Logistikfehler",
+      "unresolved": "Logistikplan konnte im Projektmodell nicht eingeordnet werden"
     },
     "export": {
       "as_of": "Stand",
@@ -223,6 +243,10 @@
         "fail": "Der Anmelder passt nicht zur Einfuhrabfertigung nach der Incoterm-Klausel.",
         "suggestion": "Anmelder oder Klausel pruefen."
       },
+      "delivery_rate_exceeded": {
+        "fail": "{count} freigegebene Anlieferungen beginnen in der Stunde ab {hour}, das Konzept erlaubt {limit}.",
+        "suggestion": "Anlieferungen in eine andere Stunde legen oder den Grenzwert im Konzept anheben."
+      },
       "gate_limits_unknown": {
         "fail": "Baustellenzufahrt {gate} hat keine Lastgrenzen.",
         "suggestion": "Gewichts- und Massgrenzen eintragen."
@@ -255,6 +279,10 @@
         "fail": "{title}: die Just-in-time-Lieferung kommt frueher als der Puffer erlaubt.",
         "suggestion": "Naeher an den Taktbeginn legen."
       },
+      "jit_without_location": {
+        "fail": "{title}: eine Just-in-time-Anlieferung des Flusses {flow} nennt keinen Taktbereich.",
+        "suggestion": "Den Taktbereich waehlen, fuer den die Anlieferung bestimmt ist."
+      },
       "media_capacity_short": {
         "fail": "Ausbaustufe {stage}: {media} benoetigt {required}, gesichert {contracted}.",
         "suggestion": "Die gesicherte Leistung erhoehen oder den Bedarf senken."
@@ -286,6 +314,10 @@
       "required_document_missing": {
         "fail": "Erforderliches Dokument {kind} fehlt.",
         "suggestion": "Das Dokument beschaffen und verknuepfen."
+      },
+      "site_timezone_missing": {
+        "fail": "Die Baustelle hat keine Zeitzone, daher wurden die Uhrzeitregeln nicht geprueft.",
+        "suggestion": "Die Zeitzone der Baustelle im Logistikkonzept festlegen."
       },
       "stage_without_site_setup": {
         "fail": "Ausbaustufe {stage} hat keine Baustelleneinrichtungsflaeche.",

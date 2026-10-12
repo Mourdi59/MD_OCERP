@@ -80,18 +80,23 @@
       "activity_not_found": "Schedule activity not found in this project.",
       "allocation_exceeds_area": "The allocation is larger than the area.",
       "allocation_negative": "An allocation cannot be negative.",
+      "allocations_changed": "The allocations were changed by someone else. Reload and try again.",
       "area_not_found": "Site area not found.",
+      "authority_permit_not_found": "Authority permit not found in this project.",
       "buffer_days_negative": "Buffer days cannot be negative.",
       "catalogue_invalid": "The pinned logistics catalogue cannot be resolved.",
       "catalogue_retired": "This catalogue version is retired.",
       "code_required": "A code is required.",
       "code_taken": "This code is already used in the project.",
+      "commodity_code_not_found": "Commodity code not found.",
+      "complaint_closed": "A closed complaint cannot be changed.",
       "complaint_not_found": "Complaint not found.",
       "contracted_capacity_required": "Enter the contracted capacity first.",
       "correspondence_not_found": "Correspondence not found in this project.",
       "correspondence_thread_not_found": "Correspondence not found in this project.",
       "country_invalid": "Use a two-letter ISO country code.",
       "currency_invalid": "Use a three-letter ISO currency code.",
+      "currency_required": "An amount needs its currency.",
       "customs_case_not_found": "Customs case not found.",
       "customs_closed": "A cleared or closed case cannot be changed.",
       "customs_declared": "A declared case cannot be deleted.",
@@ -99,6 +104,7 @@
       "customs_without_lines": "Add at least one goods line first.",
       "declarant_invalid": "The declarant is the buyer or the seller.",
       "delivery_not_found": "Delivery not found in this project.",
+      "delivery_rate_exceeded": "This hour already holds the number of deliveries the concept allows.",
       "demand_not_found": "Demand not found.",
       "demand_owned_by_plant_position": "This demand comes from a plant position; change it there.",
       "direction_invalid": "Unknown direction.",
@@ -107,7 +113,9 @@
       "document_ref_required": "Link the document before marking it received.",
       "duplicate_stage": "Each stage can be allocated once per area.",
       "entry_not_found": "Log entry not found.",
+      "field_required": "This field cannot be empty.",
       "flow_code_invalid": "Each material flow needs its own code.",
+      "flow_code_unknown": "The logistics concept has no material flow with this code.",
       "flow_mode_invalid": "Unknown material flow mode.",
       "frame_invalid": "Unknown coordinate frame.",
       "gate_load_exceeded": "The load exceeds the limits of the site entrance.",
@@ -123,12 +131,17 @@
       "jit_without_takt": "A just-in-time flow needs a takt schedule.",
       "last_stage": "A project keeps at least one expansion stage.",
       "line_not_found": "Customs line not found.",
+      "link_target_unavailable": "This link cannot be checked yet, the module it points to is not installed.",
       "media_not_found": "Utility connection not found.",
       "money_not_decimal": "Enter the amount as a decimal number.",
+      "money_out_of_range": "Enter an amount with at most two decimals.",
       "noise_limit_needs_project_value": "This jurisdiction sets no fixed values; enter the project's consented values.",
       "not_found": "Not found.",
       "owner_not_member": "The owner must be a member of this project.",
+      "permit_frozen": "A permit that was granted, refused or expired keeps its validity, windows and transports.",
       "permit_not_found": "Permit not found.",
+      "plant_item_not_found": "Plant item not found in this project.",
+      "plant_position_not_found": "Plant position not found in this project.",
       "plant_position_required": "A plant position is required.",
       "po_not_found": "Purchase order not found in this project.",
       "project_not_found": "Project not found.",
@@ -136,9 +149,12 @@
       "required_document_missing": "A required document is still missing.",
       "response_required": "Write the response first.",
       "simultaneity_factor_range": "The simultaneity factor is between 0 and 1.",
+      "site_timezone_missing": "Set the site time zone first; times are checked on the site clock.",
+      "stage_active": "An active stage cannot be deleted. Close it first.",
       "stage_not_found": "Expansion stage not found.",
       "takt_location_not_found": "Takt area not found in this project.",
       "takt_schedule_not_found": "Takt schedule not found in this project.",
+      "timezone_invalid": "Unknown time zone. Use a name such as Europe/Berlin.",
       "transport_closed": "A closed or cancelled transport cannot be changed.",
       "transport_mode_invalid": "Unknown transport mode.",
       "transport_not_found": "Transport not found.",
@@ -147,12 +163,14 @@
       "unknown_catalogue": "Unknown catalogue.",
       "unknown_document_kind": "Unknown document kind.",
       "unknown_issue_kind": "Unknown complaint kind.",
+      "unknown_load_class": "Unknown load class.",
       "unknown_media_kind": "Unknown utility.",
       "unknown_noise_limit": "Unknown noise limit entry.",
       "unknown_permit_kind": "Unknown permit kind.",
       "unknown_transport_kind": "Unknown transport kind.",
       "validity_invalid": "The permit ends before it starts.",
       "validity_required": "Enter the validity dates before granting.",
+      "vendor_not_found": "Supplier not found.",
       "window_invalid": "The time window is not valid.",
       "window_outside_permit": "The transport window is outside the permit validity or its allowed times.",
       "zone_not_found": "Laydown zone not found in this project.",
@@ -162,9 +180,11 @@
       "balance_closed": "Area balance closed for every open stage",
       "concept_saved_and_exported": "Logistics concept saved and filed",
       "first_stage_media_contracted": "Utilities for the first stage contracted",
+      "gate_loads_admitted": "Every load admitted by its gate or covered by an oversize permit",
       "heavy_transports_applied": "Permits applied for every heavy transport",
       "neighbourhood_limit_source": "Noise limit source set",
-      "no_errors": "No open logistics errors"
+      "no_errors": "No open logistics errors",
+      "unresolved": "Logistics plan could not be placed in the governance model"
     },
     "export": {
       "as_of": "As of",
@@ -223,6 +243,10 @@
         "fail": "The declarant does not match who clears import under the incoterm.",
         "suggestion": "Check the declarant or the incoterm."
       },
+      "delivery_rate_exceeded": {
+        "fail": "{count} approved deliveries start in the hour from {hour}, the concept allows {limit}.",
+        "suggestion": "Move deliveries to another hour or raise the limit in the concept."
+      },
       "gate_limits_unknown": {
         "fail": "Site entrance {gate} states no load limits.",
         "suggestion": "Enter the weight and dimension limits."
@@ -255,6 +279,10 @@
         "fail": "{title}: the just-in-time delivery comes earlier than its buffer allows.",
         "suggestion": "Move it closer to the takt start."
       },
+      "jit_without_location": {
+        "fail": "{title}: a just-in-time delivery of flow {flow} names no takt area.",
+        "suggestion": "Choose the takt area the delivery is for."
+      },
       "media_capacity_short": {
         "fail": "Stage {stage}: {media} needs {required}, contracted {contracted}.",
         "suggestion": "Increase the contracted capacity or reduce the demand."
@@ -286,6 +314,10 @@
       "required_document_missing": {
         "fail": "Required document {kind} is missing.",
         "suggestion": "Obtain and link the document."
+      },
+      "site_timezone_missing": {
+        "fail": "The site has no time zone, so the time-of-day rules were not checked.",
+        "suggestion": "Set the site time zone in the logistics concept."
       },
       "stage_without_site_setup": {
         "fail": "Stage {stage} has no site setup area.",

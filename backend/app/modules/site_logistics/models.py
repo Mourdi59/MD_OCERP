@@ -186,6 +186,8 @@ class DeliveryBooking(Base):
     # Soft links: the plant register item (module 5) and the takt location (JIT, rule 11).
     plant_item_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     takt_location_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # The material flow of the logistics concept this delivery belongs to (rule 11).
+    flow_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
