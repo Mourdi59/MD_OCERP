@@ -224,6 +224,7 @@ const resource = {
     "modules.catalog.dashboards": "Dashboards",
     "modules.catalog.deadlines": "Fristen",
     "modules.catalog.defects_liability": "Mängelhaftungsregister",
+    "modules.catalog.delivery_model": "Abwicklungsmodell",
     "modules.catalog.design_options": "Entwurfsvarianten",
     "modules.catalog.documents": "Dokumente",
     "modules.catalog.dwg_takeoff": "DWG-Aufmaß",

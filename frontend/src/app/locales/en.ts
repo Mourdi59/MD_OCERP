@@ -226,6 +226,7 @@ const resource = {
     "modules.catalog.dashboards": "Dashboards",
     "modules.catalog.deadlines": "Deadlines",
     "modules.catalog.defects_liability": "Defects Liability Register",
+    "modules.catalog.delivery_model": "Delivery model",
     "modules.catalog.design_options": "Design Options",
     "modules.catalog.documents": "Documents",
     "modules.catalog.dwg_takeoff": "DWG Takeoff",
