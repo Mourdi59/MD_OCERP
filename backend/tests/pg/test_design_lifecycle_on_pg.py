@@ -237,13 +237,35 @@ async def m07_world():
         yield await build_design_world(factory, governance="elf_module_framework")
 
 
-async def test_without_a_design_area_there_is_no_frame_document(world: DesignWorld) -> None:
+async def test_every_governance_model_gets_a_frame_document_on_first_use(world: DesignWorld) -> None:
+    """The neutral model lists no frame document up front; it is created in the hosting area on first use."""
+    from sqlalchemy import select
+
+    from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
+
+    async with world.factory() as s:
+        out = await DesignService(s).generate_frame_document(
+            world.project_id, "register", actor_id=world.manager, file_bytes=b"%PDF-1.7 r", file_name="r.pdf"
+        )
+        await s.commit()
+    async with world.factory() as s:
+        doc = await s.get(GovernanceDocument, uuid.UUID(out["document_id"]))
+        area = await s.get(GovernanceArea, doc.area_id)
+        hosted = (
+            await s.execute(select(GovernanceDocument).where(GovernanceDocument.project_id == world.project_id))
+        ).scalars()
+        assert area.code == "scope_quality"
+        assert str(doc.container_id) == out["container_id"]
+        assert [d.id for d in hosted if d.doc_type == doc.doc_type] == [doc.id]
+
+
+async def test_an_unknown_register_is_refused(world: DesignWorld) -> None:
     async with world.factory() as s:
         with pytest.raises(DesignError) as err:
             await DesignService(s).generate_frame_document(
                 world.project_id, "drawing_register", actor_id=world.manager, file_bytes=b"x", file_name="r.pdf"
             )
-    assert err.value.code == "frame_document_missing"
+    assert (err.value.code, err.value.status_code) == ("frame_register_unknown", 422)
 
 
 async def test_a_frame_document_revision_is_written_and_binding_freezes_the_standard(m07_world: DesignWorld) -> None:
@@ -255,7 +277,7 @@ async def test_a_frame_document_revision_is_written_and_binding_freezes_the_stan
     async with m07_world.factory() as s:
         out = await DesignService(s).generate_frame_document(
             m07_world.project_id,
-            "drawing_register",
+            "register",
             actor_id=m07_world.manager,
             file_bytes=b"%PDF-1.7 register",
             file_name="r.pdf",
@@ -294,6 +316,18 @@ async def test_a_frame_document_revision_is_written_and_binding_freezes_the_stan
         assert frozen.value.code == "binding_requires_change_request"
         with pytest.raises(DesignError) as again:
             await svc.generate_frame_document(
-                m07_world.project_id, "drawing_register", actor_id=m07_world.manager, file_bytes=b"x", file_name="r.pdf"
+                m07_world.project_id, "register", actor_id=m07_world.manager, file_bytes=b"x", file_name="r.pdf"
             )
-    assert again.value.code == "binding_requires_change_request"
+        assert again.value.code == "binding_requires_change_request"
+        # Rule 23 also freezes the design organisation and the matrix.
+        role = {"code": "X1", "party_kind": "specialist"}
+        rule = {"recipient_role_id": str(m07_world.roles["ARCH"])}
+        for write in (
+            svc.create_role(m07_world.project_id, role, actor_id=m07_world.manager),
+            svc.patch_role(m07_world.project_id, m07_world.roles["ARCH"], {"title": "t"}, actor_id=m07_world.manager),
+            svc.delete_role(m07_world.project_id, m07_world.roles["STRU"], actor_id=m07_world.manager),
+            svc.create_dist_rule(m07_world.project_id, rule, actor_id=m07_world.manager),
+        ):
+            with pytest.raises(DesignError) as bound:
+                await write
+            assert bound.value.code == "binding_requires_change_request"

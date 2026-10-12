@@ -62,14 +62,10 @@ async def test_a_release_issues_one_transmittal_per_recipient_with_the_pinned_re
                 {"recipient_role_id": str(world.roles[role]), "discipline_codes": [discipline]},
                 actor_id=world.manager,
             )
-        rel = await svc.create_release(
-            world.project_id, {"revision_ids": [str(rev_a), str(rev_s)]}, actor_id=world.editor
-        )
-        await svc.release_transition(world.project_id, rel.id, "ready", actor_id=world.editor)
-        with pytest.raises(DesignError) as four_eyes:
-            await svc.issue_release(world.project_id, rel.id, actor_id=world.editor)
-        assert four_eyes.value.code == "release_four_eyes"
-        issued = await svc.issue_release(world.project_id, rel.id, actor_id=world.manager)
+        await s.commit()
+    rel_id = await approved_release(world, [rev_a, rev_s])
+    async with world.factory() as s:
+        issued = await DesignService(s).issue_release(world.project_id, rel_id, actor_id=world.manager)
         await s.commit()
     assert issued.status == "issued"
     assert len(issued.transmittal_ids) == 2

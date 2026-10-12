@@ -21,21 +21,54 @@ PROVIDER_NAME = "design_management.phase_readiness"
 
 
 async def phase_readiness(session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any) -> list[EvidenceItem]:
+    from sqlalchemy import select
+
     from app.modules.design_management.hosting import project_design_area_code
     from app.modules.design_management.service import DesignService
-    from app.modules.project_governance.models import GovernanceGate
+    from app.modules.project_governance.models import GovernanceArea, GovernanceGate
 
-    if area.code != await project_design_area_code(session, project_id):
-        return []
     svc = DesignService(session)
     if await svc.get_setup(project_id) is None:
+        return []  # design is not set up on this project: nothing to prove
+    link = ("design_readiness", str(project_id))
+    host = await project_design_area_code(session, project_id)
+    if host is None:
+        # Design has data but the governance model names no area for it. Saying nothing
+        # would read as "nothing blocks"; say once, on the first area, that it is unknown.
+        first = (
+            await session.execute(
+                select(GovernanceArea.code)
+                .where(GovernanceArea.project_id == project_id)
+                .order_by(GovernanceArea.code)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if area.code != first:
+            return []
+        return [
+            EvidenceItem(
+                code="design_readiness:no_host_area",
+                state="unknown",
+                label_key="design.evidence.no_host_area",
+                link=link,
+                detail="no_host_area",
+            )
+        ]
+    if area.code != host:
         return []
     gate = await session.get(GovernanceGate, attempt.gate_id)
     phase = getattr(gate, "from_phase", None)
     if not phase:
-        return []
+        return [
+            EvidenceItem(
+                code="design_readiness:no_phase",
+                state="unknown",
+                label_key="design.evidence.no_phase",
+                link=link,
+                detail="no_phase",
+            )
+        ]
     b = await svc.readiness(project_id, phase)
-    link = ("design_readiness", str(project_id))
     return [
         EvidenceItem(
             code=f"design_deliverables:{phase}",

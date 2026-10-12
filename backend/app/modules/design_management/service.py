@@ -76,6 +76,12 @@ _PART_COLUMNS = (
 )
 APPROVAL_TARGET_KIND = "design_approval_point"
 RELEASE_TARGET_KIND = "design_release"
+#: Metadata key marking a CDE container as a design frame document (server-set only).
+FRAME_MARKER = "design_frame_document"
+FRAME_CODE_PREFIX = "DESIGN-FRAME-"
+#: The registers a frame document is generated from; the same names the export route takes.
+FRAME_REGISTERS: tuple[str, ...] = ("register", "matrix", "reports", "permit")
+
 PARTY_KINDS = (
     "owner",
     "lead_designer",
@@ -174,7 +180,19 @@ class DesignService:
             raise not_found("project_not_found")
         return project
 
+    async def _project_lock(self, project_id: uuid.UUID, scope: str) -> None:
+        """Serialise one kind of write per project until the transaction ends.
+
+        Two requests that both read "no such code yet" would both insert; the
+        advisory lock makes the second wait and then see the first one's row.
+        """
+        if getattr(getattr(self.session.get_bind(), "dialect", None), "name", "") != "postgresql":
+            return
+        key = f"design_management:{scope}:{project_id}"
+        await self.session.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(key, 0))))
+
     async def _next_code(self, model: Any, project_id: uuid.UUID, prefix: str) -> str:
+        await self._project_lock(project_id, model.__tablename__)
         count = (
             await self.session.execute(select(func.count()).select_from(model).where(model.project_id == project_id))
         ).scalar_one()
@@ -382,6 +400,8 @@ class DesignService:
             select(ProjectWBS)
             .where(ProjectWBS.project_id == project_id)
             .order_by(ProjectWBS.level, ProjectWBS.sort_order, ProjectWBS.code)
+            # A caller may have changed rows with a bulk UPDATE; read what is stored, not what is cached.
+            .execution_options(populate_existing=True)
         )
         return list((await self.session.execute(stmt)).scalars().all())
 
@@ -393,19 +413,14 @@ class DesignService:
         setup = await self.get_setup(project_id)
         return (setup.hierarchical_codes, setup.wbs_separator) if setup else (True, ".")
 
-    async def wbs_tree_violations(
-        self, project_id: uuid.UUID, settings_project_id: uuid.UUID | None = None
-    ) -> list[dict[str, str]]:
-        """Rules 1-3 over the stored tree, for writes made outside this module (``core/wbs_rules``).
+    async def wbs_tree_violations(self, project_id: uuid.UUID) -> list[dict[str, str]]:
+        """Rules 1-3 over the stored tree, one entry per node, for ``core/wbs_rules``.
 
-        Settings come from the project's setup, else from ``settings_project_id``
-        (a copy's source). With no setup on either the project does not use
-        design management and keeps exactly the behaviour it had: nothing is
-        checked, so existing data can still be copied and restored as it is.
+        A project without a design setup does not use design management and is
+        not checked at all. The caller diffs this list around a write, so
+        violations the tree already had never refuse an unrelated change.
         """
         setup = await self.get_setup(project_id)
-        if setup is None and settings_project_id is not None:
-            setup = await self.get_setup(settings_project_id)
         if setup is None:
             return []
         rows = await self.wbs_rows(project_id)
@@ -515,8 +530,20 @@ class DesignService:
         return [{"id": str(k), "old": by_id[k].code, "new": v} for k, v in plan.items()]
 
     async def close_wbs(self, project_id: uuid.UUID, node_id: Any, *, closed: bool, actor_id: uuid.UUID) -> Any:
+        """Rule 3: closing a node closes its whole subtree in the same call; a node under a closed parent stays closed."""
+        await self._lock_wbs(project_id)
         row = await self._wbs_get(project_id, node_id)
-        row.metadata_ = {**(row.metadata_ or {}), "closed": closed}
+        targets = [row]
+        if closed:
+            rows = await self.wbs_rows(project_id)
+            below = {d.id for d in wr.descendants([self._node(r) for r in rows], row.id)}
+            targets += [r for r in rows if r.id in below]
+        elif row.parent_id is not None:
+            parent = await self._wbs_get(project_id, row.parent_id)
+            if (parent.metadata_ or {}).get("closed"):
+                raise conflict("wbs_node_closed", detail=parent.code)
+        for target in targets:
+            target.metadata_ = {**(target.metadata_ or {}), "closed": closed}
         await self.session.flush()
         await self._audit(actor_id, "projects_wbs", row.id, "closed" if closed else "reopened")
         return row
@@ -554,6 +581,7 @@ class DesignService:
             return
         if not (role.originator_code or "").strip():
             raise DesignError("originator_required", 422)
+        await self._project_lock(project_id, "originator")
         stmt = select(DesignRole.id).where(
             DesignRole.project_id == project_id,
             func.upper(DesignRole.originator_code) == role.originator_code.upper(),
@@ -561,12 +589,16 @@ class DesignService:
             DesignRole.party_kind == "discipline_designer",
             DesignRole.status != "released",
         )
-        if (await self.session.execute(stmt)).first() is not None:
+        # No autoflush: a patched role would reach the unique index before this check can answer 409.
+        with self.session.no_autoflush:
+            taken = (await self.session.execute(stmt)).first() is not None
+        if taken:
             raise conflict("originator_duplicate")
 
     async def create_role(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID) -> DesignRole:
         if data.get("party_kind") not in PARTY_KINDS:
             raise DesignError("party_kind_invalid", 422)
+        await self.assert_not_binding(project_id)
         wbs_ids = [str(await self.assert_wbs_usable(project_id, w)) for w in data.get("responsible_wbs_ids") or []]
         role = DesignRole(
             id=uuid.uuid4(),
@@ -582,6 +614,7 @@ class DesignService:
             responsible_wbs_ids=wbs_ids,
             status="planned",
         )
+        await self._project_lock(project_id, DesignRole.__tablename__)
         await self._check_originator(project_id, role)
         await self._unique_code(DesignRole, project_id, role.code)
         await self._add(role)
@@ -596,6 +629,7 @@ class DesignService:
             raise conflict("code_duplicate")
 
     async def patch_role(self, project_id: uuid.UUID, role_id: Any, data: dict[str, Any], *, actor_id: uuid.UUID):
+        await self.assert_not_binding(project_id)
         role = await self._get(DesignRole, project_id, role_id, "role_not_found", lock=True)
         if "state" in data and data["state"] != role.status:
             await self._fsm(dfsm.ROLE_FSM, role, data["state"], actor_id)
@@ -621,15 +655,37 @@ class DesignService:
         await self._audit(actor_id, "design_role", role.id, "updated")
         return role
 
+    async def role_references(self, project_id: uuid.UUID, role_id: uuid.UUID) -> list[dict[str, Any]]:
+        """Everything in the project that still points at a role, as ``{kind, id, code}``."""
+        rid = str(role_id)
+        out: list[dict[str, Any]] = []
+
+        def hit(kind: str, row: Any) -> None:
+            out.append({"code": "role_in_use", "kind": kind, "id": str(row.id), "ref": getattr(row, "code", None)})
+
+        for kind, model, columns in (
+            ("drawing", DesignDrawing, ("role_id",)),
+            ("deliverable", DesignDeliverable, ("role_id",)),
+            ("approval_point", DesignApprovalPoint, ("approver_role_id",)),
+            ("report", DesignReport, ("author_role_id", "checker_role_id")),
+            ("distribution_rule", DesignDistributionRule, ("recipient_role_id",)),
+            ("review_comment", DesignReviewComment, ("answered_by_role_id",)),
+            ("setup", DesignSetup, ("lead_designer_role_id",)),
+        ):
+            for row in await self._list(model, project_id):
+                if any(getattr(row, c) == role_id for c in columns):
+                    hit(kind, row)
+        for review in await self._list(DesignReview, project_id):
+            if rid in [str(x) for x in review.reviewer_role_ids or []]:
+                hit("review", review)
+        return out
+
     async def delete_role(self, project_id: uuid.UUID, role_id: Any, *, actor_id: uuid.UUID) -> None:
-        role = await self._get(DesignRole, project_id, role_id, "role_not_found")
-        used = (
-            await self.session.execute(
-                select(func.count()).select_from(DesignDrawing).where(DesignDrawing.role_id == role.id)
-            )
-        ).scalar_one()
+        await self.assert_not_binding(project_id)
+        role = await self._get(DesignRole, project_id, role_id, "role_not_found", lock=True)
+        used = await self.role_references(project_id, role.id)
         if used:
-            raise conflict("role_in_use")
+            raise conflict("role_in_use", violations=used)
         await self.session.delete(role)
         await self.session.flush()
         await self._audit(actor_id, "design_role", role.id, "deleted")
@@ -670,6 +726,8 @@ class DesignService:
         for key in ("title", "phase_code", "kind", "note"):
             if key in data:
                 setattr(row, key, data[key])
+        if data.get("approver_role_id"):
+            await self._get(DesignRole, project_id, data["approver_role_id"], "role_not_found")
         for key in ("governance_gate_id", "approver_role_id"):
             if key in data:
                 setattr(row, key, _uuid(data[key]))
@@ -735,6 +793,13 @@ class DesignService:
         if instance_id is not None and row.approval_instance_id != instance_id:
             return False
         decider = _uuid(decided_by)
+        if decision == "cancelled":
+            # The route was cancelled: nobody decided, the point is open again and can be resubmitted.
+            row.approval_instance_id = None
+            await self._fsm(dfsm.APPROVAL_POINT_FSM, row, "open", decider, reason="approval route cancelled")
+            await self.session.flush()
+            self._publish("approval_point.open", project_id=row.project_id, approval_point_id=row.id)
+            return True
         setup = await self.get_setup(row.project_id)
         if decision == "approved" and setup and setup.four_eyes_release and decider and decider == row.submitted_by:
             # The route let the submitter approve their own point; four-eyes refuses it.
@@ -745,6 +810,49 @@ class DesignService:
         await self.session.flush()
         self._publish(f"approval_point.{row.status}", project_id=row.project_id, approval_point_id=row.id)
         return True
+
+    async def catch_up_approvals(self, project_id: uuid.UUID) -> int:
+        """Apply route verdicts whose event never arrived; called by the list routes.
+
+        The subscriber runs after the route's commit in a session of its own and
+        only on PostgreSQL. If it failed, or never ran, the point or release
+        would wait for ever; here the route's own instance is read instead.
+        """
+        from app.modules.approval_routes.models import Instance, StepState
+
+        waiting: list[tuple[str, Any]] = [
+            ("point", r)
+            for r in await self._list(DesignApprovalPoint, project_id)
+            if r.status == "in_review" and r.approval_instance_id is not None
+        ]
+        waiting += [
+            ("release", r)
+            for r in await self._list(DesignRelease, project_id)
+            if r.status == "ready" and r.approval_status == "pending" and r.approval_instance_id is not None
+        ]
+        applied = 0
+        for kind, row in waiting:
+            instance = await self.session.get(Instance, row.approval_instance_id)
+            if instance is not None and instance.status == "pending":
+                continue
+            decision = (
+                instance.status
+                if instance is not None and instance.status in ("approved", "rejected")
+                else ("cancelled")
+            )
+            decider = None
+            if decision != "cancelled":
+                decider = (
+                    await self.session.execute(
+                        select(StepState.approver_user_id)
+                        .where(StepState.instance_id == instance.id, StepState.decided_at.is_not(None))
+                        .order_by(StepState.decided_at.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+            apply = self.apply_approval_verdict if kind == "point" else self.apply_release_verdict
+            applied += bool(await apply(row.id, row.approval_instance_id, decision=decision, decided_by=decider))
+        return applied
 
     # ── deliverables (rule 15) ────────────────────────────────────────────
 
@@ -791,6 +899,8 @@ class DesignService:
             await self._check_phase(project_id, data["phase_code"])
         if "wbs_node_id" in data:
             row.wbs_node_id = await self.assert_wbs_usable(project_id, data["wbs_node_id"])
+        if data.get("role_id"):
+            await self._get(DesignRole, project_id, data["role_id"], "role_not_found")
         for key in ("title", "phase_code", "discipline_code", "form_code", "planned_count", "required"):
             if key in data:
                 setattr(row, key, data[key])
@@ -931,13 +1041,36 @@ class DesignService:
                 violations=[{"code": "numbering_field_missing", "field": m, "value": None} for m in missing],
             )
         counter = await self._counter_row(project_id, nb.scope_key(scheme, values))
-        code = nb.compose(scheme, values, counter.next_value)
-        result = nb.validate(scheme, code)
-        if not result.valid:
-            raise DesignError("numbering_invalid", 422, violations=[i.as_dict() for i in result.issues])
-        counter.next_value += 1
+        taken = await self._taken_numbers(project_id)
+        # A code can exist without the counter knowing: a container made in CDE before the
+        # setup was pinned, or a number of the previous scheme that the new one also composes.
+        # Skipping it here is what keeps the generator from proposing the same code forever.
+        while True:
+            code = nb.compose(scheme, values, counter.next_value)
+            result = nb.validate(scheme, code)
+            if not result.valid:
+                raise DesignError("numbering_invalid", 422, violations=[i.as_dict() for i in result.issues])
+            counter.next_value += 1
+            if code not in taken:
+                break
         await self.session.flush()
         return {"number": code, "fields": values, "parts": result.parts, "scheme_id": scheme.id}
+
+    async def _taken_numbers(self, project_id: uuid.UUID) -> set[str]:
+        """Every code that may not be handed out: live container codes, reservations and aliases."""
+        from app.modules.cde.models import DocumentContainer
+
+        live = (
+            await self.session.execute(
+                select(DocumentContainer.container_code).where(DocumentContainer.project_id == project_id)
+            )
+        ).scalars()
+        reserved = (
+            await self.session.execute(
+                select(DesignNumberReservation.number).where(DesignNumberReservation.project_id == project_id)
+            )
+        ).scalars()
+        return {*live, *reserved, *self._all_aliases(await self._drawings_flat(project_id))}
 
     async def validate_number(self, project_id: uuid.UUID, code: str) -> dict[str, Any]:
         setup = await self.require_setup(project_id)
@@ -954,7 +1087,7 @@ class DesignService:
             mismatch = nb.parts_mismatch(scheme, c.container_code, self._stored_parts(c)) if result.valid else []
             issues = [i.as_dict() for i in result.issues]
             issues += [{"code": "numbering_parts_mismatch", "field": f, "value": None} for f in mismatch]
-            if c.originator_code and originators is not None and c.originator_code.upper() not in originators:
+            if c.originator_code and c.originator_code.upper() not in originators:
                 issues.append({"code": "originator_unknown", "field": "originator", "value": c.originator_code})
             out.append(
                 {
@@ -979,10 +1112,10 @@ class DesignService:
             "sequence_number": c.sequence_number,
         }
 
-    async def _active_originators(self, project_id: uuid.UUID) -> set[str] | None:
-        roles = [r for r in await self.roles(project_id) if r.status in ("appointed", "active", "planned")]
-        codes = {r.originator_code.upper() for r in roles if r.originator_code}
-        return codes or None
+    async def _active_originators(self, project_id: uuid.UUID) -> set[str]:
+        """Rule 21: the originator codes of roles that are appointed or active. Planned roles do not count."""
+        roles = [r for r in await self.roles(project_id) if r.status in ("appointed", "active")]
+        return {r.originator_code.upper() for r in roles if r.originator_code}
 
     async def check_container_code(
         self, project_id: uuid.UUID, code: str, parts: dict[str, Any]
@@ -990,6 +1123,8 @@ class DesignService:
         """The CDE hook: with a pinned scheme, the code must match it, agree with its parts and pass the counter."""
         setup = await self.get_setup(project_id)
         if setup is None:
+            return []
+        if await self._is_frame_container(project_id, code):
             return []
         if await self._reserved_elsewhere(project_id, code):
             return [{"code": "number_reserved", "field": None, "value": code}]
@@ -1009,7 +1144,24 @@ class DesignService:
             if counter.next_value <= seq:
                 counter.next_value = seq + 1
                 await self.session.flush()
+        # Rule 8: every accepted number is reserved here, whichever door it came through
+        # (the register, a CDE create, a CDE rename), so deleting its container never frees it.
+        await self._reserve(project_id, code)
         return []
+
+    async def _is_frame_container(self, project_id: uuid.UUID, code: str) -> bool:
+        """An existing container this module created for a frame document; its code is not a drawing number.
+
+        The marker is written under ``cde_naming.server_write`` only, and CDE drops it
+        from request metadata, so a client cannot put it on a container of its own.
+        """
+        from app.modules.cde.models import DocumentContainer
+
+        stmt = select(DocumentContainer.metadata_).where(
+            DocumentContainer.project_id == project_id, DocumentContainer.container_code == code
+        )
+        meta = (await self.session.execute(stmt)).scalars().first()
+        return isinstance(meta, dict) and FRAME_MARKER in meta
 
     async def renumber_preview_drawings(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
         """Rule 9: proposed new numbers for every legacy drawing; nothing is applied."""
@@ -1065,6 +1217,8 @@ class DesignService:
         for did, new_code in mapping.items():
             drawing = await self._get(DesignDrawing, project_id, did, "drawing_not_found", lock=True)
             c = await self.session.get(DocumentContainer, drawing.container_id)
+            if new_code == c.container_code:
+                continue  # unchanged: no alias, no second reservation
             result = nb.validate(scheme, new_code)
             if not result.valid:
                 raise DesignError("numbering_invalid", 422, violations=[i.as_dict() for i in result.issues])
@@ -1083,11 +1237,12 @@ class DesignService:
                 or await self._reserved_elsewhere(project_id, new_code)
             ):
                 raise conflict("number_taken", detail=new_code)
-            await self.check_container_code(project_id, new_code, {})
+            refused = await self.check_container_code(project_id, new_code, {})
+            if refused:
+                raise DesignError("numbering_invalid", 422, violations=refused)
             columns, extra = nb.container_parts(scheme, result.parts or {})
             drawing.aliases = [*(drawing.aliases or []), c.container_code]
             c.container_code = new_code
-            await self._reserve(project_id, new_code, c.id, reason="renumbered")
             for col, value in columns.items():
                 if scheme.field(next(k for k, v in nb.CONTAINER_PART.items() if v == col)) is not None:
                     setattr(c, col, value)
@@ -1121,11 +1276,23 @@ class DesignService:
         ).first()
         return live is None
 
-    async def _reserve(self, project_id: uuid.UUID, code: str, container_id: uuid.UUID, *, reason: str = "issued"):
-        """Record a number as used; the unique constraint turns a racing duplicate into an error at flush."""
-        await self._add(
-            DesignNumberReservation(project_id=project_id, number=code, container_id=container_id, reason=reason)
+    async def _reserve(self, project_id: uuid.UUID, code: str, *, reason: str = "issued") -> None:
+        """Record a number as used, once; insert-on-conflict so a racing or repeated reserve is a no-op."""
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        values = {"id": uuid.uuid4(), "project_id": project_id, "number": code, "reason": reason}
+        if getattr(getattr(self.session.get_bind(), "dialect", None), "name", "") == "postgresql":
+            await self.session.execute(
+                pg_insert(DesignNumberReservation)
+                .values(**values)
+                .on_conflict_do_nothing(constraint="uq_oe_dsg_reservation_number")
+            )
+            return
+        known = select(DesignNumberReservation.id).where(
+            DesignNumberReservation.project_id == project_id, DesignNumberReservation.number == code
         )
+        if (await self.session.execute(known)).first() is None:
+            await self._add(DesignNumberReservation(**values))
 
     @staticmethod
     def _all_aliases(drawings: list[DesignDrawing]) -> set[str]:
@@ -1231,7 +1398,7 @@ class DesignService:
         ):
             raise conflict("number_taken", detail=code)
         originators = await self._active_originators(project_id)
-        if parts.get("originator") and originators is not None and parts["originator"].upper() not in originators:
+        if parts.get("originator") and parts["originator"].upper() not in originators:
             raise DesignError("originator_unknown", 422, detail=parts["originator"])
         columns, extra = nb.container_parts(scheme, parts)
         container = await CDEService(self.session).create_container(
@@ -1245,7 +1412,6 @@ class DesignService:
             ),
             user_id=_s(actor_id),
         )
-        await self._reserve(project_id, code, container.id)
         drawing = await self._add(
             DesignDrawing(
                 project_id=project_id,
@@ -1304,33 +1470,32 @@ class DesignService:
         return row
 
     async def read_title_block(self, project_id: uuid.UUID, did: Any, sheet_text: str, *, actor_id: uuid.UUID):
-        """Rule 11: read the sheet number from title block text and compare it with the container code."""
-        from app.modules.documents import sheet_fields
+        """Rule 11: read the sheet number from title block text and compare it with the container code.
+
+        Nothing is stored when the reader finds no number: raw text kept as a
+        "number" would report a mismatch on every real title block.
+        """
+        from app.modules.documents.sheet_fields import detect_sheet_info
 
         row = await self._get(DesignDrawing, project_id, did, "drawing_not_found", lock=True)
-        reader = getattr(sheet_fields, "extract_sheet_fields", None) or getattr(sheet_fields, "read_sheet_fields", None)
-        number = None
-        if reader is not None:
-            try:
-                fields = reader(sheet_text)
-                number = (fields or {}).get("sheet_number") if isinstance(fields, dict) else None
-            except Exception:
-                logger.debug("design: title block reader failed", exc_info=True)
-        row.title_block_number = (number or sheet_text or "").strip()[:255] or None
+        number = (detect_sheet_info(sheet_text, title_block_text=sheet_text).get("sheet_number") or "").strip()
+        row.title_block_number = number[:255] or None
         await self.session.flush()
         return row
 
     # ── distribution and releases (rules 12-14) ───────────────────────────
 
     async def create_dist_rule(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID):
-        await self._check_recipient(project_id, data)
+        await self.assert_not_binding(project_id)
+        await self._check_recipient(project_id, data, actor_id=actor_id)
         row = DesignDistributionRule(project_id=project_id)
         self._fill_rule(row, data)
         await self._add(row)
         await self._audit(actor_id, "design_dist_rule", row.id, "created")
         return row
 
-    async def _check_recipient(self, project_id: uuid.UUID, data: dict[str, Any]) -> None:
+    async def _check_recipient(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID) -> None:
+        """A list of this project, or the actor's own personal list; never another user's (rule 24)."""
         from app.modules.file_distribution.models import FileDistributionList
 
         list_id, role_id = _uuid(data.get("recipient_list_id")), _uuid(data.get("recipient_role_id"))
@@ -1338,7 +1503,8 @@ class DesignService:
             raise DesignError("recipient_exactly_one", 422)
         if list_id:
             lst = await self.session.get(FileDistributionList, list_id)
-            if lst is None or lst.project_id not in (None, project_id):
+            own_personal = lst is not None and lst.project_id is None and lst.owner_id == actor_id
+            if lst is None or not (lst.project_id == project_id or own_personal):
                 raise not_found("distribution_list_not_found")
         else:
             await self._get(DesignRole, project_id, role_id, "role_not_found")
@@ -1358,12 +1524,13 @@ class DesignService:
                 setattr(row, key, data[key])
 
     async def patch_dist_rule(self, project_id: uuid.UUID, rid: Any, data: dict[str, Any], *, actor_id: uuid.UUID):
+        await self.assert_not_binding(project_id)
         row = await self._get(DesignDistributionRule, project_id, rid, "dist_rule_not_found", lock=True)
         merged = {
             "recipient_list_id": data.get("recipient_list_id", row.recipient_list_id),
             "recipient_role_id": data.get("recipient_role_id", row.recipient_role_id),
         }
-        await self._check_recipient(project_id, merged)
+        await self._check_recipient(project_id, merged, actor_id=actor_id)
         self._fill_rule(row, data)
         await self.session.flush()
         return row
@@ -1378,7 +1545,12 @@ class DesignService:
         return f"list:{rule.recipient_list_id}" if rule.recipient_list_id else f"role:{rule.recipient_role_id}"
 
     async def _revision_views(self, project_id: uuid.UUID, revision_ids: list[Any]) -> list[dr.RevisionView]:
-        """Revisions of THIS project only; a foreign id is 404 (rule 24)."""
+        """Current revisions of THIS project's containers; a foreign id is 404 (rule 24).
+
+        Suitability lives on the container and describes its CURRENT revision,
+        so a release can only carry that one: a superseded revision has no
+        status of its own to check rule 13 against (``revision_not_current``).
+        """
         from app.modules.cde.models import DocumentContainer, DocumentRevision
 
         ids = [_uuid(r) for r in revision_ids]
@@ -1392,6 +1564,13 @@ class DesignService:
         rows = (await self.session.execute(stmt)).all()
         if len(rows) != len(set(ids)):
             raise not_found("revision_not_found")
+        stale = [rev.id for rev, c in rows if _uuid(c.current_revision_id) != rev.id]
+        if stale:
+            raise DesignError(
+                "revision_not_current",
+                422,
+                violations=[{"code": "revision_not_current", "revision_id": str(r)} for r in stale],
+            )
         drawings = {
             d.container_id: d
             for d in (
@@ -1403,13 +1582,11 @@ class DesignService:
         out = []
         for rev, c in rows:
             d = drawings.get(c.id)
-            # A revision carries its own status at issue time; fall back to the container's suitability.
-            code = (rev.metadata_ or {}).get("suitability_code") or c.suitability_code
             out.append(
                 dr.RevisionView(
                     rev.id,
                     c.id,
-                    code,
+                    c.suitability_code,
                     c.discipline_code,
                     c.form_code,
                     d.phase_code if d else None,
@@ -1440,12 +1617,14 @@ class DesignService:
                 tuple(r.phase_codes or ()),
                 tuple(uuid.UUID(x) for x in r.wbs_node_ids or ()),
                 r.min_suitability,
-                r.purpose,
+                r.purpose or "",
             )
             for r in rules
         ]
         views = await self._revision_views(project_id, release.revision_ids or [])
-        return dr.distribution_plan(matrix, views, already_issued=await self._issued_pairs(project_id, release.id))
+        return dr.distribution_plan(
+            matrix, views, purpose=release.purpose, already_issued=await self._issued_pairs(project_id, release.id)
+        )
 
     async def create_release(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID):
         setup = await self.get_setup(project_id)
@@ -1464,6 +1643,8 @@ class DesignService:
                 transmittal_ids=[],
                 issue_plan=[],
                 prepared_by=actor_id,
+                content_changed_by=actor_id,
+                approval_status="none",
             )
         )
         await self._audit(actor_id, "design_release", row.id, "created", code=code)
@@ -1480,18 +1661,128 @@ class DesignService:
         for key in ("title", "purpose"):
             if key in data:
                 setattr(row, key, data[key])
+        if {"revision_ids", "purpose"} & data.keys():
+            # Decision 14: whoever last changed what goes out cannot be the one who approves it.
+            row.content_changed_by = actor_id
         await self.session.flush()
+        await self._audit(actor_id, "design_release", row.id, "updated", fields=sorted(data))
         return row
 
     async def release_transition(self, project_id: uuid.UUID, rid: Any, target: str, *, actor_id: uuid.UUID):
+        """``ready`` starts the ``design_release`` approval route when four-eyes is on (decision 14)."""
         row = await self._get(DesignRelease, project_id, rid, "release_not_found", lock=True)
-        if target == "ready":
-            await self._check_release_content(project_id, row)
         if target == "issued":
             raise conflict("use_issue")
+        setup = await self.get_setup(project_id)
+        four_eyes = bool(setup and setup.four_eyes_release)
+        route = None
+        if target == "ready":
+            await self._check_release_content(project_id, row)
+            if four_eyes:
+                route = await self._route(project_id, RELEASE_TARGET_KIND, setup.release_route_id)
+                if route is None:
+                    raise DesignError("no_approval_route", 422)
         await self._fsm(dfsm.RELEASE_FSM, row, target, actor_id)
+        if target == "ready":
+            row.content_changed_by = actor_id
+            row.approved_by = row.approved_at = None
+            row.approval_status = "none"
+            if route is not None:
+                row.approval_instance_id = await self._start_instance(route, RELEASE_TARGET_KIND, row.id, actor_id)
+                row.approval_status = "pending"
+        else:
+            # Reopened or cancelled: an approval given for the old content does not carry over.
+            await self._drop_release_instance(row, actor_id)
         await self.session.flush()
         return row
+
+    async def _drop_release_instance(self, row: DesignRelease, actor_id: uuid.UUID | None) -> None:
+        from fastapi import HTTPException
+
+        from app.modules.approval_routes.service import ApprovalRouteService
+
+        if row.approval_instance_id is not None and row.approval_status == "pending":
+            try:
+                await ApprovalRouteService(self.session).cancel_instance(row.approval_instance_id, actor_id=actor_id)
+            except HTTPException:
+                # Already terminal on the route side; the release still forgets it below.
+                logger.warning("design: release %s could not cancel its approval instance", row.id, exc_info=True)
+        row.approval_instance_id = None
+        row.approved_by = row.approved_at = None
+        row.approval_status = "none"
+
+    async def apply_release_verdict(
+        self, release_id: uuid.UUID, instance_id: uuid.UUID | None, *, decision: str, decided_by: Any
+    ) -> bool:
+        """The ``design_release`` route decided. Idempotent; four-eyes against whoever last changed the content."""
+        stmt = select(DesignRelease).where(DesignRelease.id == release_id).with_for_update()
+        row = (await self.session.execute(stmt)).scalar_one_or_none()
+        if row is None or row.status != "ready" or row.approval_status != "pending":
+            return False
+        if instance_id is not None and row.approval_instance_id != instance_id:
+            return False
+        decider = _uuid(decided_by)
+        if decision == "cancelled":
+            row.approval_instance_id = None
+            row.approval_status = "none"
+            await self._fsm(dfsm.RELEASE_FSM, row, "draft", decider, reason="approval route cancelled")
+        elif decision == "approved" and self._approve_gate(row, decider) is None:
+            row.approval_status, row.approved_by, row.approved_at = "approved", decider, _now()
+        else:
+            # Rejected, or approved by the person who last changed the content or marked it ready.
+            self_approved = decision == "approved"
+            row.approval_status = "rejected"
+            row.approval_instance_id = None
+            await self._fsm(
+                dfsm.RELEASE_FSM,
+                row,
+                "draft",
+                decider,
+                reason="four_eyes: approver is the preparer or unknown" if self_approved else "approval route rejected",
+            )
+        await self.session.flush()
+        await self._audit(decider, "design_release", row.id, f"approval_{row.approval_status}")
+        self._publish("release.approval", project_id=row.project_id, release_id=row.id, state=row.approval_status)
+        return True
+
+    async def release_can(self, row: DesignRelease, *, actor_id: uuid.UUID, may_release: bool) -> dict[str, Any]:
+        """What the caller may do with a release, decided by the function ``issue_release`` enforces with."""
+        setup = await self.get_setup(row.project_id)
+        refused = self._approve_gate(row, actor_id)
+        return {
+            "issue": self._issue_gate(row, setup, actor_id=actor_id, may_release=may_release),
+            # Entitlement comes from the approval route; this only says what this module would refuse.
+            "approve": {"allowed": refused is None, "reason": refused},
+        }
+
+    @staticmethod
+    def _approve_gate(row: DesignRelease, decider: uuid.UUID | None) -> str | None:
+        """Why this person's approval of the release would not count, or ``None`` (decision 14)."""
+        if row.status != "ready" or row.approval_status != "pending":
+            return "release_not_pending"
+        if decider is None or decider == row.content_changed_by:
+            return "release_four_eyes"
+        return None
+
+    def report_can(self, row: DesignReport, *, may_manage: bool) -> dict[str, Any]:
+        """Whether the caller may change the fields a gate reads on this report."""
+        reason = None
+        if not may_manage:
+            reason = "manage_required"
+        elif row.status in self.REPORT_FROZEN_STATES:
+            reason = "report_fields_frozen"
+        return {"edit_gate_fields": {"allowed": reason is None, "reason": reason}}
+
+    @staticmethod
+    def _issue_gate(row: DesignRelease, setup: Any, *, actor_id: uuid.UUID, may_release: bool) -> dict[str, Any]:
+        reason = None
+        if not may_release:
+            reason = "forbidden"
+        elif row.status != "ready":
+            reason = "release_not_ready"
+        elif setup is not None and setup.four_eyes_release and row.approval_status != "approved":
+            reason = "release_not_approved"
+        return {"allowed": reason is None, "reason": reason}
 
     async def _check_release_content(self, project_id: uuid.UUID, row: DesignRelease) -> None:
         if not row.revision_ids:
@@ -1502,6 +1793,7 @@ class DesignService:
             raise DesignError(errors[0][1], 422, violations=[{"code": c, "revision_id": str(r)} for r, c in errors])
 
     async def _recipients_for(self, project_id: uuid.UUID, key: str) -> list[dict[str, Any]]:
+        """The people behind a matrix recipient; empty when the list has no member or the role is gone."""
         from app.modules.file_distribution.models import FileDistributionMember
 
         kind, _, raw = key.partition(":")
@@ -1510,30 +1802,55 @@ class DesignService:
             members = (
                 await self.session.execute(select(FileDistributionMember).where(FileDistributionMember.list_id == rid))
             ).scalars()
-            return [{"recipient_name": m.display_name or m.email, "recipient_email": m.email} for m in members]
+            return [
+                {"recipient_name": m.display_name or m.email, "recipient_email": m.email}
+                for m in members
+                if (m.email or "").strip() or (m.display_name or "").strip()
+            ]
         role = await self.session.get(DesignRole, rid)
         if role is None or role.project_id != project_id:
             return []
         return [{"recipient_name": role.title or role.code, "recipient_user_id": role.user_id}]
 
     async def issue_release(
-        self, project_id: uuid.UUID, rid: Any, *, actor_id: uuid.UUID, duplicate_reason: str = ""
+        self,
+        project_id: uuid.UUID,
+        rid: Any,
+        *,
+        actor_id: uuid.UUID,
+        duplicate_reason: str = "",
+        may_release: bool = True,
     ) -> DesignRelease:
-        """Rule 12: one transmittal per matching recipient with the pinned revisions; rule 14 duplicates need a reason."""
+        """Rule 12: one transmittal per matching recipient with the pinned revisions; rule 14 duplicates need a reason.
+
+        Every transmittal goes out with the RELEASE's purpose (a matrix rule can
+        only narrow who receives it), and rule 13 is checked against exactly the
+        revisions and the purpose that are sent.
+        """
         from app.modules.transmittals.models import Transmittal
         from app.modules.transmittals.schemas import ItemCreate, RecipientCreate, TransmittalCreate
         from app.modules.transmittals.service import TransmittalService
 
         row = await self._get(DesignRelease, project_id, rid, "release_not_found", lock=True)
-        if row.status != "ready":
-            raise conflict("release_not_ready")
         setup = await self.get_setup(project_id)
-        if setup and setup.four_eyes_release and row.prepared_by == actor_id:
-            raise forbidden("release_four_eyes")
+        gate = self._issue_gate(row, setup, actor_id=actor_id, may_release=may_release)
+        if not gate["allowed"]:
+            code = gate["reason"]
+            if code == "forbidden":
+                raise forbidden(code)
+            raise conflict(code)
         await self._check_release_content(project_id, row)
         plans = await self.release_plan(project_id, row)
         if not any(p.revision_ids for p in plans):
             raise DesignError("release_no_recipients", 422)
+        views = {v.revision_id: v for v in await self._revision_views(project_id, row.revision_ids)}
+        sent_errors = [
+            {"code": code, "revision_id": str(rev), "recipient": p.recipient_key}
+            for p in plans
+            for rev, code in dr.release_content_errors([views[r] for r in p.revision_ids], p.purpose)
+        ]
+        if sent_errors:
+            raise DesignError(sent_errors[0]["code"], 422, violations=sent_errors)
         if any(p.duplicates for p in plans) and dr.rationale_error(duplicate_reason):
             raise DesignError(
                 "duplicate_issue",
@@ -1544,38 +1861,57 @@ class DesignService:
                     for r in p.duplicates
                 ],
             )
+        people = {p.recipient_key: await self._recipients_for(project_id, p.recipient_key) for p in plans}
+        empty = [p.recipient_key for p in plans if p.revision_ids and not people[p.recipient_key]]
+        if empty:
+            # A transmittal to nobody would pass as issued; the matrix has to be repaired first.
+            raise DesignError(
+                "release_recipient_empty",
+                422,
+                violations=[{"code": "release_recipient_empty", "recipient": k} for k in empty],
+            )
         svc = TransmittalService(self.session)
         today = _now().date().isoformat()
+        release_id = row.id
         issue_plan, transmittal_ids = [], []
         for plan in plans:
+            entry = {
+                "recipient_key": plan.recipient_key,
+                "transmittal_id": None,
+                "purpose": plan.purpose,
+                "revision_ids": [str(r) for r in plan.revision_ids],
+                "excluded": [{"revision_id": str(r), "reason": c} for r, c in plan.excluded],
+                "duplicates": [str(r) for r in plan.duplicates],
+            }
+            issue_plan.append(entry)
             if not plan.revision_ids:
-                continue
-            recipients = await self._recipients_for(project_id, plan.recipient_key)
+                continue  # everything excluded for this recipient: recorded, nothing sent
             tr = await svc.create_transmittal(
                 TransmittalCreate(
                     project_id=project_id,
                     subject=f"{row.code} {row.title}"[:500],
-                    purpose_code=plan.purpose if plan.purpose else row.purpose,
+                    purpose_code=plan.purpose,
                     issued_date=today,
-                    recipients=[RecipientCreate(**r) for r in recipients] or [RecipientCreate()],
+                    recipients=[RecipientCreate(**r) for r in people[plan.recipient_key]],
                     items=[ItemCreate(revision_id=r, item_number=i) for i, r in enumerate(plan.revision_ids, start=1)],
-                    metadata={"design_release_id": str(row.id), "recipient_key": plan.recipient_key},
+                    metadata={"design_release_id": str(release_id), "recipient_key": plan.recipient_key},
                 ),
                 user_id=_s(actor_id),
             )
+            entry["transmittal_id"] = str(tr.id)
             transmittal_ids.append(str(tr.id))
-            issue_plan.append(
-                {
-                    "recipient_key": plan.recipient_key,
-                    "transmittal_id": str(tr.id),
-                    "revision_ids": [str(r) for r in plan.revision_ids],
-                    "excluded": [{"revision_id": str(r), "reason": c} for r, c in plan.excluded],
-                    "duplicates": [str(r) for r in plan.duplicates],
-                }
+        # ``create_transmittal`` rolls the session back on a number collision and retries. That
+        # rollback drops this method's row lock and expires ``row``, and discards what the loop
+        # wrote before it. Take the lock again on a fresh read and count what survived.
+        row = (
+            await self.session.execute(
+                select(DesignRelease)
+                .where(DesignRelease.id == release_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
             )
-        # ``create_transmittal`` rolls the session back on a number collision and retries; that
-        # rollback would silently discard what this loop already wrote. Re-read before committing.
-        if row not in self.session or row.status != "ready":
+        ).scalar_one_or_none()
+        if row is None or row.status != "ready":
             raise conflict("concurrent_issue")
         found = (
             await self.session.execute(
@@ -1747,8 +2083,42 @@ class DesignService:
             raise not_found("container_not_found")
         return cid
 
-    async def patch_report(self, project_id: uuid.UUID, rid: Any, data: dict[str, Any], *, actor_id: uuid.UUID):
+    #: Report fields rule 17 and the rule 16 gate read. Changing one needs ``design.manage``.
+    REPORT_GATE_FIELDS = ("author_role_id", "checker_role_id", "external_check", "review_cycle_id", "required")
+    #: From submission on a set value is frozen; an empty checker or cycle link may still be filled in.
+    REPORT_FROZEN_STATES = ("submitted", "under_check", "remarks", "accepted", "rejected")
+
+    def report_gate_gate(self, row: DesignReport, data: dict[str, Any], *, may_manage: bool) -> str | None:
+        """Why this patch may not touch the gate fields, or ``None``. The same answer drives ``can.edit_gate_fields``."""
+        changed = [
+            k
+            for k in self.REPORT_GATE_FIELDS
+            if k in data and data[k] != (_s(getattr(row, k)) if k.endswith("_id") else getattr(row, k))
+        ]
+        if not changed:
+            return None
+        if not may_manage:
+            return "manage_required"
+        frozen = row.status in self.REPORT_FROZEN_STATES
+        if frozen and any(not k.endswith("_id") or getattr(row, k) is not None for k in changed):
+            return "report_fields_frozen"
+        return None
+
+    async def patch_report(
+        self, project_id: uuid.UUID, rid: Any, data: dict[str, Any], *, actor_id: uuid.UUID, may_manage: bool = False
+    ):
         row = await self._get(DesignReport, project_id, rid, "report_not_found", lock=True)
+        refused = self.report_gate_gate(row, data, may_manage=may_manage)
+        if refused == "manage_required":
+            raise forbidden(refused)
+        if refused:
+            raise conflict(refused)
+        if data.get("required") is False and row.required:
+            # Rule 18: dropping a report from readiness needs words, on this door as on the transition.
+            if dr.rationale_error(data.get("rationale")):
+                raise DesignError("not_required_needs_rationale", 422)
+        if "rationale" in data:
+            row.rationale = data["rationale"]
         for key in ("author_role_id", "checker_role_id"):
             if key in data:
                 if data[key]:
@@ -1758,10 +2128,13 @@ class DesignService:
             row.container_id = await self._container_in_project(project_id, data["container_id"])
         if "review_cycle_id" in data:
             row.review_cycle_id = await self._cycle_in_project(project_id, data["review_cycle_id"])
+        if "phase_code" in data:
+            await self._check_phase(project_id, data["phase_code"])
         for key in ("title", "phase_code", "external_check", "conditions_text", "required"):
             if key in data:
                 setattr(row, key, data[key])
         await self.session.flush()
+        await self._audit(actor_id, "design_report", row.id, "updated", fields=sorted(data))
         return row
 
     async def _cycle_in_project(self, project_id: uuid.UUID, cycle_id: Any) -> uuid.UUID | None:
@@ -1896,8 +2269,19 @@ class DesignService:
             raise not_found("submission_not_found")
         return sub_id
 
-    async def patch_permit(self, project_id: uuid.UUID, pid: Any, data: dict[str, Any], *, actor_id: uuid.UUID):
+    async def patch_permit(
+        self, project_id: uuid.UUID, pid: Any, data: dict[str, Any], *, actor_id: uuid.UUID, may_manage: bool = False
+    ):
         row = await self._get(DesignPermit, project_id, pid, "permit_not_found", lock=True)
+        submitted = row.status not in ("assembling", "ready")
+        for key in ("review_cycle_id", "authority_submission_id"):
+            if key not in data or data[key] == _s(getattr(row, key)) or not submitted:
+                continue
+            # After submission the package state is read from the cycle: a link is filled in once, never swapped.
+            if getattr(row, key) is not None:
+                raise conflict("permit_link_frozen")
+            if not may_manage:
+                raise forbidden("manage_required")
         if "review_cycle_id" in data:
             row.review_cycle_id = await self._cycle_in_project(project_id, data["review_cycle_id"])
         if "authority_submission_id" in data:
@@ -1976,7 +2360,25 @@ class DesignService:
             )
         return out
 
-    async def permit_transition(self, project_id: uuid.UUID, pid: Any, target: str, *, actor_id: uuid.UUID):
+    #: Authority decisions. Read from the linked review cycle when there is one.
+    PERMIT_DECISIONS = ("under_review", "remarks", "approved", "partially_approved", "refused")
+
+    @staticmethod
+    def permit_decision_gate(permit: DesignPermit, target: str, *, may_manage: bool) -> str | None:
+        """Why an authority decision may not be typed, or ``None``.
+
+        A package without a review cycle has nothing to read its state from, so
+        a person with ``design.manage`` records the authority's answer. A partial
+        approval is no cycle state at all and is always recorded by a person.
+        """
+        partial = target == "partially_approved" or permit.status == "partially_approved"
+        if permit.review_cycle_id is not None and not partial:
+            return "permit_state_read_from_cycle"
+        return None if may_manage else "manage_required"
+
+    async def permit_transition(
+        self, project_id: uuid.UUID, pid: Any, target: str, *, actor_id: uuid.UUID, may_manage: bool = False
+    ):
         permit = await self._get(DesignPermit, project_id, pid, "permit_not_found", lock=True)
         if target in ("ready", "submitted"):
             checks = await self.permit_check(project_id, permit)
@@ -2000,8 +2402,14 @@ class DesignService:
                 for c in checks:
                     c["item"].included_revision_id = _uuid(c["current_revision_id"])
                 permit.submitted_by, permit.submitted_at = actor_id, _now()
+        elif target in self.PERMIT_DECISIONS:
+            refused = self.permit_decision_gate(permit, target, may_manage=may_manage)
+            if refused == "manage_required":
+                raise forbidden(refused)
+            if refused:
+                raise conflict(refused)
         elif target not in ("assembling", "withdrawn"):
-            raise conflict("permit_state_read_from_cycle")
+            raise conflict("invalid_transition", detail=target)
         await self._fsm(dfsm.PERMIT_FSM, permit, target, actor_id)
         await self.session.flush()
         self._publish("permit.state_changed", project_id=project_id, permit_id=permit.id, state=permit.status)
@@ -2033,6 +2441,8 @@ class DesignService:
         permit = await self._get(DesignPermit, project_id, pid, "permit_not_found", lock=True)
         if permit.status not in ("approved", "partially_approved"):
             raise conflict("permit_not_approved")
+        for t in texts:
+            await self._assert_member(project_id, t.get("owner_user_id"))
         added = [
             {
                 "id": str(uuid.uuid4()),
@@ -2048,6 +2458,20 @@ class DesignService:
         permit.conditions = [*(permit.conditions or []), *added]
         await self.session.flush()
         return permit
+
+    async def _assert_member(self, project_id: uuid.UUID, user_id: Any) -> None:
+        """A named owner must be able to open this project; an id from elsewhere is refused (rule 24)."""
+        from fastapi import HTTPException
+
+        from app.dependencies import verify_project_access
+
+        uid = _uuid(user_id)
+        if uid is None:
+            return
+        try:
+            await verify_project_access(project_id, str(uid), self.session)
+        except HTTPException as exc:
+            raise DesignError("condition_owner_not_member", 422) from exc
 
     async def confirm_condition(
         self, project_id: uuid.UUID, pid: Any, condition_id: str, *, confirm: bool, actor_id: uuid.UUID
@@ -2066,6 +2490,7 @@ class DesignService:
         if confirm:
             if not entry.get("owner_user_id") or not entry.get("due_date"):
                 raise DesignError("condition_needs_owner_and_due_date", 422)
+            await self._assert_member(project_id, entry["owner_user_id"])
             task = await TaskService(self.session).create_task(
                 TaskCreate(
                     project_id=project_id,
@@ -2104,62 +2529,117 @@ class DesignService:
             open_major_comments=majors,
         )
 
-    async def generate_frame_document(
-        self, project_id: uuid.UUID, doc_type: str, *, actor_id: uuid.UUID, file_bytes: bytes, file_name: str
-    ) -> dict[str, Any]:
-        """Rule 23: write the generated register as a new CDE revision of the design frame document's container."""
-        from app.modules.cde.schemas import ContainerCreate, RevisionCreate
-        from app.modules.cde.service import CDEService
+    async def _frame_document(self, project_id: uuid.UUID, *, actor_id: uuid.UUID) -> Any:
+        """The governance frame document design writes into; created on first use when the model offers its type."""
         from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
+        from app.modules.project_governance.service import GovernanceService
 
         area_code, doc_types = await project_frame_target(self.session, project_id)
         if area_code is None or not doc_types:
             raise not_found("frame_document_missing")
+        area = (
+            (
+                await self.session.execute(
+                    select(GovernanceArea).where(
+                        GovernanceArea.project_id == project_id, GovernanceArea.code == area_code
+                    )
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if area is None:
+            raise not_found("frame_document_missing")
         stmt = (
             select(GovernanceDocument)
-            .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
             .where(
                 GovernanceDocument.project_id == project_id,
-                GovernanceArea.code == area_code,
+                GovernanceDocument.area_id == area.id,
                 GovernanceDocument.doc_type.in_(doc_types),
             )
-            .with_for_update(of=GovernanceDocument)
+            .order_by(GovernanceDocument.created_at, GovernanceDocument.id)
+            .with_for_update()
         )
         document = (await self.session.execute(stmt)).scalars().first()
         if document is None:
-            raise not_found("frame_document_missing")
-        if document.status == "binding":
-            raise conflict("binding_requires_change_request")
-        cde = CDEService(self.session)
-        if document.container_id is None:
-            container = await cde.create_container(
+            document = await GovernanceService(self.session).create_document(
+                project_id, area_id=area.id, doc_type=doc_types[0], actor_id=actor_id
+            )
+        return document
+
+    async def _frame_container(self, project_id: uuid.UUID, register: str, *, actor_id: uuid.UUID) -> Any:
+        """The one CDE container of a register: a revision stream of its own, found by its fixed code."""
+        from app.core.cde_naming import server_write
+        from app.modules.cde.models import DocumentContainer
+        from app.modules.cde.schemas import ContainerCreate
+        from app.modules.cde.service import CDEService
+
+        code = f"{FRAME_CODE_PREFIX}{register.upper()}"
+        stmt = select(DocumentContainer).where(
+            DocumentContainer.project_id == project_id, DocumentContainer.container_code == code
+        )
+        container = (await self.session.execute(stmt)).scalars().first()
+        if container is not None:
+            return container
+        # Not a drawing: the code is this module's own and must not be judged by the drawing scheme.
+        with server_write():
+            return await CDEService(self.session).create_container(
                 ContainerCreate(
                     project_id=project_id,
-                    container_code=f"GOV-M07-{uuid.uuid4().hex[:6].upper()}",
-                    title=doc_type,
-                    metadata={"design_frame_document": doc_type},
+                    container_code=code,
+                    title=f"Design {register.replace('_', ' ')}",
+                    metadata={FRAME_MARKER: register},
                 ),
                 user_id=_s(actor_id),
             )
-            document.container_id = container.id
+
+    async def generate_frame_document(
+        self, project_id: uuid.UUID, register: str, *, actor_id: uuid.UUID, file_bytes: bytes, file_name: str
+    ) -> dict[str, Any]:
+        """Rule 23: store the generated register and add it as a new revision of that register's own container.
+
+        Each register (drawings, matrix, reports, permit) has one container, so
+        its revisions are a history of that register only. The governance frame
+        document points at the first register generated unless a container was
+        attached to it before; binding it then freezes the design standard.
+        """
         import hashlib
 
-        revision = await cde.create_revision(
-            document.container_id,
+        from app.core.storage import get_storage_backend
+        from app.modules.cde.schemas import RevisionCreate
+        from app.modules.cde.service import CDEService
+
+        if register not in FRAME_REGISTERS:
+            raise DesignError("frame_register_unknown", 422, detail=register)
+        document = await self._frame_document(project_id, actor_id=actor_id)
+        if document.status == "binding":
+            raise conflict("binding_requires_change_request")
+        container = await self._frame_container(project_id, register, actor_id=actor_id)
+        if document.container_id is None:
+            document.container_id = container.id
+        digest = hashlib.sha256(file_bytes).hexdigest()
+        storage_key = f"design_management/{project_id}/frame/{register}/{digest}.pdf"
+        await get_storage_backend().put(storage_key, file_bytes)
+        revision = await CDEService(self.session).create_revision(
+            container.id,
             RevisionCreate(
                 file_name=file_name,
-                content_hash=hashlib.sha256(file_bytes).hexdigest(),
+                content_hash=digest,
                 file_size=str(len(file_bytes)),
                 mime_type="application/pdf",
-                change_summary=f"design_management:{doc_type}",
+                storage_key=storage_key,
+                change_summary=f"design_management:{register}",
             ),
             user_id=_s(actor_id),
         )
         await self.session.flush()
+        await self._audit(actor_id, "design_setup", document.id, "frame_document_generated", register=register)
         return {
             "document_id": str(document.id),
-            "container_id": str(document.container_id),
+            "register": register,
+            "container_id": str(container.id),
             "revision_id": str(revision.id),
+            "storage_key": storage_key,
         }
 
     async def validation_payload(self, project_id: uuid.UUID) -> dict[str, Any]:
@@ -2239,7 +2719,7 @@ class DesignService:
                 {"module": u.module, "table": u.table, "row_id": u.row_id, "value": u.value} for u in unresolved
             ],
             "drawings": drawings,
-            "originators": sorted(await self._active_originators(project_id) or []),
+            "originators": sorted(await self._active_originators(project_id)),
             "releases": releases,
             "deliverables": [
                 {

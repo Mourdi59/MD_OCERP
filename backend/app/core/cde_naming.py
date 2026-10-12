@@ -16,8 +16,10 @@ field at once.
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -36,8 +38,41 @@ def unregister_container_code_checker(name: str) -> None:
     _CHECKERS.pop(name, None)
 
 
+#: Metadata keys only server code may set on a container (a module marking a
+#: container as its own). A client that sends one has it dropped.
+_SERVER_KEYS: set[str] = set()
+_SERVER_WRITE: contextvars.ContextVar[bool] = contextvars.ContextVar("cde_server_write", default=False)
+
+
+def register_server_metadata_key(key: str) -> None:
+    """Reserve a container metadata key for server code."""
+    _SERVER_KEYS.add(key)
+
+
+@contextlib.contextmanager
+def server_write() -> Iterator[None]:
+    """A module writing a container it owns: its code is not a drawing number and reserved keys are kept.
+
+    Entered by server code only; nothing in a request can turn it on.
+    """
+    token = _SERVER_WRITE.set(True)
+    try:
+        yield
+    finally:
+        _SERVER_WRITE.reset(token)
+
+
+def client_metadata(metadata: Any) -> Any:
+    """``metadata`` as a client may set it: reserved keys dropped unless a module is writing."""
+    if _SERVER_WRITE.get() or not isinstance(metadata, dict) or not (_SERVER_KEYS & metadata.keys()):
+        return metadata
+    return {k: v for k, v in metadata.items() if k not in _SERVER_KEYS}
+
+
 async def check_container_code(session: Any, project_id: uuid.UUID, code: str, parts: dict[str, Any]) -> None:
     """Refuse a container code a registered checker rejects; raise 422 with every violation."""
+    if _SERVER_WRITE.get():
+        return
     violations: list[dict[str, Any]] = []
     for checker in list(_CHECKERS.values()):
         found = await checker(session, project_id, code, parts)
@@ -58,6 +93,9 @@ async def check_container_code(session: Any, project_id: uuid.UUID, code: str, p
 __all__ = [
     "ContainerCodeChecker",
     "check_container_code",
+    "client_metadata",
+    "register_server_metadata_key",
+    "server_write",
     "register_container_code_checker",
     "unregister_container_code_checker",
 ]

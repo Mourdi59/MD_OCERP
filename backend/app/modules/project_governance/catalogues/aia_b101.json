@@ -91,6 +91,17 @@
   ],
   "areas": [],
   "folders": [],
-  "document_types": [],
+  "document_types": [
+    {
+      "code": "design_frame",
+      "area": "scope_quality",
+      "name_key": "governance.catalogue.neutral.doc.design_frame",
+      "required_at_gates": [],
+      "source_ref": null,
+      "hosts": [
+        "design"
+      ]
+    }
+  ],
   "readiness_criteria": []
 }

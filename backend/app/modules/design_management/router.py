@@ -102,6 +102,27 @@ def _uid(user_id: str) -> uuid.UUID:
     return uuid.UUID(str(user_id))
 
 
+def _may(payload: dict[str, Any], permission: str) -> bool:
+    """Whether the caller's role holds a permission, by the registry ``RequirePermission`` itself reads.
+
+    The service never sees a role: it gets this boolean and answers both the
+    request and the ``can`` flags of the response with it.
+    """
+    from app.core.permissions import permission_registry
+
+    role = payload.get("role", "") or ""
+    return role == "admin" or bool(permission_registry.role_has_permission(role, permission))
+
+
+async def _release_out(svc: DesignService, row: Any, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    can = await svc.release_can(row, actor_id=_uid(user_id), may_release=_may(payload, "design.release"))
+    return _out(row, can=can)
+
+
+def _report_out(svc: DesignService, row: Any, payload: dict[str, Any]) -> dict[str, Any]:
+    return _out(row, can=svc.report_can(row, may_manage=_may(payload, "design.manage")))
+
+
 def _page(items: list[Any], offset: int = 0, limit: int | None = None) -> dict[str, Any]:
     window = items[offset : offset + limit] if limit else items[offset:]
     return {"items": window, "total": len(items), "offset": offset, "limit": limit or len(items)}
@@ -335,6 +356,7 @@ async def roles_delete(project_id: uuid.UUID, role_id: uuid.UUID, user_id: Curre
 async def ap_list(project_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
+    await _run(svc.catch_up_approvals(project_id))
     rows = await svc._list(DesignApprovalPoint, project_id, DesignApprovalPoint.code)
     return _page([_out(r) for r in rows])
 
@@ -570,26 +592,39 @@ async def dist_delete(project_id: uuid.UUID, rid: uuid.UUID, user_id: CurrentUse
 
 
 @router.get("/projects/{project_id}/releases", dependencies=[READ])
-async def rel_list(project_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep) -> dict[str, Any]:
+async def rel_list(
+    project_id: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _page([_out(r) for r in await svc._list(DesignRelease, project_id, DesignRelease.code)])
+    await _run(svc.catch_up_approvals(project_id))
+    rows = await svc._list(DesignRelease, project_id, DesignRelease.code)
+    return _page([await _release_out(svc, r, user_id, payload) for r in rows])
 
 
 @router.post("/projects/{project_id}/releases", status_code=201, dependencies=[EDIT])
-async def rel_create(project_id: uuid.UUID, body: ReleaseIn, user_id: CurrentUserId, session: SessionDep):
+async def rel_create(
+    project_id: uuid.UUID, body: ReleaseIn, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.create_release(project_id, dump(body), actor_id=_uid(user_id))))
+    row = await _run(svc.create_release(project_id, dump(body), actor_id=_uid(user_id)))
+    return await _release_out(svc, row, user_id, payload)
 
 
 @router.patch("/projects/{project_id}/releases/{rid}", dependencies=[EDIT])
 async def rel_patch(
-    project_id: uuid.UUID, rid: uuid.UUID, body: ReleaseIn, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    rid: uuid.UUID,
+    body: ReleaseIn,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.patch_release(project_id, rid, dump(body), actor_id=_uid(user_id))))
+    row = await _run(svc.patch_release(project_id, rid, dump(body), actor_id=_uid(user_id)))
+    return await _release_out(svc, row, user_id, payload)
 
 
 @router.get("/projects/{project_id}/releases/{rid}/preview", dependencies=[READ])
@@ -614,19 +649,40 @@ async def rel_preview(project_id: uuid.UUID, rid: uuid.UUID, user_id: CurrentUse
 
 @router.post("/projects/{project_id}/releases/{rid}/transition", dependencies=[EDIT])
 async def rel_transition(
-    project_id: uuid.UUID, rid: uuid.UUID, body: Transition, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    rid: uuid.UUID,
+    body: Transition,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.release_transition(project_id, rid, body.target, actor_id=_uid(user_id))))
+    row = await _run(svc.release_transition(project_id, rid, body.target, actor_id=_uid(user_id)))
+    return await _release_out(svc, row, user_id, payload)
 
 
 @router.post("/projects/{project_id}/releases/{rid}/issue", dependencies=[RELEASE])
-async def rel_issue(project_id: uuid.UUID, rid: uuid.UUID, body: IssueIn, user_id: CurrentUserId, session: SessionDep):
+async def rel_issue(
+    project_id: uuid.UUID,
+    rid: uuid.UUID,
+    body: IssueIn,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
+):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    row = await _run(svc.issue_release(project_id, rid, actor_id=_uid(user_id), duplicate_reason=body.duplicate_reason))
-    return _out(row)
+    row = await _run(
+        svc.issue_release(
+            project_id,
+            rid,
+            actor_id=_uid(user_id),
+            duplicate_reason=body.duplicate_reason,
+            may_release=_may(payload, "design.release"),
+        )
+    )
+    return await _release_out(svc, row, user_id, payload)
 
 
 # ── reviews ────────────────────────────────────────────────────────────────
@@ -713,10 +769,13 @@ async def comment_move(
 
 
 @router.get("/projects/{project_id}/reports", dependencies=[READ])
-async def rpt_list(project_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep) -> dict[str, Any]:
+async def rpt_list(
+    project_id: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _page([_out(r) for r in await svc._list(DesignReport, project_id, DesignReport.code)])
+    rows = await svc._list(DesignReport, project_id, DesignReport.code)
+    return _page([_report_out(svc, r, payload) for r in rows])
 
 
 @router.post("/projects/{project_id}/reports", status_code=201, dependencies=[EDIT])
@@ -729,10 +788,20 @@ async def rpt_create(project_id: uuid.UUID, body: ReportIn, user_id: CurrentUser
 
 
 @router.patch("/projects/{project_id}/reports/{rid}", dependencies=[EDIT])
-async def rpt_patch(project_id: uuid.UUID, rid: uuid.UUID, body: ReportIn, user_id: CurrentUserId, session: SessionDep):
+async def rpt_patch(
+    project_id: uuid.UUID,
+    rid: uuid.UUID,
+    body: ReportIn,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
+):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.patch_report(project_id, rid, dump(body), actor_id=_uid(user_id))))
+    row = await _run(
+        svc.patch_report(project_id, rid, dump(body), actor_id=_uid(user_id), may_manage=_may(payload, "design.manage"))
+    )
+    return _report_out(svc, row, payload)
 
 
 @router.post("/projects/{project_id}/reports/{rid}/transition", dependencies=[EDIT])
@@ -794,11 +863,18 @@ async def permit_get(project_id: uuid.UUID, pid: uuid.UUID, user_id: CurrentUser
 
 @router.patch("/projects/{project_id}/permits/{pid}", dependencies=[EDIT])
 async def permit_patch(
-    project_id: uuid.UUID, pid: uuid.UUID, body: PermitIn, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    pid: uuid.UUID,
+    body: PermitIn,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    row = await _run(svc.patch_permit(project_id, pid, dump(body), actor_id=_uid(user_id)))
+    row = await _run(
+        svc.patch_permit(project_id, pid, dump(body), actor_id=_uid(user_id), may_manage=_may(payload, "design.manage"))
+    )
     return await _permit_out(svc, project_id, row)
 
 
@@ -825,11 +901,20 @@ async def permit_item_remove(
 
 @router.post("/projects/{project_id}/permits/{pid}/transition", dependencies=[EDIT])
 async def permit_transition(
-    project_id: uuid.UUID, pid: uuid.UUID, body: Transition, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    pid: uuid.UUID,
+    body: Transition,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    row = await _run(svc.permit_transition(project_id, pid, body.target, actor_id=_uid(user_id)))
+    row = await _run(
+        svc.permit_transition(
+            project_id, pid, body.target, actor_id=_uid(user_id), may_manage=_may(payload, "design.manage")
+        )
+    )
     return await _permit_out(svc, project_id, row)
 
 
@@ -1034,7 +1119,7 @@ async def frame_document(
     return await _run(
         svc.generate_frame_document(
             project_id,
-            f"design_{register}",
+            register,
             actor_id=_uid(user_id),
             file_bytes=data,
             file_name=f"design_{register}.pdf",

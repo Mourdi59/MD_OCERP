@@ -42,6 +42,7 @@ import {
   ChevronDown,
   MessagesSquare,
   MapPin,
+  DraftingCompass,
 } from 'lucide-react';
 import {
   Button, Card, CardHeader, CardContent, Badge, Skeleton, EmptyState, Breadcrumb,
@@ -1805,6 +1806,16 @@ export function ProjectDetailPage() {
             { label: project.name },
           ]}
         />
+        <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<DraftingCompass size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/design`)}
+          data-testid="design-management-link"
+        >
+          {t('design.ui.title', { defaultValue: 'Design management' })}
+        </Button>
         <Button
           variant={customizing ? 'primary' : 'ghost'}
           size="sm"
@@ -1820,6 +1831,7 @@ export function ProjectDetailPage() {
             ? t('project.layout.done', { defaultValue: 'Done' })
             : t('project.layout.customize', { defaultValue: 'Customize' })}
         </Button>
+        </div>
       </div>
 
       <DismissibleInfo

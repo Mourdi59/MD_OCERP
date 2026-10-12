@@ -77,7 +77,8 @@ class MatrixRule:
     phase_codes: tuple[str, ...] = ()
     wbs_node_ids: tuple[uuid.UUID, ...] = ()
     min_suitability: str | None = None
-    purpose: str = "for_information"
+    #: Empty = the rule applies to a release of any purpose; set = only to releases of that purpose.
+    purpose: str = ""
 
 
 def release_content_errors(revisions: Iterable[RevisionView], purpose: str) -> list[tuple[uuid.UUID, str]]:
@@ -116,9 +117,14 @@ def distribution_plan(
     rules: Sequence[MatrixRule],
     revisions: Sequence[RevisionView],
     *,
+    purpose: str,
     already_issued: set[tuple[str, uuid.UUID]] | None = None,
 ) -> list[RecipientPlan]:
     """Rule 12 and 14: one plan per matching recipient, revisions below a rule's minimum excluded with a reason.
+
+    ``purpose`` is the release's and is what every plan carries: it is what is
+    sent. A rule's own purpose only narrows: a rule that names one applies to
+    releases of that purpose and to no other.
 
     A recipient matched by several rules gets each revision once. A revision the
     recipient already received is listed in ``duplicates`` (``duplicate_issue``),
@@ -127,10 +133,12 @@ def distribution_plan(
     issued = already_issued or set()
     plans: dict[str, RecipientPlan] = {}
     for rule in rules:
+        if rule.purpose and rule.purpose != purpose:
+            continue
         for r in revisions:
             if not _matches(rule, r):
                 continue
-            plan = plans.setdefault(rule.recipient_key, RecipientPlan(rule.recipient_key, purpose=rule.purpose))
+            plan = plans.setdefault(rule.recipient_key, RecipientPlan(rule.recipient_key, purpose=purpose))
             if rule.id not in plan.rule_ids:
                 plan.rule_ids.append(rule.id)
             if rule.min_suitability and rank(r.suitability_code) < rank(rule.min_suitability):
@@ -160,9 +168,12 @@ def report_acceptance_error(
     """Rule 17: a report needing an independent check needs a checker of another party and, when external, an approved cycle."""
     if independent_check != "required_by_rule":
         return None
+    if not author_party:
+        # Without an author there is no party to be independent of.
+        return "report_author_required"
     if not checker_party:
         return "report_checker_required"
-    if author_party and checker_party == author_party:
+    if checker_party == author_party:
         return "report_checker_same_party"
     if external and cycle_state != "approved":
         return "report_external_check_not_approved"
@@ -224,7 +235,12 @@ def phase_blockers(
     open major comment.
     """
     d = [lbl for lbl, ph, st, req in deliverables if ph == phase_code and req and st not in ("accepted", "waived")]
-    r = [lbl for lbl, ph, st, req in reports if ph == phase_code and req and st not in ("accepted", "not_required")]
+    # A required report filed under no phase blocks every design gate: it cannot be parked out of sight.
+    r = [
+        lbl
+        for lbl, ph, st, req in reports
+        if (not ph or ph == phase_code) and req and st not in ("accepted", "not_required")
+    ]
     c = sum(1 for ph in open_major_comments if ph == phase_code)
     return PhaseBlockers(d, r, c)
 

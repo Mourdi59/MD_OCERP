@@ -160,9 +160,13 @@ def test_one_plan_per_matching_recipient_with_exclusions_and_duplicates() -> Non
     plans = {
         p.recipient_key: p
         for p in r.distribution_plan(
-            [arch_rule, all_rule, struct_rule], [a1, s2, struct], already_issued={("role:owner", a1.revision_id)}
+            [arch_rule, all_rule, struct_rule],
+            [a1, s2, struct],
+            purpose="for_review",
+            already_issued={("role:owner", a1.revision_id)},
         )
     }
+    assert {p.purpose for p in plans.values()} == {"for_review"}
     assert set(plans) == {"list:arch", "role:owner"}
     assert plans["list:arch"].revision_ids == [a1.revision_id, struct.revision_id]
     assert plans["list:arch"].excluded == [(s2.revision_id, "below_min_suitability")]
@@ -172,7 +176,21 @@ def test_one_plan_per_matching_recipient_with_exclusions_and_duplicates() -> Non
 
 def test_a_recipient_with_nothing_matching_gets_no_transmittal() -> None:
     rule = r.MatrixRule(uuid.uuid4(), "list:mep", discipline_codes=("M",))
-    assert r.distribution_plan([rule], [_rev("A1")]) == []
+    assert r.distribution_plan([rule], [_rev("A1")], purpose="for_information") == []
+
+
+def test_a_rule_purpose_only_narrows_and_never_changes_what_is_sent() -> None:
+    """Finding 5: the plan carries the release's purpose; a rule naming another purpose does not apply."""
+    rev = _rev("S2")
+    build = r.MatrixRule(uuid.uuid4(), "role:site", purpose="for_construction")
+    anyone = r.MatrixRule(uuid.uuid4(), "role:owner")
+    info = r.distribution_plan([build, anyone], [rev], purpose="for_information")
+    assert [(p.recipient_key, p.purpose) for p in info] == [("role:owner", "for_information")]
+    construction = r.distribution_plan([build, anyone], [rev], purpose="for_construction")
+    assert {(p.recipient_key, p.purpose) for p in construction} == {
+        ("role:site", "for_construction"),
+        ("role:owner", "for_construction"),
+    }
 
 
 # ── reports (rules 17, 18) ──
@@ -184,6 +202,10 @@ def test_a_recipient_with_nothing_matching_gets_no_transmittal() -> None:
         ({"independent_check": "none", "checker_party": None}, None),
         ({"independent_check": "optional", "checker_party": None}, None),
         ({"independent_check": "required_by_rule", "checker_party": None}, "report_checker_required"),
+        (
+            {"independent_check": "required_by_rule", "checker_party": "contact:2", "author_party": None},
+            "report_author_required",
+        ),
         ({"independent_check": "required_by_rule", "checker_party": "contact:1"}, "report_checker_same_party"),
         (
             {"independent_check": "required_by_rule", "checker_party": "contact:2", "external": True},
@@ -239,6 +261,13 @@ def test_phase_blockers() -> None:
     )
     assert (b.deliverables, b.reports, b.major_comments, b.met) == (["D1"], ["fire"], 1, False)
     assert r.phase_blockers("lph9", deliverables=[], reports=[], open_major_comments=[]).met
+
+
+def test_a_required_report_without_a_phase_blocks_every_phase() -> None:
+    """Finding 12: a report cannot be parked out of a gate's sight by leaving its phase empty."""
+    reports = [("fire", None, "submitted", True), ("geo", "", "accepted", True), ("opt", None, "required", False)]
+    for phase in ("lph2", "lph5"):
+        assert r.phase_blockers(phase, deliverables=[], reports=reports, open_major_comments=[]).reports == ["fire"]
 
 
 # ── FSMs, table driven ──

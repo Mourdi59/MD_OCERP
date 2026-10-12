@@ -81,7 +81,7 @@ async def drawing_with_revision(
     The container carries the same suitability and is ``shared`` (``wip`` for S0),
     as CDE leaves it after a revision is shared. ``extra`` goes to ``create_drawing``.
     """
-    from app.modules.cde.models import DocumentContainer, DocumentRevision
+    from app.modules.cde.models import DocumentContainer
     from tests.pg.governance_fixtures import add_revision
 
     async with w.factory() as s:
@@ -89,12 +89,34 @@ async def drawing_with_revision(
             w.project_id, {"role_id": str(w.roles[role]), "title": f"{role} plan", **extra}, actor_id=w.editor
         )
         rev_id = await add_revision(s, container.id, 1, f"{container.container_code}-1")
-        (await s.get(DocumentRevision, rev_id)).suitability_code = suitability
         c = await s.get(DocumentContainer, container.id)
         c.suitability_code = suitability
         c.cde_state = "wip" if suitability == "S0" else "shared"
         await s.commit()
         return drawing.id, rev_id
+
+
+async def approved_release(w: DesignWorld, revision_ids: list[uuid.UUID], **data: object) -> uuid.UUID:
+    """A release prepared by the editor and approved by the approver on the ``design_release`` route."""
+    from sqlalchemy import select
+
+    from app.modules.approval_routes.models import Route
+    from tests.pg.governance_fixtures import add_route
+
+    async with w.factory() as s:
+        known = select(Route.id).where(Route.project_id == w.project_id, Route.target_kind == "design_release")
+        if (await s.execute(known)).first() is None:
+            await add_route(s, w.project_id, "design_release", w.approver)
+        svc = DesignService(s)
+        rel = await svc.create_release(
+            w.project_id, {"revision_ids": [str(r) for r in revision_ids], **data}, actor_id=w.editor
+        )
+        await svc.release_transition(w.project_id, rel.id, "ready", actor_id=w.editor)
+        assert await svc.apply_release_verdict(
+            rel.id, rel.approval_instance_id, decision="approved", decided_by=w.approver
+        )
+        await s.commit()
+        return rel.id
 
 
 async def new_revision(w: DesignWorld, drawing_id: uuid.UUID, number: int) -> uuid.UUID:

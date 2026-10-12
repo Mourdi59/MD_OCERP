@@ -245,6 +245,16 @@
         "brief_to_concept"
       ],
       "source_ref": null
+    },
+    {
+      "code": "design_frame",
+      "area": "scope_quality",
+      "name_key": "governance.catalogue.neutral.doc.design_frame",
+      "required_at_gates": [],
+      "source_ref": null,
+      "hosts": [
+        "design"
+      ]
     }
   ],
   "readiness_criteria": []

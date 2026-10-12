@@ -20,7 +20,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.cde_naming import check_container_code
+from app.core.cde_naming import check_container_code, client_metadata
 from app.core.cde_states import CDEState, CDEStateMachine
 from app.core.events import publish_after_commit
 from app.core.json_merge import merge_metadata
@@ -194,7 +194,7 @@ class CDEService:
             description=data.description,
             security_classification=data.security_classification,
             created_by=user_id,
-            metadata_=data.metadata,
+            metadata_=client_metadata(data.metadata),
         )
         container = await self.container_repo.create(container)
         logger.info(
@@ -249,7 +249,7 @@ class CDEService:
 
         fields: dict[str, Any] = data.model_dump(exclude_unset=True)
         if "metadata" in fields:
-            _incoming = fields.pop("metadata")
+            _incoming = client_metadata(fields.pop("metadata"))
             fields["metadata_"] = (
                 merge_metadata(getattr(container, "metadata_", None), _incoming)
                 if isinstance(_incoming, dict)

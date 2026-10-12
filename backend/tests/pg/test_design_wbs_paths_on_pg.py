@@ -6,11 +6,10 @@ from __future__ import annotations
 
 import pytest
 import pytest_asyncio
-from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.modules.projects.models import Project, ProjectWBS
+from app.modules.projects.models import ProjectWBS
 from tests._pg import isolated_engine
 from tests.pg.design_fixtures import DesignWorld, build_design_world
 
@@ -45,38 +44,74 @@ def _projects(session: AsyncSession):
     return ProjectService(session, get_settings())
 
 
-async def test_duplicating_a_project_with_a_broken_tree_is_refused_and_writes_nothing(world: DesignWorld) -> None:
-    await _add_raw(world, ("1", None), ("2.1", "1"))  # child outside its parent's prefix, rule 2
-    async with world.factory() as s:
-        before = (await s.execute(select(func.count()).select_from(Project))).scalar_one()
-        with pytest.raises(HTTPException) as exc:
-            await _projects(s).duplicate_project(world.project_id, world.manager)
-        await s.rollback()
-        after = (await s.execute(select(func.count()).select_from(Project))).scalar_one()
-    assert exc.value.status_code == 422
-    assert [v["code"] for v in exc.value.detail["violations"]] == ["wbs_code_not_under_parent"]
-    assert after == before
-
-
-async def test_duplicating_a_clean_tree_still_works(world: DesignWorld) -> None:
-    await _add_raw(world, ("1", None), ("1.1", "1"))
+async def test_duplicating_a_project_with_a_broken_tree_copies_it_as_it_is(world: DesignWorld) -> None:
+    """A copy reproduces a tree; it introduces nothing, so legacy violations travel with it (decision 2)."""
+    await _add_raw(world, ("1", None), ("2.1", "1"), ("1", None))
     async with world.factory() as s:
         copy = await _projects(s).duplicate_project(world.project_id, world.manager)
         await s.commit()
         codes = (await s.execute(select(ProjectWBS.code).where(ProjectWBS.project_id == copy.id))).scalars().all()
-    assert sorted(codes) == ["1", "1.1"]
+    assert sorted(codes) == ["1", "1", "2.1"]
 
 
-async def test_the_tree_check_the_projects_router_calls_refuses_a_duplicate_code(world: DesignWorld) -> None:
-    from app.core.wbs_rules import check_wbs_tree
+async def _router_client(w: DesignWorld):
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
 
-    await _add_raw(world, ("1", None))
+    from app.dependencies import get_current_user_id, get_current_user_payload, get_session
+    from app.modules.projects.router import router
+
+    app = FastAPI()
+    app.include_router(router, prefix="/api/v1/projects")
+
+    async def _session():
+        async with w.factory() as s:
+            yield s
+            await s.commit()
+
+    app.dependency_overrides[get_session] = _session
+    app.dependency_overrides[get_current_user_id] = lambda: str(w.manager)
+    app.dependency_overrides[get_current_user_payload] = lambda: {
+        "sub": str(w.manager),
+        "role": "admin",
+        "permissions": [],
+    }
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://wbs-test")
+
+
+async def test_a_legacy_broken_tree_stays_editable_through_the_projects_router(world: DesignWorld) -> None:
+    """Finding 3: a pinned setup must never make the projects WBS editor unusable."""
+    await _add_raw(world, ("1", None), ("1", None), ("9.1", "1"))  # a duplicate and a child off its prefix
+    base = f"/api/v1/projects/{world.project_id}/wbs/"
+    async with await _router_client(world) as c:
+        unrelated = await c.post(base, json={"code": "2", "name": "Site", "level": 0})
+        assert unrelated.status_code == 201, unrelated.text
+        renamed = await c.patch(f"{base}{unrelated.json()['id']}", json={"name": "Site works"})
+        assert renamed.status_code == 200, renamed.text
+        third = await c.post(base, json={"code": "1", "name": "Again", "level": 0})
+        assert third.status_code == 422, third.text
+        assert [v["code"] for v in third.json()["detail"]["violations"]] == ["wbs_code_duplicate"]
+        clash = await c.patch(f"{base}{unrelated.json()['id']}", json={"code": "1"})
+        assert clash.status_code == 422, clash.text
     async with world.factory() as s:
-        s.add(ProjectWBS(project_id=world.project_id, code="1", name="again", level=0))
-        await s.flush()
-        with pytest.raises(HTTPException) as exc:
-            await check_wbs_tree(s, world.project_id)
-    assert exc.value.detail["violations"][0]["code"] == "wbs_code_duplicate"
+        codes = (await s.execute(select(ProjectWBS.code).where(ProjectWBS.project_id == world.project_id))).scalars()
+        assert sorted(codes) == ["1", "1", "2", "9.1"]
+
+
+async def test_closing_a_node_closes_its_subtree_and_the_tree_stays_valid(world: DesignWorld) -> None:
+    from app.modules.design_management.service import DesignService
+
+    await _add_raw(world, ("1", None), ("1.1", "1"), ("1.1.1", "1.1"), ("2", None))
+    async with world.factory() as s:
+        svc = DesignService(s)
+        rows = {r.code: r for r in await svc.wbs_rows(world.project_id)}
+        await svc.close_wbs(world.project_id, rows["1"].id, closed=True, actor_id=world.manager)
+        await s.commit()
+    async with world.factory() as s:
+        svc = DesignService(s)
+        closed = {r.code for r in await svc.wbs_rows(world.project_id) if (r.metadata_ or {}).get("closed")}
+        assert closed == {"1", "1.1", "1.1.1"}
+        assert await svc.wbs_tree_violations(world.project_id) == []
 
 
 async def _tree(session: AsyncSession, project_id) -> set[tuple[str, str | None]]:

@@ -164,6 +164,16 @@
         "stufe1_to_stufe2"
       ],
       "source_ref": "AHO Heft 9, 1E"
+    },
+    {
+      "code": "design_frame",
+      "area": "b",
+      "name_key": "governance.catalogue.aho_heft9.doc.design_frame",
+      "required_at_gates": [],
+      "source_ref": null,
+      "hosts": [
+        "design"
+      ]
     }
   ]
 }

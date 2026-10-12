@@ -120,7 +120,7 @@ async def collect_references(session: AsyncSession, project_id: uuid.UUID) -> li
             v = str(value).strip()
             if v:
                 out.append(Reference(ref.module, ref.table, str(row_id), v))
-    return out
+    return [*out, *await _list_references(session, project_id)]
 
 
 def _node_index(nodes: list[Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -134,6 +134,24 @@ def resolve_value(nodes: list[Any], value: str) -> Any | None:
     by_id, by_code = _node_index(nodes)
     v = (value or "").strip()
     return by_id.get(v.lower()) or by_code.get(v.casefold())
+
+
+async def _list_references(session: AsyncSession, project_id: uuid.UUID) -> list[Reference]:
+    """WBS ids this module keeps in JSON lists (role responsibility, distribution matrix)."""
+    from sqlalchemy import select
+
+    from app.modules.design_management.models import DesignDistributionRule, DesignRole
+
+    out: list[Reference] = []
+    for model, column in ((DesignRole, "responsible_wbs_ids"), (DesignDistributionRule, "wbs_node_ids")):
+        rows = (await session.execute(select(model).where(model.project_id == project_id))).scalars()
+        for row in rows:
+            out.extend(
+                Reference("design_management", model.__tablename__, str(row.id), str(value))
+                for value in getattr(row, column) or []
+                if value
+            )
+    return out
 
 
 async def reference_counts(session: AsyncSession, project_id: uuid.UUID, nodes: list[Any]) -> dict[str, Counter]:

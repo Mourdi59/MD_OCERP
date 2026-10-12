@@ -240,7 +240,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _json("phase_codes"),
             _json("wbs_node_ids"),
             _nstr("min_suitability", 10),
-            _str("purpose", 30, "for_information"),
+            _str("purpose", 30),
             _str("format", 10, "pdf"),
             _int("copies_paper", 0),
             _bool("ack_required", False),
@@ -262,6 +262,10 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _text("duplicate_reason"),
             _guid("approval_instance_id"),
             _guid("prepared_by"),
+            _guid("content_changed_by"),
+            _str("approval_status", 20, "none"),
+            _guid("approved_by"),
+            _ts("approved_at"),
             _guid("issued_by"),
             _ts("issued_at"),
             sa.UniqueConstraint("project_id", "code", name="uq_oe_dsg_release_code"),
@@ -364,8 +368,19 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
 ]
 
 
+#: Partial unique indexes: (name, table, columns, predicate). Rule 21 backstop on the originator code.
+_PARTIAL_UNIQUE: list[tuple[str, str, list[str], str]] = [
+    (
+        "uq_oe_dsg_role_originator",
+        "oe_design_role",
+        ["project_id", "originator_code"],
+        "party_kind = 'discipline_designer' AND status <> 'released' AND originator_code IS NOT NULL",
+    ),
+]
+
+
 def upgrade() -> None:
-    """Create the thirteen tables and their indexes, each only when it is missing."""
+    """Create the fourteen tables and their indexes, each only when it is missing."""
     bind = op.get_bind()
     for table, columns, indexes in _TABLES:
         inspector = sa.inspect(bind)
@@ -375,10 +390,15 @@ def upgrade() -> None:
         for name, cols in indexes:
             if name not in existing:
                 op.create_index(name, table, cols)
+    for name, table, cols, where in _PARTIAL_UNIQUE:
+        if name not in {ix["name"] for ix in sa.inspect(bind).get_indexes(table)}:
+            op.create_index(
+                name, table, cols, unique=True, postgresql_where=sa.text(where), sqlite_where=sa.text(where)
+            )
 
 
 def downgrade() -> None:
-    """Drop the thirteen tables, children before the parents they reference."""
+    """Drop the fourteen tables, children before the parents they reference."""
     bind = op.get_bind()
     for table, _columns, _indexes in reversed(_TABLES):
         if table in sa.inspect(bind).get_table_names():

@@ -188,7 +188,13 @@ async def test_rules_report_failures_from_a_payload() -> None:
         ],
         "unresolved": [{"module": "boq", "table": "oe_boq_position", "row_id": "x", "value": "9.9"}],
         "drawings": [
-            {"id": "a", "number": "PRJ1-ABC-ZZ-01-DR-A-0001", "parts": {}, "originator": "ABC"},
+            {
+                "id": "a",
+                "number": "PRJ1-ABC-ZZ-01-DR-A-0001",
+                "parts": {},
+                "originator": "ABC",
+                "title_block_number": "PRJ1-ABC-ZZ-01-DR-A-0002",
+            },
             {"id": "b", "number": "BAD", "parts": {}, "originator": None, "legacy_scheme": True},
         ],
         "originators": ["XYZ"],
@@ -200,7 +206,18 @@ async def test_rules_report_failures_from_a_payload() -> None:
             }
         ],
         "deliverables": [{"code": "DL-1", "phase_code": "p", "status": "in_progress", "required": True}],
-        "reports": [{"code": "R-1", "status": "not_required", "rationale": " "}],
+        "reports": [
+            {"code": "R-1", "status": "not_required", "rationale": " "},
+            {
+                "code": "R-2",
+                "status": "accepted",
+                "independent_check": "required_by_rule",
+                "author_party": "contact:1",
+                "checker_party": "contact:1",
+                "external_check": False,
+                "cycle_state": None,
+            },
+        ],
         "permits": [{"code": "PP-1", "status": "submitted", "missing": 2, "superseded_content": True}],
         "approval_points": [{"code": "AP-1", "status": "approved", "decided_by": "u", "submitted_by": "u"}],
         "four_eyes": True,
@@ -218,6 +235,8 @@ async def test_rules_report_failures_from_a_payload() -> None:
         "drawing_number_matches_scheme",
         "drawing_number_parts_consistent",
         "drawing_originator_known",
+        "title_block_matches_number",
+        "report_independent_check",
         "release_revisions_suitable",
         "deliverable_complete_for_phase",
         "not_required_has_rationale",
@@ -257,13 +276,25 @@ def test_migration_columns_and_names_match_the_models() -> None:
         table = model.__table__
         cols, idx = by_table[table.name]
         items = [*mig._base(), *cols()]
-        mig_cols = {c.name: c.nullable for c in items if hasattr(c, "nullable") and hasattr(c, "type")}
-        model_cols = {c.name: c.nullable for c in table.columns}
+
+        def shape(c) -> tuple:
+            return (c.nullable, type(c.type).__name__, getattr(c.type, "length", None))
+
+        mig_cols = {c.name: shape(c) for c in items if hasattr(c, "nullable") and hasattr(c, "type")}
+        model_cols = {c.name: shape(c) for c in table.columns}
         assert mig_cols == model_cols, table.name
         mig_uq = {c.name for c in items if isinstance(c, UniqueConstraint)}
         model_uq = {c.name for c in table.constraints if isinstance(c, UniqueConstraint)}
         assert mig_uq == model_uq, table.name
-        assert {n for n, _ in idx} == {i.name for i in table.indexes if isinstance(i, Index)}, table.name
+        partial = {n: (cols, where) for n, t, cols, where in mig._PARTIAL_UNIQUE if t == table.name}
+        assert {n for n, _ in idx} | set(partial) == {i.name for i in table.indexes if isinstance(i, Index)}, (
+            table.name
+        )
+        for index in table.indexes:
+            if index.name in partial:
+                cols, where = partial[index.name]
+                assert index.unique and [c.name for c in index.columns] == cols
+                assert str(index.dialect_options["postgresql"]["where"]) == where
         mig_fk = {fk.name for c in items if hasattr(c, "foreign_keys") for fk in c.foreign_keys}
         model_fk = {fk.name for c in table.columns for fk in c.foreign_keys}
         assert mig_fk == model_fk, table.name

@@ -1291,9 +1291,6 @@ class ProjectService:
                 if src_parent_id is not None and src_parent_id in wbs_id_map:
                     new_node.parent_id = wbs_id_map[src_parent_id]
             await self.session.flush()
-            from app.core.wbs_rules import check_wbs_tree
-
-            await check_wbs_tree(self.session, new_project.id, settings_project_id=source.id)
 
         # 3b. Clone milestones. Flat list, no internal references.
         for src_ms in source.milestones:
@@ -1758,9 +1755,15 @@ class ProjectService:
             metadata=dict(project.metadata_ or {}),
         )
 
-        # Serialize WBS nodes as a nested tree
+        # Serialize WBS nodes as a nested tree. The tree is built from the flat,
+        # already loaded ``wbs_nodes`` by ``parent_id``: walking ``node.children``
+        # lazy-loads below the first level, which an async session cannot do.
+        wbs_children: dict[uuid.UUID | None, list[object]] = {}
+        for wbs_row in sorted(project.wbs_nodes or [], key=lambda n: (n.sort_order, n.code)):
+            wbs_children.setdefault(wbs_row.parent_id, []).append(wbs_row)
+
         def _serialize_wbs(node: object) -> BackupWBSData:
-            children_list = getattr(node, "children", None) or []
+            children_list = wbs_children.get(node.id, [])
             return BackupWBSData(
                 code=node.code,
                 name=node.name,
@@ -1775,7 +1778,7 @@ class ProjectService:
             )
 
         # Top-level WBS nodes (no parent)
-        wbs_data = [_serialize_wbs(n) for n in (project.wbs_nodes or []) if n.parent_id is None]
+        wbs_data = [_serialize_wbs(n) for n in wbs_children.get(None, [])]
 
         # Serialize milestones
         milestones_data = [
@@ -1981,11 +1984,6 @@ class ProjectService:
         for node in wbs_nodes:
             self.session.add(node)
         wbs_count = len(wbs_nodes)
-        if wbs_nodes:
-            from app.core.wbs_rules import check_wbs_tree
-
-            await self.session.flush()
-            await check_wbs_tree(self.session, project.id)
 
         # Restore milestones
         for ms_data in data.milestones:

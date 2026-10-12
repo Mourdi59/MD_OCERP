@@ -2,10 +2,12 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """Design <-> approval-routes wiring and the CDE numbering hook.
 
-Target kind ``design_approval_point``: the route of an approval point. A
-terminal verdict (approved or rejected) reaches here and is applied once,
-only to the instance the point started (rule 22: whoever the route entitles
-decides; four-eyes is re-checked on the decider).
+Target kinds ``design_approval_point`` and ``design_release`` (decision 14).
+A terminal outcome (approved, rejected or cancelled) reaches here and is
+applied once, only to the instance the row started (rule 22: whoever the
+route entitles decides; four-eyes is re-checked on the decider). A cancelled
+route returns the row to its editable state. ``DesignService.catch_up_approvals``
+applies the same outcome on read when this subscriber did not run.
 
 Same constraints as the governance subscribers: an isolated session,
 PostgreSQL only (a second writer on SQLite would deadlock the request),
@@ -44,8 +46,9 @@ def _uuid(value: object) -> uuid.UUID | None:
 
 
 async def handle_route_event(data: dict, *, decision: str, session_factory=None) -> None:
-    """Apply one terminal route verdict to the approval point it targets."""
-    if data.get("target_kind") != "design_approval_point":
+    """Apply one terminal route outcome to the approval point or release it targets."""
+    kind = data.get("target_kind")
+    if kind not in ("design_approval_point", "design_release"):
         return
     target_id = _uuid(data.get("target_id"))
     if target_id is None:
@@ -57,12 +60,14 @@ async def handle_route_event(data: dict, *, decision: str, session_factory=None)
         async with factory() as session:
             from app.modules.design_management.service import DesignService
 
-            await DesignService(session).apply_approval_verdict(
-                target_id, _uuid(data.get("instance_id")), decision=decision, decided_by=data.get("decided_by")
-            )
+            svc = DesignService(session)
+            apply = svc.apply_approval_verdict if kind == "design_approval_point" else svc.apply_release_verdict
+            await apply(target_id, _uuid(data.get("instance_id")), decision=decision, decided_by=data.get("decided_by"))
             await session.commit()
     except Exception:
-        logger.debug("design: approval %s wiring failed for %s", decision, target_id, exc_info=True)
+        # Fail-soft towards the route (its decision is already committed), loud in the log:
+        # the row stays waiting until the next list read catches it up.
+        logger.warning("design: %s %s was not applied to %s", kind, decision, target_id, exc_info=True)
 
 
 async def _on_completed(event: Event) -> None:
@@ -73,12 +78,17 @@ async def _on_rejected(event: Event) -> None:
     await handle_route_event(event.data or {}, decision="rejected")
 
 
+async def _on_cancelled(event: Event) -> None:
+    await handle_route_event(event.data or {}, decision="cancelled")
+
+
 def register_design_subscribers() -> None:
     """Idempotently wire the approval-route subscribers of this module."""
     if getattr(event_bus, _SUBSCRIBED_FLAG, False):
         return
     event_bus.subscribe_once("approval_routes.instance.completed", _on_completed)
     event_bus.subscribe_once("approval_routes.instance.rejected", _on_rejected)
+    event_bus.subscribe_once("approval_routes.instance.cancelled", _on_cancelled)
     setattr(event_bus, _SUBSCRIBED_FLAG, True)
 
 
@@ -99,7 +109,7 @@ def register_numbering_hook() -> None:
 WBS_CHECKER_NAME = "design_management.wbs"
 
 
-async def wbs_checker(session: Any, project_id: uuid.UUID, settings_project_id: uuid.UUID | None):
+async def wbs_checker(session: Any, project_id: uuid.UUID):
     from app.modules.design_management.service import DesignService
 
-    return await DesignService(session).wbs_tree_violations(project_id, settings_project_id)
+    return await DesignService(session).wbs_tree_violations(project_id)

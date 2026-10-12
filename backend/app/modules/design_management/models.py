@@ -34,7 +34,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
@@ -75,6 +75,12 @@ class DesignSetup(Base):
     created_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
 
 
+#: Which roles hold an originator code exclusively (stored upper-cased by the service).
+ROLE_ORIGINATOR_UNIQUE_WHERE = (
+    "party_kind = 'discipline_designer' AND status <> 'released' AND originator_code IS NOT NULL"
+)
+
+
 class DesignRole(Base):
     """Who designs what: a party in a role, with a discipline and an originator code."""
 
@@ -82,6 +88,15 @@ class DesignRole(Base):
     __table_args__ = (
         UniqueConstraint("project_id", "code", name="uq_oe_dsg_role_code"),
         Index("ix_oe_dsg_role_originator", "project_id", "originator_code"),
+        # Rule 21 backstop: the service serialises role writes per project, this holds if it ever does not.
+        Index(
+            "uq_oe_dsg_role_originator",
+            "project_id",
+            "originator_code",
+            unique=True,
+            postgresql_where=text(ROLE_ORIGINATOR_UNIQUE_WHERE),
+            sqlite_where=text(ROLE_ORIGINATOR_UNIQUE_WHERE),
+        ),
     )
 
     project_id: Mapped[uuid.UUID] = _project("fk_oe_dsg_role_project")
@@ -233,7 +248,9 @@ class DesignDistributionRule(Base):
     phase_codes: Mapped[list[Any]] = mapped_column(JSON, nullable=False, default=list)
     wbs_node_ids: Mapped[list[Any]] = mapped_column(JSON, nullable=False, default=list)
     min_suitability: Mapped[str | None] = mapped_column(String(10), nullable=True)
-    purpose: Mapped[str] = mapped_column(String(30), nullable=False, default="for_information")
+    # Empty = the rule applies to releases of any purpose; set = only to releases of that purpose.
+    # It never changes what is sent: a transmittal carries the release's purpose.
+    purpose: Mapped[str] = mapped_column(String(30), nullable=False, default="")
     # pdf | native | both
     format: Mapped[str] = mapped_column(String(10), nullable=False, default="pdf")
     copies_paper: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -262,6 +279,12 @@ class DesignRelease(Base):
     duplicate_reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
     approval_instance_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     prepared_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # Who last changed what goes out or marked it ready: that person cannot approve it (decision 14).
+    content_changed_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # none | pending | approved | rejected
+    approval_status: Mapped[str] = mapped_column(String(20), nullable=False, default="none")
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     issued_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

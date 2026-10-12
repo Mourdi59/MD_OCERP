@@ -138,9 +138,10 @@ def test_every_shipped_catalogue_has_one_area_hosting_design(cid: str) -> None:
     hosts = [a.code for a in cat.get_catalogue(cid).areas if "design" in a.hosts]
     assert len(hosts) == 1, (cid, hosts)
     c = cat.get_catalogue(cid)
-    for doc in c.document_types:
-        if "design" in doc.hosts:
-            assert doc.area == hosts[0], (cid, doc.code)
+    # ...and exactly one frame document type in that area, or design has nowhere to write its registers.
+    frames = [doc for doc in c.document_types if "design" in doc.hosts]
+    assert [doc.area for doc in frames] == hosts, (cid, [doc.code for doc in frames])
+    assert all(not doc.required_at_gates for doc in frames if cid != "elf_module_framework"), cid
 
 
 def test_the_module_framework_tags_its_design_frame_document() -> None:

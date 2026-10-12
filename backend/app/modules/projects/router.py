@@ -2364,6 +2364,9 @@ async def create_wbs_node(
                 detail="Parent WBS node belongs to a different project",
             )
 
+    from app.core.wbs_rules import check_wbs_tree, wbs_violations
+
+    wbs_before = await wbs_violations(session, project_id)
     node = ProjectWBS(
         project_id=project_id,
         parent_id=data.parent_id,
@@ -2379,9 +2382,7 @@ async def create_wbs_node(
     )
     session.add(node)
     await session.flush()
-    from app.core.wbs_rules import check_wbs_tree
-
-    await check_wbs_tree(session, project_id)
+    await check_wbs_tree(session, project_id, before=wbs_before)
     return WBSResponse.model_validate(node)
 
 
@@ -2459,12 +2460,14 @@ async def update_wbs_node(
             )
 
     if fields:
+        from app.core.wbs_rules import check_wbs_tree, wbs_violations
+
+        # Taken before the UPDATE: only violations this write adds may refuse it.
+        wbs_before = await wbs_violations(session, project_id)
         stmt = update(ProjectWBS).where(ProjectWBS.id == wbs_id, ProjectWBS.project_id == project_id).values(**fields)
         await session.execute(stmt)
         await session.flush()
-        from app.core.wbs_rules import check_wbs_tree
-
-        await check_wbs_tree(session, project_id)
+        await check_wbs_tree(session, project_id, before=wbs_before)
 
     # Confirm the node belongs to this project before returning it. Owning the
     # project only proves access to ``project_id``; without this scope check a

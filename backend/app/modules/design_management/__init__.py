@@ -15,12 +15,16 @@ It owns no file, revision, transmittal, schedule date or approval engine.
 
 async def on_startup() -> None:
     """Register catalogue kinds, permissions, rules, subscribers, gate evidence and the CDE numbering hook."""
+    from app.core.cde_naming import register_server_metadata_key
     from app.modules.design_management.catalogue import register_kinds
     from app.modules.design_management.events import register_design_subscribers, register_numbering_hook
     from app.modules.design_management.evidence import register_gate_evidence
     from app.modules.design_management.permissions import register_design_permissions
+    from app.modules.design_management.service import FRAME_MARKER
     from app.modules.design_management.validators import register_design_rules
 
+    # Only this module marks a container as a frame document; CDE drops the key from requests.
+    register_server_metadata_key(FRAME_MARKER)
     register_kinds()
     register_design_permissions()
     register_design_rules()

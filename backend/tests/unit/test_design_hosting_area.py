@@ -25,6 +25,13 @@ def test_every_shipped_model_resolves_a_design_area(cid: str, expected: str) -> 
     assert hosting_area_code(cat.get_catalogue(cid)) == expected
 
 
+@pytest.mark.parametrize("cid", cat.CATALOGUE_IDS)
+def test_every_shipped_model_names_one_frame_document_type(cid: str) -> None:
+    from app.modules.design_management.hosting import frame_document_types
+
+    assert len(frame_document_types(cat.get_catalogue(cid))) == 1
+
+
 def test_a_catalogue_without_the_tag_hosts_nothing() -> None:
     c = cat.get_catalogue("neutral")
     untagged = c.model_copy(update={"areas": tuple(a.model_copy(update={"hosts": ()}) for a in c.areas)})

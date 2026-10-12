@@ -91,26 +91,44 @@ def check_code(
 
 
 def tree_errors(nodes: Sequence[Node], *, hierarchical: bool = True, separator: str = ".") -> list[dict[str, str]]:
-    """Rules 1-3 over a whole tree written in one go (copy, backup restore); every violation, not the first.
+    """Rules 1-3 over a whole stored tree: every violation, one per node it sits on.
 
-    Rule 3 is read as "a closed node has no children that are open"; a copied
-    subtree that was closed together stays valid.
+    Each entry carries ``node_id``, so a caller can tell the violations a write
+    introduced from the ones the tree already had (:func:`new_errors`). Rule 3
+    is read as "a closed node has no children that are open"; a subtree closed
+    together is valid.
     """
-    out = [{"code": "wbs_code_duplicate", "value": code} for code in duplicate_codes(nodes)]
+    out: list[dict[str, str]] = []
+    for code, ids in duplicate_codes(nodes).items():
+        out.extend({"code": "wbs_code_duplicate", "value": code, "node_id": str(i)} for i in ids)
     by_id = {n.id: n for n in nodes}
     for n in nodes:
         if not (n.code or "").strip():
-            out.append({"code": "wbs_code_required", "value": str(n.id)})
+            out.append({"code": "wbs_code_required", "value": "", "node_id": str(n.id)})
             continue
         parent = by_id.get(n.parent_id) if n.parent_id is not None else None
         if parent is None:
             continue
         if parent.closed and not n.closed:
-            out.append({"code": "wbs_node_closed", "value": n.code})
+            out.append({"code": "wbs_node_closed", "value": n.code, "node_id": str(n.id)})
         prefix = parent.code + separator
         if hierarchical and not (n.code.startswith(prefix) and len(n.code) > len(prefix)):
-            out.append({"code": "wbs_code_not_under_parent", "value": n.code})
+            out.append({"code": "wbs_code_not_under_parent", "value": n.code, "node_id": str(n.id)})
     return out
+
+
+def _identity(error: dict[str, str]) -> tuple[str, str, str]:
+    return error["code"], error.get("node_id", ""), _key(error.get("value", ""))
+
+
+def new_errors(before: Sequence[dict[str, str]], after: Sequence[dict[str, str]]) -> list[dict[str, str]]:
+    """The violations a write introduced: in ``after`` and not in ``before``, by (rule, node, value).
+
+    A tree that already breaks a rule stays editable; only a write that adds a
+    violation, or moves a broken node onto another broken value, is refused.
+    """
+    known = {_identity(e) for e in before}
+    return [e for e in after if _identity(e) not in known]
 
 
 def renumber_plan(
@@ -151,6 +169,7 @@ __all__ = [
     "Node",
     "WbsRuleError",
     "check_code",
+    "new_errors",
     "tree_errors",
     "deletable",
     "descendants",

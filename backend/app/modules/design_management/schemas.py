@@ -11,10 +11,10 @@ column, ``status`` mirrored as ``state``), wrapped in the list envelope
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Code = Field(default=None, min_length=1, max_length=40, pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 Phase = Field(default=None, min_length=1, max_length=64)
@@ -24,6 +24,17 @@ Suitability = Field(default=None, pattern=r"^(S0|S1|S2|S3|S4|S6|S7|A1|A2|A3|A4|A
 
 class _In(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    #: Keys that may be left out of a PATCH but never sent as ``null``: their column is NOT NULL.
+    #: An explicit null on one is a 422 naming the field, never a database error.
+    NOT_NULL: ClassVar[frozenset[str]] = frozenset()
+
+    @model_validator(mode="after")
+    def _no_explicit_null(self) -> _In:
+        nulls = sorted(k for k in self.model_fields_set & self.NOT_NULL if getattr(self, k) is None)
+        if nulls:
+            raise ValueError(f"null is not allowed for: {', '.join(nulls)}")
+        return self
 
 
 class SetupCreate(_In):
@@ -37,6 +48,16 @@ class SetupCreate(_In):
 
 
 class SetupPatch(_In):
+    NOT_NULL = frozenset(
+        {
+            "four_eyes_release",
+            "default_distribution_purpose",
+            "hierarchical_codes",
+            "wbs_separator",
+            "target_suitability",
+        }
+    )
+
     four_eyes_release: bool | None = None
     default_distribution_purpose: Purpose | None = None
     hierarchical_codes: bool | None = None
@@ -65,6 +86,8 @@ class WbsCreate(_In):
 
 
 class WbsPatch(_In):
+    NOT_NULL = frozenset({"code", "name", "kind"})
+
     code: str | None = Field(default=None, min_length=1, max_length=50)
     name: str | None = Field(default=None, max_length=255)
     parent_id: UUID | None = None
@@ -81,6 +104,8 @@ class RenumberPreview(_In):
 
 
 class RoleIn(_In):
+    NOT_NULL = frozenset({"code", "title", "party_kind", "responsible_wbs_ids", "state"})
+
     code: str | None = Code
     title: str | None = Field(default=None, max_length=255)
     party_kind: (
@@ -105,6 +130,8 @@ class RoleIn(_In):
 
 
 class ApprovalPointIn(_In):
+    NOT_NULL = frozenset({"code", "title", "kind", "note"})
+
     code: str | None = Code
     title: str | None = Field(default=None, max_length=255)
     phase_code: str | None = Phase
@@ -115,6 +142,20 @@ class ApprovalPointIn(_In):
 
 
 class DeliverableIn(_In):
+    NOT_NULL = frozenset(
+        {
+            "code",
+            "title",
+            "phase_code",
+            "planned_count",
+            "planned_count_rationale",
+            "required",
+            "required_for",
+            "waived",
+            "waived_rationale",
+        }
+    )
+
     code: str | None = Code
     title: str | None = Field(default=None, max_length=255)
     phase_code: str | None = Phase
@@ -159,6 +200,8 @@ class DrawingCreate(NumberRequest):
 
 
 class DrawingPatch(_In):
+    NOT_NULL = frozenset({"title", "scale", "sheet_size"})
+
     title: str | None = Field(default=None, max_length=500)
     scale: str | None = Field(default=None, max_length=40)
     sheet_size: str | None = Field(default=None, max_length=10)
@@ -181,6 +224,21 @@ class TitleBlock(_In):
 
 
 class DistRuleIn(_In):
+    """``purpose`` null or absent = the rule applies to releases of any purpose."""
+
+    NOT_NULL = frozenset(
+        {
+            "discipline_codes",
+            "form_codes",
+            "phase_codes",
+            "wbs_node_ids",
+            "format",
+            "copies_paper",
+            "ack_required",
+            "active",
+        }
+    )
+
     recipient_list_id: UUID | None = None
     recipient_role_id: UUID | None = None
     discipline_codes: list[str] | None = None
@@ -196,6 +254,8 @@ class DistRuleIn(_In):
 
 
 class ReleaseIn(_In):
+    NOT_NULL = frozenset({"code", "title", "purpose", "revision_ids"})
+
     code: str | None = Code
     title: str | None = Field(default=None, max_length=255)
     purpose: Purpose | None = None
@@ -236,6 +296,19 @@ class CommentMove(_In):
 
 
 class ReportIn(_In):
+    NOT_NULL = frozenset(
+        {
+            "code",
+            "kind_code",
+            "title",
+            "external_check",
+            "required",
+            "independent_check",
+            "rationale",
+            "conditions_text",
+        }
+    )
+
     code: str | None = Code
     kind_code: str | None = Field(default=None, max_length=40)
     title: str | None = Field(default=None, max_length=255)
@@ -253,6 +326,8 @@ class ReportIn(_In):
 
 
 class PermitIn(_In):
+    NOT_NULL = frozenset({"code", "title", "profile_code"})
+
     code: str | None = Code
     title: str | None = Field(default=None, max_length=255)
     profile_code: str | None = Field(default=None, max_length=40)
