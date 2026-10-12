@@ -310,3 +310,41 @@ async def test_who_decides_names_each_party(world: World) -> None:
     assert r.status_code == 200
     assert body["user_ids"] == [str(world.manager)]
     assert [p["name"] for p in body["parties"]] == ["Team member"]
+
+
+async def test_commitment_links_and_their_pickers_stay_inside_the_project(world: World) -> None:
+    from app.modules.requirements.models import Requirement, RequirementSet
+
+    other = await build_world(world.factory)
+    ids: dict[str, str] = {}
+    async with world.factory() as s:
+        for name, w in (("mine", world), ("theirs", other)):
+            rset = RequirementSet(project_id=w.project_id, name=f"Brief {name}")
+            s.add(rset)
+            await s.flush()
+            req = Requirement(
+                requirement_set_id=rset.id, entity="Site access", attribute="hours", constraint_value="07:00-18:00"
+            )
+            s.add(req)
+            await s.flush()
+            ids[name] = str(req.id)
+        await s.commit()
+    sid = await stakeholder(world, "Residents east", is_group=True)
+    cid = await commitment(world, sid)
+    p = f"{BASE}/projects/{world.project_id}"
+    async with client_as(world, world.editor, "editor") as c:
+        foreign_requirement = await c.patch(f"{p}/commitments/{cid}", json={"requirement_id": ids["theirs"]})
+        foreign_task = await c.patch(f"{p}/commitments/{cid}", json={"task_id": str(uuid.uuid4())})
+        own = await c.patch(f"{p}/commitments/{cid}", json={"requirement_id": ids["mine"]})
+        options = await c.get(f"{p}/requirements")
+        release = await c.get(f"{p}/release-items")
+        gates = await c.get(f"{p}/gates")
+    async with client_as(world, world.outsider, "manager") as c:
+        strangers = [await c.get(f"{p}/{name}") for name in ("requirements", "release-items", "gates")]
+    assert (foreign_requirement.status_code, _code(foreign_requirement)) == (404, "requirement_not_found")
+    assert (foreign_task.status_code, _code(foreign_task)) == (404, "task_not_found")
+    assert (own.status_code, own.json()["requirement_id"]) == (200, ids["mine"])
+    assert [o["id"] for o in options.json()["items"]] == [ids["mine"]]
+    assert release.json() == {"items": [], "available": False, "reason": "commitment_release_not_installed"}
+    assert gates.json() == {"items": []}
+    assert [r.status_code for r in strangers] == [404, 404, 404]

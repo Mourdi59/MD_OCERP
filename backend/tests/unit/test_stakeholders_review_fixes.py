@@ -348,3 +348,36 @@ def test_the_reason_is_the_code_the_write_would_answer() -> None:
     assert {v["reason"] for v in _can(pending=True).values()} == {"approval_pending"}
     assert {v["reason"] for v in _can(can_edit=False).values()} == {"no_permission"}
     assert not any(v["allowed"] for v in _can(status="verified").values() if v["reason"] == "invalid_transition")
+
+
+# ── a stakeholder's place: named keys only ───────────────────────────────
+
+
+def test_geo_takes_the_named_keys_and_drops_empty_values() -> None:
+    from app.modules.stakeholders.schemas import StakeholderIn
+
+    body = StakeholderIn(geo={"parcel_ref": " 12/7 ", "lat": "52.52", "lon": "13.405", "address": ""})
+    assert body.geo == {"parcel_ref": "12/7", "lat": "52.52", "lon": "13.405"}
+    assert StakeholderIn(geo={"address": " "}).geo is None
+
+
+@pytest.mark.parametrize("geo", [{"postcode": "10115"}, {"lat": "91"}, {"lon": "-181"}, {"lat": "north"}])
+def test_geo_refuses_unknown_keys_and_points_off_the_globe(geo) -> None:
+    from pydantic import ValidationError
+
+    from app.modules.stakeholders.schemas import StakeholderIn
+
+    with pytest.raises(ValidationError):
+        StakeholderIn(geo=geo)
+
+
+def test_the_release_item_picker_says_when_nothing_provides_it() -> None:
+    from app.modules.stakeholders import authority
+
+    assert authority.release_item_lister() is None
+    authority.register_release_item_lister(lambda session, project_id: [])
+    try:
+        assert authority.release_item_lister() is not None
+    finally:
+        authority.register_release_item_lister(None)
+    assert authority.release_item_lister() is None

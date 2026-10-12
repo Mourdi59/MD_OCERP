@@ -14,13 +14,17 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 _CODE = r"^[a-z0-9][a-z0-9_]*$"
 # A stakeholder code as people write it (S-001, NB.12): no spaces, no control characters.
 _REF = r"^[A-Za-z0-9][A-Za-z0-9._/-]*$"
 # Head counts are stored in a 32-bit integer; nothing real comes near this.
 _MAX_COUNT = 100_000_000
+
+
+# Keys of a stakeholder's ``geo``: free text (None) or a coordinate bounded by the given magnitude.
+GEO_LIMITS: dict[str, float | None] = {"address": None, "parcel_ref": None, "lat": 90.0, "lon": 180.0}
 
 
 class _In(BaseModel):
@@ -54,6 +58,33 @@ class StakeholderIn(_In):
     is_confidential: bool | None = None
     status: Literal["active", "dormant", "archived"] | None = None
     risk_id: uuid.UUID | None = None
+
+    @field_validator("geo")
+    @classmethod
+    def _geo_keys(cls, value: dict[str, str] | None) -> dict[str, str] | None:
+        """``address``, ``parcel_ref``, ``lat``, ``lon``; empty values are dropped, coordinates must be on the globe."""
+        if value is None:
+            return None
+        out: dict[str, str] = {}
+        for key, raw in value.items():
+            if key not in GEO_LIMITS:
+                raise ValueError(f"unknown geo key: {key}")
+            text = raw.strip()
+            if not text:
+                continue
+            limit = GEO_LIMITS[key]
+            if limit is None:
+                if len(text) > 255:
+                    raise ValueError(f"geo.{key} is too long")
+            else:
+                try:
+                    number = float(text)
+                except ValueError as exc:
+                    raise ValueError(f"geo.{key} is not a number") from exc
+                if not -limit <= number <= limit:
+                    raise ValueError(f"geo.{key} is out of range")
+            out[key] = text
+        return out or None
 
 
 class AssessmentIn(_In):

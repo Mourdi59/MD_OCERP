@@ -190,3 +190,30 @@ async def test_a_read_only_frame_document_takes_no_revision(world: gov.World) ->
                 actor_id=world.manager,
             )
     assert (exc.value.code, exc.value.status_code) == ("frame_document_read_only", 409)
+
+
+async def test_the_gate_picker_lists_the_projects_gates_by_name(world: gov.World) -> None:
+    async with world.factory() as s:
+        listed = await StakeholderService(s).gates(world.project_id)
+        expected = [g.code for g in await GovernanceService(s).repo.list_gates(world.project_id)]
+    assert [g["code"] for g in listed] == expected
+    assert listed and all(g["name"] and g["status"] for g in listed)
+    assert any(g["name"] != g["code"] for g in listed)
+
+
+async def test_a_plan_trigger_must_name_a_gate_of_the_project(world: gov.World) -> None:
+    async with world.factory() as s:
+        svc = StakeholderService(s)
+        real = (await svc.gates(world.project_id))[0]["code"]
+        base = {"title": "Gate briefing", "audience_categories": ["client"], "participation_level": "inform"}
+        with pytest.raises(StakeholderError) as exc:
+            await svc.create_plan_item(
+                world.project_id, {**base, "trigger_kind": "gate", "trigger_ref": "no-such-gate"}, actor_id=world.editor
+            )
+        item = await svc.create_plan_item(
+            world.project_id, {**base, "trigger_kind": "gate", "trigger_ref": real}, actor_id=world.editor
+        )
+        any_gate = await svc.create_plan_item(world.project_id, {**base, "trigger_kind": "gate"}, actor_id=world.editor)
+        await s.commit()
+    assert (exc.value.code, exc.value.status_code) == ("unknown_gate", 422)
+    assert (item.trigger_ref, any_gate.trigger_ref) == (real, "")

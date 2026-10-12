@@ -340,6 +340,90 @@ class StakeholderService:
 
         return await self._in_project(RiskItem, project_id, risk_id, "risk_not_found")
 
+    async def _task(self, project_id: uuid.UUID, task_id: Any) -> Any:
+        from app.modules.tasks.models import Task
+
+        return await self._in_project(Task, project_id, task_id, "task_not_found")
+
+    async def _requirement(self, project_id: uuid.UUID, requirement_id: Any) -> uuid.UUID:
+        """A requirement belongs to a project through its set."""
+        from app.modules.requirements.models import Requirement, RequirementSet
+
+        rid = _uuid(requirement_id)
+        found = None
+        if rid is not None:
+            stmt = (
+                select(Requirement.id)
+                .join(RequirementSet, RequirementSet.id == Requirement.requirement_set_id)
+                .where(Requirement.id == rid, RequirementSet.project_id == project_id)
+            )
+            found = (await self.session.execute(stmt)).scalar_one_or_none()
+        if found is None:
+            raise not_found("requirement_not_found")
+        return found
+
+    # ── what the pickers offer ─────────────────────────────────────────────
+
+    async def gates(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
+        """The project's gates in order, named for the request locale; empty without a phase model."""
+        from app.modules.project_governance.messages import translate as governance_text
+        from app.modules.project_governance.repository import GovernanceRepository
+        from app.modules.stakeholders import hosting
+
+        catalogue = await hosting.project_catalogue(self.session, project_id)
+        defined = {g.code: g for g in catalogue.gates} if catalogue is not None else {}
+        locale = get_locale() or "en"
+        out = []
+        for gate in await GovernanceRepository(self.session).list_gates(project_id):
+            spec = defined.get(gate.code)
+            name = ""
+            if spec is not None:
+                labels = spec.labels or {}
+                name = labels.get(locale) or labels.get("en") or governance_text(spec.name_key, locale=locale)
+                if name == spec.name_key:
+                    name = ""
+            out.append({"code": gate.code, "name": name or gate.code, "status": gate.status})
+        return out
+
+    async def requirement_options(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
+        """Every requirement of the project's requirement sets, for the commitment link picker."""
+        from app.modules.requirements.models import Requirement, RequirementSet
+
+        stmt = (
+            select(Requirement, RequirementSet.name)
+            .join(RequirementSet, RequirementSet.id == Requirement.requirement_set_id)
+            .where(RequirementSet.project_id == project_id)
+            .order_by(RequirementSet.name, Requirement.entity, Requirement.attribute)
+        )
+        return [
+            {
+                "id": str(r.id),
+                "set_id": str(r.requirement_set_id),
+                "set_name": set_name,
+                "entity": r.entity,
+                "attribute": r.attribute,
+                "constraint_type": r.constraint_type,
+                "constraint_value": r.constraint_value,
+                "unit": r.unit,
+                "status": r.status,
+            }
+            for r, set_name in (await self.session.execute(stmt)).all()
+        ]
+
+    async def release_item_options(self, project_id: uuid.UUID) -> dict[str, Any]:
+        """Release items a commitment may link to. ``available`` is false while no module provides them."""
+        from app.modules.stakeholders.authority import release_item_lister
+
+        lister = release_item_lister()
+        if lister is None:
+            return {"items": [], "available": False, "reason": "commitment_release_not_installed"}
+        items = await lister(self.session, project_id)
+        return {
+            "items": [{"id": str(i.id), "code": i.code, "title": i.title} for i in items],
+            "available": True,
+            "reason": None,
+        }
+
     async def _roster(self, project_id: uuid.UUID, roster_id: Any) -> Any:
         from app.modules.teams.models import RosterMember
 
@@ -560,8 +644,19 @@ class StakeholderService:
             out["contact_id"] = None
         if data.get("parent_stakeholder_id"):
             parent = await self.get_stakeholder(project_id, _uuid(data["parent_stakeholder_id"]) or uuid.uuid4())
-            if row is not None and parent.id == row.id:
-                raise StakeholderError("invalid_parent")
+            if row is not None:
+                # Walk up from the new parent: reaching this row again would close a loop.
+                seen: set[uuid.UUID] = set()
+                node: Stakeholder | None = parent
+                while node is not None and node.id not in seen:
+                    if node.id == row.id:
+                        raise StakeholderError("invalid_parent")
+                    seen.add(node.id)
+                    node = (
+                        await self.repo.get_in_project(Stakeholder, project_id, node.parent_stakeholder_id)
+                        if node.parent_stakeholder_id
+                        else None
+                    )
             out["parent_stakeholder_id"] = parent.id
         elif "parent_stakeholder_id" in data:
             out["parent_stakeholder_id"] = None
@@ -1004,6 +1099,10 @@ class StakeholderService:
             raise StakeholderError("schedule_or_trigger")
         if merged["trigger_kind"] == "event" and merged["trigger_ref"] not in EVENT_TRIGGERS:
             raise StakeholderError("schedule_or_trigger")
+        if merged["trigger_kind"] == "gate" and merged["trigger_ref"] and {"trigger_kind", "trigger_ref"} & set(out):
+            # Empty means every gate. A named gate must be one of this project's.
+            if merged["trigger_ref"] not in {g["code"] for g in await self.gates(project_id)}:
+                raise StakeholderError("unknown_gate")
         if merged["starts_on"] and merged["ends_on"] and merged["ends_on"] < merged["starts_on"]:
             raise StakeholderError("invalid_validity")
         return out
@@ -1360,9 +1459,15 @@ class StakeholderService:
             out["currency"] = currency
         if "risk_id" in data:
             out["risk_id"] = (await self._risk(project_id, data["risk_id"])).id if data["risk_id"] else None
-        for key in ("task_id", "requirement_id", "release_item_id"):
-            if key in data:
-                out[key] = _uuid(data[key])
+        if "task_id" in data:
+            out["task_id"] = (await self._task(project_id, data["task_id"])).id if data["task_id"] else None
+        if "requirement_id" in data:
+            out["requirement_id"] = (
+                await self._requirement(project_id, data["requirement_id"]) if data["requirement_id"] else None
+            )
+        if "release_item_id" in data:
+            # Checked by the commitment release module when the commitment is agreed (rule 10).
+            out["release_item_id"] = _uuid(data["release_item_id"])
         return out
 
     async def _project_currency(self, project_id: uuid.UUID) -> str:

@@ -14,6 +14,7 @@ The commitment release module registers both at startup::
 
     register_authority_evaluator(evaluate)      # (session, project_id, commitment_type, amount, currency, today)
     register_release_item_checker(check)        # (session, project_id, release_item_id | None)
+    register_release_item_lister(items)         # (session, project_id) -> [ReleaseItemOption]
 """
 
 from __future__ import annotations
@@ -46,8 +47,18 @@ class ReleaseItemAnswer:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class ReleaseItemOption:
+    """One release item a commitment may be linked to, as the picker shows it."""
+
+    id: str
+    code: str
+    title: str
+
+
 AuthorityEvaluator = Callable[[Any, uuid.UUID, str, Decimal, str, date], Awaitable[AuthorityAnswer]]
 ReleaseItemChecker = Callable[[Any, uuid.UUID, uuid.UUID | None], Awaitable[ReleaseItemAnswer]]
+ReleaseItemLister = Callable[[Any, uuid.UUID], Awaitable[list[ReleaseItemOption]]]
 
 _HOOKS: dict[str, Any] = {}
 
@@ -66,6 +77,18 @@ def register_release_item_checker(fn: ReleaseItemChecker | None) -> None:
         _HOOKS.pop("release_item", None)
     else:
         _HOOKS["release_item"] = fn
+
+
+def register_release_item_lister(fn: ReleaseItemLister | None) -> None:
+    """Install (or with ``None`` remove) the lister behind the release item picker."""
+    if fn is None:
+        _HOOKS.pop("release_items", None)
+    else:
+        _HOOKS["release_items"] = fn
+
+
+def release_item_lister() -> ReleaseItemLister | None:
+    return _HOOKS.get("release_items")
 
 
 def authority_evaluator() -> AuthorityEvaluator | None:

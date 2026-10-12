@@ -775,6 +775,27 @@ async def _render(
     return export.render(docs, fmt), f"{stem}.{fmt}"
 
 
+@router.get("/projects/{project_id}/gates", dependencies=[READ])
+async def list_gates(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """The project's gates for the plan trigger picker; empty when the project has no phase model."""
+    await verify_project_access(project_id, user_id, session)
+    return {"items": await _run(StakeholderService(session).gates(project_id))}
+
+
+@router.get("/projects/{project_id}/requirements", dependencies=[READ])
+async def list_requirements(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """Requirements of the project's sets, for the commitment link picker."""
+    await verify_project_access(project_id, user_id, session)
+    return {"items": await _run(StakeholderService(session).requirement_options(project_id))}
+
+
+@router.get("/projects/{project_id}/release-items", dependencies=[READ])
+async def list_release_items(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """Release items for the commitment link picker; ``available: false`` while no module provides them."""
+    await verify_project_access(project_id, user_id, session)
+    return await _run(StakeholderService(session).release_item_options(project_id))
+
+
 @router.get("/projects/{project_id}/export", dependencies=[READ])
 async def export_register(
     project_id: uuid.UUID,
