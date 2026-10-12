@@ -10,8 +10,8 @@ the matrix, and a holder of a lower tier trying to decide a higher one.
 from __future__ import annotations
 
 import uuid
-from decimal import Decimal
 from contextlib import asynccontextmanager
+from decimal import Decimal
 
 import pytest
 import pytest_asyncio
