@@ -1,11 +1,14 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Who may read and write a quality concept, over HTTP against PostgreSQL; plus the contract.
+"""Who may read and write a quality concept, over HTTP against PostgreSQL.
 
 A stranger to the project answers 404 on every route, exactly like a missing
-project; a child id from another project answers 404 inside a visible one; a
-waiver is decided by someone other than its requester (403 otherwise); and an
-acceptance unit's effect confirmed twice is stored once.
+project. Inside a visible project a child id, an evidence row or a soft link
+from elsewhere answers 404 and says nothing about the row. Reading never
+writes: the concept exists only after an explicit create. Changing the plan
+needs the manage permission, deciding a waiver the waive permission and a
+second person. The gate evidence answers ``unknown`` rather than nothing when
+the governance catalogue does not say where quality lives.
 """
 
 from __future__ import annotations
@@ -17,16 +20,20 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.modules.quality_concept import evidence, hosting
+from app.modules.quality_concept.models import QualityConcept
 from app.modules.quality_concept.permissions import register_quality_concept_permissions
 from app.modules.quality_concept.router import router
 from tests._pg import isolated_engine
-from tests.pg.governance_fixtures import World, add_project, build_world
+from tests.pg.governance_fixtures import World, add_container, add_project, areas, build_world
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
 
 BASE = "/api/v1/quality-concept"
+READS = ("concept", "proofs", "stages", "stage-progress", "acceptance-units", "preservation", "readiness")
 
 
 @pytest_asyncio.fixture
@@ -60,55 +67,213 @@ def _p(w: World, tail: str) -> str:
     return f"{BASE}/projects/{w.project_id}/{tail}"
 
 
+def _code(response) -> tuple[int, str | None]:
+    detail = response.json().get("detail")
+    return response.status_code, detail.get("code") if isinstance(detail, dict) else None
+
+
+async def _concepts(w: World) -> int:
+    async with w.factory() as s:
+        stmt = select(func.count()).select_from(QualityConcept).where(QualityConcept.project_id == w.project_id)
+        return (await s.execute(stmt)).scalar_one()
+
+
+def _proof(evidence_type: str, **extra) -> dict:
+    return {
+        "package_ref": "P-01",
+        "evidence_type": evidence_type,
+        "required_by_kind": "date",
+        "required_by_ref": "2026-12-01",
+        "deliverer_role": "contractor",
+        **extra,
+    }
+
+
 async def test_a_stranger_gets_404_on_reads_and_writes(world: World) -> None:
     async with client_as(world, world.outsider, "manager") as c:
-        for path in ("concept", "proofs", "stages", "acceptance-units", "preservation", "readiness", "validation"):
+        for path in (*READS, "validation"):
             assert (await c.get(_p(world, path))).status_code == 404, path
-        r = await c.post(_p(world, "standards"), json={"code": "EN 206"})
-        assert r.status_code == 404
+        assert (await c.post(_p(world, "concept"))).status_code == 404
+        assert (await c.post(_p(world, "standards"), json={"code": "EN 206"})).status_code == 404
+    assert await _concepts(world) == 0
 
 
-async def test_a_child_id_from_another_project_is_404(world: World) -> None:
+async def test_reading_never_writes_and_the_plan_needs_the_manage_permission(world: World) -> None:
+    async with client_as(world, world.manager, "manager") as c:
+        # No read brings the concept into being.
+        assert _code(await c.get(_p(world, "concept"))) == (404, "concept_missing")
+        assert (await c.get(_p(world, "concept/catalogue"))).status_code == 200
+        for path in READS[1:]:
+            await c.get(_p(world, path))
+        assert await _concepts(world) == 0
+
+    async with client_as(world, world.editor, "editor") as c:
+        assert _code(await c.post(_p(world, "concept"))) == (403, "manage_required")
+    assert await _concepts(world) == 0
+
+    async with client_as(world, world.manager, "manager") as c:
+        made = await c.post(_p(world, "concept"))
+        assert made.status_code == 201, made.text
+        assert made.json()["can"] == {
+            "manage": True,
+            "edit_plan": True,
+            "submit": False,
+            "submit_reason": "concept_incomplete",
+        }
+        assert _code(await c.post(_p(world, "concept"))) == (409, "concept_exists")
+        patched = await c.patch(_p(world, "concept"), json={"packages": [{"ref": "P-01", "title": "Structure"}]})
+        assert patched.status_code == 200, patched.text
+        standard = await c.post(_p(world, "standards"), json={"code": "EN 206"})
+        assert standard.status_code == 201, standard.text
+        # Lists use the envelope; an explicit null on a field that cannot be null is a 422.
+        listed = (await c.get(_p(world, "standards"))).json()
+        assert set(listed) >= {"items", "total", "offset", "limit"}
+        assert listed["total"] == 1
+        nulled = await c.patch(_p(world, f"standards/{standard.json()['id']}"), json={"title": None})
+        assert _code(nulled) == (422, "null_not_allowed")
+        assert (await c.post(_p(world, "acceptance-units"), json={"kind": "no_such_kind"})).status_code == 422
+        first = await c.post(_p(world, "proofs"), json=_proof("concrete_conformity_tests"))
+        second = await c.post(_p(world, "proofs"), json=_proof("om_manual"))
+        assert (first.status_code, second.status_code) == (201, 201), first.text + second.text
+        first_id, second_id = first.json()["id"], second.json()["id"]
+
+    async with client_as(world, world.editor, "editor") as c:
+        # An editor reads the plan and records work, and is told why the plan is closed to them.
+        seen = await c.get(_p(world, "concept"))
+        assert seen.json()["can"] == {
+            "manage": False,
+            "edit_plan": False,
+            "submit": False,
+            "submit_reason": "manage_required",
+        }
+        assert _code(await c.post(_p(world, "standards"), json={"code": "EN 1090-2"})) == (403, "manage_required")
+        assert _code(await c.post(_p(world, "proofs"), json=_proof("warranty_certificate"))) == (
+            403,
+            "manage_required",
+        )
+        asked = await c.post(_p(world, f"proofs/{first_id}/waiver-request"), json={"rationale": "Supplier tested"})
+        assert asked.status_code == 200, asked.text
+        # Deciding a waiver is not an editor's permission, whoever asked for it.
+        assert (
+            await c.post(_p(world, f"proofs/{first_id}/waiver-decision"), json={"approve": True})
+        ).status_code == 403
+        assert (
+            await c.post(_p(world, f"proofs/{second_id}/waiver-decision"), json={"approve": True})
+        ).status_code == 403
+
+    async with client_as(world, world.manager, "manager") as c:
+        decided = await c.post(_p(world, f"proofs/{first_id}/waiver-decision"), json={"approve": True})
+        assert decided.status_code == 200, decided.text
+        assert decided.json()["decision"] == "waived"
+        # Four eyes: the manager who asks cannot also decide.
+        await c.post(_p(world, f"proofs/{second_id}/waiver-request"), json={"rationale": "Not issued"})
+        same = await c.post(_p(world, f"proofs/{second_id}/waiver-decision"), json={"approve": True})
+        assert _code(same) == (403, "approver_is_requester")
+
+
+async def test_ids_from_elsewhere_are_refused_without_saying_what_they_are(world: World) -> None:
     async with world.factory() as s:
         other = await add_project(s, world.manager, [])
+        foreign_document = await add_container(s, other, "foreign_manual")
         await s.commit()
+    other_base = f"{BASE}/projects/{other}"
     async with client_as(world, world.manager, "manager") as c:
-        other_base = f"{BASE}/projects/{other}"
+        for base in (other_base, f"{BASE}/projects/{world.project_id}"):
+            assert (await c.post(f"{base}/concept")).status_code == 201
+        await c.patch(_p(world, "concept"), json={"packages": [{"ref": "P-01", "title": "Structure"}]})
+
+        # A child row of another project.
         made = await c.post(f"{other_base}/standards", json={"code": "EN 1090-2"})
         assert made.status_code == 201, made.text
         foreign = made.json()["id"]
-        r = await c.patch(_p(world, f"standards/{foreign}"), json={"title": "x"})
-        assert r.status_code == 404
-        r = await c.delete(_p(world, f"standards/{foreign}"))
-        assert r.status_code == 404
+        assert (await c.patch(_p(world, f"standards/{foreign}"), json={"title": "x"})).status_code == 404
+        assert (await c.delete(_p(world, f"standards/{foreign}"))).status_code == 404
+        assert (await c.get(f"{other_base}/standards")).json()["total"] == 1
 
-
-async def test_lists_use_the_envelope_and_errors_are_coded(world: World) -> None:
-    async with client_as(world, world.manager, "manager") as c:
-        body = (await c.get(_p(world, "standards"))).json()
-        assert set(body) >= {"items", "total", "offset", "limit"}
-        r = await c.post(_p(world, "acceptance-units"), json={"kind": "no_such_kind"})
-        assert r.status_code == 422
-
-
-async def test_the_waiver_requester_cannot_approve_it(world: World) -> None:
-    async with client_as(world, world.manager, "manager") as c:
-        await c.get(_p(world, "concept"))
-        proof = await c.post(
-            _p(world, "proofs"),
-            json={
-                "title": "Concrete cube tests",
-                "package_ref": "P-01",
-                "evidence_type": "concrete_conformity_tests",
-                "required_by_kind": "date",
-                "required_by_ref": "2026-12-01",
-                "deliverer_role": "contractor",
-            },
-        )
+        # Evidence from another project, and evidence of this one.
+        proof = await c.post(_p(world, "proofs"), json=_proof("om_manual"))
         assert proof.status_code == 201, proof.text
-        pid = proof.json()["id"]
-        asked = await c.post(_p(world, f"proofs/{pid}/waiver-request"), json={"rationale": "Covered by supplier test"})
-        assert asked.status_code == 200, asked.text
-        same = await c.post(_p(world, f"proofs/{pid}/waiver-decision"), json={"approve": True})
-        assert same.status_code == 403
-        assert same.json()["detail"]["code"] == "approver_is_requester"
+        link = {"owner_kind": "proof", "owner_id": proof.json()["id"], "link_kind": "cde_document"}
+        crossed = await c.post(_p(world, "evidence-links"), json={**link, "link_id": str(foreign_document)})
+        assert _code(crossed) == (404, "linked_record_not_found")
+        own = await c.post(
+            _p(world, "evidence-links"), json={**link, "link_id": str(world.containers["business_case"])}
+        )
+        assert own.status_code == 201, own.text
+        stray = {**link, "owner_id": str(uuid.uuid4()), "link_id": str(world.containers["business_case"])}
+        assert _code(await c.post(_p(world, "evidence-links"), json=stray)) == (404, "owner_not_found")
+
+        # Soft links are checked before they are stored.
+        unknown = str(uuid.uuid4())
+        refused = await c.post(_p(world, "proofs"), json=_proof("om_manual", package_ref="P-99"))
+        assert _code(refused) == (422, "package_unknown")
+        refused = await c.post(_p(world, "proofs"), json=_proof("om_manual", deliverer_contact_id=unknown))
+        assert _code(refused) == (404, "contact_not_found")
+        refused = await c.post(_p(world, "proofs"), json=_proof("om_manual", cx_system_id=unknown))
+        assert _code(refused) == (404, "system_not_found")
+        refused = await c.post(_p(world, "proofs"), json=_proof("om_manual", plant_item_id=unknown))
+        assert _code(refused) == (422, "plant_register_unavailable")
+        unit = {"kind": "total", "regime_code": "fidic_taking_over"}
+        refused = await c.post(
+            _p(world, "acceptance-units"), json={**unit, "preconditions": {"include_units": [unknown]}}
+        )
+        assert _code(refused) == (404, "included_unit_not_found")
+        refused = await c.post(_p(world, "acceptance-units"), json={**unit, "schedule_activity_id": unknown})
+        assert _code(refused) == (404, "schedule_activity_not_found")
+        refused = await c.post(
+            _p(world, "certifications"),
+            json={"scheme_code": "other", "target_level": "x", "assessor_contact_id": unknown},
+        )
+        assert _code(refused) == (404, "contact_not_found")
+        assert (await c.get(_p(world, "proofs"))).json()["total"] == 1
+
+
+async def test_the_gate_evidence_never_fails_open(world: World, monkeypatch) -> None:
+    """Where quality lives is catalogue data; both answers are pinned by giving the tag directly."""
+    from app.modules.project_governance.evidence import GateAttempt
+    from app.modules.project_governance.models import GovernanceGate
+
+    by_code = {c: a for c, a in (await areas(world)).items() if a.applicable and not a.retired}
+    first, last = min(by_code), max(by_code)
+    assert first != last
+    async with world.factory() as s:
+        gate = (
+            await s.execute(
+                select(GovernanceGate)
+                .where(GovernanceGate.project_id == world.project_id)
+                .where(GovernanceGate.to_phase.isnot(None))
+                .limit(1)
+            )
+        ).scalar_one()
+        attempt = GateAttempt(gate.id, gate.code, 1)
+
+        async def ask(code: str):
+            return await evidence.quality_readiness(s, world.project_id, attempt, by_code[code])
+
+        # The catalogue tags no area for quality and the project has no concept: nothing to say.
+        monkeypatch.setattr(hosting, "hosting_area_code", lambda catalogue: None)
+        assert await ask(first) == []
+
+    async with client_as(world, world.manager, "manager") as c:
+        assert (await c.post(_p(world, "concept"))).status_code == 201
+
+    async with world.factory() as s:
+        # With a concept the module has data: it answers unknown, once, and says why.
+        items = await ask(first)
+        assert [(i.code, i.state, i.detail) for i in items] == [
+            ("quality_concept.approved", "unknown", "governance_catalogue_has_no_quality_area")
+        ]
+        assert await ask(last) == []
+
+        # Tagged: the hosting area at the gate into the phase that starts construction is asked.
+        monkeypatch.setattr(hosting, "hosting_area_code", lambda catalogue: last)
+        monkeypatch.setattr(hosting, "phases_enabling", lambda catalogue, tag: frozenset({gate.to_phase}))
+        assert await ask(first) == []
+        items = {i.code: i.state for i in await ask(last)}
+        assert items["quality_concept.approved"] == "not_met"
+        assert items["quality_concept.complete"] == "not_met"
+        assert set(items.values()) <= {"met", "not_met"}
+
+        # The same area at a gate into another phase is not asked.
+        monkeypatch.setattr(hosting, "phases_enabling", lambda catalogue, tag: frozenset({"some_other_phase"}))
+        assert await ask(last) == []

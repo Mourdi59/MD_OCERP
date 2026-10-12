@@ -999,10 +999,7 @@ async def create_expert_report(
     project_id: uuid.UUID, body: s.ExpertReportIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    fields = body.model_dump()
-    fields["due_dates"] = [d.isoformat() for d in fields["due_dates"]]
-    await _run(svc._check_contact(fields.get("expert_contact_id")))
-    out = _row(await svc.repo.add(ExpertReportPlan(project_id=project_id, **fields)))
+    out = _row(await _run(svc.create_expert_report(project_id, body)))
     await session.commit()
     return out
 

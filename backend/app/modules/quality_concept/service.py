@@ -567,6 +567,7 @@ class QualityConceptService:
             raise QualityConceptError("scheme_unknown")
         if scheme.levels and ev.level_index(scheme.levels, data.target_level) is None:
             raise QualityConceptError("level_unknown")
+        await self._check_contact(data.assessor_contact_id)
         return await self.repo.add(CertificationTarget(project_id=project_id, state="planned", **data.model_dump()))
 
     async def patch_certification(
@@ -1253,6 +1254,8 @@ class QualityConceptService:
         for r in rows:
             if str(r.id) in stale:
                 r.state = _transition("stage", r.state, "go_stale", mirror=True)
+                # The gate signed a state that no longer holds; reconciling must not release on it again.
+                r.hold_gate_id = None
         await self.session.flush()
 
     async def record_result(
@@ -1860,6 +1863,12 @@ class QualityConceptService:
         for key in ("owner_contact_id", "surveyor_contact_id"):
             await self._check_contact(fields.get(key))
         return await self.repo.add(PreservationSurvey(project_id=project_id, state="planned", **fields))
+
+    async def create_expert_report(self, project_id: uuid.UUID, data: Any) -> ExpertReportPlan:
+        fields = data.model_dump()
+        fields["due_dates"] = [d.isoformat() for d in fields["due_dates"]]
+        await self._check_contact(fields.get("expert_contact_id"))
+        return await self.repo.add(ExpertReportPlan(project_id=project_id, **fields))
 
     async def _check_pair(self, project_id: uuid.UUID, subject_ref: str, before_id: uuid.UUID) -> None:
         before = await self.repo.get(PreservationSurvey, project_id, before_id)
