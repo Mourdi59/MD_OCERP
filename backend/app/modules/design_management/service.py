@@ -149,8 +149,9 @@ class DesignService:
         )
 
     def _publish(self, name: str, **data: Any) -> None:
+        """Publish after commit. ``name`` is the full event name, written as a literal at every call site."""
         payload = {k: _s(v) if isinstance(v, uuid.UUID) else v for k, v in data.items()}
-        publish_after_commit(self.session, f"design_management.{name}", payload, source_module="oe_design_management")
+        publish_after_commit(self.session, name, payload, source_module="oe_design_management")
 
     async def _get(self, model: Any, project_id: uuid.UUID, row_id: Any, code: str, *, lock: bool = False) -> Any:
         stmt = select(model).where(model.id == _uuid(row_id), model.project_id == project_id)
@@ -331,7 +332,7 @@ class DesignService:
             )
         )
         await self._audit(actor_id, "design_setup", setup.id, "created", scheme=f"{scheme_source}:{scheme_id}@{sv}")
-        self._publish("setup.pinned", project_id=project_id, scheme_id=scheme_id, version=sv)
+        self._publish("design_management.setup.pinned", project_id=project_id, scheme_id=scheme_id, version=sv)
         return setup
 
     async def update_setup(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID) -> DesignSetup:
@@ -397,7 +398,9 @@ class DesignService:
                 legacy += 1
         await self.session.flush()
         await self._audit(actor_id, "design_setup", setup.id, "scheme_changed", scheme=scheme_id, legacy=legacy)
-        self._publish("setup.scheme_changed", project_id=project_id, scheme_id=scheme_id, legacy=legacy)
+        self._publish(
+            "design_management.setup.scheme_changed", project_id=project_id, scheme_id=scheme_id, legacy=legacy
+        )
         return {"setup": setup, "legacy": legacy}
 
     # ── WBS (rules 1-4) ───────────────────────────────────────────────────
@@ -788,7 +791,7 @@ class DesignService:
         row.approval_instance_id = await self._start_instance(route, APPROVAL_TARGET_KIND, row.id, actor_id)
         row.submitted_by = actor_id
         await self.session.flush()
-        self._publish("approval_point.submitted", project_id=project_id, approval_point_id=row.id)
+        self._publish("design_management.approval_point.submitted", project_id=project_id, approval_point_id=row.id)
         return row
 
     async def apply_approval_verdict(
@@ -807,7 +810,7 @@ class DesignService:
             row.approval_instance_id = None
             await self._fsm(dfsm.APPROVAL_POINT_FSM, row, "open", decider, reason="approval route cancelled")
             await self.session.flush()
-            self._publish("approval_point.open", project_id=row.project_id, approval_point_id=row.id)
+            self._publish("design_management.approval_point.open", project_id=row.project_id, approval_point_id=row.id)
             return True
         setup = await self.get_setup(row.project_id)
         if decision == "approved" and setup and setup.four_eyes_release and decider and decider == row.submitted_by:
@@ -817,7 +820,14 @@ class DesignService:
         await self._fsm(dfsm.APPROVAL_POINT_FSM, row, "approved" if decision == "approved" else "rejected", decider)
         row.decided_by, row.decided_at = decider, _now()
         await self.session.flush()
-        self._publish(f"approval_point.{row.status}", project_id=row.project_id, approval_point_id=row.id)
+        if row.status == "approved":
+            self._publish(
+                "design_management.approval_point.approved", project_id=row.project_id, approval_point_id=row.id
+            )
+        else:
+            self._publish(
+                "design_management.approval_point.rejected", project_id=row.project_id, approval_point_id=row.id
+            )
         return True
 
     async def catch_up_approvals(self, project_id: uuid.UUID) -> int:
@@ -1441,7 +1451,7 @@ class DesignService:
             )
         )
         await self._audit(actor_id, "design_drawing", drawing.id, "created", number=code)
-        self._publish("drawing.created", project_id=project_id, drawing_id=drawing.id, number=code)
+        self._publish("design_management.drawing.created", project_id=project_id, drawing_id=drawing.id, number=code)
         return drawing, container
 
     async def patch_drawing(self, project_id: uuid.UUID, did: Any, data: dict[str, Any], *, actor_id: uuid.UUID):
@@ -1753,7 +1763,12 @@ class DesignService:
             )
         await self.session.flush()
         await self._audit(decider, "design_release", row.id, f"approval_{row.approval_status}")
-        self._publish("release.approval", project_id=row.project_id, release_id=row.id, state=row.approval_status)
+        self._publish(
+            "design_management.release.approval",
+            project_id=row.project_id,
+            release_id=row.id,
+            state=row.approval_status,
+        )
         return True
 
     async def release_can(self, row: DesignRelease, *, actor_id: uuid.UUID, may_release: bool) -> dict[str, Any]:
@@ -1941,7 +1956,12 @@ class DesignService:
         row.issued_by, row.issued_at = actor_id, _now()
         await self.session.flush()
         await self._audit(actor_id, "design_release", row.id, "issued", transmittals=len(transmittal_ids))
-        self._publish("release.issued", project_id=project_id, release_id=row.id, transmittal_ids=transmittal_ids)
+        self._publish(
+            "design_management.release.issued",
+            project_id=project_id,
+            release_id=row.id,
+            transmittal_ids=transmittal_ids,
+        )
         return row
 
     # ── reviews ───────────────────────────────────────────────────────────
@@ -1995,7 +2015,7 @@ class DesignService:
         await self._fsm(dfsm.REVIEW_FSM, row, "concluded", actor_id)
         row.outcome, row.concluded_by, row.concluded_at = outcome, actor_id, _now()
         await self.session.flush()
-        self._publish("review.concluded", project_id=project_id, review_id=row.id, outcome=outcome)
+        self._publish("design_management.review.concluded", project_id=project_id, review_id=row.id, outcome=outcome)
         return row
 
     async def add_comment(self, project_id: uuid.UUID, rid: Any, data: dict[str, Any], *, actor_id: uuid.UUID):
@@ -2197,7 +2217,9 @@ class DesignService:
                 raise DesignError(error, 422)
         await self._fsm(dfsm.REPORT_FSM, row, target, actor_id, reason=rationale or None)
         await self.session.flush()
-        self._publish("report.state_changed", project_id=project_id, report_id=row.id, state=row.status)
+        self._publish(
+            "design_management.report.state_changed", project_id=project_id, report_id=row.id, state=row.status
+        )
         return row
 
     async def sync_report(self, project_id: uuid.UUID, rid: Any, *, actor_id: uuid.UUID) -> DesignReport:
@@ -2423,7 +2445,9 @@ class DesignService:
             raise conflict("invalid_transition", detail=target)
         await self._fsm(dfsm.PERMIT_FSM, permit, target, actor_id)
         await self.session.flush()
-        self._publish("permit.state_changed", project_id=project_id, permit_id=permit.id, state=permit.status)
+        self._publish(
+            "design_management.permit.state_changed", project_id=project_id, permit_id=permit.id, state=permit.status
+        )
         return permit
 
     async def sync_permit(self, project_id: uuid.UUID, pid: Any, *, actor_id: uuid.UUID) -> DesignPermit:

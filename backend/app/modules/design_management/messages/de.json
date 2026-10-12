@@ -145,7 +145,7 @@
       "deliverables": "Planungsleistungen der Phase abgenommen",
       "major_comments": "Kein offener wesentlicher Prüfkommentar",
       "no_host_area": "Planungsreife unbekannt: das Governance-Modell benennt keinen Bereich für die Planung",
-      "no_host_document": "Planungsreife unbekannt: das Projekt hat noch kein Rahmendokument Planung",
+      "no_host_document": "Planungsreife unbekannt: das Projekt hat noch kein Rahmendokument Planung. Ein Planungsregister erzeugen (im CDE ablegen), dann entsteht es.",
       "no_phase": "Planungsreife unbekannt: dieses Gate schließt keine Phase ab",
       "reports": "Erforderliche Gutachten der Phase abgenommen"
     },

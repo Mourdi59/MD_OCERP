@@ -145,7 +145,7 @@
       "deliverables": "Design schedule lines of the phase accepted",
       "major_comments": "No open major review comment",
       "no_host_area": "Design readiness unknown: the governance model names no area for design",
-      "no_host_document": "Design readiness unknown: the project has no design frame document yet",
+      "no_host_document": "Design readiness unknown: the project has no design frame document yet. Generate a design register (File in the CDE) to create it.",
       "no_phase": "Design readiness unknown: this gate closes no phase",
       "reports": "Required reports of the phase accepted"
     },
