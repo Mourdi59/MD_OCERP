@@ -437,3 +437,41 @@ async def _stored_or_none(w: World) -> ProcurementConcept | None:
         return (
             await s.execute(sa.select(ProcurementConcept).where(ProcurementConcept.project_id == w.project_id))
         ).scalar_one_or_none()
+
+
+async def test_the_seed_links_the_advance_package_to_a_released_long_lead_commitment(world: World) -> None:
+    """No gate decision and no condition exists; the commitment matrix holds a released reservation."""
+    from app.modules.procurement_concept import commitments
+
+    pid = await _demo_project(world, currency="EUR", country="DE", public=True)
+    options = [
+        commitments.CommitmentOption(uuid.uuid4(), "CR-DES", "Design appointment", "released", True),
+        commitments.CommitmentOption(uuid.uuid4(), "CR-LL", "Reservation", "released", True, lead_time_days=150),
+        commitments.CommitmentOption(uuid.uuid4(), "CR-LL2", "Planned slot", "planned", False, lead_time_days=300),
+    ]
+
+    async def listing(_session, project_id):
+        return options if project_id == pid else []
+
+    async def check(_session, project_id, item_id):
+        hit = next((o for o in options if o.id == item_id and project_id == pid), None)
+        return commitments.CommitmentAnswer(found=hit is not None, released=bool(hit and hit.released))
+
+    commitments.register_commitment_lister(listing)
+    commitments.register_commitment_checker(check)
+    try:
+        await _seed(world, [pid])
+        async with world.factory() as s:
+            svc = ProcurementConceptService(s)
+            concept = await svc.get_concept(pid)
+            rows = (await s.execute(sa.select(AwardPackage).where(AwardPackage.project_id == pid))).scalars().all()
+            (advance,) = [r for r in rows if r.is_advance]
+            release = await svc.advance_release_status(pid, advance, await svc.release_gate(pid, concept))
+            found = await svc.findings(pid)
+    finally:
+        commitments.register_commitment_lister(None)
+        commitments.register_commitment_checker(None)
+    # The released item with a lead time, not the released design appointment and not the planned slot.
+    assert (advance.advance_release_kind, advance.advance_release_id) == ("commitment", options[1].id)
+    assert (release, concept.release_gate_code, concept.state) == ("released", "", "draft")
+    assert [f for f in found if f["blocks_approval"]] == []

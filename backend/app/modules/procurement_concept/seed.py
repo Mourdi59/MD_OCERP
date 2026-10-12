@@ -15,9 +15,12 @@ Per project:
 * award packages for every package, with estimates sized to the project
   currency, a procedure the threshold check allows, need dates a few months out
   and supply lead times; one design package with a fee;
-* one long-lead supply as an advance package, but only when the project's
-  governance demo data holds a cleared gate condition to release it. The seed
-  never writes a governance decision or condition of its own;
+* one long-lead supply as an advance package, but only when something of the
+  project's demo data already releases it: a released commitment with a lead
+  time (the reserved fabrication slot, answered by the commitment matrix when
+  it is connected), else a cleared condition of a gate. With neither the
+  package stays an ordinary one. The seed never writes a commitment, a
+  governance decision or a condition of its own;
 * a prequalification profile with five criteria; candidates on the main works
   package from the demo subcontractor register (in a fixed order), topped up
   with named candidates still to be registered;
@@ -152,7 +155,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     public = regime is not None
     catalogue, jurisdiction, client_type = regime or _neutral_regime()
     today = datetime.now(UTC).date()
-    release = await _cleared_release(session, project_id)
+    release = await _advance_release(session, project_id)
     concept = ProcurementConcept(
         project_id=project_id,
         catalogue_source="shipped",
@@ -162,8 +165,9 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         client_type=client_type,
         public_client=public,
         vat_rate_pct=Decimal("0"),
-        # The gate the cleared condition belongs to released procurement in the demo story.
-        release_gate_code=release.gate_code if release is not None else "",
+        # A cleared condition names the gate that released procurement in the demo story; a released
+        # commitment names none, and the gate the phase model tags stays the release gate.
+        release_gate_code=release[2] if release is not None else "",
         state="draft",
         created_by=getattr(project, "owner_id", None),
     )
@@ -232,12 +236,11 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             row.procedure_code = "framework_call_off"
             framework_used = True
         elif cp.kind in ("supply", "supply_and_install") and not advance_done and release is not None:
-            # Only with a cleared condition to release it: an advance package that can never be released
-            # would block the demo concept for good.
+            # Only with something that releases it already: an advance package nothing released would block
+            # the demo concept.
             row.is_advance = True
             row.advance_reason = "Long lead item: fabrication slot must be reserved before the main tender"
-            row.advance_release_kind = "condition"
-            row.advance_release_id = release.id
+            row.advance_release_kind, row.advance_release_id = release[0], release[1]
             advance_done = True
         session.add(row)
         awards.append(row)
@@ -403,6 +406,24 @@ def _regime_for(country: str | None, currency: str) -> tuple | None:
             if currencies == {currency} and client_type is not None:
                 return catalogue, juris.code, client_type
     return None
+
+
+async def _advance_release(session: AsyncSession, project_id: uuid.UUID) -> tuple[str, uuid.UUID, str] | None:
+    """What releases the demo advance package: ``(kind, id, gate code)``, or ``None``. Nothing is written.
+
+    A released commitment that carries a lead time comes first (the long lead reservation of the commitment
+    matrix); the longest lead time wins and the code makes the pick repeatable. Else a cleared gate condition.
+    """
+    from app.modules.procurement_concept import commitments
+
+    lister = commitments.commitment_lister()
+    if lister is not None and commitments.commitment_checker() is not None:
+        long_lead = [o for o in await lister(session, project_id) if o.released and o.lead_time_days]
+        if long_lead:
+            pick = min(long_lead, key=lambda o: (-o.lead_time_days, o.code))
+            return commitments.KIND, pick.id, ""
+    condition = await _cleared_release(session, project_id)
+    return ("condition", condition.id, condition.gate_code) if condition is not None else None
 
 
 async def _cleared_release(session: AsyncSession, project_id: uuid.UUID):

@@ -31,8 +31,8 @@
       "reopened": "Wieder geöffnet"
     },
     "errors": {
-      "advance_release_kind_required": "Geben Sie an, ob eine Gate-Entscheidung oder eine Auflage dieses vorgezogene Paket freigibt.",
-      "advance_release_not_found": "Die freigebende Gate-Entscheidung oder Auflage wurde in diesem Projekt nicht gefunden.",
+      "advance_release_kind_required": "Geben Sie an, was dieses vorgezogene Paket freigibt: eine Gate-Entscheidung, eine Auflage oder eine freigegebene Verpflichtung.",
+      "advance_release_not_found": "Die freigebende Gate-Entscheidung, Auflage oder Verpflichtung wurde in diesem Projekt nicht gefunden.",
       "advance_release_other_gate": "Nur eine Entscheidung oder eine erfüllte Auflage des Gates, das die Vergabe freigibt, kann ein vorgezogenes Paket freigeben.",
       "advance_without_reason": "Ein vorgezogenes Paket braucht eine Begründung.",
       "binding_requires_change_request": "Das Konzept ist verbindlich. Ändern Sie es über einen Änderungsantrag zum Rahmendokument.",
@@ -42,6 +42,7 @@
       "candidate_not_registered": "Legen Sie das Unternehmen als Nachunternehmer oder Lieferant an, bevor Sie es auf die Auswahlliste setzen.",
       "catalogue_retired": "Dieser Katalog ist zurückgezogen und kann nicht festgelegt werden.",
       "client_type_not_in_jurisdiction": "Die Rechtsordnung kennt diese Auftraggeberart nicht.",
+      "commitment_release_unavailable": "Freigegebene Verpflichtungen können hier nicht geprüft werden: Die Verpflichtungsmatrix ist nicht angebunden. Nennen Sie stattdessen eine Gate-Entscheidung oder eine Auflage.",
       "company_not_found": "Unternehmen nicht gefunden.",
       "concept_locked": "Das Konzept ist in Prüfung oder freigegeben. Geben Sie es in den Entwurf zurück, um den Plan zu ändern.",
       "concept_missing": "Dieses Projekt hat noch kein Vergabekonzept.",
@@ -141,7 +142,7 @@
       "yes": "Ja"
     },
     "findings": {
-      "advance_package_not_released": "Vorgezogenes Paket nicht durch Gate-Entscheidung oder Auflage freigegeben",
+      "advance_package_not_released": "Vorgezogenes Paket nicht durch Gate-Entscheidung, Auflage oder freigegebene Verpflichtung freigegeben",
       "advance_without_reason": "Vorgezogenes Paket ohne Begründung",
       "award_schedule_infeasible": "Die Vergabe müsste in der Vergangenheit oder vor dem freigebenden Gate beginnen",
       "candidate_not_registered": "Unternehmen auf der Auswahlliste ist nicht angelegt",

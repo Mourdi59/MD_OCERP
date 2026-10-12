@@ -118,7 +118,7 @@ class PackagePut(_In):
     split_basis: Literal["trade", "section", "system", "whole"] | None = None
     is_advance: bool | None = None
     advance_reason: str | None = Field(default=None, max_length=4000)
-    advance_release_kind: Literal["gate_decision", "condition"] | None = None
+    advance_release_kind: Literal["gate_decision", "condition", "commitment"] | None = None
     advance_release_id: uuid.UUID | None = None
     estimated_value: Decimal | None = None
     currency: str | None = Field(default=None, min_length=3, max_length=3)

@@ -309,9 +309,10 @@ async def list_gates(project_id: uuid.UUID, session: SessionDep, user_id: Curren
 
 @router.get("/projects/{project_id}/advance-releases", dependencies=[READ])
 async def list_advance_releases(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
-    """Go decisions and conditions of the release gate an advance package may name as its release."""
+    """What an advance package may name as its release: acts of the release gate and released commitments."""
     await verify_project_access(project_id, user_id, session)
-    return _page(await _run(ProcurementConceptService(session).advance_release_options(project_id)))
+    data = await _run(ProcurementConceptService(session).advance_release_options(project_id))
+    return _page(data["items"], commitments=data["commitments"])
 
 
 @router.get("/projects/{project_id}/tender-packages", dependencies=[READ])

@@ -44,6 +44,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_log import log_activity
 from app.core.events import publish_after_commit
+from app.modules.procurement_concept import commitments
 from app.modules.procurement_concept import evaluator as ev
 from app.modules.procurement_concept import plan_source as plan
 from app.modules.procurement_concept.catalogue import (
@@ -279,13 +280,26 @@ class ProcurementConceptService:
         return sorted((d for d in decisions if d.outcome in _GO), key=lambda d: d.decided_at)
 
     async def advance_release_status(self, project_id: uuid.UUID, row: AwardPackage, gate: Any) -> str:
-        """``released`` | ``none`` | ``missing`` | ``other_gate`` | ``not_cleared`` (rule 12).
+        """``released`` | ``none`` | ``missing`` | ``other_gate`` | ``not_cleared`` | ``unavailable`` (rule 12).
 
-        Only an act of the release gate itself releases an advance package: a
-        condition of that gate that is cleared (open, overdue and waived do not
-        count), or its go decision.
+        Two things release an advance package. An act of the release gate
+        itself: a condition of that gate that is cleared (open, overdue and
+        waived do not count), or its go decision. Or, before that gate was ever
+        decided, a commitment of this project the owner released, which the
+        commitment matrix answers for through a registered checker;
+        ``unavailable`` when none is registered, which is never "released".
         """
-        if row.advance_release_id is None or row.advance_release_kind not in ("gate_decision", "condition"):
+        if row.advance_release_id is None:
+            return "none"
+        if row.advance_release_kind == commitments.KIND:
+            check = commitments.commitment_checker()
+            if check is None:
+                return "unavailable"
+            answer = await check(self.session, project_id, row.advance_release_id)
+            if not answer.found:
+                return "missing"
+            return "released" if answer.released else "not_cleared"
+        if row.advance_release_kind not in ("gate_decision", "condition"):
             return "none"
         # The listings are scoped to the project, so an act of another project is not found.
         if row.advance_release_kind == "gate_decision":
@@ -818,10 +832,12 @@ class ProcurementConceptService:
         if row.advance_release_id is not None:
             if not row.advance_release_kind:
                 raise ProcurementError("advance_release_kind_required", 422)
-            # A condition that is still open may be named: the package then stays unreleased (a blocking
-            # finding) until governance clears it. An act of another gate or project is refused.
+            # A condition that is still open, or a commitment not released yet, may be named: the package then
+            # stays unreleased (a blocking finding) until it is. An act of another gate or project is refused.
             gate = await self.release_gate(project_id, concept)
             status = await self.advance_release_status(project_id, row, gate)
+            if status == "unavailable":
+                raise conflict(commitments.UNAVAILABLE)
             if status == "missing":
                 raise not_found("advance_release_not_found")
             if status == "other_gate":
@@ -2227,26 +2243,31 @@ class ProcurementConceptService:
             "resolved_release_gate_code": resolved.code if resolved is not None else None,
         }
 
-    async def advance_release_options(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
-        """Acts of the release gate an advance package may name: its conditions and its go decisions."""
+    async def advance_release_options(self, project_id: uuid.UUID) -> dict[str, Any]:
+        """What an advance package may name as its release.
+
+        ``items``: the go decisions and conditions of the release gate, then the
+        commitments of the project. ``commitments``: whether the commitment
+        matrix answers at all, with the reason when it does not, so an empty
+        list of commitments is never mistaken for "this project has none".
+        """
         concept = await self.get_concept(project_id)
         gate = await self.release_gate(project_id, concept)
-        if gate is None:
-            return []
-        out: list[dict[str, Any]] = [
-            {
-                "kind": "gate_decision",
-                "id": str(d.id),
-                "gate_code": gate.code,
-                "label": d.outcome,
-                "status": d.outcome,
-                "date": d.decided_at.date().isoformat(),
-                "releases": True,
-            }
-            for d in await self._go_decisions(project_id, gate.id)
-        ]
-        for c in await project_conditions(self.session, project_id, gate.id):
-            out.append(
+        out: list[dict[str, Any]] = []
+        if gate is not None:
+            out.extend(
+                {
+                    "kind": "gate_decision",
+                    "id": str(d.id),
+                    "gate_code": gate.code,
+                    "label": d.outcome,
+                    "status": d.outcome,
+                    "date": d.decided_at.date().isoformat(),
+                    "releases": True,
+                }
+                for d in await self._go_decisions(project_id, gate.id)
+            )
+            out.extend(
                 {
                     "kind": "condition",
                     "id": str(c.id),
@@ -2256,8 +2277,25 @@ class ProcurementConceptService:
                     "date": c.cleared_at.date().isoformat() if c.cleared_at else None,
                     "releases": c.status == "cleared",
                 }
+                for c in await project_conditions(self.session, project_id, gate.id)
             )
-        return out
+        lister = commitments.commitment_lister()
+        if lister is None or commitments.commitment_checker() is None:
+            # Listing what the service would then refuse to accept helps nobody: both hooks or neither.
+            return {"items": out, "commitments": {"available": False, "reason": commitments.UNAVAILABLE}}
+        out.extend(
+            {
+                "kind": commitments.KIND,
+                "id": str(o.id),
+                "gate_code": None,
+                "label": f"{o.code} {o.title}".strip(),
+                "status": o.status,
+                "date": o.released_on.isoformat() if o.released_on else None,
+                "releases": o.released,
+            }
+            for o in await lister(self.session, project_id)
+        )
+        return {"items": out, "commitments": {"available": True, "reason": None}}
 
     async def tender_package_options(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
         """Tender packages of the project for the link picker; one already linked says to which package."""

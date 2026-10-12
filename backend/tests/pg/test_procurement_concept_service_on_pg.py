@@ -19,6 +19,7 @@ import sqlalchemy as sa
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.modules.procurement_concept import commitments
 from app.modules.procurement_concept import plan_source as plan
 from app.modules.procurement_concept.errors import ProcurementError
 from app.modules.procurement_concept.events import handle_frame_document, handle_read_back
@@ -30,6 +31,7 @@ from tests.pg.procurement_concept_fixtures import (
     OTHER_DOC,
     OTHER_GATE,
     RELEASE_GATE,
+    TODAY,
     World,
     add_condition,
     add_contract_package,
@@ -956,3 +958,114 @@ async def test_bid_package_tender_id_must_name_a_tender_package_of_the_same_proj
                 with pytest.raises(HTTPException) as exc:
                     await svc.create_package(data)
                 assert exc.value.status_code == 404
+
+
+# ── Advance package released by a commitment (the hook the commitment matrix registers) ──
+
+
+class _Matrix:
+    """A stand-in commitment matrix: items per project, each released or not."""
+
+    def __init__(self) -> None:
+        self.items: dict[uuid.UUID, dict[uuid.UUID, commitments.CommitmentOption]] = {}
+
+    def add(self, project_id: uuid.UUID, code: str, *, released: bool, lead: int | None = None) -> uuid.UUID:
+        option = commitments.CommitmentOption(
+            id=uuid.uuid4(),
+            code=code,
+            title=f"Item {code}",
+            status="released" if released else "planned",
+            released=released,
+            released_on=TODAY if released else None,
+            lead_time_days=lead,
+        )
+        self.items.setdefault(project_id, {})[option.id] = option
+        return option.id
+
+    def release(self, project_id: uuid.UUID, item_id: uuid.UUID) -> None:
+        from dataclasses import replace
+
+        self.items[project_id][item_id] = replace(
+            self.items[project_id][item_id], status="released", released=True, released_on=TODAY
+        )
+
+    async def check(self, _session, project_id: uuid.UUID, item_id: uuid.UUID) -> commitments.CommitmentAnswer:
+        option = self.items.get(project_id, {}).get(item_id)
+        return commitments.CommitmentAnswer(found=option is not None, released=bool(option and option.released))
+
+    async def listing(self, _session, project_id: uuid.UUID) -> list[commitments.CommitmentOption]:
+        return sorted(self.items.get(project_id, {}).values(), key=lambda o: o.code)
+
+
+@pytest.fixture
+def matrix():
+    m = _Matrix()
+    commitments.register_commitment_checker(m.check)
+    commitments.register_commitment_lister(m.listing)
+    yield m
+    commitments.register_commitment_checker(None)
+    commitments.register_commitment_lister(None)
+
+
+_ADVANCE = {
+    "estimated_value": "50000",
+    "currency": "EUR",
+    "procedure_code": "request_for_quotation",
+    "is_advance": True,
+    "advance_reason": "Fabrication slot",
+    "advance_release_kind": "commitment",
+}
+
+
+async def test_without_a_commitment_matrix_the_commitment_kind_is_refused_by_name(world: World) -> None:
+    await add_contract_package(world, "S1", "supply")
+    with _raises("commitment_release_unavailable", 409):
+        await put(world, "S1", {**_ADVANCE, "advance_release_id": uuid.uuid4()})
+    options = await svc_call(world, "advance_release_options", world.project_id)
+    assert options["commitments"] == {"available": False, "reason": "commitment_release_unavailable"}
+    assert [o for o in options["items"] if o["kind"] == "commitment"] == []
+    # A lister without a checker lists nothing either: what is listed must be acceptable.
+    commitments.register_commitment_lister(_Matrix().listing)
+    try:
+        options = await svc_call(world, "advance_release_options", world.project_id)
+        assert options["commitments"]["available"] is False
+    finally:
+        commitments.register_commitment_lister(None)
+
+
+async def test_a_released_commitment_releases_an_advance_package_before_any_gate_decision(
+    world: World, matrix: _Matrix
+) -> None:
+    """The circle this kind breaks: no decision and no condition of the release gate exists yet."""
+    await add_contract_package(world, "S1", "supply")
+    other = await build_world(world.factory)
+    foreign = matrix.add(other.project_id, "CR-9", released=True)
+    planned = matrix.add(world.project_id, "CR-1", released=False, lead=150)
+    with _raises("advance_release_not_found", 404):
+        await put(world, "S1", {**_ADVANCE, "advance_release_id": foreign})
+    with _raises("advance_release_not_found", 404):
+        await put(world, "S1", {**_ADVANCE, "advance_release_id": uuid.uuid4()})
+    # A commitment that is only planned may be named; it releases nothing yet.
+    await put(world, "S1", {**_ADVANCE, "advance_release_id": planned})
+    codes = {f["code"] for f in await svc_call(world, "findings", world.project_id) if f["ref"] == "S1"}
+    assert "advance_package_not_released" in codes
+    with _raises("concept_not_approved", 409):
+        await execute(world, "S1")
+    options = await svc_call(world, "advance_release_options", world.project_id)
+    assert options["commitments"] == {"available": True, "reason": None}
+    assert [(o["id"], o["status"], o["releases"], o["gate_code"]) for o in options["items"]] == [
+        (str(planned), "planned", False, None)
+    ]
+    matrix.release(world.project_id, planned)
+    codes = {f["code"] for f in await svc_call(world, "findings", world.project_id) if f["ref"] == "S1"}
+    assert "advance_package_not_released" not in codes
+    # The concept is still a draft and the gate undecided: the released advance package may go to tender.
+    assert (await _concept(world))[0].state == "draft"
+    assert (await execute(world, "S1"))["id"]
+    # The matrix goes away (the module is switched off): nothing is taken on trust.
+    commitments.register_commitment_checker(None)
+    try:
+        codes = {f["code"] for f in await svc_call(world, "findings", world.project_id) if f["ref"] == "S1"}
+        assert "advance_package_not_released" in codes
+    finally:
+        commitments.register_commitment_checker(matrix.check)

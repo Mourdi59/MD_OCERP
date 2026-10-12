@@ -31,8 +31,8 @@
       "reopened": "Reopened"
     },
     "errors": {
-      "advance_release_kind_required": "Say whether a gate decision or a condition releases this advance package.",
-      "advance_release_not_found": "The releasing gate decision or condition was not found in this project.",
+      "advance_release_kind_required": "Say what releases this advance package: a gate decision, a condition or a released commitment.",
+      "advance_release_not_found": "The releasing gate decision, condition or commitment was not found in this project.",
       "advance_release_other_gate": "Only a decision or a cleared condition of the gate that releases procurement can release an advance package.",
       "advance_without_reason": "An advance package needs a reason.",
       "binding_requires_change_request": "The concept is binding. Change it through a change request on the frame document.",
@@ -42,6 +42,7 @@
       "candidate_not_registered": "Register the company as subcontractor or vendor before short-listing it.",
       "catalogue_retired": "This catalogue is retired and cannot be pinned.",
       "client_type_not_in_jurisdiction": "The jurisdiction does not know this client type.",
+      "commitment_release_unavailable": "Released commitments cannot be checked here: the commitment matrix is not connected. Name a gate decision or a condition instead.",
       "company_not_found": "Company not found.",
       "concept_locked": "The concept is under review or approved. Return it to draft to change the plan.",
       "concept_missing": "This project has no procurement concept yet.",
@@ -141,7 +142,7 @@
       "yes": "Yes"
     },
     "findings": {
-      "advance_package_not_released": "Advance package not released by a gate decision or condition",
+      "advance_package_not_released": "Advance package not released by a gate decision, a condition or a released commitment",
       "advance_without_reason": "Advance package without reason",
       "award_schedule_infeasible": "Procurement would have to start in the past or before the releasing gate",
       "candidate_not_registered": "Short-listed company is not registered",
