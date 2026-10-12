@@ -20,7 +20,7 @@ vi.mock('../api', async (importOriginal) => {
     getModel: vi.fn(),
     listCatalogues: vi.fn(),
     listAreas: vi.fn(),
-    listGates: vi.fn(),
+    getMatrix: vi.fn(),
     listDocuments: vi.fn(),
     listChangeRequests: vi.fn(),
     listConditions: vi.fn(),
@@ -118,9 +118,10 @@ describe('ProjectGovernancePage states', () => {
       stopped: false,
       stopped_at: null,
       phases: [],
+      can: { manage: true },
     });
     mocked.listAreas.mockResolvedValue(emptyPage);
-    mocked.listGates.mockResolvedValue(emptyPage);
+    mocked.getMatrix.mockResolvedValue({ gates: [], next_gate: null, areas: [] });
     mocked.listDocuments.mockResolvedValue(emptyPage);
     mocked.listChangeRequests.mockResolvedValue(emptyPage);
     mocked.listConditions.mockResolvedValue(emptyPage);
@@ -142,6 +143,7 @@ describe('governance i18n keys', () => {
     for (const [key] of Object.values(map)) used.add(key);
   }
   for (const code of Object.keys(ERROR_TEXT)) used.add(`governance.errors.${code}`);
+  used.add('governance.project.disabled.unavailable');
 
   it('finds the keys it is meant to check', () => {
     // A broken extraction would make the two tests below pass on nothing.

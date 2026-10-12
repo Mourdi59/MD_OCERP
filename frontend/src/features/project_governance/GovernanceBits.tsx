@@ -12,6 +12,7 @@ import { Badge, type BadgeVariant } from '@/shared/ui/Badge';
 import { Button, type ButtonProps } from '@/shared/ui/Button';
 
 import { DISABLED_REASON, type Verdict } from './access';
+import { ERROR_TEXT } from './labels';
 import type { CheckStatus, ConditionStatus, DocumentStatus, GateStatus, Outcome } from './api';
 
 /**
@@ -26,9 +27,22 @@ export function ReasonedButton({
   disabled,
   ...rest
 }: ButtonProps & { verdict: Verdict; children: ReactNode }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const reasonId = useId();
-  const reason = verdict ? DISABLED_REASON[verdict] : null;
+  const server = verdict && typeof verdict === 'object' ? verdict.server : null;
+  // A server code resolves through governance.errors.<code>; a code nobody
+  // translated reads as neutral, with the code beside it for support.
+  const serverKey = server ? ['governance', 'errors', server].join('.') : null;
+  const serverKnown =
+    !!server && (server in ERROR_TEXT || (typeof i18n?.exists === 'function' && !!serverKey && i18n.exists(serverKey)));
+  const reason: readonly [string, string] | null =
+    verdict === null
+      ? null
+      : typeof verdict === 'string'
+        ? DISABLED_REASON[verdict]
+        : serverKnown && serverKey
+          ? [serverKey, ERROR_TEXT[server as string] ?? '']
+          : ['governance.project.disabled.unavailable', 'This decision is not available right now.'];
   return (
     <span className="inline-flex flex-col items-start gap-1">
       <Button
@@ -43,11 +57,16 @@ export function ReasonedButton({
         <span
           id={reasonId}
           data-testid="disabled-reason"
-          data-reason={verdict ?? undefined}
+          data-reason={typeof verdict === 'string' ? verdict : server ? `server:${server}` : undefined}
           className="inline-flex max-w-xs items-start gap-1 text-2xs text-content-tertiary"
         >
           <Info size={11} className="mt-px shrink-0" aria-hidden />
           {t(reason[0], { defaultValue: reason[1] })}
+          {server && !serverKnown && (
+            <span className="ml-1 font-mono text-content-quaternary" data-testid="disabled-reason-code">
+              ({server})
+            </span>
+          )}
         </span>
       )}
     </span>

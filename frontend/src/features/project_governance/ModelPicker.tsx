@@ -28,7 +28,7 @@ import {
   type GovernanceGate,
   type GovernanceModel,
 } from './api';
-import { canManage, type Viewer } from './access';
+import { canManage, roleManage, type Viewer } from './access';
 import { ReasonedButton } from './GovernanceBits';
 import { catalogueName, errorText, humanizeCode, type LabelContext } from './labels';
 
@@ -50,7 +50,7 @@ function catalogueTitle(labels: LabelContext, c: CatalogueSummary): string {
 export function ModelPicker({ projectId, model, gates, viewer, labels, onDone }: ModelPickerProps) {
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
-  const verdict = canManage(viewer);
+  const verdict = model ? canManage(model) : roleManage(viewer);
   const catalogues = useQuery({ queryKey: governanceKeys.catalogues, queryFn: () => listCatalogues().then((p) => p.items) });
   const [selected, setSelected] = useState<string>('');
   const [fourEyes, setFourEyes] = useState(true);

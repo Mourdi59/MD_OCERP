@@ -41,8 +41,31 @@ _OWNER_EMAIL = "demo@openconstructionerp.com"
 _DECIDER_EMAIL = "manager@openconstructionerp.com"
 _COST_EMAIL = "estimator@openconstructionerp.com"
 
-#: Areas the estimator login owns; every other area goes to the project owner.
-_COST_AREAS = frozenset({"cost_finance", "procurement"})
+#: The catalogue a demo project pins; AREA_OWNERS names its areas.
+DEMO_CATALOGUE = "neutral"
+
+#: Who owns each area of DEMO_CATALOGUE: ``cost`` is the estimator login, ``owner``
+#: the project owner. Written out per area so the demo reads as a story;
+#: tests/unit/test_governance_demo_seed_map.py fails when it drifts from the catalogue.
+AREA_OWNERS: dict[str, str] = {
+    "integration": "owner",
+    "scope": "owner",
+    "schedule": "owner",
+    "cost_finance": "cost",
+    "quality": "owner",
+    "resources": "owner",
+    "stakeholders": "owner",
+    "risk": "owner",
+    "procurement": "cost",
+    "hse": "owner",
+}
+
+
+def owner_for(area_code: str, *, owner: uuid.UUID, cost_owner: uuid.UUID) -> uuid.UUID:
+    """The demo owner of an area. An unmapped area goes to the project owner, never
+    to the decider: under four-eyes a decider who owns an area cannot decide."""
+    return cost_owner if AREA_OWNERS.get(area_code) == "cost" else owner
+
 
 _FIRST_GATE = "strategy_to_brief"
 _TEAM_NAME = "Governance board"
@@ -142,7 +165,7 @@ async def _seed_project(
     await svc.set_model(
         project_id,
         source="shipped",
-        catalogue_id="neutral",
+        catalogue_id=DEMO_CATALOGUE,
         version=None,
         four_eyes=True,
         actor_id=owner,
@@ -152,7 +175,7 @@ async def _seed_project(
     areas: list[GovernanceArea] = await svc.repo.list_areas(project_id)
     area_owner: dict[uuid.UUID, uuid.UUID] = {}
     for area in areas:
-        who = cost_owner if area.code in _COST_AREAS else owner
+        who = owner_for(area.code, owner=owner, cost_owner=cost_owner)
         await svc.update_area(project_id, area.id, changes={"owner_user_id": who}, actor_id=owner)
         area_owner[area.id] = who
     area_code = {a.id: a.code for a in areas}

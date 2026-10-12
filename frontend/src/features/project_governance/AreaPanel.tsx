@@ -105,7 +105,7 @@ function DocumentRow({
     <li className="rounded-lg border border-border-light p-3" data-testid="area-document">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium text-content-primary">
-          {catalogueName(labels, { kind: 'doc', code: doc.doc_type, catalogueId })}
+          {catalogueName(labels, { kind: 'doc', code: doc.doc_type, catalogueId, label: doc.name })}
         </span>
         <ToneBadge tone={DOCUMENT_TONE[doc.status]}>{vocab(t, DOCUMENT_STATUS, doc.status)}</ToneBadge>
         {doc.status === 'binding' && (
@@ -235,7 +235,7 @@ export function AreaPanel({
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
   const invalidate = useInvalidateGovernance(projectId);
-  const verdict = canEditArea(viewer, area);
+  const verdict = canEditArea(model);
   const [naRationale, setNaRationale] = useState(area.na_rationale);
   const catalogueId = model.catalogue_id;
   const name = catalogueName(labels, {

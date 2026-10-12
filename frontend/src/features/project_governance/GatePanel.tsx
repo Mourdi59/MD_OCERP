@@ -128,7 +128,9 @@ function AreaReadiness({
   personName,
   onOpenArea,
   onChanged,
+  detailCan,
 }: {
+  detailCan: Pick<GateDetail, 'can'>;
   projectId: string;
   gateId: string;
   area: GateArea;
@@ -146,10 +148,10 @@ function AreaReadiness({
   const [status, setStatus] = useState<Exclude<CheckStatus, 'not_applicable'>>('ready');
   const [note, setNote] = useState('');
   const [naMode, setNaMode] = useState(false);
-  const verdict = canConfirmCheck(viewer, model, area);
+  const verdict = canConfirmCheck(viewer, model, area, detailCan);
   const check = area.check;
   const checkStatus: CheckStatus = !area.applicable ? 'not_applicable' : check?.status ?? 'not_assessed';
-  const name = catalogueName(labels, { kind: 'area', code: area.code, catalogueId });
+  const name = catalogueName(labels, { kind: 'area', code: area.code, catalogueId, label: area.name });
 
   const save = useMutation({
     mutationFn: () =>
@@ -202,7 +204,7 @@ function AreaReadiness({
         <ul className="mt-2 space-y-1">
           {area.documents.map((d) => (
             <li key={d.document_id} className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-content-primary">{catalogueName(labels, { kind: 'doc', code: d.doc_type, catalogueId })}</span>
+              <span className="text-content-primary">{catalogueName(labels, { kind: 'doc', code: d.doc_type, catalogueId, label: d.name })}</span>
               <ToneBadge tone={DOCUMENT_TONE[d.status]}>{vocab(t, DOCUMENT_STATUS, d.status)}</ToneBadge>
               {d.required && (
                 <span className="text-2xs text-content-tertiary">
@@ -400,8 +402,8 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
   const gate = detail.gate;
   const catalogueId = catalogueIdOf(gate.catalogue_id) ?? model.catalogue_id;
   const areaName = (code: string) => catalogueName(labels, { kind: 'area', code, catalogueId });
-  const decideVerdict = refusal ?? canDecide(viewer, model, detail);
-  const submitVerdict = canSubmitGate(viewer, model, detail);
+  const decideVerdict = refusal ?? canDecide(model, detail);
+  const submitVerdict = canSubmitGate(model, detail);
 
   return (
     <div className="space-y-5" data-testid="gate-panel">
@@ -427,7 +429,7 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
         {gate.status === 'not_started' && (
           <ReasonedButton
             variant="secondary"
-            verdict={roleAllows(viewer.role, 'edit') ? (model.stopped ? 'project_stopped' : null) : 'role_edit'}
+            verdict={detail.can.edit ? (model.stopped ? 'project_stopped' : null) : 'role_edit'}
             loading={prepare.isPending}
             onClick={() => prepare.mutate()}
           >
@@ -486,6 +488,7 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
                 personName={personName}
                 onOpenArea={onOpenArea}
                 onChanged={invalidate}
+                detailCan={detail}
               />
             ))}
           </div>

@@ -1,23 +1,20 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
-// The areas x phases matrix, built from what the list endpoints return.
+// The areas x phases matrix, laid out from GET .../matrix.
 //
-// A column is a phase and the gate that leaves it. A cell is the frame
-// documents that area owes at that gate, plus readiness where the client
-// knows it: the outcome of a decided gate, and the area check of the next
-// gate (the only gate whose detail the screen loads, one request instead of
-// one per gate). Gates further ahead have no readiness yet, which is what the
-// cell then says.
+// The server sends areas x gates with the check of each gate's current
+// attempt; this turns it into phases as columns, because a reader thinks in
+// phases. A column is a phase and the gate that leaves it, a cell is the
+// readiness of the area at that gate plus the frame documents it owes there.
 
 import type {
   CheckStatus,
   DocumentStatus,
-  FrameDocument,
-  GateDetail,
-  GovernanceArea,
   GovernanceGate,
   GovernancePhase,
+  MatrixArea,
+  MatrixResponse,
   Outcome,
 } from './api';
 
@@ -39,7 +36,7 @@ export interface MatrixCell {
 }
 
 export interface MatrixRow {
-  area: GovernanceArea;
+  area: MatrixArea;
   cells: MatrixCell[];
 }
 
@@ -48,50 +45,42 @@ export interface GovernanceMatrixData {
   rows: MatrixRow[];
 }
 
-/** The gate the project has to pass next: the first live gate, in order, that is not decided. */
-export function nextGate(gates: GovernanceGate[]): GovernanceGate | null {
-  const live = gates.filter((g) => !g.historic).sort((a, b) => a.sort_order - b.sort_order);
-  return live.find((g) => g.status !== 'decided') ?? null;
-}
-
 export function buildMatrix(input: {
   phases: GovernancePhase[];
   currentPhase: string | null;
-  areas: GovernanceArea[];
-  gates: GovernanceGate[];
-  documents: FrameDocument[];
-  nextDetail: GateDetail | null;
+  matrix: MatrixResponse;
 }): GovernanceMatrixData {
   const phases = [...input.phases].sort((a, b) => a.order - b.order);
-  const live = input.gates.filter((g) => !g.historic);
+  const live = input.matrix.gates.filter((g) => !g.historic);
   const columns: MatrixColumn[] = phases.map((phase) => ({
     phase,
     gate: live.find((g) => g.from_phase === phase.code) ?? null,
     isCurrent: phase.code === input.currentPhase,
   }));
-  const areas = input.areas.filter((a) => !a.retired).sort((a, b) => a.sort_order - b.sort_order);
 
-  const rows = areas.map<MatrixRow>((area) => ({
+  const rows = input.matrix.areas.map<MatrixRow>((area) => ({
     area,
     cells: columns.map<MatrixCell>(({ gate }) => {
-      const documents = gate
-        ? input.documents
-            .filter((d) => d.area_id === area.id && d.required_at_gates.includes(gate.code))
-            .map((d) => ({ id: d.id, docType: d.doc_type, status: d.status }))
-        : [];
-      return { documents, readiness: readinessOf(area, gate, input.nextDetail) };
+      const cell = gate ? area.cells[gate.code] : undefined;
+      return {
+        documents: (cell?.documents ?? []).map((d) => ({ id: d.document_id, docType: d.doc_type, status: d.status })),
+        readiness: readinessOf(area, gate, cell?.check_status ?? null, !!cell?.stale),
+      };
     }),
   }));
   return { columns, rows };
 }
 
-function readinessOf(area: GovernanceArea, gate: GovernanceGate | null, detail: GateDetail | null): CellReadiness {
+function readinessOf(
+  area: MatrixArea,
+  gate: GovernanceGate | null,
+  checkStatus: CheckStatus | null,
+  stale: boolean,
+): CellReadiness {
   if (!gate) return { kind: 'none' };
   if (gate.status === 'decided') return { kind: 'decided', outcome: gate.last_outcome };
-  if (detail && detail.gate.id === gate.id) {
-    if (!area.applicable) return { kind: 'check', status: 'not_applicable', stale: false };
-    const row = detail.areas.find((a) => a.area_id === area.id);
-    return { kind: 'check', status: row?.check?.status ?? 'not_assessed', stale: !!row?.check?.stale };
-  }
-  return { kind: 'pending' };
+  if (!area.applicable) return { kind: 'check', status: 'not_applicable', stale: false };
+  if (checkStatus) return { kind: 'check', status: checkStatus, stale };
+  // An open gate nobody has assessed yet: say so on the gate in progress, stay quiet ahead of it.
+  return gate.status === 'not_started' ? { kind: 'pending' } : { kind: 'check', status: 'not_assessed', stale: false };
 }

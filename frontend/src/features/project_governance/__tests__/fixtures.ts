@@ -12,6 +12,8 @@ import type {
   GovernanceCondition,
   GovernanceGate,
   GovernanceModel,
+  MatrixArea,
+  MatrixResponse,
   Violation,
 } from '../api';
 
@@ -28,6 +30,7 @@ export function model(over: Partial<GovernanceModel> = {}): GovernanceModel {
     change_route_id: null,
     stopped: false,
     stopped_at: null,
+    can: { manage: true },
     phases: [
       { code: 'strategy', order: 1, name: { key: 'governance.catalogue.neutral.phase.strategy', text: null } },
       { code: 'brief', order: 2, name: { key: 'governance.catalogue.neutral.phase.brief', text: null } },
@@ -93,9 +96,16 @@ export function gateArea(seed: AreaSeed = {}): GateArea {
 }
 
 export function detail(
-  over: { gate?: GovernanceGate; areas?: AreaSeed[]; blockers?: Violation[]; decisions?: GateDetail['decisions'] } = {},
+  over: {
+    gate?: GovernanceGate;
+    areas?: AreaSeed[];
+    blockers?: Violation[];
+    decisions?: GateDetail['decisions'];
+    can?: GateDetail['can'];
+  } = {},
 ): GateDetail {
   return {
+    can: over.can ?? { edit: true, decide: true },
     gate: over.gate ?? gate(),
     blockers: over.blockers ?? [],
     areas: (over.areas ?? [{}]).map(gateArea),
@@ -129,4 +139,26 @@ export function condition(over: Partial<GovernanceCondition> = {}): GovernanceCo
     escalated_at: null,
     ...over,
   };
+}
+
+export function matrixArea(over: Partial<MatrixArea> = {}): MatrixArea {
+  return {
+    area_id: 'a1',
+    code: 'organisation',
+    name: null,
+    name_override: '',
+    owner_user_id: 'u-owner',
+    deputy_user_id: null,
+    applicable: true,
+    cells: {},
+    ...over,
+  };
+}
+
+export function matrixResponse(over: {
+  gates?: GovernanceGate[];
+  next?: MatrixResponse['next_gate'];
+  areas?: MatrixArea[];
+} = {}): MatrixResponse {
+  return { gates: over.gates ?? [], next_gate: over.next ?? null, areas: over.areas ?? [] };
 }

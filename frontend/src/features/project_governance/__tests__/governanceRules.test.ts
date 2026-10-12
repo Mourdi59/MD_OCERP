@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 
+import type { GateDetail } from '../api';
 import {
   canClearCondition,
   canConfirmCheck,
@@ -14,12 +15,13 @@ import {
   canSubmitGate,
   canWaiveCondition,
   roleAllows,
+  roleManage,
   type Viewer,
 } from '../access';
 import { decisionProblems, toDecisionInput, waiverProblem, type DecisionDraft } from '../decisionRules';
-import { buildMatrix, nextGate } from '../matrix';
+import { buildMatrix } from '../matrix';
 import { catalogueIdOf, catalogueName, humanizeCode, type LabelContext } from '../labels';
-import { area, condition, detail, gate, model } from './fixtures';
+import { condition, detail, gate, matrixArea, matrixResponse, model } from './fixtures';
 
 const manager: Viewer = { userId: 'u-manager', role: 'manager' };
 const editor: Viewer = { userId: 'u-editor', role: 'editor' };
@@ -42,68 +44,81 @@ describe('roleAllows', () => {
   });
 });
 
-describe('canDecide', () => {
-  const inReview = detail({ gate: gate({ status: 'in_review' }) });
+describe('canDecide reads the server answer', () => {
+  const inReview = (can: Partial<GateDetail['can']>) => ({
+    ...detail({ gate: gate({ status: 'in_review' }) }),
+    can: { edit: true, decide: false, ...can },
+  });
 
-  it('lets an entitled manager decide a gate in review', () => {
-    expect(canDecide(manager, model(), inReview)).toBeNull();
+  it('allows when the server says the caller may decide', () => {
+    expect(canDecide(model(), inReview({ decide: true }))).toBeNull();
   });
-  it('refuses an editor with the role reason', () => {
-    expect(canDecide(editor, model(), inReview)).toBe('role_decide');
+  it.each([
+    ['decider_not_entitled', 'role_decide'],
+    ['missing_permission', 'role_decide'],
+    ['decider_is_area_owner', 'four_eyes'],
+  ] as const)('maps the known code %s to %s', (code, reason) => {
+    expect(canDecide(model(), inReview({ decide_reason: code }))).toBe(reason);
   });
-  it('refuses a gate not yet in review', () => {
-    expect(canDecide(manager, model(), detail({ gate: gate({ status: 'in_preparation' }) }))).toBe('gate_not_in_review');
+  it('an unknown or missing code is passed through, never mapped onto a guessed reason', () => {
+    expect(canDecide(model(), inReview({ decide_reason: 'budget_frozen_by_board' }))).toEqual({
+      server: 'budget_frozen_by_board',
+    });
+    expect(canDecide(model(), inReview({}))).toEqual({ server: '' });
   });
-  it('applies four-eyes to an area owner and to a deputy', () => {
-    const owned = detail({ gate: gate({ status: 'in_review' }), areas: [{ owner_user_id: 'u-manager' }] });
-    expect(canDecide(manager, model({ four_eyes: true }), owned)).toBe('four_eyes');
-    const deputised = detail({ gate: gate({ status: 'in_review' }), areas: [{ deputy_user_id: 'u-manager' }] });
-    expect(canDecide(manager, model({ four_eyes: true }), deputised)).toBe('four_eyes');
-  });
-  it('lets the owner decide when the project switched four-eyes off', () => {
-    const owned = detail({ gate: gate({ status: 'in_review' }), areas: [{ owner_user_id: 'u-manager' }] });
-    expect(canDecide(manager, model({ four_eyes: false }), owned)).toBeNull();
-  });
-  it('refuses on a stopped project', () => {
-    expect(canDecide(manager, model({ stopped: true }), inReview)).toBe('project_stopped');
+  it('gate state and a stopped project explain first', () => {
+    const preparing = { ...detail({ gate: gate({ status: 'in_preparation' }) }), can: { edit: true, decide: true } };
+    expect(canDecide(model(), preparing)).toBe('gate_not_in_review');
+    expect(canDecide(model({ stopped: true }), inReview({ decide: true }))).toBe('project_stopped');
   });
 });
 
 describe('canConfirmCheck', () => {
+  const editable = { can: { edit: true, decide: false } };
+  const a = () => detail().areas[0]!;
+
   it('needs an owner on the area first', () => {
-    const a = detail().areas[0]!;
-    expect(canConfirmCheck(editor, model(), { ...a, owner_user_id: null })).toBe('area_without_owner');
+    expect(canConfirmCheck(editor, model(), { ...a(), owner_user_id: null }, editable)).toBe('area_without_owner');
   });
   it('refuses someone who is not owner or deputy', () => {
-    const a = detail().areas[0]!;
-    expect(canConfirmCheck(editor, model(), { ...a, owner_user_id: 'someone-else' })).toBe('not_area_owner');
+    expect(canConfirmCheck(editor, model(), { ...a(), owner_user_id: 'someone-else' }, editable)).toBe('not_area_owner');
   });
-  it('lets the owner confirm', () => {
-    const a = detail().areas[0]!;
-    expect(canConfirmCheck(editor, model(), { ...a, owner_user_id: 'u-editor' })).toBeNull();
+  it('lets the owner and the deputy confirm', () => {
+    expect(canConfirmCheck(editor, model(), { ...a(), owner_user_id: 'u-editor' }, editable)).toBeNull();
+    expect(canConfirmCheck(editor, model(), { ...a(), deputy_user_id: 'u-editor' }, editable)).toBeNull();
   });
-  it('tells a viewer it is the role', () => {
-    const a = detail().areas[0]!;
-    expect(canConfirmCheck(viewer, model(), { ...a, owner_user_id: 'u-viewer' })).toBe('role_edit');
+  it('follows the server edit flag, not the role', () => {
+    const own = { ...a(), owner_user_id: 'u-editor' };
+    expect(canConfirmCheck(editor, model(), own, { can: { edit: false, decide: false } })).toBe('role_edit');
+    expect(canConfirmCheck(viewer, model(), { ...a(), owner_user_id: 'u-viewer' }, editable)).toBeNull();
   });
 });
 
 describe('other verdicts', () => {
-  it('submit needs a gate in preparation and edit rights', () => {
-    expect(canSubmitGate(editor, model(), detail({ gate: gate({ status: 'in_preparation' }) }))).toBeNull();
-    expect(canSubmitGate(editor, model(), detail({ gate: gate({ status: 'not_started' }) }))).toBe('gate_not_ready_to_submit');
-    expect(canSubmitGate(viewer, model(), detail({ gate: gate({ status: 'in_preparation' }) }))).toBe('role_edit');
+  it('submit needs a gate in preparation and the edit flag', () => {
+    const d = (status: 'in_preparation' | 'not_started', edit: boolean) => ({
+      ...detail({ gate: gate({ status }) }),
+      can: { edit, decide: false },
+    });
+    expect(canSubmitGate(model(), d('in_preparation', true))).toBeNull();
+    expect(canSubmitGate(model(), d('not_started', true))).toBe('gate_not_ready_to_submit');
+    expect(canSubmitGate(model(), d('in_preparation', false))).toBe('role_edit');
   });
-  it('manage is manager only', () => {
-    expect(canManage(manager)).toBeNull();
-    expect(canManage(editor)).toBe('role_manage');
+  it('manage and waive follow the model flag', () => {
+    expect(canManage(model({ can: { manage: true } }))).toBeNull();
+    expect(canManage(model({ can: { manage: false } }))).toBe('role_manage');
+    expect(canWaiveCondition(condition(), model({ can: { manage: true } }))).toBeNull();
+    expect(canWaiveCondition(condition(), model({ can: { manage: false } }))).toBe('role_decide');
+    expect(canWaiveCondition(condition({ status: 'cleared' }), model())).toBe('condition_closed');
   });
-  it('a condition owner who is an editor may clear but not waive', () => {
-    const c = condition({ owner_user_id: 'u-editor' });
-    expect(canClearCondition(editor, c)).toBeNull();
-    expect(canWaiveCondition(editor, c)).toBe('role_decide');
+  it('before a model exists only the role can answer manage', () => {
+    expect(roleManage(manager)).toBeNull();
+    expect(roleManage(editor)).toBe('role_manage');
+  });
+  it('a condition owner who is an editor may clear; others may not', () => {
+    expect(canClearCondition(editor, condition({ owner_user_id: 'u-editor' }))).toBeNull();
     expect(canClearCondition(editor, condition({ owner_user_id: 'other' }))).toBe('not_condition_owner');
-    expect(canWaiveCondition(manager, condition({ status: 'cleared' }))).toBe('condition_closed');
+    expect(canClearCondition(manager, condition({ owner_user_id: 'other' }))).toBeNull();
   });
 });
 
@@ -167,49 +182,61 @@ describe('decisionProblems', () => {
 });
 
 describe('matrix', () => {
-  it('next gate is the first live undecided gate in order', () => {
-    const gates = [
-      gate({ id: 'g1', sort_order: 1, status: 'decided' }),
-      gate({ id: 'g3', sort_order: 3, status: 'not_started' }),
-      gate({ id: 'g2', sort_order: 2, status: 'in_review' }),
-      gate({ id: 'gh', sort_order: 0, status: 'in_review', historic: true }),
-    ];
-    expect(nextGate(gates)?.id).toBe('g2');
-    expect(nextGate([gate({ status: 'decided' })])).toBeNull();
-  });
-
-  it('cells carry the decided outcome, the next gate check and the owed documents', () => {
+  it('lays the server matrix out by phase: outcome, check, pending and owed documents', () => {
     const m = model();
-    const a = area({ id: 'a1', code: 'cost_finance' });
     const decided = gate({ id: 'g1', code: 'strategy_to_brief', from_phase: 'strategy', status: 'decided', last_outcome: 'go_with_conditions' });
     const open = gate({ id: 'g2', code: 'brief_to_concept', from_phase: 'brief', sort_order: 2, status: 'in_review' });
+    const ahead = gate({ id: 'g3', code: 'concept_to_design', from_phase: 'concept', sort_order: 3, status: 'not_started' });
     const data = buildMatrix({
       phases: m.phases,
       currentPhase: 'brief',
-      areas: [a],
-      gates: [decided, open],
-      documents: [
-        {
-          id: 'd1',
-          area_id: 'a1',
-          doc_type: 'business_case',
-          required_at_gates: ['brief_to_concept'],
-          status: 'in_review',
-          container_id: null,
-          bound_revision_id: null,
-          bound_content_hash: null,
-          approved_gate_id: null,
-          read_only: false,
-        },
-      ],
-      nextDetail: detail({ gate: open, areas: [{ area_id: 'a1', code: 'cost_finance', check: 'not_ready' }] }),
+      matrix: matrixResponse({
+        gates: [decided, open, ahead],
+        next: { id: 'g2', code: 'brief_to_concept', status: 'in_review', blocker_count: 1 },
+        areas: [
+          matrixArea({
+            cells: {
+              brief_to_concept: {
+                check_status: 'not_ready',
+                rag: 'red',
+                stale: false,
+                documents: [{ document_id: 'd1', doc_type: 'business_case', status: 'in_review', required: true }],
+              },
+            },
+          }),
+        ],
+      }),
     });
     expect(data.columns.map((c) => c.isCurrent)).toEqual([false, true, false]);
     const [c0, c1, c2] = data.rows[0]!.cells;
     expect(c0!.readiness).toEqual({ kind: 'decided', outcome: 'go_with_conditions' });
     expect(c1!.readiness).toEqual({ kind: 'check', status: 'not_ready', stale: false });
     expect(c1!.documents).toEqual([{ id: 'd1', docType: 'business_case', status: 'in_review' }]);
-    expect(c2!.readiness).toEqual({ kind: 'none' });
+    expect(c2!.readiness).toEqual({ kind: 'pending' });
+  });
+
+  it('an open gate nobody assessed reads not assessed; a not-applicable area reads not applicable', () => {
+    const open = gate({ id: 'g2', code: 'brief_to_concept', from_phase: 'brief', status: 'in_preparation' });
+    const data = buildMatrix({
+      phases: model().phases,
+      currentPhase: 'brief',
+      matrix: matrixResponse({
+        gates: [open],
+        areas: [matrixArea({ area_id: 'a1' }), matrixArea({ area_id: 'a2', applicable: false })],
+      }),
+    });
+    expect(data.rows[0]!.cells[1]!.readiness).toEqual({ kind: 'check', status: 'not_assessed', stale: false });
+    expect(data.rows[1]!.cells[1]!.readiness).toEqual({ kind: 'check', status: 'not_applicable', stale: false });
+    expect(data.rows[0]!.cells[0]!.readiness).toEqual({ kind: 'none' });
+  });
+
+  it('a historic gate is not a column gate', () => {
+    const data = buildMatrix({
+      phases: model().phases,
+      currentPhase: null,
+      matrix: matrixResponse({ gates: [gate({ from_phase: 'strategy', historic: true })], areas: [matrixArea()] }),
+    });
+    expect(data.columns[0]!.gate).toBeNull();
   });
 });
 

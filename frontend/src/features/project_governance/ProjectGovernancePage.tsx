@@ -28,17 +28,16 @@ import { ModelPicker } from './ModelPicker';
 import {
   useChangeRequests,
   useConditions,
-  useGateDetail,
+  useGovernanceMatrix,
   useGovernanceAreas,
   useGovernanceDocuments,
-  useGovernanceGates,
   useGovernanceModel,
   useInvalidateGovernance,
   useLabelContext,
   usePeopleNames,
   useViewer,
 } from './hooks';
-import { buildMatrix, nextGate } from './matrix';
+import { buildMatrix } from './matrix';
 
 type Tab = 'matrix' | 'conditions' | 'model';
 
@@ -54,12 +53,14 @@ export function ProjectGovernancePage() {
   const modelQ = useGovernanceModel(projectId);
   const hasModel = !!modelQ.data;
   const areasQ = useGovernanceAreas(projectId, hasModel);
-  const gatesQ = useGovernanceGates(projectId, hasModel);
   const docsQ = useGovernanceDocuments(projectId, hasModel);
   const crQ = useChangeRequests(projectId, hasModel);
   const conditionsQ = useConditions(projectId, hasModel);
-  const next = useMemo(() => nextGate(gatesQ.data ?? []), [gatesQ.data]);
-  const nextDetailQ = useGateDetail(projectId, next?.id ?? null);
+  const matrixQ = useGovernanceMatrix(projectId, hasModel);
+  const next = useMemo(() => {
+    const id = matrixQ.data?.next_gate?.id;
+    return id ? (matrixQ.data?.gates.find((g) => g.id === id) ?? null) : null;
+  }, [matrixQ.data]);
 
   const tab = (params.get('tab') as Tab | null) ?? 'matrix';
   const gateId = params.get('gate');
@@ -75,17 +76,14 @@ export function ProjectGovernancePage() {
 
   const matrix = useMemo(
     () =>
-      modelQ.data
+      modelQ.data && matrixQ.data
         ? buildMatrix({
             phases: modelQ.data.phases,
             currentPhase: modelQ.data.current_phase,
-            areas: areasQ.data ?? [],
-            gates: gatesQ.data ?? [],
-            documents: docsQ.data ?? [],
-            nextDetail: nextDetailQ.data ?? null,
+            matrix: matrixQ.data,
           })
         : null,
-    [modelQ.data, areasQ.data, gatesQ.data, docsQ.data, nextDetailQ.data],
+    [modelQ.data, matrixQ.data],
   );
 
   const openConditions = (conditionsQ.data ?? []).filter((c) => c.status === 'open' || c.status === 'overdue').length;
@@ -165,8 +163,8 @@ export function ProjectGovernancePage() {
     );
   }
 
-  const listsLoading = areasQ.isLoading || gatesQ.isLoading || docsQ.isLoading;
-  const listsError = areasQ.error ?? gatesQ.error ?? docsQ.error;
+  const listsLoading = matrixQ.isLoading;
+  const listsError = matrixQ.error;
   const selectedArea = areaId ? (areasQ.data ?? []).find((a) => a.id === areaId) ?? null : null;
 
   let body: ReactNode;
@@ -203,7 +201,7 @@ export function ProjectGovernancePage() {
       <ModelPicker
         projectId={projectId}
         model={model}
-        gates={gatesQ.data ?? []}
+        gates={matrixQ.data?.gates ?? []}
         viewer={viewer}
         labels={labels}
         onDone={invalidate}
@@ -224,6 +222,7 @@ export function ProjectGovernancePage() {
         conditions={conditionsQ.data ?? []}
         catalogueId={model.catalogue_id}
         viewer={viewer}
+        modelCan={model.can}
         labels={labels}
         personName={personName}
         onChanged={invalidate}
@@ -259,8 +258,7 @@ export function ProjectGovernancePage() {
         data={matrix}
         catalogueId={model.catalogue_id}
         next={next}
-        nextDetail={nextDetailQ.data ?? null}
-        nextDetailLoading={nextDetailQ.isLoading}
+        blockerCount={matrixQ.data?.next_gate?.blocker_count ?? 0}
         labels={labels}
         personName={personName}
         onOpenGate={(id) => go({ gate: id })}

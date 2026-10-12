@@ -24,7 +24,7 @@ import { ConditionsRegister } from '../ConditionsRegister';
 import { buildMatrix } from '../matrix';
 import type { LabelContext } from '../labels';
 import { enT } from './i18nMock';
-import { area, blocker, condition, detail, gate, model } from './fixtures';
+import { blocker, condition, detail, gate, matrixArea, matrixResponse, model } from './fixtures';
 
 const labels: LabelContext = { t: enT, language: 'en', exists: () => false };
 const names = (id: string | null | undefined) => (id === 'u-owner' ? 'Dana Weber' : null);
@@ -40,18 +40,20 @@ describe('GovernanceMatrix', () => {
   const m = model();
   const decided = gate({ id: 'g1', from_phase: 'strategy', status: 'decided', last_outcome: 'go' });
   const next = gate({ id: 'g2', code: 'brief_to_concept', from_phase: 'brief', sort_order: 2, status: 'in_review' });
-  const nextDetail = detail({
-    gate: next,
-    areas: [{ area_id: 'a1', check: 'ready_with_risks' }],
-    blockers: [blocker('area_without_owner', 'cost_finance'), blocker('required_document_not_approved', 'organisation')],
-  });
   const data = buildMatrix({
     phases: m.phases,
     currentPhase: 'brief',
-    areas: [area({ id: 'a1' }), area({ id: 'a2', code: 'cost_finance', owner_user_id: null, sort_order: 2 })],
-    gates: [decided, next],
-    documents: [],
-    nextDetail,
+    matrix: matrixResponse({
+      gates: [decided, next],
+      next: { id: 'g2', code: 'brief_to_concept', status: 'in_review', blocker_count: 2 },
+      areas: [
+        matrixArea({
+          area_id: 'a1',
+          cells: { brief_to_concept: { check_status: 'ready_with_risks', rag: 'amber', stale: false, documents: [] } },
+        }),
+        matrixArea({ area_id: 'a2', code: 'cost_finance', owner_user_id: null }),
+      ],
+    }),
   });
 
   it('renders outcome, readiness, owners and the next gate with its blocker count', () => {
@@ -60,8 +62,7 @@ describe('GovernanceMatrix', () => {
         data={data}
         catalogueId="neutral"
         next={next}
-        nextDetail={nextDetail}
-        nextDetailLoading={false}
+        blockerCount={2}
         labels={labels}
         personName={names}
         onOpenGate={() => undefined}
@@ -85,8 +86,7 @@ describe('GovernanceMatrix', () => {
         data={data}
         catalogueId="neutral"
         next={null}
-        nextDetail={null}
-        nextDetailLoading={false}
+        blockerCount={0}
         labels={labels}
         personName={names}
         onOpenGate={() => undefined}
@@ -181,6 +181,21 @@ describe('ReasonedButton', () => {
     expect(button).toHaveAttribute('aria-describedby', screen.getByTestId('disabled-reason').id);
   });
 
+  it('an unknown server code reads neutral and shows the code, not a guessed reason', () => {
+    render(<ReasonedButton verdict={{ server: 'budget_frozen_by_board' }}>Record decision</ReasonedButton>);
+    expect(screen.getByRole('button', { name: 'Record decision' })).toBeDisabled();
+    const reason = screen.getByTestId('disabled-reason');
+    expect(reason).toHaveTextContent('This decision is not available right now.');
+    expect(reason).not.toHaveTextContent('approval route');
+    expect(screen.getByTestId('disabled-reason-code')).toHaveTextContent('budget_frozen_by_board');
+  });
+
+  it('a known server code resolves through governance.errors', () => {
+    render(<ReasonedButton verdict={{ server: 'route_not_at_final_step' }}>Record decision</ReasonedButton>);
+    expect(screen.getByTestId('disabled-reason')).toHaveTextContent('The approval route has not reached its final step yet');
+    expect(screen.queryByTestId('disabled-reason-code')).toBeNull();
+  });
+
   it('is enabled with no reason when allowed', () => {
     render(<ReasonedButton verdict={null}>Record decision</ReasonedButton>);
     expect(screen.getByRole('button', { name: 'Record decision' })).not.toBeDisabled();
@@ -195,6 +210,7 @@ describe('ConditionsRegister', () => {
     labels,
     personName: names,
     onChanged: () => undefined,
+    modelCan: { manage: true },
   };
 
   it('shows the next step when there are no conditions', () => {
@@ -223,7 +239,14 @@ describe('ConditionsRegister', () => {
   });
 
   it('shows an editor why waiving is not theirs', () => {
-    wrap(<ConditionsRegister {...props} viewer={{ userId: 'u-owner', role: 'editor' }} conditions={[condition()]} />);
+    wrap(
+      <ConditionsRegister
+        {...props}
+        modelCan={{ manage: false }}
+        viewer={{ userId: 'u-owner', role: 'editor' }}
+        conditions={[condition()]}
+      />,
+    );
     expect(screen.getByRole('button', { name: 'Waive' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Clear with evidence' })).not.toBeDisabled();
     expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'role_decide');

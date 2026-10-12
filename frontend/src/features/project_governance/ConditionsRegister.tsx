@@ -17,7 +17,7 @@ import { getErrorMessage } from '@/shared/lib/api';
 import { fmtDate } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 
-import { clearCondition, waiveCondition, type ConditionStatus, type GovernanceCondition } from './api';
+import { clearCondition, waiveCondition, type ConditionStatus, type GovernanceCondition, type GovernanceModel } from './api';
 import { canClearCondition, canWaiveCondition, type Viewer } from './access';
 import { waiverProblem } from './decisionRules';
 import { CONDITION_TONE, PersonChip, ReasonedButton, ToneBadge } from './GovernanceBits';
@@ -30,6 +30,8 @@ export interface ConditionsRegisterProps {
   conditions: GovernanceCondition[];
   catalogueId: string;
   viewer: Viewer;
+  /** The model's server flags; waiving follows `can.manage`. */
+  modelCan: GovernanceModel['can'];
   labels: LabelContext;
   personName: (userId: string | null | undefined) => string | null;
   onChanged: () => void;
@@ -42,6 +44,7 @@ export function ConditionsRegister({
   conditions,
   catalogueId,
   viewer,
+  modelCan,
   labels,
   personName,
   onChanged,
@@ -126,7 +129,7 @@ export function ConditionsRegister({
         <ul className="space-y-2" data-testid="conditions-list">
           {shown.map((c) => {
             const clearV = canClearCondition(viewer, c);
-            const waiveV = canWaiveCondition(viewer, c);
+            const waiveV = canWaiveCondition(c, { can: modelCan });
             const active = action?.id === c.id ? action : null;
             const showWaiverError = active?.kind === 'waive' && tried && !!waiverProblem(text);
             return (

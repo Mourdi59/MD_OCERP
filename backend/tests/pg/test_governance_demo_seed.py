@@ -162,8 +162,10 @@ async def test_seed_fills_governance(factory) -> None:
             .all()
         )
         assert live_areas
-        assert all(a.owner_user_id is not None for a in live_areas), "an area was left without an owner"
+        assert all(a.owner_user_id is not None for a in live_areas if a.applicable), "an area was left without an owner"
+        assert len(live_areas) == 10
         owners = {a.owner_user_id for a in live_areas}
+        assert users["estimator"] in owners, "the estimator owns no area, the ownership map lost its cost areas"
         assert owners <= {users["demo"], users["estimator"]}
         assert users["manager"] not in owners, "the decider owns an area, four-eyes would refuse the decision"
 

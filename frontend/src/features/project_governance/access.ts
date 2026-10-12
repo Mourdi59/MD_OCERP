@@ -7,37 +7,30 @@
 // reason instead of answering with a 403 after the click. The prediction
 // reads what the client has: the role (backend `governance.*` permissions are
 // viewer / editor / manager, see project_governance/permissions.py), the
-// project's four-eyes switch and the area owners. Route entitlement is not
-// visible to the client, so `decider_not_entitled` can only be shown after
-// the server refuses.
+// project's four-eyes switch and the area owners. The server's `can` flags
+// (gate detail, model) decide everything they cover, because only the server
+// knows the route entitlement. The role is read only where no flag exists
+// yet: clearing a condition and resuming a held gate.
 
-import type { GateArea, GateDetail, GovernanceArea, GovernanceCondition, GovernanceModel } from './api';
+import type { GateArea, GateDetail, GovernanceCondition, GovernanceModel } from './api';
 import type { KeyText } from './labels';
+import { ROLE_ALIASES, ROLE_RANK } from '@/shared/lib/roles';
 
 export type GovernanceLevel = 'read' | 'edit' | 'manage';
 
-/** Rank of a role the way `core/permissions.py` ROLE_HIERARCHY and ROLE_ALIASES rank it. */
-const ROLE_RANK: Record<string, number> = {
-  field_worker: -2,
-  site_foreman: -1,
-  site_inspector: 0,
-  viewer: 0,
-  readonly: 0,
-  editor: 1,
-  estimator: 1,
-  quantity_surveyor: 1,
-  qs: 1,
-  user: 1,
-  manager: 2,
-  admin: 3,
-  superuser: 3,
-  owner: 3,
-};
 
 const LEVEL_RANK: Record<GovernanceLevel, number> = { read: 0, edit: 1, manage: 2 };
 
+/**
+ * Whether a role reaches a governance level, ranked by the shared mirror of the
+ * backend hierarchy. No role and an unknown role both deny: an absent role is
+ * not the viewer role here, because `read` sits at the viewer's rank.
+ */
 export function roleAllows(role: string | null | undefined, level: GovernanceLevel): boolean {
-  const rank = ROLE_RANK[(role ?? '').toLowerCase()];
+  if (!role) return false;
+  const r = role.trim().toLowerCase();
+  const canonical = ROLE_ALIASES[r] ?? r;
+  const rank = (ROLE_RANK as Record<string, number>)[canonical];
   if (rank === undefined) return false;
   return rank >= LEVEL_RANK[level];
 }
@@ -96,7 +89,16 @@ export const DISABLED_REASON: Record<DisabledReason, KeyText> = {
 };
 
 /** null means allowed; otherwise the first reason that stops the action. */
-export type Verdict = DisabledReason | null;
+/**
+ * A refusal the server named with a code this screen has no reason for. It is
+ * shown through `governance.errors.<code>` or a neutral sentence, never mapped
+ * onto a known reason: a plausible wrong reason is worse than none.
+ */
+export interface ServerRefusal {
+  server: string;
+}
+
+export type Verdict = DisabledReason | ServerRefusal | null;
 
 export interface Viewer {
   userId: string | null;
@@ -107,12 +109,37 @@ function ownsArea(viewer: Viewer, area: Pick<GateArea, 'owner_user_id' | 'deputy
   return !!viewer.userId && (area.owner_user_id === viewer.userId || area.deputy_user_id === viewer.userId);
 }
 
-export function canManage(viewer: Viewer): Verdict {
+/** Server refusal codes that name a reason the screen can explain. */
+const REASON_OF_CODE: Record<string, DisabledReason> = {
+  decider_is_area_owner: 'four_eyes',
+  decider_not_entitled: 'role_decide',
+  missing_permission: 'role_decide',
+  gate_not_in_review: 'gate_not_in_review',
+  project_stopped: 'project_stopped',
+  not_area_owner: 'not_area_owner',
+  area_without_owner: 'area_without_owner',
+};
+
+/** The verdict for a server refusal code: a known reason, or the code itself for the screen to resolve. */
+export function reasonOfCode(code: string | null | undefined): DisabledReason | ServerRefusal {
+  return (code && REASON_OF_CODE[code]) || { server: code ?? '' };
+}
+
+/**
+ * Manage rights before a model exists. There is no model to carry the server
+ * flag yet, so the role answers; the PUT that sets the model still decides.
+ */
+export function roleManage(viewer: Viewer): Verdict {
   return roleAllows(viewer.role, 'manage') ? null : 'role_manage';
 }
 
-export function canSubmitGate(viewer: Viewer, model: GovernanceModel, detail: GateDetail): Verdict {
-  if (!roleAllows(viewer.role, 'edit')) return 'role_edit';
+/** Manage rights, as the server reports them on the model. */
+export function canManage(model: Pick<GovernanceModel, 'can'>): Verdict {
+  return model.can.manage ? null : 'role_manage';
+}
+
+export function canSubmitGate(model: GovernanceModel, detail: GateDetail): Verdict {
+  if (!detail.can.edit) return 'role_edit';
   if (model.stopped) return 'project_stopped';
   if (detail.gate.status !== 'in_preparation') return 'gate_not_ready_to_submit';
   return null;
@@ -121,20 +148,23 @@ export function canSubmitGate(viewer: Viewer, model: GovernanceModel, detail: Ga
 /**
  * Whether the viewer may open the decision dialog on this gate.
  *
- * Four-eyes comes after the role on purpose: an editor who also owns an area
- * should read that their role is the reason, because a change of owner would
- * not let them decide either.
+ * Gate state and a stopped project explain first, because they hold for
+ * everyone; then the server's answer, which knows route entitlement and
+ * four-eyes. A refusal code this screen does not know travels as is.
  */
-export function canDecide(viewer: Viewer, model: GovernanceModel, detail: GateDetail): Verdict {
-  if (!roleAllows(viewer.role, 'manage')) return 'role_decide';
+export function canDecide(model: GovernanceModel, detail: GateDetail): Verdict {
   if (model.stopped) return 'project_stopped';
   if (detail.gate.status !== 'in_review') return 'gate_not_in_review';
-  if (model.four_eyes && detail.areas.some((a) => ownsArea(viewer, a))) return 'four_eyes';
-  return null;
+  return detail.can.decide ? null : reasonOfCode(detail.can.decide_reason);
 }
 
-export function canConfirmCheck(viewer: Viewer, model: GovernanceModel, area: GateArea): Verdict {
-  if (!roleAllows(viewer.role, 'edit')) return 'role_edit';
+export function canConfirmCheck(
+  viewer: Viewer,
+  model: GovernanceModel,
+  area: GateArea,
+  detail: Pick<GateDetail, 'can'>,
+): Verdict {
+  if (!detail.can.edit) return 'role_edit';
   if (model.stopped) return 'project_stopped';
   if (!area.applicable) return 'area_not_applicable';
   if (!area.owner_user_id) return 'area_without_owner';
@@ -142,8 +172,8 @@ export function canConfirmCheck(viewer: Viewer, model: GovernanceModel, area: Ga
   return null;
 }
 
-export function canEditArea(viewer: Viewer, _area: GovernanceArea): Verdict {
-  return canManage(viewer);
+export function canEditArea(model: Pick<GovernanceModel, 'can'>): Verdict {
+  return canManage(model);
 }
 
 export function canClearCondition(viewer: Viewer, condition: GovernanceCondition): Verdict {
@@ -154,7 +184,7 @@ export function canClearCondition(viewer: Viewer, condition: GovernanceCondition
   return null;
 }
 
-export function canWaiveCondition(viewer: Viewer, condition: GovernanceCondition): Verdict {
+export function canWaiveCondition(condition: GovernanceCondition, model: Pick<GovernanceModel, 'can'>): Verdict {
   if (condition.status === 'cleared' || condition.status === 'waived') return 'condition_closed';
-  return roleAllows(viewer.role, 'manage') ? null : 'role_decide';
+  return model.can.manage ? null : 'role_decide';
 }

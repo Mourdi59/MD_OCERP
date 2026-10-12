@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 
 import {
   getGate,
+  getMatrix,
   getModel,
   governanceErrorCode,
   governanceKeys,
@@ -21,7 +22,6 @@ import {
   listChangeRequests,
   listConditions,
   listDocuments,
-  listGates,
 } from './api';
 import type { Viewer } from './access';
 import type { LabelContext } from './labels';
@@ -53,18 +53,18 @@ export function useGovernanceAreas(projectId: string, enabled = true) {
   });
 }
 
-export function useGovernanceGates(projectId: string, enabled = true) {
-  return useQuery({
-    queryKey: governanceKeys.gates(projectId),
-    queryFn: () => listGates(projectId).then((p) => p.items),
-    enabled: !!projectId && enabled,
-  });
-}
-
 export function useGovernanceDocuments(projectId: string, enabled = true) {
   return useQuery({
     queryKey: governanceKeys.documents(projectId),
     queryFn: () => listDocuments(projectId).then((p) => p.items),
+    enabled: !!projectId && enabled,
+  });
+}
+
+export function useGovernanceMatrix(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: governanceKeys.matrix(projectId),
+    queryFn: () => getMatrix(projectId),
     enabled: !!projectId && enabled,
   });
 }

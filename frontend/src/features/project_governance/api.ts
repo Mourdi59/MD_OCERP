@@ -75,6 +75,8 @@ export interface GovernanceModel {
   stopped: boolean;
   stopped_at: string | null;
   phases: GovernancePhase[];
+  /** What the caller may do on this project, decided by the server. */
+  can: { manage: boolean };
 }
 
 export interface GovernanceArea {
@@ -149,6 +151,7 @@ export interface GateAreaDocument {
   revision_in_force: string | null;
   pending_revision: string | null;
   read_only: boolean;
+  name?: GovernanceLabel;
 }
 
 export interface GateArea {
@@ -160,6 +163,7 @@ export interface GateArea {
   check: GateCheck | null;
   evidence: EvidenceItem[];
   documents: GateAreaDocument[];
+  name?: GovernanceLabel;
 }
 
 export interface DecisionSnapshot {
@@ -202,6 +206,44 @@ export interface GateDetail {
   blockers: Violation[];
   areas: GateArea[];
   decisions: GateDecision[];
+  /**
+   * What the caller may do on this gate, decided by the server through the same
+   * check that enforces a decision (route entitlement, four-eyes, gate state).
+   * `decide` probes a stop, `go` a plain go, so `go_reason` also names the
+   * first readiness blocker. A `*_reason` is a refusal code when its flag is false.
+   */
+  can: {
+    edit: boolean;
+    decide: boolean;
+    decide_reason?: string | null;
+    go?: boolean;
+    go_reason?: string | null;
+  };
+}
+
+export interface MatrixCellOut {
+  check_status: CheckStatus | null;
+  rag: Rag;
+  stale: boolean;
+  documents: Array<{ document_id: string; doc_type: string; status: DocumentStatus; required: boolean }>;
+}
+
+export interface MatrixArea {
+  area_id: string;
+  code: string;
+  name: GovernanceLabel | null;
+  name_override: string;
+  owner_user_id: string | null;
+  deputy_user_id: string | null;
+  applicable: boolean;
+  /** Keyed by gate code. */
+  cells: Record<string, MatrixCellOut>;
+}
+
+export interface MatrixResponse {
+  gates: GovernanceGate[];
+  next_gate: { id: string; code: string; status: GateStatus; blocker_count: number } | null;
+  areas: MatrixArea[];
 }
 
 export interface ConditionInput {
@@ -233,6 +275,7 @@ export interface FrameDocument {
   bound_content_hash: string | null;
   approved_gate_id: string | null;
   read_only: boolean;
+  name?: GovernanceLabel;
 }
 
 export interface DocumentRevision {
@@ -322,6 +365,7 @@ export const governanceKeys = {
   model: (projectId: string) => ['project-governance', projectId, 'model'] as const,
   areas: (projectId: string) => ['project-governance', projectId, 'areas'] as const,
   gates: (projectId: string) => ['project-governance', projectId, 'gates'] as const,
+  matrix: (projectId: string) => ['project-governance', projectId, 'matrix'] as const,
   gate: (projectId: string, gateId: string) => ['project-governance', projectId, 'gate', gateId] as const,
   documents: (projectId: string) => ['project-governance', projectId, 'documents'] as const,
   history: (projectId: string, documentId: string) =>
@@ -385,8 +429,8 @@ export function updateArea(
   return apiPatch<GovernanceArea>(`${p(projectId)}/areas/${areaId}`, body);
 }
 
-export function listGates(projectId: string): Promise<Page<GovernanceGate>> {
-  return apiGet<Page<GovernanceGate>>(`${p(projectId)}/gates`);
+export function getMatrix(projectId: string): Promise<MatrixResponse> {
+  return apiGet<MatrixResponse>(`${p(projectId)}/matrix?today=${localToday()}`);
 }
 
 export function getGate(projectId: string, gateId: string): Promise<GateDetail> {

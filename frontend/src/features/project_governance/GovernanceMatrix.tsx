@@ -13,7 +13,7 @@ import clsx from 'clsx';
 import { Button } from '@/shared/ui/Button';
 import { fmtDate } from '@/shared/lib/formatters';
 
-import type { GateDetail, GovernanceGate } from './api';
+import type { GovernanceGate } from './api';
 import {
   CHECK_STATUS,
   DOCUMENT_STATUS,
@@ -30,8 +30,8 @@ export interface GovernanceMatrixProps {
   data: GovernanceMatrixData;
   catalogueId: string;
   next: GovernanceGate | null;
-  nextDetail: GateDetail | null;
-  nextDetailLoading: boolean;
+  /** Blockers on the next gate, counted by the server. */
+  blockerCount: number;
   labels: LabelContext;
   personName: (userId: string | null | undefined) => string | null;
   onOpenGate: (gateId: string) => void;
@@ -40,15 +40,13 @@ export interface GovernanceMatrixProps {
 
 export function NextGateBanner({
   next,
-  detail,
-  loading,
+  blockerCount,
   catalogueId,
   labels,
   onOpen,
 }: {
   next: GovernanceGate | null;
-  detail: GateDetail | null;
-  loading: boolean;
+  blockerCount: number;
   catalogueId: string;
   labels: LabelContext;
   onOpen: (gateId: string) => void;
@@ -64,7 +62,7 @@ export function NextGateBanner({
       </div>
     );
   }
-  const blockers = detail?.blockers.length ?? 0;
+  const blockers = blockerCount;
   const gateName = catalogueName(labels, {
     kind: 'gate',
     code: next.code,
@@ -97,24 +95,18 @@ export function NextGateBanner({
           })}
         </span>
       )}
-      {loading ? (
-        <span className="text-xs text-content-tertiary">
-          {t('governance.project.matrix.checking_blockers', { defaultValue: 'Checking blockers...' })}
-        </span>
-      ) : (
-        <span
-          data-testid="next-gate-blockers"
-          className={clsx(
-            'inline-flex items-center gap-1 text-xs font-medium',
-            blockers > 0 ? 'text-[#b45309]' : 'text-semantic-success',
-          )}
-        >
-          {blockers > 0 ? <AlertTriangle size={13} aria-hidden /> : <CheckCircle2 size={13} aria-hidden />}
-          {blockers > 0
-            ? t('governance.project.matrix.blockers', { defaultValue: '{{count}} blockers', count: blockers })
-            : t('governance.project.matrix.no_blockers', { defaultValue: 'No blockers' })}
-        </span>
-      )}
+      <span
+        data-testid="next-gate-blockers"
+        className={clsx(
+          'inline-flex items-center gap-1 text-xs font-medium',
+          blockers > 0 ? 'text-[#b45309]' : 'text-semantic-success',
+        )}
+      >
+        {blockers > 0 ? <AlertTriangle size={13} aria-hidden /> : <CheckCircle2 size={13} aria-hidden />}
+        {blockers > 0
+          ? t('governance.project.matrix.blockers', { defaultValue: '{{count}} blockers', count: blockers })
+          : t('governance.project.matrix.no_blockers', { defaultValue: 'No blockers' })}
+      </span>
       <Button size="sm" variant="secondary" icon={<ArrowRight size={14} />} iconPosition="right" onClick={() => onOpen(next.id)}>
         {t('governance.project.matrix.open_gate', { defaultValue: 'Open gate' })}
       </Button>
@@ -166,8 +158,7 @@ export function GovernanceMatrix({
   data,
   catalogueId,
   next,
-  nextDetail,
-  nextDetailLoading,
+  blockerCount,
   labels,
   personName,
   onOpenGate,
@@ -178,8 +169,7 @@ export function GovernanceMatrix({
     <div className="space-y-4">
       <NextGateBanner
         next={next}
-        detail={nextDetail}
-        loading={nextDetailLoading}
+        blockerCount={blockerCount}
         catalogueId={catalogueId}
         labels={labels}
         onOpen={onOpenGate}
@@ -232,11 +222,11 @@ export function GovernanceMatrix({
                 override: row.area.name_override,
               });
               return (
-                <tr key={row.area.id} className="border-t border-border-light align-top" data-testid="matrix-row">
+                <tr key={row.area.area_id} className="border-t border-border-light align-top" data-testid="matrix-row">
                   <th scope="row" className="sticky left-0 z-10 bg-surface-primary px-3 py-2 text-left font-normal">
                     <button
                       type="button"
-                      onClick={() => onOpenArea(row.area.id)}
+                      onClick={() => onOpenArea(row.area.area_id)}
                       className="block text-sm font-medium text-content-primary hover:text-oe-blue"
                     >
                       {name}
