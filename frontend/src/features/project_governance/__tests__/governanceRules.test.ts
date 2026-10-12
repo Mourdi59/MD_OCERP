@@ -21,6 +21,7 @@ import {
   canResume,
   canSubmitGate,
   canWaiveCondition,
+  frozenInReview,
   documentVerdict,
   outcomeVerdict,
   reasonOfCode,
@@ -40,6 +41,8 @@ import {
   reopenRewind,
   toConditionInput,
   toDecisionInput,
+  evidenceKey,
+  evidenceToAcknowledge,
   waiverProblem,
   type DecisionDraft,
 } from '../decisionRules';
@@ -142,8 +145,8 @@ describe('other verdicts', () => {
     expect(canSubmitGate(model(), d('in_preparation', false))).toBe('role_edit');
   });
   it('manage follows the model flag', () => {
-    expect(canManage(model({ can: { manage: true, edit: true } }))).toBeNull();
-    expect(canManage(model({ can: { manage: false, edit: true } }))).toBe('role_manage');
+    expect(canManage(model({ can: { manage: true } }))).toBeNull();
+    expect(canManage(model({ can: { manage: false } }))).toBe('role_manage');
   });
   it('adding a document follows the flag of the area', () => {
     expect(canAddDocument(area({ can: { add_document: true } }))).toBeNull();
@@ -390,6 +393,17 @@ describe('conditions on a document', () => {
   });
 });
 
+describe('settings frozen while a gate is with its deciders', () => {
+  it.each(['in_review', 'on_hold'] as const)('a gate %s freezes them', (status) => {
+    expect(frozenInReview([gate({ status: 'decided' }), gate({ status })])).toEqual({ server: 'settings_frozen_in_review' });
+  });
+  it('other states, and gates of an earlier model, do not', () => {
+    expect(frozenInReview([gate({ status: 'in_preparation' }), gate({ status: 'decided' })])).toBeNull();
+    expect(frozenInReview([gate({ status: 'in_review', historic: true })])).toBeNull();
+    expect(frozenInReview([])).toBeNull();
+  });
+});
+
 describe('the first day a hold may end', () => {
   it('is the day after today, across a month end', () => {
     expect(dayAfter('2026-10-11')).toBe('2026-10-12');
@@ -469,6 +483,42 @@ describe('decisionProblems', () => {
     });
     expect(body).toMatchObject({ outcome: 'stop', rationale: 'Funding withdrawn', conditions: [], proceed_at_risk_areas: [] });
     expect(body.conditions[0]).toBeUndefined();
+  });
+  describe('unknown evidence of a blocking provider', () => {
+    const pending = [
+      { area_code: 'cost_finance', code: 'budget:no_answer', provider: 'budget' },
+      { area_code: 'organisation', code: 'staffing_plan', provider: 'staffing' },
+    ];
+    const asked = detail({
+      gate: gate({ status: 'in_review' }),
+      can: { edit: true, decide: true, go: true, acknowledge: pending },
+    });
+    const all = pending.map(evidenceKey);
+    it('the list is the one the server sent, and empty when it sent none', () => {
+      expect(evidenceToAcknowledge(asked)).toEqual(pending);
+      expect(evidenceToAcknowledge(d)).toEqual([]);
+    });
+    it.each(['go', 'go_with_conditions'] as const)('a %s is held back until every item is ticked', (outcome) => {
+      const draft = { ...base, outcome, rationale: 'r', conditions: [{ rowId: 'a', text: 'x', severity: 'critical' as const }] };
+      expect(decisionProblems(draft, asked, '2026-10-11')).toEqual(['evidence_not_acknowledged']);
+      expect(decisionProblems({ ...draft, acknowledged: [all[0]!] }, asked, '2026-10-11')).toEqual([
+        'evidence_not_acknowledged',
+      ]);
+      expect(decisionProblems({ ...draft, acknowledged: all }, asked, '2026-10-11')).toEqual([]);
+    });
+    it('an outcome that does not let the gate pass asks for nothing', () => {
+      expect(decisionProblems({ ...base, outcome: 'stop', rationale: 'r' }, asked, '2026-10-11')).toEqual([]);
+      const body = toDecisionInput({ ...base, outcome: 'stop', rationale: 'r', acknowledged: all }, asked);
+      expect(body).not.toHaveProperty('acknowledged_evidence');
+    });
+    it('sends the pairs the server matches on, and only the ticked ones it asked for', () => {
+      const body = toDecisionInput({ ...base, outcome: 'go', acknowledged: [...all, 'risk made_up'] }, asked);
+      expect(body.acknowledged_evidence).toEqual([
+        { area_code: 'cost_finance', code: 'budget:no_answer' },
+        { area_code: 'organisation', code: 'staffing_plan' },
+      ]);
+      expect(toDecisionInput({ ...base, outcome: 'go' }, d)).not.toHaveProperty('acknowledged_evidence');
+    });
   });
   it('a waiver without rationale is refused', () => {
     expect(waiverProblem('  ')).toBe('waiver_needs_rationale');

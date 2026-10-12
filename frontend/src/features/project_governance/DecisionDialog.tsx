@@ -30,6 +30,9 @@ import {
   decisionProblems,
   documentBlockers,
   emptyCondition,
+  evidenceKey,
+  evidenceToAcknowledge,
+  letsGatePass,
   needsRationale,
   notApplicableAreas,
   dayAfter,
@@ -38,7 +41,7 @@ import {
   type DecisionDraft,
 } from './decisionRules';
 import { VerdictReason } from './GovernanceBits';
-import { OUTCOME, OUTCOME_HINT, catalogueName, errorText, vocab, type LabelContext } from './labels';
+import { OUTCOME, OUTCOME_HINT, catalogueName, errorText, evidenceText, vocab, type LabelContext } from './labels';
 
 const OUTCOMES: Outcome[] = ['go', 'go_with_conditions', 'hold', 'recycle', 'stop'];
 
@@ -61,6 +64,8 @@ export interface DecisionDialogProps {
   serverViolations: Violation[];
   serverError: string | null;
   onSubmit: (input: DecisionInput) => void;
+  /** Opens the approval this gate runs on; offered where an outcome waits for more approvers. */
+  onOpenApproval?: () => void;
 }
 
 export function DecisionDialog({
@@ -75,11 +80,13 @@ export function DecisionDialog({
   serverViolations,
   serverError,
   onSubmit,
+  onOpenApproval,
 }: DecisionDialogProps) {
   const { t } = useTranslation();
   const naAreas = useMemo(() => notApplicableAreas(detail), [detail]);
   const riskAreas = useMemo(() => atRiskCandidates(detail), [detail]);
   const missingDocuments = useMemo(() => documentBlockers(detail), [detail]);
+  const unknownEvidence = useMemo(() => evidenceToAcknowledge(detail), [detail]);
   const [draft, setDraft] = useState<DecisionDraft>({
     outcome: null,
     rationale: '',
@@ -87,6 +94,7 @@ export function DecisionDialog({
     proceedAtRisk: [],
     acceptedNotApplicable: [],
     holdResumeDate: '',
+    acknowledged: [],
   });
   const problems = decisionProblems(draft, detail, today);
   const areaName = (code: string) => catalogueName(labels, { kind: 'area', code, catalogueId });
@@ -118,6 +126,12 @@ export function DecisionDialog({
       ...d,
       [field]: d[field].includes(code) ? d[field].filter((c) => c !== code) : [...d[field], code],
     }));
+  const acknowledged = draft.acknowledged ?? [];
+  const toggleAcknowledged = (key: string) =>
+    setDraft((d) => {
+      const now = d.acknowledged ?? [];
+      return { ...d, acknowledged: now.includes(key) ? now.filter((k) => k !== key) : [...now, key] };
+    });
 
   const fieldClass =
     'w-full rounded-md border border-border-light bg-surface-primary px-2.5 py-1.5 text-sm text-content-primary focus:border-oe-blue focus:outline-none';
@@ -151,7 +165,7 @@ export function DecisionDialog({
             variant={draft.outcome === 'stop' ? 'danger' : 'primary'}
             loading={busy}
             disabled={problems.length > 0}
-            onClick={() => onSubmit(toDecisionInput(draft))}
+            onClick={() => onSubmit(toDecisionInput(draft, detail))}
             data-testid="decision-submit"
           >
             {t('governance.project.decision.submit', { defaultValue: 'Record decision' })}
@@ -221,6 +235,19 @@ export function DecisionDialog({
                   </span>{' '}
                   <span className="text-xs text-content-secondary">{vocab(t, OUTCOME_HINT, o)}</span>
                   <VerdictReason verdict={refused} />
+                  {onOpenApproval && refused && typeof refused === 'object' && refused.server === 'route_needs_more_approvals' && (
+                    <button
+                      type="button"
+                      className="self-start text-xs font-medium text-oe-blue hover:underline"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onOpenApproval();
+                      }}
+                      data-testid={`outcome-${o}-open-approval`}
+                    >
+                      {t('governance.project.gate.open_approval', { defaultValue: 'Open the approval' })}
+                    </button>
+                  )}
                 </label>
               );
             })}
@@ -370,6 +397,42 @@ export function DecisionDialog({
               </fieldset>
             )}
           </div>
+        )}
+
+        {unknownEvidence.length > 0 && letsGatePass(draft.outcome) && (
+          <fieldset className="rounded-lg border border-semantic-warning/40 p-3" data-testid="acknowledge-evidence">
+            <legend className="px-1 text-xs font-semibold text-content-secondary">
+              {t('governance.project.decision.acknowledge', { defaultValue: 'Evidence no module could confirm' })}
+            </legend>
+            <p className="mb-1.5 text-xs text-content-secondary">
+              {t('governance.project.decision.acknowledge_hint', {
+                defaultValue:
+                  'A module could not say whether these are ready. Tick each one to confirm that you have seen it before the gate passes.',
+              })}
+            </p>
+            {unknownEvidence.map((ref) => {
+              const key = evidenceKey(ref);
+              const item = detail.areas.find((a) => a.code === ref.area_code)?.evidence.find((e) => e.code === ref.code);
+              return (
+                <label key={key} className="flex items-start gap-1.5 py-0.5 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={acknowledged.includes(key)}
+                    onChange={() => toggleAcknowledged(key)}
+                    data-testid="acknowledge-item"
+                  />
+                  <span>
+                    {areaName(ref.area_code)}
+                    <span className="block text-xs text-content-tertiary">
+                      {evidenceText(t, labels, item ?? ref)}
+                      {item?.detail ? ` - ${item.detail}` : ''}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </fieldset>
         )}
 
         {naAreas.length > 0 && (

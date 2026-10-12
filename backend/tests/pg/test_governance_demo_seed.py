@@ -79,7 +79,8 @@ async def _project(s: AsyncSession, owner: uuid.UUID) -> uuid.UUID:
             currency="EUR",
             status="active",
             owner_id=owner,
-            metadata_={"demo_id": "residential-berlin"},
+            # A demo project the seed does not place further on: it keeps the first-gate story.
+            metadata_={"demo_id": "office-london"},
         )
     )
     await s.flush()
