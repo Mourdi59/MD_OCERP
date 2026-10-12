@@ -509,3 +509,63 @@ async def test_a_framework_supplier_link_can_be_changed_and_cleared(world: World
     # A patch that does not name the link keeps it; an explicit null clears it.
     assert kept.json()["subcontractor_id"] == str(company.id)
     assert (cleared.status_code, cleared.json()["subcontractor_id"]) == (200, None)
+
+
+async def test_a_project_without_a_phase_model_answers_unknown_and_empty_pickers() -> None:
+    """Governance has no row for the project: every read answers, nothing is guessed, nothing is a 500."""
+    from types import SimpleNamespace
+
+    from app.modules.procurement_concept.evidence import concept_ready
+    from app.modules.project_governance.evidence import GateAttempt
+
+    register_procurement_concept_permissions()
+    async with isolated_engine() as engine:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        w = await build_world(factory, model=False)
+        await add_contract_package(w, "W1", "construction")
+        async with client_as(w, w.manager, "manager") as c:
+            reads = {
+                tail: await c.get(_p(w, tail))
+                for tail in (
+                    "/catalogue",
+                    "/concept",
+                    "/readiness",
+                    "/findings",
+                    "/packages",
+                    "/gates",
+                    "/advance-releases",
+                    "/tender-packages",
+                    "/cost-refs",
+                    "/consistency",
+                    "/frameworks",
+                    "/prequal-profiles",
+                    "/market-soundings",
+                    "/schedule",
+                    "/validation",
+                )
+            }
+            assert {tail: r.status_code for tail, r in reads.items()} == dict.fromkeys(reads, 200)
+            gates = reads["/gates"].json()
+            assert (gates["items"], gates["resolved_release_gate_code"]) == ([], None)
+            assert reads["/advance-releases"].json()["items"] == []
+            # The release is not known, and the findings say so instead of treating it as nothing to wait for.
+            assert "release_gate_unresolved" in {f["code"] for f in reads["/findings"].json()["items"]}
+            # A gate cannot be named either: the project has none.
+            named = await c.put(_p(w, "/concept"), json={"release_gate_code": "any_gate"})
+            assert (named.status_code, named.json()["detail"]["code"]) == (422, "release_gate_unknown")
+            assert (await c.put(_pkg(w), json=OPEN_WORKS)).status_code == 200
+            submitted = await c.post(_p(w, "/concept/submit"))
+            assert (submitted.status_code, submitted.json()["state"]) == (200, "in_review")
+            # Nothing can approve it, so it is neither approved nor executable.
+            assert (await c.get(_p(w, "/readiness"))).json()["approved"] is False
+            refused = await c.post(_pkg(w, tail="/execution"), json={})
+            assert (refused.status_code, refused.json()["detail"]["code"]) == (409, "concept_not_approved")
+        # Without an area nobody but a manager steers.
+        async with client_as(w, w.area_owner, "editor") as c:
+            denied = await c.put(_pkg(w), json={"procedure_code": "restricted"})
+            assert (denied.status_code, denied.json()["detail"]["code"]) == (403, "not_procurement_owner")
+        # The evidence provider, asked on behalf of any area and gate, answers unknown with the reason.
+        async with w.factory() as s:
+            attempt = GateAttempt(uuid.uuid4(), "any_gate", 1)
+            (item,) = await concept_ready(s, w.project_id, attempt, SimpleNamespace(code="any_area"))
+        assert (item.state, item.detail) == ("unknown", "procurement_area_unresolved")

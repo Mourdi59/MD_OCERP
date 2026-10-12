@@ -45,9 +45,22 @@ async def concept_ready(session: Any, project_id: uuid.UUID, attempt: GateAttemp
     if concept is None:
         return []
     hosting = await svc.hosting(project_id)
-    if area.code != await _anchor_area_code(session, project_id, hosting.area_code):
-        return []
     link = ("procurement_concept", str(project_id))
+    anchor = await _anchor_area_code(session, project_id, hosting.area_code)
+    if anchor is None:
+        # Governance lists no applicable area for the project (it pinned no phase model, or every area is
+        # switched off), so there is no area to report on. Whoever asks gets the reason, not silence.
+        return [
+            EvidenceItem(
+                code="procurement_concept_ready:procurement_area_unresolved",
+                state="unknown",
+                label_key=LABEL_KEY,
+                link=link,
+                detail="procurement_area_unresolved",
+            )
+        ]
+    if area.code != anchor:
+        return []
     gate = await svc.release_gate(project_id, concept)
     if gate is None:
         return [

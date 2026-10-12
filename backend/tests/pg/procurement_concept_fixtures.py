@@ -13,7 +13,8 @@ and frame documents are the rows governance itself builds, and the module finds
 its area, its frame document and its release gate through the model's tags.
 The constants below are read off that model the same way, so no test names a
 code of it. ``tagged=False`` pins a company copy of the model with the
-procurement tags removed and every code kept.
+procurement tags removed and every code kept; ``model=False`` pins no phase
+model at all, so governance has no row for the project.
 """
 
 from __future__ import annotations
@@ -271,7 +272,9 @@ async def _read_governance_rows(w: World) -> None:
         ).scalar_one()
 
 
-async def build_world(factory: async_sessionmaker[AsyncSession], *, concept: bool = True, tagged: bool = True) -> World:
+async def build_world(
+    factory: async_sessionmaker[AsyncSession], *, concept: bool = True, tagged: bool = True, model: bool = True
+) -> World:
     from app.modules.procurement_concept.catalogue import register_kind
     from app.modules.project_governance.service import GovernanceService
 
@@ -286,18 +289,20 @@ async def build_world(factory: async_sessionmaker[AsyncSession], *, concept: boo
         source, model_id = "shipped", MODEL_ID
         if not tagged:
             source, model_id = "tenant", await _untagged_model(s, manager)
-        await GovernanceService(s).set_model(
-            pid,
-            source=source,
-            catalogue_id=model_id,
-            version=None,
-            four_eyes=True,
-            actor_id=manager,
-            tenant_id=str(manager),
-        )
+        if model:
+            await GovernanceService(s).set_model(
+                pid,
+                source=source,
+                catalogue_id=model_id,
+                version=None,
+                four_eyes=True,
+                actor_id=manager,
+                tenant_id=str(manager),
+            )
         await s.commit()
     w = World(factory, pid, manager, area_owner, editor, outsider)
-    await _read_governance_rows(w)
+    if model:
+        await _read_governance_rows(w)
     if concept:
         async with factory() as s:
             await ProcurementConceptService(s).set_concept(
