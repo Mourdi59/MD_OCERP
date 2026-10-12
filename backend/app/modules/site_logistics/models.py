@@ -7,13 +7,14 @@ Tables:
     oe_site_logistics_laydown_zone  - material laydown / storage areas on site
     oe_site_logistics_delivery      - inbound delivery bookings scheduled against a gate
     oe_site_logistics_delivery_line - the bill positions a delivery carries
+    oe_site_logistics_plant_position - site plant and crane positions on the site plan
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy import JSON, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import GUID, Base
@@ -201,3 +202,47 @@ class DeliveryLine(Base):
 
     def __repr__(self) -> str:
         return f"<DeliveryLine {self.position_ordinal or '-'} {self.quantity} {self.unit}>"
+
+
+class SitePlantPosition(Base):
+    """A piece of site plant placed on the site plan: crane, hoist, site office, temporary power ...
+
+    ``kind`` comes from the ``site_plant_kinds`` of the plant register catalogue.
+    The physical unit, when it is the contractor's fleet, is a soft link to
+    ``equipment`` (``equipment_id``); this row only says where and when it stands.
+    The plant register reads these rows for its frame summary; logistics reads
+    them for crane reach over laydown zones.
+    """
+
+    __tablename__ = "oe_site_logistics_plant_position"
+    __table_args__ = (
+        Index("ix_oe_site_plantpos_project", "project_id"),
+        Index("ix_oe_site_plantpos_stage", "project_id", "stage_id"),
+    )
+
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_projects_project.id", ondelete="CASCADE", name="fk_oe_site_plant_position_project"),
+        nullable=False,
+    )
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
+    # A point in the local frame of the site plan: metres, x to the right, y up.
+    x: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
+    y: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
+    reach_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    max_load_t: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    from_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    to_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    equipment_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    laydown_zone_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # Soft links, checked on write: the plant register item this is the place of, and the
+    # expansion stage of the site layout the position belongs to (None = every stage).
+    plant_item_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    stage_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # Connected load of the plant standing here; the utilities plan reads it as a demand.
+    power_demand_kva: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+
+    def __repr__(self) -> str:
+        return f"<SitePlantPosition {self.kind} {self.name}>"

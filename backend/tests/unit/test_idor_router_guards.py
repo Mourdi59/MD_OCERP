@@ -71,6 +71,59 @@ from pathlib import Path
 import pytest
 
 ROUTER_HANDLERS: dict[str, list[str]] = {
+    # Every route of the plant register is project scoped; the handlers reach the
+    # project check through _plant_read, _plant_edit or _plant_manage, the site
+    # plant ones call it directly.
+    "plant_register": [
+        "get_catalogue",
+        "get_settings",
+        "submittal_lead_time",
+        "put_settings",
+        "list_items",
+        "create_item",
+        "get_item",
+        "update_item",
+        "transition_item",
+        "sync_item",
+        "set_route",
+        "handover_item",
+        "list_quotes",
+        "add_quote",
+        "set_basis",
+        "list_slots",
+        "create_slot",
+        "update_slot",
+        "transition_slot",
+        "list_papers",
+        "create_paper",
+        "update_paper",
+        "submit_paper",
+        "withdraw_paper",
+        "list_limits",
+        "put_limits",
+        "limit_matrix",
+        "list_spares",
+        "create_spare",
+        "update_spare",
+        "transition_spare",
+        "delete_spare",
+        "list_it_services",
+        "create_it_service",
+        "update_it_service",
+        "transition_it_service",
+        "delete_it_service",
+        "long_lead",
+        "frame_summary",
+        "readiness",
+        "validation",
+        "escalate",
+        "export",
+        "list_site_plant_positions",
+        "place_site_plant_position",
+        "get_site_plant_position",
+        "move_site_plant_position",
+        "remove_site_plant_position",
+    ],
     "ncr": [
         "get_ncr",
         "update_ncr",
@@ -533,6 +586,12 @@ _GUARD_WRAPPERS = frozenset(
         # Round-6 audit, dwg_takeoff IDOR sweep. Each helper resolves the
         # resource's owning project_id and delegates to verify_project_access.
         "_gate_by_drawing",
+        # plant_register.router: each calls verify_project_access first, then
+        # checks the right the write needs. Module-unique names on purpose: other
+        # routers have a plain ``_read`` or ``_edit`` that checks nothing.
+        "_plant_read",
+        "_plant_edit",
+        "_plant_manage",
         "_gate_by_annotation",
         "_gate_by_group",
         # teams.router, resolves the team's owning project and delegates to

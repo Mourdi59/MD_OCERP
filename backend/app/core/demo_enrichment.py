@@ -128,6 +128,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         from app.modules.markups.seed import seed_markups
         from app.modules.moc.seed import seed_moc
         from app.modules.permits.seed import seed_permits_demo
+        from app.modules.plant_register.seed import seed_plant_register_demo
         from app.modules.pointcloud.seed import seed_pointcloud_demo
         from app.modules.portal.seed import seed_portal_demo
         from app.modules.portfolio.seed import seed_portfolio_demo
@@ -393,6 +394,8 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             ("forms", None, lambda s: seed_forms_submissions_demo(s, _demo_pids)),
             ("construction_control", None, lambda s: seed_construction_control_demo(s, _demo_pids)),
             ("commissioning", None, lambda s: seed_commissioning_demo(s, _demo_pids)),
+            # The owner's plant register; self-guards per project on existing items.
+            ("plant_register", None, lambda s: seed_plant_register_demo(s, _demo_pids)),
             ("interface_management", None, lambda s: seed_interface_management_demo(s, _demo_pids)),
             ("pointcloud", None, lambda s: seed_pointcloud_demo(s, _demo_pids)),
             # Measures the demo DXF the flagship installer authored, so it runs

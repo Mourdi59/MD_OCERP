@@ -39,6 +39,7 @@ import {
   Image as ImageIcon,
   LayoutGrid,
   Handshake,
+  Factory,
   Flag,
   Receipt,
   Stamp,
@@ -1826,6 +1827,15 @@ export function ProjectDetailPage() {
           data-testid="project-delivery-model-link"
         >
           {t('delivery_model.ui.title', { defaultValue: 'Delivery model' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Factory size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/plant-register`)}
+          data-testid="project-plant-register-link"
+        >
+          {t('plant.nav.title', { defaultValue: 'Plant register' })}
         </Button>
         <Button
           variant="ghost"

@@ -75,6 +75,10 @@ TARGET_KINDS: tuple[str, ...] = (
     # before it is filed (project setting, off by default). The permits
     # module starts the instance and listens for rejection or cancellation.
     "permit_application",
+    # Plant register: the decision paper behind a critical plant item. The
+    # plant_register module starts the instance on submit and applies the
+    # verdict from the terminal events.
+    "plant_decision_paper",
 )
 
 # Aggregation mode at a single step when the approver_role expands to
