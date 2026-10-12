@@ -233,6 +233,9 @@ export function useQcWrite(projectId: string): QcWrite {
     onError: (err) => {
       setRefusal(refusalText(t as TFn, err));
       setViolations(refusalDetail(err)?.violations ?? []);
+      // A write first follows what other modules decided, so a refusal can mean the concept or a unit moved
+      // since it was read. The screen reads again and shows the state the refusal was about.
+      void qc.invalidateQueries({ queryKey: qcKeys.project(projectId) });
     },
   });
   const { mutate } = mutation;

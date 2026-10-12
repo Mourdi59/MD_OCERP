@@ -796,3 +796,22 @@ describe('a list without a shared reason', () => {
     expect(within(list).getAllByText('Only a manager or the owner of the quality area can change the plan.')).toHaveLength(1);
   });
 });
+
+describe('after a refused write', () => {
+  it('reads the concept again, because the refusal can mean it moved', async () => {
+    mocked.submitConcept.mockRejectedValue(
+      new ApiError(409, 'Conflict', {
+        detail: {
+          code: 'binding_requires_change_request',
+          message_key: 'quality_concept.errors.binding_requires_change_request',
+          message: 'The concept is binding; change it through a change request of the frame document.',
+        },
+      }),
+    );
+    mocked.getConcept.mockResolvedValue(concept({ can: MAY_SUBMIT }));
+    renderPage();
+    fireEvent.click(await screen.findByTestId('concept-submit'));
+    await waitFor(() => expect(mocked.submitConcept).toHaveBeenCalled());
+    await waitFor(() => expect(mocked.getConcept.mock.calls.length).toBeGreaterThan(1));
+  });
+});

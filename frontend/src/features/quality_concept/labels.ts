@@ -623,7 +623,11 @@ export function findingText(t: TFn, code: string, ref?: string): string {
 export function refusalText(t: TFn, err: unknown): string {
   const detail = refusalDetail(err);
   if (detail?.messageKey) {
-    return t(detail.messageKey, { defaultValue: detail.message ?? humanizeCode(detail.code ?? '') });
+    const said = t(detail.messageKey, { defaultValue: detail.message ?? humanizeCode(detail.code ?? '') });
+    // A refusal passed on from another module carries that module's own sentence; without it the reader learns nothing.
+    return detail.detail
+      ? t('qualityConcept.refusal.with_detail', { defaultValue: '{{message}} Details: {{detail}}', message: said, detail: detail.detail })
+      : said;
   }
   if (detail?.message) return detail.message;
   if (err instanceof ApiError || err instanceof Error) return getErrorMessage(err);

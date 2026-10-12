@@ -796,6 +796,8 @@ export interface RefusalDetail {
   message: string | null;
   violations: Finding[];
   info: string | null;
+  /** What another module said when the refusal came from it, in that module's own words. */
+  detail: string | null;
 }
 
 /** The structured refusal the backend put in `detail`, or null for any other failure. */
@@ -812,6 +814,7 @@ export function refusalDetail(err: unknown): RefusalDetail | null {
     message: str(d.message),
     violations: Array.isArray(d.violations) ? (d.violations as Finding[]) : [],
     info: str(d.info),
+    detail: str(d.detail),
   };
 }
 

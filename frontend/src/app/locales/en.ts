@@ -42492,6 +42492,7 @@ const resource = {
     "qualityConcept.reason.systems_not_released": "A system it depends on is not released",
     "qualityConcept.reason.unknown_predicate": "This check is not known",
     "qualityConcept.refusal.unknown": "The action could not be completed.",
+    "qualityConcept.refusal.with_detail": "{{message}} Details: {{detail}}",
     "qualityConcept.requiredBy.acceptance_unit": "Acceptance unit",
     "qualityConcept.requiredBy.activity": "Schedule activity",
     "qualityConcept.requiredBy.date": "Fixed date",

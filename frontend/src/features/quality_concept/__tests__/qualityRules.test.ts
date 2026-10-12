@@ -303,3 +303,19 @@ describe('reasons a whole list shares', () => {
     expect(sharedReasons([], both)).toEqual([]);
   });
 });
+
+describe('a refusal passed on from another module', () => {
+  it('shows the sentence of this module and the words of the other one', () => {
+    const err = new ApiError(409, 'Conflict', {
+      detail: {
+        code: 'neighbour_refused',
+        message_key: 'quality_concept.errors.neighbour_refused',
+        message: 'Another part of the system refused this step. The details say why.',
+        detail: 'The handover act is already issued.',
+      },
+    });
+    const text = refusalText(enT, err);
+    expect(text).toContain('Another part of the system refused this step.');
+    expect(text).toContain('The handover act is already issued.');
+  });
+});
