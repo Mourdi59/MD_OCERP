@@ -279,6 +279,8 @@ async def test_the_server_says_what_the_caller_may_do_and_why_not(world: World) 
     ):
         async with client_as(world, user, role) as c:
             can = (await c.get(p)).json()["can"]
+        # Editing and managing exist in every state: a refusal is shown, never hidden.
+        assert (can["edit"]["applies"], can["manage"]["applies"]) == (True, True), name
         seen[name] = (can["edit"]["allowed"], can["edit"]["reason"], can["manage"]["allowed"], can["manage"]["reason"])
     assert seen == {
         "manager": (True, None, True, None),

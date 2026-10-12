@@ -108,7 +108,7 @@ def _page(items: list[Any], total: int | None = None, offset: int = 0, limit: in
     }
 
 
-async def _read(project_id: uuid.UUID, user_id: str, session: Any) -> PlantService:
+async def _plant_read(project_id: uuid.UUID, user_id: str, session: Any) -> PlantService:
     await verify_project_access(project_id, user_id, session)
     return PlantService(session)
 
@@ -126,14 +126,14 @@ async def _can_manage(payload: dict[str, Any]) -> bool:
     return await _holds(_MANAGE, payload)
 
 
-async def _edit(project_id: uuid.UUID, user_id: str, payload: dict[str, Any], session: Any) -> PlantService:
+async def _plant_edit(project_id: uuid.UUID, user_id: str, payload: dict[str, Any], session: Any) -> PlantService:
     await verify_project_access(project_id, user_id, session)
     svc = PlantService(session)
     await _run(svc.require_editor(project_id, _uid(user_id), can_manage=await _can_manage(payload)))
     return svc
 
 
-async def _manage(project_id: uuid.UUID, user_id: str, payload: dict[str, Any], session: Any) -> PlantService:
+async def _plant_manage(project_id: uuid.UUID, user_id: str, payload: dict[str, Any], session: Any) -> PlantService:
     """A write that changes what the gates read: ``plant.manage`` only."""
     await verify_project_access(project_id, user_id, session)
     if not await _can_manage(payload):
@@ -158,7 +158,7 @@ async def _item_out(svc: PlantService, project_id: uuid.UUID, item_id: uuid.UUID
 @router.get(P + "/catalogue", response_model=dict[str, Any], dependencies=[READ])
 async def get_catalogue(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
     """The pinned plant catalogue (classes, routes, sources, steps, parties) as JSON."""
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     return (await _run(svc.catalogue(project_id))).model_dump(mode="json")
 
 
@@ -167,7 +167,7 @@ async def get_settings(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> SettingsOut:
     """The pinned catalogue and what the caller may do here (``can.edit``, ``can.manage``, each with a reason)."""
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     can = await svc.capabilities(
         project_id,
         _uid(user_id),
@@ -195,7 +195,7 @@ async def submittal_lead_time(
     """Whether a plant item owns the lead time of this submittal; if so its own lead fields are read-only."""
     from app.modules.plant_register.reads import plant_item_for_submittal
 
-    await _read(project_id, user_id, session)
+    await _plant_read(project_id, user_id, session)
     dates = await _run(plant_item_for_submittal(session, project_id, submittal_id))
     if dates is None:
         return SubmittalLeadOut(owned_by_plant_item=False)
@@ -214,7 +214,7 @@ async def submittal_lead_time(
 async def put_settings(
     project_id: uuid.UUID, body: SettingsIn, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> SettingsOut:
-    svc = await _manage(project_id, user_id, payload, session)
+    svc = await _plant_manage(project_id, user_id, payload, session)
     row = await _run(
         svc.pin_catalogue(
             project_id,
@@ -252,7 +252,7 @@ async def list_items(
     today: date | None = None,
 ) -> dict[str, Any]:
     """Items with every derived figure; filters as the register grid offers them."""
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     views = await _run(svc.item_views(project_id, today=_today(today)))
     if long_lead is not None:
         views = [v for v in views if v["long_lead"] is long_lead]
@@ -274,7 +274,7 @@ async def list_items(
 async def create_item(
     project_id: uuid.UUID, body: ItemCreate, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> ItemOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     item = await _run(
         svc.create_item(project_id, body.changes(), actor_id=_uid(user_id), can_manage=await _can_manage(payload))
     )
@@ -285,7 +285,7 @@ async def create_item(
 async def get_item(
     project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
 ) -> ItemOut:
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     await _run(svc.get_item(project_id, item_id))
     return await _item_out(svc, project_id, item_id, _today(today))
 
@@ -299,7 +299,7 @@ async def update_item(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> ItemOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     await _run(
         svc.update_item(
             project_id, item_id, body.changes(), actor_id=_uid(user_id), can_manage=await _can_manage(payload)
@@ -318,7 +318,7 @@ async def transition_item(
     payload: CurrentUserPayload,
 ) -> ItemOut:
     """Move by hand to specified, enquired, route_set, manufactured or cancelled; blockers in ``violations``."""
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     await _run(svc.transition_item(project_id, item_id, body.target, actor_id=_uid(user_id), today=_today(None)))
     return await _item_out(svc, project_id, item_id, _today(None))
 
@@ -328,7 +328,7 @@ async def sync_item(
     project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> ItemOut:
     """Read ordered / delivered / installed / commissioned from the PO, OFI and Cx system (rule 11)."""
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     await _run(svc.sync_item_state(project_id, item_id, actor_id=_uid(user_id)))
     return await _item_out(svc, project_id, item_id, _today(None))
 
@@ -343,7 +343,7 @@ async def set_route(
     payload: CurrentUserPayload,
 ) -> ItemOut:
     """Set the procurement route; an owner-furnished route creates or attaches the OFI."""
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     await _run(
         svc.set_route(
             project_id,
@@ -366,7 +366,7 @@ async def handover_item(
     payload: CurrentUserPayload,
 ) -> ItemOut:
     """Rule 16: hand over to operation; ``confirm: true`` is required, a service asset is created when a contract is named."""
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     await _run(
         svc.handover(
             project_id,
@@ -387,7 +387,7 @@ async def handover_item(
 async def list_quotes(
     project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     await _run(svc.get_item(project_id, item_id))
     return _page([QuoteOut.model_validate(q) for q in await svc.repo.quotes(project_id, item_id)])
 
@@ -402,7 +402,7 @@ async def add_quote(
     payload: CurrentUserPayload,
 ) -> QuoteOut:
     """Append a lead time; enquiry date required (rule 2). The first quote, or ``set_basis``, becomes the basis."""
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     quote = await _run(
         svc.add_quote(project_id, item_id, body.model_dump(), actor_id=_uid(user_id), today=_today(None))
     )
@@ -418,7 +418,7 @@ async def set_basis(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> QuoteOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return QuoteOut.model_validate(await _run(svc.set_basis(project_id, item_id, quote_id, actor_id=_uid(user_id))))
 
 
@@ -429,7 +429,7 @@ async def set_basis(
 async def list_slots(
     project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     await _run(svc.get_item(project_id, item_id))
     return _page([SlotOut.model_validate(s) for s in await svc.repo.slots(project_id, item_id)])
 
@@ -443,7 +443,7 @@ async def create_slot(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> SlotOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return SlotOut.model_validate(
         await _run(svc.create_slot(project_id, item_id, body.model_dump(exclude_unset=True), actor_id=_uid(user_id)))
     )
@@ -459,7 +459,7 @@ async def update_slot(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> SlotOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return SlotOut.model_validate(
         await _run(
             svc.update_slot(project_id, item_id, slot_id, body.model_dump(exclude_unset=True), actor_id=_uid(user_id))
@@ -478,7 +478,7 @@ async def transition_slot(
     payload: CurrentUserPayload,
 ) -> SlotOut:
     """held (terms complete, rule 13), converted_to_order, released. ``expired`` is set by the escalation."""
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return SlotOut.model_validate(
         await _run(svc.transition_slot(project_id, item_id, slot_id, body.target, actor_id=_uid(user_id)))
     )
@@ -501,7 +501,7 @@ async def list_papers(
     project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
     """Every paper of the item, oldest first; the last one is current."""
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     await _run(svc.get_item(project_id, item_id))
     return _page([_paper_out(p) for p in await svc.repo.papers(project_id, item_id)])
 
@@ -515,7 +515,7 @@ async def create_paper(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> PaperOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return _paper_out(await _run(svc.create_paper(project_id, item_id, body.body(), actor_id=_uid(user_id))))
 
 
@@ -529,7 +529,7 @@ async def update_paper(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> PaperOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return _paper_out(await _run(svc.update_paper(project_id, item_id, paper_id, body.body(), actor_id=_uid(user_id))))
 
 
@@ -543,7 +543,7 @@ async def submit_paper(
     payload: CurrentUserPayload,
 ) -> PaperOut:
     """Start the ``plant_decision_paper`` approval route; 422 ``no_decision_route`` when the project has none."""
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return _paper_out(await _run(svc.submit_paper(project_id, item_id, paper_id, actor_id=_uid(user_id))))
 
 
@@ -557,7 +557,7 @@ async def withdraw_paper(
     payload: CurrentUserPayload,
 ) -> PaperOut:
     """Take a submitted paper back to draft (its route is cancelled); a route that already decided wins."""
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return _paper_out(await _run(svc.withdraw_paper(project_id, item_id, paper_id, actor_id=_uid(user_id))))
 
 
@@ -568,7 +568,7 @@ async def withdraw_paper(
 async def list_limits(
     project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     await _run(svc.get_item(project_id, item_id))
     return _page([LimitOut.model_validate(x) for x in await svc.repo.limits(project_id, item_id)])
 
@@ -583,7 +583,7 @@ async def put_limits(
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     """Replace the item's row of the delivery-limit matrix; 409 ``two_parties_on_one_step``."""
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     rows = await _run(
         svc.put_limits(project_id, item_id, [r.model_dump() for r in body.limits], actor_id=_uid(user_id))
     )
@@ -593,7 +593,7 @@ async def put_limits(
 @router.get(P + "/delivery-limits", response_model=dict[str, Any], dependencies=[READ])
 async def limit_matrix(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
     """The whole matrix: ``{steps: [code], rows: [{item_id, code, cells: {step: {party, contract_package_id}}}]}``."""
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     cat = await _run(svc.catalogue(project_id))
     items = await svc.repo.items(project_id)
     limits = await svc.repo.limits(project_id)
@@ -620,7 +620,7 @@ async def limit_matrix(project_id: uuid.UUID, session: SessionDep, user_id: Curr
 async def list_spares(
     project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     await _run(svc.get_item(project_id, item_id))
     return _page([SpareOut.model_validate(s) for s in await svc.repo.spares(project_id, item_id)])
 
@@ -634,7 +634,7 @@ async def create_spare(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> SpareOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return SpareOut.model_validate(
         await _run(svc.create_spare(project_id, item_id, body.model_dump(exclude_unset=True), actor_id=_uid(user_id)))
     )
@@ -650,7 +650,7 @@ async def update_spare(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> SpareOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return SpareOut.model_validate(
         await _run(
             svc.update_spare(project_id, item_id, spare_id, body.model_dump(exclude_unset=True), actor_id=_uid(user_id))
@@ -668,7 +668,7 @@ async def transition_spare(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> SpareOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return SpareOut.model_validate(
         await _run(
             svc.transition_spare(project_id, item_id, spare_id, body.target, reason=body.reason, actor_id=_uid(user_id))
@@ -685,7 +685,7 @@ async def delete_spare(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> Response:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     await _run(svc.delete_spare(project_id, item_id, spare_id, actor_id=_uid(user_id)))
     return Response(status_code=204)
 
@@ -695,7 +695,7 @@ async def delete_spare(
 
 @router.get(P + "/it-services", response_model=Page[ItServiceOut], dependencies=[READ])
 async def list_it_services(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     return _page([ItServiceOut.model_validate(r) for r in await svc.repo.it_services(project_id)])
 
 
@@ -703,7 +703,7 @@ async def list_it_services(project_id: uuid.UUID, session: SessionDep, user_id: 
 async def create_it_service(
     project_id: uuid.UUID, body: ItServiceIn, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> ItServiceOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return ItServiceOut.model_validate(
         await _run(svc.create_it_service(project_id, body.model_dump(exclude_unset=True), actor_id=_uid(user_id)))
     )
@@ -718,7 +718,7 @@ async def update_it_service(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> ItServiceOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return ItServiceOut.model_validate(
         await _run(
             svc.update_it_service(project_id, service_id, body.model_dump(exclude_unset=True), actor_id=_uid(user_id))
@@ -735,7 +735,7 @@ async def transition_it_service(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> ItServiceOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return ItServiceOut.model_validate(
         await _run(svc.transition_it_service(project_id, service_id, body.target, actor_id=_uid(user_id)))
     )
@@ -749,7 +749,7 @@ async def delete_it_service(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> Response:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     await _run(svc.delete_it_service(project_id, service_id, actor_id=_uid(user_id)))
     return Response(status_code=204)
 
@@ -762,7 +762,7 @@ async def long_lead(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
 ) -> dict[str, Any]:
     """Long-lead items with computed dates, least float first."""
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     return _page([ItemOut.from_view(v) for v in await _run(svc.long_lead(project_id, today=_today(today)))])
 
 
@@ -773,7 +773,7 @@ async def frame_summary(
     """What the governance frame document of the plant area shows."""
     from fastapi.encoders import jsonable_encoder
 
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     return jsonable_encoder(await _run(svc.frame_summary(project_id, today=_today(today))))
 
 
@@ -781,7 +781,7 @@ async def frame_summary(
 async def readiness(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
 ) -> dict[str, Any]:
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     return await _run(svc.readiness(project_id, today=_today(today)))
 
 
@@ -792,7 +792,7 @@ async def validation(
     """Run rule set ``plant_register`` against the project's register."""
     from app.modules.plant_register.validators import run_rules
 
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     payload = await _run(svc.validation_payload(project_id, today=_today(today)))
     return _page([FindingOut(**r) for r in await run_rules(payload, get_locale() or "en")])
 
@@ -805,7 +805,7 @@ async def escalate(
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     """Run the periodic check now: notify due and overdue order dates (rule 7), expire slots (rule 13)."""
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _plant_edit(project_id, user_id, payload, session)
     return await _run(svc.escalate(project_id, today=_today(None)))
 
 
@@ -825,7 +825,7 @@ async def export(
     from app.modules.plant_register import export as ex
     from app.modules.projects.models import Project
 
-    svc = await _read(project_id, user_id, session)
+    svc = await _plant_read(project_id, user_id, session)
     project = await session.get(Project, project_id)
     name = getattr(project, "name", "") or ""
     locale = get_locale() or "en"

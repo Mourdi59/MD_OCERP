@@ -236,7 +236,13 @@ class PlantService:
     async def capabilities(
         self, project_id: uuid.UUID, user_id: uuid.UUID, *, can_edit: bool, can_manage: bool
     ) -> dict[str, dict[str, Any]]:
-        """What this caller may do on the project, each refusal with the code the write would answer."""
+        """What this caller may do on the project, each refusal with the code the write would answer.
+
+        ``applies`` says whether the action exists here at all. Editing and
+        managing the register exist on every project in every state, so it is
+        always true: a caller without the right sees the action disabled with
+        the reason, never hidden.
+        """
         edit_reason: str | None = None
         if not can_edit:
             edit_reason = "edit_permission_required"
@@ -247,8 +253,8 @@ class PlantService:
                 edit_reason = exc.code
         manage_reason = None if can_manage else "manage_required"
         return {
-            "edit": {"allowed": edit_reason is None, "reason": edit_reason},
-            "manage": {"allowed": manage_reason is None, "reason": manage_reason},
+            "edit": {"applies": True, "allowed": edit_reason is None, "reason": edit_reason},
+            "manage": {"applies": True, "allowed": manage_reason is None, "reason": manage_reason},
         }
 
     # ── catalogue ─────────────────────────────────────────────────────────

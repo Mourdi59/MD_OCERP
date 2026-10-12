@@ -63,8 +63,14 @@ class SettingsIn(_In):
 
 
 class Capability(BaseModel):
-    """Whether the caller may do something, and the error code that says why not."""
+    """Whether the caller may do something, and the error code that says why not.
 
+    ``applies`` is false only when the action does not exist in this state, and
+    the client then hides it. ``applies`` true with ``allowed`` false means the
+    action exists and is refused: the client shows it disabled with the reason.
+    """
+
+    applies: bool
     allowed: bool
     reason: str | None = None
 

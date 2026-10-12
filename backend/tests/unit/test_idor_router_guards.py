@@ -483,6 +483,12 @@ _GUARD_WRAPPERS = frozenset(
         # Round-6 audit, dwg_takeoff IDOR sweep. Each helper resolves the
         # resource's owning project_id and delegates to verify_project_access.
         "_gate_by_drawing",
+        # plant_register.router: each calls verify_project_access first, then
+        # checks the right the write needs. Module-unique names on purpose: other
+        # routers have a plain ``_read`` or ``_edit`` that checks nothing.
+        "_plant_read",
+        "_plant_edit",
+        "_plant_manage",
         "_gate_by_annotation",
         "_gate_by_group",
         # teams.router, resolves the team's owning project and delegates to
