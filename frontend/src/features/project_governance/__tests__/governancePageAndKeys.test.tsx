@@ -7,7 +7,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
@@ -36,6 +36,7 @@ import { ALL_KEY_MAPS, ERROR_TEXT } from '../labels';
 import { DISABLED_REASON } from '../access';
 import { DECISION_PROBLEM } from '../decisionRules';
 import { AREA_KEY_MAPS } from '../AreaPanel';
+import { ROUTE_KEY_MAPS } from '../RoutePin';
 
 const mocked = vi.mocked(api);
 
@@ -86,6 +87,24 @@ describe('ProjectGovernancePage states', () => {
     expect(await screen.findByText('No phase model yet')).toBeInTheDocument();
     expect(await screen.findByText('Neutral phase model')).toBeInTheDocument();
     expect(screen.getByTestId('model-save')).toBeInTheDocument();
+  });
+
+  it('the first model follows the flag the missing-model answer carries', async () => {
+    mocked.getModel.mockRejectedValue(
+      new ApiError(404, 'Not Found', { detail: { code: 'model_missing', message: 'No governance model', can: { manage: false } } }),
+    );
+    const view = renderPage();
+    await screen.findByText('Neutral phase model');
+    const refused = () => screen.queryAllByTestId('disabled-reason').some((r) => r.getAttribute('data-reason') === 'role_manage');
+    await waitFor(() => expect(refused()).toBe(true));
+    view.unmount();
+
+    mocked.getModel.mockRejectedValue(
+      new ApiError(404, 'Not Found', { detail: { code: 'model_missing', message: 'No governance model', can: { manage: true } } }),
+    );
+    renderPage();
+    await screen.findByText('Neutral phase model');
+    expect(refused()).toBe(false);
   });
 
   it('a failing model request shows the error, not the empty state', async () => {
@@ -139,7 +158,7 @@ describe('governance i18n keys', () => {
 
   const used = new Set<string>();
   for (const m of sources.matchAll(/t\(\s*'(governance\.[a-z_.]+)'/g)) used.add(m[1]!);
-  for (const map of [...Object.values(ALL_KEY_MAPS), DISABLED_REASON, DECISION_PROBLEM, ...Object.values(AREA_KEY_MAPS)]) {
+  for (const map of [...Object.values(ALL_KEY_MAPS), DISABLED_REASON, DECISION_PROBLEM, ...Object.values(AREA_KEY_MAPS), ...Object.values(ROUTE_KEY_MAPS)]) {
     for (const [key] of Object.values(map)) used.add(key);
   }
   for (const code of Object.keys(ERROR_TEXT)) used.add(`governance.errors.${code}`);

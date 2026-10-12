@@ -37,6 +37,8 @@ import { catalogueName, errorText, humanizeCode, type LabelContext } from './lab
 export interface ModelPickerProps {
   projectId: string;
   model: GovernanceModel | null;
+  /** Without a model: the server's word on whether the reader may set one. */
+  canSet?: boolean | null;
   gates: GovernanceGate[];
   labels: LabelContext;
   onDone: () => void;
@@ -48,14 +50,14 @@ function catalogueTitle(labels: LabelContext, c: CatalogueSummary): string {
   return humanizeCode(c.code);
 }
 
-export function ModelPicker({ projectId, model, gates, labels, onDone }: ModelPickerProps) {
+export function ModelPicker({ projectId, model, canSet = null, gates, labels, onDone }: ModelPickerProps) {
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
-  // Before a model exists there is no model to carry the server's flag, so
-  // the picker is open and the server's refusal of the first try is what
-  // closes it. The reason then stays on the button.
+  // Before a model exists the flag comes with the `model_missing` answer.
+  // A server that sends none leaves the picker open, and its refusal of the
+  // first try is what closes it. The reason then stays on the button.
   const [refused, setRefused] = useState<Verdict>(null);
-  const verdict = model ? canManage(model) : refused;
+  const verdict: Verdict = model ? canManage(model) : canSet === false ? 'role_manage' : refused;
   const catalogues = useQuery({ queryKey: governanceKeys.catalogues, queryFn: () => listCatalogues().then((p) => p.items) });
   const [selected, setSelected] = useState<string>('');
   const [fourEyes, setFourEyes] = useState(true);
@@ -142,7 +144,12 @@ export function ModelPicker({ projectId, model, gates, labels, onDone }: ModelPi
         </div>
       )}
 
-      {model && <RoutePin projectId={projectId} model={model} onDone={onDone} />}
+      {model && (
+        <div className="space-y-3" id="governance-routes">
+          <RoutePin projectId={projectId} model={model} kind="gate" onDone={onDone} />
+          <RoutePin projectId={projectId} model={model} kind="change" onDone={onDone} />
+        </div>
+      )}
 
       <div>
         <h3 className="mb-2 text-sm font-semibold text-content-primary">

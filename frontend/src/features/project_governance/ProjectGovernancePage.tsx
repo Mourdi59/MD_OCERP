@@ -31,6 +31,7 @@ import {
   useGovernanceMatrix,
   useGovernanceAreas,
   useGovernanceDocuments,
+  useCanSetModel,
   useGovernanceModel,
   useInvalidateGovernance,
   useLabelContext,
@@ -51,6 +52,7 @@ export function ProjectGovernancePage() {
   const invalidate = useInvalidateGovernance(projectId);
 
   const modelQ = useGovernanceModel(projectId);
+  const canSetModel = useCanSetModel(projectId);
   const hasModel = !!modelQ.data;
   const areasQ = useGovernanceAreas(projectId, hasModel);
   const docsQ = useGovernanceDocuments(projectId, hasModel);
@@ -158,7 +160,7 @@ export function ProjectGovernancePage() {
             defaultValue: 'Choose the phase model this project runs through. Its phases, gates and management areas appear here right after.',
           })}
         />
-        <ModelPicker projectId={projectId} model={null} gates={[]} labels={labels} onDone={invalidate} />
+        <ModelPicker projectId={projectId} model={null} canSet={canSetModel} gates={[]} labels={labels} onDone={invalidate} />
       </div>
     );
   }
@@ -179,6 +181,7 @@ export function ProjectGovernancePage() {
         personName={personName}
         onBack={() => go({ gate: null })}
         onOpenArea={(id) => go({ gate: null, area: id })}
+        onOpenModel={() => go({ gate: null, tab: 'model' })}
       />
     );
   } else if (areaId && selectedArea) {
