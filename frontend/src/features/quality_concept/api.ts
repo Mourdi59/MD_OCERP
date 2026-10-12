@@ -17,8 +17,6 @@
 
 import { API_BASE, ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
 
-const BASE = '/v1/quality-concept';
-
 export interface Page<T> {
   items: T[];
   total: number;
@@ -733,231 +731,229 @@ export const qcKeys = {
   validation: (projectId: string) => ['quality-concept', projectId, 'validation'] as const,
 };
 
-const p = (projectId: string) => `${BASE}/projects/${projectId}`;
-
 /* ── Concept ───────────────────────────────────────────────────────────── */
 
-export const getConcept = (projectId: string) => apiGet<Concept>(`${p(projectId)}/concept`);
+export const getConcept = (projectId: string) => apiGet<Concept>(`/v1/quality-concept/projects/${projectId}/concept`);
 
-export const createConcept = (projectId: string) => apiPost<Concept>(`${p(projectId)}/concept`, {});
+export const createConcept = (projectId: string) => apiPost<Concept>(`/v1/quality-concept/projects/${projectId}/concept`, {});
 
 export const patchConcept = (
   projectId: string,
   body: { packages?: PackageScope[]; holidays?: string[]; documentation_set_code?: string | null },
-) => apiPatch<Concept>(`${p(projectId)}/concept`, body);
+) => apiPatch<Concept>(`/v1/quality-concept/projects/${projectId}/concept`, body);
 
 /** Creates what the chosen documentation set asks for; answers the created references by kind. */
 export const applyDocumentationSet = (projectId: string) =>
-  apiPost<Record<string, string[]>>(`${p(projectId)}/concept/documentation-set/apply`, {});
+  apiPost<Record<string, string[]>>(`/v1/quality-concept/projects/${projectId}/concept/documentation-set/apply`, {});
 
 export const pinCatalogue = (
   projectId: string,
   body: { catalogue_source: 'shipped' | 'tenant'; catalogue_id: string; catalogue_version?: number | null },
-) => apiPut<Concept>(`${p(projectId)}/concept/catalogue`, body);
+) => apiPut<Concept>(`/v1/quality-concept/projects/${projectId}/concept/catalogue`, body);
 
-export const getCatalogue = (projectId: string) => apiGet<Catalogue>(`${p(projectId)}/concept/catalogue`);
+export const getCatalogue = (projectId: string) => apiGet<Catalogue>(`/v1/quality-concept/projects/${projectId}/concept/catalogue`);
 
-export const submitConcept = (projectId: string) => apiPost<Concept>(`${p(projectId)}/concept/submit`, {});
+export const submitConcept = (projectId: string) => apiPost<Concept>(`/v1/quality-concept/projects/${projectId}/concept/submit`, {});
 
 /** `return` is the only step a reader takes here; a binding concept reopens through a change request. */
 export const conceptAction = (projectId: string, action: 'return') =>
-  apiPost<Concept>(`${p(projectId)}/concept/${action}`, {});
+  apiPost<Concept>(`/v1/quality-concept/projects/${projectId}/concept/${action}`, {});
 
-export const listRevisions = (projectId: string) => apiGet<Page<ConceptRevision>>(`${p(projectId)}/concept/revisions`);
+export const listRevisions = (projectId: string) => apiGet<Page<ConceptRevision>>(`/v1/quality-concept/projects/${projectId}/concept/revisions`);
 
 /* ── Standards and requirements ────────────────────────────────────────── */
 
-export const listStandards = (projectId: string) => apiGet<Page<AppliedStandard>>(`${p(projectId)}/standards`);
+export const listStandards = (projectId: string) => apiGet<Page<AppliedStandard>>(`/v1/quality-concept/projects/${projectId}/standards`);
 
 export const createStandard = (projectId: string, body: StandardInput) =>
-  apiPost<AppliedStandard>(`${p(projectId)}/standards`, body);
+  apiPost<AppliedStandard>(`/v1/quality-concept/projects/${projectId}/standards`, body);
 
 export const patchStandard = (projectId: string, id: string, body: Partial<StandardInput>) =>
-  apiPatch<AppliedStandard>(`${p(projectId)}/standards/${id}`, body);
+  apiPatch<AppliedStandard>(`/v1/quality-concept/projects/${projectId}/standards/${id}`, body);
 
-export const deleteStandard = (projectId: string, id: string) => apiDelete(`${p(projectId)}/standards/${id}`);
+export const deleteStandard = (projectId: string, id: string) => apiDelete(`/v1/quality-concept/projects/${projectId}/standards/${id}`);
 
 export const listRequirements = (projectId: string) =>
-  apiGet<Page<QualityRequirement>>(`${p(projectId)}/requirements`);
+  apiGet<Page<QualityRequirement>>(`/v1/quality-concept/projects/${projectId}/requirements`);
 
 export const addRequirement = (projectId: string, body: RequirementInput) =>
-  apiPost<QualityRequirement>(`${p(projectId)}/requirements`, body);
+  apiPost<QualityRequirement>(`/v1/quality-concept/projects/${projectId}/requirements`, body);
 
 /* ── Certification ─────────────────────────────────────────────────────── */
 
 export const listCertifications = (projectId: string) =>
-  apiGet<Page<Certification> & { findings: Finding[] }>(`${p(projectId)}/certifications`);
+  apiGet<Page<Certification> & { findings: Finding[] }>(`/v1/quality-concept/projects/${projectId}/certifications`);
 
 export const createCertification = (projectId: string, body: CertificationInput) =>
-  apiPost<Certification>(`${p(projectId)}/certifications`, body);
+  apiPost<Certification>(`/v1/quality-concept/projects/${projectId}/certifications`, body);
 
 export const patchCertification = (projectId: string, id: string, body: CertificationPatch) =>
-  apiPatch<Certification>(`${p(projectId)}/certifications/${id}`, body);
+  apiPatch<Certification>(`/v1/quality-concept/projects/${projectId}/certifications/${id}`, body);
 
 export const transitionCertification = (projectId: string, id: string, body: CertificationTransitionInput) =>
-  apiPost<Certification>(`${p(projectId)}/certifications/${id}/transition`, body);
+  apiPost<Certification>(`/v1/quality-concept/projects/${projectId}/certifications/${id}/transition`, body);
 
 export const deleteCertification = (projectId: string, id: string) =>
-  apiDelete(`${p(projectId)}/certifications/${id}`);
+  apiDelete(`/v1/quality-concept/projects/${projectId}/certifications/${id}`);
 
 export const addCredits = (projectId: string, certificationId: string, items: CreditInput[]) =>
-  apiPost<Page<Credit>>(`${p(projectId)}/certifications/${certificationId}/credits`, { items });
+  apiPost<Page<Credit>>(`/v1/quality-concept/projects/${projectId}/certifications/${certificationId}/credits`, { items });
 
 /** Credit state changes travel in the same PATCH as its fields: there is no separate transition route. */
 export const patchCredit = (projectId: string, id: string, body: CreditPatch) =>
-  apiPatch<Credit>(`${p(projectId)}/credits/${id}`, body);
+  apiPatch<Credit>(`/v1/quality-concept/projects/${projectId}/credits/${id}`, body);
 
-export const deleteCredit = (projectId: string, id: string) => apiDelete(`${p(projectId)}/credits/${id}`);
+export const deleteCredit = (projectId: string, id: string) => apiDelete(`/v1/quality-concept/projects/${projectId}/credits/${id}`);
 
 /* ── Proofs ────────────────────────────────────────────────────────────── */
 
-export const listProofs = (projectId: string) => apiGet<Page<Proof>>(`${p(projectId)}/proofs?limit=2000`);
+export const listProofs = (projectId: string) => apiGet<Page<Proof>>(`/v1/quality-concept/projects/${projectId}/proofs?limit=2000`);
 
-export const createProof = (projectId: string, body: ProofInput) => apiPost<Proof>(`${p(projectId)}/proofs`, body);
+export const createProof = (projectId: string, body: ProofInput) => apiPost<Proof>(`/v1/quality-concept/projects/${projectId}/proofs`, body);
 
 export const patchProof = (projectId: string, id: string, body: ProofPatch) =>
-  apiPatch<Proof>(`${p(projectId)}/proofs/${id}`, body);
+  apiPatch<Proof>(`/v1/quality-concept/projects/${projectId}/proofs/${id}`, body);
 
-export const deleteProof = (projectId: string, id: string) => apiDelete(`${p(projectId)}/proofs/${id}`);
+export const deleteProof = (projectId: string, id: string) => apiDelete(`/v1/quality-concept/projects/${projectId}/proofs/${id}`);
 
 /** Without `confirm` the server only previews; with it, it creates the named evidence types. */
 export const generateProofs = (projectId: string, body: { package_ref: string; confirm?: string[] }) =>
-  apiPost<ProofGenerateResult>(`${p(projectId)}/proofs/generate`, body);
+  apiPost<ProofGenerateResult>(`/v1/quality-concept/projects/${projectId}/proofs/generate`, body);
 
-export const getCoverage = (projectId: string) => apiGet<CoverageResponse>(`${p(projectId)}/proofs/coverage`);
+export const getCoverage = (projectId: string) => apiGet<CoverageResponse>(`/v1/quality-concept/projects/${projectId}/proofs/coverage`);
 
 export const requestWaiver = (projectId: string, id: string, rationale: string) =>
-  apiPost<Proof>(`${p(projectId)}/proofs/${id}/waiver-request`, { rationale });
+  apiPost<Proof>(`/v1/quality-concept/projects/${projectId}/proofs/${id}/waiver-request`, { rationale });
 
 export const decideWaiver = (projectId: string, id: string, approve: boolean) =>
-  apiPost<Proof>(`${p(projectId)}/proofs/${id}/waiver-decision`, { approve });
+  apiPost<Proof>(`/v1/quality-concept/projects/${projectId}/proofs/${id}/waiver-decision`, { approve });
 
 export const proofAction = (projectId: string, id: string, action: 'accept' | 'reopen') =>
-  apiPost<Proof>(`${p(projectId)}/proofs/${id}/${action}`, {});
+  apiPost<Proof>(`/v1/quality-concept/projects/${projectId}/proofs/${id}/${action}`, {});
 
 /* ── Evidence links ────────────────────────────────────────────────────── */
 
 export const listLinks = (projectId: string, ownerKind: LinkOwnerKind, ownerId: string) =>
-  apiGet<Page<EvidenceLink>>(`${p(projectId)}/evidence-links?owner_kind=${ownerKind}&owner_id=${ownerId}`);
+  apiGet<Page<EvidenceLink>>(`/v1/quality-concept/projects/${projectId}/evidence-links?owner_kind=${ownerKind}&owner_id=${ownerId}`);
 
 export const addLink = (
   projectId: string,
   body: { owner_kind: LinkOwnerKind; owner_id: string; link_kind: string; link_id: string; note?: string },
-) => apiPost<EvidenceLink>(`${p(projectId)}/evidence-links`, body);
+) => apiPost<EvidenceLink>(`/v1/quality-concept/projects/${projectId}/evidence-links`, body);
 
-export const removeLink = (projectId: string, id: string) => apiDelete(`${p(projectId)}/evidence-links/${id}`);
+export const removeLink = (projectId: string, id: string) => apiDelete(`/v1/quality-concept/projects/${projectId}/evidence-links/${id}`);
 
 export const listCandidates = (projectId: string, linkKind: string, q: string) =>
   apiGet<Page<LinkCandidate>>(
-    `${p(projectId)}/evidence-links/candidates?link_kind=${encodeURIComponent(linkKind)}&q=${encodeURIComponent(q)}`,
+    `/v1/quality-concept/projects/${projectId}/evidence-links/candidates?link_kind=${encodeURIComponent(linkKind)}&q=${encodeURIComponent(q)}`,
   );
 
 /* ── Stages ────────────────────────────────────────────────────────────── */
 
-export const listStages = (projectId: string) => apiGet<Page<StageDef>>(`${p(projectId)}/stages`);
+export const listStages = (projectId: string) => apiGet<Page<StageDef>>(`/v1/quality-concept/projects/${projectId}/stages`);
 
 export const applyCatalogueStages = (projectId: string) =>
-  apiPost<Page<StageDef>>(`${p(projectId)}/stages/apply-catalogue`, {});
+  apiPost<Page<StageDef>>(`/v1/quality-concept/projects/${projectId}/stages/apply-catalogue`, {});
 
-export const addStage = (projectId: string, body: StageDefInput) => apiPost<StageDef>(`${p(projectId)}/stages`, body);
+export const addStage = (projectId: string, body: StageDefInput) => apiPost<StageDef>(`/v1/quality-concept/projects/${projectId}/stages`, body);
 
 export const patchStage = (projectId: string, id: string, body: StageDefPatch) =>
-  apiPatch<StageDef>(`${p(projectId)}/stages/${id}`, body);
+  apiPatch<StageDef>(`/v1/quality-concept/projects/${projectId}/stages/${id}`, body);
 
-export const deleteStage = (projectId: string, id: string) => apiDelete(`${p(projectId)}/stages/${id}`);
+export const deleteStage = (projectId: string, id: string) => apiDelete(`/v1/quality-concept/projects/${projectId}/stages/${id}`);
 
-export const getStageMatrix = (projectId: string) => apiGet<StageMatrix>(`${p(projectId)}/stage-progress`);
+export const getStageMatrix = (projectId: string) => apiGet<StageMatrix>(`/v1/quality-concept/projects/${projectId}/stage-progress`);
 
-export const syncStageProgress = (projectId: string) => apiPost<StageMatrix>(`${p(projectId)}/stage-progress/sync`, {});
+export const syncStageProgress = (projectId: string) => apiPost<StageMatrix>(`/v1/quality-concept/projects/${projectId}/stage-progress/sync`, {});
 
 export const openStageTest = (projectId: string, id: string) =>
-  apiPost<StageProgress>(`${p(projectId)}/stage-progress/${id}/open-test`, {});
+  apiPost<StageProgress>(`/v1/quality-concept/projects/${projectId}/stage-progress/${id}/open-test`, {});
 
 export const recordStageResult = (
   projectId: string,
   id: string,
   body: { result: 'pass' | 'fail'; note?: string; severity?: 'low' | 'medium' | 'high' | 'critical' },
-) => apiPost<StageProgress>(`${p(projectId)}/stage-progress/${id}/result`, body);
+) => apiPost<StageProgress>(`/v1/quality-concept/projects/${projectId}/stage-progress/${id}/result`, body);
 
 export const requestStageRelease = (projectId: string, id: string) =>
-  apiPost<ReleaseRequestResult>(`${p(projectId)}/stage-progress/${id}/request-release`, {});
+  apiPost<ReleaseRequestResult>(`/v1/quality-concept/projects/${projectId}/stage-progress/${id}/request-release`, {});
 
 export const markStageNotApplicable = (projectId: string, id: string, rationale: string) =>
-  apiPost<StageProgress>(`${p(projectId)}/stage-progress/${id}/not-applicable`, { rationale });
+  apiPost<StageProgress>(`/v1/quality-concept/projects/${projectId}/stage-progress/${id}/not-applicable`, { rationale });
 
 export const reinstateStage = (projectId: string, id: string) =>
-  apiPost<StageProgress>(`${p(projectId)}/stage-progress/${id}/reinstate`, {});
+  apiPost<StageProgress>(`/v1/quality-concept/projects/${projectId}/stage-progress/${id}/reinstate`, {});
 
 export const setStageDependencies = (projectId: string, id: string, systemIds: string[]) =>
-  apiPut<StageProgress>(`${p(projectId)}/stage-progress/${id}/depends-on`, { system_ids: systemIds });
+  apiPut<StageProgress>(`/v1/quality-concept/projects/${projectId}/stage-progress/${id}/depends-on`, { system_ids: systemIds });
 
 /* ── Acceptance ────────────────────────────────────────────────────────── */
 
 export const listUnits = (projectId: string) =>
-  apiGet<Page<AcceptanceUnit>>(`${p(projectId)}/acceptance-units?today=${localToday()}`);
+  apiGet<Page<AcceptanceUnit>>(`/v1/quality-concept/projects/${projectId}/acceptance-units?today=${localToday()}`);
 
 export const createUnit = (projectId: string, body: AcceptanceUnitInput) =>
-  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units`, body);
+  apiPost<AcceptanceUnit>(`/v1/quality-concept/projects/${projectId}/acceptance-units`, body);
 
 export const patchUnit = (projectId: string, id: string, body: AcceptanceUnitPatch) =>
-  apiPatch<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}`, body);
+  apiPatch<AcceptanceUnit>(`/v1/quality-concept/projects/${projectId}/acceptance-units/${id}`, body);
 
-export const deleteUnit = (projectId: string, id: string) => apiDelete(`${p(projectId)}/acceptance-units/${id}`);
+export const deleteUnit = (projectId: string, id: string) => apiDelete(`/v1/quality-concept/projects/${projectId}/acceptance-units/${id}`);
 
 export const requestAcceptance = (projectId: string, id: string, withReservations: boolean) =>
-  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}/request`, { with_reservations: withReservations });
+  apiPost<AcceptanceUnit>(`/v1/quality-concept/projects/${projectId}/acceptance-units/${id}/request`, { with_reservations: withReservations });
 
 export const recordUnitDates = (projectId: string, id: string, body: AcceptanceDatesInput) =>
-  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}/dates`, body);
+  apiPost<AcceptanceUnit>(`/v1/quality-concept/projects/${projectId}/acceptance-units/${id}/dates`, body);
 
 export const refuseUnit = (projectId: string, id: string, body: { rationale: string; defects: string[] }) =>
-  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}/refuse`, body);
+  apiPost<AcceptanceUnit>(`/v1/quality-concept/projects/${projectId}/acceptance-units/${id}/refuse`, body);
 
 export const confirmEffect = (projectId: string, id: string, body: { effect: string; effective_date?: string | null }) =>
-  apiPost<AppliedEffect>(`${p(projectId)}/acceptance-units/${id}/effects`, body);
+  apiPost<AppliedEffect>(`/v1/quality-concept/projects/${projectId}/acceptance-units/${id}/effects`, body);
 
 export const unitAction = (projectId: string, id: string, action: UnitAction) =>
-  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}/${action}`, {});
+  apiPost<AcceptanceUnit>(`/v1/quality-concept/projects/${projectId}/acceptance-units/${id}/${action}`, {});
 
 /* ── Preservation and expert reports ───────────────────────────────────── */
 
 export const listSurveys = (projectId: string) =>
-  apiGet<SurveyList>(`${p(projectId)}/preservation?today=${localToday()}`);
+  apiGet<SurveyList>(`/v1/quality-concept/projects/${projectId}/preservation?today=${localToday()}`);
 
 export const createSurvey = (projectId: string, body: SurveyInput) =>
-  apiPost<Survey>(`${p(projectId)}/preservation`, body);
+  apiPost<Survey>(`/v1/quality-concept/projects/${projectId}/preservation`, body);
 
 export const patchSurvey = (projectId: string, id: string, body: SurveyPatch) =>
-  apiPatch<Survey>(`${p(projectId)}/preservation/${id}`, body);
+  apiPatch<Survey>(`/v1/quality-concept/projects/${projectId}/preservation/${id}`, body);
 
 export const surveyAction = (projectId: string, id: string, body: SurveyActionInput) =>
-  apiPost<Survey>(`${p(projectId)}/preservation/${id}/action`, body);
+  apiPost<Survey>(`/v1/quality-concept/projects/${projectId}/preservation/${id}/action`, body);
 
 export const pairSurvey = (projectId: string, id: string, beforeId: string) =>
-  apiPost<Survey>(`${p(projectId)}/preservation/${id}/pair`, { before_id: beforeId });
+  apiPost<Survey>(`/v1/quality-concept/projects/${projectId}/preservation/${id}/pair`, { before_id: beforeId });
 
-export const deleteSurvey = (projectId: string, id: string) => apiDelete(`${p(projectId)}/preservation/${id}`);
+export const deleteSurvey = (projectId: string, id: string) => apiDelete(`/v1/quality-concept/projects/${projectId}/preservation/${id}`);
 
 export const listExpertReports = (projectId: string) =>
-  apiGet<Page<ExpertReport>>(`${p(projectId)}/expert-reports`);
+  apiGet<Page<ExpertReport>>(`/v1/quality-concept/projects/${projectId}/expert-reports`);
 
 export const createExpertReport = (projectId: string, body: ExpertReportInput) =>
-  apiPost<ExpertReport>(`${p(projectId)}/expert-reports`, body);
+  apiPost<ExpertReport>(`/v1/quality-concept/projects/${projectId}/expert-reports`, body);
 
 export const patchExpertReport = (projectId: string, id: string, body: Partial<ExpertReportInput>) =>
-  apiPatch<ExpertReport>(`${p(projectId)}/expert-reports/${id}`, body);
+  apiPatch<ExpertReport>(`/v1/quality-concept/projects/${projectId}/expert-reports/${id}`, body);
 
 export const deleteExpertReport = (projectId: string, id: string) =>
-  apiDelete(`${p(projectId)}/expert-reports/${id}`);
+  apiDelete(`/v1/quality-concept/projects/${projectId}/expert-reports/${id}`);
 
 /* ── Readiness, validation, export ─────────────────────────────────────── */
 
 export const getReadiness = (projectId: string) =>
-  apiGet<Readiness>(`${p(projectId)}/readiness?today=${localToday()}`);
+  apiGet<Readiness>(`/v1/quality-concept/projects/${projectId}/readiness?today=${localToday()}`);
 
 export const getValidation = (projectId: string) =>
-  apiGet<Page<ValidationItem>>(`${p(projectId)}/validation?today=${localToday()}`);
+  apiGet<Page<ValidationItem>>(`/v1/quality-concept/projects/${projectId}/validation?today=${localToday()}`);
 
 export function downloadExport(projectId: string, what: ExportWhat, format: 'pdf' | 'xlsx'): Promise<void> {
-  return downloadWithAuth(`${API_BASE}${p(projectId)}/export?what=${what}&format=${format}`, `quality_${what}.${format}`);
+  return downloadWithAuth(`${API_BASE}/v1/quality-concept/projects/${projectId}/export?what=${what}&format=${format}`, `quality_${what}.${format}`);
 }

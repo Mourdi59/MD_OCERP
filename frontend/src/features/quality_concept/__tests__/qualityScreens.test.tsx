@@ -99,7 +99,7 @@ describe('concept tab', () => {
 
   it('creates the handover documents of the chosen set and says how many', async () => {
     mocked.getConcept.mockResolvedValue(concept({ documentation_set_code: 'residential' }));
-    mocked.applyDocumentationSet.mockResolvedValue({ closeout_slots: ['om_manual', 'warranties'], fm_deliverables: ['asset_dataset'] });
+    mocked.applyDocumentationSet.mockResolvedValue({ slots_added: ['om_manual', 'warranties'], fm_data_added: ['asset_dataset'] });
     renderPage();
     fireEvent.click(await screen.findByTestId('documentation-set-apply'));
     expect(await screen.findByTestId('documentation-set-applied')).toHaveTextContent(
