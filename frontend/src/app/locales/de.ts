@@ -297,6 +297,7 @@ const resource = {
     "modules.catalog.preliminaries": "Preliminarien",
     "modules.catalog.price_index": "Preisanpassung",
     "modules.catalog.procurement": "Beschaffung",
+    "modules.catalog.procurement_concept": "Vergabekonzept",
     "modules.catalog.progress": "Fortschrittsverfolgung",
     "modules.catalog.project_controls": "Projektcontrolling",
     "modules.catalog.project_intelligence": "Projekt-Intelligenz",

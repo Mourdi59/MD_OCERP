@@ -299,6 +299,7 @@ const resource = {
     "modules.catalog.preliminaries": "Preliminaries",
     "modules.catalog.price_index": "Price Index Adjustment",
     "modules.catalog.procurement": "Procurement",
+    "modules.catalog.procurement_concept": "Procurement concept",
     "modules.catalog.progress": "Progress Tracking",
     "modules.catalog.project_controls": "Project Controls",
     "modules.catalog.project_intelligence": "Project Intelligence",
