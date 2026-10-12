@@ -215,7 +215,10 @@ class SitePlantPosition(Base):
     """
 
     __tablename__ = "oe_site_logistics_plant_position"
-    __table_args__ = (Index("ix_oe_site_plantpos_project", "project_id"),)
+    __table_args__ = (
+        Index("ix_oe_site_plantpos_project", "project_id"),
+        Index("ix_oe_site_plantpos_stage", "project_id", "stage_id"),
+    )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
         GUID(),
@@ -224,7 +227,7 @@ class SitePlantPosition(Base):
     )
     kind: Mapped[str] = mapped_column(String(40), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
-    # Site plan coordinates in metres.
+    # A point in the local frame of the site plan: metres, x to the right, y up.
     x: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
     y: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
     reach_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
@@ -233,6 +236,12 @@ class SitePlantPosition(Base):
     to_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     equipment_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     laydown_zone_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # Soft links, checked on write: the plant register item this is the place of, and the
+    # expansion stage of the site layout the position belongs to (None = every stage).
+    plant_item_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    stage_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # Connected load of the plant standing here; the utilities plan reads it as a demand.
+    power_demand_kva: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     note: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
 
     def __repr__(self) -> str:

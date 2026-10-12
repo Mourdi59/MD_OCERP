@@ -288,9 +288,15 @@ _TABLES: list[tuple[str, Callable[[], list], list[_Index]]] = [
             _day("to_date"),
             _guid("equipment_id"),
             _guid("laydown_zone_id"),
+            _guid("plant_item_id"),
+            _guid("stage_id"),
+            _num("power_demand_kva", 10, 2),
             _text("note"),
         ],
-        [("ix_oe_site_plantpos_project", ["project_id"], {})],
+        [
+            ("ix_oe_site_plantpos_project", ["project_id"], {}),
+            ("ix_oe_site_plantpos_stage", ["project_id", "stage_id"], {}),
+        ],
     ),
 ]
 

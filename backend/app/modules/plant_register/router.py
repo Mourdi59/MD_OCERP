@@ -65,6 +65,13 @@ from app.modules.plant_register.schemas import (
     TransitionIn,
 )
 from app.modules.plant_register.service import PlantService
+from app.modules.plant_register.site_plant import (
+    PositionCreate,
+    PositionIn,
+    PositionList,
+    PositionOut,
+    SitePlantService,
+)
 
 router = APIRouter(tags=["plant_register"])
 
@@ -874,3 +881,106 @@ async def export(
             "Content-Language": written_locale(locale),
         },
     )
+
+
+# ── site plant positions ──────────────────────────────────────────────────
+
+SP = P + "/site-plant-positions"
+
+
+async def _position_can(svc: Any, project_id: uuid.UUID, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return await svc.capabilities(
+        project_id, _uid(user_id), can_edit=await _holds(_EDIT_CHECK, payload), can_manage=await _can_manage(payload)
+    )
+
+
+@router.get(SP, response_model=PositionList, dependencies=[READ])
+async def list_site_plant_positions(
+    project_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    stage_id: uuid.UUID | None = None,
+    plant_item_id: uuid.UUID | None = None,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(500, ge=1, le=1000),
+) -> PositionList:
+    """Every plant position of the project, for the site plan: point in local metres (y up), reach, item, stage."""
+    await verify_project_access(project_id, user_id, session)
+    svc = SitePlantService(session)
+    can = await _position_can(svc, project_id, user_id, payload)
+    views = await _run(svc.listing(project_id, stage_id=stage_id, plant_item_id=plant_item_id))
+    return PositionList(
+        items=[PositionOut.of(v, can) for v in views[offset : offset + limit]],
+        total=len(views),
+        offset=offset,
+        limit=limit,
+        can={"place": can["place"]},
+    )
+
+
+@router.post(SP, response_model=PositionOut, status_code=201, dependencies=[EDIT])
+async def place_site_plant_position(
+    project_id: uuid.UUID,
+    body: PositionCreate,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> PositionOut:
+    """Place a piece of site plant, or a register item, on the site plan."""
+    await verify_project_access(project_id, user_id, session)
+    svc = SitePlantService(session)
+    await _run(svc.plant.require_editor(project_id, _uid(user_id), can_manage=await _can_manage(payload)))
+    row = await _run(svc.place(project_id, body.changes(), actor_id=_uid(user_id)))
+    return PositionOut.of(
+        await _run(svc.view(project_id, row.id)), await _position_can(svc, project_id, user_id, payload)
+    )
+
+
+@router.get(SP + "/{position_id}", response_model=PositionOut, dependencies=[READ])
+async def get_site_plant_position(
+    project_id: uuid.UUID,
+    position_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> PositionOut:
+    await verify_project_access(project_id, user_id, session)
+    svc = SitePlantService(session)
+    return PositionOut.of(
+        await _run(svc.view(project_id, position_id)), await _position_can(svc, project_id, user_id, payload)
+    )
+
+
+@router.patch(SP + "/{position_id}", response_model=PositionOut, dependencies=[EDIT])
+async def move_site_plant_position(
+    project_id: uuid.UUID,
+    position_id: uuid.UUID,
+    body: PositionIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> PositionOut:
+    """Move a position (point, stage) or change what it says; only the fields sent change."""
+    await verify_project_access(project_id, user_id, session)
+    svc = SitePlantService(session)
+    await _run(svc.plant.require_editor(project_id, _uid(user_id), can_manage=await _can_manage(payload)))
+    await _run(svc.move(project_id, position_id, body.changes(), actor_id=_uid(user_id)))
+    return PositionOut.of(
+        await _run(svc.view(project_id, position_id)), await _position_can(svc, project_id, user_id, payload)
+    )
+
+
+@router.delete(SP + "/{position_id}", status_code=204, dependencies=[EDIT])
+async def remove_site_plant_position(
+    project_id: uuid.UUID,
+    position_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> Response:
+    await verify_project_access(project_id, user_id, session)
+    svc = SitePlantService(session)
+    await _run(svc.plant.require_editor(project_id, _uid(user_id), can_manage=await _can_manage(payload)))
+    await _run(svc.remove(project_id, position_id, actor_id=_uid(user_id)))
+    return Response(status_code=204)
