@@ -188,8 +188,8 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events, fo
             // one that applies but is refused stays visible, switched off, with the reason written out below.
             const moves = COMMITMENT_MOVES[c.status].filter((m) => c.can[m].applies);
             const blocked: Array<CommitmentTarget | 'edit'> = moves.filter((m) => !c.can[m].allowed && c.can[m].reason);
-            const editOff = moves.length > 0 && !c.can.edit.allowed;
-            if (editOff && c.can.edit.reason) blocked.push('edit');
+            const edit = c.can.edit;
+            if (edit.applies && !edit.allowed && edit.reason) blocked.push('edit');
             return (
             <li
               key={c.id}
@@ -264,7 +264,7 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events, fo
                   })}
                 </p>
               ) : (
-                moves.length > 0 && (
+                (moves.length > 0 || edit.applies) && (
                   <>
                     <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="commitment-moves">
                       {moves.map((target, i) => (
@@ -279,12 +279,12 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events, fo
                           {vocab(t, COMMITMENT_ACTION, target)}
                         </Button>
                       ))}
-                      {(c.can.edit.allowed || editOff) && (
+                      {edit.applies && (
                         <Button
                           size="sm"
                           variant="ghost"
                           icon={<Pencil size={13} />}
-                          disabled={!c.can.edit.allowed}
+                          disabled={!edit.allowed}
                           onClick={() => setDialog({ kind: 'edit', commitment: c })}
                           data-testid="commitment-edit"
                         >

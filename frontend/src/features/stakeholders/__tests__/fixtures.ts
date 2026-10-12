@@ -208,8 +208,8 @@ export function canOf(status: Commitment['status'], over: Partial<CommitmentCan>
     verified: flag('verified'),
     withdrawn: flag('withdrawn'),
     breached: flag('breached'),
-    // Editing exists in every state; a closed commitment has it switched off.
-    edit: moves[status].length > 0 ? yes : { applies: true, allowed: false, reason: 'invalid_transition' },
+    // A closed commitment is not editable, so the server says editing does not apply there.
+    edit: moves[status].length > 0 ? yes : no('invalid_transition'),
     ...over,
   };
 }

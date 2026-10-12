@@ -242,6 +242,15 @@ describe('the commitments', () => {
     expect(page.queryByTestId('commitment-moves')).toBeNull();
   });
 
+  it('leave it to the server whether editing exists: shown when it applies, even with no move left', () => {
+    const can = canOf('verified', { edit: { applies: true, allowed: false, reason: 'no_permission' } });
+    panel([commitment({ status: 'verified', can })]);
+    fireEvent.click(page.getByTestId('commitment-filter-closed'));
+    expect(moves()).toEqual(['commitment-edit']);
+    expect((page.getByTestId('commitment-edit') as HTMLButtonElement).disabled).toBe(true);
+    expect(within(page.getByTestId('commitment-blocked')).getByRole('listitem').getAttribute('data-move')).toBe('edit');
+  });
+
   it('keep a move the server switched off visible, unpressable and explained', () => {
     const can = canOf('proposed', {
       agreed: { applies: true, allowed: false, reason: 'not_decider' },
@@ -261,7 +270,7 @@ describe('the commitments', () => {
     const can = canOf('proposed', { agreed: viewer, withdrawn: viewer, edit: viewer });
     panel([commitment({ can })], readOnly());
     expect((page.getByTestId('commitment-move-withdrawn') as HTMLButtonElement).disabled).toBe(true);
-    // Editing applies in every state, so it stays visible, switched off, with the reason in words.
+    // Editing applies here, so it stays visible, switched off, with the reason in words.
     expect((page.getByTestId('commitment-edit') as HTMLButtonElement).disabled).toBe(true);
     const lines = within(page.getByTestId('commitment-blocked')).getAllByRole('listitem');
     expect(lines.map((li) => li.getAttribute('data-move'))).toEqual(['agreed', 'withdrawn', 'edit']);
