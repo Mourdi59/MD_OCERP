@@ -436,6 +436,11 @@ async def test_reference_fields_offer_what_the_write_accepts(world: World) -> No
 async def test_a_retest_names_an_earlier_link_of_the_same_record(world: World) -> None:
     async with client_as(world, world.manager, "manager") as c:
         assert (await c.post(_p(world, "concept"))).status_code == 201
+        # The concept names its people and its frame document beside the ids.
+        concept = (await c.get(_p(world, "concept"))).json()
+        assert concept["created_by"] and concept["created_by_name"].startswith("Test ")
+        assert (concept["submitted_by"], concept["submitted_by_name"]) == (None, None)
+        assert "governance_document" in concept
         report = (await c.post(_p(world, "expert-reports"), json={"subject": "Acoustic measurement"})).json()
         container = world.containers["business_case"]
         link = {

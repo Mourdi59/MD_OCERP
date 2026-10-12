@@ -310,3 +310,14 @@ async def link_labels(session: Any, project_id: uuid.UUID, pairs: Iterable[tuple
             out[str(row.id)] = " ".join(str(getattr(row, a)) for a in attrs if getattr(row, a, None)) or str(row.id)
     out.update(await labels(session, project_id, rest))
     return out
+
+
+async def user_names(session: Any, user_ids: Iterable[Any]) -> dict[str, str]:
+    """Full names of the users a record of this project names; a user without a name is left out."""
+    from app.modules.users.models import User
+
+    ids = {u for c in user_ids if (u := as_uuid(c)) is not None}
+    if not ids:
+        return {}
+    rows = (await session.execute(select(User.id, User.full_name).where(User.id.in_(ids)))).all()
+    return {str(i): name for i, name in rows if name}

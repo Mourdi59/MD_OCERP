@@ -202,6 +202,38 @@ async def _with_contacts(svc: QualityConceptService, items: list[dict[str, Any]]
     ]
 
 
+# Fields that hold the id of a user; each gets ``<field>_name`` beside it.
+_PEOPLE = ("owner_user_id", "created_by", "submitted_by", "requested_by", "decided_by", "released_by", "confirmed_by")
+
+
+async def _with_people(svc: QualityConceptService, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Names beside user ids: null when the id is null, the user is gone or has no name on file."""
+    wanted = {item[k] for item in items for k in _PEOPLE if item.get(k)}
+    wanted |= {u for item in items for u in item.get("release_user_ids") or ()}
+    names = await references.user_names(svc.session, wanted)
+    out = []
+    for item in items:
+        extra: dict[str, Any] = {f"{k}_name": names.get(str(item[k])) for k in _PEOPLE if k in item}
+        if "release_user_ids" in item:
+            extra["release_user_names"] = [names.get(str(u)) for u in item["release_user_ids"] or ()]
+        out.append({**item, **extra})
+    return out
+
+
+async def _governance_document(
+    svc: QualityConceptService, project_id: uuid.UUID, document_id: uuid.UUID | None
+) -> dict[str, Any] | None:
+    """The frame document the concept is bound to, as the governance module names it."""
+    from app.modules.project_governance import public
+
+    if document_id is None:
+        return None
+    for doc in await public.project_documents(svc.session, project_id):
+        if doc.id == document_id:
+            return {"id": str(doc.id), "code": doc.code, "label": doc.label, "status": doc.status}
+    return None
+
+
 async def _labelled(svc: QualityConceptService, project_id: uuid.UUID, findings: list[dict]) -> list[dict]:
     """Findings with the name of what ``ref`` points to, and of the linked record in ``params.link``."""
     linked = {f["params"]["link"].partition(":")[2] for f in findings if (f.get("params") or {}).get("link")}
@@ -229,8 +261,10 @@ async def _concept_out(
     errors = [f for f in findings if f.severity == ev.ERROR]
     manage = await _may_manage(project_id, user_id, payload, svc.session)
     submit_reason = "manage_required" if not manage else svc.submit_refusal(concept, errors)
+    (named,) = await _with_people(svc, [_row(concept)])
     return {
-        **_row(concept),
+        **named,
+        "governance_document": await _governance_document(svc, project_id, concept.governance_doc_id),
         "catalogue_label": {"key": cat.name_key, "text": cat.labels},
         "catalogue_review_status": cat.review_status.value,
         "applicable_packages": await svc.applicable_packages(concept),
@@ -407,7 +441,7 @@ async def revisions(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session, payload)
-    return _page([_row(r) for r in await svc.revisions(project_id)])
+    return _page(await _with_people(svc, [_row(r) for r in await svc.revisions(project_id)]))
 
 
 # ── standards and requirements ─────────────────────────────────────────────
@@ -686,7 +720,8 @@ async def list_proofs(
     svc = await _svc(project_id, user_id, session, payload)
     filters = {"package_ref": package_ref} if package_ref else {}
     proofs = await svc.repo.list(ProofRequirement, project_id, **filters)
-    return _page(await _with_contacts(svc, await _proofs_out(svc, project_id, proofs)), offset, limit)
+    rows = await _with_contacts(svc, await _proofs_out(svc, project_id, proofs))
+    return _page(await _with_people(svc, rows), offset, limit)
 
 
 @router.post(P + "/proofs", status_code=201, dependencies=[MANAGE])
@@ -895,7 +930,7 @@ async def list_stages(
     svc = await _svc(project_id, user_id, session, payload)
     plan = caps.plan_row(svc.ctx.caller, svc.ctx.concept_state)
     rows = await svc.repo.list(CommissioningStageDef, project_id, CommissioningStageDef.order)
-    return _page([{**_row(r), **plan} for r in rows])
+    return _page(await _with_people(svc, [{**_row(r), **plan} for r in rows]))
 
 
 @router.post(P + "/stages/apply-catalogue", dependencies=[MANAGE])
