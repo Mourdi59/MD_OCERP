@@ -1346,8 +1346,9 @@ class StaffingService:
         carries cells only for a caller who may open that person's file (rule
         13, the same decision as the file itself). Everybody else gets the
         person's name, roles and cleared flag, which the plan shows anyway, and
-        ``summary``: counts per document kind over the whole project, without
-        a person, a role or a kind of a special category.
+        ``summary``: counts per document kind over the people whose rows are
+        withheld, only for groups too large to name anybody, and never for a
+        kind of a special category. A call without an actor sees no cell.
         """
         who = _as_actor(actor)
         plan = await self.require_plan(project_id)
@@ -1358,6 +1359,7 @@ class StaffingService:
         files = {f.id: f for f in await self.repo.files(project_id)}
         rows = []
         shown: set[str] = set()
+        withheld: list[dict[str, Any]] = []
         for p in people:
             pfile = files.get(p["file_id"]) or PersonnelFile(
                 project_id=project_id, roster_member_id=p["roster_member_id"]
@@ -1367,6 +1369,8 @@ class StaffingService:
             if allowed:
                 cells = {k: rules.compliance_cell(k in p["required"], p["documents"].get(k), today) for k in kinds}
                 shown |= set(cells)
+            else:
+                withheld.append(p)
             rows.append(
                 {
                     "roster_member_id": str(p["roster_member_id"]),
@@ -1383,7 +1387,8 @@ class StaffingService:
             "document_kinds": [k for k in kinds if k in shown],
             "items": rows,
             "total": len(rows),
-            "summary": rules.compliance_summary(people, kinds, special, today),
+            "summary": rules.compliance_summary(withheld, kinds, special, today),
+            "summary_min_group": rules.SUMMARY_MIN_GROUP,
         }
 
     # ── personnel files: access (rule 13) ──────────────────────────────────
@@ -2315,13 +2320,32 @@ class StaffingService:
             "errors": [f.as_dict() for f in errors],
         }
 
-    async def validation_payload(self, project_id: uuid.UUID) -> dict[str, Any]:
+    async def validation_payload(self, project_id: uuid.UUID, actor: Any = None) -> dict[str, Any]:
+        """What the staffing rules read. Per person, only what the caller may read in that person's file.
+
+        Which of a person's documents is missing or expired, and whether they
+        have a bed, is that person's file (rule 13). For anybody the caller may
+        not open the file of, those facts are withheld and the rules about them
+        say nothing; ``restricted_people`` counts how many that is.
+        """
+        who = _as_actor(actor)
         plan = await self.require_plan(project_id)
         catalogue = await self.catalogue_for(plan)
         people = await self.people(project_id)
-        for p in people:
-            p["bookings"] = await self.bookings_for(project_id, p["roster_member_id"])
         files = await self.repo.files(project_id)
+        by_id = {f.id: f for f in files}
+        restricted = 0
+        for p in people:
+            pfile = by_id.get(p["file_id"]) or PersonnelFile(
+                project_id=project_id, roster_member_id=p["roster_member_id"]
+            )
+            allowed, _reason, _relation = await self.file_access(project_id, pfile, who, edit=False)
+            p["restricted"] = not allowed
+            if allowed:
+                p["bookings"] = await self.bookings_for(project_id, p["roster_member_id"])
+            else:
+                restricted += 1
+                p["bookings"], p["missing"], p["expired"], p["documents"] = [], [], [], {}
         retention: list[dict[str, Any]] = []
         for f in files:
             if f.status == "ended" and f.retention_due_at is None:
@@ -2350,6 +2374,7 @@ class StaffingService:
                 for d in await self.repo.documents(project_id)
             ],
             "retention": retention,
+            "restricted_people": restricted,
         }
 
     # ── reminders (rule 10) ────────────────────────────────────────────────

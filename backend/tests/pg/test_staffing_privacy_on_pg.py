@@ -211,14 +211,8 @@ async def test_the_compliance_matrix_shows_document_states_only_to_who_may_open_
         assert row["cells"] == {} and row["file_id"] is None
         assert row["can"]["see_documents"] == {"allowed": False, "reason": "no_relationship_to_person"}
     assert seen["document_kinds"] == []
-    # Counts per kind over the project, never a health kind, never a person.
-    assert seen["summary"] and not special & {x["document_kind"] for x in seen["summary"]}
-    assert all(
-        set(x) == {"document_kind", "required", "valid", "expiring", "expired", "missing", "waived"}
-        for x in seen["summary"]
-    )
-    permit = next(x for x in seen["summary"] if x["document_kind"] == "work_permit")
-    assert permit["expiring"] == 1
+    # Two people are too few to count: any number would be a statement about one of them.
+    assert seen["summary"] == [] and seen["summary_min_group"] == 5
 
     # Every permission and no relationship: the same nothing.
     stranger = Actor(w.decider, personnel_read=True, personnel_edit=True, personnel_erase=True, edit=True)
@@ -231,6 +225,20 @@ async def test_the_compliance_matrix_shows_document_states_only_to_who_may_open_
     assert rows[str(first.id)]["cells"]["occupational_health_certificate"]["state"] == "valid"
     assert rows[str(first.id)]["file_id"] == str(file_id)
     assert rows[str(second.id)]["cells"] == {}
+    # Nothing to subtract the visible row from: the summary counts the withheld people only, and they are too few.
+    assert mine["summary"] == []
+
+    # The validation findings follow the same rule: a finding about a person's documents is that person's file.
+    async def failing(actor) -> tuple[set[str], int]:
+        from app.modules.staffing.validators import DocumentsNotExpiredOnStart, RequiredDocumentsPresent
+
+        data = await call(w, "validation_payload", actor)
+        refs = set(RequiredDocumentsPresent().refs(data)) | set(DocumentsNotExpiredOnStart().refs(data))
+        return refs, data["restricted_people"]
+
+    assert await failing(Actor(w.editor)) == (set(), 2)
+    assert await failing(None) == (set(), 2)
+    assert await failing(hr(w.manager)) == ({str(first.id)}, 1)
 
     # The export prints the same matrix: no state next to a name the reader may not open.
     from app.modules.staffing import export as ex

@@ -479,12 +479,14 @@ async def readiness(
 
 
 @router.get("/projects/{project_id}/validation", response_model=Page[FindingOut], dependencies=[READ])
-async def validation(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+async def validation(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
     from app.core.validation.engine import ValidationContext
     from app.modules.staffing.validators import STAFFING_RULES
 
     await verify_project_access(project_id, user_id, session)
-    data = await _run(StaffingService(session).validation_payload(project_id))
+    data = await _run(StaffingService(session).validation_payload(project_id, _actor(user_id, payload)))
     context = ValidationContext(data=data, metadata={"locale": get_locale() or "en"})
     findings: list[FindingOut] = []
     for rule_cls in STAFFING_RULES:
@@ -499,7 +501,8 @@ async def validation(project_id: uuid.UUID, session: SessionDep, user_id: Curren
                     suggestion=r.suggestion,
                 )
             )
-    return _page(findings)
+    # People whose document findings are withheld from this caller (rule 13): the list is not the whole picture.
+    return _page(findings, restricted_people=data["restricted_people"])
 
 
 @router.get("/projects/{project_id}/export", dependencies=[READ])

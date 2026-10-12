@@ -383,7 +383,10 @@ def test_the_compliance_summary_counts_states_and_leaves_special_categories_out(
         {"required": ["permit", "health"], "documents": {}},
         {"required": [], "documents": {}},
     ]
-    summary = rules.compliance_summary(people, ["permit", "health"], ["health"], today)
+    # Three people are too few to count; the same three with a threshold of two are counted.
+    assert rules.compliance_summary(people, ["permit", "health"], ["health"], today) == []
+    assert rules.compliance_summary(people * 2, ["permit", "health"], ["health"], today, min_group=5) == []
+    summary = rules.compliance_summary(people, ["permit", "health"], ["health"], today, min_group=2)
     assert summary == [
         {"document_kind": "permit", "required": 2, "valid": 1, "expiring": 0, "expired": 0, "missing": 1, "waived": 0}
     ]

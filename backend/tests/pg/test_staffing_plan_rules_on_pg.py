@@ -513,7 +513,12 @@ async def test_the_demo_seed_fills_every_list_and_runs_twice_without_duplicating
     chart = await call(w, "org_chart")
     assert {ph["phase"] for ph in chart["phases"]} == {"development", "execution", "operation"}
 
-    matrix = await call(w, "compliance_matrix")
+    # A reader of the plan gets counts only where the group is too large to name anybody.
+    public = await call(w, "compliance_matrix", Actor(w.editor))
+    assert all(row["cells"] == {} for row in public["items"])
+    assert public["summary"] and all(x["required"] >= public["summary_min_group"] for x in public["summary"])
+    assert "occupational_health_certificate" not in {x["document_kind"] for x in public["summary"]}
+    matrix = await call(w, "compliance_matrix", owner)
     cells = {c["state"] for row in matrix["items"] for c in row["cells"].values()}
     assert {"valid", "expiring", "missing", "waived"} <= cells
     assert any(row["cleared_to_work"] for row in matrix["items"])

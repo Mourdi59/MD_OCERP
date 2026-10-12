@@ -421,16 +421,25 @@ def compliance_cell(required: bool, document: Mapping[str, Any] | None, today: d
 
 
 COMPLIANCE_STATES = ("valid", "expiring", "expired", "missing", "waived")
+# A count over fewer people than this names them: the plan shows who holds which role.
+SUMMARY_MIN_GROUP = 5
 
 
 def compliance_summary(
-    people: Iterable[Mapping[str, Any]], kinds: Iterable[str], special: Iterable[str], today: date
+    people: Iterable[Mapping[str, Any]],
+    kinds: Iterable[str],
+    special: Iterable[str],
+    today: date,
+    *,
+    min_group: int = SUMMARY_MIN_GROUP,
 ) -> list[dict[str, Any]]:
-    """Per document kind, how many people stand in each state. No person, no role, no special category.
+    """Per document kind, how many of ``people`` stand in each state. No person, no role, no special category.
 
-    This is what somebody without access to the files sees. A kind of a special
-    category (health) is left out altogether: even a count says something about
-    the health of a small team.
+    ``people`` are the ones whose rows the caller does NOT see. Counting the
+    visible ones too would let the caller subtract their own rows and read the
+    rest. A kind that fewer than ``min_group`` of them have to hold is left out,
+    because a count of one or two is a statement about a person. A kind of a
+    special category (health) is left out whatever the size.
     """
     hidden = set(special)
     rows = list(people)
@@ -443,7 +452,9 @@ def compliance_summary(
             state = compliance_cell(kind in p["required"], p["documents"].get(kind), today)["state"]
             if state in counts:
                 counts[state] += 1
-        out.append({"document_kind": kind, "required": sum(counts.values()), **counts})
+        required = sum(counts.values())
+        if required >= min_group:
+            out.append({"document_kind": kind, "required": required, **counts})
     return out
 
 

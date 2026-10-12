@@ -208,7 +208,8 @@ class AccommodationForRemoteSite(_StaffingRule):
         plan = data.get("plan") or {}
         out = []
         for p in data.get("people") or []:
-            if not p.get("confirmed"):
+            # Whether a person has a bed is their file; the payload withholds it from a caller who may not read it.
+            if not p.get("confirmed") or p.get("restricted"):
                 continue
             f = rules.accommodation_finding(
                 bool(plan.get("requires_accommodation")),
