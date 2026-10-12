@@ -13,9 +13,7 @@
 // screens read `code` to tell an empty state from a failure and show the
 // server's `message` as the reason of a refused action.
 
-import { API_BASE, ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
-
-const BASE = '/v1/stakeholders';
+import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
 
 export interface Page<T> {
   items: T[];
@@ -659,28 +657,24 @@ export const stakeholderKeys = {
   mandates: (projectId: string) => ['stakeholders', projectId, 'mandates'] as const,
 };
 
-const p = (projectId: string) => `${BASE}/projects/${projectId}`;
-const org = (projectId: string) => `${p(projectId)}/organisation`;
-const day = () => `today=${localToday()}`;
-
 /* ── Settings ─────────────────────────────────────────────────────────── */
 
 export function listFrameworks(): Promise<Page<FrameworkSummary>> {
-  return apiGet<Page<FrameworkSummary>>(`${BASE}/frameworks`);
+  return apiGet<Page<FrameworkSummary>>('/v1/stakeholders/frameworks');
 }
 
 export function getSettings(projectId: string): Promise<StakeholderSettings> {
-  return apiGet<StakeholderSettings>(`${p(projectId)}/settings`);
+  return apiGet<StakeholderSettings>(`/v1/stakeholders/projects/${projectId}/settings`);
 }
 
 export function putSettings(projectId: string, body: SettingsInput): Promise<StakeholderSettings> {
-  return apiPut<StakeholderSettings>(`${p(projectId)}/settings`, body);
+  return apiPut<StakeholderSettings>(`/v1/stakeholders/projects/${projectId}/settings`, body);
 }
 
 /* ── Register ─────────────────────────────────────────────────────────── */
 
 export function listStakeholders(projectId: string): Promise<Page<Stakeholder>> {
-  return apiGet<Page<Stakeholder>>(`${p(projectId)}/stakeholders?include_archived=true&limit=1000&${day()}`);
+  return apiGet<Page<Stakeholder>>(`/v1/stakeholders/projects/${projectId}/stakeholders?include_archived=true&limit=1000&today=${localToday()}`);
 }
 
 /** A gate of the project's phase model. `code` is what a plan item stores as its trigger. */
@@ -697,7 +691,7 @@ export interface ProjectGateList {
 
 /** Empty when the project has no phase model. */
 export function listGates(projectId: string): Promise<ProjectGateList> {
-  return apiGet<ProjectGateList>(`${p(projectId)}/gates`);
+  return apiGet<ProjectGateList>(`/v1/stakeholders/projects/${projectId}/gates`);
 }
 
 /** A requirement of one of the project's requirement sets. */
@@ -718,7 +712,7 @@ export interface RequirementOptionList {
 }
 
 export function listRequirementOptions(projectId: string): Promise<RequirementOptionList> {
-  return apiGet<RequirementOptionList>(`${p(projectId)}/requirements`);
+  return apiGet<RequirementOptionList>(`/v1/stakeholders/projects/${projectId}/requirements`);
 }
 
 export interface ReleaseItemOption {
@@ -735,7 +729,7 @@ export interface ReleaseItemOptionList {
 }
 
 export function listReleaseItems(projectId: string): Promise<ReleaseItemOptionList> {
-  return apiGet<ReleaseItemOptionList>(`${p(projectId)}/release-items`);
+  return apiGet<ReleaseItemOptionList>(`/v1/stakeholders/projects/${projectId}/release-items`);
 }
 
 /** A risk register entry, as far as a picker needs it. The risk module owns the rest. */
@@ -753,31 +747,31 @@ export function listProjectRisks(projectId: string): Promise<Page<ProjectRisk>> 
 }
 
 export function createStakeholder(projectId: string, body: StakeholderInput): Promise<Stakeholder> {
-  return apiPost<Stakeholder>(`${p(projectId)}/stakeholders`, body);
+  return apiPost<Stakeholder>(`/v1/stakeholders/projects/${projectId}/stakeholders`, body);
 }
 
 export function updateStakeholder(projectId: string, id: string, body: StakeholderInput): Promise<Stakeholder> {
-  return apiPatch<Stakeholder>(`${p(projectId)}/stakeholders/${id}`, body);
+  return apiPatch<Stakeholder>(`/v1/stakeholders/projects/${projectId}/stakeholders/${id}`, body);
 }
 
 export function archiveStakeholder(projectId: string, id: string): Promise<{ id: string; status: string }> {
-  return apiDelete<{ id: string; status: string }>(`${p(projectId)}/stakeholders/${id}`);
+  return apiDelete<{ id: string; status: string }>(`/v1/stakeholders/projects/${projectId}/stakeholders/${id}`);
 }
 
 export function listAssessments(projectId: string, id: string): Promise<Page<Assessment>> {
-  return apiGet<Page<Assessment>>(`${p(projectId)}/stakeholders/${id}/assessments`);
+  return apiGet<Page<Assessment>>(`/v1/stakeholders/projects/${projectId}/stakeholders/${id}/assessments`);
 }
 
 export function createAssessment(projectId: string, id: string, body: AssessmentInput): Promise<Assessment> {
-  return apiPost<Assessment>(`${p(projectId)}/stakeholders/${id}/assessments`, body);
+  return apiPost<Assessment>(`/v1/stakeholders/projects/${projectId}/stakeholders/${id}/assessments`, body);
 }
 
 export function getGrid(projectId: string, method: string): Promise<GridResponse> {
-  return apiGet<GridResponse>(`${p(projectId)}/grid?method=${encodeURIComponent(method)}&${day()}`);
+  return apiGet<GridResponse>(`/v1/stakeholders/projects/${projectId}/grid?method=${encodeURIComponent(method)}&today=${localToday()}`);
 }
 
 export function getReadiness(projectId: string): Promise<Readiness> {
-  return apiGet<Readiness>(`${p(projectId)}/readiness?${day()}`);
+  return apiGet<Readiness>(`/v1/stakeholders/projects/${projectId}/readiness?today=${localToday()}`);
 }
 
 /** One result of a validation rule. The message and the suggestion arrive in the reader's language. */
@@ -791,67 +785,67 @@ export interface ValidationFinding {
 }
 
 export function listValidation(projectId: string): Promise<Page<ValidationFinding>> {
-  return apiGet<Page<ValidationFinding>>(`${p(projectId)}/validation?${day()}`);
+  return apiGet<Page<ValidationFinding>>(`/v1/stakeholders/projects/${projectId}/validation?today=${localToday()}`);
 }
 
 /* ── Plan and events ──────────────────────────────────────────────────── */
 
 export function listPlanItems(projectId: string): Promise<Page<PlanItem>> {
-  return apiGet<Page<PlanItem>>(`${p(projectId)}/plan-items?${day()}`);
+  return apiGet<Page<PlanItem>>(`/v1/stakeholders/projects/${projectId}/plan-items?today=${localToday()}`);
 }
 
 export function listDue(projectId: string): Promise<Page<DueOccurrence>> {
-  return apiGet<Page<DueOccurrence>>(`${p(projectId)}/plan-items/due?${day()}`);
+  return apiGet<Page<DueOccurrence>>(`/v1/stakeholders/projects/${projectId}/plan-items/due?today=${localToday()}`);
 }
 
 export function createPlanItem(projectId: string, body: PlanItemInput): Promise<PlanItem> {
-  return apiPost<PlanItem>(`${p(projectId)}/plan-items`, body);
+  return apiPost<PlanItem>(`/v1/stakeholders/projects/${projectId}/plan-items`, body);
 }
 
 export function updatePlanItem(projectId: string, id: string, body: PlanItemInput): Promise<PlanItem> {
-  return apiPatch<PlanItem>(`${p(projectId)}/plan-items/${id}`, body);
+  return apiPatch<PlanItem>(`/v1/stakeholders/projects/${projectId}/plan-items/${id}`, body);
 }
 
 export function deletePlanItem(projectId: string, id: string): Promise<void> {
-  return apiDelete<void>(`${p(projectId)}/plan-items/${id}`);
+  return apiDelete<void>(`/v1/stakeholders/projects/${projectId}/plan-items/${id}`);
 }
 
 export function recordOccurrence(projectId: string, planItemId: string, body: EventInput): Promise<EngagementEvent> {
-  return apiPost<EngagementEvent>(`${p(projectId)}/plan-items/${planItemId}/record`, body);
+  return apiPost<EngagementEvent>(`/v1/stakeholders/projects/${projectId}/plan-items/${planItemId}/record`, body);
 }
 
 export function listEvents(projectId: string): Promise<Page<EngagementEvent>> {
-  return apiGet<Page<EngagementEvent>>(`${p(projectId)}/events?${day()}`);
+  return apiGet<Page<EngagementEvent>>(`/v1/stakeholders/projects/${projectId}/events?today=${localToday()}`);
 }
 
 export function createEvent(projectId: string, body: EventInput): Promise<EngagementEvent> {
-  return apiPost<EngagementEvent>(`${p(projectId)}/events`, body);
+  return apiPost<EngagementEvent>(`/v1/stakeholders/projects/${projectId}/events`, body);
 }
 
 export function updateEvent(projectId: string, id: string, body: EventInput): Promise<EngagementEvent> {
-  return apiPatch<EngagementEvent>(`${p(projectId)}/events/${id}`, body);
+  return apiPatch<EngagementEvent>(`/v1/stakeholders/projects/${projectId}/events/${id}`, body);
 }
 
 export function deleteEvent(projectId: string, id: string): Promise<void> {
-  return apiDelete<void>(`${p(projectId)}/events/${id}`);
+  return apiDelete<void>(`/v1/stakeholders/projects/${projectId}/events/${id}`);
 }
 
 /* ── Commitments ──────────────────────────────────────────────────────── */
 
 export function listCommitments(projectId: string): Promise<Page<Commitment>> {
-  return apiGet<Page<Commitment>>(`${p(projectId)}/commitments?${day()}`);
+  return apiGet<Page<Commitment>>(`/v1/stakeholders/projects/${projectId}/commitments?today=${localToday()}`);
 }
 
 export function createCommitment(projectId: string, body: CommitmentInput): Promise<Commitment> {
-  return apiPost<Commitment>(`${p(projectId)}/commitments`, body);
+  return apiPost<Commitment>(`/v1/stakeholders/projects/${projectId}/commitments`, body);
 }
 
 export function updateCommitment(projectId: string, id: string, body: CommitmentInput): Promise<Commitment> {
-  return apiPatch<Commitment>(`${p(projectId)}/commitments/${id}`, body);
+  return apiPatch<Commitment>(`/v1/stakeholders/projects/${projectId}/commitments/${id}`, body);
 }
 
 export function transitionCommitment(projectId: string, id: string, body: TransitionInput): Promise<Commitment> {
-  return apiPost<Commitment>(`${p(projectId)}/commitments/${id}/transition`, body);
+  return apiPost<Commitment>(`/v1/stakeholders/projects/${projectId}/commitments/${id}/transition`, body);
 }
 
 /* ── Exports ──────────────────────────────────────────────────────────── */
@@ -860,9 +854,16 @@ export type ExportDocument = 'register' | 'organisation';
 export type ExportFormat = 'pdf' | 'xlsx';
 
 export function downloadExport(projectId: string, document: ExportDocument, format: ExportFormat): Promise<void> {
-  const root = document === 'organisation' ? org(projectId) : p(projectId);
-  const stem = document === 'organisation' ? 'project_organisation_and_mandates' : 'stakeholder_and_communication_plan';
-  return downloadWithAuth(`${API_BASE}${root}/export?format=${format}`, `${stem}.${format}`);
+  if (document === 'organisation') {
+    return downloadWithAuth(
+      `/api/v1/stakeholders/projects/${projectId}/organisation/export?format=${format}`,
+      `project_organisation_and_mandates.${format}`,
+    );
+  }
+  return downloadWithAuth(
+    `/api/v1/stakeholders/projects/${projectId}/export?format=${format}`,
+    `stakeholder_and_communication_plan.${format}`,
+  );
 }
 
 /** File the export as a new CDE revision of the owner area's frame document. */
@@ -870,13 +871,13 @@ export function fileFrameDocument(
   projectId: string,
   body: { document: ExportDocument; format: ExportFormat; change_reason?: string; change_impact?: string },
 ): Promise<Record<string, unknown>> {
-  return apiPost<Record<string, unknown>>(`${p(projectId)}/frame-documents/file`, body);
+  return apiPost<Record<string, unknown>>(`/v1/stakeholders/projects/${projectId}/frame-documents/file`, body);
 }
 
 /* ── Organisation ─────────────────────────────────────────────────────── */
 
 export function getRoles(projectId: string): Promise<RolesView> {
-  return apiGet<RolesView>(`${org(projectId)}/roles?${day()}`);
+  return apiGet<RolesView>(`/v1/stakeholders/projects/${projectId}/organisation/roles?today=${localToday()}`);
 }
 
 export function putRoleHolders(
@@ -885,38 +886,38 @@ export function putRoleHolders(
   holders: HolderInput[],
   customLabel = '',
 ): Promise<RolesView & OrganisationWriteNotes> {
-  return apiPut<RolesView & OrganisationWriteNotes>(`${org(projectId)}/roles/${roleCode}`, {
+  return apiPut<RolesView & OrganisationWriteNotes>(`/v1/stakeholders/projects/${projectId}/organisation/roles/${roleCode}`, {
     holders,
     custom_label: customLabel,
   });
 }
 
 export function listBodies(projectId: string): Promise<Page<GovernanceBody>> {
-  return apiGet<Page<GovernanceBody>>(`${org(projectId)}/bodies?${day()}`);
+  return apiGet<Page<GovernanceBody>>(`/v1/stakeholders/projects/${projectId}/organisation/bodies?today=${localToday()}`);
 }
 
 export function createBody(projectId: string, body: BodyInput): Promise<GovernanceBody> {
-  return apiPost<GovernanceBody>(`${org(projectId)}/bodies`, body);
+  return apiPost<GovernanceBody>(`/v1/stakeholders/projects/${projectId}/organisation/bodies`, body);
 }
 
 export function updateBody(projectId: string, id: string, body: BodyInput): Promise<GovernanceBody> {
-  return apiPatch<GovernanceBody>(`${org(projectId)}/bodies/${id}`, body);
+  return apiPatch<GovernanceBody>(`/v1/stakeholders/projects/${projectId}/organisation/bodies/${id}`, body);
 }
 
 export function deleteBody(projectId: string, id: string): Promise<void> {
-  return apiDelete<void>(`${org(projectId)}/bodies/${id}`);
+  return apiDelete<void>(`/v1/stakeholders/projects/${projectId}/organisation/bodies/${id}`);
 }
 
 export function putBodyMembers(projectId: string, id: string, members: MemberInput[]): Promise<GovernanceBody> {
-  return apiPut<GovernanceBody>(`${org(projectId)}/bodies/${id}/members`, { members });
+  return apiPut<GovernanceBody>(`/v1/stakeholders/projects/${projectId}/organisation/bodies/${id}/members`, { members });
 }
 
 export function getMandates(projectId: string): Promise<MandateMatrix> {
-  return apiGet<MandateMatrix>(`${org(projectId)}/mandates?${day()}`);
+  return apiGet<MandateMatrix>(`/v1/stakeholders/projects/${projectId}/organisation/mandates?today=${localToday()}`);
 }
 
 export function putMandates(projectId: string, rows: MandateRow[]): Promise<MandateMatrix> {
-  return apiPut<MandateMatrix>(`${org(projectId)}/mandates`, {
+  return apiPut<MandateMatrix>(`/v1/stakeholders/projects/${projectId}/organisation/mandates`, {
     rows: rows.map(({ decision_type, scope, holder_kind, holder_code, letter, scope_note }) => ({
       decision_type,
       scope,
@@ -935,5 +936,5 @@ export function whoDecides(
   const qs = new URLSearchParams({ decision_type: args.decisionType, today: localToday() });
   if (args.amount) qs.set('amount', args.amount);
   if (args.currency) qs.set('currency', args.currency);
-  return apiGet<WhoDecides>(`${org(projectId)}/who-decides?${qs.toString()}`);
+  return apiGet<WhoDecides>(`/v1/stakeholders/projects/${projectId}/organisation/who-decides?${qs.toString()}`);
 }
