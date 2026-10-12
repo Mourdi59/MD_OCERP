@@ -17,11 +17,14 @@ kept untouched, which is why reopening is a transition and not a reset.
 
 Frame document release lifecycle::
 
-    draft <-> in_review -> approved_at_gate -> binding -> superseded
+    draft <-> in_review -> approved_at_gate -> binding <-> superseded
 
 A binding document is never moved back to draft. A new revision of a binding
 document is a change request, and the binding revision stays in force until
 the change is approved (see ``service.GovernanceService.apply_change_decision``).
+A binding document is superseded when the project moves to a phase model that
+no longer has its document type: it leaves the frame, its bound revision stays
+on record. It is binding again when a later model change brings the type back.
 
 Role gates are not declared on the transitions: who may move a gate is a
 question of route entitlement and area ownership, answered in the service,
@@ -60,9 +63,9 @@ DOCUMENT_FSM = register_fsm(
             StateTransition("in_review", "draft", description="returned to draft"),
             StateTransition("in_review", "approved_at_gate", description="approved by a gate decision"),
             StateTransition("approved_at_gate", "binding", description="binding after the gate"),
-            StateTransition("binding", "superseded", description="superseded"),
+            StateTransition("binding", "superseded", description="document type left the phase model"),
+            StateTransition("superseded", "binding", description="document type back in the phase model"),
         ],
-        terminal=("superseded",),
     )
 )
 

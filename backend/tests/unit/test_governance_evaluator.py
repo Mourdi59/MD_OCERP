@@ -412,12 +412,13 @@ def test_a_gate_not_in_review_cannot_be_decided() -> None:
 # 11 ── stop makes open documents read-only ──────────────────────────────────
 
 
-def test_11_stop_effects_freeze_open_documents() -> None:
+def test_11_stop_effects_freeze_every_document_still_in_the_frame() -> None:
     eff = ev.decision_effects("stop")
     assert eff.next_gate_status == "decided"
     assert eff.stop_project is True
+    # A binding document is frozen as well: a stopped project's baseline does not move.
     docs = (_doc("A", status="draft"), _doc("B", status="binding", bound_revision_id="rev-1"))
-    assert ev.documents_to_freeze(docs) == ("doc-A-pep",)
+    assert ev.documents_to_freeze(docs) == ("doc-A-pep", "doc-B-pep")
 
 
 def test_11_a_read_only_document_refuses_every_edit() -> None:
@@ -531,3 +532,46 @@ def test_15_trail_rows_carry_keys_not_english() -> None:
     assert rows[0]["outcome_key"] == "governance.outcome.go_with_conditions"
     assert rows[0]["attempt_no"] == 1
     assert rows[0]["conditions"] == 1
+
+
+# ── 14 blocking evidence is liftable like a not-ready area ──
+
+
+def _evidence_ctx() -> GateContext:
+    return _ctx(evidence=(ev.EvidenceState(area_code="A", code="permit", state="not_met", blocking=True),))
+
+
+def _at_risk(area: str) -> DecisionRequest:
+    cond = ProposedCondition(area_code="A", document_type=None, text="Obtain permit", owner_user_id=OWNER_A)
+    return _req("go_with_conditions", rationale="x", conditions=(cond,), proceed_at_risk_areas=(area,))
+
+
+def test_14_blocking_evidence_blocks_without_at_risk() -> None:
+    ctx = _evidence_ctx()
+    assert "evidence_not_met" in _codes(ev.validate_decision(ctx, _req("go")))
+    cond = ProposedCondition(area_code="A", document_type=None, text="x", owner_user_id=OWNER_A)
+    req = _req("go_with_conditions", rationale="x", conditions=(cond,))
+    assert "evidence_not_met" in _codes(ev.validate_decision(ctx, req))
+
+
+def test_14_blocking_evidence_is_lifted_by_conditional_go_with_the_area_at_risk() -> None:
+    assert ev.validate_decision(_evidence_ctx(), _at_risk("A")) == []
+
+
+def test_14_blocking_evidence_is_not_lifted_on_a_plain_go() -> None:
+    codes = _codes(ev.validate_decision(_evidence_ctx(), _req("go", proceed_at_risk_areas=("A",))))
+    assert {"evidence_not_met", "proceed_at_risk_needs_conditions"} <= codes
+
+
+def test_14_blocking_evidence_is_not_lifted_when_another_area_is_at_risk() -> None:
+    codes = _codes(ev.validate_decision(_evidence_ctx(), _at_risk("B")))
+    assert {"evidence_not_met", "proceed_at_risk_area_not_blocking"} <= codes
+
+
+def test_14_a_stale_check_is_not_lifted_by_proceeding_at_risk() -> None:
+    """Nobody attested the document as it now stands, so the area has to confirm again."""
+    ctx = _ctx(checks=(_check("A", stale=True), _check("B", confirmed_revisions={"doc-B-pep": "rev-1"})))
+    cond = ProposedCondition(area_code="A", document_type=None, text="Confirm again", owner_user_id=OWNER_A)
+    req = _req("go_with_conditions", rationale="x", conditions=(cond,), proceed_at_risk_areas=("A",))
+    codes = _codes(ev.validate_decision(ctx, req))
+    assert codes == {"check_stale", "proceed_at_risk_area_not_blocking"}

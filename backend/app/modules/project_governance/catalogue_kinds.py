@@ -27,6 +27,7 @@ i18n keys, tenant items may carry ``labels: {locale: text}``.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -37,6 +38,58 @@ from pydantic import BaseModel, ValidationError
 from app.modules.project_governance.catalogue import InvalidCatalogueError, UnknownCatalogueError
 
 PHASE_MODEL_KIND = "phase_model"
+
+# ── tag vocabulary of the phase model ──────────────────────────────────────
+#
+# A phase model says in data what other modules would otherwise guess from a
+# code: a document type lists the subjects it ``hosts`` and a phase lists what
+# entering it ``enables``. A module that needs a tag nobody listed registers it
+# at import with one call; the validator then accepts it in every source.
+
+_TAG = re.compile(r"[a-z][a-z0-9_]*")
+
+_HOST_SUBJECTS: set[str] = {
+    "delivery_model",
+    "permits",
+    "plant",
+    "procurement",
+    "design",
+    "stakeholders",
+    "organisation",
+    "quality",
+    "staffing",
+    "site_logistics",
+    "commitment_release",
+}
+_PHASE_CAPABILITIES: set[str] = {"construction_start", "handover", "operation", "procurement"}
+
+
+def _checked_tag(name: str) -> str:
+    if not isinstance(name, str) or not _TAG.fullmatch(name):
+        raise ValueError(f"catalogue tag {name!r} must match [a-z][a-z0-9_]*")
+    return name
+
+
+def register_host_subject(name: str) -> str:
+    """Add a subject a document type may host (idempotent)."""
+    _HOST_SUBJECTS.add(_checked_tag(name))
+    return name
+
+
+def host_subjects() -> frozenset[str]:
+    """Every subject a ``hosts`` tag may name."""
+    return frozenset(_HOST_SUBJECTS)
+
+
+def register_phase_capability(name: str) -> str:
+    """Add something a phase may enable (idempotent)."""
+    _PHASE_CAPABILITIES.add(_checked_tag(name))
+    return name
+
+
+def phase_capabilities() -> frozenset[str]:
+    """Everything an ``enables`` tag may name."""
+    return frozenset(_PHASE_CAPABILITIES)
 
 
 @dataclass(frozen=True)

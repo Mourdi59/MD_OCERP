@@ -12,6 +12,7 @@ as they do in production.
 from __future__ import annotations
 
 import uuid
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -21,8 +22,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.project_governance import evaluator as ev
 from app.modules.project_governance.models import GovernanceArea, GovernanceDocument, GovernanceGate
 from app.modules.project_governance.service import GovernanceService
-
-TODAY = date(2026, 10, 11)
 
 
 @dataclass
@@ -140,6 +139,16 @@ async def build_world(factory: async_sessionmaker[AsyncSession], *, routes: bool
             actor_id=manager,
             tenant_id=str(manager),
         )
+        if routes:
+            # Governance reads only a pinned route; nothing is found by project or kind.
+            await svc.update_settings(
+                pid,
+                four_eyes=None,
+                decision_route_id=w.gate_route_id,
+                change_route_id=w.change_route_id,
+                fields_set={"decision_route_id", "change_route_id"},
+                actor_id=manager,
+            )
         await s.commit()
     return w
 
@@ -181,10 +190,8 @@ async def prepare_gate(
         ).scalar_one()
         for d in await svc.repo.list_documents(w.project_id):
             if gate_code in d.required_at_gates and d.status == "draft":
-                await svc.attach_container(
-                    w.project_id, d.id, container_id=w.containers[d.doc_type], actor_id=owner, role="editor"
-                )
-                await svc.submit_document(w.project_id, d.id, actor_id=owner, role="editor")
+                await svc.attach_container(w.project_id, d.id, container_id=w.containers[d.doc_type], actor_id=owner)
+                await svc.submit_document(w.project_id, d.id, actor_id=owner)
         await svc.start_preparation(w.project_id, g.id, actor_id=owner) if g.status == "not_started" else None
         for a in await svc.repo.list_areas(w.project_id):
             await svc.confirm_check(w.project_id, g.id, a.id, status="ready", rag="green", note="", actor_id=owner)
@@ -194,7 +201,15 @@ async def prepare_gate(
         return g
 
 
-async def decide(w: World, gate_id: uuid.UUID, outcome: str = "go", *, decider: uuid.UUID | None = None, **kw):
+async def decide(
+    w: World,
+    gate_id: uuid.UUID,
+    outcome: str = "go",
+    *,
+    decider: uuid.UUID | None = None,
+    today: date = date(2026, 10, 11),
+    **kw,
+):
     req = ev.DecisionRequest(
         outcome=outcome,
         rationale=kw.pop("rationale", "" if outcome == "go" else "reason"),
@@ -203,7 +218,65 @@ async def decide(w: World, gate_id: uuid.UUID, outcome: str = "go", *, decider: 
     )
     async with w.factory() as s:
         d = await GovernanceService(s).decide(
-            w.project_id, gate_id, request=req, decider_id=decider or w.decider, role="manager", today=TODAY
+            w.project_id, gate_id, request=req, decider_id=decider or w.decider, role="manager", today=today
         )
         await s.commit()
         return d
+
+
+# ── HTTP ──
+
+API = "/api/v1/project-governance"
+
+
+@asynccontextmanager
+async def client_as(w: World, user_id: uuid.UUID, role: str):
+    """The governance router over HTTP as one user; every request commits like the real session dependency."""
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+
+    from app.dependencies import get_current_user_id, get_current_user_payload, get_session
+    from app.modules.project_governance.router import router
+
+    app = FastAPI()
+    app.include_router(router, prefix=API)
+
+    async def _session():
+        async with w.factory() as s:
+            yield s
+            await s.commit()
+
+    app.dependency_overrides[get_session] = _session
+    app.dependency_overrides[get_current_user_id] = lambda: str(user_id)
+    app.dependency_overrides[get_current_user_payload] = lambda: {"sub": str(user_id), "role": role, "permissions": []}
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://gov-test") as c:
+        yield c
+
+
+def project_url(w: World) -> str:
+    return f"{API}/projects/{w.project_id}"
+
+
+async def add_role_route(session: AsyncSession, project_id: uuid.UUID, kind: str, role: str, mode: str) -> uuid.UUID:
+    """A route whose single step is held by a role, not a named user."""
+    from app.modules.approval_routes.models import Route, Step
+
+    route = Route(project_id=project_id, name=f"{kind} by {role}", target_kind=kind, is_active=True)
+    session.add(route)
+    await session.flush()
+    session.add(Step(route_id=route.id, ordinal=1, approver_role=role, mode=mode))
+    await session.flush()
+    return route.id
+
+
+async def add_activity(session: AsyncSession, project_id: uuid.UUID, name: str, day: str) -> uuid.UUID:
+    """A milestone in a schedule of the project, on ``day`` (ISO)."""
+    from app.modules.schedule.models import Activity, Schedule
+
+    schedule = Schedule(project_id=project_id, name=f"Master {uuid.uuid4().hex[:6]}")
+    session.add(schedule)
+    await session.flush()
+    activity = Activity(schedule_id=schedule.id, name=name, start_date=day, end_date=day, activity_type="milestone")
+    session.add(activity)
+    await session.flush()
+    return activity.id
