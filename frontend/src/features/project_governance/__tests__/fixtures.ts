@@ -33,7 +33,7 @@ export function model(over: Partial<GovernanceModel> = {}): GovernanceModel {
     change_route_id: null,
     stopped: false,
     stopped_at: null,
-    can: { manage: true, edit: true },
+    can: { manage: true },
     phases: [
       { code: 'strategy', order: 1, name: { key: 'governance.catalogue.neutral.phase.strategy', text: null } },
       { code: 'brief', order: 2, name: { key: 'governance.catalogue.neutral.phase.brief', text: null } },

@@ -14,8 +14,6 @@
 
 import { ApiError, apiGet, apiPatch, apiPost, apiPut } from '@/shared/lib/api';
 
-const BASE = '/v1/project-governance';
-
 /** A label as the API sends it: a message key for shipped items, texts per locale for tenant ones. */
 export interface GovernanceLabel {
   key: string | null;
@@ -39,9 +37,16 @@ export type Severity = 'critical' | 'essential' | 'recommended';
 export type ChangeRequestStatus = 'submitted' | 'approved' | 'rejected' | 'cancelled';
 export type EvidenceState = 'met' | 'not_met' | 'unknown';
 
+/** Where a catalogue comes from: the platform, the organisation, or the active pack. */
+export type CatalogueSource = 'shipped' | 'tenant' | 'pack';
+
 export interface CatalogueSummary {
   kind: string;
-  source: 'shipped' | 'tenant';
+  source: CatalogueSource;
+  /** The pack a `pack` item comes from. */
+  pack?: string;
+  /** True on the one catalogue a new project of the asked country should start with. */
+  default?: boolean;
   id: string;
   code: string;
   name: GovernanceLabel;
@@ -51,7 +56,7 @@ export interface CatalogueSummary {
   based_on?: string;
   review_status: string;
   jurisdiction_countries: string[];
-  /** Not sent yet; the phase mapping step uses it as soon as it is. */
+  /** Only on a catalogue read in full; the phase mapping step offers a choice when it is there. */
   phases?: GovernancePhase[];
 }
 
@@ -65,7 +70,7 @@ export interface GovernancePhase {
 export interface GovernanceModel {
   id: string;
   project_id: string;
-  catalogue_source: 'shipped' | 'tenant';
+  catalogue_source: CatalogueSource;
   catalogue_id: string;
   catalogue_version: number;
   current_phase: string | null;
@@ -75,9 +80,8 @@ export interface GovernanceModel {
   stopped: boolean;
   stopped_at: string | null;
   phases: GovernancePhase[];
-  /** What the caller may do on this project, decided by the server. */
-  /** `edit` is absent from a server that does not report it; the write then answers for itself. */
-  can: { manage: boolean; edit?: boolean };
+  /** What the caller may do on the model, decided by the server. Writes on areas and documents carry flags of their own. */
+  can: { manage: boolean };
 }
 
 export interface GovernanceArea {
@@ -90,7 +94,7 @@ export interface GovernanceArea {
   applicable: boolean;
   na_rationale: string;
   retired: boolean;
-  /** Not sent yet, see the report on API gaps. */
+  /** The area's label when the server sends one; the catalogue key names it otherwise. */
   name?: GovernanceLabel;
   /** The catalogue's frame document types for this area; `tracked` says which ones the project already holds. */
   document_types?: AreaDocumentType[];
@@ -327,7 +331,7 @@ export interface DocumentRevision {
   revision_number: number;
   content_hash: string;
   file_name: string;
-  created_at: string;
+  created_at: string | null;
   in_force: boolean;
 }
 
@@ -344,7 +348,7 @@ export interface ChangeRequest {
   requested_by: string | null;
   decided_by: string | null;
   decided_at: string | null;
-  created_at: string;
+  created_at: string | null;
 }
 
 export interface DocumentHistory {
@@ -436,39 +440,44 @@ export const governanceKeys = {
   changeRequests: (projectId: string) => ['project-governance', projectId, 'change-requests'] as const,
   conditions: (projectId: string) => ['project-governance', projectId, 'conditions'] as const,
   containers: (projectId: string) => ['project-governance', projectId, 'containers'] as const,
-  routes: (projectId: string) => ['project-governance', projectId, 'routes'] as const,
+  routes: (projectId: string, targetKind: string) => ['project-governance', projectId, 'routes', targetKind] as const,
   catalogues: ['project-governance', 'catalogues'] as const,
 };
 
-const p = (projectId: string) => `${BASE}/projects/${projectId}`;
-
 /* ── Catalogues and model ─────────────────────────────────────────────── */
 
-export function listCatalogues(): Promise<Page<CatalogueSummary>> {
-  return apiGet<Page<CatalogueSummary>>(`${BASE}/catalogues?kind=phase_model`);
+/** The phase models on offer. With the project's country the server marks the one to start with as `default`. */
+export function listCatalogues(country?: string | null): Promise<Page<CatalogueSummary>> {
+  const countryQs = country ? `&country=${encodeURIComponent(country)}` : '';
+  return apiGet<Page<CatalogueSummary>>(`/v1/project-governance/catalogues?kind=phase_model${countryQs}`);
+}
+
+/** The two-letter country of a project, or null when it has none. */
+export function getProjectCountry(projectId: string): Promise<string | null> {
+  return apiGet<{ country_code?: string | null }>(`/v1/projects/${projectId}`).then((project) => project.country_code ?? null);
 }
 
 export function getModel(projectId: string): Promise<GovernanceModel> {
-  return apiGet<GovernanceModel>(`${p(projectId)}/model`);
+  return apiGet<GovernanceModel>(`/v1/project-governance/projects/${projectId}/model`);
 }
 
 export function setModel(
   projectId: string,
-  body: { catalogue_source: 'shipped' | 'tenant'; catalogue_id: string; catalogue_version?: number; four_eyes: boolean },
+  body: { catalogue_source: CatalogueSource; catalogue_id: string; catalogue_version?: number; four_eyes: boolean },
 ): Promise<GovernanceModel> {
-  return apiPut<GovernanceModel>(`${p(projectId)}/model`, body);
+  return apiPut<GovernanceModel>(`/v1/project-governance/projects/${projectId}/model`, body);
 }
 
 export function changeModel(
   projectId: string,
   body: {
-    catalogue_source: 'shipped' | 'tenant';
+    catalogue_source: CatalogueSource;
     catalogue_id: string;
     catalogue_version?: number;
     mapping: Record<string, string>;
   },
 ): Promise<GovernanceModel> {
-  return apiPost<GovernanceModel>(`${p(projectId)}/model/change`, body);
+  return apiPost<GovernanceModel>(`/v1/project-governance/projects/${projectId}/model/change`, body);
 }
 
 /** `decision_route_id` and `change_route_id` pin the approval routes governance runs on; null removes the pin. */
@@ -476,13 +485,13 @@ export function updateModelSettings(
   projectId: string,
   body: { four_eyes?: boolean; decision_route_id?: string | null; change_route_id?: string | null },
 ): Promise<GovernanceModel> {
-  return apiPatch<GovernanceModel>(`${p(projectId)}/model`, body);
+  return apiPatch<GovernanceModel>(`/v1/project-governance/projects/${projectId}/model`, body);
 }
 
 /* ── Areas and gates ──────────────────────────────────────────────────── */
 
 export function listAreas(projectId: string): Promise<Page<GovernanceArea>> {
-  return apiGet<Page<GovernanceArea>>(`${p(projectId)}/areas`);
+  return apiGet<Page<GovernanceArea>>(`/v1/project-governance/projects/${projectId}/areas`);
 }
 
 export function updateArea(
@@ -495,37 +504,37 @@ export function updateArea(
     na_rationale?: string;
   },
 ): Promise<GovernanceArea> {
-  return apiPatch<GovernanceArea>(`${p(projectId)}/areas/${areaId}`, body);
+  return apiPatch<GovernanceArea>(`/v1/project-governance/projects/${projectId}/areas/${areaId}`, body);
 }
 
 export function getMatrix(projectId: string): Promise<MatrixResponse> {
-  return apiGet<MatrixResponse>(`${p(projectId)}/matrix?today=${localToday()}`);
+  return apiGet<MatrixResponse>(`/v1/project-governance/projects/${projectId}/matrix?today=${localToday()}`);
 }
 
 export function getGate(projectId: string, gateId: string): Promise<GateDetail> {
-  return apiGet<GateDetail>(`${p(projectId)}/gates/${gateId}?today=${localToday()}`);
+  return apiGet<GateDetail>(`/v1/project-governance/projects/${projectId}/gates/${gateId}?today=${localToday()}`);
 }
 
 export function prepareGate(projectId: string, gateId: string): Promise<GovernanceGate> {
-  return apiPost<GovernanceGate>(`${p(projectId)}/gates/${gateId}/prepare`, {});
+  return apiPost<GovernanceGate>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/prepare`, {});
 }
 
 export function submitGate(projectId: string, gateId: string): Promise<GovernanceGate> {
-  return apiPost<GovernanceGate>(`${p(projectId)}/gates/${gateId}/submit`, {});
+  return apiPost<GovernanceGate>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/submit`, {});
 }
 
 /** A decision is dated by the server. The reader's calendar day goes only on reads, never on a write. */
 export function decideGate(projectId: string, gateId: string, body: DecisionInput): Promise<GateDecision> {
-  return apiPost<GateDecision>(`${p(projectId)}/gates/${gateId}/decide`, body);
+  return apiPost<GateDecision>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/decide`, body);
 }
 
 /** The server decides whether the phase goes back: it does exactly when the reopened decision had advanced it. */
 export function reopenGate(projectId: string, gateId: string, body: { rationale: string }): Promise<GovernanceGate> {
-  return apiPost<GovernanceGate>(`${p(projectId)}/gates/${gateId}/reopen`, body);
+  return apiPost<GovernanceGate>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/reopen`, body);
 }
 
 export function resumeGate(projectId: string, gateId: string): Promise<GovernanceGate> {
-  return apiPost<GovernanceGate>(`${p(projectId)}/gates/${gateId}/resume`, {});
+  return apiPost<GovernanceGate>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/resume`, {});
 }
 
 export function confirmCheck(
@@ -534,7 +543,7 @@ export function confirmCheck(
   areaId: string,
   body: { status: Exclude<CheckStatus, 'not_applicable'>; rag: Rag; note: string },
 ): Promise<GateCheck> {
-  return apiPut<GateCheck>(`${p(projectId)}/gates/${gateId}/checks/${areaId}`, body);
+  return apiPut<GateCheck>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/checks/${areaId}`, body);
 }
 
 export function markCheckNotApplicable(
@@ -543,36 +552,36 @@ export function markCheckNotApplicable(
   areaId: string,
   rationale: string,
 ): Promise<GateCheck> {
-  return apiPost<GateCheck>(`${p(projectId)}/gates/${gateId}/checks/${areaId}/not-applicable`, { rationale });
+  return apiPost<GateCheck>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/checks/${areaId}/not-applicable`, { rationale });
 }
 
 /* ── Documents and change requests ────────────────────────────────────── */
 
 export function listDocuments(projectId: string): Promise<Page<FrameDocument>> {
-  return apiGet<Page<FrameDocument>>(`${p(projectId)}/documents`);
+  return apiGet<Page<FrameDocument>>(`/v1/project-governance/projects/${projectId}/documents`);
 }
 
 export function getDocumentHistory(projectId: string, documentId: string): Promise<DocumentHistory> {
-  return apiGet<DocumentHistory>(`${p(projectId)}/documents/${documentId}/history`);
+  return apiGet<DocumentHistory>(`/v1/project-governance/projects/${projectId}/documents/${documentId}/history`);
 }
 
 export function createDocument(
   projectId: string,
   body: { area_id: string; doc_type: string },
 ): Promise<FrameDocument> {
-  return apiPost<FrameDocument>(`${p(projectId)}/documents`, body);
+  return apiPost<FrameDocument>(`/v1/project-governance/projects/${projectId}/documents`, body);
 }
 
 export function attachDocument(projectId: string, documentId: string, containerId: string): Promise<FrameDocument> {
-  return apiPost<FrameDocument>(`${p(projectId)}/documents/${documentId}/attach`, { container_id: containerId });
+  return apiPost<FrameDocument>(`/v1/project-governance/projects/${projectId}/documents/${documentId}/attach`, { container_id: containerId });
 }
 
 export function returnDocument(projectId: string, documentId: string): Promise<FrameDocument> {
-  return apiPost<FrameDocument>(`${p(projectId)}/documents/${documentId}/return`, {});
+  return apiPost<FrameDocument>(`/v1/project-governance/projects/${projectId}/documents/${documentId}/return`, {});
 }
 
 export function submitDocument(projectId: string, documentId: string): Promise<FrameDocument> {
-  return apiPost<FrameDocument>(`${p(projectId)}/documents/${documentId}/submit`, {});
+  return apiPost<FrameDocument>(`/v1/project-governance/projects/${projectId}/documents/${documentId}/submit`, {});
 }
 
 export function createChangeRequest(
@@ -580,28 +589,28 @@ export function createChangeRequest(
   documentId: string,
   body: { reason: string; impact: string },
 ): Promise<ChangeRequest> {
-  return apiPost<ChangeRequest>(`${p(projectId)}/documents/${documentId}/change-requests`, body);
+  return apiPost<ChangeRequest>(`/v1/project-governance/projects/${projectId}/documents/${documentId}/change-requests`, body);
 }
 
 export function listChangeRequests(projectId: string): Promise<Page<ChangeRequest>> {
-  return apiGet<Page<ChangeRequest>>(`${p(projectId)}/change-requests`);
+  return apiGet<Page<ChangeRequest>>(`/v1/project-governance/projects/${projectId}/change-requests`);
 }
 
 /* ── Conditions ───────────────────────────────────────────────────────── */
 
 export function listConditions(projectId: string): Promise<Page<GovernanceCondition>> {
-  return apiGet<Page<GovernanceCondition>>(`${p(projectId)}/conditions?limit=500`);
+  return apiGet<Page<GovernanceCondition>>(`/v1/project-governance/projects/${projectId}/conditions?limit=500`);
 }
 
 /** A further condition on a gate already decided as go with conditions. */
 export function addGateCondition(projectId: string, gateId: string, body: ConditionInput): Promise<GovernanceCondition> {
-  return apiPost<GovernanceCondition>(`${p(projectId)}/gates/${gateId}/conditions`, body);
+  return apiPost<GovernanceCondition>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/conditions`, body);
 }
 
 export function clearCondition(projectId: string, conditionId: string, evidence: string): Promise<GovernanceCondition> {
-  return apiPost<GovernanceCondition>(`${p(projectId)}/conditions/${conditionId}/clear`, { evidence });
+  return apiPost<GovernanceCondition>(`/v1/project-governance/projects/${projectId}/conditions/${conditionId}/clear`, { evidence });
 }
 
 export function waiveCondition(projectId: string, conditionId: string, rationale: string): Promise<GovernanceCondition> {
-  return apiPost<GovernanceCondition>(`${p(projectId)}/conditions/${conditionId}/waive`, { rationale });
+  return apiPost<GovernanceCondition>(`/v1/project-governance/projects/${projectId}/conditions/${conditionId}/waive`, { rationale });
 }

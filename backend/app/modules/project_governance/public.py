@@ -41,17 +41,20 @@ from app.modules.project_governance.catalogue_kinds import (
     register_host_subject,
     register_phase_capability,
 )
-from app.modules.project_governance.catalogue_store import resolve_catalogue
+from app.modules.project_governance.catalogue_packs import CataloguePin
+from app.modules.project_governance.catalogue_store import default_catalogue_pin, resolve_catalogue
 from app.modules.project_governance.repository import GovernanceRepository
 
 __all__ = [
     "AreaView",
+    "CataloguePin",
     "ChangeRequestView",
     "ConditionView",
     "DecisionView",
     "DocumentView",
     "GateView",
     "Host",
+    "default_catalogue_pin",
     "host_for",
     "host_in",
     "host_subjects",

@@ -70,7 +70,8 @@
       "target_date_owned_by_schedule": "Dieses Gate ist mit einem Terminplanvorgang verknüpft, der das Datum vorgibt; lösen Sie die Verknüpfung, um hier ein Datum zu setzen",
       "no_change_route": "Für Änderungen an verbindlichen Dokumenten ist kein Freigabeweg festgelegt. Ein Governance-Verantwortlicher legt in den Governance-Einstellungen einen projekteigenen Freigabeweg fest",
       "route_not_pinnable": "Dieser Freigabeweg kann nicht festgelegt werden: Er muss ein aktiver Freigabeweg dieses Projekts für diese Art von Entscheidung sein",
-      "area_retired": "Dieser Bereich wurde durch einen Wechsel des Phasenmodells stillgelegt und nimmt keine neuen Dokumente auf"
+      "area_retired": "Dieser Bereich wurde durch einen Wechsel des Phasenmodells stillgelegt und nimmt keine neuen Dokumente auf",
+      "pack_catalogue_invalid": "Das aktive Paket nennt diesen Katalog, aber seine Datei fehlt oder verletzt die Katalogregeln"
     },
     "outcome": {
       "go": "Go",

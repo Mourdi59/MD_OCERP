@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowLeft, FilePlus2, Lock, GitBranch, Paperclip } from 'lucide-react';
+import clsx from 'clsx';
 
 import { Button } from '@/shared/ui/Button';
 import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
@@ -36,7 +37,7 @@ import {
 } from './api';
 import { canAddDocument, canEditArea, canRaiseChange, documentVerdict } from './access';
 import { DocumentAttach } from './DocumentAttach';
-import { DOCUMENT_TONE, PersonChip, ReasonedButton, ToneBadge } from './GovernanceBits';
+import { DOCUMENT_TONE, PersonChip, ReasonedButton, ToneBadge, VerdictReason } from './GovernanceBits';
 import { useInvalidateGovernance } from './hooks';
 import { DOCUMENT_STATUS, catalogueName, refusalText, vocab, type KeyText, type LabelContext } from './labels';
 
@@ -54,6 +55,11 @@ export interface AreaPanelProps {
   area: GovernanceArea;
   model: GovernanceModel;
   documents: FrameDocument[];
+  /** True until the project's frame documents have arrived. */
+  documentsLoading?: boolean;
+  /** Set when the frame documents could not be loaded, so an error never reads as an empty area. */
+  documentsError?: unknown;
+  onRetryDocuments?: () => void;
   changeRequests: ChangeRequest[];
   /** The project's gates, to name the gates a document type is required at. */
   gates: GovernanceGate[];
@@ -117,9 +123,13 @@ function DocumentRow({
       setCrOpen(false);
       setReason('');
       setImpact('');
+      addToast({
+        type: 'success',
+        title: t('governance.project.area.cr_sent', { defaultValue: 'Change request sent for approval' }),
+      });
       onChanged();
     },
-    onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+    onError: (err) => addToast({ type: 'error', title: refusalText(t, err) }),
   });
   const title = catalogueName(labels, { kind: 'doc', code: doc.doc_type, catalogueId, label: doc.name });
   const editable = !doc.read_only && doc.status === 'draft';
@@ -159,7 +169,14 @@ function DocumentRow({
       {open && (
         <div className="mt-2 rounded-md bg-surface-secondary p-2 text-xs">
           {history.isLoading && <p className="text-content-tertiary">{t('governance.project.loading', { defaultValue: 'Loading...' })}</p>}
-          {history.isError && <p className="text-semantic-error">{getErrorMessage(history.error)}</p>}
+          {history.isError && (
+            <p className="flex flex-wrap items-center gap-2 text-semantic-error" role="alert">
+              {getErrorMessage(history.error)}
+              <Button size="sm" variant="ghost" onClick={() => history.refetch()}>
+                {t('governance.project.retry', { defaultValue: 'Try again' })}
+              </Button>
+            </p>
+          )}
           {history.data && history.data.revisions.length === 0 && (
             <p className="text-content-tertiary">
               {t('governance.project.area.no_revisions', { defaultValue: 'The container has no revision yet.' })}
@@ -171,7 +188,7 @@ function DocumentRow({
                 <li key={r.id} className="flex flex-wrap gap-2">
                   <span className="font-mono">{r.revision_code || r.revision_number}</span>
                   <span className="text-content-secondary">{r.file_name}</span>
-                  <span className="text-content-tertiary">{fmtDate(r.created_at)}</span>
+                  <span className="text-content-tertiary">{r.created_at ? fmtDate(r.created_at) : ''}</span>
                   {r.in_force && (
                     <span className="font-medium text-semantic-success">
                       {t('governance.project.area.in_force', { defaultValue: 'In force' })}
@@ -182,7 +199,10 @@ function DocumentRow({
             </ul>
           )}
           {inForce && doc.bound_content_hash && (
-            <p className="mt-1 font-mono text-2xs text-content-tertiary">{doc.bound_content_hash.slice(0, 16)}</p>
+            <p className="mt-1 text-2xs text-content-tertiary">
+              {t('governance.project.gate.snapshot_hash', { defaultValue: 'Content hash' })}{' '}
+              <span className="font-mono">{doc.bound_content_hash.slice(0, 16)}</span>
+            </p>
           )}
         </div>
       )}
@@ -196,7 +216,7 @@ function DocumentRow({
               <ToneBadge tone={c.status === 'approved' ? 'success' : c.status === 'submitted' ? 'blue' : 'neutral'}>
                 {vocab(t, CR_STATUS, c.status)}
               </ToneBadge>
-              <span className="text-content-tertiary">{fmtDate(c.created_at)}</span>
+              <span className="text-content-tertiary">{c.created_at ? fmtDate(c.created_at) : ''}</span>
             </li>
           ))}
         </ul>
@@ -280,7 +300,7 @@ function DocumentRow({
             <Button size="sm" disabled={!reason.trim()} loading={raise.isPending} onClick={() => raise.mutate()}>
               {t('governance.project.area.cr_send', { defaultValue: 'Send for approval' })}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setCrOpen(false)}>
+            <Button size="sm" variant="ghost" disabled={raise.isPending} onClick={() => setCrOpen(false)}>
               {t('governance.project.cancel', { defaultValue: 'Cancel' })}
             </Button>
           </div>
@@ -397,6 +417,9 @@ export function AreaPanel({
   area,
   model,
   documents,
+  documentsLoading = false,
+  documentsError = null,
+  onRetryDocuments,
   changeRequests,
   gates,
   labels,
@@ -420,10 +443,11 @@ export function AreaPanel({
   const patch = useMutation({
     mutationFn: (body: Parameters<typeof updateArea>[2]) => updateArea(projectId, area.id, body),
     onSuccess: invalidate,
-    onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+    onError: (err) => addToast({ type: 'error', title: refusalText(t, err) }),
   });
 
   const docs = documents.filter((d) => d.area_id === area.id);
+  const canOfferDocument = (area.document_types ?? []).some((d) => !d.tracked);
   const ownerLabel = (id: string | null) =>
     id ? personName(id) ?? t('governance.project.unknown_person', { defaultValue: 'Project member' }) : null;
 
@@ -458,13 +482,34 @@ export function AreaPanel({
                 {t('governance.project.area.assign', { defaultValue: 'Assign' })}
               </ReasonedButton>
             ) : (
-              <ProjectPeopleSelect
-                projectId={projectId}
-                value={area[field] ?? ''}
-                displayValue={ownerLabel(area[field]) ?? undefined}
-                onChange={(userId) => patch.mutate({ [field]: userId || null })}
-                placeholder={t('governance.project.area.choose_person', { defaultValue: 'Choose a project member' })}
-              />
+              <div className={clsx('space-y-2', patch.isPending && 'pointer-events-none opacity-60')}>
+                {/* The picker reports an empty value as soon as somebody types to search, so only a
+                    chosen person is saved here; taking the person off is its own button. */}
+                <ProjectPeopleSelect
+                  key={`${field}:${area[field] ?? ''}`}
+                  projectId={projectId}
+                  value=""
+                  onChange={(userId) => {
+                    if (userId && userId !== area[field]) {
+                      patch.mutate(field === 'owner_user_id' ? { owner_user_id: userId } : { deputy_user_id: userId });
+                    }
+                  }}
+                  placeholder={t('governance.project.area.choose_person', { defaultValue: 'Choose a project member' })}
+                />
+                {area[field] && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={patch.isPending}
+                    onClick={() => patch.mutate(field === 'owner_user_id' ? { owner_user_id: null } : { deputy_user_id: null })}
+                    data-testid={`unassign-${field}`}
+                  >
+                    {field === 'owner_user_id'
+                      ? t('governance.project.area.remove_owner', { defaultValue: 'Remove the owner' })
+                      : t('governance.project.area.remove_deputy', { defaultValue: 'Remove the deputy' })}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         ))}
@@ -499,22 +544,40 @@ export function AreaPanel({
             defaultValue: 'Why the area does not apply (required to switch it off)',
           })}
           value={naRationale}
-          disabled={!!verdict}
+          disabled={!!verdict || !area.applicable}
           onChange={(e) => setNaRationale(e.target.value)}
         />
-        {verdict && <ReasonedButton size="sm" variant="ghost" verdict={verdict}>{t('governance.project.save', { defaultValue: 'Save' })}</ReasonedButton>}
+        <VerdictReason verdict={verdict} />
       </section>
 
       <section>
         <h3 className="mb-2 text-sm font-semibold text-content-primary">
           {t('governance.project.area.documents_title', { defaultValue: 'Frame documents' })}
         </h3>
-        {docs.length === 0 ? (
+        {documentsLoading ? (
+          <p className="text-sm text-content-tertiary" data-testid="area-documents-loading">
+            {t('governance.project.loading', { defaultValue: 'Loading...' })}
+          </p>
+        ) : documentsError ? (
+          <p className="flex flex-wrap items-center gap-2 text-sm text-semantic-error" role="alert" data-testid="area-documents-error">
+            {t('governance.project.area.documents_failed', { defaultValue: 'The frame documents could not be loaded.' })}{' '}
+            {getErrorMessage(documentsError)}
+            {onRetryDocuments && (
+              <Button size="sm" variant="ghost" onClick={onRetryDocuments}>
+                {t('governance.project.retry', { defaultValue: 'Try again' })}
+              </Button>
+            )}
+          </p>
+        ) : docs.length === 0 ? (
           <p className="text-sm text-content-tertiary" data-testid="area-no-documents">
-            {t('governance.project.area.no_documents_yet', {
-              defaultValue:
-                'No frame document is tracked for this area yet. Add the first one below, then attach its file and submit it for gate review.',
-            })}
+            {canOfferDocument
+              ? t('governance.project.area.no_documents_yet', {
+                  defaultValue:
+                    'No frame document is tracked for this area yet. Add the first one below, then attach its file and submit it for gate review.',
+                })
+              : t('governance.project.area.no_documents_tracked', {
+                  defaultValue: 'No frame document is tracked for this area yet.',
+                })}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -532,6 +595,7 @@ export function AreaPanel({
             ))}
           </ul>
         )}
+        {!documentsLoading && !documentsError && (
         <AddDocument
           projectId={projectId}
           area={area}
@@ -541,6 +605,7 @@ export function AreaPanel({
           labels={labels}
           onChanged={invalidate}
         />
+        )}
       </section>
     </div>
   );

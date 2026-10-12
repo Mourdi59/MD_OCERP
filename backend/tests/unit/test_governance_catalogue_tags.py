@@ -93,6 +93,8 @@ PINNED_HOSTS: dict[tuple[str, str], tuple[str, str]] = {
     ("elf_module_framework", "quality"): ("m10_quality", "m10_quality_frame"),
     ("elf_module_framework", "commitment_release"): ("m09_commercial", "m09_commercial_frame"),
     ("elf_module_framework", "delivery_model"): ("m02_contract_management", "m02_contract_management_frame"),
+    # The source framework keeps the permit roadmap with contract management, not with design.
+    ("elf_module_framework", "permits"): ("m02_contract_management", "m02_contract_management_frame"),
 }
 
 
