@@ -334,6 +334,7 @@ const resource = {
     "modules.catalog.site_supervision": "Bauüberwachung",
     "modules.catalog.smart_views": "Intelligente Ansichten",
     "modules.catalog.source_data": "Quelldatenregister",
+    "modules.catalog.stakeholders": "Stakeholder und Organisation",
     "modules.catalog.subcontractors": "Nachunternehmerverwaltung",
     "modules.catalog.submittals": "Vorberichte",
     "modules.catalog.supplier_catalogs": "Lieferantenkataloge & Anbieterverwaltung",

@@ -336,6 +336,7 @@ const resource = {
     "modules.catalog.site_supervision": "Site Supervision",
     "modules.catalog.smart_views": "Smart Views",
     "modules.catalog.source_data": "Source Data Register",
+    "modules.catalog.stakeholders": "Stakeholders and organisation",
     "modules.catalog.subcontractors": "Subcontractor Management",
     "modules.catalog.submittals": "Submittals",
     "modules.catalog.supplier_catalogs": "Supplier Catalogs & Vendor Management",
