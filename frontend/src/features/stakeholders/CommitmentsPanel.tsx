@@ -19,6 +19,7 @@ import { useToastStore } from '@/stores/useToastStore';
 
 import type { Commitment, CommitmentStatus, CommitmentTarget, EngagementEvent, Stakeholder } from './api';
 import { CommitmentDialog, TransitionDialog } from './CommitmentDialog';
+import { CommitmentLinks, useCommitmentLinkNames } from './CommitmentLinks';
 import { COMMITMENT_TONE, FOCUS_CLASS, GatedButton, ToneBadge, useFocusRow } from './StakeholderBits';
 import { COMMITMENT_ACTION, COMMITMENT_BLOCK, COMMITMENT_CATEGORY, COMMITMENT_STATUS, WRITE_NOTE, vocab, type TFn } from './labels';
 import { datedName } from './links';
@@ -45,8 +46,9 @@ type Dialog =
 
 export function CommitmentsPanel({ screen, commitments, stakeholders, events, focusId = null }: CommitmentsPanelProps) {
   const { t } = useTranslation();
-  const { settings, personName, onChanged } = screen;
+  const { projectId, settings, personName, onChanged } = screen;
   const can = settings.can.edit;
+  const linkNames = useCommitmentLinkNames(projectId, commitments);
   const addToast = useToastStore((s) => s.addToast);
   const focused = focusId ? commitments.find((c) => c.id === focusId) : undefined;
   // A link to a closed commitment opens the list that holds it.
@@ -238,6 +240,7 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events, fo
                   })}
                 </p>
               )}
+              <CommitmentLinks projectId={projectId} commitment={c} names={linkNames} />
               {c.breach_rationale && (
                 <p className="mt-1 text-xs text-semantic-error">
                   {t('stakeholders.ui.commitment.breach_line', { defaultValue: 'Not kept because: {{reason}}', reason: c.breach_rationale })}

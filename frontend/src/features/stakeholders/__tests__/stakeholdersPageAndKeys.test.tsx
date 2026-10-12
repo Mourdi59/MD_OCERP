@@ -188,6 +188,14 @@ describe('the stakeholders page', () => {
     expect(page.queryByTestId('export-register')).toBeNull();
   });
 
+  it('says so when a link names a stakeholder the register does not hold, and leads back', async () => {
+    open('/projects/p1/stakeholders?stakeholder=gone');
+    expect(await page.findByText('This stakeholder is not in the register')).toBeTruthy();
+    expect(page.queryByTestId('register-table')).toBeNull();
+    fireEvent.click(page.getByTestId('stakeholder-missing-back'));
+    expect(await page.findByTestId('register-row')).toBeTruthy();
+  });
+
   it('reopens the tab the link names', async () => {
     open('/projects/p1/stakeholders?tab=commitments');
     expect(await page.findByTestId('commitments-panel')).toBeTruthy();

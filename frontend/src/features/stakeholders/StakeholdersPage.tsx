@@ -15,6 +15,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { CalendarClock, Compass, Grid3x3, Handshake, Network, Settings2, Users } from 'lucide-react';
 
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
+import { Button } from '@/shared/ui/Button';
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -173,6 +174,24 @@ export function StakeholdersPage() {
     body = <SkeletonTable rows={4} columns={4} />;
   } else if (stakeholderId && selected) {
     body = <StakeholderDetail key={selected.id} screen={screen} stakeholder={selected} stakeholders={stakeholders} onBack={() => go({ stakeholder: null })} />;
+  } else if (stakeholderId && registerQ.isError) {
+    body = failure(t('stakeholders.ui.load_failed', { defaultValue: 'The stakeholders could not be loaded' }), registerQ.error);
+  } else if (stakeholderId) {
+    // A link to a stakeholder that was removed, or that belongs to another project.
+    body = (
+      <EmptyState
+        icon={<Users size={28} />}
+        title={t('stakeholders.ui.stakeholder.missing_title', { defaultValue: 'This stakeholder is not in the register' })}
+        description={t('stakeholders.ui.stakeholder.missing_body', {
+          defaultValue: 'It may have been removed, or the link belongs to another project. The register lists everyone this project keeps.',
+        })}
+        action={
+          <Button variant="secondary" onClick={() => go({ stakeholder: null })} data-testid="stakeholder-missing-back">
+            {t('stakeholders.ui.back_to_register', { defaultValue: 'Back to the register' })}
+          </Button>
+        }
+      />
+    );
   } else if (tab === 'settings') {
     body = <FrameworkSettings projectId={projectId} settings={screen.settings} labels={labels} onSaved={invalidate} />;
   } else if (tab === 'organisation') {

@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen as page, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('react-i18next', async () => (await import('./i18nMock')).i18nMockModule);
 vi.mock('@/shared/ui/ProjectPeopleSelect', () => ({ ProjectPeopleSelect: () => null }));
@@ -47,6 +48,8 @@ vi.mock('../api', async (original) => ({
 import * as api from '../api';
 import type { CommitmentInput, StakeholderInput } from '../api';
 import { CommitmentDialog } from '../CommitmentDialog';
+import { linkTarget } from '../CommitmentLinks';
+import { CommitmentsPanel } from '../CommitmentsPanel';
 import { StakeholderDetail } from '../StakeholderDetail';
 import { StakeholderDialog } from '../StakeholderDialog';
 import { placeDraftOf, placeOf, placeProblem, samePlace, withDescendants } from '../rules';
@@ -326,5 +329,49 @@ describe('what a commitment is tied to', () => {
     fireEvent.click(page.getByTestId('commitment-save'));
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
     expect(sent().task_id).toBeNull();
+  });
+});
+
+describe('a commitment card names what it is tied to', () => {
+  const panel = (list: ReturnType<typeof commitment>[]) =>
+    mount(
+      <MemoryRouter>
+        <CommitmentsPanel screen={screen()} commitments={list} stakeholders={[authority]} events={[]} />
+      </MemoryRouter>,
+    );
+  const chip = (kind: string) => page.getByTestId(`commitment-link-${kind}`);
+
+  it('shows a chip per link and opens the task and the risk where they live', async () => {
+    panel([commitment({ task_id: 't1', risk_id: 'r1', requirement_id: 'q1', release_item_id: 'b1' })]);
+    // The task also carries its due day, written the way the reader's locale writes dates.
+    await waitFor(() => expect(chip('task').textContent).toContain('Task: Order the noise barrier'));
+    await waitFor(() => expect(chip('risk').textContent).toBe('Risk: R-004: Objection delays the permit'));
+    await waitFor(() => expect(chip('requirement').textContent).toBe('Requirement: Site fence, Height (Permit conditions)'));
+    await waitFor(() => expect(chip('release').textContent).toBe('Budget release: CR-7: Noise barrier'));
+    expect(chip('task').querySelector('a')?.getAttribute('href')).toBe('/projects/p1/tasks?id=t1');
+    expect(chip('risk').querySelector('a')?.getAttribute('href')).toBe('/risks?id=r1');
+    expect(chip('requirement').querySelector('a')).toBeNull();
+    expect(chip('release').querySelector('a')).toBeNull();
+  });
+
+  it('still names a link whose record the list does not hold', async () => {
+    panel([commitment({ task_id: 't-gone' })]);
+    await waitFor(() => expect(mocked.listProjectRisks).not.toHaveBeenCalled());
+    expect(chip('task').textContent).toBe('Task: linked record');
+    expect(page.queryByTestId('commitment-link-risk')).toBeNull();
+  });
+
+  it('shows no chips and asks no other register when nothing is linked', () => {
+    panel([commitment()]);
+    expect(page.queryByTestId('commitment-links')).toBeNull();
+    expect(mocked.listRequirementOptions).not.toHaveBeenCalled();
+    expect(mocked.listReleaseItems).not.toHaveBeenCalled();
+  });
+
+  it('knows which records have a page of their own', () => {
+    expect(linkTarget('task', 'p1', 't1')).toBe('/projects/p1/tasks?id=t1');
+    expect(linkTarget('risk', 'p1', 'r1')).toBe('/risks?id=r1');
+    expect(linkTarget('requirement', 'p1', 'q1')).toBeNull();
+    expect(linkTarget('release', 'p1', 'b1')).toBeNull();
   });
 });
