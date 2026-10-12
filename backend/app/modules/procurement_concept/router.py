@@ -15,6 +15,12 @@ Errors carry ``{"code", "message_key", "message", "violations"?, "info"?}`` in
 procurement owner), 409 = state conflict (plan locked, binding, execution
 exists), 422 = invalid input or a refusing rule (``violations`` lists all).
 
+There is no approve route: the governance gate on the frame document approves
+the concept (Decision 10) and this module mirrors it. Who may steer is a
+permission (``procurement_concept.manage``) or ownership of the governance
+area that hosts procurement; the router resolves the permission and hands the
+service a boolean, never a role name. Write routes take no client date.
+
 Catalogue editing (clone, edit, publish) is module 1's, with
 ``kind=procurement_procedures``: ``/api/v1/project-governance/catalogues``.
 """
@@ -38,13 +44,13 @@ from app.modules.procurement_concept.schemas import (
     CandidatePatch,
     ConceptSet,
     ExecutionIn,
+    ExecutionLinkIn,
     FrameworkIn,
     FrameworkPatch,
     FrameworkStateIn,
     PackagePut,
     PackageStateIn,
     ProfileIn,
-    RationaleIn,
     ReferenceIn,
     ScheduleConfirm,
     ScoresPut,
@@ -57,6 +63,7 @@ router = APIRouter(tags=["procurement_concept"])
 
 READ = Depends(RequirePermission("procurement_concept.read"))
 EDIT = Depends(RequirePermission("procurement_concept.edit"))
+MANAGE_PERMISSION = "procurement_concept.manage"
 FRAMEWORKS = Depends(RequirePermission("procurement_concept.frameworks.manage"))
 
 
@@ -79,8 +86,17 @@ def _uid(user_id: str) -> uuid.UUID:
     return uuid.UUID(str(user_id))
 
 
-def _role(payload: dict[str, Any]) -> str:
-    return str(payload.get("role") or "")
+async def _has(payload: dict[str, Any], permission: str) -> bool:
+    """The caller's answer from the very dependency that guards the routes."""
+    try:
+        await RequirePermission(permission)(payload)
+    except HTTPException:
+        return False
+    return True
+
+
+async def _manage(payload: dict[str, Any]) -> bool:
+    return await _has(payload, MANAGE_PERMISSION)
 
 
 def _today(value: date | None) -> date:
@@ -92,12 +108,13 @@ def _page(items: list[Any], **extra: Any) -> dict[str, Any]:
 
 
 async def _concept_out(
-    svc: ProcurementConceptService, project_id: uuid.UUID, user_id: str, role: str
+    svc: ProcurementConceptService, project_id: uuid.UUID, user_id: str, can_manage: bool
 ) -> dict[str, Any]:
     c = await svc.get_concept(project_id)
     cat = await svc.catalogue_of(c)
     state = await svc.effective_state(c)
-    can_steer = await svc.can_steer(project_id, _uid(user_id), role)
+    gate = await svc.release_gate(project_id, c)
+    hosting = await svc.hosting(project_id)
     return {
         "id": str(c.id),
         "project_id": str(project_id),
@@ -112,18 +129,26 @@ async def _concept_out(
         "stored_state": c.state,
         "governance_document_id": str(c.governance_document_id) if c.governance_document_id else None,
         "release_gate_code": c.release_gate_code,
+        # The gate actually used: the named one, else the one the governance catalogue tags; null = unresolved.
+        "resolved_release_gate_code": gate.code if gate is not None else None,
+        "governance_area_code": hosting.area_code,
         "default_profile_id": str(c.default_profile_id) if c.default_profile_id else None,
+        "submitted_by": str(c.submitted_by) if c.submitted_by else None,
         "approved_by": str(c.approved_by) if c.approved_by else None,
         "approved_at": c.approved_at.isoformat() if c.approved_at else None,
+        "four_eyes_violated": bool(c.approved_by and c.approved_by == c.submitted_by),
         "jurisdictions": [
-            {"code": j.code, "name_key": j.name_key, "client_types": list(j.client_types)} for j in cat.jurisdictions
+            {
+                "code": j.code,
+                "name_key": j.name_key,
+                "labels": j.labels,
+                "client_types": list(j.client_types),
+                "private_client_type": j.private_client_type,
+            }
+            for j in cat.jurisdictions
         ],
         "review_status": cat.review_status.value,
-        "can": {
-            "edit": can_steer and state in ("draft", "reopened"),
-            "approve": can_steer and state == "in_review",
-            "steer": can_steer,
-        },
+        "can": await svc.capabilities(project_id, _uid(user_id), can_manage),
     }
 
 
@@ -159,7 +184,7 @@ async def get_concept(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
-    return await _run(_concept_out(ProcurementConceptService(session), project_id, user_id, _role(payload)))
+    return await _run(_concept_out(ProcurementConceptService(session), project_id, user_id, await _manage(payload)))
 
 
 @router.put("/projects/{project_id}/concept", dependencies=[EDIT])
@@ -169,37 +194,36 @@ async def set_concept(
     """Create or change the concept: catalogue pin, jurisdiction, client type, VAT basis, release gate."""
     await verify_project_access(project_id, user_id, session)
     svc = ProcurementConceptService(session)
+    can_manage = await _manage(payload)
     await _run(
-        svc.set_concept(project_id, body.model_dump(exclude_unset=True), actor_id=_uid(user_id), role=_role(payload))
+        svc.set_concept(
+            project_id,
+            body.model_dump(exclude_unset=True),
+            actor_id=_uid(user_id),
+            can_manage=can_manage,
+            tenant_id=resolve_tenant_id(payload),
+        )
     )
-    return await _run(_concept_out(svc, project_id, user_id, _role(payload)))
+    return await _run(_concept_out(svc, project_id, user_id, can_manage))
 
 
-_ACTIONS = {"submit": "in_review", "return": "draft", "approve": "approved", "reopen": "reopened"}
+_ACTIONS = {"submit": "in_review", "return": "draft"}
 
 
 @router.post("/projects/{project_id}/concept/{action}", dependencies=[EDIT])
 async def concept_action(
     project_id: uuid.UUID,
-    action: Literal["submit", "return", "approve", "reopen"],
+    action: Literal["submit", "return"],
     session: SessionDep,
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
-    body: RationaleIn | None = None,
 ) -> dict[str, Any]:
-    """Lifecycle: submit, return, approve (manager or procurement owner; zero blocking findings), reopen."""
+    """Submit for the governance gate, or take it back. Approval is the gate decision, never a call here."""
     await verify_project_access(project_id, user_id, session)
     svc = ProcurementConceptService(session)
-    await _run(
-        svc.transition(
-            project_id,
-            _ACTIONS[action],
-            actor_id=_uid(user_id),
-            role=_role(payload),
-            rationale=body.rationale if body else "",
-        )
-    )
-    return await _run(_concept_out(svc, project_id, user_id, _role(payload)))
+    can_manage = await _manage(payload)
+    await _run(svc.transition(project_id, _ACTIONS[action], actor_id=_uid(user_id), can_manage=can_manage))
+    return await _run(_concept_out(svc, project_id, user_id, can_manage))
 
 
 @router.get("/projects/{project_id}/readiness", dependencies=[READ])
@@ -246,7 +270,7 @@ async def put_package(
             package_id,
             body.model_dump(exclude_unset=True),
             actor_id=_uid(user_id),
-            role=_role(payload),
+            can_manage=await _manage(payload),
             tenant_id=resolve_tenant_id(payload),
         )
     )
@@ -266,7 +290,9 @@ async def package_state(
     await verify_project_access(project_id, user_id, session)
     svc = ProcurementConceptService(session)
     row = await _run(
-        svc.set_package_state(project_id, package_id, body.action, actor_id=_uid(user_id), role=_role(payload))
+        svc.set_package_state(
+            project_id, package_id, body.action, actor_id=_uid(user_id), can_manage=await _manage(payload)
+        )
     )
     return svc._award_out(row)
 
@@ -305,9 +331,41 @@ async def create_execution(
             vehicle=body.vehicle,
             submission_deadline=body.submission_deadline,
             actor_id=_uid(user_id),
-            role=_role(payload),
+            can_manage=await _manage(payload),
         )
     )
+
+
+@router.post("/projects/{project_id}/packages/{package_id}/execution/link", status_code=201, dependencies=[EDIT])
+async def link_execution(
+    project_id: uuid.UUID,
+    package_id: uuid.UUID,
+    body: ExecutionLinkIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> dict[str, Any]:
+    """Link an existing tender package of this project as the execution vehicle (nothing is created)."""
+    await verify_project_access(project_id, user_id, session)
+    return await _run(
+        ProcurementConceptService(session).link_tender_package(
+            project_id,
+            package_id,
+            body.tender_package_id,
+            actor_id=_uid(user_id),
+            can_manage=await _manage(payload),
+        )
+    )
+
+
+@router.get("/projects/{project_id}/frameworks", dependencies=[READ])
+async def project_frameworks(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """Framework agreements a package of this project may call off (the project's company's and the caller's)."""
+    await verify_project_access(project_id, user_id, session)
+    rows = await _run(ProcurementConceptService(session).project_frameworks(project_id, resolve_tenant_id(payload)))
+    return _page([_framework_out(f) for f in rows])
 
 
 # ── prequalification ─────────────────────────────────────────────────────
@@ -337,7 +395,7 @@ async def create_profile(
     await verify_project_access(project_id, user_id, session)
     row = await _run(
         ProcurementConceptService(session).save_profile(
-            project_id, body.model_dump(), actor_id=_uid(user_id), role=_role(payload)
+            project_id, body.model_dump(), actor_id=_uid(user_id), can_manage=await _manage(payload)
         )
     )
     return _profile_out(row)
@@ -355,7 +413,11 @@ async def update_profile(
     await verify_project_access(project_id, user_id, session)
     row = await _run(
         ProcurementConceptService(session).save_profile(
-            project_id, body.model_dump(), actor_id=_uid(user_id), role=_role(payload), profile_id=profile_id
+            project_id,
+            body.model_dump(),
+            actor_id=_uid(user_id),
+            can_manage=await _manage(payload),
+            profile_id=profile_id,
         )
     )
     return _profile_out(row)
@@ -372,7 +434,7 @@ async def delete_profile(
     await verify_project_access(project_id, user_id, session)
     await _run(
         ProcurementConceptService(session).delete_profile(
-            project_id, profile_id, actor_id=_uid(user_id), role=_role(payload)
+            project_id, profile_id, actor_id=_uid(user_id), can_manage=await _manage(payload)
         )
     )
     return Response(status_code=204)
@@ -390,12 +452,18 @@ async def list_candidates(
 
 @router.post("/projects/{project_id}/packages/{package_id}/candidates", status_code=201, dependencies=[EDIT])
 async def add_candidate(
-    project_id: uuid.UUID, package_id: uuid.UUID, body: CandidateIn, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    package_id: uuid.UUID,
+    body: CandidateIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
+    """Add a candidate. Putting it straight on the short or excluded list needs steering rights."""
     await verify_project_access(project_id, user_id, session)
     row = await _run(
         ProcurementConceptService(session).add_candidate(
-            project_id, package_id, body.model_dump(), actor_id=_uid(user_id)
+            project_id, package_id, body.model_dump(), actor_id=_uid(user_id), can_manage=await _manage(payload)
         )
     )
     return {"id": str(row.id), "list": row.list_kind}
@@ -403,12 +471,22 @@ async def add_candidate(
 
 @router.patch("/projects/{project_id}/candidates/{candidate_id}", dependencies=[EDIT])
 async def patch_candidate(
-    project_id: uuid.UUID, candidate_id: uuid.UUID, body: CandidatePatch, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    candidate_id: uuid.UUID,
+    body: CandidatePatch,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
+    """Change a candidate. Moving it between the long, short and excluded lists needs steering rights."""
     await verify_project_access(project_id, user_id, session)
     row = await _run(
         ProcurementConceptService(session).patch_candidate(
-            project_id, candidate_id, body.model_dump(exclude_unset=True), actor_id=_uid(user_id)
+            project_id,
+            candidate_id,
+            body.model_dump(exclude_unset=True),
+            actor_id=_uid(user_id),
+            can_manage=await _manage(payload),
         )
     )
     return {"id": str(row.id), "list": row.list_kind}
@@ -416,10 +494,19 @@ async def patch_candidate(
 
 @router.delete("/projects/{project_id}/candidates/{candidate_id}", status_code=204, dependencies=[EDIT])
 async def delete_candidate(
-    project_id: uuid.UUID, candidate_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    candidate_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> Response:
+    """Remove a candidate (steering rights: it decides who may bid)."""
     await verify_project_access(project_id, user_id, session)
-    await _run(ProcurementConceptService(session).delete_candidate(project_id, candidate_id, actor_id=_uid(user_id)))
+    await _run(
+        ProcurementConceptService(session).delete_candidate(
+            project_id, candidate_id, actor_id=_uid(user_id), can_manage=await _manage(payload)
+        )
+    )
     return Response(status_code=204)
 
 
@@ -475,7 +562,9 @@ async def confirm_shortlist(
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = ProcurementConceptService(session)
-    row = await _run(svc.confirm_shortlist(project_id, package_id, actor_id=_uid(user_id), role=_role(payload)))
+    row = await _run(
+        svc.confirm_shortlist(project_id, package_id, actor_id=_uid(user_id), can_manage=await _manage(payload))
+    )
     return svc._award_out(row)
 
 
@@ -564,7 +653,7 @@ async def confirm_schedule(
     await verify_project_access(project_id, user_id, session)
     rows = await _run(
         ProcurementConceptService(session).confirm_schedule(
-            project_id, body.package_ids, actor_id=_uid(user_id), role=_role(payload)
+            project_id, body.package_ids, actor_id=_uid(user_id), can_manage=await _manage(payload)
         )
     )
     return _page(rows)

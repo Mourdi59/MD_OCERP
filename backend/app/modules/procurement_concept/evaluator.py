@@ -115,11 +115,19 @@ def applicable_thresholds(
     juris = catalogue.jurisdiction(facts.jurisdiction)
     if juris is None:
         return []
-    return [
-        t
-        for t in juris.thresholds
-        if t.contract_kind == contract_kind and t.client_type == facts.client_type and t.valid_on(day)
-    ]
+    return [t for t in juris.thresholds if _in_regime(t, facts, contract_kind) and t.valid_on(day)]
+
+
+def _in_regime(t: Threshold, facts: ConceptFacts, contract_kind: str | None) -> bool:
+    return t.contract_kind == contract_kind and t.client_type == facts.client_type
+
+
+def regime_has_thresholds(catalogue: ProcurementCatalogue, facts: ConceptFacts, contract_kind: str | None) -> bool:
+    """Whether the regime has any threshold for this client and contract kind, whatever its validity."""
+    if not facts.public_client or contract_kind is None:
+        return False
+    juris = catalogue.jurisdiction(facts.jurisdiction)
+    return juris is not None and any(_in_regime(t, facts, contract_kind) for t in juris.thresholds)
 
 
 def convert_to_threshold(
@@ -136,7 +144,10 @@ def convert_to_threshold(
     if threshold.vat_basis == "gross":
         out = out * (HUNDRED + vat_rate_pct) / HUNDRED
     cur = (currency or "").upper()
-    if cur and cur != threshold.currency.upper():
+    if not cur:
+        # A value without a currency is not comparable; it is never assumed to be the threshold's currency.
+        return None
+    if cur != threshold.currency.upper():
         rate = next(
             (
                 r
@@ -154,27 +165,40 @@ def convert_to_threshold(
 
 
 def aggregation_key(catalogue: ProcurementCatalogue, pkg: PackageFacts) -> tuple[str, str]:
-    """Lots that count together: all works of the project; supplies and services per ``lot_group``."""
+    """Lots that count together (rule 3).
+
+    All works of the project are one group. Supplies and services of the same
+    contract kind are one group by default, so an untagged lot is never alone;
+    ``lot_group`` narrows that to one kind of supply or service.
+    """
     ck = contract_kind_of(catalogue, pkg) or "none"
     if ck == "works":
         return ("works", "")
-    return (ck, pkg.lot_group or f"pkg:{pkg.id}")
+    return (ck, pkg.lot_group or "")
 
 
-def aggregated_values(catalogue: ProcurementCatalogue, packages: Sequence[PackageFacts]) -> dict[str, Decimal]:
+def aggregated_values(catalogue: ProcurementCatalogue, packages: Sequence[PackageFacts]) -> dict[str, Decimal | None]:
     """Package id -> sum of the estimated values of every live lot in its aggregation group (rule 3).
 
-    Computed, never stored. Lots in a currency other than the package's are
-    summed only when equal currencies; mixed groups are summed per currency
-    and the package sees its own currency's sum (the threshold check then
-    reports the currency gap).
+    Computed, never stored. Currency is not part of the group: a lot in
+    another currency would otherwise escape the sum. A group whose valued lots
+    do not share one currency (or where one has none) has no sum, ``None``,
+    and the threshold check reports it as unresolved.
     """
-    groups: dict[tuple[str, str, str], Decimal] = {}
+    sums: dict[tuple[str, str], Decimal] = {}
+    currencies: dict[tuple[str, str], set[str]] = {}
     live = [p for p in packages if p.package_kind and p.state != "cancelled"]
     for p in live:
-        key = (*aggregation_key(catalogue, p), (p.currency or "").upper())
-        groups[key] = groups.get(key, ZERO) + (p.estimated_value or ZERO)
-    return {p.id: groups.get((*aggregation_key(catalogue, p), (p.currency or "").upper()), ZERO) for p in live}
+        key = aggregation_key(catalogue, p)
+        sums[key] = sums.get(key, ZERO) + (p.estimated_value or ZERO)
+        if p.estimated_value is not None:
+            currencies.setdefault(key, set()).add((p.currency or "").upper())
+    out: dict[str, Decimal | None] = {}
+    for p in live:
+        key = aggregation_key(catalogue, p)
+        cur = currencies.get(key, set())
+        out[p.id] = sums[key] if len(cur) <= 1 and "" not in cur else None
+    return out
 
 
 def _small_lot_rule(catalogue: ProcurementCatalogue, facts: ConceptFacts, contract_kind: str) -> LotRule | None:
@@ -195,7 +219,7 @@ def _small_lot_rule(catalogue: ProcurementCatalogue, facts: ConceptFacts, contra
 class ThresholdView:
     """What the package board shows next to a package (badge + explanation)."""
 
-    status: str  # above | below | unconfirmed | unresolved | not_applicable
+    status: str  # above | below | unconfirmed | unresolved | unavailable | not_applicable
     allowed: list[str] | None = None  # None = no restriction from thresholds
     thresholds: list[dict[str, Any]] = field(default_factory=list)
     single_value: Decimal | None = None
@@ -215,9 +239,31 @@ def threshold_view(
     ck = contract_kind_of(catalogue, pkg)
     rows = applicable_thresholds(catalogue, facts, ck, day)
     if not rows or ck is None:
+        if regime_has_thresholds(catalogue, facts, ck):
+            # The regime has thresholds for this client and kind but none for this day: a gap in the
+            # catalogue, never "no threshold applies".
+            return ThresholdView(
+                status="unavailable",
+                findings=[finding("threshold_not_available_for_date", ERROR, pkg.code, day=day.isoformat())],
+            )
         return ThresholdView(status="not_applicable")
-    agg = aggregated_values(catalogue, packages).get(pkg.id, pkg.estimated_value or ZERO)
+    sums = aggregated_values(catalogue, packages)
+    agg = sums.get(pkg.id, pkg.estimated_value or ZERO)
     single = pkg.estimated_value or ZERO
+    if agg is None:
+        return ThresholdView(
+            status="unresolved",
+            single_value=single,
+            findings=[
+                finding(
+                    "threshold_currency_unresolved",
+                    WARNING,
+                    pkg.code,
+                    reason="lots_in_different_currencies",
+                    blocks_approval=facts.public_client,
+                )
+            ],
+        )
     view = ThresholdView(status="below", single_value=single, aggregated_value=agg)
 
     # Small-lots exemption: only where the catalogue has the rule, within its own cap.
@@ -251,6 +297,7 @@ def threshold_view(
     any_unconfirmed = exempt_unconfirmed
     unresolved = False
     above_any = False
+    gross_warned = False
     for t in rows:
         value = convert_to_threshold(catalogue, basis_value, pkg.currency, t, vat_rate_pct=facts.vat_rate_pct, day=day)
         entry = {
@@ -269,6 +316,10 @@ def threshold_view(
         view.thresholds.append(entry)
         if t.review_status != ReviewStatus.verified:
             any_unconfirmed = True
+        if t.vat_basis == "gross" and facts.vat_rate_pct == ZERO and not gross_warned:
+            # A gross threshold compared with a net value understates it; the concept has no VAT rate.
+            gross_warned = True
+            view.findings.append(finding("vat_rate_missing_for_gross_threshold", WARNING, pkg.code))
         if value is None:
             unresolved = True
             continue
@@ -287,6 +338,7 @@ def threshold_view(
                 WARNING,
                 pkg.code,
                 currency=pkg.currency,
+                reason="no_rate" if pkg.currency else "currency_missing",
                 blocks_approval=facts.public_client,
             )
         )
@@ -340,7 +392,7 @@ def procedure_findings(
     flagged = False
     if facts.public_client and proc.sector == "private" and view.status != "below":
         # A public client may use a private procedure only below every threshold.
-        sev = ERROR if view.status in ("above", "not_applicable") else _sev_from_view(view)
+        sev = ERROR if view.status in ("above", "not_applicable", "unavailable") else _sev_from_view(view)
         out.append(finding("procedure_not_allowed_above_threshold", sev, pkg.code, procedure=proc.code))
         flagged = True
     if not facts.public_client and proc.sector == "public":
@@ -605,16 +657,30 @@ def schedule_findings(
 
 
 def framework_findings(
-    pkg: PackageFacts, framework: dict[str, Any] | None, *, award_date: date | None, remaining: Decimal | None
+    catalogue: ProcurementCatalogue,
+    pkg: PackageFacts,
+    framework: dict[str, Any] | None,
+    *,
+    award_date: date | None,
+    remaining: Decimal | None,
 ) -> list[dict[str, Any]]:
-    """A call-off needs an active framework covering the kind, running past award, with value left."""
+    """A call-off needs an active framework covering the kind, running past award, with value left.
+
+    ``remaining`` is ``None`` when the ledger holds entries it cannot express
+    in the framework currency. The remaining value is then unknown, which
+    blocks: an unknown remainder must not read as "enough".
+    """
+    call_off = catalogue.is_call_off(pkg.procedure_code)
     if not pkg.framework_agreement_id:
-        if pkg.procedure_code in ("framework_call_off", "mini_competition"):
-            return [finding("framework_missing", ERROR, pkg.code)]
-        return []
+        return [finding("framework_missing", ERROR, pkg.code)] if call_off else []
     if framework is None:
         return [finding("framework_missing", ERROR, pkg.code)]
     out = []
+    fw_currency = str(framework.get("currency") or "").upper()
+    if pkg.estimated_value is not None and (pkg.currency or "").upper() != fw_currency:
+        out.append(finding("framework_currency_mismatch", ERROR, pkg.code, framework_currency=fw_currency))
+    elif remaining is None:
+        out.append(finding("framework_remaining_unknown", ERROR, pkg.code))
     if framework["state"] == "exhausted":
         out.append(finding("framework_exhausted", ERROR, pkg.code))
     elif framework["state"] != "active":
@@ -628,6 +694,6 @@ def framework_findings(
     if remaining is not None and pkg.estimated_value is not None and remaining < pkg.estimated_value:
         if not any(f["code"] == "framework_exhausted" for f in out):
             out.append(finding("framework_exhausted", ERROR, pkg.code, remaining=str(remaining)))
-    if pkg.procedure_code not in ("framework_call_off", "mini_competition"):
+    if not call_off:
         out.append(finding("framework_procedure_mismatch", ERROR, pkg.code))
     return out

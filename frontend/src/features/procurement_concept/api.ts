@@ -1,0 +1,728 @@
+// DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+// Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+//
+// REST client for the procurement concept: award packages, procedures,
+// prequalification, market sounding, the award schedule and framework
+// agreements with their call-offs.
+//
+// Backend module: backend/app/modules/procurement_concept/router.py, mounted at
+// /api/v1/procurement-concept/. Project routes live under /projects/{id}/,
+// framework agreements are company level (/frameworks).
+//
+// Money travels as a decimal string in both directions. The server refuses a
+// JSON number for an amount (422), so every amount here is typed `string`.
+//
+// Errors arrive as `detail = {code, message_key, message, violations?, info?}`.
+// The screens read `code` to explain a refusal and list `violations` in full.
+
+import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
+
+const BASE = '/v1/procurement-concept';
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export type ConceptState = 'draft' | 'in_review' | 'approved' | 'binding' | 'reopened';
+export type PackageState =
+  | 'planned'
+  | 'procedure_set'
+  | 'shortlisted'
+  | 'in_tender'
+  | 'awarded'
+  | 'cancelled'
+  | 'on_hold';
+export type FrameworkState = 'draft' | 'active' | 'expired' | 'exhausted' | 'terminated';
+export type FrameworkTarget = Exclude<FrameworkState, 'draft'>;
+export type ThresholdStatus = 'above' | 'below' | 'unconfirmed' | 'unresolved' | 'not_applicable';
+export type Jurisdiction = 'eu' | 'uk' | 'us_federal' | 'de_national' | 'none';
+export type ClientType = 'central' | 'sub_central' | 'utility' | 'private';
+export type PackageKind = 'design' | 'works' | 'supply' | 'supply_and_install' | 'services';
+export type TenderBasis = 'detailed' | 'functional' | 'mixed';
+export type SplitBasis = 'trade' | 'section' | 'system' | 'whole';
+export type CandidateList = 'long' | 'short' | 'excluded';
+export type CandidateSource = 'market_sounding' | 'own_list' | 'framework' | 'public_notice';
+export type CapacitySignal = 'ample' | 'adequate' | 'tight' | 'insufficient';
+export type PriceSignal = 'below_estimate' | 'in_line' | 'above_estimate' | 'unknown';
+export type SoundingMethod = 'survey' | 'meeting' | 'rfi' | 'notice';
+export type CallOffMode = 'direct' | 'mini_competition';
+export type PackageAction = 'hold' | 'resume' | 'cancel';
+export type ConceptAction = 'submit' | 'return' | 'approve' | 'reopen';
+export type ExportPart = 'concept' | 'packages' | 'shortlist' | 'schedule';
+export type ExportFormat = 'pdf' | 'xlsx';
+
+/** One rule finding. `ref` is a package code, a candidate id or `profile`. */
+export interface Finding {
+  code: string;
+  severity: 'error' | 'warning' | string;
+  ref: string;
+  blocks_approval: boolean;
+  message_key?: string;
+  reason?: string;
+}
+
+/** A catalogue name as the API sends it: a message key, and texts per locale for company catalogues. */
+export interface Named {
+  code: string;
+  name_key?: string;
+  labels?: Record<string, string> | null;
+}
+
+export interface CatalogueProcedure extends Named {
+  sector: 'public' | 'private' | 'both';
+  stages: 1 | 2;
+  has_prequalification: boolean;
+  negotiation_allowed: boolean;
+  tender_basis_allowed: Array<'detailed' | 'functional'>;
+  min_bidders: number | null;
+}
+
+export interface CatalogueCriterion extends Named {
+  group: string;
+  kind: 'pass_fail' | 'scored';
+  default_weight: string;
+}
+
+export interface CatalogueJurisdiction extends Named {
+  code: Jurisdiction;
+  client_types: ClientType[];
+}
+
+/** The pinned catalogue body. Only the parts the screens read are typed. */
+export interface PinnedCatalogue {
+  id: string;
+  version: number;
+  name_key: string;
+  labels?: Record<string, string> | null;
+  review_status: 'verified' | 'unconfirmed' | string;
+  procedures: CatalogueProcedure[];
+  jurisdictions: CatalogueJurisdiction[];
+  prequal_criteria: CatalogueCriterion[];
+}
+
+export interface CatalogueSummary {
+  source: 'shipped' | 'tenant';
+  id: string;
+  code: string;
+  name: { key: string | null; text: Record<string, string> | null };
+  state: string;
+  versions: number[];
+  latest_version: number | null;
+  review_status: string;
+}
+
+export interface Concept {
+  id: string;
+  project_id: string;
+  catalogue_source: 'shipped' | 'tenant';
+  catalogue_id: string;
+  catalogue_version: number;
+  jurisdiction: Jurisdiction;
+  client_type: ClientType;
+  public_client: boolean;
+  vat_rate_pct: string;
+  /** The state that counts: `binding` is read from the frame document, never stored here. */
+  state: ConceptState;
+  stored_state: ConceptState;
+  governance_document_id: string | null;
+  release_gate_code: string | null;
+  default_profile_id: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  jurisdictions: Array<{ code: Jurisdiction; name_key: string; client_types: ClientType[] }>;
+  review_status: string;
+  /** What the caller may do on this concept, decided by the server. */
+  can: { edit: boolean; approve: boolean; steer: boolean };
+}
+
+export interface ConceptInput {
+  catalogue_source?: 'shipped' | 'tenant';
+  catalogue_id?: string;
+  jurisdiction?: Jurisdiction;
+  client_type?: ClientType;
+  public_client?: boolean;
+  vat_rate_pct?: string;
+  release_gate_code?: string;
+  default_profile_id?: string;
+}
+
+export interface Readiness {
+  state: ConceptState | null;
+  approved: boolean;
+  blocking: number;
+}
+
+export interface ContractPackage {
+  id: string;
+  code: string;
+  title: string;
+  kind: string;
+  parent_id: string | null;
+  scope: string;
+  boq_ref: string;
+  need_date: string | null;
+  status: string;
+  execution_link: { kind: string; id: string } | null;
+}
+
+export interface AwardPackage {
+  id: string;
+  split_basis: SplitBasis;
+  is_advance: boolean;
+  advance_reason: string;
+  estimated_value: string | null;
+  currency: string;
+  lot_group: string;
+  small_lot_exemption: boolean;
+  procedure_code: string | null;
+  tender_basis: TenderBasis | null;
+  framework_agreement_id: string | null;
+  evaluation_method: 'lowest_price' | 'best_value';
+  need_date: string | null;
+  lead_time_days: number | null;
+  procedure_days: number | null;
+  planned_start: string | null;
+  prequal_profile_id: string | null;
+  start_activity_id: string | null;
+  award_activity_id: string | null;
+  state: PackageState;
+  notes: string;
+  /** Only on the board: the value the threshold is tested against when lots are added up. */
+  aggregated_value?: string | null;
+}
+
+export interface ThresholdRow {
+  contract_kind: string;
+  client_type: string;
+  amount: string;
+  currency: string;
+  vat_basis: 'net' | 'gross';
+  effect: string;
+  source_url: string | null;
+  review_status: 'verified' | 'unconfirmed' | string;
+  valid_from: string | null;
+  valid_to: string | null;
+  compared_value: string | null;
+  position?: 'above' | 'below';
+}
+
+export interface PackageView {
+  contract_package: ContractPackage;
+  /** Null when this kind of contract package is not procured as an award package. */
+  package_kind: PackageKind | null;
+  award: AwardPackage | null;
+  threshold: {
+    status: ThresholdStatus;
+    allowed: string[] | null;
+    thresholds: ThresholdRow[];
+    small_lot_exempt: boolean;
+    aggregated_value: string | null;
+  } | null;
+  schedule: { award_date: string | null; start_date: string | null; procedure_days: number } | null;
+}
+
+export interface PackageInput {
+  split_basis?: SplitBasis;
+  is_advance?: boolean;
+  advance_reason?: string;
+  estimated_value?: string | null;
+  currency?: string;
+  lot_group?: string;
+  small_lot_exemption?: boolean;
+  procedure_code?: string | null;
+  tender_basis?: TenderBasis | null;
+  framework_agreement_id?: string | null;
+  need_date?: string | null;
+  lead_time_days?: number | null;
+  prequal_profile_id?: string | null;
+  notes?: string;
+}
+
+export interface ProcedureOption {
+  code: string;
+  name_key: string;
+  allowed: boolean;
+  reason: string | null;
+}
+
+export interface ThresholdCheck {
+  package_id: string;
+  checked_on: string;
+  status: ThresholdStatus;
+  single_value: string | null;
+  aggregated_value: string | null;
+  small_lot_exempt: boolean;
+  thresholds: ThresholdRow[];
+  procedures: ProcedureOption[];
+  findings: Finding[];
+}
+
+export interface ExecutionResult {
+  package_id: string;
+  kind: 'bid_package' | 'rfq';
+  id: string;
+  lines: number;
+}
+
+export interface ProfileCriterion {
+  code: string;
+  kind?: 'pass_fail' | 'scored';
+  weight: string;
+}
+
+export interface PrequalProfile {
+  id: string;
+  package_id: string | null;
+  name: string;
+  criteria: ProfileCriterion[];
+  pass_mark: string;
+  validity_months: number;
+}
+
+export interface ProfileInput {
+  package_id: string | null;
+  name: string;
+  criteria: Array<{ code: string; weight: string }>;
+  pass_mark: string;
+  validity_months: number;
+}
+
+export interface CandidateScore {
+  criterion_code: string;
+  passed: boolean | null;
+  score: string | null;
+  note?: string;
+}
+
+export interface CandidateReference {
+  id: string;
+  project_name: string;
+  client: string;
+  value: string | null;
+  currency: string;
+  year: number | null;
+  role: string;
+  contact: string;
+  verified: boolean;
+}
+
+export interface CandidateEvidence {
+  kind: 'prequal_status' | 'certificate' | string;
+  ref: string;
+  status?: string;
+  type?: string;
+  expires: string | null;
+  rating?: string | null;
+}
+
+export interface Candidate {
+  id: string;
+  package_id: string;
+  subcontractor_id: string | null;
+  vendor_id: string | null;
+  name: string;
+  /** Linked to a subcontractor or vendor record. Only a registered company can be short-listed. */
+  registered: boolean;
+  source: CandidateSource;
+  list: CandidateList;
+  decision_rationale: string;
+  conflict_of_interest_declared: boolean;
+  conflict_note: string;
+  scores: CandidateScore[];
+  total_score: string;
+  passed_all: boolean;
+  missing_criteria: string[];
+  evidence: CandidateEvidence[];
+  references: CandidateReference[];
+}
+
+export interface CandidateMatrix {
+  package_id: string;
+  profile: { id: string; criteria: ProfileCriterion[]; pass_mark: string } | null;
+  min_bidders: number;
+  items: Candidate[];
+  total: number;
+  findings: Finding[];
+}
+
+export interface CandidateInput {
+  subcontractor_id?: string | null;
+  free_name?: string;
+  source?: CandidateSource;
+  list?: CandidateList;
+  decision_rationale?: string;
+  conflict_of_interest_declared?: boolean;
+  conflict_note?: string;
+}
+
+export interface ScoreInput {
+  criterion_code: string;
+  passed?: boolean | null;
+  score?: string | null;
+}
+
+export interface ReferenceInput {
+  project_name: string;
+  client: string;
+  value: string | null;
+  currency: string;
+  year: number | null;
+  role: string;
+  verified: boolean;
+}
+
+export interface MarketSounding {
+  id: string;
+  package_ids: string[];
+  trade: string;
+  held_on: string;
+  method: SoundingMethod;
+  participant_candidate_ids: string[];
+  findings: string;
+  capacity_signal: CapacitySignal;
+  price_signal: PriceSignal;
+  lead_time_signal_days: number | null;
+  mitigation: string;
+  resplit: boolean;
+  /** Tight or insufficient capacity with neither a mitigation nor a new split. */
+  unmitigated: boolean;
+}
+
+export interface SoundingInput {
+  package_ids: string[];
+  trade: string;
+  held_on: string;
+  method: SoundingMethod;
+  findings: string;
+  capacity_signal: CapacitySignal;
+  price_signal: PriceSignal;
+  lead_time_signal_days: number | null;
+  mitigation: string;
+  resplit: boolean;
+}
+
+export interface ScheduleRow {
+  package_id: string;
+  code: string;
+  title: string;
+  need_date: string | null;
+  lead_time_days: number | null;
+  procedure_code: string | null;
+  procedure_days: number | null;
+  proposed_award_date: string | null;
+  proposed_start_date: string | null;
+  is_advance: boolean;
+  start_activity_id: string | null;
+  award_activity_id: string | null;
+  findings: Finding[];
+}
+
+export interface ScheduleView extends Page<ScheduleRow> {
+  release_date: string | null;
+  release_gate_code: string | null;
+}
+
+export interface Framework {
+  id: string;
+  code: string;
+  title: string;
+  subcontractor_id: string | null;
+  vendor_id: string | null;
+  supplier_name: string;
+  scope: string;
+  package_kinds: PackageKind[];
+  lots: Array<{ code?: string; title?: string }>;
+  max_value: string;
+  currency: string;
+  start_date: string;
+  end_date: string;
+  call_off_mode: CallOffMode;
+  source_procedure_ref: string;
+  state: FrameworkState;
+}
+
+export interface FrameworkInput {
+  code: string;
+  title: string;
+  supplier_name: string;
+  scope: string;
+  package_kinds: PackageKind[];
+  max_value: string;
+  currency: string;
+  start_date: string;
+  end_date: string;
+  call_off_mode: CallOffMode;
+  source_procedure_ref: string;
+}
+
+export type FrameworkPatch = Partial<Omit<FrameworkInput, 'code' | 'currency' | 'start_date'>>;
+
+export interface LedgerEntry {
+  kind: 'award_package' | 'purchase_order';
+  id: string;
+  project_id: string;
+  amount: string;
+  currency: string;
+  state: string;
+}
+
+export interface FrameworkLedger {
+  framework_id: string;
+  max_value: string;
+  currency: string;
+  call_off_value: string;
+  remaining_value: string;
+  /** Entries in another currency: they are listed but not added to the call-off value. */
+  unconverted_entries: number;
+  items: LedgerEntry[];
+  total: number;
+}
+
+/* ── Refusals ─────────────────────────────────────────────────────────── */
+
+function detailOf(err: unknown): Record<string, unknown> | null {
+  if (!(err instanceof ApiError)) return null;
+  const body = err.body as { detail?: unknown } | null;
+  const detail = body && typeof body === 'object' ? body.detail : null;
+  return detail && typeof detail === 'object' && !Array.isArray(detail) ? (detail as Record<string, unknown>) : null;
+}
+
+/** The error code the backend put in `detail.code`, or null for any other failure. */
+export function procurementErrorCode(err: unknown): string | null {
+  const code = detailOf(err)?.code;
+  return typeof code === 'string' ? code : null;
+}
+
+/** The sentence the backend sent with the code, already in the reader's language. */
+export function procurementErrorMessage(err: unknown): string | null {
+  const message = detailOf(err)?.message;
+  return typeof message === 'string' && message ? message : null;
+}
+
+/** The findings a refusal listed, so the screen can show all of them, not only the first. */
+export function procurementViolations(err: unknown): Finding[] {
+  const list = detailOf(err)?.violations;
+  return Array.isArray(list) ? (list as Finding[]) : [];
+}
+
+/** Today as the calendar day the reader is living in, not UTC. */
+export function localToday(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+export const procurementKeys = {
+  project: (projectId: string) => ['procurement-concept', projectId] as const,
+  concept: (projectId: string) => ['procurement-concept', projectId, 'concept'] as const,
+  catalogue: (projectId: string) => ['procurement-concept', projectId, 'catalogue'] as const,
+  findings: (projectId: string) => ['procurement-concept', projectId, 'findings'] as const,
+  packages: (projectId: string) => ['procurement-concept', projectId, 'packages'] as const,
+  threshold: (projectId: string, packageId: string) =>
+    ['procurement-concept', projectId, 'threshold', packageId] as const,
+  profiles: (projectId: string) => ['procurement-concept', projectId, 'profiles'] as const,
+  candidates: (projectId: string, packageId: string) =>
+    ['procurement-concept', projectId, 'candidates', packageId] as const,
+  soundings: (projectId: string) => ['procurement-concept', projectId, 'soundings'] as const,
+  schedule: (projectId: string) => ['procurement-concept', projectId, 'schedule'] as const,
+  catalogues: ['procurement-concept-company', 'catalogues'] as const,
+  frameworks: ['procurement-concept-company', 'frameworks'] as const,
+  ledger: (frameworkId: string) => ['procurement-concept-company', 'ledger', frameworkId] as const,
+};
+
+const p = (projectId: string) => `${BASE}/projects/${projectId}`;
+
+/* ── Catalogue and concept ────────────────────────────────────────────── */
+
+export function listCatalogues(): Promise<Page<CatalogueSummary>> {
+  return apiGet<Page<CatalogueSummary>>(`${BASE}/catalogues`);
+}
+
+export function getPinnedCatalogue(projectId: string): Promise<PinnedCatalogue> {
+  return apiGet<PinnedCatalogue>(`${p(projectId)}/catalogue`);
+}
+
+export function getConcept(projectId: string): Promise<Concept> {
+  return apiGet<Concept>(`${p(projectId)}/concept`);
+}
+
+export function setConcept(projectId: string, body: ConceptInput): Promise<Concept> {
+  return apiPut<Concept>(`${p(projectId)}/concept`, body);
+}
+
+export function conceptAction(projectId: string, action: ConceptAction, rationale = ''): Promise<Concept> {
+  return apiPost<Concept>(`${p(projectId)}/concept/${action}`, { rationale });
+}
+
+export function getReadiness(projectId: string): Promise<Readiness> {
+  return apiGet<Readiness>(`${p(projectId)}/readiness`);
+}
+
+export function listFindings(projectId: string): Promise<Page<Finding>> {
+  return apiGet<Page<Finding>>(`${p(projectId)}/findings?today=${localToday()}`);
+}
+
+/* ── Packages ─────────────────────────────────────────────────────────── */
+
+export function listPackages(projectId: string): Promise<Page<PackageView>> {
+  return apiGet<Page<PackageView>>(`${p(projectId)}/packages?today=${localToday()}`);
+}
+
+export function putPackage(projectId: string, packageId: string, body: PackageInput): Promise<AwardPackage> {
+  return apiPut<AwardPackage>(`${p(projectId)}/packages/${packageId}`, body);
+}
+
+export function setPackageState(projectId: string, packageId: string, action: PackageAction): Promise<AwardPackage> {
+  return apiPost<AwardPackage>(`${p(projectId)}/packages/${packageId}/state`, { action });
+}
+
+export function getThreshold(projectId: string, packageId: string): Promise<ThresholdCheck> {
+  return apiGet<ThresholdCheck>(`${p(projectId)}/packages/${packageId}/threshold?today=${localToday()}`);
+}
+
+export function createExecution(
+  projectId: string,
+  packageId: string,
+  body: { submission_deadline?: string | null } = {},
+): Promise<ExecutionResult> {
+  return apiPost<ExecutionResult>(`${p(projectId)}/packages/${packageId}/execution`, body);
+}
+
+/* ── Prequalification ─────────────────────────────────────────────────── */
+
+export function listProfiles(projectId: string): Promise<Page<PrequalProfile>> {
+  return apiGet<Page<PrequalProfile>>(`${p(projectId)}/prequal-profiles`);
+}
+
+export function createProfile(projectId: string, body: ProfileInput): Promise<PrequalProfile> {
+  return apiPost<PrequalProfile>(`${p(projectId)}/prequal-profiles`, body);
+}
+
+export function updateProfile(projectId: string, profileId: string, body: ProfileInput): Promise<PrequalProfile> {
+  return apiPut<PrequalProfile>(`${p(projectId)}/prequal-profiles/${profileId}`, body);
+}
+
+export function deleteProfile(projectId: string, profileId: string): Promise<void> {
+  return apiDelete(`${p(projectId)}/prequal-profiles/${profileId}`);
+}
+
+export function listCandidates(projectId: string, packageId: string): Promise<CandidateMatrix> {
+  return apiGet<CandidateMatrix>(`${p(projectId)}/packages/${packageId}/candidates`);
+}
+
+export function addCandidate(
+  projectId: string,
+  packageId: string,
+  body: CandidateInput,
+): Promise<{ id: string; list: CandidateList }> {
+  return apiPost<{ id: string; list: CandidateList }>(`${p(projectId)}/packages/${packageId}/candidates`, body);
+}
+
+export function patchCandidate(
+  projectId: string,
+  candidateId: string,
+  body: CandidateInput,
+): Promise<{ id: string; list: CandidateList }> {
+  return apiPatch<{ id: string; list: CandidateList }>(`${p(projectId)}/candidates/${candidateId}`, body);
+}
+
+export function deleteCandidate(projectId: string, candidateId: string): Promise<void> {
+  return apiDelete(`${p(projectId)}/candidates/${candidateId}`);
+}
+
+export function putScores(projectId: string, candidateId: string, scores: ScoreInput[]): Promise<Page<CandidateScore>> {
+  return apiPut<Page<CandidateScore>>(`${p(projectId)}/candidates/${candidateId}/scores`, { scores });
+}
+
+export function addReference(
+  projectId: string,
+  candidateId: string,
+  body: ReferenceInput,
+): Promise<{ id: string; verified: boolean }> {
+  return apiPost<{ id: string; verified: boolean }>(`${p(projectId)}/candidates/${candidateId}/references`, body);
+}
+
+export function deleteReference(projectId: string, candidateId: string, referenceId: string): Promise<void> {
+  return apiDelete(`${p(projectId)}/candidates/${candidateId}/references/${referenceId}`);
+}
+
+export function confirmShortlist(projectId: string, packageId: string): Promise<AwardPackage> {
+  return apiPost<AwardPackage>(`${p(projectId)}/packages/${packageId}/shortlist`, {});
+}
+
+/* ── Market sounding ──────────────────────────────────────────────────── */
+
+export function listSoundings(projectId: string): Promise<Page<MarketSounding>> {
+  return apiGet<Page<MarketSounding>>(`${p(projectId)}/market-soundings`);
+}
+
+export function createSounding(projectId: string, body: SoundingInput): Promise<MarketSounding> {
+  return apiPost<MarketSounding>(`${p(projectId)}/market-soundings`, body);
+}
+
+export function patchSounding(
+  projectId: string,
+  soundingId: string,
+  body: Partial<SoundingInput>,
+): Promise<MarketSounding> {
+  return apiPatch<MarketSounding>(`${p(projectId)}/market-soundings/${soundingId}`, body);
+}
+
+export function deleteSounding(projectId: string, soundingId: string): Promise<void> {
+  return apiDelete(`${p(projectId)}/market-soundings/${soundingId}`);
+}
+
+/* ── Award schedule ───────────────────────────────────────────────────── */
+
+export function getSchedule(projectId: string): Promise<ScheduleView> {
+  return apiGet<ScheduleView>(`${p(projectId)}/schedule?today=${localToday()}`);
+}
+
+export function confirmSchedule(
+  projectId: string,
+  packageIds: string[],
+): Promise<Page<{ package_id: string; start_date: string; award_date: string }>> {
+  return apiPost<Page<{ package_id: string; start_date: string; award_date: string }>>(
+    `${p(projectId)}/schedule/confirm`,
+    { package_ids: packageIds },
+  );
+}
+
+/* ── Export ───────────────────────────────────────────────────────────── */
+
+export function downloadExport(
+  projectId: string,
+  part: ExportPart,
+  format: ExportFormat,
+  packageId?: string,
+): Promise<void> {
+  const qs = new URLSearchParams({ format, part });
+  if (packageId) qs.set('package_id', packageId);
+  return downloadWithAuth(`/api${p(projectId)}/export?${qs.toString()}`, `procurement_${part}.${format}`);
+}
+
+/* ── Framework agreements (company level) ─────────────────────────────── */
+
+export function listFrameworks(): Promise<Page<Framework>> {
+  return apiGet<Page<Framework>>(`${BASE}/frameworks`);
+}
+
+export function createFramework(body: FrameworkInput): Promise<Framework> {
+  return apiPost<Framework>(`${BASE}/frameworks`, body);
+}
+
+export function patchFramework(frameworkId: string, body: FrameworkPatch): Promise<Framework> {
+  return apiPatch<Framework>(`${BASE}/frameworks/${frameworkId}`, body);
+}
+
+export function setFrameworkState(frameworkId: string, target: FrameworkTarget): Promise<Framework> {
+  return apiPost<Framework>(`${BASE}/frameworks/${frameworkId}/state`, { target });
+}
+
+export function getLedger(frameworkId: string): Promise<FrameworkLedger> {
+  return apiGet<FrameworkLedger>(`${BASE}/frameworks/${frameworkId}/ledger`);
+}

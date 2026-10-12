@@ -122,7 +122,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
                 sa.ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_pcc_concept_gov_document"),
                 nullable=True,
             ),
-            _str("release_gate_code", 64, "development_to_execution"),
+            _str("release_gate_code", 64, ""),
             _guid("default_profile_id"),
             _guid("submitted_by"),
             _guid("approved_by"),

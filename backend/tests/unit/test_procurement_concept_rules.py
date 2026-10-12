@@ -15,12 +15,16 @@ from decimal import Decimal
 import pytest
 
 from app.modules.procurement_concept import evaluator as ev
+from app.modules.procurement_concept import fsm
 from app.modules.procurement_concept.catalogue import (
     CONTRACT_PACKAGE_KIND_MAP,
     PROCUREMENT_KIND,
     ProcurementCatalogue,
     register_kind,
+    validate_procurement_catalogue,
 )
+from app.modules.procurement_concept.hosting import ProcurementHosting, hosting_of
+from app.modules.procurement_concept.schemas import ConceptSet, PackagePut, ProfileIn
 from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
 
 D2026 = date(2026, 6, 1)
@@ -85,10 +89,25 @@ def test_threshold_valid_on_the_planned_start_date_not_today() -> None:
     assert in_2025.status == "unconfirmed"
 
 
-def test_expired_threshold_version_is_not_applied() -> None:
-    p = pkg(value="5450000")
+def test_a_day_no_threshold_version_covers_blocks_instead_of_reading_as_not_applicable() -> None:
+    """The EU works rows end in 2027: in 2028 the check has no figure, which is a gap, never "free"."""
+    p = pkg(value="5450000", procedure_code="direct_award")
     view = ev.threshold_view(_cat("eu"), EU, p, [p], date(2028, 3, 1))
-    assert view.status == "not_applicable"
+    assert view.status == "unavailable"
+    assert [(f["code"], f["severity"]) for f in view.findings] == [("threshold_not_available_for_date", "error")]
+    assert "threshold_not_available_for_date" in codes(ev.procedure_findings(_cat("eu"), EU, p, [p], date(2028, 3, 1)))
+    # A private client really has no threshold: nothing is reported for the same day.
+    assert ev.threshold_view(_cat("eu"), PRIVATE, p, [p], date(2028, 3, 1)).status == "not_applicable"
+
+
+def test_a_gross_threshold_without_a_tax_rate_warns() -> None:
+    uk = ev.ConceptFacts("uk", "central", True)
+    p = pkg(value="100", currency="GBP")
+    assert "vat_rate_missing_for_gross_threshold" in codes(ev.threshold_view(_cat("uk"), uk, p, [p], D2026).findings)
+    with_rate = ev.ConceptFacts("uk", "central", True, vat_rate_pct=Decimal("20"))
+    assert "vat_rate_missing_for_gross_threshold" not in codes(
+        ev.threshold_view(_cat("uk"), with_rate, p, [p], D2026).findings
+    )
 
 
 def test_vat_basis_gross_converts_a_net_value() -> None:
@@ -164,12 +183,46 @@ def test_three_works_lots_are_aggregated_above_the_threshold() -> None:
     assert ev.procedure_findings(_cat("eu"), EU, open_lots[0], open_lots, D2026) == []
 
 
-def test_supplies_aggregate_per_lot_group_only() -> None:
+def test_untagged_supply_lots_are_aggregated_by_contract_kind() -> None:
+    """Two untagged 150k supply lots are 300k together, above 216k: leaving the tag empty splits nothing."""
+    a = pkg("S1", "supply", "150000", procedure_code="direct_award")
+    b = pkg("S2", "supply", "150000", procedure_code="direct_award")
+    assert ev.aggregated_values(_cat("eu"), [a, b]) == {"S1": Decimal("300000"), "S2": Decimal("300000")}
+    assert ev.threshold_view(_cat("eu"), EU, a, [a, b], D2026).status == "above"
+    assert "lot_splitting_avoids_threshold" in codes(ev.procedure_findings(_cat("eu"), EU, a, [a, b], D2026))
+    # Works are never summed with supplies.
+    w = pkg("W1", "construction", "150000")
+    assert ev.aggregated_values(_cat("eu"), [a, w]) == {"S1": Decimal("150000"), "W1": Decimal("150000")}
+
+
+def test_a_lot_group_narrows_the_supply_aggregation() -> None:
     a = pkg("S1", "supply", "150000", lot_group="steel")
     b = pkg("S2", "supply", "150000", lot_group="steel")
     c = pkg("S3", "supply", "150000", lot_group="glass")
     agg = ev.aggregated_values(_cat("eu"), [a, b, c])
     assert agg == {"S1": Decimal("300000"), "S2": Decimal("300000"), "S3": Decimal("150000")}
+
+
+def test_lots_in_different_currencies_have_no_sum_and_block_a_public_client() -> None:
+    """A lot priced in another currency must not drop out of the sum (it used to form its own group)."""
+    a = pkg("W1", value="3000000")
+    b = pkg("W2", value="3000000", currency="USD")
+    assert ev.aggregated_values(_cat("eu"), [a, b]) == {"W1": None, "W2": None}
+    view = ev.threshold_view(_cat("eu"), EU, a, [a, b], D2026)
+    assert view.status == "unresolved"
+    f = view.findings[0]
+    assert (f["code"], f["reason"], f["blocks_approval"]) == (
+        "threshold_currency_unresolved",
+        "lots_in_different_currencies",
+        True,
+    )
+
+
+def test_a_value_without_a_currency_is_unresolved_never_compared() -> None:
+    p = pkg(value="9000000", currency="")
+    assert ev.aggregated_values(_cat("eu"), [p]) == {"W1": None}
+    assert ev.threshold_view(_cat("eu"), EU, p, [p], D2026).status == "unresolved"
+    assert ev.convert_to_threshold(_cat("eu"), Decimal("1"), "", _cat("eu").jurisdictions[0].thresholds[0]) is None
 
 
 def test_cancelled_lots_do_not_count() -> None:
@@ -392,15 +445,165 @@ def test_start_in_the_past_or_before_release_is_infeasible_unless_released_advan
 
 def test_framework_call_off_checks() -> None:
     p = pkg("S1", "supply", "100000", procedure_code="framework_call_off", framework_agreement_id="f1")
-    fw = {"state": "active", "package_kinds": ["supply"], "end_date": date(2027, 12, 31)}
-    assert ev.framework_findings(p, fw, award_date=date(2027, 1, 1), remaining=Decimal("100000")) == []
-    assert codes(ev.framework_findings(p, fw, award_date=date(2027, 1, 1), remaining=Decimal("99999.99"))) == [
-        "framework_exhausted"
+    fw = {"state": "active", "package_kinds": ["supply"], "end_date": date(2027, 12, 31), "currency": "EUR"}
+    cat = _cat("eu")
+    big = Decimal("100000")
+
+    def check(framework, *, award=None, remaining=big, package=p):
+        return codes(ev.framework_findings(cat, package, framework, award_date=award, remaining=remaining))
+
+    assert check(fw, award=date(2027, 1, 1)) == []
+    assert check(fw, award=date(2027, 1, 1), remaining=Decimal("99999.99")) == ["framework_exhausted"]
+    assert check(fw, award=date(2028, 1, 1)) == ["framework_expired"]
+    assert check({**fw, "package_kinds": ["works"]}) == ["framework_scope_mismatch"]
+    assert check({**fw, "state": "draft"}) == ["framework_not_active"]
+
+
+def test_framework_in_another_currency_or_with_an_unknown_remainder_blocks() -> None:
+    """No cross-currency comparison: 100,000 EUR against "200,000 left" in USD says nothing."""
+    cat = _cat("eu")
+    p = pkg("S1", "supply", "100000", procedure_code="framework_call_off", framework_agreement_id="f1")
+    usd = {"state": "active", "package_kinds": ["supply"], "end_date": None, "currency": "USD"}
+    assert codes(ev.framework_findings(cat, p, usd, award_date=None, remaining=Decimal("200000"))) == [
+        "framework_currency_mismatch"
     ]
-    assert codes(ev.framework_findings(p, fw, award_date=date(2028, 1, 1), remaining=None)) == ["framework_expired"]
-    assert codes(ev.framework_findings(p, {**fw, "package_kinds": ["works"]}, award_date=None, remaining=None)) == [
-        "framework_scope_mismatch"
+    eur = {**usd, "currency": "EUR"}
+    assert codes(ev.framework_findings(cat, p, eur, award_date=None, remaining=None)) == ["framework_remaining_unknown"]
+
+
+def test_a_call_off_is_recognised_by_the_catalogue_attribute_not_by_the_procedure_code() -> None:
+    """A company catalogue may name its call-off procedure anything (finding 15)."""
+    body = _cat("neutral").model_dump(mode="json")
+    for proc in body["procedures"]:
+        if proc["code"] == "framework_call_off":
+            proc["code"] = "abruf"
+    for lt in body["lead_time_defaults"]:
+        if lt["procedure"] == "framework_call_off":
+            lt["procedure"] = "abruf"
+    for j in body["jurisdictions"]:
+        for t in j["thresholds"]:
+            for key in ("allowed_above", "allowed_below"):
+                t[key] = ["abruf" if c == "framework_call_off" else c for c in t[key]]
+        for m in j["min_periods"]:
+            if m["procedure"] == "framework_call_off":
+                m["procedure"] = "abruf"
+    cat = ProcurementCatalogue.model_validate(body)
+    assert validate_procurement_catalogue(cat, "tenant") == []
+    assert cat.is_call_off("abruf") is True
+    assert cat.is_call_off("open") is False
+    fw = {"state": "active", "package_kinds": [], "end_date": None, "currency": "EUR"}
+    renamed = pkg("S1", "supply", "10", procedure_code="abruf", framework_agreement_id="f1")
+    assert ev.framework_findings(cat, renamed, fw, award_date=None, remaining=Decimal("10")) == []
+    not_call_off = pkg("S1", "supply", "10", procedure_code="open", framework_agreement_id="f1")
+    assert codes(ev.framework_findings(cat, not_call_off, fw, award_date=None, remaining=Decimal("10"))) == [
+        "framework_procedure_mismatch"
     ]
-    assert codes(ev.framework_findings(p, {**fw, "state": "draft"}, award_date=None, remaining=None)) == [
-        "framework_not_active"
+    assert codes(
+        ev.framework_findings(
+            cat, pkg("S1", "supply", "10", procedure_code="abruf"), None, award_date=None, remaining=None
+        )
+    ) == ["framework_missing"]
+
+
+# ── Catalogue codes are data (finding 15) ───────────────────────────────
+
+
+def test_a_company_catalogue_may_define_its_own_jurisdiction_and_client_types() -> None:
+    body = _cat("eu").model_dump(mode="json")
+    juris = body["jurisdictions"][0]
+    juris["code"] = "br_federal"
+    juris["client_types"] = ["uniao", "privado"]
+    juris["private_client_type"] = "privado"
+    for t in juris["thresholds"]:
+        t["client_type"] = "uniao"
+    juris["thresholds"] = [t for t in juris["thresholds"] if t["valid_to"] is None or t["valid_to"] >= "2026-01-01"]
+    cat = ProcurementCatalogue.model_validate(body)
+    errors = [
+        e for e in validate_procurement_catalogue(cat, "tenant") if not e.startswith("threshold_validity_overlap")
     ]
+    assert errors == []
+    facts = ev.ConceptFacts("br_federal", "uniao", True)
+    p = pkg(value="6000000")
+    assert ev.threshold_view(cat, facts, p, [p], D2026).status == "above"
+
+
+def test_a_threshold_for_a_client_type_the_jurisdiction_does_not_list_is_refused() -> None:
+    body = _cat("eu").model_dump(mode="json")
+    body["jurisdictions"][0]["thresholds"][0]["client_type"] = "ghost"
+    errors = validate_procurement_catalogue(ProcurementCatalogue.model_validate(body), "tenant")
+    assert any(e.startswith("threshold_unknown_client_type") for e in errors)
+
+
+# ── Governance hosting by tag, never by code (FIX_BRIEF neutrality) ─────
+
+
+class _Item:
+    def __init__(self, code: str, **kw) -> None:
+        self.code = code
+        for k, v in kw.items():
+            setattr(self, k, v)
+
+
+class _GovCatalogue:
+    def __init__(self, areas, document_types, phases, gates) -> None:
+        self.areas, self.document_types, self.phases, self.gates = areas, document_types, phases, gates
+
+
+def test_hosting_is_resolved_by_tags_whatever_the_codes_are() -> None:
+    cat = _GovCatalogue(
+        areas=[_Item("zz_costs", hosts=("cost",)), _Item("zz_buying", hosts=("procurement",))],
+        document_types=[_Item("buying_plan", hosts=("procurement",)), _Item("brief", hosts=("design",))],
+        phases=[_Item("p1", enables=()), _Item("p2", enables=("procurement_release",))],
+        gates=[_Item("g_a", to_phase="p1"), _Item("g_b", to_phase="p2")],
+    )
+    assert hosting_of(cat) == ProcurementHosting("zz_buying", ("buying_plan",), ("g_b",))
+
+
+def test_a_catalogue_without_the_tags_resolves_nothing_instead_of_guessing() -> None:
+    """A model that names an area "m08_procurement" but does not tag it is not matched by its code."""
+    cat = _GovCatalogue(
+        areas=[_Item("m08_procurement")],
+        document_types=[_Item("procurement_concept")],
+        phases=[_Item("procurement")],
+        gates=[_Item("g3", to_phase="procurement")],
+    )
+    assert hosting_of(cat) == ProcurementHosting()
+    assert hosting_of(None) == ProcurementHosting()
+
+
+# ── Hand transitions and request bodies ─────────────────────────────────
+
+
+def test_a_person_can_only_submit_or_return_the_concept() -> None:
+    """Approval is the governance gate (finding 6): approved and reopened are never asked for by hand."""
+    assert fsm.CONCEPT_HAND_TARGETS == ("in_review", "draft")
+
+
+def test_explicit_null_on_a_non_nullable_field_is_refused() -> None:
+    for body in ({"jurisdiction": None}, {"vat_rate_pct": None}, {"release_gate_code": None}):
+        with pytest.raises(ValueError, match="null is not allowed"):
+            ConceptSet.model_validate(body)
+    with pytest.raises(ValueError, match="null is not allowed"):
+        PackagePut.model_validate({"currency": None})
+    with pytest.raises(ValueError, match="null is not allowed"):
+        ProfileIn.model_validate({"name": None})
+    # Fields that are nullable in the table stay clearable.
+    assert ConceptSet.model_validate({"governance_document_id": None}).governance_document_id is None
+    assert PackagePut.model_validate({"estimated_value": None, "procedure_code": None}).procedure_code is None
+
+
+def test_money_and_percent_ranges_are_validated() -> None:
+    with pytest.raises(ValueError, match="more than two decimals"):
+        PackagePut.model_validate({"estimated_value": "1.005", "currency": "EUR"})
+    with pytest.raises(ValueError, match="too large"):
+        PackagePut.model_validate({"estimated_value": "10000000000000000", "currency": "EUR"})
+    with pytest.raises(ValueError):
+        ProfileIn.model_validate({"pass_mark": "100.01"})
+    assert PackagePut.model_validate({"estimated_value": "1.50", "currency": "EUR"}).estimated_value == Decimal("1.50")
+
+
+def test_concept_codes_are_plain_strings_of_the_catalogue() -> None:
+    body = ConceptSet.model_validate({"jurisdiction": "br_federal", "client_type": "uniao"})
+    assert (body.jurisdiction, body.client_type) == ("br_federal", "uniao")
+    with pytest.raises(ValueError):
+        ConceptSet.model_validate({"jurisdiction": "Not A Code"})

@@ -105,6 +105,8 @@ PROCUREMENT_RULES: tuple[type[ValidationRule], ...] = (
             "procedure_not_allowed_for_client",
             "tender_basis_not_allowed",
             "threshold_currency_unresolved",
+            "threshold_not_available_for_date",
+            "vat_rate_missing_for_gross_threshold",
         ),
     ),
     _rule(
@@ -161,7 +163,7 @@ PROCUREMENT_RULES: tuple[type[ValidationRule], ...] = (
         "award_schedule_feasible",
         "Award Schedule Feasible",
         "The procurement start is not in the past and not before the releasing gate.",
-        ("award_schedule_infeasible", "need_date_missing"),
+        ("award_schedule_infeasible", "need_date_missing", "release_gate_unresolved"),
     ),
     _rule(
         "advance_package_released",
@@ -179,6 +181,8 @@ PROCUREMENT_RULES: tuple[type[ValidationRule], ...] = (
             "framework_scope_mismatch",
             "framework_expired",
             "framework_exhausted",
+            "framework_currency_mismatch",
+            "framework_remaining_unknown",
             "framework_procedure_mismatch",
         ),
     ),

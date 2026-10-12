@@ -10,12 +10,24 @@ Ownership of data (SPEC section 6, INTEGRATION section 6):
 * award milestones: ``schedule`` activities (proposed here, created only on confirm);
 * thresholds and procedures: the pinned catalogue (kind ``procurement_procedures``).
 
-Locks: the concept is "plan locked" once approved or binding; plan fields
-(jurisdiction, procedures, values, split, advance, frameworks) then refuse
-with 409. Binding is derived on every read from governance: the m08 frame
-document is binding and no change request on it is open (rule 14). The
-operational parts (candidates, scores, soundings, schedule confirmation,
-execution) stay writable, because they are how the binding concept is carried out.
+Approval is the governance gate (Decision 10): this module has no approve
+action. A submitted concept (``in_review``) whose frame document governance
+made binding is approved; :meth:`mirror_binding` records who decided it. The
+state ``binding`` is derived on every read from that document and is never
+reported for a concept that was not submitted.
+
+Locks: the concept is "plan locked" while in review, approved or binding;
+plan fields (jurisdiction, procedures, values, split, advance, frameworks,
+holds and cancellations, prequalification profiles) then refuse with 409. A
+submitted change request on the binding frame document lifts the lock until
+governance decides it (rule 14). The operational parts (candidates, scores,
+soundings, schedule confirmation, execution) stay writable, because they are
+how the binding concept is carried out.
+
+Who may steer is decided by the router from permissions and passed in as
+``can_manage``; the owner and deputy of the governance area that hosts
+procurement may steer too. Governance areas, documents and gates are resolved
+from catalogue tags (:mod:`hosting`), never by a literal code.
 """
 
 from __future__ import annotations
@@ -27,6 +39,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_log import log_activity
@@ -38,16 +51,19 @@ from app.modules.procurement_concept.catalogue import (
     DEFAULT_CATALOGUE_ID,
     PROCUREMENT_KIND,
     ProcurementCatalogue,
+    parse_amount,
     register_kind,
 )
 from app.modules.procurement_concept.errors import ProcurementError, conflict, forbidden, not_found
 from app.modules.procurement_concept.fsm import (
     CONCEPT_FSM,
+    CONCEPT_HAND_TARGETS,
     FRAMEWORK_FSM,
     can_set_package_state_by_hand,
     can_transition,
     read_back_target,
 )
+from app.modules.procurement_concept.hosting import ProcurementHosting, project_hosting
 from app.modules.procurement_concept.models import (
     AwardPackage,
     BidderCandidate,
@@ -62,11 +78,11 @@ from app.modules.procurement_concept.models import (
 logger = logging.getLogger(__name__)
 
 MODULE = "procurement_concept"
-PROCUREMENT_AREA_CODES = ("m08_procurement", "contracts_procurement")
-FRAME_DOCUMENT_TYPE = "m08_procurement_frame"
-MANAGER_ROLES = ("manager", "admin")
 SUPPLY_KINDS = ("supply", "supply_and_install")
 _PLAN_LOCKED = ("approved", "binding", "in_review")
+_SUBMITTED = ("in_review", "approved")
+_GO = ("go", "go_with_conditions")
+_EXECUTION_OPEN = ("in_tender", "awarded")
 
 
 def _s(v: Any) -> str | None:
@@ -82,12 +98,16 @@ def _day(v: str | None) -> date | None:
         return None
 
 
-def _iso(v: date | None) -> str | None:
-    return v.isoformat() if v else None
+def _iso(v: date | str | None) -> str | None:
+    # Several date columns are ISO strings; a value read back before refresh may be either form.
+    if not v:
+        return None
+    return v if isinstance(v, str) else v.isoformat()
 
 
-def _dec(v: Decimal | None) -> str | None:
-    return None if v is None else format(v, "f")
+def _dec(v: Decimal | str | None) -> str | None:
+    # An attribute assigned as a string keeps that type until the row is refreshed.
+    return None if v is None else format(Decimal(v), "f")
 
 
 class ProcurementConceptService:
@@ -95,6 +115,7 @@ class ProcurementConceptService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self._hosting_cache: dict[uuid.UUID, ProcurementHosting] = {}
 
     # ── plumbing ─────────────────────────────────────────────────────────
 
@@ -130,91 +151,125 @@ class ProcurementConceptService:
 
     # ── governance reads ─────────────────────────────────────────────────
 
+    async def hosting(self, project_id: uuid.UUID) -> ProcurementHosting:
+        """Where procurement lives in the project's governance model (catalogue tags, read once per request)."""
+        if project_id not in self._hosting_cache:
+            self._hosting_cache[project_id] = await project_hosting(self.session, project_id)
+        return self._hosting_cache[project_id]
+
     async def _procurement_area(self, project_id: uuid.UUID) -> Any:
         from app.modules.project_governance.models import GovernanceArea
 
-        rows = (
+        code = (await self.hosting(project_id)).area_code
+        if code is None:
+            return None
+        return (
             (
                 await self.session.execute(
                     select(GovernanceArea).where(
                         GovernanceArea.project_id == project_id,
-                        GovernanceArea.code.in_(PROCUREMENT_AREA_CODES),
+                        GovernanceArea.code == code,
                         GovernanceArea.retired.is_(False),
-                    )
-                )
-            )
-            .scalars()
-            .all()
-        )
-        return rows[0] if rows else None
-
-    async def can_steer(self, project_id: uuid.UUID, actor_id: uuid.UUID, role: str | None) -> bool:
-        """Manager, or owner / deputy of the procurement area in governance (SPEC section 5)."""
-        if (role or "") in MANAGER_ROLES:
-            return True
-        area = await self._procurement_area(project_id)
-        return area is not None and actor_id in (area.owner_user_id, area.deputy_user_id)
-
-    async def _require_steer(self, project_id: uuid.UUID, actor_id: uuid.UUID, role: str | None) -> None:
-        if not await self.can_steer(project_id, actor_id, role):
-            raise forbidden("not_procurement_owner")
-
-    async def _frame_document(self, project_id: uuid.UUID, concept: ProcurementConcept) -> Any:
-        from app.modules.project_governance.models import GovernanceDocument
-
-        q = select(GovernanceDocument).where(GovernanceDocument.project_id == project_id)
-        if concept.governance_document_id is not None:
-            q = q.where(GovernanceDocument.id == concept.governance_document_id)
-        else:
-            q = q.where(GovernanceDocument.doc_type == FRAME_DOCUMENT_TYPE)
-        return (await self.session.execute(q)).scalars().first()
-
-    async def effective_state(self, concept: ProcurementConcept) -> str:
-        """The stored state, or ``binding`` while governance holds the frame document binding.
-
-        A submitted change request on the document lifts the lock: the concept
-        reads ``reopened`` until governance decides it (rule 14).
-        """
-        from app.modules.project_governance.models import GovernanceChangeRequest
-
-        doc = await self._frame_document(concept.project_id, concept)
-        if doc is None or doc.status != "binding":
-            return concept.state
-        open_cr = (
-            await self.session.execute(
-                select(func.count())
-                .select_from(GovernanceChangeRequest)
-                .where(GovernanceChangeRequest.document_id == doc.id, GovernanceChangeRequest.status == "submitted")
-            )
-        ).scalar_one()
-        return "reopened" if open_cr else "binding"
-
-    async def _release_date(self, project_id: uuid.UUID, gate_code: str) -> date | None:
-        """Date procurement is released: the go decision of the release gate, else its target date."""
-        from app.modules.project_governance.models import GovernanceDecision, GovernanceGate
-
-        gate = (
-            (
-                await self.session.execute(
-                    select(GovernanceGate).where(
-                        GovernanceGate.project_id == project_id,
-                        GovernanceGate.code == gate_code,
-                        GovernanceGate.historic.is_(False),
                     )
                 )
             )
             .scalars()
             .first()
         )
+
+    async def can_steer(self, project_id: uuid.UUID, actor_id: uuid.UUID, can_manage: bool) -> bool:
+        """The manage permission, or owner / deputy of the governance area that hosts procurement."""
+        if can_manage:
+            return True
+        area = await self._procurement_area(project_id)
+        return area is not None and actor_id in (area.owner_user_id, area.deputy_user_id)
+
+    async def _require_steer(self, project_id: uuid.UUID, actor_id: uuid.UUID, can_manage: bool) -> None:
+        if not await self.can_steer(project_id, actor_id, can_manage):
+            raise forbidden("not_procurement_owner")
+
+    async def _frame_document(self, project_id: uuid.UUID, concept: ProcurementConcept) -> Any:
+        """The frame document that carries the concept: the one named on it, else the one the catalogue tags."""
+        from app.modules.project_governance.models import GovernanceDocument
+
+        q = select(GovernanceDocument).where(GovernanceDocument.project_id == project_id)
+        if concept.governance_document_id is not None:
+            q = q.where(GovernanceDocument.id == concept.governance_document_id)
+        else:
+            types = (await self.hosting(project_id)).document_types
+            if not types:
+                return None
+            q = q.where(GovernanceDocument.doc_type.in_(types)).order_by(GovernanceDocument.created_at)
+        return (await self.session.execute(q)).scalars().first()
+
+    async def _open_change_requests(self, document_id: uuid.UUID) -> int:
+        from app.modules.project_governance.models import GovernanceChangeRequest
+
+        return (
+            await self.session.execute(
+                select(func.count())
+                .select_from(GovernanceChangeRequest)
+                .where(
+                    GovernanceChangeRequest.document_id == document_id, GovernanceChangeRequest.status == "submitted"
+                )
+            )
+        ).scalar_one()
+
+    async def effective_state(self, concept: ProcurementConcept) -> str:
+        """The stored state, or what governance made of a submitted concept.
+
+        While the frame document is binding: a submitted concept (``in_review``
+        or ``approved``) reads ``binding``; a submitted change request on the
+        document lifts that, an approved concept then reads ``reopened`` and a
+        resubmitted one ``in_review`` until governance decides (rule 14). A
+        concept that was never submitted keeps its own state whatever the
+        document says, so a draft is never reported binding.
+        """
+        doc = await self._frame_document(concept.project_id, concept)
+        if doc is None or doc.status != "binding" or concept.state not in _SUBMITTED:
+            return concept.state
+        if await self._open_change_requests(doc.id):
+            return "reopened" if concept.state == "approved" else concept.state
+        return "binding"
+
+    async def _project_gates(self, project_id: uuid.UUID) -> list[Any]:
+        from app.modules.project_governance.models import GovernanceGate
+
+        return list(
+            (
+                await self.session.execute(
+                    select(GovernanceGate)
+                    .where(GovernanceGate.project_id == project_id, GovernanceGate.historic.is_(False))
+                    .order_by(GovernanceGate.sort_order)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    async def release_gate(self, project_id: uuid.UUID, concept: ProcurementConcept) -> Any:
+        """The gate whose go releases procurement: the one named on the concept, else the tagged one.
+
+        ``None`` when the project has no such gate. Callers treat that as
+        "release not known" (a finding, an ``unknown`` evidence item), never as
+        "nothing to wait for".
+        """
+        gates = await self._project_gates(project_id)
+        if concept.release_gate_code:
+            return next((g for g in gates if g.code == concept.release_gate_code), None)
+        tagged = (await self.hosting(project_id)).release_gate_codes
+        return next((g for g in gates if g.code in tagged), None)
+
+    async def _release_date(self, gate: Any) -> date | None:
+        """Date procurement is released: the go decision of the release gate, else its target date."""
+        from app.modules.project_governance.models import GovernanceDecision
+
         if gate is None:
             return None
         decided = (
             await self.session.execute(
                 select(GovernanceDecision.decided_at)
-                .where(
-                    GovernanceDecision.gate_id == gate.id,
-                    GovernanceDecision.outcome.in_(("go", "go_with_conditions")),
-                )
+                .where(GovernanceDecision.gate_id == gate.id, GovernanceDecision.outcome.in_(_GO))
                 .order_by(GovernanceDecision.decided_at.desc())
             )
         ).scalar()
@@ -222,18 +277,26 @@ class ProcurementConceptService:
             return decided.date()
         return _day(gate.target_date)
 
-    async def _advance_released(self, project_id: uuid.UUID, row: AwardPackage) -> bool:
+    async def advance_release_status(self, project_id: uuid.UUID, row: AwardPackage, gate: Any) -> str:
+        """``released`` | ``none`` | ``missing`` | ``other_gate`` | ``not_cleared`` (rule 12).
+
+        Only an act of the release gate itself releases an advance package: a
+        condition of that gate that is cleared (open, overdue and waived do not
+        count), or its go decision.
+        """
         from app.modules.project_governance.models import GovernanceCondition, GovernanceDecision
 
-        if row.advance_release_id is None:
-            return False
+        if row.advance_release_id is None or row.advance_release_kind not in ("gate_decision", "condition"):
+            return "none"
+        model = GovernanceDecision if row.advance_release_kind == "gate_decision" else GovernanceCondition
+        act = await self.session.get(model, row.advance_release_id)
+        if act is None or act.project_id != project_id:
+            return "missing"
+        if gate is None or act.gate_id != gate.id:
+            return "other_gate"
         if row.advance_release_kind == "gate_decision":
-            d = await self.session.get(GovernanceDecision, row.advance_release_id)
-            return d is not None and d.project_id == project_id and d.outcome in ("go", "go_with_conditions")
-        if row.advance_release_kind == "condition":
-            c = await self.session.get(GovernanceCondition, row.advance_release_id)
-            return c is not None and c.project_id == project_id and c.status != "waived"
-        return False
+            return "released" if act.outcome in _GO else "not_cleared"
+        return "released" if act.status == "cleared" else "not_cleared"
 
     # ── concept ──────────────────────────────────────────────────────────
 
@@ -256,17 +319,33 @@ class ProcurementConceptService:
         if state in _PLAN_LOCKED:
             raise conflict("concept_locked", detail=state)
 
+    async def _pin(self, tenant_id: str | None, source: str, catalogue_id: str, version: int | None) -> int:
+        """The version this caller may pin; another company's or a retired catalogue is refused."""
+        from app.modules.project_governance.catalogue_store import CatalogueStore
+        from app.modules.project_governance.errors import GovernanceError
+
+        register_kind()
+        try:
+            return await CatalogueStore(self.session).assert_pinnable(
+                tenant_id, source, str(catalogue_id), version, kind=PROCUREMENT_KIND
+            )
+        except GovernanceError as exc:
+            raise ProcurementError(exc.code, exc.status_code, detail=exc.detail) from exc
+
     async def set_concept(
-        self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID, role: str | None
+        self,
+        project_id: uuid.UUID,
+        data: dict[str, Any],
+        *,
+        actor_id: uuid.UUID,
+        can_manage: bool,
+        tenant_id: str | None,
     ) -> ProcurementConcept:
-        await self._require_steer(project_id, actor_id, role)
+        await self._require_steer(project_id, actor_id, can_manage)
         concept = await self.find_concept(project_id, lock=True)
         created = concept is None
         if concept is None:
             _form, mod3_public = await plan.delivery_form(self.session, project_id)
-            public = data.get("public_client")
-            if public is None:
-                public = bool(mod3_public)
             concept = ProcurementConcept(
                 project_id=project_id,
                 catalogue_source="shipped",
@@ -274,53 +353,68 @@ class ProcurementConceptService:
                 catalogue_version=1,
                 jurisdiction="none",
                 client_type="private",
-                public_client=public,
+                public_client=bool(mod3_public),
                 vat_rate_pct=Decimal("0"),
+                release_gate_code="",
                 state="draft",
                 created_by=actor_id,
             )
         else:
             await self._require_plan_editable(concept)
-        pin = {k: data[k] for k in ("catalogue_source", "catalogue_id", "catalogue_version") if data.get(k) is not None}
-        if pin:
-            concept.catalogue_source = pin.get("catalogue_source", concept.catalogue_source)
-            concept.catalogue_id = pin.get("catalogue_id", concept.catalogue_id)
-            concept.catalogue_version = pin.get("catalogue_version") or await self._latest_version(concept)
-        for key in ("jurisdiction", "client_type", "vat_rate_pct", "release_gate_code"):
-            if data.get(key) is not None:
+        if "release_gate_code" in data or "governance_document_id" in data:
+            # These decide what the governance gate reads, so they need the manage permission and are
+            # frozen once the concept left its first state.
+            if not can_manage:
+                raise forbidden("manage_required")
+            if concept.state != "draft":
+                raise conflict("gate_fields_frozen", detail=concept.state)
+        pinned = any(k in data for k in ("catalogue_source", "catalogue_id", "catalogue_version"))
+        if created or pinned:
+            source = data.get("catalogue_source", concept.catalogue_source)
+            catalogue_id = data.get("catalogue_id", concept.catalogue_id)
+            concept.catalogue_version = await self._pin(tenant_id, source, catalogue_id, data.get("catalogue_version"))
+            concept.catalogue_source, concept.catalogue_id = source, catalogue_id
+        for key in ("jurisdiction", "client_type", "vat_rate_pct", "public_client"):
+            if key in data:
                 setattr(concept, key, data[key])
-        if data.get("public_client") is not None:
-            concept.public_client = data["public_client"]
-        if "governance_document_id" in data and data["governance_document_id"] is not None:
-            await self._require_document_in_project(project_id, data["governance_document_id"])
+        if "release_gate_code" in data:
+            code = data["release_gate_code"]
+            if code and code not in {g.code for g in await self._project_gates(project_id)}:
+                raise ProcurementError("release_gate_unknown", 422, detail=code)
+            concept.release_gate_code = code
+        if "governance_document_id" in data:
+            if data["governance_document_id"] is not None:
+                await self._require_document_in_project(project_id, data["governance_document_id"])
             concept.governance_document_id = data["governance_document_id"]
-        if data.get("default_profile_id") is not None:
-            await self._profile(project_id, data["default_profile_id"])
+        if "default_profile_id" in data:
+            if data["default_profile_id"] is not None:
+                await self._profile(project_id, data["default_profile_id"])
             concept.default_profile_id = data["default_profile_id"]
-        if not concept.public_client and concept.jurisdiction != "none":
-            # Private clients keep the jurisdiction for reference but no thresholds apply (Decision 9).
-            concept.client_type = "private"
         cat = await self.catalogue_of(concept)
-        if cat.jurisdiction(concept.jurisdiction) is None:
+        juris = cat.jurisdiction(concept.jurisdiction)
+        if juris is None:
             raise ProcurementError("jurisdiction_not_in_catalogue", 422, detail=concept.jurisdiction)
+        if not concept.public_client:
+            # A private client keeps the jurisdiction for reference; no threshold applies (Decision 9).
+            concept.client_type = juris.private_client_type
+        elif concept.client_type == juris.private_client_type:
+            # A public client on the private client type would switch every threshold off without a word.
+            raise ProcurementError("public_client_needs_client_type", 422, detail=concept.jurisdiction)
+        elif concept.client_type not in juris.client_types:
+            raise ProcurementError("client_type_not_in_jurisdiction", 422, detail=concept.client_type)
         if created:
-            self.session.add(concept)
-        await self.session.flush()
+            try:
+                async with self.session.begin_nested():
+                    self.session.add(concept)
+                    await self.session.flush()
+            except IntegrityError as exc:
+                # Two first writes of the same project raced; the other one created the concept.
+                raise conflict("concurrent_update") from exc
+        else:
+            await self.session.flush()
         await self._audit(actor_id, "procurement_concept", concept.id, "created" if created else "updated")
         self._publish("concept.updated", {"project_id": str(project_id), "concept_id": str(concept.id)})
         return concept
-
-    async def _latest_version(self, concept: ProcurementConcept) -> int:
-        from app.modules.project_governance.catalogue_store import resolve_catalogue
-
-        register_kind()
-        try:
-            cat = await resolve_catalogue(
-                self.session, concept.catalogue_source, concept.catalogue_id, None, kind=PROCUREMENT_KIND
-            )
-        except Exception as exc:
-            raise not_found("unknown_catalogue") from exc
-        return int(cat.version)
 
     async def _require_document_in_project(self, project_id: uuid.UUID, document_id: uuid.UUID) -> None:
         from app.modules.project_governance.models import GovernanceDocument
@@ -330,38 +424,88 @@ class ProcurementConceptService:
             raise not_found("document_not_found")
 
     async def transition(
-        self, project_id: uuid.UUID, target: str, *, actor_id: uuid.UUID, role: str | None, rationale: str = ""
+        self, project_id: uuid.UUID, target: str, *, actor_id: uuid.UUID, can_manage: bool
     ) -> ProcurementConcept:
-        """submit (-> in_review), return (-> draft), approve (-> approved), reopen (-> reopened)."""
-        await self._require_steer(project_id, actor_id, role)
+        """submit (-> in_review) or return (-> draft). Approval is the governance gate, never a call here."""
+        await self._require_steer(project_id, actor_id, can_manage)
         concept = await self.get_concept(project_id, lock=True)
         current = await self.effective_state(concept)
         if current == "binding":
             raise conflict("binding_requires_change_request")
-        if current == "reopened" and concept.state != "reopened":
-            # A change request on the binding document opened the concept again.
-            concept.state = "reopened"
-        if not can_transition(CONCEPT_FSM, concept.state, target):
-            raise conflict("invalid_transition", detail=f"{concept.state}->{target}")
+        if target not in CONCEPT_HAND_TARGETS or not can_transition(CONCEPT_FSM, current, target):
+            raise conflict("invalid_transition", detail=f"{current}->{target}")
         if target == "in_review":
+            doc = await self._frame_document(project_id, concept)
+            if doc is not None and doc.status == "binding" and not await self._open_change_requests(doc.id):
+                # The frame document is already binding: a new concept version needs a change request on it.
+                raise conflict("binding_requires_change_request")
             plan_findings = await self._plan_findings(project_id)
             if plan_findings:
                 raise ProcurementError("package_without_procedure_plan", 422, violations=plan_findings)
             concept.submitted_by = actor_id
-        if target == "approved":
-            blocking = [f for f in (await self.findings(project_id)) if f["blocks_approval"]]
-            if blocking:
-                raise ProcurementError("concept_has_blocking_findings", 422, violations=blocking)
-            concept.approved_by = actor_id
-            concept.approved_at = datetime.now(UTC)
-        if target == "reopened" and not rationale.strip():
-            raise ProcurementError("rationale_required", 422)
-        before = concept.state
         concept.state = target
         await self.session.flush()
-        await self._audit(actor_id, "procurement_concept", concept.id, target, from_status=before, to_status=target)
-        self._publish("concept.state_changed", {"project_id": str(project_id), "from": before, "to": target})
+        await self._audit(actor_id, "procurement_concept", concept.id, target, from_status=current, to_status=target)
+        self._publish("concept.state_changed", {"project_id": str(project_id), "from": current, "to": target})
         return concept
+
+    async def mirror_binding(self, project_id: uuid.UUID, document_id: uuid.UUID) -> bool:
+        """Governance made the frame document binding: the submitted concept is approved (idempotent).
+
+        The approver is whoever decided in governance: the go decision of the
+        gate that bound the document, else the approved change request.
+        """
+        from app.modules.project_governance.models import GovernanceChangeRequest, GovernanceDecision
+
+        concept = await self.find_concept(project_id, lock=True)
+        if concept is None or concept.state != "in_review":
+            return False
+        doc = await self._frame_document(project_id, concept)
+        if doc is None or doc.id != document_id or doc.status != "binding":
+            return False
+        approver, at = None, None
+        if doc.approved_gate_id is not None:
+            decision = (
+                (
+                    await self.session.execute(
+                        select(GovernanceDecision)
+                        .where(GovernanceDecision.gate_id == doc.approved_gate_id, GovernanceDecision.outcome.in_(_GO))
+                        .order_by(GovernanceDecision.decided_at.desc())
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            if decision is not None:
+                approver, at = decision.decided_by, decision.decided_at
+        change = (
+            (
+                await self.session.execute(
+                    select(GovernanceChangeRequest)
+                    .where(GovernanceChangeRequest.document_id == doc.id, GovernanceChangeRequest.status == "approved")
+                    .order_by(GovernanceChangeRequest.decided_at.desc())
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if change is not None and change.decided_at is not None and (at is None or change.decided_at > at):
+            approver, at = change.decided_by, change.decided_at
+        concept.state = "approved"
+        concept.approved_by = approver
+        concept.approved_at = at or datetime.now(UTC)
+        await self.session.flush()
+        await self._audit(
+            approver,
+            "procurement_concept",
+            concept.id,
+            "approved",
+            from_status="in_review",
+            to_status="approved",
+            metadata={"document_id": str(document_id), "four_eyes_violated": approver == concept.submitted_by},
+        )
+        self._publish("concept.state_changed", {"project_id": str(project_id), "from": "in_review", "to": "approved"})
+        return True
 
     # ── facts ────────────────────────────────────────────────────────────
 
@@ -387,15 +531,20 @@ class ProcurementConceptService:
     ) -> tuple[list[plan.PlanPackage], dict[str, AwardPackage], list[ev.PackageFacts]]:
         cps = await plan.list_packages(self.session, project_id)
         rows = {str(r.id): r for r in await self._award_rows(project_id)}
+        concept = await self.find_concept(project_id)
+        gate = await self.release_gate(project_id, concept) if concept is not None else None
         facts = []
         for cp in cps:
             r = rows.get(str(cp.id))
             if r is None:
                 continue
-            facts.append(await self._facts_of(project_id, cp, r))
+            facts.append(await self._facts_of(project_id, cp, r, gate))
         return cps, rows, facts
 
-    async def _facts_of(self, project_id: uuid.UUID, cp: plan.PlanPackage, r: AwardPackage) -> ev.PackageFacts:
+    async def _facts_of(
+        self, project_id: uuid.UUID, cp: plan.PlanPackage, r: AwardPackage, gate: Any
+    ) -> ev.PackageFacts:
+        released = r.is_advance and await self.advance_release_status(project_id, r, gate) == "released"
         return ev.PackageFacts(
             id=str(r.id),
             code=cp.code,
@@ -409,7 +558,7 @@ class ProcurementConceptService:
             tender_basis=r.tender_basis,
             is_advance=r.is_advance,
             advance_reason=r.advance_reason,
-            advance_released=await self._advance_released(project_id, r) if r.is_advance else False,
+            advance_released=released,
             framework_agreement_id=str(r.framework_agreement_id) if r.framework_agreement_id else None,
             need_date=_day(r.need_date) or _day(cp.need_date),
             lead_time_days=r.lead_time_days,
@@ -439,21 +588,29 @@ class ProcurementConceptService:
         facts = await self._concept_facts(concept)
         cps, rows, pkgs = await self._package_facts(project_id)
         out = ev.plan_findings([{"id": str(c.id), "code": c.code, "kind": c.kind} for c in cps], set(rows))
-        release = await self._release_date(project_id, concept.release_gate_code)
+        gate = await self.release_gate(project_id, concept)
+        if gate is None:
+            # Without a release gate rule 11 cannot test "before the releasing gate"; say so, never skip it silently.
+            out.append(ev.finding("release_gate_unresolved", ev.WARNING, "project"))
+        release = await self._release_date(gate)
         for p in pkgs:
             if p.state == "cancelled" or p.package_kind is None:
                 continue
             out += ev.package_findings(cat, p)
             out += ev.procedure_findings(cat, facts, p, pkgs, self._check_day(p, cat, today))
-            out += ev.schedule_findings(cat, p, today=today, release_date=release)
-            fw = await self._framework_facts(p.framework_agreement_id)
             bp = ev.backward_pass(cat, p)
-            out += ev.framework_findings(
-                p,
-                fw,
-                award_date=bp.award_date if bp else None,
-                remaining=fw["remaining_excluding"](p.id) if fw else None,
-            )
+            if p.state not in _EXECUTION_OPEN:
+                # A package already in tender or awarded is past its planning dates and its call-off: time
+                # passing must not turn them into errors that block a later re-approval.
+                out += ev.schedule_findings(cat, p, today=today, release_date=release)
+                fw = await self._framework_facts(p.framework_agreement_id)
+                out += ev.framework_findings(
+                    cat,
+                    p,
+                    fw,
+                    award_date=bp.award_date if bp else None,
+                    remaining=fw["remaining_excluding"](p.id) if fw else None,
+                )
             out += await self._prequal_findings(project_id, cat, p, rows[p.id], bp.award_date if bp else None)
         out += ev.consistency_findings(cat, facts.delivery_form, pkgs)
         soundings = (
@@ -565,11 +722,11 @@ class ProcurementConceptService:
         data: dict[str, Any],
         *,
         actor_id: uuid.UUID,
-        role: str | None,
+        can_manage: bool,
         tenant_id: str | None,
     ) -> AwardPackage:
         """Create (first call) or change the procurement attributes of one ContractPackage."""
-        await self._require_steer(project_id, actor_id, role)
+        await self._require_steer(project_id, actor_id, can_manage)
         concept = await self.get_concept(project_id)
         await self._require_plan_editable(concept)
         cp = await plan.get_package(self.session, project_id, package_id)
@@ -582,17 +739,20 @@ class ProcurementConceptService:
         created = row is None
         if row is None:
             row = AwardPackage(id=package_id, project_id=project_id, created_by=actor_id, state="planned")
-            self.session.add(row)
         elif row.project_id != project_id:
             raise not_found("package_not_found")
         if row.state in ("in_tender", "awarded", "cancelled"):
             raise conflict("package_closed", detail=row.state)
         cat = await self.catalogue_of(concept)
+        procedure_before = row.procedure_code
         for key, value in data.items():
             if key in ("need_date", "planned_start"):
                 setattr(row, key, _iso(value))
             else:
                 setattr(row, key, value)
+        if row.estimated_value is not None and not row.currency:
+            # An amount without a currency cannot be aggregated or compared; none is ever assumed.
+            raise ProcurementError("currency_required", 422)
         if "procedure_code" in data and row.procedure_code and cat.procedure(row.procedure_code) is None:
             raise ProcurementError("procedure_unknown", 422, detail=row.procedure_code)
         if row.is_advance and not (row.advance_reason or "").strip():
@@ -601,22 +761,43 @@ class ProcurementConceptService:
         if row.advance_release_id is not None:
             if not row.advance_release_kind:
                 raise ProcurementError("advance_release_kind_required", 422)
-            if not await self._advance_released(project_id, row):
+            # A condition that is still open may be named: the package then stays unreleased (a blocking
+            # finding) until governance clears it. An act of another gate or project is refused.
+            gate = await self.release_gate(project_id, concept)
+            status = await self.advance_release_status(project_id, row, gate)
+            if status == "missing":
                 raise not_found("advance_release_not_found")
+            if status == "other_gate":
+                raise ProcurementError("advance_release_other_gate", 422)
         if row.prequal_profile_id is not None:
             await self._profile(project_id, row.prequal_profile_id)
-        if "framework_agreement_id" in data and row.framework_agreement_id is not None:
-            await self._link_framework(row, tenant_id)
+        if row.framework_agreement_id is not None and any(
+            k in data for k in ("framework_agreement_id", "estimated_value", "currency")
+        ):
+            await self._link_framework(project_id, row, tenant_id)
+        if row.state == "shortlisted" and row.procedure_code != procedure_before:
+            # The short list was confirmed for the old procedure (its minimum bidders); it has to be confirmed again.
+            row.state = "procedure_set"
         if row.state in ("planned", "procedure_set"):
             row.state = "procedure_set" if row.procedure_code else "planned"
-        await self.session.flush()
+        if created:
+            try:
+                async with self.session.begin_nested():
+                    self.session.add(row)
+                    await self.session.flush()
+            except IntegrityError as exc:
+                raise conflict("concurrent_update") from exc
+        else:
+            await self.session.flush()
         await self._audit(actor_id, "procurement_award_package", row.id, "created" if created else "updated")
         return row
 
     async def set_package_state(
-        self, project_id: uuid.UUID, package_id: uuid.UUID, action: str, *, actor_id: uuid.UUID, role: str | None
+        self, project_id: uuid.UUID, package_id: uuid.UUID, action: str, *, actor_id: uuid.UUID, can_manage: bool
     ) -> AwardPackage:
-        await self._require_steer(project_id, actor_id, role)
+        await self._require_steer(project_id, actor_id, can_manage)
+        # Holding or cancelling a lot changes the plan (it leaves the aggregation), so the plan lock applies.
+        await self._require_plan_editable(await self.get_concept(project_id))
         row = await self._award(project_id, package_id, lock=True)
         if action == "hold":
             target = "on_hold"
@@ -692,11 +873,12 @@ class ProcurementConceptService:
         data: dict[str, Any],
         *,
         actor_id: uuid.UUID,
-        role: str | None,
+        can_manage: bool,
         profile_id: uuid.UUID | None = None,
     ) -> PrequalProfile:
-        await self._require_steer(project_id, actor_id, role)
+        await self._require_steer(project_id, actor_id, can_manage)
         concept = await self.get_concept(project_id)
+        await self._require_plan_editable(concept)
         cat = await self.catalogue_of(concept)
         criteria = []
         for c in data.get("criteria") or []:
@@ -722,12 +904,25 @@ class ProcurementConceptService:
         return row
 
     async def delete_profile(
-        self, project_id: uuid.UUID, profile_id: uuid.UUID, *, actor_id: uuid.UUID, role: str | None
+        self, project_id: uuid.UUID, profile_id: uuid.UUID, *, actor_id: uuid.UUID, can_manage: bool
     ) -> None:
-        await self._require_steer(project_id, actor_id, role)
+        await self._require_steer(project_id, actor_id, can_manage)
+        concept = await self.get_concept(project_id)
+        await self._require_plan_editable(concept)
         row = await self._profile(project_id, profile_id)
+        used = (
+            await self.session.execute(
+                select(func.count())
+                .select_from(AwardPackage)
+                .where(AwardPackage.project_id == project_id, AwardPackage.prequal_profile_id == profile_id)
+            )
+        ).scalar_one()
+        if used or concept.default_profile_id == profile_id:
+            # Deleting it would leave packages with no criteria at all, and a short list would then pass unchecked.
+            raise conflict("profile_in_use")
         await self.session.delete(row)
         await self.session.flush()
+        await self._audit(actor_id, "procurement_prequal_profile", profile_id, "deleted")
 
     async def profile_for(self, project_id: uuid.UUID, award: AwardPackage) -> PrequalProfile | None:
         if award.prequal_profile_id:
@@ -778,9 +973,18 @@ class ProcurementConceptService:
             raise ProcurementError("candidate_needs_company", 422)
 
     async def add_candidate(
-        self, project_id: uuid.UUID, package_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID
+        self,
+        project_id: uuid.UUID,
+        package_id: uuid.UUID,
+        data: dict[str, Any],
+        *,
+        actor_id: uuid.UUID,
+        can_manage: bool,
     ) -> BidderCandidate:
         await self._award(project_id, package_id)
+        if (data.get("list") or "long") != "long":
+            # Short-listing and excluding decide who may bid: that is steering, not data entry.
+            await self._require_steer(project_id, actor_id, can_manage)
         await self._require_company(data)
         row = BidderCandidate(
             project_id=project_id,
@@ -795,28 +999,44 @@ class ProcurementConceptService:
             conflict_note=data.get("conflict_note") or "",
         )
         self._check_list_change(row)
-        self.session.add(row)
         try:
             async with self.session.begin_nested():
+                self.session.add(row)
                 await self.session.flush()
-        except Exception as exc:
+        except IntegrityError as exc:
             raise conflict("candidate_exists") from exc
         await self._audit(actor_id, "procurement_candidate", row.id, "created")
         return row
 
     async def patch_candidate(
-        self, project_id: uuid.UUID, candidate_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID
+        self,
+        project_id: uuid.UUID,
+        candidate_id: uuid.UUID,
+        data: dict[str, Any],
+        *,
+        actor_id: uuid.UUID,
+        can_manage: bool,
     ) -> BidderCandidate:
         row = await self._candidate(project_id, candidate_id)
+        if "list" in data and data["list"] != row.list_kind:
+            await self._require_steer(project_id, actor_id, can_manage)
         await self._require_company(data)
         for key, value in data.items():
             setattr(row, "list_kind" if key == "list" else key, value)
         self._check_list_change(row)
-        await self.session.flush()
+        try:
+            async with self.session.begin_nested():
+                await self.session.flush()
+        except IntegrityError as exc:
+            # The company is already a candidate of this package under another row.
+            raise conflict("candidate_exists") from exc
         await self._audit(actor_id, "procurement_candidate", row.id, "updated")
         return row
 
-    async def delete_candidate(self, project_id: uuid.UUID, candidate_id: uuid.UUID, *, actor_id: uuid.UUID) -> None:
+    async def delete_candidate(
+        self, project_id: uuid.UUID, candidate_id: uuid.UUID, *, actor_id: uuid.UUID, can_manage: bool
+    ) -> None:
+        await self._require_steer(project_id, actor_id, can_manage)
         row = await self._candidate(project_id, candidate_id)
         await self.session.delete(row)
         await self.session.flush()
@@ -829,6 +1049,10 @@ class ProcurementConceptService:
         award = await self._award(project_id, cand.package_id)
         profile = await self.profile_for(project_id, award)
         allowed = {c["code"]: c["kind"] for c in (profile.criteria if profile else [])}
+        sent = [s["criterion_code"] for s in scores]
+        twice = sorted({c for c in sent if sent.count(c) > 1})
+        if twice:
+            raise ProcurementError("criterion_scored_twice", 422, detail=", ".join(twice))
         existing = {
             s.criterion_code: s
             for s in (await self.session.execute(select(CandidateScore).where(CandidateScore.candidate_id == cand.id)))
@@ -842,18 +1066,22 @@ class ProcurementConceptService:
                 raise ProcurementError("criterion_not_in_profile", 422, detail=s["criterion_code"])
             if kind == "pass_fail" and s.get("score") is not None:
                 raise ProcurementError("pass_fail_takes_no_score", 422, detail=s["criterion_code"])
-            row = existing.get(s["criterion_code"]) or CandidateScore(
-                candidate_id=cand.id, criterion_code=s["criterion_code"]
-            )
+            row = existing.get(s["criterion_code"])
+            if row is None:
+                row = CandidateScore(candidate_id=cand.id, criterion_code=s["criterion_code"])
+                self.session.add(row)
             row.passed = s.get("passed")
             row.score = s.get("score")
             row.evidence = [dict(e) for e in s.get("evidence") or []]
             row.note = s.get("note") or ""
             row.scored_by = actor_id
-            if row.id is None or s["criterion_code"] not in existing:
-                self.session.add(row)
             out.append(row)
-        await self.session.flush()
+        try:
+            async with self.session.begin_nested():
+                await self.session.flush()
+        except IntegrityError as exc:
+            # A concurrent scoring of the same criterion won.
+            raise conflict("concurrent_update") from exc
         return out
 
     async def add_reference(
@@ -881,7 +1109,12 @@ class ProcurementConceptService:
         """Evidence chips read from subcontractors (Decision 5): certificates with expiry, prequal status, rating."""
         if cand.subcontractor_id is None:
             return []
-        from app.modules.subcontractors.models import Certificate, Subcontractor
+        from app.modules.subcontractors.models import (
+            Certificate,
+            PrequalificationApplication,
+            Subcontractor,
+            SubcontractorRating,
+        )
 
         out: list[dict[str, Any]] = []
         sub = await self.session.get(Subcontractor, cand.subcontractor_id)
@@ -909,6 +1142,48 @@ class ProcurementConceptService:
                 continue
             out.append(
                 {"kind": "certificate", "ref": f"certificate:{c.id}", "type": c.cert_type, "expires": c.valid_until}
+            )
+        application = (
+            (
+                await self.session.execute(
+                    select(PrequalificationApplication)
+                    .where(PrequalificationApplication.subcontractor_id == cand.subcontractor_id)
+                    .order_by(PrequalificationApplication.created_at.desc())
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if application is not None:
+            out.append(
+                {
+                    "kind": "prequal_application",
+                    "ref": f"prequal_application:{application.id}",
+                    "status": application.status,
+                    "decided_on": application.decision_at.date() if application.decision_at else None,
+                }
+            )
+        rating = (
+            (
+                await self.session.execute(
+                    select(SubcontractorRating)
+                    .where(SubcontractorRating.subcontractor_id == cand.subcontractor_id)
+                    .order_by(SubcontractorRating.period.desc())
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if rating is not None:
+            out.append(
+                {
+                    "kind": "rating",
+                    "ref": f"rating:{rating.id}",
+                    "period": rating.period,
+                    "quality": _dec(rating.quality_score),
+                    "hse": _dec(rating.hse_score),
+                    "schedule": _dec(rating.schedule_score),
+                }
             )
         return out
 
@@ -944,7 +1219,8 @@ class ProcurementConceptService:
             ).scalars():
                 refs.setdefault(r.candidate_id, []).append(r)
         cp = await plan.get_package(self.session, project_id, package_id)
-        pf = await self._facts_of(project_id, cp, award) if cp else None
+        gate = await self.release_gate(project_id, concept)
+        pf = await self._facts_of(project_id, cp, award, gate) if cp else None
         bp = ev.backward_pass(cat, pf) if pf else None
         items = []
         rule_rows = []
@@ -985,7 +1261,9 @@ class ProcurementConceptService:
                     "total_score": str(total["total"]),
                     "passed_all": total["passed_all"],
                     "missing_criteria": total["missing"],
-                    "evidence": [{**e, "expires": _iso(e.get("expires"))} for e in evidence],
+                    "evidence": [
+                        {**e, **{k: _iso(e[k]) for k in ("expires", "decided_on") if k in e}} for e in evidence
+                    ],
                     "references": [
                         {
                             "id": str(r.id),
@@ -1040,10 +1318,10 @@ class ProcurementConceptService:
         return c.free_name
 
     async def confirm_shortlist(
-        self, project_id: uuid.UUID, package_id: uuid.UUID, *, actor_id: uuid.UUID, role: str | None
+        self, project_id: uuid.UUID, package_id: uuid.UUID, *, actor_id: uuid.UUID, can_manage: bool
     ) -> AwardPackage:
         """Rule 8: the package becomes ``shortlisted`` only with a valid short list."""
-        await self._require_steer(project_id, actor_id, role)
+        await self._require_steer(project_id, actor_id, can_manage)
         award = await self._award(project_id, package_id, lock=True)
         if award.state != "procedure_set":
             raise conflict("invalid_transition", detail=f"{award.state}->shortlisted")
@@ -1124,7 +1402,8 @@ class ProcurementConceptService:
         cat = await self.catalogue_of(concept)
         cps, _rows, pkgs = await self._package_facts(project_id)
         codes = {str(c.id): c for c in cps}
-        release = await self._release_date(project_id, concept.release_gate_code)
+        gate = await self.release_gate(project_id, concept)
+        release = await self._release_date(gate)
         rows = []
         for p in pkgs:
             if p.state == "cancelled":
@@ -1148,17 +1427,18 @@ class ProcurementConceptService:
                     "findings": ev.schedule_findings(cat, p, today=today, release_date=release),
                 }
             )
-        return {"release_date": _iso(release), "release_gate_code": concept.release_gate_code, "items": rows}
+        return {"release_date": _iso(release), "release_gate_code": gate.code if gate else None, "items": rows}
 
     async def confirm_schedule(
-        self, project_id: uuid.UUID, package_ids: list[uuid.UUID], *, actor_id: uuid.UUID, role: str | None
+        self, project_id: uuid.UUID, package_ids: list[uuid.UUID], *, actor_id: uuid.UUID, can_manage: bool
     ) -> list[dict[str, Any]]:
         """Write the confirmed proposals as schedule activities (idempotent: re-confirm updates the dates)."""
         from app.modules.schedule.models import Activity, Schedule
 
-        await self._require_steer(project_id, actor_id, role)
+        await self._require_steer(project_id, actor_id, can_manage)
         concept = await self.get_concept(project_id)
         cat = await self.catalogue_of(concept)
+        gate = await self.release_gate(project_id, concept)
         schedule = (
             (
                 await self.session.execute(
@@ -1177,7 +1457,7 @@ class ProcurementConceptService:
             cp = cps.get(str(pid))
             if cp is None:
                 raise not_found("package_not_found")
-            facts = await self._facts_of(project_id, cp, row)
+            facts = await self._facts_of(project_id, cp, row, gate)
             bp = ev.backward_pass(cat, facts)
             if bp is None:
                 raise ProcurementError("schedule_needs_need_date_and_procedure", 422, detail=cp.code)
@@ -1239,11 +1519,46 @@ class ProcurementConceptService:
             .scalars()
             .all()
         )
-        return [
-            {"code": p.ordinal, "description": p.description, "unit": p.unit or "lsum", "quantity": p.quantity or "0"}
-            for p in children
-            if (p.description or "").strip()
-        ]
+        out = []
+        for pos in children:
+            if not (pos.description or "").strip():
+                continue
+            # BOQ quantities are stored as text; one that is not a number is named, never read as zero.
+            try:
+                quantity = parse_amount(pos.quantity if pos.quantity not in (None, "") else "0")
+            except ValueError as exc:
+                raise ProcurementError("scope_line_quantity_invalid", 422, detail=str(pos.ordinal)) from exc
+            out.append(
+                {"code": pos.ordinal, "description": pos.description, "unit": pos.unit or "lsum", "quantity": quantity}
+            )
+        return out
+
+    async def _require_executable(
+        self, project_id: uuid.UUID, award: AwardPackage, cp: plan.PlanPackage
+    ) -> ProcurementConcept:
+        """What must hold before a package gets an execution vehicle (rules 11, 12, 15).
+
+        The concept is approved (or binding), or the package is an advance
+        package governance has released; the package is in a state that has a
+        procedure; and no rule reports an error on it.
+        """
+        concept = await self.get_concept(project_id)
+        if cp.link_id is not None:
+            raise conflict("execution_exists", detail=f"{cp.link_kind}:{cp.link_id}")
+        if award.state not in ("procedure_set", "shortlisted"):
+            raise conflict("package_not_ready_for_execution", detail=award.state)
+        state = await self.effective_state(concept)
+        if state not in ("approved", "binding"):
+            gate = await self.release_gate(project_id, concept)
+            released = award.is_advance and await self.advance_release_status(project_id, award, gate) == "released"
+            if not released:
+                raise conflict("concept_not_approved", detail=state)
+        errors = [f for f in await self.findings(project_id) if f["ref"] == cp.code and f["severity"] == ev.ERROR]
+        if errors:
+            raise ProcurementError("package_has_blocking_findings", 422, violations=errors)
+        if not award.currency:
+            raise ProcurementError("currency_required", 422)
+        return concept
 
     async def create_execution(
         self,
@@ -1253,24 +1568,20 @@ class ProcurementConceptService:
         vehicle: str | None,
         submission_deadline: date | None,
         actor_id: uuid.UUID,
-        role: str | None,
+        can_manage: bool,
     ) -> dict[str, Any]:
         """Create ONE BidPackage (works, design, services) or ONE RFQ (supply) and link it (rule 15)."""
-        await self._require_steer(project_id, actor_id, role)
+        await self._require_steer(project_id, actor_id, can_manage)
         award = await self._award(project_id, package_id, lock=True)
         cp = await plan.get_package(self.session, project_id, package_id)
         if cp is None:
             raise not_found("package_not_found")
-        if cp.link_id is not None:
-            raise conflict("execution_exists", detail=f"{cp.link_kind}:{cp.link_id}")
-        if award.state not in ("procedure_set", "shortlisted"):
-            raise conflict("package_not_ready_for_execution", detail=award.state)
+        await self._require_executable(project_id, award, cp)
         kind = CONTRACT_PACKAGE_KIND_MAP.get(cp.kind)
         chosen = vehicle or ("rfq" if kind in SUPPLY_KINDS else "bid_package")
         if chosen == "rfq" and kind not in SUPPLY_KINDS:
             raise ProcurementError("vehicle_not_allowed_for_kind", 422, detail=kind)
         lines = await self._scope_lines(project_id, award)
-        currency = award.currency or await self._project_currency(project_id)
         meta = {"award_package_id": str(package_id), "contract_package_id": str(package_id), "source": MODULE}
         if chosen == "rfq":
             from app.modules.rfq_bidding.schemas import RFQCreate, RFQLineCreate
@@ -1282,14 +1593,11 @@ class ProcurementConceptService:
                     title=cp.title or cp.code,
                     scope_of_work=cp.scope or None,
                     submission_deadline=_iso(submission_deadline),
-                    currency_code=currency or "EUR",
+                    currency_code=award.currency,
                     evaluation_method="lowest_price" if award.evaluation_method == "lowest_price" else "best_value",
                     lines=[
                         RFQLineCreate(
-                            code=ln["code"],
-                            description=ln["description"],
-                            unit=ln["unit"],
-                            quantity=Decimal(str(ln["quantity"])),
+                            code=ln["code"], description=ln["description"], unit=ln["unit"], quantity=ln["quantity"]
                         )
                         for ln in lines
                     ],
@@ -1311,7 +1619,7 @@ class ProcurementConceptService:
                     title=cp.title or cp.code,
                     scope_description=cp.scope,
                     submission_deadline=_iso(submission_deadline),
-                    currency=currency or "EUR",
+                    currency=award.currency,
                     total_budget_estimate=award.estimated_value or Decimal("0"),
                     metadata=meta,
                 ),
@@ -1324,11 +1632,52 @@ class ProcurementConceptService:
                         code=ln["code"],
                         description=ln["description"],
                         unit=ln["unit"],
-                        quantity=str(ln["quantity"]),
+                        quantity=format(ln["quantity"], "f"),
                         order_index=i,
                     )
                 )
             link_kind, link_id = plan.LINK_BID_PACKAGE, bp.id
+        return await self._link_execution(project_id, package_id, link_kind, link_id, actor_id, lines=len(lines))
+
+    async def link_tender_package(
+        self,
+        project_id: uuid.UUID,
+        package_id: uuid.UUID,
+        tender_package_id: uuid.UUID,
+        *,
+        actor_id: uuid.UUID,
+        can_manage: bool,
+    ) -> dict[str, Any]:
+        """Link an EXISTING tender package of this project as the execution vehicle (rule 15: link only).
+
+        Nothing is created in tendering and its data is not changed; the package
+        simply cannot get a second vehicle afterwards.
+        """
+        from app.modules.tendering.models import TenderPackage
+
+        await self._require_steer(project_id, actor_id, can_manage)
+        award = await self._award(project_id, package_id, lock=True)
+        cp = await plan.get_package(self.session, project_id, package_id)
+        if cp is None:
+            raise not_found("package_not_found")
+        tender = await self.session.get(TenderPackage, tender_package_id)
+        if tender is None or tender.project_id != project_id:
+            raise not_found("tender_package_not_found")
+        await self._require_executable(project_id, award, cp)
+        return await self._link_execution(
+            project_id, package_id, plan.LINK_TENDER_PACKAGE, tender_package_id, actor_id, lines=0
+        )
+
+    async def _link_execution(
+        self,
+        project_id: uuid.UUID,
+        package_id: uuid.UUID,
+        link_kind: str,
+        link_id: uuid.UUID,
+        actor_id: uuid.UUID,
+        *,
+        lines: int,
+    ) -> dict[str, Any]:
         try:
             linked = await plan.set_link_once(self.session, project_id, package_id, link_kind, link_id)
         except plan.PlanUnavailableError as exc:
@@ -1342,19 +1691,13 @@ class ProcurementConceptService:
             "procurement_award_package",
             package_id,
             "execution_created",
-            details={"kind": link_kind, "id": str(link_id)},
+            metadata={"kind": link_kind, "id": str(link_id)},
         )
         self._publish(
             "execution.created",
             {"project_id": str(project_id), "package_id": str(package_id), "kind": link_kind, "id": str(link_id)},
         )
-        return {"package_id": str(package_id), "kind": link_kind, "id": str(link_id), "lines": len(lines)}
-
-    async def _project_currency(self, project_id: uuid.UUID) -> str:
-        from app.modules.projects.models import Project
-
-        p = await self.session.get(Project, project_id)
-        return (getattr(p, "currency", "") or "") if p else ""
+        return {"package_id": str(package_id), "kind": link_kind, "id": str(link_id), "lines": lines}
 
     async def read_back(self, link_kind: str, link_id: uuid.UUID, target: str) -> AwardPackage | None:
         """Rule 16: move the award package of a linked vehicle to ``in_tender`` / ``awarded``, idempotently."""
@@ -1390,6 +1733,15 @@ class ProcurementConceptService:
             raise not_found("framework_not_found")
         return row
 
+    async def project_tenant(self, project_id: uuid.UUID) -> str | None:
+        """The company a project belongs to: its owner's tenant (the platform has no other company key)."""
+        from app.modules.projects.models import Project
+
+        owner = (
+            await self.session.execute(select(Project.owner_id).where(Project.id == project_id))
+        ).scalar_one_or_none()
+        return str(owner) if owner else None
+
     async def list_frameworks(self, tenant_id: str | None) -> list[FrameworkAgreement]:
         if not tenant_id:
             return []
@@ -1405,6 +1757,14 @@ class ProcurementConceptService:
             .all()
         )
 
+    async def project_frameworks(self, project_id: uuid.UUID, tenant_id: str | None) -> list[FrameworkAgreement]:
+        """Frameworks a package of this project may call off: the project's company's and the caller's own."""
+        tenants = [t for t in dict.fromkeys((await self.project_tenant(project_id), tenant_id)) if t]
+        out: list[FrameworkAgreement] = []
+        for t in tenants:
+            out += await self.list_frameworks(t)
+        return out
+
     async def create_framework(
         self, tenant_id: str | None, data: dict[str, Any], *, actor_id: uuid.UUID
     ) -> FrameworkAgreement:
@@ -1419,11 +1779,11 @@ class ProcurementConceptService:
             state="draft",
             **{**data, "start_date": _iso(data["start_date"]), "end_date": _iso(data["end_date"])},
         )
-        self.session.add(row)
         try:
             async with self.session.begin_nested():
+                self.session.add(row)
                 await self.session.flush()
-        except Exception as exc:
+        except IntegrityError as exc:
             raise conflict("framework_code_exists") from exc
         await self._audit(actor_id, "procurement_framework", row.id, "created")
         return row
@@ -1434,9 +1794,17 @@ class ProcurementConceptService:
         row = await self._framework(tenant_id, framework_id, lock=True)
         if row.state in ("expired", "terminated"):
             raise conflict("framework_closed")
+        if "end_date" in data and data["end_date"] < _day(row.start_date):
+            raise ProcurementError("framework_dates_inverted", 422)
+        if "max_value" in data:
+            ledger = await self._ledger_of(row)
+            if data["max_value"] < Decimal(ledger["call_off_value"]):
+                # The ceiling may not drop below what has already been called off.
+                raise ProcurementError("framework_max_below_call_off", 422, detail=ledger["call_off_value"])
         for key, value in data.items():
             setattr(row, key, _iso(value) if key == "end_date" else value)
         await self.session.flush()
+        await self._audit(actor_id, "procurement_framework", row.id, "updated", metadata={"fields": sorted(data)})
         return row
 
     async def transition_framework(
@@ -1456,10 +1824,29 @@ class ProcurementConceptService:
         row = await self._framework(tenant_id, framework_id)
         return await self._ledger_of(row)
 
+    async def _tenant_project_ids(self, tenant_id: str) -> set[uuid.UUID]:
+        """Projects of the framework's company (those its tenant owns)."""
+        from app.modules.projects.models import Project
+
+        try:
+            owner = uuid.UUID(tenant_id)
+        except ValueError:
+            return set()
+        return set((await self.session.execute(select(Project.id).where(Project.owner_id == owner))).scalars().all())
+
     async def _ledger_of(self, row: FrameworkAgreement) -> dict[str, Any]:
+        """Everything that consumes the framework, and what is left of it.
+
+        Award packages that call it off and whose ContractPackage still exists,
+        and purchase orders that name it in projects of the framework's company
+        (or of a project that calls it off); a purchase order elsewhere that
+        merely carries the id does not consume it. An entry in another currency, or a purchase order
+        lookup that failed, makes the remainder unknown (``None``), because a
+        partial sum would overstate what is left.
+        """
         from app.modules.procurement.models import PurchaseOrder
 
-        pkgs = (
+        linked = (
             (
                 await self.session.execute(
                     select(AwardPackage).where(
@@ -1470,6 +1857,10 @@ class ProcurementConceptService:
             .scalars()
             .all()
         )
+        live = await plan.existing_package_ids(self.session, [p.id for p in linked])
+        # A linked package was checked against the framework's company when it was linked.
+        pkgs = [p for p in linked if live is None or p.id in live]
+        projects = await self._tenant_project_ids(row.tenant_id) | {p.project_id for p in pkgs}
         entries = [
             {
                 "kind": "award_package",
@@ -1481,43 +1872,54 @@ class ProcurementConceptService:
             }
             for p in pkgs
         ]
+        complete = True
         pos: list[Any] = []
-        try:
-            async with self.session.begin_nested():
-                res = await self.session.execute(
-                    select(PurchaseOrder).where(
-                        PurchaseOrder.metadata_["framework_agreement_id"].as_string() == str(row.id)
+        if projects:
+            try:
+                async with self.session.begin_nested():
+                    res = await self.session.execute(
+                        select(PurchaseOrder).where(
+                            PurchaseOrder.project_id.in_(projects),
+                            PurchaseOrder.metadata_["framework_agreement_id"].as_string() == str(row.id),
+                        )
                     )
-                )
-                pos = list(res.scalars().all())
-        except Exception:
-            logger.debug("framework ledger: PO lookup failed", exc_info=True)
+                    pos = list(res.scalars().all())
+            except DBAPIError:
+                logger.warning("framework ledger: purchase order lookup failed for %s", row.id, exc_info=True)
+                complete = False
         pkg_ids = {str(p.id) for p in pkgs}
         for po in pos:
             meta = po.metadata_ or {}
             if str(meta.get("award_package_id") or "") in pkg_ids:
                 continue  # counted through its package already
+            try:
+                amount = parse_amount(po.amount_subtotal if po.amount_subtotal not in (None, "") else "0")
+            except ValueError:
+                complete = False
+                continue
             entries.append(
                 {
                     "kind": "purchase_order",
                     "id": str(po.id),
                     "project_id": str(po.project_id),
-                    "amount": format(Decimal(str(po.amount_subtotal or "0")), "f"),
+                    "amount": format(amount, "f"),
                     "currency": po.currency_code,
                     "state": po.status,
                 }
             )
-        same = [
-            Decimal(e["amount"]) for e in entries if (e["currency"] or row.currency).upper() == row.currency.upper()
-        ]
-        other = [e for e in entries if (e["currency"] or row.currency).upper() != row.currency.upper()]
-        call_off = sum(same, Decimal("0"))
+        currency = row.currency.upper()
+        same = [e for e in entries if (e["currency"] or "").upper() == currency]
+        other = [e for e in entries if (e["currency"] or "").upper() != currency and Decimal(e["amount"]) != 0]
+        call_off = sum((Decimal(e["amount"]) for e in same), Decimal("0"))
+        known = complete and not other
         return {
             "framework_id": str(row.id),
             "max_value": _dec(row.max_value),
             "currency": row.currency,
             "call_off_value": _dec(call_off),
-            "remaining_value": _dec(row.max_value - call_off),
+            "remaining_value": _dec(row.max_value - call_off) if known else None,
+            "remaining_known": known,
+            "complete": complete,
             "unconverted_entries": len(other),
             "items": entries,
             "total": len(entries),
@@ -1531,33 +1933,60 @@ class ProcurementConceptService:
             return None
         ledger = await self._ledger_of(row)
         items = ledger["items"]
+        currency = row.currency.upper()
 
-        def remaining_excluding(pkg_id: str) -> Decimal:
+        def remaining_excluding(pkg_id: str) -> Decimal | None:
+            """What is left for this package, or ``None`` when another entry cannot be expressed in the currency."""
+            others = [e for e in items if e["id"] != pkg_id]
+            if not ledger["complete"] or any(
+                (e["currency"] or "").upper() != currency and Decimal(e["amount"]) != 0 for e in others
+            ):
+                return None
             used = sum(
-                (
-                    Decimal(e["amount"])
-                    for e in items
-                    if e["id"] != pkg_id and (e["currency"] or row.currency).upper() == row.currency.upper()
-                ),
-                Decimal("0"),
+                (Decimal(e["amount"]) for e in others if (e["currency"] or "").upper() == currency), Decimal("0")
             )
             return row.max_value - used
 
         return {
             "state": row.state,
             "package_kinds": row.package_kinds,
+            "currency": row.currency,
             "end_date": _day(row.end_date),
             "remaining_excluding": remaining_excluding,
         }
 
-    async def _link_framework(self, award: AwardPackage, tenant_id: str | None) -> None:
-        """Calling off: the framework of the caller's company, active, with value left (locked, rule 13)."""
-        fw = await self._framework(tenant_id, award.framework_agreement_id, lock=True)
+    async def _link_framework(self, project_id: uuid.UUID, award: AwardPackage, tenant_id: str | None) -> None:
+        """Calling off: a framework of the project's company, active, same currency, with value left (rule 13).
+
+        The framework is locked while the remainder is read, so two call-offs
+        cannot both take the last of it.
+        """
+        company = await self.project_tenant(project_id)
+        fw = (
+            (
+                await self.session.execute(
+                    select(FrameworkAgreement)
+                    .where(FrameworkAgreement.id == award.framework_agreement_id)
+                    .with_for_update()
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if fw is None or fw.tenant_id not in {t for t in (tenant_id, company) if t}:
+            raise not_found("framework_not_found")
         if fw.state != "active":
             raise conflict("framework_not_active", detail=fw.state)
+        if award.estimated_value is None:
+            return
+        if (award.currency or "").upper() != fw.currency.upper():
+            # Amounts in two currencies are never compared as plain numbers.
+            raise ProcurementError("framework_currency_mismatch", 422, detail=fw.currency)
         facts = await self._framework_facts(str(fw.id))
-        remaining = facts["remaining_excluding"](str(award.id)) if facts else fw.max_value
-        if award.estimated_value is not None and remaining < award.estimated_value:
+        remaining = facts["remaining_excluding"](str(award.id)) if facts else None
+        if remaining is None:
+            raise ProcurementError("framework_remaining_unknown", 422)
+        if remaining < award.estimated_value:
             raise ProcurementError("framework_exhausted", 422, detail=format(remaining, "f"))
 
     async def _prequal_findings(
@@ -1576,9 +2005,50 @@ class ProcurementConceptService:
     # ── readiness ────────────────────────────────────────────────────────
 
     async def readiness(self, project_id: uuid.UUID) -> dict[str, Any]:
+        """What the governance gate reads.
+
+        ``ready_for_gate`` is a submitted concept with no blocking finding. It
+        does not require an approved concept: the gate decision IS the approval.
+        """
         concept = await self.find_concept(project_id)
         if concept is None:
-            return {"state": None, "approved": False, "blocking": 0}
+            return {"state": None, "approved": False, "submitted": False, "blocking": 0, "ready_for_gate": False}
         state = await self.effective_state(concept)
         blocking = [f for f in await self.findings(project_id) if f["blocks_approval"]]
-        return {"state": state, "approved": state in ("approved", "binding"), "blocking": len(blocking)}
+        submitted = concept.state in _SUBMITTED
+        return {
+            "state": state,
+            "approved": state in ("approved", "binding"),
+            "submitted": submitted,
+            "blocking": len(blocking),
+            "ready_for_gate": submitted and not blocking,
+        }
+
+    async def capabilities(self, project_id: uuid.UUID, actor_id: uuid.UUID, can_manage: bool) -> dict[str, Any]:
+        """What this caller may do now, from the same checks the writes enforce, with the refusing code."""
+        concept = await self.get_concept(project_id)
+        state = await self.effective_state(concept)
+        steer = await self.can_steer(project_id, actor_id, can_manage)
+        no_steer = None if steer else "not_procurement_owner"
+        locked = (
+            "binding_requires_change_request"
+            if state == "binding"
+            else ("concept_locked" if state in _PLAN_LOCKED else None)
+        )
+
+        def answer(reason: str | None) -> dict[str, Any]:
+            return {"allowed": reason is None, "reason": reason}
+
+        def move(target: str) -> str | None:
+            return None if can_transition(CONCEPT_FSM, state, target) else (locked or "invalid_transition")
+
+        gate_fields = no_steer or (None if can_manage else "manage_required")
+        if gate_fields is None and concept.state != "draft":
+            gate_fields = "gate_fields_frozen"
+        return {
+            "steer": answer(no_steer),
+            "edit_plan": answer(no_steer or locked),
+            "submit": answer(no_steer or move("in_review")),
+            "return": answer(no_steer or move("draft")),
+            "set_gate_fields": answer(gate_fields),
+        }

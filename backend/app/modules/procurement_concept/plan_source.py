@@ -141,6 +141,15 @@ async def get_package(session: AsyncSession, project_id: uuid.UUID, package_id: 
     return None if row is None else _row(row)
 
 
+async def existing_package_ids(session: AsyncSession, ids: list[uuid.UUID]) -> set[uuid.UUID] | None:
+    """Which of ``ids`` are still ContractPackages; ``None`` when module 3's table is not there."""
+    if not ids:
+        return set()
+    t = PACKAGE_TABLE
+    res = await _guarded(session, sa.select(t.c.id).where(t.c.id.in_(ids)))
+    return None if res is None else {r.id for r in res}
+
+
 async def find_by_link(session: AsyncSession, link_kind: str, link_id: uuid.UUID) -> PlanPackage | None:
     t = PACKAGE_TABLE
     res = await _guarded(session, sa.select(t).where(t.c.link_kind == link_kind, t.c.link_id == link_id))

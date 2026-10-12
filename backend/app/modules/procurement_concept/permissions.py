@@ -17,6 +17,8 @@ def register_procurement_concept_permissions() -> None:
         {
             "procurement_concept.read": Role.VIEWER,
             "procurement_concept.edit": Role.EDITOR,
+            # Steering the concept without owning the procurement area, and the fields the gate reads.
+            "procurement_concept.manage": Role.MANAGER,
             # Company framework agreements outlive projects.
             "procurement_concept.frameworks.manage": Role.MANAGER,
         },

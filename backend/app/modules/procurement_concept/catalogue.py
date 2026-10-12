@@ -17,6 +17,7 @@ that is ``unconfirmed`` never produces a hard error (SPEC rule 5).
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -41,8 +42,10 @@ COMPETITIONS = (
     "mini_competition",
 )
 CONTRACT_KINDS = ("works", "supplies", "services", "design_services", "concession", "light_touch")
-CLIENT_TYPES = ("central", "sub_central", "utility", "private")
-JURISDICTIONS = ("eu", "uk", "us_federal", "de_national", "none")
+# Jurisdiction and client type codes are catalogue data: a company catalogue may define its own.
+CODE_PATTERN = r"^[a-z0-9][a-z0-9_]*$"
+# Competitions that call off an existing framework agreement instead of opening a new competition.
+CALL_OFF_COMPETITIONS = ("framework_call_off", "mini_competition")
 THRESHOLD_EFFECTS = ("above_requires_publication", "below_allows_direct", "below_allows_simplified")
 LOT_RULE_KINDS = ("aggregation", "small_lots_exemption", "splitting_preference")
 CRITERION_GROUPS = (
@@ -137,7 +140,7 @@ class Procedure(_Frozen):
 
 class Threshold(Sourced):
     contract_kind: Literal["works", "supplies", "services", "design_services", "concession", "light_touch"]
-    client_type: Literal["central", "sub_central", "utility", "private"]
+    client_type: str = Field(pattern=CODE_PATTERN, max_length=20)
     amount: str
     currency: str = Field(min_length=3, max_length=3)
     vat_basis: Literal["net", "gross"] = "net"
@@ -177,10 +180,13 @@ class MinPeriod(Sourced):
 
 
 class Jurisdiction(_Frozen):
-    code: Literal["eu", "uk", "us_federal", "de_national", "none"]
+    code: str = Field(pattern=CODE_PATTERN, max_length=20)
     name_key: str = ""
     labels: dict[str, str] | None = None
-    client_types: tuple[Literal["central", "sub_central", "utility", "private"], ...] = ()
+    # Client types this jurisdiction knows; ``private`` is the one that is never under thresholds.
+    client_types: tuple[str, ...] = ()
+    # The client type of a client outside the public rules; a public client must pick another one.
+    private_client_type: str = Field(default="private", pattern=CODE_PATTERN, max_length=20)
     thresholds: tuple[Threshold, ...] = ()
     lot_rules: tuple[LotRule, ...] = ()
     min_periods: tuple[MinPeriod, ...] = ()
@@ -257,6 +263,11 @@ class ProcurementCatalogue(_Frozen):
     def lead_time(self, procedure: str | None) -> LeadTime | None:
         return next((t for t in self.lead_time_defaults if t.procedure == procedure), None)
 
+    def is_call_off(self, code: str | None) -> bool:
+        """Whether the procedure calls off a framework agreement (by its ``competition``, never by its code)."""
+        proc = self.procedure(code)
+        return proc is not None and proc.competition in CALL_OFF_COMPETITIONS
+
 
 def _dupes(values: list[str]) -> set[str]:
     seen: set[str] = set()
@@ -279,7 +290,12 @@ def validate_procurement_catalogue(obj: ProcurementCatalogue, source: str) -> li
             if not a.source_url:
                 errors.append(f"alias_without_source: {p.code}/{a.term}")
     for j in obj.jurisdictions:
+        for ct in j.client_types:
+            if not re.fullmatch(CODE_PATTERN, ct) or len(ct) > 20:
+                errors.append(f"client_type_invalid: {j.code}/{ct}")
         for t in j.thresholds:
+            if t.client_type not in j.client_types:
+                errors.append(f"threshold_unknown_client_type: {j.code}/{t.contract_kind}/{t.client_type}")
             if not t.source_url or t.valid_from is None:
                 errors.append(f"threshold_without_source: {j.code}/{t.contract_kind}/{t.client_type}")
             if t.valid_from and t.valid_to and t.valid_to < t.valid_from:

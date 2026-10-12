@@ -62,7 +62,7 @@ class ProcurementConcept(Base):
     client_type: Mapped[str] = mapped_column(String(20), nullable=False, default="private")
     public_client: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     vat_rate_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=Decimal("0"))
-    # draft | in_review | approved | reopened (binding is derived)
+    # draft | in_review | approved (binding and reopened are derived from governance)
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
     # The m08 frame document (project_governance is a declared dependency).
     governance_document_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -70,8 +70,9 @@ class ProcurementConcept(Base):
         ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_pcc_concept_gov_document"),
         nullable=True,
     )
-    # Gate whose decision releases procurement (rule 11).
-    release_gate_code: Mapped[str] = mapped_column(String(64), nullable=False, default="development_to_execution")
+    # Gate whose decision releases procurement (rule 11). Empty = the gate into the phase the governance
+    # catalogue tags as releasing procurement, resolved on every read.
+    release_gate_code: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     default_profile_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     submitted_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     approved_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)

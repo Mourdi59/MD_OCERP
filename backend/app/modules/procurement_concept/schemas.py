@@ -12,11 +12,14 @@ from __future__ import annotations
 import uuid
 from datetime import date
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.modules.procurement_concept.catalogue import parse_amount
+from app.modules.procurement_concept.catalogue import CODE_PATTERN, parse_amount
+
+# NUMERIC(18, 2): sixteen integer digits and two decimals.
+MAX_MONEY = Decimal("9999999999999999.99")
 
 
 def _money(v: Any) -> Decimal | None:
@@ -28,11 +31,29 @@ def _money(v: Any) -> Decimal | None:
         raise ValueError(str(exc)) from exc
     if out < 0:
         raise ValueError("amount must not be negative")
+    if out > MAX_MONEY:
+        raise ValueError("amount is too large")
+    if -out.as_tuple().exponent > 2:
+        raise ValueError("amount has more than two decimals")
     return out
 
 
 class _In(BaseModel):
+    """Request body. Absent means "keep"; an explicit ``null`` is allowed only for the fields in ``clearable``."""
+
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    # Fields a caller may clear with ``null``. For every other field ``null`` is a 422: it would otherwise
+    # reach a NOT NULL column.
+    clearable: ClassVar[frozenset[str]] = frozenset()
+
+    @model_validator(mode="before")
+    @classmethod
+    def _refuse_null(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            bad = sorted(k for k, v in data.items() if v is None and k in cls.model_fields and k not in cls.clearable)
+            if bad:
+                raise ValueError(f"null is not allowed for: {', '.join(bad)}")
+        return data
 
 
 class Page[T](BaseModel):
@@ -48,14 +69,18 @@ class Page[T](BaseModel):
 class ConceptSet(_In):
     """Create or change the concept. Absent fields keep their value."""
 
+    clearable: ClassVar[frozenset[str]] = frozenset({"governance_document_id", "default_profile_id"})
+
     catalogue_source: Literal["shipped", "tenant"] | None = None
-    catalogue_id: str | None = Field(default=None, max_length=64)
+    catalogue_id: str | None = Field(default=None, min_length=1, max_length=64)
     catalogue_version: int | None = Field(default=None, ge=1)
-    jurisdiction: Literal["eu", "uk", "us_federal", "de_national", "none"] | None = None
-    client_type: Literal["central", "sub_central", "utility", "private"] | None = None
-    # None on create = take module 3's owner capability (public_client), else False.
+    # Codes of the pinned catalogue (a company catalogue may define its own); checked against it on save.
+    jurisdiction: str | None = Field(default=None, pattern=CODE_PATTERN, max_length=20)
+    client_type: str | None = Field(default=None, pattern=CODE_PATTERN, max_length=20)
+    # Absent on create = take module 3's owner capability (public_client), else False.
     public_client: bool | None = None
     vat_rate_pct: Decimal | None = Field(default=None, ge=0, le=100)
+    # A gate code of the project, or "" to use the gate the governance catalogue tags. Manage permission.
     release_gate_code: str | None = Field(default=None, max_length=64)
     governance_document_id: uuid.UUID | None = None
     default_profile_id: uuid.UUID | None = None
@@ -66,15 +91,30 @@ class ConceptSet(_In):
         return _money(v)
 
 
-class RationaleIn(_In):
-    rationale: str = Field(default="", max_length=4000)
-
-
 # ── Packages ─────────────────────────────────────────────────────────────
 
 
 class PackagePut(_In):
     """Procurement attributes of one ContractPackage (created on first PUT)."""
+
+    clearable: ClassVar[frozenset[str]] = frozenset(
+        {
+            "advance_release_kind",
+            "advance_release_id",
+            "estimated_value",
+            "cost_ref_kind",
+            "cost_ref_id",
+            "procedure_code",
+            "tender_basis",
+            "framework_agreement_id",
+            "need_activity_id",
+            "need_date",
+            "lead_time_days",
+            "procedure_days",
+            "planned_start",
+            "prequal_profile_id",
+        }
+    )
 
     split_basis: Literal["trade", "section", "system", "whole"] | None = None
     is_advance: bool | None = None
@@ -121,7 +161,7 @@ class PackageStateIn(_In):
 
 class ProfileCriterion(_In):
     code: str = Field(min_length=1, max_length=64)
-    weight: Decimal = Decimal("0")
+    weight: Decimal = Field(default=Decimal("0"), le=100)
 
     @field_validator("weight", mode="before")
     @classmethod
@@ -130,10 +170,13 @@ class ProfileCriterion(_In):
 
 
 class ProfileIn(_In):
+    clearable: ClassVar[frozenset[str]] = frozenset({"package_id"})
+
     package_id: uuid.UUID | None = None
     name: str = Field(default="", max_length=255)
     criteria: list[ProfileCriterion] = Field(default_factory=list, max_length=60)
-    pass_mark: Decimal = Decimal("0")
+    # Scores run from 0 to 100, so the pass mark does too.
+    pass_mark: Decimal = Field(default=Decimal("0"), le=100)
     validity_months: int = Field(default=12, ge=1, le=120)
 
     @field_validator("pass_mark", mode="before")
@@ -143,6 +186,8 @@ class ProfileIn(_In):
 
 
 class CandidateIn(_In):
+    clearable: ClassVar[frozenset[str]] = frozenset({"subcontractor_id", "vendor_id"})
+
     subcontractor_id: uuid.UUID | None = None
     vendor_id: uuid.UUID | None = None
     free_name: str = Field(default="", max_length=255)
@@ -154,6 +199,8 @@ class CandidateIn(_In):
 
 
 class CandidatePatch(_In):
+    clearable: ClassVar[frozenset[str]] = frozenset({"subcontractor_id", "vendor_id"})
+
     subcontractor_id: uuid.UUID | None = None
     vendor_id: uuid.UUID | None = None
     free_name: str | None = Field(default=None, max_length=255)
@@ -170,6 +217,8 @@ class EvidenceRef(_In):
 
 
 class ScoreIn(_In):
+    clearable: ClassVar[frozenset[str]] = frozenset({"passed", "score"})
+
     criterion_code: str = Field(min_length=1, max_length=64)
     passed: bool | None = None
     score: Decimal | None = Field(default=None, ge=0, le=100)
@@ -187,6 +236,8 @@ class ScoresPut(_In):
 
 
 class ReferenceIn(_In):
+    clearable: ClassVar[frozenset[str]] = frozenset({"value", "year"})
+
     project_name: str = Field(min_length=1, max_length=255)
     client: str = Field(default="", max_length=255)
     value: Decimal | None = None
@@ -206,6 +257,8 @@ class ReferenceIn(_In):
 
 
 class SoundingIn(_In):
+    clearable: ClassVar[frozenset[str]] = frozenset({"lead_time_signal_days"})
+
     package_ids: list[uuid.UUID] = Field(default_factory=list, max_length=100)
     trade: str = Field(default="", max_length=120)
     held_on: date
@@ -220,11 +273,13 @@ class SoundingIn(_In):
 
 
 class SoundingPatch(_In):
-    package_ids: list[uuid.UUID] | None = None
+    clearable: ClassVar[frozenset[str]] = frozenset({"lead_time_signal_days"})
+
+    package_ids: list[uuid.UUID] | None = Field(default=None, max_length=100)
     trade: str | None = Field(default=None, max_length=120)
     held_on: date | None = None
     method: Literal["survey", "meeting", "rfi", "notice"] | None = None
-    participant_candidate_ids: list[uuid.UUID] | None = None
+    participant_candidate_ids: list[uuid.UUID] | None = Field(default=None, max_length=200)
     findings: str | None = Field(default=None, max_length=8000)
     capacity_signal: Literal["ample", "adequate", "tight", "insufficient"] | None = None
     price_signal: Literal["below_estimate", "in_line", "above_estimate", "unknown"] | None = None
@@ -241,15 +296,25 @@ class ScheduleConfirm(_In):
 
 
 class ExecutionIn(_In):
+    clearable: ClassVar[frozenset[str]] = frozenset({"vehicle", "submission_deadline"})
+
     # Override of the vehicle chosen from the package kind (rule 15); never both.
     vehicle: Literal["bid_package", "rfq"] | None = None
     submission_deadline: date | None = None
+
+
+class ExecutionLinkIn(_In):
+    """Link an existing tender package of the project instead of creating a vehicle (rule 15)."""
+
+    tender_package_id: uuid.UUID
 
 
 # ── Frameworks ───────────────────────────────────────────────────────────
 
 
 class FrameworkIn(_In):
+    clearable: ClassVar[frozenset[str]] = frozenset({"subcontractor_id", "vendor_id"})
+
     code: str = Field(min_length=1, max_length=64)
     title: str = Field(default="", max_length=255)
     subcontractor_id: uuid.UUID | None = None

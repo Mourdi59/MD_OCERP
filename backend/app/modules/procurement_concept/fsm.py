@@ -2,8 +2,10 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """State machines of the procurement concept (SPEC section 3).
 
-``binding`` of a concept is never a target here: it is read from governance
-(the m08 frame document is binding and no change request is open). The
+A concept is moved by hand only between ``draft`` and ``in_review``
+(:data:`CONCEPT_HAND_TARGETS`). ``approved`` is written when governance makes
+the frame document binding, ``binding`` and ``reopened`` are read from
+governance, and none of the three is ever a target of a call. The
 package states ``in_tender`` and ``awarded`` are reached only through
 :data:`READ_BACK_TARGETS`, i.e. from the execution vehicle's events, never by
 hand.
@@ -19,6 +21,8 @@ CONCEPT_FSM: dict[str, tuple[str, ...]] = {
     "reopened": ("in_review",),
     "binding": (),
 }
+# Targets a person may ask for. Approval is the governance gate (Decision 10).
+CONCEPT_HAND_TARGETS = ("in_review", "draft")
 
 PACKAGE_STATES = ("planned", "procedure_set", "shortlisted", "in_tender", "awarded", "cancelled", "on_hold")
 PACKAGE_FSM: dict[str, tuple[str, ...]] = {

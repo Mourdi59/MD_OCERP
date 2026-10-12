@@ -293,6 +293,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Route Classifier': 'project_route.title',
   'Post-calculation': 'postcalc.title',
   'Public Funding': 'funding.title',
+  'Procurement concept': 'procurement_concept.nav.title',
   // Learning & admin
   'Cases': 'nav.cases',
   'Videos': 'nav.videos',

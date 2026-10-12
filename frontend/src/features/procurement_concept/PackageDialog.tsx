@@ -1,0 +1,436 @@
+// DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+// Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+//
+// Planning the award of one package: what it is worth, which threshold that
+// value meets, which procedures the threshold leaves open, and when the
+// contract is needed. The threshold check is the server's; this dialog shows
+// its rows with their sources and never compares an amount itself.
+
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useMutation } from '@tanstack/react-query';
+import clsx from 'clsx';
+
+import { Button } from '@/shared/ui/Button';
+import { WideModal } from '@/shared/ui/WideModal';
+import { fmtDate } from '@/shared/lib/formatters';
+
+import {
+  putPackage,
+  type Framework,
+  type PackageView,
+  type PinnedCatalogue,
+  type PrequalProfile,
+  type ProcedureOption,
+  type SplitBasis,
+  type TenderBasis,
+} from './api';
+import { useThreshold } from './hooks';
+import {
+  PICKER_REASON,
+  SPLIT_BASIS,
+  TENDER_BASIS,
+  THRESHOLD_STATUS,
+  catalogueName,
+  vocab,
+  type LabelContext,
+} from './labels';
+import { FIELD_CLASS, Field, FindingList, Money, ProblemList, RefusalBox, THRESHOLD_TONE, ToneBadge } from './ProcurementBits';
+import { PACKAGE_PROBLEM, packageDraft, packageProblems, toPackageInput, type PackageDraft } from './rules';
+
+const SPLITS: SplitBasis[] = ['whole', 'trade', 'section', 'system'];
+const BASES: TenderBasis[] = ['detailed', 'functional', 'mixed'];
+
+export interface PackageDialogProps {
+  open: boolean;
+  onClose: () => void;
+  projectId: string;
+  view: PackageView;
+  catalogue: PinnedCatalogue | null;
+  frameworks: Framework[];
+  profiles: PrequalProfile[];
+  labels: LabelContext;
+  /** Called after a save. `first` is true when the package had no procurement attributes before. */
+  onSaved: (first: boolean) => void;
+}
+
+export function PackageDialog({
+  open,
+  onClose,
+  projectId,
+  view,
+  catalogue,
+  frameworks,
+  profiles,
+  labels,
+  onSaved,
+}: PackageDialogProps) {
+  const { t } = useTranslation();
+  const [original] = useState<PackageDraft>(() => packageDraft(view));
+  const [draft, setDraft] = useState<PackageDraft>(original);
+  const set = <K extends keyof PackageDraft>(key: K, value: PackageDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
+  const problems = packageProblems(draft);
+  const cp = view.contract_package;
+
+  // The check needs the package to exist on the server with its value.
+  const thresholdQ = useThreshold(projectId, view.award ? cp.id : null);
+  const check = thresholdQ.data ?? null;
+
+  const options: ProcedureOption[] =
+    check?.procedures ??
+    (catalogue?.procedures ?? []).map((p) => ({ code: p.code, name_key: p.name_key ?? '', allowed: true, reason: null }));
+
+  const save = useMutation({
+    mutationFn: () => putPackage(projectId, cp.id, toPackageInput(draft, original)),
+    onSuccess: () => onSaved(!view.award),
+  });
+
+  const usableFrameworks = frameworks.filter((f) => f.state === 'active' || f.id === draft.framework_agreement_id);
+
+  return (
+    <WideModal
+      open={open}
+      onClose={onClose}
+      busy={save.isPending}
+      size="xl"
+      testId="package-dialog"
+      title={t('procurement_concept.ui.package.dialog_title', {
+        defaultValue: 'Plan the award of {{code}}',
+        code: cp.code,
+      })}
+      subtitle={cp.title}
+      footer={
+        <div className="flex w-full flex-wrap items-center justify-end gap-3">
+          <ProblemList problems={problems.map((p) => PACKAGE_PROBLEM[p])} />
+          <Button variant="ghost" onClick={onClose} disabled={save.isPending}>
+            {t('procurement_concept.ui.cancel', { defaultValue: 'Cancel' })}
+          </Button>
+          <Button loading={save.isPending} disabled={problems.length > 0} onClick={() => save.mutate()} data-testid="package-save">
+            {t('procurement_concept.ui.save', { defaultValue: 'Save' })}
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        <RefusalBox error={save.error} />
+
+        <section>
+          <h3 className="mb-2 text-sm font-semibold text-content-primary">
+            {t('procurement_concept.ui.package.value_title', { defaultValue: '1. What the package is worth' })}
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label={t('procurement_concept.ui.package.estimated_value', { defaultValue: 'Estimated value' })} htmlFor="pk-value">
+              <input
+                id="pk-value"
+                inputMode="decimal"
+                className={FIELD_CLASS}
+                value={draft.estimated_value}
+                onChange={(e) => set('estimated_value', e.target.value)}
+              />
+            </Field>
+            <Field label={t('procurement_concept.ui.package.currency', { defaultValue: 'Currency' })} htmlFor="pk-currency">
+              <input
+                id="pk-currency"
+                maxLength={3}
+                className={clsx(FIELD_CLASS, 'uppercase')}
+                value={draft.currency}
+                onChange={(e) => set('currency', e.target.value)}
+              />
+            </Field>
+            <Field label={t('procurement_concept.ui.package.split_basis', { defaultValue: 'How the work is split' })} htmlFor="pk-split">
+              <select
+                id="pk-split"
+                className={FIELD_CLASS}
+                value={draft.split_basis}
+                onChange={(e) => set('split_basis', e.target.value as SplitBasis)}
+              >
+                {SPLITS.map((s) => (
+                  <option key={s} value={s}>
+                    {vocab(labels.t, SPLIT_BASIS, s)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field
+              label={t('procurement_concept.ui.package.lot_group', { defaultValue: 'Lot group' })}
+              htmlFor="pk-lot"
+              hint={t('procurement_concept.ui.package.lot_group_hint', {
+                defaultValue: 'Lots with the same group are added up for the threshold test.',
+              })}
+            >
+              <input id="pk-lot" className={FIELD_CLASS} value={draft.lot_group} onChange={(e) => set('lot_group', e.target.value)} />
+            </Field>
+          </div>
+          <label className="mt-3 flex items-center gap-2 text-sm text-content-primary">
+            <input
+              type="checkbox"
+              checked={draft.small_lot_exemption}
+              onChange={(e) => set('small_lot_exemption', e.target.checked)}
+            />
+            {t('procurement_concept.ui.package.small_lot', {
+              defaultValue: 'Claim the small lot exemption for this lot',
+            })}
+          </label>
+        </section>
+
+        <section data-testid="threshold-section">
+          <h3 className="mb-2 text-sm font-semibold text-content-primary">
+            {t('procurement_concept.ui.package.threshold_title', { defaultValue: '2. Which threshold it meets' })}
+          </h3>
+          {!view.award ? (
+            <p className="rounded-md bg-surface-secondary px-3 py-2 text-sm text-content-secondary" data-testid="threshold-pending">
+              {t('procurement_concept.ui.package.threshold_after_save', {
+                defaultValue: 'Save the value first. The threshold check and the procedures it allows appear right after.',
+              })}
+            </p>
+          ) : thresholdQ.isLoading ? (
+            <p className="text-sm text-content-tertiary">
+              {t('procurement_concept.ui.package.threshold_loading', { defaultValue: 'Checking the value against the thresholds' })}
+            </p>
+          ) : thresholdQ.isError || !check ? (
+            <RefusalBox error={thresholdQ.error} />
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <ToneBadge tone={THRESHOLD_TONE[check.status]} testId="threshold-status">
+                  {vocab(labels.t, THRESHOLD_STATUS, check.status)}
+                </ToneBadge>
+                {check.aggregated_value !== null && (
+                  <span className="text-content-secondary">
+                    {t('procurement_concept.ui.package.tested_value', { defaultValue: 'Value tested, lots added up:' })}{' '}
+                    <Money value={check.aggregated_value} currency={draft.currency} />
+                  </span>
+                )}
+                <span className="text-xs text-content-tertiary">
+                  {t('procurement_concept.ui.package.checked_on', {
+                    defaultValue: 'Rules as of {{date}}',
+                    date: fmtDate(check.checked_on),
+                  })}
+                </span>
+              </div>
+              {check.small_lot_exempt && (
+                <p className="text-xs text-content-secondary">
+                  {t('procurement_concept.ui.package.small_lot_applies', {
+                    defaultValue: 'The small lot exemption applies, so this lot is tested on its own value.',
+                  })}
+                </p>
+              )}
+              {check.status === 'unconfirmed' && (
+                <p className="rounded-md border border-semantic-warning/40 bg-semantic-warning-bg px-3 py-2 text-xs text-content-primary" role="note">
+                  {t('procurement_concept.badge.unconfirmed_banner', {
+                    defaultValue: 'This threshold is not yet confirmed on its primary source. It warns, it does not block.',
+                  })}
+                </p>
+              )}
+              {check.thresholds.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm" data-testid="threshold-rows">
+                    <thead className="text-xs text-content-tertiary">
+                      <tr>
+                        <th className="py-1 pr-3 font-medium">{t('procurement_concept.ui.package.th_threshold', { defaultValue: 'Threshold' })}</th>
+                        <th className="py-1 pr-3 font-medium">{t('procurement_concept.ui.package.th_compared', { defaultValue: 'Package value compared' })}</th>
+                        <th className="py-1 pr-3 font-medium">{t('procurement_concept.ui.package.th_result', { defaultValue: 'Result' })}</th>
+                        <th className="py-1 font-medium">{t('procurement_concept.ui.package.th_source', { defaultValue: 'Source' })}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {check.thresholds.map((row, i) => (
+                        <tr key={`${row.contract_kind}-${row.amount}-${i}`} className="border-t border-border-light">
+                          <td className="py-1.5 pr-3">
+                            <Money value={row.amount} currency={row.currency} />{' '}
+                            <span className="text-xs text-content-tertiary">
+                              {row.vat_basis === 'net'
+                                ? t('procurement_concept.ui.package.vat_net', { defaultValue: 'without VAT' })
+                                : t('procurement_concept.ui.package.vat_gross', { defaultValue: 'with VAT' })}
+                            </span>
+                          </td>
+                          <td className="py-1.5 pr-3">
+                            <Money value={row.compared_value} currency={row.currency} />
+                          </td>
+                          <td className="py-1.5 pr-3">
+                            {row.position
+                              ? vocab(labels.t, THRESHOLD_STATUS, row.position)
+                              : vocab(labels.t, THRESHOLD_STATUS, 'unresolved')}
+                          </td>
+                          <td className="py-1.5">
+                            {row.source_url ? (
+                              <a href={row.source_url} target="_blank" rel="noreferrer noopener" className="text-oe-blue underline">
+                                {row.review_status === 'verified'
+                                  ? t('procurement_concept.ui.package.source_verified', { defaultValue: 'Primary source, confirmed' })
+                                  : t('procurement_concept.ui.package.source_unconfirmed', { defaultValue: 'Primary source, not yet confirmed' })}
+                              </a>
+                            ) : (
+                              <span className="text-content-tertiary">
+                                {t('procurement_concept.ui.package.source_missing', { defaultValue: 'No source given' })}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <FindingList findings={check.findings} refLabel={() => ''} testId="threshold-findings" />
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h3 className="mb-2 text-sm font-semibold text-content-primary">
+            {t('procurement_concept.ui.package.procedure_title', { defaultValue: '3. How it is awarded' })}
+          </h3>
+          <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t('procurement_concept.ui.package.procedure', { defaultValue: 'Procedure' })}>
+            {options.map((o) => (
+              <label
+                key={o.code}
+                data-testid="procedure-option"
+                data-allowed={o.allowed ? 'yes' : 'no'}
+                className={clsx(
+                  'flex cursor-pointer items-start gap-2 rounded-lg border p-2.5 text-sm',
+                  draft.procedure_code === o.code ? 'border-oe-blue bg-oe-blue-subtle' : 'border-border-light',
+                  !o.allowed && 'opacity-80',
+                )}
+              >
+                <input
+                  type="radio"
+                  name="procedure"
+                  className="mt-1"
+                  value={o.code}
+                  checked={draft.procedure_code === o.code}
+                  onChange={() => set('procedure_code', o.code)}
+                />
+                <span>
+                  <span className="font-medium text-content-primary">{catalogueName(labels, 'procedure', o)}</span>
+                  {!o.allowed && o.reason && (
+                    <span className="block text-xs text-semantic-error">{vocab(labels.t, PICKER_REASON, o.reason)}</span>
+                  )}
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <Field label={t('procurement_concept.ui.package.tender_basis', { defaultValue: 'What bidders price' })} htmlFor="pk-basis">
+              <select
+                id="pk-basis"
+                className={FIELD_CLASS}
+                value={draft.tender_basis}
+                onChange={(e) => set('tender_basis', e.target.value as TenderBasis | '')}
+              >
+                <option value="">{t('procurement_concept.ui.not_set', { defaultValue: 'Not set' })}</option>
+                {BASES.map((b) => (
+                  <option key={b} value={b}>
+                    {vocab(labels.t, TENDER_BASIS, b)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field
+              label={t('procurement_concept.ui.package.framework', { defaultValue: 'Call off from a framework agreement' })}
+              htmlFor="pk-framework"
+            >
+              <select
+                id="pk-framework"
+                className={FIELD_CLASS}
+                value={draft.framework_agreement_id}
+                onChange={(e) => set('framework_agreement_id', e.target.value)}
+              >
+                <option value="">{t('procurement_concept.ui.package.no_framework', { defaultValue: 'No framework' })}</option>
+                {usableFrameworks.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.title ? `${f.code} ${f.title}` : f.code}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field
+              label={t('procurement_concept.ui.package.profile', { defaultValue: 'Prequalification profile' })}
+              htmlFor="pk-profile"
+            >
+              <select
+                id="pk-profile"
+                className={FIELD_CLASS}
+                value={draft.prequal_profile_id}
+                onChange={(e) => set('prequal_profile_id', e.target.value)}
+              >
+                <option value="">{t('procurement_concept.ui.package.profile_default', { defaultValue: 'Project default' })}</option>
+                {profiles.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="mb-2 text-sm font-semibold text-content-primary">
+            {t('procurement_concept.ui.package.timing_title', { defaultValue: '4. When the contract is needed' })}
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label={t('procurement_concept.ui.package.need_date', { defaultValue: 'Needed on site by' })}
+              htmlFor="pk-need"
+              hint={t('procurement_concept.ui.package.need_date_hint', {
+                defaultValue: 'The award schedule counts back from this date.',
+              })}
+            >
+              <input id="pk-need" type="date" className={FIELD_CLASS} value={draft.need_date} onChange={(e) => set('need_date', e.target.value)} />
+            </Field>
+            <Field
+              label={t('procurement_concept.ui.package.lead_time', { defaultValue: 'Lead time after award, in days' })}
+              htmlFor="pk-lead"
+              hint={t('procurement_concept.ui.package.lead_time_hint', {
+                defaultValue: 'Fabrication and delivery between the award and the need date.',
+              })}
+            >
+              <input
+                id="pk-lead"
+                inputMode="numeric"
+                className={FIELD_CLASS}
+                value={draft.lead_time_days}
+                onChange={(e) => set('lead_time_days', e.target.value)}
+              />
+            </Field>
+          </div>
+          <label className="mt-3 flex items-start gap-2 text-sm text-content-primary">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={draft.is_advance}
+              onChange={(e) => set('is_advance', e.target.checked)}
+              data-testid="package-advance"
+            />
+            <span>
+              {t('procurement_concept.ui.package.advance', { defaultValue: 'Advance package' })}
+              <span className="block text-xs text-content-tertiary">
+                {t('procurement_concept.ui.package.advance_hint', {
+                  defaultValue: 'Tendered before the main works are released, for example a long lead item.',
+                })}
+              </span>
+            </span>
+          </label>
+          {draft.is_advance && (
+            <Field
+              className="mt-2"
+              label={t('procurement_concept.ui.package.advance_reason', { defaultValue: 'Why it goes ahead of the rest (required)' })}
+              htmlFor="pk-advance-reason"
+            >
+              <textarea
+                id="pk-advance-reason"
+                rows={2}
+                className={FIELD_CLASS}
+                value={draft.advance_reason}
+                onChange={(e) => set('advance_reason', e.target.value)}
+              />
+            </Field>
+          )}
+          <Field className="mt-3" label={t('procurement_concept.ui.package.notes', { defaultValue: 'Notes' })} htmlFor="pk-notes">
+            <textarea id="pk-notes" rows={2} className={FIELD_CLASS} value={draft.notes} onChange={(e) => set('notes', e.target.value)} />
+          </Field>
+        </section>
+      </div>
+    </WideModal>
+  );
+}
