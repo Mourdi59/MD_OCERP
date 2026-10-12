@@ -303,6 +303,9 @@ async def test_unknown_evidence_leaves_the_go_open_and_has_to_be_named(world: Wo
     async def _down(session, project_id, attempt, area):
         raise RuntimeError("module is down")
 
+    # Only this provider: on an integrated branch the modules have registered theirs.
+    others = dict(evd._REGISTRY)
+    evd._REGISTRY.clear()
     evd.register_evidence_provider("risk", _down, name="probe_down", blocking=True)
     try:
         g = await prepare_gate(world, G1)
@@ -329,4 +332,5 @@ async def test_unknown_evidence_leaves_the_go_open_and_has_to_be_named(world: Wo
             assert named.status_code == 201, named.text
             assert named.json()["snapshot"]["acknowledged_evidence"] == [item]
     finally:
-        evd.unregister_evidence_provider("probe_down")
+        evd._REGISTRY.clear()
+        evd._REGISTRY.update(others)
