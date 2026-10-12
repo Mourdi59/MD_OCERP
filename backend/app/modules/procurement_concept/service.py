@@ -168,7 +168,8 @@ class ProcurementConceptService:
         )
 
     def _publish(self, name: str, data: dict[str, Any]) -> None:
-        publish_after_commit(self.session, f"{MODULE}.{name}", data, source_module=MODULE)
+        # ``name`` is the full event name: a subscriber and the dead-subscription scan match the literal.
+        publish_after_commit(self.session, name, data, source_module=MODULE)
 
     async def catalogue_of(self, concept: ProcurementConcept) -> ProcurementCatalogue:
         from app.modules.project_governance.catalogue_store import resolve_catalogue
@@ -422,7 +423,9 @@ class ProcurementConceptService:
         else:
             await self.session.flush()
         await self._audit(actor_id, "procurement_concept", concept.id, "created" if created else "updated")
-        self._publish("concept.updated", {"project_id": str(project_id), "concept_id": str(concept.id)})
+        self._publish(
+            "procurement_concept.concept.updated", {"project_id": str(project_id), "concept_id": str(concept.id)}
+        )
         return concept
 
     async def _require_document_in_project(self, project_id: uuid.UUID, document_id: uuid.UUID) -> None:
@@ -456,7 +459,9 @@ class ProcurementConceptService:
         concept.state = target
         await self.session.flush()
         await self._audit(actor_id, "procurement_concept", concept.id, target, from_status=current, to_status=target)
-        self._publish("concept.state_changed", {"project_id": str(project_id), "from": current, "to": target})
+        self._publish(
+            "procurement_concept.concept.state_changed", {"project_id": str(project_id), "from": current, "to": target}
+        )
         return concept
 
     async def mirror_binding(self, project_id: uuid.UUID, document_id: uuid.UUID) -> bool:
@@ -497,7 +502,10 @@ class ProcurementConceptService:
             to_status="approved",
             metadata={"document_id": str(document_id), "four_eyes_violated": approver == concept.submitted_by},
         )
-        self._publish("concept.state_changed", {"project_id": str(project_id), "from": "in_review", "to": "approved"})
+        self._publish(
+            "procurement_concept.concept.state_changed",
+            {"project_id": str(project_id), "from": "in_review", "to": "approved"},
+        )
         return True
 
     # ── facts ────────────────────────────────────────────────────────────
@@ -1394,7 +1402,9 @@ class ProcurementConceptService:
         award.state = "shortlisted"
         await self.session.flush()
         await self._audit(actor_id, "procurement_award_package", award.id, "shortlisted", to_status="shortlisted")
-        self._publish("package.shortlisted", {"project_id": str(project_id), "package_id": str(package_id)})
+        self._publish(
+            "procurement_concept.package.shortlisted", {"project_id": str(project_id), "package_id": str(package_id)}
+        )
         return award
 
     # ── market sounding ──────────────────────────────────────────────────
@@ -1824,7 +1834,7 @@ class ProcurementConceptService:
             metadata={"kind": link_kind, "id": str(link_id)},
         )
         self._publish(
-            "execution.created",
+            "procurement_concept.execution.created",
             {"project_id": str(project_id), "package_id": str(package_id), "kind": link_kind, "id": str(link_id)},
         )
         return {"package_id": str(package_id), "kind": link_kind, "id": str(link_id), "lines": lines}
