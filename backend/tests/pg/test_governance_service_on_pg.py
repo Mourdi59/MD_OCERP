@@ -8,6 +8,7 @@ approval-route subscribers.
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 import pytest
 import pytest_asyncio
@@ -26,7 +27,6 @@ from app.modules.project_governance.models import (
 from app.modules.project_governance.service import GovernanceService
 from tests._pg import isolated_engine
 from tests.pg.governance_fixtures import (
-    TODAY,
     World,
     add_revision,
     areas,
@@ -36,6 +36,9 @@ from tests.pg.governance_fixtures import (
     gate,
     prepare_gate,
 )
+
+# Same instant as the fixtures' decide() default, kept local to this file.
+TODAY = date(2026, 10, 11)
 
 pytestmark = pytest.mark.asyncio
 
@@ -181,7 +184,6 @@ async def test_stop_makes_open_documents_read_only_and_survives_its_own_rejectio
                 docs["project_handbook"].id,
                 container_id=world.containers["project_handbook"],
                 actor_id=world.owner,
-                role="editor",
             )
     assert exc.value.code == "document_read_only"
 
@@ -202,13 +204,9 @@ async def test_reopen_keeps_the_decision_and_starts_attempt_two(world: World) ->
     first = await decide(world, g.id, "go")
     async with world.factory() as s:
         with pytest.raises(GovernanceError):
-            await GovernanceService(s).reopen(
-                world.project_id, g.id, rationale=" ", rewind_phase=True, actor_id=world.decider
-            )
+            await GovernanceService(s).reopen(world.project_id, g.id, rationale=" ", actor_id=world.decider)
     async with world.factory() as s:
-        await GovernanceService(s).reopen(
-            world.project_id, g.id, rationale="Cost overrun", rewind_phase=True, actor_id=world.decider
-        )
+        await GovernanceService(s).reopen(world.project_id, g.id, rationale="Cost overrun", actor_id=world.decider)
         await s.commit()
     after = await gate(world, G1)
     assert after.status == "in_preparation" and after.attempt_no == 2
@@ -237,7 +235,6 @@ async def test_a_binding_document_changes_only_through_an_approved_change_reques
             impact="",
             proposed_revision_id=None,
             actor_id=world.owner,
-            role="editor",
         )
         await s.commit()
     assert (await documents(world))["business_case"].bound_revision_id == bound

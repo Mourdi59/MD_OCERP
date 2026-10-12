@@ -63,6 +63,7 @@
       "en",
       "it",
       "ru",
+      "tr",
       "uk"
     ],
     "backend/app/modules/cost_match/messages": [
@@ -114,6 +115,10 @@
       "uz",
       "vi",
       "zh"
+    ],
+    "backend/app/modules/project_governance/messages": [
+      "de",
+      "en"
     ],
     "backend/app/modules/rebar_schedule/messages": [
       "de",

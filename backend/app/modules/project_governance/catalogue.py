@@ -17,7 +17,6 @@ the exact country; when no pack answers, the one shipped catalogue whose
 from __future__ import annotations
 
 import json
-import re
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
@@ -67,6 +66,9 @@ class CataloguePhase(_Frozen):
     # Plain text per locale, used by tenant catalogues instead of an i18n key.
     labels: dict[str, str] | None = None
     spine_keys: tuple[str, ...] = Field(min_length=1)
+    # What entering this phase enables ("construction_start", "handover", ...); modules read
+    # the tag instead of matching a phase code. Vocabulary: ``catalogue_kinds.phase_capabilities``.
+    enables: tuple[str, ...] = ()
     source_ref: str | None = None
     review_status: ReviewStatus = ReviewStatus.verified
 
@@ -96,9 +98,6 @@ class CatalogueArea(_Frozen):
     # Plain text per locale, used by tenant catalogues instead of an i18n key.
     labels: dict[str, str] | None = None
     parent: str | None = None
-    # Capabilities another module hosts in this area, e.g. ``design``: design management
-    # resolves its frame area by this tag instead of by an area code.
-    hosts: tuple[str, ...] = ()
 
 
 class CatalogueFolder(_Frozen):
@@ -122,9 +121,10 @@ class CatalogueDocumentType(_Frozen):
     # Plain text per locale, used by tenant catalogues instead of an i18n key.
     labels: dict[str, str] | None = None
     required_at_gates: tuple[str, ...] = ()
-    source_ref: str | None = None
-    # Capabilities this document carries, e.g. ``design``: the frame document design management writes into.
+    # Subjects whose module writes into this frame document ("design", "permits", ...). The
+    # hosting area is the document's own area. Vocabulary: ``catalogue_kinds.host_subjects``.
     hosts: tuple[str, ...] = ()
+    source_ref: str | None = None
 
 
 class ReadinessCriterion(_Frozen):
@@ -199,6 +199,14 @@ class Catalogue(_Frozen):
     def folders_for(self, area_code: str, phase_code: str | None = None) -> tuple[CatalogueFolder, ...]:
         """Working folders of an area, optionally limited to one phase."""
         return tuple(f for f in self.folders if f.area == area_code and (phase_code is None or f.phase == phase_code))
+
+    def phases_enabling(self, capability: str) -> tuple[CataloguePhase, ...]:
+        """Phases tagged ``enables: [capability]``, in phase order; empty when none is."""
+        return tuple(p for p in sorted(self.phases, key=lambda p: p.order) if capability in p.enables)
+
+    def host_of(self, subject: str) -> CatalogueDocumentType | None:
+        """The one document type tagged ``hosts: [subject]``, or ``None`` when the catalogue hosts it nowhere."""
+        return next((d for d in self.document_types if subject in d.hosts), None)
 
     def i18n_keys(self) -> frozenset[str]:
         """Every i18n key the catalogue references."""
@@ -309,26 +317,6 @@ def validate_catalogue(catalogue: Catalogue, *, source: str = "shipped") -> list
     for area in catalogue.areas:
         if area.parent is not None and (area.parent not in areas or area.parent == area.code):
             errors.append(f"area_unknown_parent: area {area.code!r}")
-    hosted: dict[str, list[str]] = {}
-    for area in catalogue.areas:
-        for tag in area.hosts:
-            if not re.fullmatch(r"[a-z][a-z0-9_]*", tag):
-                errors.append(f"area_hosts_invalid: area {area.code!r} tag {tag!r}")
-            hosted.setdefault(tag, []).append(area.code)
-    for tag, codes in sorted(hosted.items()):
-        if len(codes) > 1:
-            errors.append(f"area_hosts_ambiguous: tag {tag!r} on areas {codes}")
-    carried: dict[str, list[str]] = {}
-    for doc in catalogue.document_types:
-        for tag in doc.hosts:
-            if not re.fullmatch(r"[a-z][a-z0-9_]*", tag):
-                errors.append(f"document_hosts_invalid: document_type {doc.code!r} tag {tag!r}")
-            elif doc.area not in hosted.get(tag, []):
-                errors.append(f"document_hosts_outside_area: document_type {doc.code!r} tag {tag!r}")
-            carried.setdefault(tag, []).append(doc.code)
-    for tag, codes in sorted(carried.items()):
-        if len(codes) > 1:
-            errors.append(f"document_hosts_ambiguous: tag {tag!r} on document_types {codes}")
     for doc in catalogue.document_types:
         if doc.area not in areas:
             errors.append(f"document_unknown_area: document_type {doc.code!r} area {doc.area!r}")
@@ -348,6 +336,7 @@ def validate_catalogue(catalogue: Catalogue, *, source: str = "shipped") -> list
     for c in catalogue.readiness_criteria:
         if c.area not in areas or c.gate not in gates:
             errors.append(f"criterion_unknown_ref: criterion {c.code!r} ({c.area!r}, {c.gate!r})")
+    errors.extend(_tag_errors(catalogue))
 
     if source == "shipped":
         namespaces = tuple(f"{I18N_PREFIX}{cid}." for cid in (catalogue.id, catalogue.areas_from) if cid)
@@ -370,6 +359,39 @@ def validate_catalogue(catalogue: Catalogue, *, source: str = "shipped") -> list
                     errors.append(f"label_missing: {name} {item.code!r}")
     if catalogue.review_status is ReviewStatus.verified and not (catalogue.source_url or catalogue.source_title):
         errors.append("verified_without_source")
+    return errors
+
+
+def _tag_errors(catalogue: Catalogue) -> list[str]:
+    """Rules of the ``enables`` and ``hosts`` tags, the same for every source.
+
+    A subject hosted by no document type is legal (the reading module then
+    reports ``unknown``); a subject hosted twice is not, because the reader
+    could not tell which document is meant.
+    """
+    # Imported here: ``catalogue_kinds`` imports this module for its error types.
+    from app.modules.project_governance.catalogue_kinds import host_subjects, phase_capabilities
+
+    errors: list[str] = []
+    capabilities, subjects = phase_capabilities(), host_subjects()
+    for phase in catalogue.phases:
+        unknown = sorted(set(phase.enables) - capabilities)
+        if unknown:
+            errors.append(f"phase_enables_unknown: phase {phase.code!r} {unknown}")
+        if _duplicates(list(phase.enables)):
+            errors.append(f"phase_enables_duplicate: phase {phase.code!r}")
+    hosted: dict[str, list[str]] = {}
+    for doc in catalogue.document_types:
+        unknown = sorted(set(doc.hosts) - subjects)
+        if unknown:
+            errors.append(f"document_hosts_unknown: document_type {doc.code!r} {unknown}")
+        if _duplicates(list(doc.hosts)):
+            errors.append(f"document_hosts_duplicate: document_type {doc.code!r}")
+        for subject in set(doc.hosts):
+            hosted.setdefault(subject, []).append(doc.code)
+    for subject, codes in sorted(hosted.items()):
+        if len(codes) > 1:
+            errors.append(f"subject_hosted_twice: {subject!r} by {sorted(codes)}")
     return errors
 
 

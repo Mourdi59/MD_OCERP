@@ -494,6 +494,41 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "export_award_letter_pdf",
         "export_rejection_letter_pdf",
     ],
+    # Every project-scoped route; the tenant catalogue routes are excused below.
+    "project_governance": [
+        "get_model",
+        "set_model",
+        "change_model",
+        "update_model_settings",
+        "list_areas",
+        "update_area",
+        "list_gates",
+        "get_gate",
+        "prepare_gate",
+        "submit_gate",
+        "decide_gate",
+        "reopen_gate",
+        "resume_gate",
+        "list_gate_decisions",
+        "confirm_check",
+        "check_not_applicable",
+        "add_condition",
+        "list_documents",
+        "create_document",
+        "attach_document",
+        "submit_document",
+        "return_document",
+        "document_history",
+        "create_change_request",
+        "list_change_requests",
+        "list_conditions",
+        "clear_condition",
+        "waive_condition",
+        "escalate_conditions",
+        "validate_project",
+        "export_trail",
+        "get_matrix",
+    ],
 }
 
 
@@ -770,6 +805,15 @@ _NOT_ROUTER_GATED: dict[str, str] = {
         "Public by design, writes the bid of the one invitation the token resolves to through "
         "TenderingService.create_bid/update_bid; a second submit on the same link is refused."
     ),
+    # Tenant phase-model catalogues belong to a tenant, not a project. Every
+    # route resolves the row through CatalogueStore.get(tenant, id), which
+    # answers 404 for another tenant's id (tests/pg/test_governance_tenant_catalogues.py).
+    "project_governance.get_catalogue": "Tenant-scoped row, CatalogueStore.get(tenant, id); other tenants 404.",
+    "project_governance.update_catalogue": "Tenant-scoped row, CatalogueStore.update_draft(tenant, id); manage only.",
+    "project_governance.validate_catalogue": "Tenant-scoped row, CatalogueStore.get(tenant, id); other tenants 404.",
+    "project_governance.publish_catalogue": "Tenant-scoped row, resolved per tenant before publishing; manage only.",
+    "project_governance.retire_catalogue": "Tenant-scoped row, resolved per tenant before retiring; manage only.",
+    "project_governance.diff_catalogue": "Tenant-scoped row, CatalogueStore.get(tenant, id); other tenants 404.",
 }
 
 
