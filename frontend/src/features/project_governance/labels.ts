@@ -135,6 +135,13 @@ function fromLabel(label: GovernanceLabel | null | undefined, ctx: LabelContext)
   return '';
 }
 
+/** The text the server filled for the reader's language, with English as the fallback. Empty when it sent none. */
+function filledText(label: GovernanceLabel | null | undefined, ctx: LabelContext): string {
+  if (!label?.text) return '';
+  const lang = ctx.language.split('-')[0] ?? 'en';
+  return label.text[ctx.language] ?? label.text[lang] ?? label.text.en ?? '';
+}
+
 export type CatalogueItemKind = 'phase' | 'gate' | 'area' | 'doc' | 'criterion';
 
 /**
@@ -265,6 +272,10 @@ export function evidenceMark(t: TFn, state: string | null | undefined): string {
 /**
  * What one evidence item says. A source that failed or gave no answer has no name of
  * its own, so it reads as the sentence that says so.
+ *
+ * The sentence the server filled comes before the key of the label. A module may send a
+ * sentence with values in it (a code, a due date) that it filled itself and sends no
+ * parameters for, so the key alone would print the placeholders as they stand.
  */
 export function evidenceText(
   t: TFn,
@@ -281,6 +292,8 @@ export function evidenceText(
       defaultValue: 'This evidence source gave no answer, so it counts as unknown.',
     });
   }
+  const filled = filledText(item.label, ctx);
+  if (filled) return filled;
   return catalogueName(ctx, { kind: 'doc', code: item.code, label: item.label });
 }
 
