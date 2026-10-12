@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
-import { FileText, Pencil, Plus } from 'lucide-react';
+import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
@@ -24,6 +24,7 @@ import {
   type CallOffMode,
   type Capability,
   type Framework,
+  type FrameworkLot,
   type FrameworkTarget,
   type PackageKind,
 } from './api';
@@ -44,7 +45,9 @@ import {
   calledOffShare,
   capVerdict,
   frameworkProblems,
+  notApplicable,
   toFrameworkInput,
+  typedLots,
   toFrameworkPatch,
   type FrameworkDraft,
 } from './rules';
@@ -87,7 +90,7 @@ export function Frameworks({ frameworks, canCreate, labels, onChanged }: Framewo
     else move.mutate({ id, target });
   };
 
-  const addButton = (
+  const addButton = notApplicable(canCreate) ? undefined : (
     <ReasonedButton
       verdict={capVerdict(canCreate, 'permission_denied')}
       icon={<Plus size={14} />}
@@ -168,6 +171,18 @@ export function Frameworks({ frameworks, canCreate, labels, onChanged }: Framewo
                       )}
                     </dl>
                     {f.scope && <p className="mt-1.5 text-sm text-content-secondary">{f.scope}</p>}
+                    {typedLots(f.lots).length > 0 && (
+                      <div className="mt-1.5 text-sm" data-testid="framework-lots">
+                        <span className="text-xs text-content-tertiary">{t('procurement_concept.ui.framework.lots', { defaultValue: 'Lots' })}</span>
+                        <ul className="mt-0.5 flex flex-wrap gap-1.5">
+                          {typedLots(f.lots).map((l, i) => (
+                            <li key={i} className="rounded-full border border-border-light px-2 py-0.5 text-xs text-content-primary">
+                              {l.code && <span className="font-mono text-content-tertiary">{l.code}</span>} {l.title}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-1.5">
                     <Button
@@ -179,17 +194,19 @@ export function Frameworks({ frameworks, canCreate, labels, onChanged }: Framewo
                     >
                       {t('procurement_concept.ui.framework.ledger', { defaultValue: 'Call-offs' })}
                     </Button>
-                    <ReasonedButton
-                      quiet
-                      verdict={capVerdict(f.can?.edit, 'permission_denied')}
-                      size="sm"
-                      variant="ghost"
-                      icon={<Pencil size={14} />}
-                      onClick={() => setEditing(f)}
-                      data-testid="framework-edit"
-                    >
-                      {t('procurement_concept.ui.prequal.edit', { defaultValue: 'Change' })}
-                    </ReasonedButton>
+                    {!notApplicable(f.can?.edit) && (
+                      <ReasonedButton
+                        quiet
+                        verdict={capVerdict(f.can?.edit, 'permission_denied')}
+                        size="sm"
+                        variant="ghost"
+                        icon={<Pencil size={14} />}
+                        onClick={() => setEditing(f)}
+                        data-testid="framework-edit"
+                      >
+                        {t('procurement_concept.ui.prequal.edit', { defaultValue: 'Change' })}
+                      </ReasonedButton>
+                    )}
                     {/* The moves the server allows this reader from the state the agreement is in. */}
                     {(f.can?.transitions ?? []).map((target) => (
                       <Button
@@ -351,14 +368,21 @@ function FrameworkDialog({
     end_date: framework?.end_date ?? '',
     call_off_mode: framework?.call_off_mode ?? 'direct',
     source_procedure_ref: framework?.source_procedure_ref ?? '',
+    lots: typedLots(framework?.lots),
   });
+  const lots = draft.lots ?? [];
+  const setLot = (index: number, patch: FrameworkLot) =>
+    set(
+      'lots',
+      lots.map((l, i) => (i === index ? { ...l, ...patch } : l)),
+    );
   const set = <K extends keyof FrameworkDraft>(key: K, value: FrameworkDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const toggleKind = (k: PackageKind) =>
     set('package_kinds', draft.package_kinds.includes(k) ? draft.package_kinds.filter((x) => x !== k) : [...draft.package_kinds, k]);
   const problems = frameworkProblems(draft);
 
   const save = useMutation({
-    mutationFn: () => (framework ? patchFramework(framework.id, toFrameworkPatch(draft)) : createFramework(toFrameworkInput(draft))),
+    mutationFn: () => (framework ? patchFramework(framework.id, toFrameworkPatch(draft, framework.lots)) : createFramework(toFrameworkInput(draft))),
     onSuccess: () => {
       onSaved();
       onClose();
@@ -408,6 +432,59 @@ function FrameworkDialog({
         <Field label={t('procurement_concept.ui.framework.scope', { defaultValue: 'What it covers' })} htmlFor="fw-scope">
           <textarea id="fw-scope" rows={2} className={FIELD_CLASS} value={draft.scope} onChange={(e) => set('scope', e.target.value)} />
         </Field>
+        <fieldset data-testid="framework-lot-editor">
+          <legend className="mb-1 text-xs font-medium text-content-secondary">
+            {t('procurement_concept.ui.framework.lots', { defaultValue: 'Lots' })}
+          </legend>
+          <p className="mb-2 text-xs text-content-tertiary">
+            {t('procurement_concept.ui.framework.lots_hint', {
+              defaultValue: 'Only when the agreement is divided into lots: give each its code and what it covers.',
+            })}
+          </p>
+          <ul className="space-y-2">
+            {lots.map((l, i) => (
+              <li key={i} className="flex items-center gap-2" data-testid="framework-lot">
+                <input
+                  className={`${FIELD_CLASS} w-28`}
+                  maxLength={64}
+                  aria-label={t('procurement_concept.ui.framework.lot_code', { defaultValue: 'Lot code' })}
+                  placeholder={t('procurement_concept.ui.framework.lot_code', { defaultValue: 'Lot code' })}
+                  value={l.code ?? ''}
+                  onChange={(e) => setLot(i, { code: e.target.value })}
+                />
+                <input
+                  className={`${FIELD_CLASS} flex-1`}
+                  maxLength={255}
+                  aria-label={t('procurement_concept.ui.framework.lot_title', { defaultValue: 'What the lot covers' })}
+                  placeholder={t('procurement_concept.ui.framework.lot_title', { defaultValue: 'What the lot covers' })}
+                  value={l.title ?? ''}
+                  onChange={(e) => setLot(i, { title: e.target.value })}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={<Trash2 size={14} />}
+                  aria-label={t('procurement_concept.ui.framework.lot_remove', { defaultValue: 'Remove this lot' })}
+                  onClick={() => set('lots', lots.filter((_, j) => j !== i))}
+                  data-testid="framework-lot-remove"
+                >
+                  {null}
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <Button
+            className="mt-2"
+            size="sm"
+            variant="secondary"
+            icon={<Plus size={14} />}
+            disabled={lots.length >= 50}
+            onClick={() => set('lots', [...lots, { code: '', title: '' }])}
+            data-testid="framework-lot-add"
+          >
+            {t('procurement_concept.ui.framework.lot_add', { defaultValue: 'Add a lot' })}
+          </Button>
+        </fieldset>
         <fieldset>
           <legend className="mb-1 text-xs font-medium text-content-secondary">
             {t('procurement_concept.ui.framework.kinds', { defaultValue: 'Kinds of package that may call off' })}

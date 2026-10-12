@@ -22,6 +22,7 @@ import {
   listCatalogues,
   listFindings,
   listAdvanceReleases,
+  listCostSections,
   listFrameworks,
   listGates,
   listProjectFrameworks,
@@ -158,6 +159,15 @@ export function useAdvanceReleases(projectId: string, enabled = true) {
   return useQuery({
     queryKey: procurementKeys.advanceReleases(projectId),
     queryFn: () => listAdvanceReleases(projectId).then((p) => p.items),
+    enabled: !!projectId && enabled,
+  });
+}
+
+/** The bill of quantities sections a package can take its scope lines from. */
+export function useCostSections(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: procurementKeys.costSections(projectId),
+    queryFn: () => listCostSections(projectId).then((p) => p.items),
     enabled: !!projectId && enabled,
   });
 }

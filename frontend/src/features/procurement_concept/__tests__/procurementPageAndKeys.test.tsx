@@ -13,6 +13,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 vi.mock('react-i18next', async () => (await import('./i18nMock')).i18nMockModule);
 vi.mock('@/features/subcontractors/api', () => ({ listSubcontractors: vi.fn(async () => ({ items: [], total: 0 })) }));
+vi.mock('@/features/supplier-catalogs/api', () => ({ listVendors: vi.fn(async () => ({ items: [], total: 0 })) }));
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
   return {
@@ -28,6 +29,7 @@ vi.mock('../api', async (importOriginal) => {
     listProjectFrameworks: vi.fn(),
     listGates: vi.fn(),
     listTenderPackages: vi.fn(),
+    listCostSections: vi.fn(),
     listAdvanceReleases: vi.fn(),
     listSoundings: vi.fn(),
     getSchedule: vi.fn(),
@@ -94,6 +96,7 @@ function loaded() {
 describe('ProcurementConceptPage states', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocked.listCostSections.mockResolvedValue(page([]));
     mocked.listCatalogues.mockResolvedValue(page([catalogueRow]));
     mocked.listGates.mockResolvedValue(
       page([

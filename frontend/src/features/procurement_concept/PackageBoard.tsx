@@ -30,7 +30,7 @@ import {
   type TFn,
 } from './labels';
 import { Money, PACKAGE_TONE, ReasonedButton, RefusalBox, THRESHOLD_TONE, ToneBadge } from './ProcurementBits';
-import { editVerdict, executionVehicle, packageMove } from './rules';
+import { editVerdict, executionVehicle, notApplicable, packageMove } from './rules';
 
 type Pending = { id: string; kind: 'cancel' | 'bid_package' | 'rfq' } | null;
 
@@ -301,7 +301,9 @@ function LinkTenderDialog({
   const optionsQ = useTenderPackages(projectId);
   const [picked, setPicked] = useState('');
   const cp = view.contract_package;
-  const options = optionsQ.data ?? [];
+  // Left out when the server says linking makes no sense for it, whoever asks: it already serves a package.
+  const options = (optionsQ.data ?? []).filter((o) => !notApplicable(o.can.link));
+  const hidden = (optionsQ.data ?? []).length - options.length;
 
   const link = useMutation({
     mutationFn: () => linkExecution(projectId, cp.id, picked),
@@ -341,9 +343,13 @@ function LinkTenderDialog({
           </p>
         ) : options.length === 0 && !optionsQ.isError ? (
           <p className="text-sm text-content-secondary" data-testid="link-tender-empty">
-            {t('procurement_concept.ui.link.empty', {
-              defaultValue: 'This project has no tender package yet. Create the bid package from the board instead.',
-            })}
+            {hidden > 0
+              ? t('procurement_concept.ui.link.all_taken', {
+                  defaultValue: 'Every tender package of this project already serves an award package. Create the bid package from the board instead.',
+                })
+              : t('procurement_concept.ui.link.empty', {
+                  defaultValue: 'This project has no tender package yet. Create the bid package from the board instead.',
+                })}
           </p>
         ) : (
           <ul className="space-y-1.5" role="radiogroup" aria-label={t('procurement_concept.ui.link.pick', { defaultValue: 'Tender package' })}>

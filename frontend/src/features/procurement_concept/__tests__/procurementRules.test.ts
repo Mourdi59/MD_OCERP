@@ -9,7 +9,13 @@ import { describe, expect, it } from 'vitest';
 import { catalogueName, errorText, findingText, humanizeCode, vocab, PACKAGE_STATE, type LabelContext } from '../labels';
 import {
   calledOffShare,
+  awardWeightsTotal,
   candidateProblems,
+  companyLinks,
+  companyValue,
+  notApplicable,
+  toCandidateInput,
+  toFrameworkInput,
   conceptInput,
   conceptSteps,
   editVerdict,
@@ -243,6 +249,63 @@ describe('package plan', () => {
   });
 });
 
+describe('award criteria and the cost reference', () => {
+  const base = packageDraft(packageView());
+  const best = { ...base, evaluation_method: 'best_value' as const };
+  const rows = [
+    { name: 'Price', weight: '60' },
+    { name: 'Quality', weight: '40' },
+  ];
+
+  it('accepts criteria that add up to 100, and counts hundredths exactly', () => {
+    expect(packageProblems({ ...best, weights: rows })).toEqual([]);
+    const thirds = [
+      { name: 'Price', weight: '33,33' },
+      { name: 'Quality', weight: '33.33' },
+      { name: 'Time', weight: '33.34' },
+    ];
+    expect(packageProblems({ ...best, weights: thirds })).toEqual([]);
+    expect(awardWeightsTotal(thirds)).toBe('100');
+  });
+
+  it('names a sum that is not 100, a criterion named twice and a row half filled', () => {
+    expect(packageProblems({ ...best, weights: [rows[0]!, { name: 'Quality', weight: '30' }] })).toEqual(['weights_not_100']);
+    expect(packageProblems({ ...best, weights: [rows[0]!, { name: ' Price ', weight: '40' }] })).toEqual(['criterion_twice']);
+    expect(packageProblems({ ...best, weights: [rows[0]!, { name: '', weight: '40' }] })).toContain('criterion_invalid');
+    expect(packageProblems({ ...best, weights: [rows[0]!, { name: 'Quality', weight: '140' }] })).toContain('criterion_invalid');
+  });
+
+  it('ignores a row left empty, and the criteria of a lowest price award', () => {
+    expect(packageProblems({ ...best, weights: [...rows, { name: '', weight: '' }] })).toEqual([]);
+    expect(packageProblems({ ...base, weights: [{ name: 'Price', weight: '10' }] })).toEqual([]);
+  });
+
+  it('sends the criteria as decimal strings, and an empty object to clear them, never null', () => {
+    expect(toPackageInput({ ...best, weights: rows }, base)).toEqual({
+      evaluation_method: 'best_value',
+      evaluation_weights: { Price: '60', Quality: '40' },
+    });
+    const stored = { ...best, weights: rows };
+    expect(toPackageInput({ ...stored, weights: [{ name: 'Price', weight: '60.0' }, rows[1]!] }, stored)).toEqual({});
+    expect(toPackageInput({ ...stored, weights: [] }, stored)).toEqual({ evaluation_weights: {} });
+  });
+
+  it('sets and clears the kind and the id of the cost reference together', () => {
+    expect(toPackageInput({ ...base, cost_ref_id: 'sec1' }, base)).toEqual({ cost_ref_kind: 'boq_section', cost_ref_id: 'sec1' });
+    const named = { ...base, cost_ref_id: 'sec1' };
+    expect(toPackageInput({ ...named, cost_ref_id: '' }, named)).toEqual({ cost_ref_kind: null, cost_ref_id: null });
+  });
+});
+
+describe('a control the server says does not apply', () => {
+  it('is left out only on an explicit applies: false', () => {
+    expect(notApplicable({ allowed: false, reason: 'profile_in_use', applies: false })).toBe(true);
+    expect(notApplicable({ allowed: false, reason: 'permission_denied', applies: true })).toBe(false);
+    expect(notApplicable({ allowed: false, reason: 'permission_denied' })).toBe(false);
+    expect(notApplicable(undefined)).toBe(false);
+  });
+});
+
 describe('package moves follow the flags of the row', () => {
   it('an allowed move is offered and open', () => {
     expect(packageMove(packageView(), 'hold')).toEqual({ show: true, verdict: null });
@@ -385,8 +448,32 @@ describe('candidates and scores', () => {
     expect(candidateProblems({ ...draft, subcontractor_id: 's1', list: 'excluded' })).toEqual(['excluded_needs_rationale']);
   });
 
-  it('keeps a vendor candidate short-listable although the form links subcontractors only', () => {
+  it('a vendor record registers a company as well as a subcontractor record does', () => {
+    expect(candidateProblems({ ...draft, vendor_id: 'v1', list: 'short' })).toEqual([]);
     expect(candidateProblems({ ...draft, list: 'short' }, true)).toEqual([]);
+  });
+
+  it('the company picker names one register entry, and choosing one drops the other link', () => {
+    expect(companyValue(draft)).toBe('');
+    expect(companyValue({ subcontractor_id: 's1', vendor_id: '' })).toBe('subcontractor:s1');
+    expect(companyValue({ subcontractor_id: '', vendor_id: 'v1' })).toBe('vendor:v1');
+    expect(companyLinks('vendor:v1')).toEqual({ subcontractor_id: '', vendor_id: 'v1' });
+    expect(companyLinks('subcontractor:s1')).toEqual({ subcontractor_id: 's1', vendor_id: '' });
+    expect(companyLinks('')).toEqual({ subcontractor_id: '', vendor_id: '' });
+  });
+
+  it('sends one link and clears the other, and no typed name for a registered company', () => {
+    expect(toCandidateInput({ ...draft, vendor_id: 'v1', free_name: 'typed before' })).toMatchObject({
+      subcontractor_id: null,
+      vendor_id: 'v1',
+      free_name: '',
+    });
+    expect(toCandidateInput({ ...draft, subcontractor_id: 's1', vendor_id: 'v1' })).toMatchObject({ subcontractor_id: 's1', vendor_id: null });
+    expect(toCandidateInput({ ...draft, free_name: ' Roofing contractor ' })).toMatchObject({
+      subcontractor_id: null,
+      vendor_id: null,
+      free_name: 'Roofing contractor',
+    });
   });
 
   it('sends only assessed rows, a verdict for pass or fail and points as a string', () => {
@@ -437,6 +524,14 @@ describe('market sounding', () => {
     expect(toSoundingInput({ ...draft, lead_time_signal_days: '120' })).toMatchObject({ trade: 'Steel', lead_time_signal_days: 120 });
     expect(toSoundingInput(draft).lead_time_signal_days).toBeNull();
   });
+
+  it('sends the participants only when the reader changed them', () => {
+    expect(toSoundingInput(draft)).not.toHaveProperty('participant_candidate_ids');
+    expect(toSoundingInput({ ...draft, participant_candidate_ids: ['c1'] }).participant_candidate_ids).toEqual(['c1']);
+    // The same companies as stored, in another order: the server is not asked to look them up again.
+    expect(toSoundingInput({ ...draft, participant_candidate_ids: ['c2', 'c1'] }, ['c1', 'c2'])).not.toHaveProperty('participant_candidate_ids');
+    expect(toSoundingInput({ ...draft, participant_candidate_ids: [] }, ['c1']).participant_candidate_ids).toEqual([]);
+  });
 });
 
 describe('award schedule rows', () => {
@@ -481,6 +576,16 @@ describe('framework agreements', () => {
     expect(patch).not.toHaveProperty('currency');
     expect(patch).not.toHaveProperty('start_date');
     expect(patch.max_value).toBe('2500000');
+    expect(patch).not.toHaveProperty('lots');
+  });
+
+  it('sends the lots trimmed, without empty rows, and on a change only when they differ', () => {
+    const lots = [{ code: ' L1 ', title: ' North ' }, { code: '', title: '' }];
+    expect(toFrameworkInput({ ...draft, lots }).lots).toEqual([{ code: 'L1', title: 'North' }]);
+    expect(toFrameworkInput(draft).lots).toEqual([]);
+    expect(toFrameworkPatch({ ...draft, lots }, [{ code: 'L1', title: 'North' }])).not.toHaveProperty('lots');
+    expect(toFrameworkPatch({ ...draft, lots }, []).lots).toEqual([{ code: 'L1', title: 'North' }]);
+    expect(toFrameworkPatch({ ...draft, lots: [] }, [{ code: 'L1', title: 'North' }]).lots).toEqual([]);
   });
 
   it('the called-off share stays between nothing and everything', () => {

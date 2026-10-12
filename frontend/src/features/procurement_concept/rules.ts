@@ -10,6 +10,8 @@
 // turns a `false` into the sentence that explains it.
 
 import type {
+  EvaluationMethod,
+  FrameworkLot,
   AdvanceReleaseKind,
   Capability,
   CandidateInput,
@@ -175,6 +177,17 @@ export interface PackageDraft {
   framework_agreement_id: string;
   prequal_profile_id: string;
   notes: string;
+  evaluation_method: EvaluationMethod;
+  /** The award criteria of a best value award, one row each. */
+  weights: WeightRow[];
+  /** The BOQ section the tender takes its scope lines from, by id, or empty. */
+  cost_ref_id: string;
+}
+
+/** One award criterion as it is typed: a name and its share in percent. */
+export interface WeightRow {
+  name: string;
+  weight: string;
 }
 
 export function packageDraft(view: PackageView): PackageDraft {
@@ -195,10 +208,20 @@ export function packageDraft(view: PackageView): PackageDraft {
     framework_agreement_id: a?.framework_agreement_id ?? '',
     prequal_profile_id: a?.prequal_profile_id ?? '',
     notes: a?.notes ?? '',
+    evaluation_method: a?.evaluation_method ?? 'lowest_price',
+    weights: Object.entries(a?.evaluation_weights ?? {}).map(([name, weight]) => ({ name, weight: String(weight) })),
+    cost_ref_id: a?.cost_ref_id ?? '',
   };
 }
 
-export type PackageProblem = 'value_invalid' | 'currency_invalid' | 'advance_without_reason' | 'lead_time_invalid';
+export type PackageProblem =
+  | 'value_invalid'
+  | 'currency_invalid'
+  | 'advance_without_reason'
+  | 'lead_time_invalid'
+  | 'criterion_invalid'
+  | 'criterion_twice'
+  | 'weights_not_100';
 
 export const PACKAGE_PROBLEM: Record<PackageProblem, KeyText> = {
   value_invalid: ['procurement_concept.ui.problem.value_invalid', 'The estimated value is not an amount.'],
@@ -211,7 +234,38 @@ export const PACKAGE_PROBLEM: Record<PackageProblem, KeyText> = {
     'procurement_concept.ui.problem.lead_time_invalid',
     'The lead time is a whole number of days between 0 and 1500.',
   ],
+  criterion_invalid: [
+    'procurement_concept.ui.problem.criterion_invalid',
+    'Every award criterion needs a name and a weight between 0 and 100.',
+  ],
+  criterion_twice: ['procurement_concept.ui.problem.criterion_twice', 'An award criterion is named twice.'],
+  weights_not_100: ['procurement_concept.ui.problem.award_weights_not_100', 'The weights of the award criteria must add up to 100.'],
 };
+
+/** The most award criteria one package can carry. */
+export const MAX_AWARD_CRITERIA = 20;
+
+/** The rows the reader filled in: a row left wholly empty is not a criterion. */
+function typedWeights(rows: WeightRow[]): WeightRow[] {
+  return rows.filter((r) => r.name.trim() !== '' || r.weight.trim() !== '');
+}
+
+/** The sum of the typed weights, as a display string ("100", "87.5"). */
+export function awardWeightsTotal(rows: WeightRow[]): string {
+  return String(typedWeights(rows).reduce((acc, r) => acc + (hundredths(r.weight) || 0), 0) / 100);
+}
+
+/** The weights as the request carries them: `{criterion: percent}`, empty when there are none. */
+export function toWeights(rows: WeightRow[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const r of typedWeights(rows)) out[r.name.trim()] = parseAmount(r.weight) ?? '0';
+  return out;
+}
+
+function sameWeights(a: Record<string, string>, b: Record<string, string>): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((k) => k in b && sameAmount(a[k], b[k]));
+}
 
 export function packageProblems(d: PackageDraft): PackageProblem[] {
   const out: PackageProblem[] = [];
@@ -222,6 +276,18 @@ export function packageProblems(d: PackageDraft): PackageProblem[] {
   if (d.is_advance && !d.advance_reason.trim()) out.push('advance_without_reason');
   const lead = d.lead_time_days.trim();
   if (lead && (!/^\d+$/.test(lead) || Number(lead) > 1500)) out.push('lead_time_invalid');
+  // Award criteria count for a best value award only; the rows of a lowest price award are left alone.
+  const rows = d.evaluation_method === 'best_value' ? typedWeights(d.weights) : [];
+  if (rows.length > 0) {
+    const bad = rows.some((r) => {
+      const w = hundredths(r.weight);
+      return !r.name.trim() || r.name.trim().length > 64 || Number.isNaN(w) || w > 10000;
+    });
+    const names = rows.map((r) => r.name.trim());
+    if (bad) out.push('criterion_invalid');
+    if (new Set(names).size !== names.length) out.push('criterion_twice');
+    if (!bad && rows.reduce((acc, r) => acc + hundredths(r.weight), 0) !== 10000) out.push('weights_not_100');
+  }
   return out;
 }
 
@@ -259,6 +325,15 @@ export function toPackageInput(d: PackageDraft, original: PackageDraft): Package
   }
   if (d.prequal_profile_id !== original.prequal_profile_id) out.prequal_profile_id = d.prequal_profile_id || null;
   if (d.notes.trim() !== original.notes.trim()) out.notes = d.notes.trim();
+  if (d.evaluation_method !== original.evaluation_method) out.evaluation_method = d.evaluation_method;
+  // The server refuses null here: an empty object is how the criteria are cleared.
+  const weights = toWeights(d.weights);
+  if (!sameWeights(weights, toWeights(original.weights))) out.evaluation_weights = weights;
+  // The kind and the id of the cost reference travel together, and clear together.
+  if (d.cost_ref_id !== original.cost_ref_id) {
+    out.cost_ref_kind = d.cost_ref_id ? 'boq_section' : null;
+    out.cost_ref_id = d.cost_ref_id || null;
+  }
   return out;
 }
 
@@ -279,6 +354,15 @@ export function offer(cap: Capability | undefined): MoveOffer {
   if (!cap) return { show: false, verdict: 'permission_denied' };
   if (cap.allowed) return { show: true, verdict: null };
   return { show: cap.applies !== false, verdict: cap.reason ?? 'permission_denied' };
+}
+
+/**
+ * True when the server says the action makes no sense for the object as it
+ * is: the control is left out. A missing flag is not that; it is refused with
+ * a reason, so the reader still sees the control.
+ */
+export function notApplicable(cap: Capability | undefined): boolean {
+  return cap?.applies === false;
 }
 
 /** One move of a package, straight from the flag the server sent with the row. */
@@ -356,6 +440,8 @@ export function toProfileInput(d: ProfileDraft, packageId: string | null): Profi
 
 export interface CandidateDraft {
   subcontractor_id: string;
+  /** A vendor record instead of a subcontractor. Never both. */
+  vendor_id?: string;
   free_name: string;
   source: CandidateSource;
   list: CandidateList;
@@ -381,10 +467,24 @@ export const CANDIDATE_PROBLEM: Record<CandidateProblem, KeyText> = {
   ],
 };
 
-/** `registered` covers a vendor link the form cannot edit: it keeps a vendor candidate short-listable. */
+/** The registered company of a draft as one picker value: `subcontractor:id`, `vendor:id` or empty. */
+export function companyValue(d: Pick<CandidateDraft, 'subcontractor_id' | 'vendor_id'>): string {
+  if (d.subcontractor_id) return `subcontractor:${d.subcontractor_id}`;
+  return d.vendor_id ? `vendor:${d.vendor_id}` : '';
+}
+
+/** The two links a picker value stands for. Choosing one always clears the other. */
+export function companyLinks(value: string): { subcontractor_id: string; vendor_id: string } {
+  const cut = value.indexOf(':');
+  const kind = cut < 0 ? '' : value.slice(0, cut);
+  const id = cut < 0 ? '' : value.slice(cut + 1);
+  return { subcontractor_id: kind === 'subcontractor' ? id : '', vendor_id: kind === 'vendor' ? id : '' };
+}
+
+/** `registered` stands for a link the draft does not carry. */
 export function candidateProblems(d: CandidateDraft, registered = false): CandidateProblem[] {
   const out: CandidateProblem[] = [];
-  const linked = registered || !!d.subcontractor_id;
+  const linked = registered || !!d.subcontractor_id || !!d.vendor_id;
   if (!linked && !d.free_name.trim()) out.push('needs_company');
   if (d.list === 'excluded' && !d.decision_rationale.trim()) out.push('excluded_needs_rationale');
   if (d.list === 'short' && !linked) out.push('short_needs_registered');
@@ -392,9 +492,12 @@ export function candidateProblems(d: CandidateDraft, registered = false): Candid
 }
 
 export function toCandidateInput(d: CandidateDraft): CandidateInput {
+  const linked = !!d.subcontractor_id || !!d.vendor_id;
   return {
     subcontractor_id: d.subcontractor_id || null,
-    free_name: d.free_name.trim(),
+    vendor_id: d.subcontractor_id ? null : d.vendor_id || null,
+    // A registered company carries its own name.
+    free_name: linked ? '' : d.free_name.trim(),
     source: d.source,
     list: d.list,
     decision_rationale: d.decision_rationale.trim(),
@@ -447,14 +550,23 @@ export function soundingReady(d: SoundingDraft): boolean {
   return !!d.held_on && (!days || (/^\d+$/.test(days) && Number(days) <= 1500));
 }
 
-export function toSoundingInput(d: SoundingDraft): SoundingInput {
-  return {
-    ...d,
+/**
+ * The request body of a sounding. The participants travel only when the
+ * reader changed them (`stored` is the list the record holds): the server
+ * looks up every id it is sent, so an untouched list is never sent back.
+ */
+export function toSoundingInput(d: SoundingDraft, stored: string[] = []): SoundingInput {
+  const { participant_candidate_ids: picked = [], ...rest } = d;
+  const out: SoundingInput = {
+    ...rest,
     trade: d.trade.trim(),
     findings: d.findings.trim(),
     mitigation: d.mitigation.trim(),
     lead_time_signal_days: d.lead_time_signal_days.trim() === '' ? null : Number(d.lead_time_signal_days.trim()),
   };
+  const same = picked.length === stored.length && picked.every((id) => stored.includes(id));
+  if (!same) out.participant_candidate_ids = picked;
+  return out;
 }
 
 /* ── Award schedule ───────────────────────────────────────────────────── */
@@ -501,9 +613,21 @@ export function frameworkProblems(d: FrameworkDraft): FrameworkProblem[] {
   return out;
 }
 
+/** The lots the reader filled in, trimmed. A row left wholly empty is not a lot. */
+export function typedLots(lots: FrameworkLot[] | undefined): FrameworkLot[] {
+  return (lots ?? [])
+    .map((l) => ({ code: (l.code ?? '').trim(), title: (l.title ?? '').trim() }))
+    .filter((l) => l.code !== '' || l.title !== '');
+}
+
+function sameLots(a: FrameworkLot[], b: FrameworkLot[]): boolean {
+  return a.length === b.length && a.every((l, i) => l.code === b[i]?.code && l.title === b[i]?.title);
+}
+
 export function toFrameworkInput(d: FrameworkDraft): FrameworkInput {
   return {
     ...d,
+    lots: typedLots(d.lots),
     code: d.code.trim(),
     title: d.title.trim(),
     supplier_name: d.supplier_name.trim(),
@@ -514,10 +638,15 @@ export function toFrameworkInput(d: FrameworkDraft): FrameworkInput {
   };
 }
 
-/** An existing agreement keeps its code, currency and start date; the rest can change. */
-export function toFrameworkPatch(d: FrameworkDraft): FrameworkPatch {
+/**
+ * An existing agreement keeps its code, currency and start date; the rest can
+ * change. The lots travel only when they differ from the `stored` ones.
+ */
+export function toFrameworkPatch(d: FrameworkDraft, stored?: FrameworkLot[]): FrameworkPatch {
   const full = toFrameworkInput(d);
+  const lots = full.lots ?? [];
   return {
+    ...(stored !== undefined && !sameLots(lots, typedLots(stored)) ? { lots } : {}),
     title: full.title,
     supplier_name: full.supplier_name,
     scope: full.scope,

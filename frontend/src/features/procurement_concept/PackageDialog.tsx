@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import clsx from 'clsx';
+import { Plus, Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { WideModal } from '@/shared/ui/WideModal';
@@ -17,6 +18,7 @@ import { fmtDate } from '@/shared/lib/formatters';
 
 import {
   putPackage,
+  type EvaluationMethod,
   type Framework,
   type PackageView,
   type PinnedCatalogue,
@@ -25,8 +27,9 @@ import {
   type SplitBasis,
   type TenderBasis,
 } from './api';
-import { useAdvanceReleases, useThreshold } from './hooks';
+import { refusalText, useAdvanceReleases, useCostSections, useThreshold } from './hooks';
 import {
+  EVALUATION_METHOD,
   PICKER_REASON,
   SPLIT_BASIS,
   TENDER_BASIS,
@@ -36,8 +39,18 @@ import {
   type LabelContext,
 } from './labels';
 import { FIELD_CLASS, Field, FindingList, Money, ProblemList, RefusalBox, THRESHOLD_TONE, ToneBadge } from './ProcurementBits';
-import { PACKAGE_PROBLEM, packageDraft, packageProblems, toPackageInput, type PackageDraft } from './rules';
+import {
+  MAX_AWARD_CRITERIA,
+  PACKAGE_PROBLEM,
+  awardWeightsTotal,
+  packageDraft,
+  packageProblems,
+  toPackageInput,
+  type PackageDraft,
+  type WeightRow,
+} from './rules';
 
+const METHODS: EvaluationMethod[] = ['lowest_price', 'best_value'];
 const SPLITS: SplitBasis[] = ['whole', 'trade', 'section', 'system'];
 const BASES: TenderBasis[] = ['detailed', 'functional', 'mixed'];
 
@@ -78,6 +91,13 @@ export function PackageDialog({
   // The acts of the release gate, asked for only once the package is marked as an advance package.
   const releasesQ = useAdvanceReleases(projectId, draft.is_advance);
   const releases = releasesQ.data ?? [];
+  const sectionsQ = useCostSections(projectId);
+  const sections = sectionsQ.data ?? [];
+  const setWeight = (index: number, patch: Partial<WeightRow>) =>
+    set(
+      'weights',
+      draft.weights.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
 
   const options: ProcedureOption[] =
     check?.procedures ??
@@ -364,7 +384,120 @@ export function PackageDialog({
                 ))}
               </select>
             </Field>
+            <Field
+              label={t('procurement_concept.ui.package.evaluation_method', { defaultValue: 'How the bids are compared' })}
+              htmlFor="pk-evaluation"
+            >
+              <select
+                id="pk-evaluation"
+                className={FIELD_CLASS}
+                value={draft.evaluation_method}
+                onChange={(e) => set('evaluation_method', e.target.value as EvaluationMethod)}
+              >
+                {METHODS.map((m) => (
+                  <option key={m} value={m}>
+                    {vocab(labels.t, EVALUATION_METHOD, m)}
+                  </option>
+                ))}
+              </select>
+            </Field>
           </div>
+          {draft.evaluation_method === 'best_value' && (
+            <fieldset className="mt-3 rounded-lg border border-border-light p-3" data-testid="award-criteria">
+              <legend className="px-1 text-xs font-medium text-content-secondary">
+                {t('procurement_concept.ui.package.criteria_title', { defaultValue: 'Award criteria and their weights' })}
+              </legend>
+              <p className="mb-2 text-xs text-content-tertiary">
+                {t('procurement_concept.ui.package.criteria_hint', {
+                  defaultValue: 'Name what the bids are judged on and give each a share in percent. The shares add up to 100.',
+                })}
+              </p>
+              <ul className="space-y-2">
+                {draft.weights.map((row, i) => (
+                  <li key={i} className="flex items-center gap-2" data-testid="award-criterion">
+                    <input
+                      className={clsx(FIELD_CLASS, 'flex-1')}
+                      maxLength={64}
+                      aria-label={t('procurement_concept.ui.package.criterion_name', { defaultValue: 'Criterion' })}
+                      placeholder={t('procurement_concept.ui.package.criterion_name', { defaultValue: 'Criterion' })}
+                      value={row.name}
+                      onChange={(e) => setWeight(i, { name: e.target.value })}
+                    />
+                    <input
+                      className={clsx(FIELD_CLASS, 'w-24 text-right')}
+                      inputMode="decimal"
+                      aria-label={t('procurement_concept.ui.package.criterion_weight', { defaultValue: 'Weight in percent' })}
+                      placeholder={t('procurement_concept.ui.package.criterion_weight', { defaultValue: 'Weight in percent' })}
+                      value={row.weight}
+                      onChange={(e) => setWeight(i, { weight: e.target.value })}
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={<Trash2 size={14} />}
+                      aria-label={t('procurement_concept.ui.package.criterion_remove', { defaultValue: 'Remove this criterion' })}
+                      onClick={() => set('weights', draft.weights.filter((_, j) => j !== i))}
+                      data-testid="award-criterion-remove"
+                    >
+                      {null}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<Plus size={14} />}
+                  disabled={draft.weights.length >= MAX_AWARD_CRITERIA}
+                  onClick={() => set('weights', [...draft.weights, { name: '', weight: '' }])}
+                  data-testid="award-criterion-add"
+                >
+                  {t('procurement_concept.ui.package.criterion_add', { defaultValue: 'Add a criterion' })}
+                </Button>
+                <span className="text-xs text-content-secondary" data-testid="award-criteria-total">
+                  {t('procurement_concept.ui.package.criteria_total', {
+                    defaultValue: 'Total: {{total}} of 100',
+                    total: awardWeightsTotal(draft.weights),
+                  })}
+                </span>
+              </div>
+            </fieldset>
+          )}
+          <Field
+            className="mt-3"
+            label={t('procurement_concept.ui.package.cost_ref', { defaultValue: 'Bill of quantities section the tender is built from' })}
+            htmlFor="pk-cost-ref"
+            hint={
+              sectionsQ.isError
+                ? refusalText(labels.t, sectionsQ.error)
+                : sections.length === 0 && !sectionsQ.isLoading
+                  ? t('procurement_concept.ui.package.cost_ref_none', {
+                      defaultValue: 'This project has no bill of quantities section yet. Without one the tender starts with no scope lines.',
+                    })
+                  : t('procurement_concept.ui.package.cost_ref_hint', {
+                      defaultValue: 'The positions under this section become the scope lines of the bid package or the request for quotation.',
+                    })
+            }
+          >
+            <select id="pk-cost-ref" className={FIELD_CLASS} value={draft.cost_ref_id} onChange={(e) => set('cost_ref_id', e.target.value)}>
+              <option value="">{t('procurement_concept.ui.package.cost_ref_unset', { defaultValue: 'No section' })}</option>
+              {draft.cost_ref_id && !sections.some((x) => x.id === draft.cost_ref_id) && (
+                <option value={draft.cost_ref_id}>
+                  {t('procurement_concept.ui.package.cost_ref_kept', { defaultValue: 'The section named before' })}
+                </option>
+              )}
+              {sections.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {t('procurement_concept.ui.package.cost_ref_option', {
+                    defaultValue: '{{name}} (positions: {{n}})',
+                    name: [x.boq_name, x.code, x.title].filter(Boolean).join(' / '),
+                    n: x.positions,
+                  })}
+                </option>
+              ))}
+            </select>
+          </Field>
         </section>
 
         <section>

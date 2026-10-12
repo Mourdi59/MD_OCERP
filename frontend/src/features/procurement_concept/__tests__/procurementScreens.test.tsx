@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('react-i18next', async () => (await import('./i18nMock')).i18nMockModule);
 vi.mock('@/features/subcontractors/api', () => ({ listSubcontractors: vi.fn(async () => ({ items: [], total: 0 })) }));
+vi.mock('@/features/supplier-catalogs/api', () => ({ listVendors: vi.fn(async () => ({ items: [], total: 0 })) }));
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
   return {
@@ -21,6 +22,8 @@ vi.mock('../api', async (importOriginal) => {
     createExecution: vi.fn(),
     linkExecution: vi.fn(),
     listTenderPackages: vi.fn(),
+    listCostSections: vi.fn(),
+    deleteProfile: vi.fn(),
     listAdvanceReleases: vi.fn(),
     putPackage: vi.fn(),
     getThreshold: vi.fn(),
@@ -86,7 +89,10 @@ function show(ui: ReactElement) {
 const rowOf = (testId: string, attr: string, value: string) =>
   screen.getAllByTestId(testId).find((r) => r.getAttribute(attr) === value) as HTMLElement;
 
-beforeEach(() => vi.resetAllMocks());
+beforeEach(() => {
+  vi.resetAllMocks();
+  mocked.listCostSections.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 0 });
+});
 afterEach(cleanup);
 
 describe('PackageBoard', () => {
@@ -233,6 +239,35 @@ describe('PackageBoard', () => {
     fireEvent.click(screen.getByTestId('link-tender-save'));
     await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
     expect(mocked.linkExecution).toHaveBeenCalledWith('p1', 'k1', 't1');
+  });
+
+  it('leaves out a tender package the server says cannot be linked at all', async () => {
+    mocked.listTenderPackages.mockResolvedValue({
+      items: [
+        { id: 't1', name: 'Structure tender', status: 'draft', deadline: null, linked_package_id: null, linked_package_code: null, can: { link: yes } },
+        { id: 't2', name: 'Facade tender', status: 'draft', deadline: null, linked_package_id: 'k9', linked_package_code: 'CP-09', can: { link: denied('execution_exists', false) } },
+      ],
+      total: 2,
+      offset: 0,
+      limit: 2,
+    });
+    board();
+    fireEvent.click(within(rowOf('package-row', 'data-package', 'CP-01')).getByTestId('package-link'));
+    const options = await screen.findAllByTestId('link-tender-option');
+    expect(options).toHaveLength(1);
+    expect(options[0]).toHaveTextContent('Structure tender');
+  });
+
+  it('says every tender package is taken when none is left to link', async () => {
+    mocked.listTenderPackages.mockResolvedValue({
+      items: [{ id: 't2', name: 'Facade tender', status: 'draft', deadline: null, linked_package_id: 'k9', linked_package_code: 'CP-09', can: { link: denied('execution_exists', false) } }],
+      total: 1,
+      offset: 0,
+      limit: 1,
+    });
+    board();
+    fireEvent.click(within(rowOf('package-row', 'data-package', 'CP-01')).getByTestId('package-link'));
+    expect(await screen.findByTestId('link-tender-empty')).toHaveTextContent('already serves an award package');
   });
 
   it('says so when the project has no tender package to link', async () => {
@@ -451,6 +486,30 @@ describe('PrequalPanel', () => {
     show(<PrequalPanel {...props} />);
     return props;
   };
+
+  it('removes a profile nothing uses, after asking', async () => {
+    mocked.listCandidates.mockResolvedValue(matrix());
+    mocked.deleteProfile.mockResolvedValue(undefined as never);
+    const spare = { ...profile, id: 'pf2', name: 'Spare profile', in_use: false, can: { edit: yes, delete: yes } };
+    const props = panel({ profiles: [profile, spare] });
+    const row = (await screen.findAllByTestId('profile-row')).find((r) => r.getAttribute('data-profile') === 'pf2') as HTMLElement;
+    expect(row).toHaveTextContent('Not used by any package');
+    fireEvent.click(within(row).getByTestId('profile-remove'));
+    fireEvent.click(within(row).getByTestId('profile-remove-yes'));
+    await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
+    expect(mocked.deleteProfile).toHaveBeenCalledWith('p1', 'pf2');
+  });
+
+  it('keeps the delete of a profile in use closed with the reason, and leaves it out where it does not apply', async () => {
+    mocked.listCandidates.mockResolvedValue(matrix());
+    const used = { ...profile, in_use: true, can: { edit: yes, delete: denied('profile_in_use') } };
+    const fixed = { ...profile, id: 'pf3', name: 'Fixed profile', can: { edit: yes, delete: denied('profile_in_use', false) } };
+    panel({ profiles: [used, fixed] });
+    const rows = await screen.findAllByTestId('profile-row');
+    expect(within(rows[0]!).getByTestId('profile-remove')).toBeDisabled();
+    expect(within(rows[0]!).getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'profile_in_use');
+    expect(within(rows[1]!).queryByTestId('profile-remove')).toBeNull();
+  });
 
   it('sends the reader to the packages while none has an award plan', () => {
     const props = panel({ packages: [unplannedPackage] });

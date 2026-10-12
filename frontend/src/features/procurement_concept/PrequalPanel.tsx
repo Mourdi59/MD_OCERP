@@ -20,6 +20,7 @@ import { fmtDate } from '@/shared/lib/formatters';
 import {
   confirmShortlist,
   deleteCandidate,
+  deleteProfile,
   deleteReference,
   downloadExport,
   type Capability,
@@ -35,7 +36,7 @@ import { refusalText, useCandidates, useRefusalToast } from './hooks';
 import { CANDIDATE_LIST, CANDIDATE_SOURCE, catalogueName, vocab, type LabelContext } from './labels';
 import { FIELD_CLASS, FindingList, Money, ReasonedButton, RefusalBox, ToneBadge } from './ProcurementBits';
 import { ProfileDialog } from './ProfileDialog';
-import { capVerdict, offer, steerVerdict } from './rules';
+import { capVerdict, notApplicable, offer, steerVerdict } from './rules';
 import type { BadgeVariant } from '@/shared/ui/Badge';
 
 const LIST_TONE: Record<CandidateList, BadgeVariant> = { long: 'neutral', short: 'success', excluded: 'error' };
@@ -100,6 +101,15 @@ export function PrequalPanel({
   const removeReference = useMutation({
     mutationFn: (r: { candidateId: string; referenceId: string }) => deleteReference(projectId, r.candidateId, r.referenceId),
     onSuccess: onChanged,
+    onError: toastRefusal,
+  });
+  const [removingProfile, setRemovingProfile] = useState<string | null>(null);
+  const removeProfile = useMutation({
+    mutationFn: (profileId: string) => deleteProfile(projectId, profileId),
+    onSuccess: () => {
+      setRemovingProfile(null);
+      onChanged();
+    },
     onError: toastRefusal,
   });
   const exportList = useMutation({
@@ -210,12 +220,70 @@ export function PrequalPanel({
                   </p>
                 )}
               </div>
-              <ReasonedButton size="sm" variant="secondary" icon={<Pencil size={14} />} verdict={profileVerdict} onClick={() => setOpen({ kind: 'profile' })} data-testid="profile-edit">
-                {matrix.profile
-                  ? t('procurement_concept.ui.prequal.edit_profile', { defaultValue: 'Change profile' })
-                  : t('procurement_concept.ui.prequal.new_profile', { defaultValue: 'Set up profile' })}
-              </ReasonedButton>
+              {!notApplicable(profileRow ? profileRow.can?.edit : profileCreate) && (
+                <ReasonedButton
+                  size="sm"
+                  variant="secondary"
+                  icon={<Pencil size={14} />}
+                  verdict={profileVerdict}
+                  onClick={() => setOpen({ kind: 'profile' })}
+                  data-testid="profile-edit"
+                >
+                  {matrix.profile
+                    ? t('procurement_concept.ui.prequal.edit_profile', { defaultValue: 'Change profile' })
+                    : t('procurement_concept.ui.prequal.new_profile', { defaultValue: 'Set up profile' })}
+                </ReasonedButton>
+              )}
             </div>
+            {profiles.length > 0 && (
+              <div className="mt-3 border-t border-border-light pt-2" data-testid="profile-list">
+                <h4 className="text-xs font-medium text-content-secondary">
+                  {t('procurement_concept.ui.prequal.profiles_title', { defaultValue: 'Profiles of this project' })}
+                </h4>
+                <ul className="mt-1 space-y-1">
+                  {profiles.map((p) => (
+                    <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm" data-testid="profile-row" data-profile={p.id}>
+                      <span className="text-content-primary">{p.name}</span>
+                      <span className="text-xs text-content-tertiary">
+                        {p.in_use
+                          ? t('procurement_concept.ui.prequal.profile_in_use', { defaultValue: 'In use' })
+                          : t('procurement_concept.ui.prequal.profile_unused', { defaultValue: 'Not used by any package' })}
+                      </span>
+                      {removingProfile === p.id ? (
+                        <span className="ml-auto flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-content-primary">
+                            {t('procurement_concept.ui.prequal.profile_remove_confirm', { defaultValue: 'Remove the profile {{name}}?', name: p.name })}
+                          </span>
+                          <Button size="sm" variant="danger" loading={removeProfile.isPending} onClick={() => removeProfile.mutate(p.id)} data-testid="profile-remove-yes">
+                            {t('procurement_concept.ui.remove', { defaultValue: 'Remove' })}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setRemovingProfile(null)}>
+                            {t('procurement_concept.ui.keep', { defaultValue: 'Not now' })}
+                          </Button>
+                        </span>
+                      ) : (
+                        !notApplicable(p.can?.delete) && (
+                          <span className="ml-auto">
+                            <ReasonedButton
+                              quiet
+                              size="sm"
+                              variant="ghost"
+                              verdict={capVerdict(p.can?.delete, 'permission_denied')}
+                              icon={<Trash2 size={14} />}
+                              aria-label={t('procurement_concept.ui.prequal.profile_remove', { defaultValue: 'Remove the profile {{name}}', name: p.name })}
+                              onClick={() => setRemovingProfile(p.id)}
+                              data-testid="profile-remove"
+                            >
+                              {null}
+                            </ReasonedButton>
+                          </span>
+                        )
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
 
           {matrix.items.length === 0 ? (

@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueries } from '@tanstack/react-query';
 import { AlertTriangle, MessageSquare, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
@@ -20,8 +20,10 @@ import type { BadgeVariant } from '@/shared/ui/Badge';
 import {
   createSounding,
   deleteSounding,
+  listCandidates,
   localToday,
   patchSounding,
+  procurementKeys,
   type Capability,
   type CapacitySignal,
   type MarketSounding,
@@ -32,7 +34,7 @@ import {
 import { useRefusalToast } from './hooks';
 import { CAPACITY, METHOD, PRICE, vocab, type LabelContext } from './labels';
 import { FIELD_CLASS, Field, ReasonedButton, RefusalBox, ToneBadge } from './ProcurementBits';
-import { capVerdict, soundingReady, soundingUnmitigated, toSoundingInput, type SoundingDraft } from './rules';
+import { capVerdict, notApplicable, soundingReady, soundingUnmitigated, toSoundingInput, type SoundingDraft } from './rules';
 
 const METHODS: SoundingMethod[] = ['meeting', 'survey', 'rfi', 'notice'];
 const CAPACITIES: CapacitySignal[] = ['ample', 'adequate', 'tight', 'insufficient'];
@@ -72,7 +74,7 @@ export function MarketSoundings({ projectId, soundings, can, packages, labels, o
     onError: toastRefusal,
   });
 
-  const addButton = (
+  const addButton = notApplicable(can?.create) ? undefined : (
     <ReasonedButton verdict={v('create')} icon={<Plus size={14} />} onClick={() => setEditing('new')} data-testid="sounding-add">
       {t('procurement_concept.ui.sounding.add', { defaultValue: 'Record a sounding' })}
     </ReasonedButton>
@@ -111,21 +113,25 @@ export function MarketSoundings({ projectId, soundings, can, packages, labels, o
                     </span>
                     {pkgCodes.length > 0 && <span className="font-mono text-xs text-content-tertiary">{fmtList(pkgCodes)}</span>}
                     <span className="ml-auto flex items-center gap-1.5">
-                      <ReasonedButton quiet verdict={v('edit')} size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setEditing(s)} data-testid="sounding-edit">
-                        {t('procurement_concept.ui.prequal.edit', { defaultValue: 'Change' })}
-                      </ReasonedButton>
-                      <ReasonedButton
-                        quiet
-                        verdict={v('delete')}
-                        size="sm"
-                        variant="ghost"
-                        icon={<Trash2 size={14} />}
-                        aria-label={t('procurement_concept.ui.sounding.remove', { defaultValue: 'Remove this sounding' })}
-                        onClick={() => setRemoving(s.id)}
-                        data-testid="sounding-remove"
-                      >
-                        {null}
-                      </ReasonedButton>
+                      {!notApplicable(can?.edit) && (
+                        <ReasonedButton quiet verdict={v('edit')} size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setEditing(s)} data-testid="sounding-edit">
+                          {t('procurement_concept.ui.prequal.edit', { defaultValue: 'Change' })}
+                        </ReasonedButton>
+                      )}
+                      {!notApplicable(can?.delete) && (
+                        <ReasonedButton
+                          quiet
+                          verdict={v('delete')}
+                          size="sm"
+                          variant="ghost"
+                          icon={<Trash2 size={14} />}
+                          aria-label={t('procurement_concept.ui.sounding.remove', { defaultValue: 'Remove this sounding' })}
+                          onClick={() => setRemoving(s.id)}
+                          data-testid="sounding-remove"
+                        >
+                          {null}
+                        </ReasonedButton>
+                      )}
                     </span>
                   </div>
                   <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
@@ -141,6 +147,12 @@ export function MarketSoundings({ projectId, soundings, can, packages, labels, o
                       <dt className="text-xs text-content-tertiary">{t('procurement_concept.ui.sounding.price', { defaultValue: 'Price level' })}</dt>
                       <dd className="text-content-primary">{vocab(labels.t, PRICE, s.price_signal)}</dd>
                     </div>
+                    {s.participant_candidate_ids.length > 0 && (
+                      <div className="flex items-center gap-1.5" data-testid="sounding-participants">
+                        <dt className="text-xs text-content-tertiary">{t('procurement_concept.ui.sounding.participants', { defaultValue: 'Companies asked' })}</dt>
+                        <dd className="text-content-primary">{s.participant_candidate_ids.length}</dd>
+                      </div>
+                    )}
                     {s.lead_time_signal_days !== null && (
                       <div className="flex items-center gap-1.5">
                         <dt className="text-xs text-content-tertiary">{t('procurement_concept.ui.sounding.lead_time', { defaultValue: 'Lead time' })}</dt>
@@ -233,15 +245,31 @@ function SoundingDialog({
     lead_time_signal_days: sounding?.lead_time_signal_days == null ? '' : String(sounding.lead_time_signal_days),
     mitigation: sounding?.mitigation ?? '',
     resplit: sounding?.resplit ?? false,
+    participant_candidate_ids: sounding?.participant_candidate_ids ?? [],
   });
   const set = <K extends keyof SoundingDraft>(key: K, value: SoundingDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const togglePackage = (id: string) =>
     set('package_ids', draft.package_ids.includes(id) ? draft.package_ids.filter((x) => x !== id) : [...draft.package_ids, id]);
   const planned = packages.filter((p) => p.award);
+  const stored = sounding?.participant_candidate_ids ?? [];
+  const picked = draft.participant_candidate_ids ?? [];
+  const toggleParticipant = (id: string) =>
+    set('participant_candidate_ids', picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]);
+  // The companies that can have taken part are the candidates of the packages the sounding concerns.
+  const candidateQs = useQueries({
+    queries: draft.package_ids.map((id) => ({
+      queryKey: procurementKeys.candidates(projectId, id),
+      queryFn: () => listCandidates(projectId, id),
+    })),
+  });
+  const candidates = candidateQs.flatMap((q) => q.data?.items ?? []);
+  const loadingCandidates = candidateQs.some((q) => q.isLoading);
+  // Named before, and not among the candidates listed now: kept until the reader takes it off.
+  const unlisted = picked.filter((id) => !candidates.some((c) => c.id === id));
 
   const save = useMutation({
     mutationFn: () =>
-      sounding ? patchSounding(projectId, sounding.id, toSoundingInput(draft)) : createSounding(projectId, toSoundingInput(draft)),
+      sounding ? patchSounding(projectId, sounding.id, toSoundingInput(draft, stored)) : createSounding(projectId, toSoundingInput(draft)),
     onSuccess: () => {
       onSaved();
       onClose();
@@ -312,6 +340,39 @@ function SoundingDialog({
             </div>
           </fieldset>
         )}
+        <fieldset data-testid="sounding-participant-picker">
+          <legend className="mb-1 text-xs font-medium text-content-secondary">
+            {t('procurement_concept.ui.sounding.participants', { defaultValue: 'Companies asked' })}
+          </legend>
+          {candidates.length === 0 && unlisted.length === 0 ? (
+            <p className="text-xs text-content-tertiary" data-testid="sounding-participants-none">
+              {loadingCandidates
+                ? t('procurement_concept.ui.sounding.participants_loading', { defaultValue: 'Looking up the candidates of these packages' })
+                : draft.package_ids.length === 0
+                  ? t('procurement_concept.ui.sounding.participants_pick_package', {
+                      defaultValue: 'Choose the packages the sounding concerns to name the companies that took part.',
+                    })
+                  : t('procurement_concept.ui.sounding.participants_none', {
+                      defaultValue: 'These packages have no candidates yet. Add the companies on the Prequalification tab first.',
+                    })}
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {candidates.map((c) => (
+                <label key={c.id} className="inline-flex items-center gap-1.5 text-sm text-content-primary" data-testid="sounding-participant">
+                  <input type="checkbox" checked={picked.includes(c.id)} onChange={() => toggleParticipant(c.id)} />
+                  {c.name}
+                </label>
+              ))}
+              {unlisted.map((id) => (
+                <label key={id} className="inline-flex items-center gap-1.5 text-sm text-content-secondary" data-testid="sounding-participant-kept">
+                  <input type="checkbox" checked onChange={() => toggleParticipant(id)} />
+                  {t('procurement_concept.ui.sounding.participant_kept', { defaultValue: 'A company named before' })}
+                </label>
+              ))}
+            </div>
+          )}
+        </fieldset>
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label={t('procurement_concept.ui.sounding.capacity', { defaultValue: 'Capacity' })} htmlFor="ms-capacity">
             <select

@@ -50,6 +50,8 @@ export type CallOffMode = 'direct' | 'mini_competition';
 export type PackageAction = 'hold' | 'resume' | 'cancel';
 export type ConceptAction = 'submit' | 'return';
 export type AdvanceReleaseKind = 'gate_decision' | 'condition';
+export type EvaluationMethod = 'lowest_price' | 'best_value';
+export type CostRefKind = 'boq_section';
 export type ExportPart = 'concept' | 'packages' | 'shortlist' | 'schedule';
 export type ExportFormat = 'pdf' | 'xlsx';
 
@@ -221,6 +223,18 @@ export interface TenderPackageOption {
   can: { link: Capability };
 }
 
+/** A bill of quantities section a package may name as the source of its scope lines. */
+export interface CostSection {
+  kind: CostRefKind;
+  id: string;
+  code: string;
+  title: string;
+  boq_id: string;
+  boq_name: string;
+  /** How many positions sit under the section, so how many scope lines the tender would get. */
+  positions: number;
+}
+
 /** A list that also says what the caller may do on it as a whole. */
 export type PageWithCan<T, K extends string> = Page<T> & { can: Record<K, Capability> };
 
@@ -249,7 +263,7 @@ export interface AwardPackage {
   procedure_code: string | null;
   tender_basis: TenderBasis | null;
   framework_agreement_id: string | null;
-  evaluation_method: 'lowest_price' | 'best_value';
+  evaluation_method: EvaluationMethod;
   need_date: string | null;
   lead_time_days: number | null;
   procedure_days: number | null;
@@ -262,6 +276,11 @@ export interface AwardPackage {
   /** The act of the release gate that releases this advance package (see `listAdvanceReleases`). */
   advance_release_kind?: AdvanceReleaseKind | null;
   advance_release_id?: string | null;
+  /** Award criteria and their weights in percent. Empty when none are set. */
+  evaluation_weights?: Record<string, string> | null;
+  /** The BOQ section whose positions become the scope lines of the tender. Set together or not at all. */
+  cost_ref_kind?: CostRefKind | null;
+  cost_ref_id?: string | null;
   /** Only on the board: the value the threshold is tested against when lots are added up. */
   aggregated_value?: string | null;
 }
@@ -323,6 +342,12 @@ export interface PackageInput {
   /** Set or cleared together, from one item of `listAdvanceReleases`. */
   advance_release_kind?: AdvanceReleaseKind | null;
   advance_release_id?: string | null;
+  evaluation_method?: EvaluationMethod;
+  /** `{criterion: percent}` as decimal strings, summing to 100. An empty object clears them; null is refused. */
+  evaluation_weights?: Record<string, string>;
+  /** Set or cleared together. */
+  cost_ref_kind?: CostRefKind | null;
+  cost_ref_id?: string | null;
 }
 
 export interface ProcedureOption {
@@ -447,6 +472,7 @@ export interface CandidateMatrix {
 
 export interface CandidateInput {
   subcontractor_id?: string | null;
+  vendor_id?: string | null;
   free_name?: string;
   source?: CandidateSource;
   list?: CandidateList;
@@ -499,6 +525,8 @@ export interface SoundingInput {
   lead_time_signal_days: number | null;
   mitigation: string;
   resplit: boolean;
+  /** The candidates that took part. Left out to keep the stored list: the server checks every id it is sent. */
+  participant_candidate_ids?: string[];
 }
 
 export interface ScheduleRow {
@@ -522,6 +550,12 @@ export interface ScheduleView extends Page<ScheduleRow> {
   release_gate_code: string | null;
 }
 
+/** One lot of a framework agreement: a part of its scope with its own name. */
+export interface FrameworkLot {
+  code?: string;
+  title?: string;
+}
+
 export interface Framework {
   id: string;
   code: string;
@@ -531,7 +565,7 @@ export interface Framework {
   supplier_name: string;
   scope: string;
   package_kinds: PackageKind[];
-  lots: Array<{ code?: string; title?: string }>;
+  lots: FrameworkLot[];
   max_value: string;
   currency: string;
   start_date: string;
@@ -555,6 +589,8 @@ export interface FrameworkInput {
   end_date: string;
   call_off_mode: CallOffMode;
   source_procedure_ref: string;
+  /** Left out of a change to keep the stored lots; an empty list removes them. */
+  lots?: FrameworkLot[];
 }
 
 export type FrameworkPatch = Partial<Omit<FrameworkInput, 'code' | 'currency' | 'start_date'>>;
@@ -636,6 +672,7 @@ export const procurementKeys = {
   gates: (projectId: string) => ['procurement-concept', projectId, 'gates'] as const,
   advanceReleases: (projectId: string) => ['procurement-concept', projectId, 'advance-releases'] as const,
   tenderPackages: (projectId: string) => ['procurement-concept', projectId, 'tender-packages'] as const,
+  costSections: (projectId: string) => ['procurement-concept', projectId, 'cost-refs'] as const,
   catalogues: ['procurement-concept-company', 'catalogues'] as const,
   frameworks: ['procurement-concept-company', 'frameworks'] as const,
   ledger: (frameworkId: string) => ['procurement-concept-company', 'ledger', frameworkId] as const,
@@ -707,6 +744,10 @@ export function linkExecution(projectId: string, packageId: string, tenderPackag
 
 export function listTenderPackages(projectId: string): Promise<Page<TenderPackageOption>> {
   return apiGet<Page<TenderPackageOption>>(`${p(projectId)}/tender-packages`);
+}
+
+export function listCostSections(projectId: string): Promise<Page<CostSection>> {
+  return apiGet<Page<CostSection>>(`${p(projectId)}/cost-refs`);
 }
 
 export function listGates(projectId: string): Promise<Page<GateOption>> {

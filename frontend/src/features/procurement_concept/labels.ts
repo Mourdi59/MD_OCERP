@@ -8,6 +8,7 @@
 // key test can enumerate them and a translator can find every key by grep.
 
 import type {
+  EvaluationMethod,
   CallOffMode,
   CandidateList,
   CandidateSource,
@@ -99,6 +100,11 @@ export const TENDER_BASIS: Record<TenderBasis, KeyText> = {
   detailed: ['procurement_concept.tender_basis.detailed', 'Detailed specification'],
   functional: ['procurement_concept.tender_basis.functional', 'Functional specification'],
   mixed: ['procurement_concept.tender_basis.mixed', 'Mixed'],
+};
+
+export const EVALUATION_METHOD: Record<EvaluationMethod, KeyText> = {
+  lowest_price: ['procurement_concept.ui.evaluation.lowest_price', 'Lowest price'],
+  best_value: ['procurement_concept.ui.evaluation.best_value', 'Best value: price and quality weighed'],
 };
 
 export const SPLIT_BASIS: Record<SplitBasis, KeyText> = {
