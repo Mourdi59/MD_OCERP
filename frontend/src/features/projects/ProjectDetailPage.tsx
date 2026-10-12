@@ -1859,6 +1859,15 @@ export function ProjectDetailPage() {
         <Button
           variant="ghost"
           size="sm"
+          icon={<Handshake size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/stakeholders`)}
+          data-testid="project-stakeholders-link"
+        >
+          {t('stakeholders.ui.title', { defaultValue: 'Stakeholders' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           icon={<Flag size={14} />}
           onClick={() => navigate(`/projects/${project.id}/governance`)}
           data-testid="project-governance-link"

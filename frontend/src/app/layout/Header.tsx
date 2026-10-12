@@ -298,6 +298,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Delivery model': 'delivery_model.ui.title',
   'Plant register': 'plant.nav.title',
   'Procurement concept': 'procurement_concept.nav.title',
+  'Stakeholders': 'stakeholders.ui.title',
   'Project governance': 'governance.project.title',
   // Learning & admin
   'Cases': 'nav.cases',

@@ -1,0 +1,1042 @@
+{
+  "id": "elf_module_framework",
+  "version": 1,
+  "name_key": "stakeholders.catalogue.framework.elf_module_framework",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [],
+  "default_method": "power_interest",
+  "feedback_due_days": 30,
+  "feedback_from_level": "consult",
+  "stakeholder_categories": [
+    {
+      "code": "investor",
+      "name_key": "stakeholders.catalogue.category.investor",
+      "kind": "internal",
+      "private_person": false
+    },
+    {
+      "code": "client",
+      "name_key": "stakeholders.catalogue.category.client",
+      "kind": "internal",
+      "private_person": false
+    },
+    {
+      "code": "user",
+      "name_key": "stakeholders.catalogue.category.user",
+      "kind": "internal",
+      "private_person": false
+    },
+    {
+      "code": "operator",
+      "name_key": "stakeholders.catalogue.category.operator",
+      "kind": "internal",
+      "private_person": false
+    },
+    {
+      "code": "municipality",
+      "name_key": "stakeholders.catalogue.category.municipality",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "permitting_authority",
+      "name_key": "stakeholders.catalogue.category.permitting_authority",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "specialist_authority",
+      "name_key": "stakeholders.catalogue.category.specialist_authority",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "grid_operator",
+      "name_key": "stakeholders.catalogue.category.grid_operator",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "utility",
+      "name_key": "stakeholders.catalogue.category.utility",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "neighbour",
+      "name_key": "stakeholders.catalogue.category.neighbour",
+      "kind": "external",
+      "private_person": true
+    },
+    {
+      "code": "public",
+      "name_key": "stakeholders.catalogue.category.public",
+      "kind": "external",
+      "private_person": true
+    },
+    {
+      "code": "interest_group",
+      "name_key": "stakeholders.catalogue.category.interest_group",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "media",
+      "name_key": "stakeholders.catalogue.category.media",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "politics",
+      "name_key": "stakeholders.catalogue.category.politics",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "funding_body",
+      "name_key": "stakeholders.catalogue.category.funding_body",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "lender",
+      "name_key": "stakeholders.catalogue.category.lender",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "insurer",
+      "name_key": "stakeholders.catalogue.category.insurer",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "landowner",
+      "name_key": "stakeholders.catalogue.category.landowner",
+      "kind": "external",
+      "private_person": false
+    },
+    {
+      "code": "designer",
+      "name_key": "stakeholders.catalogue.category.designer",
+      "kind": "internal",
+      "private_person": false
+    },
+    {
+      "code": "contractor",
+      "name_key": "stakeholders.catalogue.category.contractor",
+      "kind": "internal",
+      "private_person": false
+    },
+    {
+      "code": "other",
+      "name_key": "stakeholders.catalogue.category.other",
+      "kind": "external",
+      "private_person": false
+    }
+  ],
+  "analysis_methods": [
+    {
+      "code": "power_interest",
+      "name_key": "stakeholders.catalogue.method.power_interest",
+      "version": 1,
+      "dimensions": [
+        {
+          "code": "power",
+          "name_key": "stakeholders.catalogue.dimension.power",
+          "type": "int",
+          "min": 1,
+          "max": 5
+        },
+        {
+          "code": "interest",
+          "name_key": "stakeholders.catalogue.dimension.interest",
+          "type": "int",
+          "min": 1,
+          "max": 5
+        }
+      ],
+      "classes": [
+        {
+          "code": "manage_closely",
+          "name_key": "stakeholders.catalogue.class.manage_closely"
+        },
+        {
+          "code": "keep_satisfied",
+          "name_key": "stakeholders.catalogue.class.keep_satisfied"
+        },
+        {
+          "code": "keep_informed",
+          "name_key": "stakeholders.catalogue.class.keep_informed"
+        },
+        {
+          "code": "monitor",
+          "name_key": "stakeholders.catalogue.class.monitor"
+        }
+      ],
+      "rules": [
+        {
+          "when": {
+            "power": {
+              "gte": 3
+            },
+            "interest": {
+              "gte": 3
+            }
+          },
+          "classification": "manage_closely"
+        },
+        {
+          "when": {
+            "power": {
+              "gte": 3
+            }
+          },
+          "classification": "keep_satisfied"
+        },
+        {
+          "when": {
+            "interest": {
+              "gte": 3
+            }
+          },
+          "classification": "keep_informed"
+        }
+      ],
+      "default": "monitor"
+    },
+    {
+      "code": "salience",
+      "name_key": "stakeholders.catalogue.method.salience",
+      "version": 1,
+      "dimensions": [
+        {
+          "code": "power",
+          "name_key": "stakeholders.catalogue.dimension.power",
+          "type": "bool"
+        },
+        {
+          "code": "legitimacy",
+          "name_key": "stakeholders.catalogue.dimension.legitimacy",
+          "type": "bool"
+        },
+        {
+          "code": "urgency",
+          "name_key": "stakeholders.catalogue.dimension.urgency",
+          "type": "bool"
+        }
+      ],
+      "classes": [
+        {
+          "code": "definitive",
+          "name_key": "stakeholders.catalogue.class.definitive"
+        },
+        {
+          "code": "dominant",
+          "name_key": "stakeholders.catalogue.class.dominant"
+        },
+        {
+          "code": "dangerous",
+          "name_key": "stakeholders.catalogue.class.dangerous"
+        },
+        {
+          "code": "dependent",
+          "name_key": "stakeholders.catalogue.class.dependent"
+        },
+        {
+          "code": "dormant",
+          "name_key": "stakeholders.catalogue.class.dormant"
+        },
+        {
+          "code": "discretionary",
+          "name_key": "stakeholders.catalogue.class.discretionary"
+        },
+        {
+          "code": "demanding",
+          "name_key": "stakeholders.catalogue.class.demanding"
+        },
+        {
+          "code": "non_stakeholder",
+          "name_key": "stakeholders.catalogue.class.non_stakeholder"
+        }
+      ],
+      "rules": [
+        {
+          "when": {
+            "power": {
+              "eq": true
+            },
+            "legitimacy": {
+              "eq": true
+            },
+            "urgency": {
+              "eq": true
+            }
+          },
+          "classification": "definitive"
+        },
+        {
+          "when": {
+            "power": {
+              "eq": true
+            },
+            "legitimacy": {
+              "eq": true
+            }
+          },
+          "classification": "dominant"
+        },
+        {
+          "when": {
+            "power": {
+              "eq": true
+            },
+            "urgency": {
+              "eq": true
+            }
+          },
+          "classification": "dangerous"
+        },
+        {
+          "when": {
+            "legitimacy": {
+              "eq": true
+            },
+            "urgency": {
+              "eq": true
+            }
+          },
+          "classification": "dependent"
+        },
+        {
+          "when": {
+            "power": {
+              "eq": true
+            }
+          },
+          "classification": "dormant"
+        },
+        {
+          "when": {
+            "legitimacy": {
+              "eq": true
+            }
+          },
+          "classification": "discretionary"
+        },
+        {
+          "when": {
+            "urgency": {
+              "eq": true
+            }
+          },
+          "classification": "demanding"
+        }
+      ],
+      "default": "non_stakeholder",
+      "source_url": "https://www.jstor.org/stable/259247"
+    },
+    {
+      "code": "engagement_level",
+      "name_key": "stakeholders.catalogue.method.engagement_level",
+      "version": 1,
+      "dimensions": [
+        {
+          "code": "current",
+          "name_key": "stakeholders.catalogue.dimension.current",
+          "type": "int",
+          "min": 0,
+          "max": 4
+        },
+        {
+          "code": "desired",
+          "name_key": "stakeholders.catalogue.dimension.desired",
+          "type": "int",
+          "min": 0,
+          "max": 4
+        }
+      ],
+      "classes": [],
+      "rules": [],
+      "default": null
+    },
+    {
+      "code": "attitude",
+      "name_key": "stakeholders.catalogue.method.attitude",
+      "version": 1,
+      "dimensions": [
+        {
+          "code": "attitude",
+          "name_key": "stakeholders.catalogue.dimension.attitude",
+          "type": "int",
+          "min": -2,
+          "max": 2
+        }
+      ],
+      "classes": [
+        {
+          "code": "supportive",
+          "name_key": "stakeholders.catalogue.class.supportive"
+        },
+        {
+          "code": "neutral",
+          "name_key": "stakeholders.catalogue.class.neutral"
+        },
+        {
+          "code": "resistant",
+          "name_key": "stakeholders.catalogue.class.resistant"
+        }
+      ],
+      "rules": [
+        {
+          "when": {
+            "attitude": {
+              "gte": 1
+            }
+          },
+          "classification": "supportive"
+        },
+        {
+          "when": {
+            "attitude": {
+              "lte": -1
+            }
+          },
+          "classification": "resistant"
+        }
+      ],
+      "default": "neutral"
+    },
+    {
+      "code": "influence",
+      "name_key": "stakeholders.catalogue.method.influence",
+      "version": 1,
+      "dimensions": [
+        {
+          "code": "influence",
+          "name_key": "stakeholders.catalogue.dimension.influence",
+          "type": "int",
+          "min": 1,
+          "max": 5
+        }
+      ],
+      "classes": [
+        {
+          "code": "high",
+          "name_key": "stakeholders.catalogue.class.high"
+        },
+        {
+          "code": "medium",
+          "name_key": "stakeholders.catalogue.class.medium"
+        },
+        {
+          "code": "low",
+          "name_key": "stakeholders.catalogue.class.low"
+        }
+      ],
+      "rules": [
+        {
+          "when": {
+            "influence": {
+              "gte": 4
+            }
+          },
+          "classification": "high"
+        },
+        {
+          "when": {
+            "influence": {
+              "gte": 2
+            }
+          },
+          "classification": "medium"
+        }
+      ],
+      "default": "low"
+    }
+  ],
+  "engagement_levels": [
+    {
+      "code": "unaware",
+      "name_key": "stakeholders.catalogue.engagement_level.unaware",
+      "order": 0
+    },
+    {
+      "code": "resistant",
+      "name_key": "stakeholders.catalogue.engagement_level.resistant",
+      "order": 1
+    },
+    {
+      "code": "neutral",
+      "name_key": "stakeholders.catalogue.engagement_level.neutral",
+      "order": 2
+    },
+    {
+      "code": "supportive",
+      "name_key": "stakeholders.catalogue.engagement_level.supportive",
+      "order": 3
+    },
+    {
+      "code": "leading",
+      "name_key": "stakeholders.catalogue.engagement_level.leading",
+      "order": 4
+    }
+  ],
+  "participation_levels": [
+    {
+      "code": "inform",
+      "name_key": "stakeholders.catalogue.participation_level.inform",
+      "order": 0,
+      "promise_key": "stakeholders.catalogue.participation_promise.inform"
+    },
+    {
+      "code": "consult",
+      "name_key": "stakeholders.catalogue.participation_level.consult",
+      "order": 1,
+      "promise_key": "stakeholders.catalogue.participation_promise.consult"
+    },
+    {
+      "code": "involve",
+      "name_key": "stakeholders.catalogue.participation_level.involve",
+      "order": 2,
+      "promise_key": "stakeholders.catalogue.participation_promise.involve"
+    },
+    {
+      "code": "collaborate",
+      "name_key": "stakeholders.catalogue.participation_level.collaborate",
+      "order": 3,
+      "promise_key": "stakeholders.catalogue.participation_promise.collaborate"
+    },
+    {
+      "code": "empower",
+      "name_key": "stakeholders.catalogue.participation_level.empower",
+      "order": 4,
+      "promise_key": "stakeholders.catalogue.participation_promise.empower"
+    }
+  ],
+  "channels": [
+    {
+      "code": "letter",
+      "name_key": "stakeholders.catalogue.channel.letter"
+    },
+    {
+      "code": "email",
+      "name_key": "stakeholders.catalogue.channel.email"
+    },
+    {
+      "code": "portal",
+      "name_key": "stakeholders.catalogue.channel.portal"
+    },
+    {
+      "code": "newsletter",
+      "name_key": "stakeholders.catalogue.channel.newsletter"
+    },
+    {
+      "code": "website",
+      "name_key": "stakeholders.catalogue.channel.website"
+    },
+    {
+      "code": "meeting",
+      "name_key": "stakeholders.catalogue.channel.meeting"
+    },
+    {
+      "code": "site_visit",
+      "name_key": "stakeholders.catalogue.channel.site_visit"
+    },
+    {
+      "code": "public_hearing",
+      "name_key": "stakeholders.catalogue.channel.public_hearing"
+    },
+    {
+      "code": "information_evening",
+      "name_key": "stakeholders.catalogue.channel.information_evening"
+    },
+    {
+      "code": "workshop",
+      "name_key": "stakeholders.catalogue.channel.workshop"
+    },
+    {
+      "code": "hotline",
+      "name_key": "stakeholders.catalogue.channel.hotline"
+    },
+    {
+      "code": "social_media",
+      "name_key": "stakeholders.catalogue.channel.social_media"
+    },
+    {
+      "code": "press_release",
+      "name_key": "stakeholders.catalogue.channel.press_release"
+    },
+    {
+      "code": "notice_board",
+      "name_key": "stakeholders.catalogue.channel.notice_board"
+    }
+  ],
+  "participation_formats": [
+    {
+      "code": "neighbour_information",
+      "name_key": "stakeholders.catalogue.format.neighbour_information",
+      "default_level": "inform",
+      "default_channels": [
+        "letter",
+        "notice_board",
+        "information_evening"
+      ],
+      "statutory_refs": []
+    },
+    {
+      "code": "public_information_evening",
+      "name_key": "stakeholders.catalogue.format.public_information_evening",
+      "default_level": "consult",
+      "default_channels": [
+        "information_evening",
+        "website"
+      ],
+      "statutory_refs": []
+    },
+    {
+      "code": "stakeholder_workshop",
+      "name_key": "stakeholders.catalogue.format.stakeholder_workshop",
+      "default_level": "involve",
+      "default_channels": [
+        "workshop"
+      ],
+      "statutory_refs": []
+    },
+    {
+      "code": "site_tour",
+      "name_key": "stakeholders.catalogue.format.site_tour",
+      "default_level": "inform",
+      "default_channels": [
+        "site_visit"
+      ],
+      "statutory_refs": []
+    },
+    {
+      "code": "authority_coordination_meeting",
+      "name_key": "stakeholders.catalogue.format.authority_coordination_meeting",
+      "default_level": "consult",
+      "default_channels": [
+        "meeting"
+      ],
+      "statutory_refs": []
+    },
+    {
+      "code": "steering_committee_briefing",
+      "name_key": "stakeholders.catalogue.format.steering_committee_briefing",
+      "default_level": "inform",
+      "default_channels": [
+        "meeting"
+      ],
+      "statutory_refs": []
+    },
+    {
+      "code": "community_hotline",
+      "name_key": "stakeholders.catalogue.format.community_hotline",
+      "default_level": "consult",
+      "default_channels": [
+        "hotline",
+        "email"
+      ],
+      "statutory_refs": []
+    },
+    {
+      "code": "public_hearing_notice",
+      "name_key": "stakeholders.catalogue.format.public_hearing_notice",
+      "default_level": "consult",
+      "default_channels": [
+        "public_hearing",
+        "notice_board",
+        "website"
+      ],
+      "statutory_refs": [
+        {
+          "jurisdiction": "US",
+          "ref": "NEPA public involvement (agency procedures)",
+          "url": "https://ceq.doe.gov",
+          "review_status": "unconfirmed"
+        }
+      ]
+    }
+  ],
+  "roles": [
+    {
+      "code": "investor",
+      "name_key": "stakeholders.catalogue.role.investor",
+      "holder_kind": "organisation",
+      "multi": false,
+      "required": false
+    },
+    {
+      "code": "client",
+      "name_key": "stakeholders.catalogue.role.client",
+      "holder_kind": "organisation",
+      "multi": false,
+      "required": true
+    },
+    {
+      "code": "client_pm",
+      "name_key": "stakeholders.catalogue.role.client_pm",
+      "holder_kind": "person",
+      "multi": false,
+      "required": true
+    },
+    {
+      "code": "user_representative",
+      "name_key": "stakeholders.catalogue.role.user_representative",
+      "holder_kind": "person",
+      "multi": true,
+      "required": false
+    },
+    {
+      "code": "operator",
+      "name_key": "stakeholders.catalogue.role.operator",
+      "holder_kind": "organisation",
+      "multi": false,
+      "required": false
+    },
+    {
+      "code": "project_manager",
+      "name_key": "stakeholders.catalogue.role.project_manager",
+      "holder_kind": "person",
+      "multi": false,
+      "required": true
+    },
+    {
+      "code": "project_controller",
+      "name_key": "stakeholders.catalogue.role.project_controller",
+      "holder_kind": "person",
+      "multi": false,
+      "required": false
+    },
+    {
+      "code": "site_supervisor",
+      "name_key": "stakeholders.catalogue.role.site_supervisor",
+      "holder_kind": "person",
+      "multi": false,
+      "required": false
+    },
+    {
+      "code": "lead_designer",
+      "name_key": "stakeholders.catalogue.role.lead_designer",
+      "holder_kind": "person",
+      "multi": false,
+      "required": false
+    },
+    {
+      "code": "communications_lead",
+      "name_key": "stakeholders.catalogue.role.communications_lead",
+      "holder_kind": "person",
+      "multi": false,
+      "required": false
+    }
+  ],
+  "body_types": [
+    {
+      "code": "steering_committee",
+      "name_key": "stakeholders.catalogue.body_type.steering_committee",
+      "default_decision_level": 3
+    },
+    {
+      "code": "project_board",
+      "name_key": "stakeholders.catalogue.body_type.project_board",
+      "default_decision_level": 2
+    },
+    {
+      "code": "user_board",
+      "name_key": "stakeholders.catalogue.body_type.user_board",
+      "default_decision_level": 1
+    },
+    {
+      "code": "design_board",
+      "name_key": "stakeholders.catalogue.body_type.design_board",
+      "default_decision_level": 1
+    },
+    {
+      "code": "change_board",
+      "name_key": "stakeholders.catalogue.body_type.change_board",
+      "default_decision_level": 2
+    },
+    {
+      "code": "supervisory_board",
+      "name_key": "stakeholders.catalogue.body_type.supervisory_board",
+      "default_decision_level": 4
+    }
+  ],
+  "decision_types": [
+    {
+      "code": "order_award",
+      "name_key": "stakeholders.catalogue.decision_type.order_award",
+      "commitment_type": "works",
+      "approval_target_kind": "commitment_release",
+      "required": true,
+      "forbid_self_approval": true
+    },
+    {
+      "code": "design_decision",
+      "name_key": "stakeholders.catalogue.decision_type.design_decision",
+      "commitment_type": null,
+      "approval_target_kind": null,
+      "required": true,
+      "forbid_self_approval": false
+    },
+    {
+      "code": "user_change",
+      "name_key": "stakeholders.catalogue.decision_type.user_change",
+      "commitment_type": null,
+      "approval_target_kind": null,
+      "required": false,
+      "forbid_self_approval": false
+    },
+    {
+      "code": "scope_change",
+      "name_key": "stakeholders.catalogue.decision_type.scope_change",
+      "commitment_type": "change",
+      "approval_target_kind": null,
+      "required": true,
+      "forbid_self_approval": true
+    },
+    {
+      "code": "schedule_change",
+      "name_key": "stakeholders.catalogue.decision_type.schedule_change",
+      "commitment_type": null,
+      "approval_target_kind": null,
+      "required": false,
+      "forbid_self_approval": false
+    },
+    {
+      "code": "budget_release",
+      "name_key": "stakeholders.catalogue.decision_type.budget_release",
+      "commitment_type": "contingency_drawdown",
+      "approval_target_kind": "commitment_release",
+      "required": true,
+      "forbid_self_approval": true
+    },
+    {
+      "code": "claim_settlement",
+      "name_key": "stakeholders.catalogue.decision_type.claim_settlement",
+      "commitment_type": "claim_settlement",
+      "approval_target_kind": null,
+      "required": false,
+      "forbid_self_approval": true
+    },
+    {
+      "code": "gate_decision",
+      "name_key": "stakeholders.catalogue.decision_type.gate_decision",
+      "commitment_type": null,
+      "approval_target_kind": "phase_gate",
+      "required": true,
+      "forbid_self_approval": true
+    },
+    {
+      "code": "stakeholder_commitment",
+      "name_key": "stakeholders.catalogue.decision_type.stakeholder_commitment",
+      "commitment_type": null,
+      "approval_target_kind": "stakeholder_commitment",
+      "required": true,
+      "forbid_self_approval": false
+    },
+    {
+      "code": "communication_release",
+      "name_key": "stakeholders.catalogue.decision_type.communication_release",
+      "commitment_type": null,
+      "approval_target_kind": null,
+      "required": false,
+      "forbid_self_approval": false
+    }
+  ],
+  "mandate_template": [
+    {
+      "decision_type": "order_award",
+      "holder_kind": "role",
+      "holder_code": "project_manager",
+      "letter": "P"
+    },
+    {
+      "decision_type": "order_award",
+      "holder_kind": "role",
+      "holder_code": "client",
+      "letter": "D"
+    },
+    {
+      "decision_type": "order_award",
+      "holder_kind": "role",
+      "holder_code": "project_controller",
+      "letter": "C"
+    },
+    {
+      "decision_type": "order_award",
+      "holder_kind": "body",
+      "holder_code": "steering_committee",
+      "letter": "I"
+    },
+    {
+      "decision_type": "design_decision",
+      "holder_kind": "role",
+      "holder_code": "lead_designer",
+      "letter": "P"
+    },
+    {
+      "decision_type": "design_decision",
+      "holder_kind": "role",
+      "holder_code": "client_pm",
+      "letter": "D"
+    },
+    {
+      "decision_type": "design_decision",
+      "holder_kind": "role",
+      "holder_code": "user_representative",
+      "letter": "C"
+    },
+    {
+      "decision_type": "design_decision",
+      "holder_kind": "role",
+      "holder_code": "project_manager",
+      "letter": "I"
+    },
+    {
+      "decision_type": "user_change",
+      "holder_kind": "role",
+      "holder_code": "user_representative",
+      "letter": "P"
+    },
+    {
+      "decision_type": "user_change",
+      "holder_kind": "role",
+      "holder_code": "client_pm",
+      "letter": "D"
+    },
+    {
+      "decision_type": "user_change",
+      "holder_kind": "role",
+      "holder_code": "project_manager",
+      "letter": "C"
+    },
+    {
+      "decision_type": "scope_change",
+      "holder_kind": "role",
+      "holder_code": "project_manager",
+      "letter": "P"
+    },
+    {
+      "decision_type": "scope_change",
+      "holder_kind": "body",
+      "holder_code": "steering_committee",
+      "letter": "D"
+    },
+    {
+      "decision_type": "scope_change",
+      "holder_kind": "role",
+      "holder_code": "project_controller",
+      "letter": "C"
+    },
+    {
+      "decision_type": "schedule_change",
+      "holder_kind": "role",
+      "holder_code": "project_manager",
+      "letter": "P"
+    },
+    {
+      "decision_type": "schedule_change",
+      "holder_kind": "role",
+      "holder_code": "client_pm",
+      "letter": "D"
+    },
+    {
+      "decision_type": "schedule_change",
+      "holder_kind": "role",
+      "holder_code": "project_controller",
+      "letter": "I"
+    },
+    {
+      "decision_type": "budget_release",
+      "holder_kind": "role",
+      "holder_code": "project_controller",
+      "letter": "P"
+    },
+    {
+      "decision_type": "budget_release",
+      "holder_kind": "role",
+      "holder_code": "client",
+      "letter": "D"
+    },
+    {
+      "decision_type": "budget_release",
+      "holder_kind": "role",
+      "holder_code": "project_manager",
+      "letter": "I"
+    },
+    {
+      "decision_type": "claim_settlement",
+      "holder_kind": "role",
+      "holder_code": "project_manager",
+      "letter": "P"
+    },
+    {
+      "decision_type": "claim_settlement",
+      "holder_kind": "role",
+      "holder_code": "client",
+      "letter": "D"
+    },
+    {
+      "decision_type": "claim_settlement",
+      "holder_kind": "role",
+      "holder_code": "project_controller",
+      "letter": "C"
+    },
+    {
+      "decision_type": "gate_decision",
+      "holder_kind": "role",
+      "holder_code": "project_manager",
+      "letter": "P"
+    },
+    {
+      "decision_type": "gate_decision",
+      "holder_kind": "body",
+      "holder_code": "steering_committee",
+      "letter": "D"
+    },
+    {
+      "decision_type": "gate_decision",
+      "holder_kind": "role",
+      "holder_code": "project_controller",
+      "letter": "C"
+    },
+    {
+      "decision_type": "stakeholder_commitment",
+      "holder_kind": "role",
+      "holder_code": "project_manager",
+      "letter": "P"
+    },
+    {
+      "decision_type": "stakeholder_commitment",
+      "holder_kind": "role",
+      "holder_code": "client_pm",
+      "letter": "D"
+    },
+    {
+      "decision_type": "stakeholder_commitment",
+      "holder_kind": "role",
+      "holder_code": "communications_lead",
+      "letter": "C"
+    },
+    {
+      "decision_type": "communication_release",
+      "holder_kind": "role",
+      "holder_code": "communications_lead",
+      "letter": "P"
+    },
+    {
+      "decision_type": "communication_release",
+      "holder_kind": "role",
+      "holder_code": "client_pm",
+      "letter": "D"
+    },
+    {
+      "decision_type": "communication_release",
+      "holder_kind": "role",
+      "holder_code": "project_manager",
+      "letter": "C"
+    }
+  ]
+}

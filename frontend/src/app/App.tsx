@@ -87,6 +87,9 @@ const PlantRegisterPage = lazy(() =>
 const ProcurementConceptPage = lazy(() =>
   import('@/features/procurement_concept/ProcurementConceptPage').then((m) => ({ default: m.ProcurementConceptPage }))
 );
+const StakeholdersPage = lazy(() =>
+  import('@/features/stakeholders/StakeholdersPage').then((m) => ({ default: m.StakeholdersPage }))
+);
 const ProjectGovernancePage = lazy(() =>
   import('@/features/project_governance/ProjectGovernancePage').then((m) => ({ default: m.ProjectGovernancePage }))
 );
@@ -1463,6 +1466,8 @@ export default function App() {
         <Route path="/projects/:projectId/delivery" element={<P title="Delivery model"><DeliveryModelPage /></P>} />
         <Route path="/projects/:projectId/plant-register" element={<P title="Plant register"><PlantRegisterPage /></P>} />
         <Route path="/projects/:projectId/procurement-concept" element={<P title="Procurement concept"><ProcurementConceptPage /></P>} />
+        <Route path="/projects/:projectId/stakeholders" element={<P title="Stakeholders"><StakeholdersPage /></P>} />
+        <Route path="/projects/:projectId/stakeholders/:section" element={<P title="Stakeholders"><StakeholdersPage /></P>} />
         <Route path="/projects/:projectId/governance" element={<P title="Project governance"><ProjectGovernancePage /></P>} />
         <Route path="/projects/:projectId/cde" element={<P title="CDE"><CDEPage /></P>} />
         <Route path="/cde" element={<P title="CDE"><CDEPage /></P>} />

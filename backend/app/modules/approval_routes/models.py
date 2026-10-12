@@ -83,6 +83,10 @@ TARGET_KINDS: tuple[str, ...] = (
     # release of a drawing set when the project runs four-eyes releases.
     "design_approval_point",
     "design_release",
+    # Stakeholders: agreeing or withdrawing a commitment to a stakeholder when
+    # the pinned framework routes that decision through an approval. The
+    # stakeholders module starts the instance and applies its terminal verdict.
+    "stakeholder_commitment",
 )
 
 # Aggregation mode at a single step when the approver_role expands to
