@@ -15,7 +15,7 @@ from app.modules.design_management.errors import DesignError
 from app.modules.design_management.models import DesignDrawing, DesignNumberCounter
 from app.modules.design_management.service import DesignService
 from tests._pg import isolated_engine
-from tests.pg.design_fixtures import DesignWorld, build_design_world, drawing_with_revision
+from tests.pg.design_fixtures import DesignWorld, approved_release, build_design_world, drawing_with_revision
 
 pytestmark = pytest.mark.asyncio
 

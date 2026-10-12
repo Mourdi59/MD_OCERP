@@ -8,8 +8,9 @@ when the project has none), the design team as roles with originator codes,
 approval points and a design schedule along the phases of the project's
 pinned governance model (pinned here through module 1's own country default
 when governance has not pinned one), drawings numbered by the generator with
-revisions at different suitability, a distribution matrix, a draft release,
-an internal review with comments, the expert reports the catalogue lists and
+revisions at different suitability, a distribution matrix, the two approval
+routes, a release a second person prepared and that waits for the demo user's
+approval, a draft release, an internal review with comments, the expert reports the catalogue lists and
 a permit package being assembled.
 
 No names of real companies or people: roles are titled by function. Only
@@ -22,6 +23,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
+from typing import Any
 from collections.abc import Iterable
 
 from sqlalchemy import select
@@ -47,12 +49,10 @@ async def seed_design_management_demo(session: AsyncSession, project_ids: Iterab
         has = (await session.execute(select(DesignSetup.id).where(DesignSetup.project_id == pid))).scalar_one_or_none()
         if has is not None:
             continue
-        try:
-            async with session.begin_nested():
-                counts = await _seed_project(session, pid)
-        except Exception:
-            logger.warning("design_management demo seed skipped for %s", pid, exc_info=True)
-            continue
+        # No blanket except: a seed that cannot finish is a defect to see, not a project to skip
+        # quietly. The savepoint keeps a half-seeded project out; the caller logs and reports.
+        async with session.begin_nested():
+            counts = await _seed_project(session, pid)
         totals["projects"] += 1
         for k, v in counts.items():
             totals[k] += v
@@ -78,9 +78,53 @@ async def _ensure_phase_model(session: AsyncSession, project) -> None:
     )
 
 
-def _phase_value(scheme_id: str, phase_code: str) -> str:
-    m = re.fullmatch(r"lph(\d)", phase_code or "")
-    return f"LPH{m.group(1)}" if m else "LPH5"
+def _example(scheme: Any, field: str, meaning: str) -> str | None:
+    """The scheme's own illustrative value of a field; ``None`` when the scheme has no such field."""
+    return scheme.examples.get(field, {}).get(meaning) if scheme.field(field) is not None else None
+
+
+def _phase_value(scheme: Any, phase_code: str) -> str | None:
+    """The scheme's code for a governance phase: the listed code of the same name, else its example."""
+    field = scheme.field("phase")
+    if field is None:
+        return None
+    by_name = {c.casefold(): c for c in field.codes() or ()}
+    return by_name.get((phase_code or "").casefold()) or _example(scheme, "phase", "default")
+
+
+async def _second_person(session: AsyncSession, owner_id: uuid.UUID) -> uuid.UUID | None:
+    """Another demo login, so four-eyes has a second pair of eyes. Never a real account."""
+    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS
+    from app.modules.users.models import User
+
+    stmt = (
+        select(User.id)
+        .where(User.email.in_(DEMO_ACCOUNT_EMAILS), User.id != owner_id, User.is_active.is_(True))
+        .order_by(User.email.desc())
+    )
+    return (await session.execute(stmt)).scalars().first()
+
+
+async def _routes(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID, second: uuid.UUID) -> None:
+    """One approval route per design target kind, each decided by the person who did not prepare."""
+    from app.modules.approval_routes.schemas import RouteCreate, StepCreate
+    from app.modules.approval_routes.service import ApprovalRouteService
+
+    for kind, name, approver in (
+        # The demo user submits approval points, so the second person decides them.
+        ("design_approval_point", "Design approval point sign-off", second),
+        # The second person prepares the release, so the demo user approves and issues it.
+        ("design_release", "Design release sign-off", owner),
+    ):
+        await ApprovalRouteService(session).create_route(
+            RouteCreate(
+                project_id=project_id,
+                name=name,
+                target_kind=kind,
+                steps=[StepCreate(ordinal=1, approver_user_id=approver, mode="any")],
+            ),
+            created_by=owner,
+        )
 
 
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
@@ -119,8 +163,11 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         wbs = await svc.wbs_rows(project_id)
     wbs_leaf = next((w for w in wbs if not (w.metadata_ or {}).get("closed")), None)
 
-    de = scheme.id == "de_planschluessel"
-    disc = {"arch": "AR" if de else "A", "struct": "TW" if de else "S", "mep": "HL" if de else "M"}
+    disc = {
+        "arch": _example(scheme, "discipline", "architecture"),
+        "struct": _example(scheme, "discipline", "structure"),
+        "mep": _example(scheme, "discipline", "building_services"),
+    }
     roles = {}
     for key, title, kind, orig in (
         ("owner", "Owner's design manager", "owner", None),
@@ -180,24 +227,23 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     cde = CDEService(session)
     drawing_rows = []
     for title, role, dl, phase, form, spatial, sheet_type, suit in (
-        ("Ground floor plan", "arch", "DL-001", p_early, "GR" if de else "DR", "EG" if de else "00", "1", "S3"),
-        ("Section A-A", "arch", "DL-001", p_early, "SC" if de else "DR", "EG" if de else "ZZ", "3", "S4"),
-        ("Foundation layout", "struct", "DL-002", p_early, "GR" if de else "DR", "UG" if de else "B1", "1", "S2"),
-        ("Site plan for the permit", "arch", "DL-003", p_mid, "LP" if de else "DR", "EG" if de else "ZZ", "0", "A4"),
-        ("Elevations for the permit", "arch", "DL-003", p_mid, "AN" if de else "DR", "EG" if de else "ZZ", "2", "S0"),
-        ("Ventilation ground floor", "mep", "DL-004", p_late, "GR" if de else "DR", "EG" if de else "00", "1", "S0"),
+        ("Ground floor plan", "arch", "DL-001", p_early, "plan", "ground", "plan", "S3"),
+        ("Section A-A", "arch", "DL-001", p_early, "section", "whole", "section", "S4"),
+        ("Foundation layout", "struct", "DL-002", p_early, "plan", "basement", "plan", "S2"),
+        ("Site plan for the permit", "arch", "DL-003", p_mid, "site_plan", "whole", "general", "A4"),
+        ("Elevations for the permit", "arch", "DL-003", p_mid, "elevation", "whole", "elevation", "S0"),
+        ("Ventilation ground floor", "mep", "DL-004", p_late, "plan", "ground", "plan", "S0"),
     ):
-        fields = {
-            "project": (project.project_code or "DEMO").upper()[:6]
-            if len(project.project_code or "DEMO") >= 2
-            else "DEMO",
-            "functional": "ZZ",
-            "spatial": spatial,
-            "form": form,
-            "custom_sheet_type": sheet_type,
-            "phase": _phase_value(scheme.id, phase),
+        project_code = re.sub(r"[^A-Z0-9]", "", (project.project_code or "").upper())[:6]
+        values = {
+            "project": project_code if len(project_code) >= 2 else "DEMO",
+            "functional": _example(scheme, "functional", "whole"),
+            "spatial": _example(scheme, "spatial", spatial),
+            "form": _example(scheme, "form", form),
+            "custom_sheet_type": _example(scheme, "custom_sheet_type", sheet_type),
+            "phase": _phase_value(scheme, phase),
         }
-        fields["project"] = re.sub(r"[^A-Z0-9]", "", fields["project"]) or "DEMO"
+        fields = {k: v for k, v in values.items() if v is not None}
         drawing, container = await svc.create_drawing(
             project_id,
             {
@@ -228,12 +274,12 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
 
     await svc.create_dist_rule(
         project_id,
-        {"recipient_role_id": roles["owner"].id, "purpose": "for_information", "min_suitability": "S2"},
+        {"recipient_role_id": roles["owner"].id, "min_suitability": "S2"},
         actor_id=actor,
     )
     await svc.create_dist_rule(
         project_id,
-        {"recipient_role_id": roles["struct"].id, "discipline_codes": [disc["arch"]], "purpose": "for_review"},
+        {"recipient_role_id": roles["struct"].id, "discipline_codes": [disc["arch"]]},
         actor_id=actor,
     )
     await svc.create_dist_rule(
@@ -242,8 +288,23 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         actor_id=actor,
     )
     shared = [r.id for _d, c, r in drawing_rows if c.cde_state != "wip"]
+    second = await _second_person(session, actor)
+    if second is not None:
+        # Prepared and marked ready by the second person: the demo user approves it and issues it.
+        await _routes(session, project_id, actor, second)
+        concept = await svc.create_release(
+            project_id, {"code": "REL-001", "title": "Concept issue", "revision_ids": shared[:3]}, actor_id=second
+        )
+        await svc.release_transition(project_id, concept.id, "ready", actor_id=second)
+    else:
+        # A single-user install has nobody to approve: four-eyes off, so the release can still be issued.
+        setup.four_eyes_release = False
+        concept = await svc.create_release(
+            project_id, {"code": "REL-001", "title": "Concept issue", "revision_ids": shared[:3]}, actor_id=actor
+        )
+        await svc.release_transition(project_id, concept.id, "ready", actor_id=actor)
     await svc.create_release(
-        project_id, {"code": "REL-001", "title": "Concept issue", "revision_ids": shared[:3]}, actor_id=actor
+        project_id, {"code": "REL-002", "title": "Permit drawings", "revision_ids": shared[3:]}, actor_id=actor
     )
 
     review = await svc.create_review(

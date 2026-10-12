@@ -287,9 +287,7 @@ def test_migration_columns_and_names_match_the_models() -> None:
         model_uq = {c.name for c in table.constraints if isinstance(c, UniqueConstraint)}
         assert mig_uq == model_uq, table.name
         partial = {n: (cols, where) for n, t, cols, where in mig._PARTIAL_UNIQUE if t == table.name}
-        assert {n for n, _ in idx} | set(partial) == {i.name for i in table.indexes if isinstance(i, Index)}, (
-            table.name
-        )
+        assert {n for n, _ in idx} | set(partial) == {i.name for i in table.indexes if isinstance(i, Index)}, table.name
         for index in table.indexes:
             if index.name in partial:
                 cols, where = partial[index.name]

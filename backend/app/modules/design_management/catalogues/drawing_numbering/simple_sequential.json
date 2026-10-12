@@ -27,5 +27,12 @@
     {
       "code": "revision"
     }
-  ]
+  ],
+  "examples": {
+    "discipline": {
+      "architecture": "A",
+      "structure": "S",
+      "building_services": "M"
+    }
+  }
 }

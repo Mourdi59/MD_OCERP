@@ -57,7 +57,7 @@ def test_every_body_key_of_a_not_null_column_refuses_null(schema) -> None:
 
 @pytest.mark.parametrize("schema", [*_BODY_OF, sc.WbsPatch], ids=lambda s: s.__name__)
 def test_an_explicit_null_on_a_not_null_key_is_a_validation_error(schema) -> None:
-    assert schema.NOT_NULL <= set(schema.model_fields)
+    assert set(schema.model_fields) >= schema.NOT_NULL
     for key in sorted(schema.NOT_NULL):
         with pytest.raises(ValidationError) as err:
             schema.model_validate({key: None})
@@ -292,7 +292,9 @@ async def test_without_a_design_setup_the_provider_has_nothing_to_say(monkeypatc
 @pytest.mark.asyncio
 async def test_design_data_without_a_hosting_area_is_unknown_once_not_silent(monkeypatch) -> None:
     items = await _evidence(monkeypatch, setup=object(), host=None, area="a")
-    assert [(i.code, i.state, i.detail) for i in items] == [("design_readiness:no_host_area", "unknown", "no_host_area")]
+    assert [(i.code, i.state, i.detail) for i in items] == [
+        ("design_readiness:no_host_area", "unknown", "no_host_area")
+    ]
     assert await _evidence(monkeypatch, setup=object(), host=None, area="b") == [], "reported on one area only"
 
 

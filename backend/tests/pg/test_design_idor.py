@@ -83,3 +83,58 @@ async def test_an_editor_cannot_manage_the_distribution_matrix(world: DesignWorl
             json={"recipient_role_id": str(world.roles["ARCH"])},
         )
     assert r.status_code == 403
+
+
+async def test_a_stranger_cannot_issue_a_release_of_this_project(world: DesignWorld) -> None:
+    """Spec 8.3: another tenant's manager gets 404 on issue and on the approval transition."""
+    _d, rev = await drawing_with_revision(world, "ARCH")
+    async with client_as(world, world.editor, "editor") as c:
+        made = await c.post(f"{BASE}/projects/{world.project_id}/releases", json={"revision_ids": [str(rev)]})
+    assert made.status_code == 201
+    rel = made.json()
+    assert rel["can"]["issue"] == {"allowed": False, "reason": "release_not_ready"}
+    async with client_as(world, world.outsider, "manager") as c:
+        issue = await c.post(f"{BASE}/projects/{world.project_id}/releases/{rel['id']}/issue", json={})
+        ready = await c.post(
+            f"{BASE}/projects/{world.project_id}/releases/{rel['id']}/transition", json={"target": "ready"}
+        )
+    assert (issue.status_code, ready.status_code) == (404, 404)
+    async with client_as(world, world.editor, "viewer") as c:
+        viewer = await c.post(f"{BASE}/projects/{world.project_id}/releases/{rel['id']}/issue", json={})
+    assert viewer.status_code == 403
+
+
+@pytest.mark.parametrize(
+    ("path", "body"),
+    [
+        ("roles/{role}", {"title": None}),
+        ("roles/{role}", {"party_kind": None}),
+        ("releases/{release}", {"purpose": None}),
+        ("releases/{release}", {"revision_ids": None}),
+        ("setup", {"four_eyes_release": None}),
+    ],
+)
+async def test_an_explicit_null_on_a_required_field_is_422_never_500(world: DesignWorld, path: str, body: dict) -> None:
+    """Finding 13: the null is refused by name before it can reach a NOT NULL column."""
+    _d, rev = await drawing_with_revision(world, "ARCH")
+    async with client_as(world, world.manager, "manager") as c:
+        rel = (await c.post(f"{BASE}/projects/{world.project_id}/releases", json={"revision_ids": [str(rev)]})).json()
+        url = f"{BASE}/projects/{world.project_id}/" + path.format(role=world.roles["ARCH"], release=rel["id"])
+        r = await c.patch(url, json=body)
+    assert r.status_code == 422, r.text
+    assert next(iter(body)) in r.text
+
+
+async def test_the_matrix_refuses_another_users_personal_list_over_http(world: DesignWorld) -> None:
+    from app.modules.file_distribution.models import FileDistributionList
+
+    async with world.factory() as s:
+        lst = FileDistributionList(name="private", owner_id=world.outsider, project_id=None)
+        s.add(lst)
+        await s.commit()
+    async with client_as(world, world.manager, "manager") as c:
+        r = await c.post(
+            f"{BASE}/projects/{world.project_id}/distribution-rules", json={"recipient_list_id": str(lst.id)}
+        )
+    assert r.status_code == 404
+    assert r.json()["detail"]["code"] == "distribution_list_not_found"

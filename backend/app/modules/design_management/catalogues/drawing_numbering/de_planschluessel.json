@@ -160,5 +160,26 @@
   "number_scope": [
     "discipline",
     "form"
-  ]
+  ],
+  "examples": {
+    "discipline": {
+      "architecture": "AR",
+      "structure": "TW",
+      "building_services": "HL"
+    },
+    "form": {
+      "plan": "GR",
+      "section": "SC",
+      "site_plan": "LP",
+      "elevation": "AN"
+    },
+    "spatial": {
+      "ground": "EG",
+      "basement": "UG",
+      "whole": "EG"
+    },
+    "phase": {
+      "default": "LPH5"
+    }
+  }
 }

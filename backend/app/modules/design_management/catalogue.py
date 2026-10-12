@@ -173,6 +173,9 @@ class DrawingNumbering(_Frozen):
     metadata_fields: list[MetadataField] = Field(default_factory=list)
     drawing_forms: list[str] = Field(default_factory=list)
     number_scope: list[str] = Field(default_factory=list)
+    #: Illustrative values per field, keyed by a neutral meaning (``architecture``, ``plan``,
+    #: ``ground``). Demo data and hints read them, so no code compares a scheme id.
+    examples: dict[str, dict[str, str]] = Field(default_factory=dict)
 
     def field(self, code: str) -> NumberingField | None:
         return next((f for f in self.fields if f.code == code), None)
@@ -305,6 +308,15 @@ def validate_numbering(obj: DrawingNumbering, source: str) -> list[str]:
     for s in obj.number_scope:
         if s not in codes or s == "number":
             errors.append(f"number_scope_unknown: {s}")
+    for field_code, values in obj.examples.items():
+        target = obj.field(field_code)
+        if target is None:
+            errors.append(f"examples_field_unknown: {field_code}")
+            continue
+        listed = target.codes()
+        bad = sorted(v for v in values.values() if listed is not None and v not in listed)
+        if bad:
+            errors.append(f"examples_not_in_code_list: {field_code}: " + ",".join(bad))
     form = obj.field("form")
     if obj.drawing_forms and form is not None and form.codes() is not None:
         missing = set(obj.drawing_forms) - (form.codes() or set())

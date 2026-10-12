@@ -1519,7 +1519,9 @@ class DesignService:
                 setattr(row, key, list(data[key] or []))
         if "wbs_node_ids" in data:
             row.wbs_node_ids = _uuids(data["wbs_node_ids"])
-        for key in ("min_suitability", "purpose", "format", "copies_paper", "ack_required", "active"):
+        if "purpose" in data:
+            row.purpose = data["purpose"] or ""  # null = the rule applies to releases of any purpose
+        for key in ("min_suitability", "format", "copies_paper", "ack_required", "active"):
             if key in data:
                 setattr(row, key, data[key])
 

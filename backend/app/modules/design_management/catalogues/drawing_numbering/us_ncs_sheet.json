@@ -84,5 +84,18 @@
   "number_scope": [
     "discipline",
     "custom_sheet_type"
-  ]
+  ],
+  "examples": {
+    "discipline": {
+      "architecture": "A",
+      "structure": "S",
+      "building_services": "M"
+    },
+    "custom_sheet_type": {
+      "general": "0",
+      "plan": "1",
+      "elevation": "2",
+      "section": "3"
+    }
+  }
 }

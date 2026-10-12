@@ -59,5 +59,26 @@
     "DR",
     "M2",
     "M3"
-  ]
+  ],
+  "examples": {
+    "discipline": {
+      "architecture": "A",
+      "structure": "S",
+      "building_services": "M"
+    },
+    "form": {
+      "plan": "DR",
+      "section": "DR",
+      "site_plan": "DR",
+      "elevation": "DR"
+    },
+    "spatial": {
+      "ground": "00",
+      "basement": "B1",
+      "whole": "ZZ"
+    },
+    "functional": {
+      "whole": "ZZ"
+    }
+  }
 }
