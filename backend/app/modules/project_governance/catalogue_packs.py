@@ -243,3 +243,34 @@ def pack_default_candidates(kind: str, country_code: str | None = None) -> tuple
     ordered = [c for c in refs if country and country in c.default_for_countries]
     ordered += [c for c in refs if c.default_for_new_projects and c not in ordered]
     return tuple(CataloguePin(source=PACK_SOURCE, catalogue_id=c.id, version=c.version) for c in ordered)
+
+
+def active_pack_demo() -> dict[str, Any] | None:
+    """The demo story the ACTIVE pack ships (``metadata.demo.path``), or ``None``.
+
+    Read by the governance demo seed and by nothing else: a pack is data, and
+    this is the one place that opens its demo file. A pack without one, a file
+    that is missing, is not JSON or carries another schema version all answer
+    ``None``, and the fault is logged so a silent fallback can be traced.
+    """
+    active = discovery.get_active_pack()
+    if active is None:
+        return None
+    demo = (getattr(active, "metadata", None) or {}).get("demo")
+    path = demo.get("path") if isinstance(demo, dict) else None
+    if not isinstance(path, str) or not path:
+        return None
+    slug = getattr(active, "slug", "")
+    raw = discovery.read_pack_file(slug, path)
+    if raw is None:
+        logger.warning("pack %s names a demo file it does not carry: %s", slug, path)
+        return None
+    try:
+        data = json.loads(raw.decode("utf-8-sig"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        logger.warning("demo file of pack %s is not JSON: %s", slug, path)
+        return None
+    if not isinstance(data, dict) or data.get("schema_version") != 1:
+        logger.warning("demo file of pack %s has no schema version this seed reads: %s", slug, path)
+        return None
+    return data
