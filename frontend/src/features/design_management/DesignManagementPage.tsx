@@ -34,7 +34,7 @@ import { ReviewsPanel } from './ReviewsPanel';
 import { SchedulePanel } from './SchedulePanel';
 import { SetupPanel, SetupStart } from './SetupPanel';
 import { TeamPanel } from './TeamPanel';
-import type { UiKey } from './text';
+import { UI, type UiKey } from './text';
 import { WbsPanel } from './WbsPanel';
 
 const TABS = ['overview', 'schedule', 'drawings', 'issue', 'reviews', 'reports', 'permit', 'team', 'wbs', 'setup'] as const;
@@ -89,7 +89,7 @@ export function DesignManagementPage() {
         ]}
       />
       <div>
-        <h1 className="text-xl font-semibold text-content-primary">{ui(t, 'design.ui.title')}</h1>
+        <h1 className="text-xl font-semibold text-content-primary">{t('design.ui.title', { defaultValue: UI['design.ui.title'] })}</h1>
         <p className="text-sm text-content-secondary">{ui(t, 'design.ui.subtitle')}</p>
       </div>
       <CollapsibleSection

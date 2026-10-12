@@ -15,9 +15,6 @@
 
 import { API_BASE, ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
 
-const BASE = '/v1/design-management';
-const CATALOGUES = '/v1/project-governance/catalogues';
-
 /** A label as the API sends it: a message key for shipped items, texts per locale for tenant ones. */
 export interface DesignLabel {
   key: string | null;
@@ -541,17 +538,16 @@ export const designKeys = {
   catalogues: (kind: string) => ['design-management', 'catalogues', kind] as const,
 };
 
-const p = (projectId: string) => `${BASE}/projects/${projectId}`;
 const items = <T,>(page: Promise<Page<T>>): Promise<T[]> => page.then((r) => r.items);
 
 /* ── Setup ────────────────────────────────────────────────────────────── */
 
 export function listSchemes(): Promise<CatalogueSummary[]> {
-  return items(apiGet<Page<CatalogueSummary>>(`${CATALOGUES}?kind=drawing_numbering`));
+  return items(apiGet<Page<CatalogueSummary>>(`/v1/project-governance/catalogues?kind=drawing_numbering`));
 }
 
 export function getSetup(projectId: string): Promise<DesignSetup> {
-  return apiGet<DesignSetup>(`${p(projectId)}/setup`);
+  return apiGet<DesignSetup>(`/v1/design-management/projects/${projectId}/setup`);
 }
 
 export interface SetupCreateInput {
@@ -561,7 +557,7 @@ export interface SetupCreateInput {
 }
 
 export function createSetup(projectId: string, body: SetupCreateInput): Promise<DesignSetup> {
-  return apiPut<DesignSetup>(`${p(projectId)}/setup`, body);
+  return apiPut<DesignSetup>(`/v1/design-management/projects/${projectId}/setup`, body);
 }
 
 export interface SetupPatchInput {
@@ -574,21 +570,21 @@ export interface SetupPatchInput {
 }
 
 export function updateSetup(projectId: string, body: SetupPatchInput): Promise<DesignSetup> {
-  return apiPatch<DesignSetup>(`${p(projectId)}/setup`, body);
+  return apiPatch<DesignSetup>(`/v1/design-management/projects/${projectId}/setup`, body);
 }
 
 export function changeScheme(projectId: string, body: { source: CatalogueSource; id: string }): Promise<DesignSetup> {
-  return apiPost<DesignSetup>(`${p(projectId)}/setup/change`, { ...body, catalogue: 'numbering' });
+  return apiPost<DesignSetup>(`/v1/design-management/projects/${projectId}/setup/change`, { ...body, catalogue: 'numbering' });
 }
 
 export function listReportHints(projectId: string): Promise<ReportHint[]> {
-  return items(apiGet<Page<ReportHint>>(`${p(projectId)}/catalogue/hints`));
+  return items(apiGet<Page<ReportHint>>(`/v1/design-management/projects/${projectId}/catalogue/hints`));
 }
 
 /* ── Work breakdown ───────────────────────────────────────────────────── */
 
 export function listWbs(projectId: string): Promise<WbsNode[]> {
-  return items(apiGet<Page<WbsNode>>(`${p(projectId)}/wbs`));
+  return items(apiGet<Page<WbsNode>>(`/v1/design-management/projects/${projectId}/wbs`));
 }
 
 export interface WbsInput {
@@ -600,33 +596,33 @@ export interface WbsInput {
 }
 
 export function createWbsNode(projectId: string, body: WbsInput): Promise<WbsNode> {
-  return apiPost<WbsNode>(`${p(projectId)}/wbs`, body);
+  return apiPost<WbsNode>(`/v1/design-management/projects/${projectId}/wbs`, body);
 }
 
 export function updateWbsNode(projectId: string, nodeId: string, body: WbsInput): Promise<WbsNode> {
-  return apiPatch<WbsNode>(`${p(projectId)}/wbs/${nodeId}`, body);
+  return apiPatch<WbsNode>(`/v1/design-management/projects/${projectId}/wbs/${nodeId}`, body);
 }
 
 export function previewWbsRenumber(projectId: string, nodeId: string, code: string): Promise<WbsRenumberRow[]> {
-  return items(apiPost<Page<WbsRenumberRow>>(`${p(projectId)}/wbs/${nodeId}/renumber-preview`, { code }));
+  return items(apiPost<Page<WbsRenumberRow>>(`/v1/design-management/projects/${projectId}/wbs/${nodeId}/renumber-preview`, { code }));
 }
 
 export function closeWbsNode(projectId: string, nodeId: string, closed: boolean): Promise<WbsNode> {
-  return apiPost<WbsNode>(`${p(projectId)}/wbs/${nodeId}/close`, { closed });
+  return apiPost<WbsNode>(`/v1/design-management/projects/${projectId}/wbs/${nodeId}/close`, { closed });
 }
 
 export function deleteWbsNode(projectId: string, nodeId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/wbs/${nodeId}`);
+  return apiDelete(`/v1/design-management/projects/${projectId}/wbs/${nodeId}`);
 }
 
 export function listUnresolvedWbs(projectId: string): Promise<WbsReference[]> {
-  return items(apiGet<Page<WbsReference>>(`${p(projectId)}/wbs/unresolved`));
+  return items(apiGet<Page<WbsReference>>(`/v1/design-management/projects/${projectId}/wbs/unresolved`));
 }
 
 /* ── Design team ──────────────────────────────────────────────────────── */
 
 export function listRoles(projectId: string): Promise<DesignRole[]> {
-  return items(apiGet<Page<DesignRole>>(`${p(projectId)}/roles`));
+  return items(apiGet<Page<DesignRole>>(`/v1/design-management/projects/${projectId}/roles`));
 }
 
 export interface RoleInput {
@@ -640,21 +636,21 @@ export interface RoleInput {
 }
 
 export function createRole(projectId: string, body: RoleInput): Promise<DesignRole> {
-  return apiPost<DesignRole>(`${p(projectId)}/roles`, body);
+  return apiPost<DesignRole>(`/v1/design-management/projects/${projectId}/roles`, body);
 }
 
 export function updateRole(projectId: string, roleId: string, body: RoleInput): Promise<DesignRole> {
-  return apiPatch<DesignRole>(`${p(projectId)}/roles/${roleId}`, body);
+  return apiPatch<DesignRole>(`/v1/design-management/projects/${projectId}/roles/${roleId}`, body);
 }
 
 export function deleteRole(projectId: string, roleId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/roles/${roleId}`);
+  return apiDelete(`/v1/design-management/projects/${projectId}/roles/${roleId}`);
 }
 
 /* ── Approval points and the design schedule ──────────────────────────── */
 
 export function listApprovalPoints(projectId: string): Promise<ApprovalPoint[]> {
-  return items(apiGet<Page<ApprovalPoint>>(`${p(projectId)}/approval-points`));
+  return items(apiGet<Page<ApprovalPoint>>(`/v1/design-management/projects/${projectId}/approval-points`));
 }
 
 export interface ApprovalPointInput {
@@ -667,19 +663,19 @@ export interface ApprovalPointInput {
 }
 
 export function createApprovalPoint(projectId: string, body: ApprovalPointInput): Promise<ApprovalPoint> {
-  return apiPost<ApprovalPoint>(`${p(projectId)}/approval-points`, body);
+  return apiPost<ApprovalPoint>(`/v1/design-management/projects/${projectId}/approval-points`, body);
 }
 
 export function updateApprovalPoint(projectId: string, id: string, body: ApprovalPointInput): Promise<ApprovalPoint> {
-  return apiPatch<ApprovalPoint>(`${p(projectId)}/approval-points/${id}`, body);
+  return apiPatch<ApprovalPoint>(`/v1/design-management/projects/${projectId}/approval-points/${id}`, body);
 }
 
 export function submitApprovalPoint(projectId: string, id: string): Promise<ApprovalPoint> {
-  return apiPost<ApprovalPoint>(`${p(projectId)}/approval-points/${id}/submit`, {});
+  return apiPost<ApprovalPoint>(`/v1/design-management/projects/${projectId}/approval-points/${id}/submit`, {});
 }
 
 export function listDeliverables(projectId: string): Promise<Deliverable[]> {
-  return items(apiGet<Page<Deliverable>>(`${p(projectId)}/deliverables`));
+  return items(apiGet<Page<Deliverable>>(`/v1/design-management/projects/${projectId}/deliverables`));
 }
 
 export interface DeliverableInput {
@@ -699,15 +695,15 @@ export interface DeliverableInput {
 }
 
 export function createDeliverable(projectId: string, body: DeliverableInput): Promise<Deliverable> {
-  return apiPost<Deliverable>(`${p(projectId)}/deliverables`, body);
+  return apiPost<Deliverable>(`/v1/design-management/projects/${projectId}/deliverables`, body);
 }
 
 export function updateDeliverable(projectId: string, id: string, body: DeliverableInput): Promise<Deliverable> {
-  return apiPatch<Deliverable>(`${p(projectId)}/deliverables/${id}`, body);
+  return apiPatch<Deliverable>(`/v1/design-management/projects/${projectId}/deliverables/${id}`, body);
 }
 
 export function deleteDeliverable(projectId: string, id: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/deliverables/${id}`);
+  return apiDelete(`/v1/design-management/projects/${projectId}/deliverables/${id}`);
 }
 
 /* ── Numbering and the drawing register ───────────────────────────────── */
@@ -721,32 +717,32 @@ export interface NumberRequest {
 }
 
 export function previewNumber(projectId: string, body: NumberRequest): Promise<NumberPreview> {
-  return apiPost<NumberPreview>(`${p(projectId)}/numbering/preview`, body);
+  return apiPost<NumberPreview>(`/v1/design-management/projects/${projectId}/numbering/preview`, body);
 }
 
 /** Takes the next number for good: a number handed out is never handed out again. */
 export function allocateNumber(projectId: string, body: NumberRequest): Promise<{ number: string }> {
-  return apiPost<{ number: string }>(`${p(projectId)}/numbering/allocate`, body);
+  return apiPost<{ number: string }>(`/v1/design-management/projects/${projectId}/numbering/allocate`, body);
 }
 
 export function validateNumber(projectId: string, number: string): Promise<NumberCheck> {
-  return apiPost<NumberCheck>(`${p(projectId)}/numbering/validate`, { number });
+  return apiPost<NumberCheck>(`/v1/design-management/projects/${projectId}/numbering/validate`, { number });
 }
 
 export function bulkValidateNumbers(projectId: string): Promise<BulkCheckRow[]> {
-  return items(apiPost<Page<BulkCheckRow>>(`${p(projectId)}/numbering/bulk-validate`, {}));
+  return items(apiPost<Page<BulkCheckRow>>(`/v1/design-management/projects/${projectId}/numbering/bulk-validate`, {}));
 }
 
 export function previewRenumber(projectId: string): Promise<RenumberRow[]> {
-  return items(apiPost<Page<RenumberRow>>(`${p(projectId)}/numbering/renumber-preview`, {}));
+  return items(apiPost<Page<RenumberRow>>(`/v1/design-management/projects/${projectId}/numbering/renumber-preview`, {}));
 }
 
 export function applyRenumber(projectId: string, mapping: Record<string, string>): Promise<unknown> {
-  return apiPost(`${p(projectId)}/numbering/renumber-apply`, { mapping });
+  return apiPost(`/v1/design-management/projects/${projectId}/numbering/renumber-apply`, { mapping });
 }
 
 export function listDrawings(projectId: string): Promise<Drawing[]> {
-  return items(apiGet<Page<Drawing>>(`${p(projectId)}/drawings?limit=1000`));
+  return items(apiGet<Page<Drawing>>(`/v1/design-management/projects/${projectId}/drawings?limit=1000`));
 }
 
 export interface DrawingCreateInput extends NumberRequest {
@@ -759,7 +755,7 @@ export interface DrawingCreateInput extends NumberRequest {
 }
 
 export function createDrawing(projectId: string, body: DrawingCreateInput): Promise<Drawing> {
-  return apiPost<Drawing>(`${p(projectId)}/drawings`, body);
+  return apiPost<Drawing>(`/v1/design-management/projects/${projectId}/drawings`, body);
 }
 
 export interface DrawingPatchInput {
@@ -775,21 +771,21 @@ export interface DrawingPatchInput {
 }
 
 export function updateDrawing(projectId: string, id: string, body: DrawingPatchInput): Promise<Drawing> {
-  return apiPatch<Drawing>(`${p(projectId)}/drawings/${id}`, body);
+  return apiPatch<Drawing>(`/v1/design-management/projects/${projectId}/drawings/${id}`, body);
 }
 
 export function supersedeDrawing(projectId: string, id: string, byContainerId: string): Promise<Drawing> {
-  return apiPost<Drawing>(`${p(projectId)}/drawings/${id}/supersede`, { by_container_id: byContainerId });
+  return apiPost<Drawing>(`/v1/design-management/projects/${projectId}/drawings/${id}/supersede`, { by_container_id: byContainerId });
 }
 
 export function readTitleBlock(projectId: string, id: string, text: string): Promise<Drawing> {
-  return apiPost<Drawing>(`${p(projectId)}/drawings/${id}/title-block`, { text });
+  return apiPost<Drawing>(`/v1/design-management/projects/${projectId}/drawings/${id}/title-block`, { text });
 }
 
 /* ── Distribution and releases ────────────────────────────────────────── */
 
 export function listDistributionRules(projectId: string): Promise<DistributionRule[]> {
-  return items(apiGet<Page<DistributionRule>>(`${p(projectId)}/distribution-rules`));
+  return items(apiGet<Page<DistributionRule>>(`/v1/design-management/projects/${projectId}/distribution-rules`));
 }
 
 export interface DistributionRuleInput {
@@ -797,7 +793,7 @@ export interface DistributionRuleInput {
   discipline_codes?: string[];
   phase_codes?: string[];
   min_suitability?: string | null;
-  purpose?: Purpose;
+  purpose?: Purpose | null;
   format?: DistFormat;
   copies_paper?: number;
   ack_required?: boolean;
@@ -805,7 +801,7 @@ export interface DistributionRuleInput {
 }
 
 export function createDistributionRule(projectId: string, body: DistributionRuleInput): Promise<DistributionRule> {
-  return apiPost<DistributionRule>(`${p(projectId)}/distribution-rules`, body);
+  return apiPost<DistributionRule>(`/v1/design-management/projects/${projectId}/distribution-rules`, body);
 }
 
 export function updateDistributionRule(
@@ -813,15 +809,15 @@ export function updateDistributionRule(
   id: string,
   body: DistributionRuleInput,
 ): Promise<DistributionRule> {
-  return apiPatch<DistributionRule>(`${p(projectId)}/distribution-rules/${id}`, body);
+  return apiPatch<DistributionRule>(`/v1/design-management/projects/${projectId}/distribution-rules/${id}`, body);
 }
 
 export function deleteDistributionRule(projectId: string, id: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/distribution-rules/${id}`);
+  return apiDelete(`/v1/design-management/projects/${projectId}/distribution-rules/${id}`);
 }
 
 export function listReleases(projectId: string): Promise<Release[]> {
-  return items(apiGet<Page<Release>>(`${p(projectId)}/releases`));
+  return items(apiGet<Page<Release>>(`/v1/design-management/projects/${projectId}/releases`));
 }
 
 export interface ReleaseInput {
@@ -832,29 +828,29 @@ export interface ReleaseInput {
 }
 
 export function createRelease(projectId: string, body: ReleaseInput): Promise<Release> {
-  return apiPost<Release>(`${p(projectId)}/releases`, body);
+  return apiPost<Release>(`/v1/design-management/projects/${projectId}/releases`, body);
 }
 
 export function updateRelease(projectId: string, id: string, body: ReleaseInput): Promise<Release> {
-  return apiPatch<Release>(`${p(projectId)}/releases/${id}`, body);
+  return apiPatch<Release>(`/v1/design-management/projects/${projectId}/releases/${id}`, body);
 }
 
 export function previewRelease(projectId: string, id: string): Promise<ReleasePlan[]> {
-  return items(apiGet<Page<ReleasePlan>>(`${p(projectId)}/releases/${id}/preview`));
+  return items(apiGet<Page<ReleasePlan>>(`/v1/design-management/projects/${projectId}/releases/${id}/preview`));
 }
 
 export function moveRelease(projectId: string, id: string, target: ReleaseState): Promise<Release> {
-  return apiPost<Release>(`${p(projectId)}/releases/${id}/transition`, { target });
+  return apiPost<Release>(`/v1/design-management/projects/${projectId}/releases/${id}/transition`, { target });
 }
 
 export function issueRelease(projectId: string, id: string, duplicateReason: string): Promise<Release> {
-  return apiPost<Release>(`${p(projectId)}/releases/${id}/issue`, { duplicate_reason: duplicateReason });
+  return apiPost<Release>(`/v1/design-management/projects/${projectId}/releases/${id}/issue`, { duplicate_reason: duplicateReason });
 }
 
 /* ── Reviews ──────────────────────────────────────────────────────────── */
 
 export function listReviews(projectId: string): Promise<Review[]> {
-  return items(apiGet<Page<Review>>(`${p(projectId)}/reviews`));
+  return items(apiGet<Page<Review>>(`/v1/design-management/projects/${projectId}/reviews`));
 }
 
 export interface ReviewInput {
@@ -866,19 +862,19 @@ export interface ReviewInput {
 }
 
 export function createReview(projectId: string, body: ReviewInput): Promise<Review> {
-  return apiPost<Review>(`${p(projectId)}/reviews`, body);
+  return apiPost<Review>(`/v1/design-management/projects/${projectId}/reviews`, body);
 }
 
 export function moveReview(projectId: string, id: string, target: ReviewState): Promise<Review> {
-  return apiPost<Review>(`${p(projectId)}/reviews/${id}/transition`, { target });
+  return apiPost<Review>(`/v1/design-management/projects/${projectId}/reviews/${id}/transition`, { target });
 }
 
 export function concludeReview(projectId: string, id: string, outcome: ReviewOutcome): Promise<Review> {
-  return apiPost<Review>(`${p(projectId)}/reviews/${id}/conclude`, { outcome });
+  return apiPost<Review>(`/v1/design-management/projects/${projectId}/reviews/${id}/conclude`, { outcome });
 }
 
 export function listReviewComments(projectId: string, reviewId: string): Promise<ReviewComment[]> {
-  return items(apiGet<Page<ReviewComment>>(`${p(projectId)}/reviews/${reviewId}/comments`));
+  return items(apiGet<Page<ReviewComment>>(`/v1/design-management/projects/${projectId}/reviews/${reviewId}/comments`));
 }
 
 export function addReviewComment(
@@ -886,7 +882,7 @@ export function addReviewComment(
   reviewId: string,
   body: { text: string; severity: CommentSeverity; revision_id?: string | null },
 ): Promise<ReviewComment> {
-  return apiPost<ReviewComment>(`${p(projectId)}/reviews/${reviewId}/comments`, body);
+  return apiPost<ReviewComment>(`/v1/design-management/projects/${projectId}/reviews/${reviewId}/comments`, body);
 }
 
 export function moveComment(
@@ -894,13 +890,13 @@ export function moveComment(
   commentId: string,
   body: { target: CommentState; answer?: string; role_id?: string | null },
 ): Promise<ReviewComment> {
-  return apiPost<ReviewComment>(`${p(projectId)}/comments/${commentId}/transition`, body);
+  return apiPost<ReviewComment>(`/v1/design-management/projects/${projectId}/comments/${commentId}/transition`, body);
 }
 
 /* ── Reports ──────────────────────────────────────────────────────────── */
 
 export function listReports(projectId: string): Promise<Report[]> {
-  return items(apiGet<Page<Report>>(`${p(projectId)}/reports`));
+  return items(apiGet<Page<Report>>(`/v1/design-management/projects/${projectId}/reports`));
 }
 
 export interface ReportInput {
@@ -918,29 +914,29 @@ export interface ReportInput {
 }
 
 export function createReport(projectId: string, body: ReportInput): Promise<Report> {
-  return apiPost<Report>(`${p(projectId)}/reports`, body);
+  return apiPost<Report>(`/v1/design-management/projects/${projectId}/reports`, body);
 }
 
 export function updateReport(projectId: string, id: string, body: ReportInput): Promise<Report> {
-  return apiPatch<Report>(`${p(projectId)}/reports/${id}`, body);
+  return apiPatch<Report>(`/v1/design-management/projects/${projectId}/reports/${id}`, body);
 }
 
 export function moveReport(projectId: string, id: string, target: ReportState, rationale = ''): Promise<Report> {
-  return apiPost<Report>(`${p(projectId)}/reports/${id}/transition`, { target, rationale });
+  return apiPost<Report>(`/v1/design-management/projects/${projectId}/reports/${id}/transition`, { target, rationale });
 }
 
 export function syncReport(projectId: string, id: string): Promise<Report> {
-  return apiPost<Report>(`${p(projectId)}/reports/${id}/sync`, {});
+  return apiPost<Report>(`/v1/design-management/projects/${projectId}/reports/${id}/sync`, {});
 }
 
 /* ── Permit package ───────────────────────────────────────────────────── */
 
 export function listPermits(projectId: string): Promise<Permit[]> {
-  return items(apiGet<Page<Permit>>(`${p(projectId)}/permits`));
+  return items(apiGet<Page<Permit>>(`/v1/design-management/projects/${projectId}/permits`));
 }
 
 export function getPermit(projectId: string, id: string): Promise<Permit> {
-  return apiGet<Permit>(`${p(projectId)}/permits/${id}`);
+  return apiGet<Permit>(`/v1/design-management/projects/${projectId}/permits/${id}`);
 }
 
 export interface PermitInput {
@@ -951,11 +947,11 @@ export interface PermitInput {
 }
 
 export function createPermit(projectId: string, body: PermitInput): Promise<Permit> {
-  return apiPost<Permit>(`${p(projectId)}/permits`, body);
+  return apiPost<Permit>(`/v1/design-management/projects/${projectId}/permits`, body);
 }
 
 export function updatePermit(projectId: string, id: string, body: PermitInput): Promise<Permit> {
-  return apiPatch<Permit>(`${p(projectId)}/permits/${id}`, body);
+  return apiPatch<Permit>(`/v1/design-management/projects/${projectId}/permits/${id}`, body);
 }
 
 export interface PermitItemInput {
@@ -967,19 +963,19 @@ export interface PermitItemInput {
 }
 
 export function addPermitItem(projectId: string, id: string, body: PermitItemInput): Promise<unknown> {
-  return apiPost(`${p(projectId)}/permits/${id}/items`, body);
+  return apiPost(`/v1/design-management/projects/${projectId}/permits/${id}/items`, body);
 }
 
 export function removePermitItem(projectId: string, id: string, itemId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/permits/${id}/items/${itemId}`);
+  return apiDelete(`/v1/design-management/projects/${projectId}/permits/${id}/items/${itemId}`);
 }
 
 export function movePermit(projectId: string, id: string, target: PermitState): Promise<Permit> {
-  return apiPost<Permit>(`${p(projectId)}/permits/${id}/transition`, { target });
+  return apiPost<Permit>(`/v1/design-management/projects/${projectId}/permits/${id}/transition`, { target });
 }
 
 export function syncPermit(projectId: string, id: string): Promise<Permit> {
-  return apiPost<Permit>(`${p(projectId)}/permits/${id}/sync`, {});
+  return apiPost<Permit>(`/v1/design-management/projects/${projectId}/permits/${id}/sync`, {});
 }
 
 export function proposePermitConditions(
@@ -987,7 +983,7 @@ export function proposePermitConditions(
   id: string,
   conditions: Array<{ text: string; owner_user_id?: string | null; due_date?: string | null }>,
 ): Promise<Permit> {
-  return apiPost<Permit>(`${p(projectId)}/permits/${id}/conditions`, { conditions });
+  return apiPost<Permit>(`/v1/design-management/projects/${projectId}/permits/${id}/conditions`, { conditions });
 }
 
 export function decidePermitCondition(
@@ -996,27 +992,27 @@ export function decidePermitCondition(
   conditionId: string,
   confirm: boolean,
 ): Promise<Permit> {
-  return apiPost<Permit>(`${p(projectId)}/permits/${id}/conditions/${conditionId}`, { confirm });
+  return apiPost<Permit>(`/v1/design-management/projects/${projectId}/permits/${id}/conditions/${conditionId}`, { confirm });
 }
 
 /* ── Readiness, checks and exports ────────────────────────────────────── */
 
 export function listReadiness(projectId: string): Promise<PhaseReadiness[]> {
-  return items(apiGet<Page<PhaseReadiness>>(`${p(projectId)}/readiness`));
+  return items(apiGet<Page<PhaseReadiness>>(`/v1/design-management/projects/${projectId}/readiness`));
 }
 
 export function listValidation(projectId: string): Promise<ValidationFinding[]> {
-  return items(apiGet<Page<ValidationFinding>>(`${p(projectId)}/validation`));
+  return items(apiGet<Page<ValidationFinding>>(`/v1/design-management/projects/${projectId}/validation`));
 }
 
 export function downloadRegister(projectId: string, register: ExportRegister, format: 'pdf' | 'xlsx'): Promise<void> {
   return downloadWithAuth(
-    `${API_BASE}${p(projectId)}/export?register=${register}&format=${format}`,
+    `${API_BASE}/v1/design-management/projects/${projectId}/export?register=${register}&format=${format}`,
     `design_${register}.${format}`,
   );
 }
 
 /** Files the register as a new revision of the design frame document in the CDE. */
 export function fileFrameDocument(projectId: string, register: ExportRegister): Promise<unknown> {
-  return apiPost(`${p(projectId)}/frame-documents/${register}`, {});
+  return apiPost(`/v1/design-management/projects/${projectId}/frame-documents/${register}`, {});
 }

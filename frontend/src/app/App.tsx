@@ -671,7 +671,7 @@ const AllowancesPage = lazy(() =>
 );
 const DesignOptionsPage = lazy(() => import('@/features/design-options'));
 const DesignManagementPage = lazy(() =>
-  import('@/features/design_management').then((m) => ({ default: m.DesignManagementPage }))
+  import('@/features/design_management/DesignManagementPage').then((m) => ({ default: m.DesignManagementPage }))
 );
 const TeamsPage = lazy(() => import('@/features/teams'));
 const FormworkPage = lazy(() => import('@/features/formwork'));
