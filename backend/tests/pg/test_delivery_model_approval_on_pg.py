@@ -35,7 +35,6 @@ from tests.pg.delivery_fixtures import (
     propose,
     settle_change_request,
     state,
-    tag_governance,
     view,
 )
 from tests.pg.governance_fixtures import areas, decide, documents, gate, prepare_gate
@@ -52,8 +51,7 @@ async def factory():
 
 
 @pytest_asyncio.fixture
-async def world(factory, monkeypatch):
-    tag_governance(monkeypatch)
+async def world(factory):
     return await build_world(factory)
 
 
@@ -80,11 +78,42 @@ async def _decide_gate(w, *, decider: uuid.UUID | None = None, deliver: bool = T
 # ── finding 1: the carrier is named by data, never guessed ──────────────────
 
 
-@pytest.mark.parametrize("catalogue_id", ["hoai_lph", "neutral", "riba_2020", "aia_b101", "aho_heft9"])
-async def test_a_phase_model_without_a_carrier_refuses_the_proposal(factory, catalogue_id, monkeypatch) -> None:
-    """A model that hosts the delivery model nowhere. Under hoai_lph the old code bound the bill of quantities."""
-    tag_governance(monkeypatch, documents={}, phases={})
+CARRIERS = {
+    "neutral": ("procurement", "procurement_strategy"),
+    "riba_2020": ("procurement", "procurement_strategy"),
+    "aia_b101": ("procurement", "procurement_strategy"),
+    "hoai_lph": ("procurement", "procurement_strategy"),
+    "aho_heft9": ("e", "vertragsstruktur"),
+    "elf_module_framework": ("m02_contract_management", CONTRACT_DOC),
+}
+
+
+@pytest.mark.parametrize("catalogue_id", sorted(CARRIERS))
+async def test_every_shipped_phase_model_carries_the_decision_and_takes_a_proposal(factory, catalogue_id) -> None:
+    """The review found five of six models with no way to approve; under hoai_lph the bill of quantities bound it."""
     w = await build_world(factory, catalogue_id=catalogue_id)
+    ids = await compare(w)
+    model = await view(w, can_manage=True)
+    doc = (await documents(w))[CARRIERS[catalogue_id][1]]
+    by_id = {a.id: code for code, a in (await areas(w)).items()}
+    assert model["carrier"] == {
+        "document_id": str(doc.id),
+        "document_type": CARRIERS[catalogue_id][1],
+        "document_status": "draft",
+        "missing_reason": None,
+    }
+    assert by_id[doc.area_id] == CARRIERS[catalogue_id][0]
+    assert model["can"]["propose"] == {"allowed": True, "reason": None}
+    await propose(w, ids["design_build"])
+    assert (await state(w)).status == "proposed"
+    async with w.factory() as s:
+        assert await DeliveryModelService(s).procurement_released(w.project_id) is not None
+
+
+@pytest.mark.parametrize("catalogue_id", ["hoai_lph", "neutral"])
+async def test_a_phase_model_without_a_carrier_refuses_the_proposal(factory, catalogue_id) -> None:
+    """A tenant model that hosts the delivery model nowhere: no other document of the area stands in."""
+    w = await build_world(factory, catalogue_id=catalogue_id, carrier=False)
     ids = await compare(w)
     with pytest.raises(DeliveryModelError) as exc:
         await propose(w, ids["design_build"])
@@ -98,6 +127,8 @@ async def test_a_phase_model_without_a_carrier_refuses_the_proposal(factory, cat
         "missing_reason": "carrier_missing",
     }
     assert model["can"]["propose"] == {"allowed": False, "reason": "carrier_missing"}
+    async with w.factory() as s:
+        assert await DeliveryModelService(s).procurement_released(w.project_id) is None
 
 
 async def test_without_a_governance_model_the_proposal_is_refused_with_its_own_reason(factory) -> None:
@@ -109,10 +140,9 @@ async def test_without_a_governance_model_the_proposal_is_refused_with_its_own_r
     assert (await view(w, can_manage=True))["can"]["propose"]["reason"] == "governance_model_missing"
 
 
-async def test_a_blocking_provider_says_unknown_once_when_there_is_no_carrier(factory, monkeypatch) -> None:
+async def test_a_blocking_provider_says_unknown_once_when_there_is_no_carrier(factory) -> None:
     """Not an empty list: a project that uses the module and cannot be checked must be visible at the gate."""
-    tag_governance(monkeypatch, documents={}, phases={})
-    w = await build_world(factory)
+    w = await build_world(factory, carrier=False)
     await compare(w)
     g = await gate(w, GATE)
     attempt = GateAttempt(gate_id=g.id, gate_code=GATE, attempt_no=1)
@@ -137,7 +167,7 @@ async def test_evidence_is_reported_in_the_area_of_the_carrier_document_only(wor
         }
     assert {code for code, items in by_area.items() if items} == {"m02_contract_management"}
     assert ("delivery_decision_proposed", "not_met") in by_area["m02_contract_management"]
-    # The gate leads into the phase tagged as enabling procurement: rule 10 is checked here.
+    # This model enables procurement in its first phase, so no gate guards it: rule 10 is checked here too.
     assert ("delivery_ofi_routes", "met") in by_area["m02_contract_management"]
 
 

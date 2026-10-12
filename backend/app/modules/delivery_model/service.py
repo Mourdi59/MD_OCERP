@@ -196,8 +196,14 @@ class DeliveryModelService:
     async def catalogue_for(self, model: DeliveryModel) -> DeliveryFormsCatalogue:
         from app.modules.project_governance.catalogue_store import resolve_catalogue
 
+        # The triple is the pin this module stored: checked when it was written, readable by every member.
         return await resolve_catalogue(
-            self.session, model.catalogue_source, model.catalogue_id, model.catalogue_version, kind=DELIVERY_FORMS_KIND
+            self.session,
+            model.catalogue_source,
+            model.catalogue_id,
+            model.catalogue_version,
+            kind=DELIVERY_FORMS_KIND,
+            from_pin=True,
         )
 
     async def get_model(self, project_id: uuid.UUID, *, lock: bool = False) -> DeliveryModel | None:
@@ -242,7 +248,17 @@ class DeliveryModelService:
         project = await self._project(project_id)
         if await self.repo.get_model(project_id) is not None:
             raise conflict("model_exists")
-        cid = catalogue_id or default_catalogue_id_for_country(getattr(project, "country_code", None))
+        cid = catalogue_id
+        if cid is None:
+            # No catalogue asked for: the active pack's default for the country, else this module's own.
+            from app.modules.project_governance.public import default_catalogue_pin
+
+            country = getattr(project, "country_code", None)
+            pin = default_catalogue_pin(DELIVERY_FORMS_KIND, country)
+            if pin is not None:
+                catalogue_source, cid, catalogue_version = pin.source, pin.catalogue_id, pin.version
+            else:
+                catalogue_source, cid = "shipped", default_catalogue_id_for_country(country)
         version = await self._pin(tenant_id, catalogue_source, cid, catalogue_version)
         try:
             # A second request that passed the check above loses on the unique constraint: 409, not 500.
@@ -305,7 +321,7 @@ class DeliveryModelService:
         from app.modules.project_governance.catalogue_store import resolve_catalogue
 
         new: DeliveryFormsCatalogue = await resolve_catalogue(
-            self.session, catalogue_source, catalogue_id, version, kind=DELIVERY_FORMS_KIND
+            self.session, catalogue_source, catalogue_id, version, kind=DELIVERY_FORMS_KIND, tenant_id=tenant_id
         )
         forms = {f.code for f in new.forms}
         cats = {c.code for c in new.risk_categories}
@@ -360,9 +376,18 @@ class DeliveryModelService:
         return model
 
     async def model_view(
-        self, project_id: uuid.UUID, *, can_edit: bool = False, can_manage: bool = False
+        self,
+        project_id: uuid.UUID,
+        *,
+        can_edit: bool = False,
+        can_manage: bool = False,
+        edit_denied: str = "permission_missing",
     ) -> dict[str, Any]:
-        """The model with its carrier document and what the caller may do now (``can``)."""
+        """The model with its carrier document and what the caller may do now (``can``).
+
+        ``edit_denied`` is why the caller may not edit when ``can_edit`` is false,
+        as the router's enforcing check words it.
+        """
         await self.sync_with_governance(project_id)
         model = await self.require_model(project_id)
         catalogue = await self.catalogue_for(model)
@@ -371,8 +396,8 @@ class DeliveryModelService:
         blocks = await self._action_blocks(model)
         current = await self.repo.decision(project_id, model.current_decision_id) if model.current_decision_id else None
 
-        def can(action: str, permitted: bool) -> dict[str, Any]:
-            reason = blocks[action] if permitted else "permission_missing"
+        def can(action: str, permitted: bool, denied: str = "permission_missing") -> dict[str, Any]:
+            reason = blocks[action] if permitted else denied
             return {"allowed": reason is None, "reason": reason}
 
         return {
@@ -388,7 +413,7 @@ class DeliveryModelService:
             "owner_capability": model.owner_capability or {},
             "carrier": {
                 "document_id": _s(doc.id) if doc is not None else None,
-                "document_type": doc.doc_type if doc is not None else None,
+                "document_type": doc.code if doc is not None else None,
                 "document_status": doc.status if doc is not None else None,
                 "missing_reason": why,
             },
@@ -396,7 +421,7 @@ class DeliveryModelService:
             "current_decision_id": _s(model.current_decision_id),
             "approval_blocked_reason": (current.approval_blocked_reason or None) if current is not None else None,
             "can": {
-                "edit": can("edit", can_edit),
+                "edit": can("edit", can_edit, edit_denied),
                 "propose": can("propose", can_manage),
                 "withdraw": can("withdraw", can_manage),
                 "reopen": can("reopen", can_manage),
@@ -407,8 +432,6 @@ class DeliveryModelService:
 
     async def _action_blocks(self, model: DeliveryModel) -> dict[str, str | None]:
         """Why each state-changing action is refused now (``None`` = allowed). Enforcement reads the same answer."""
-        from app.modules.project_governance.models import GovernanceChangeRequest
-
         doc, why = await hosting.carrier_document(self.session, model.project_id)
         approved = await self._approved_decision(model.project_id)
         if model.status == "proposed":
@@ -422,10 +445,8 @@ class DeliveryModelService:
         elif doc is None:
             reopen = why
         else:
-            stmt = select(GovernanceChangeRequest.id).where(
-                GovernanceChangeRequest.document_id == doc.id, GovernanceChangeRequest.status == "submitted"
-            )
-            reopen = None if (await self.session.execute(stmt)).first() is not None else "change_request_required"
+            open_cr = await hosting.open_change_request(self.session, model.project_id, doc.id)
+            reopen = None if open_cr is not None else "change_request_required"
         closable = model.status in ("reopened", "under_evaluation") and approved is not None
         return {
             "edit": None if model.status in EDITABLE else "model_not_editable",
@@ -437,12 +458,10 @@ class DeliveryModelService:
 
     async def is_carrier_area_owner(self, project_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         """Is the user owner or deputy of the governance area whose frame document carries the decision?"""
-        from app.modules.project_governance.models import GovernanceArea
-
         doc, _ = await hosting.carrier_document(self.session, project_id)
         if doc is None:
             return False
-        area = await self.session.get(GovernanceArea, doc.area_id)
+        area = await hosting.area(self.session, project_id, doc.area_id)
         return area is not None and user_id in (area.owner_user_id, area.deputy_user_id)
 
     async def _form_of(
@@ -793,18 +812,14 @@ class DeliveryModelService:
 
     async def reopen(self, project_id: uuid.UUID, actor_id: uuid.UUID) -> DeliveryModel:
         """Binding -> reopened, only while governance has an open change request on the carrier document (rule 9)."""
-        from app.modules.project_governance.models import GovernanceChangeRequest
-
         model = await self.require_model(project_id, lock=True)
         blocked = (await self._action_blocks(model))["reopen"]
         if blocked:
             raise conflict(blocked)
         doc, _ = await hosting.carrier_document(self.session, project_id)
-        stmt = select(GovernanceChangeRequest.id).where(
-            GovernanceChangeRequest.document_id == getattr(doc, "id", None),
-            GovernanceChangeRequest.status == "submitted",
-        )
-        open_cr = (await self.session.execute(stmt)).scalars().first()
+        open_cr = await hosting.open_change_request(self.session, project_id, doc.id) if doc is not None else None
+        if open_cr is None:
+            raise conflict("change_request_required")
         model.change_request_id = open_cr
         await self._fsm(MODEL_FSM, model, "reopened", actor_id, change_request_id=str(open_cr))
         await self._audit(actor_id, "delivery_model", model.id, "model_reopened")
@@ -874,21 +889,25 @@ class DeliveryModelService:
         return False
 
     async def mirror_binding(self, project_id: uuid.UUID | None, document_id: uuid.UUID) -> bool:
-        """Subscriber entry point: a frame document changed state. The carrier is resolved from the project."""
-        from app.modules.project_governance.models import GovernanceDocument
+        """Subscriber entry point: a frame document of the project changed state.
 
-        doc = await self.session.get(GovernanceDocument, document_id)
-        if doc is None or (project_id is not None and doc.project_id != project_id):
+        Which document it was does not matter: the carrier is resolved from the
+        project's governance model, and the sync is idempotent.
+        """
+        if project_id is None:
             return False
-        return await self.sync_with_governance(doc.project_id)
+        return await self.sync_with_governance(project_id)
 
     async def _settle_change_request(self, model: DeliveryModel) -> bool:
-        """A reopening whose change request was rejected or cancelled goes back to ``binding``."""
-        from app.modules.project_governance.models import GovernanceChangeRequest
-
+        """A reopening whose change request was rejected or withdrawn goes back to ``binding``."""
         if model.change_request_id is None:
             return False
-        cr = await self.session.get(GovernanceChangeRequest, model.change_request_id)
+        doc, _ = await hosting.carrier_document(self.session, model.project_id)
+        if doc is None:
+            # The project left the governance model that carried the request: nothing says it was rejected.
+            return False
+        requests = await hosting.change_requests(self.session, model.project_id, doc.id)
+        cr = next((r for r in requests if r.id == model.change_request_id), None)
         if cr is not None and cr.status in ("submitted", "approved"):
             return False
         await self._return_to_binding(model, cr.decided_by if cr is not None else None, "change_request_rejected")
@@ -903,25 +922,18 @@ class DeliveryModelService:
         approved change request that licensed the reopening this proposal came
         out of. An older gate decision bound an earlier record, not this one.
         """
-        from app.modules.project_governance.models import GovernanceChangeRequest, GovernanceDecision
-
         proposed_at = decision.proposed_at
-        stmt = (
-            select(GovernanceChangeRequest)
-            .where(GovernanceChangeRequest.document_id == doc.id, GovernanceChangeRequest.status == "approved")
-            .order_by(GovernanceChangeRequest.decided_at.desc())
-        )
-        for cr in (await self.session.execute(stmt)).scalars():
-            after = bool(cr.decided_at and proposed_at and cr.decided_at >= proposed_at)
+        approved = [
+            r
+            for r in await hosting.change_requests(self.session, model.project_id, doc.id)
+            if r.status == "approved" and r.decided_at
+        ]
+        for cr in sorted(approved, key=lambda r: r.decided_at, reverse=True):
+            after = bool(proposed_at and cr.decided_at >= proposed_at)
             if after or cr.id == model.change_request_id:
                 return cr.decided_by, cr.decided_at if after else None, "change_request", cr.id
         if doc.approved_gate_id is not None:
-            gate_stmt = (
-                select(GovernanceDecision)
-                .where(GovernanceDecision.gate_id == doc.approved_gate_id, GovernanceDecision.outcome.in_(_GO))
-                .order_by(GovernanceDecision.decided_at.desc())
-            )
-            gd = (await self.session.execute(gate_stmt)).scalars().first()
+            gd = await hosting.latest_gate_decision(self.session, model.project_id, doc.approved_gate_id, _GO)
             if gd is not None and gd.decided_at and proposed_at and gd.decided_at >= proposed_at:
                 return gd.decided_by, gd.decided_at, "gate", gd.id
         return None
@@ -974,7 +986,8 @@ class DeliveryModelService:
         decision.approved_by, decision.approved_at = approver, at or _now()
         decision.approval_source, decision.governance_ref_id = source, ref
         decision.governance_document_id = doc.id
-        decision.bound_revision_id, decision.bound_content_hash = doc.bound_revision_id, doc.bound_content_hash
+        decision.bound_revision_id = doc.bound_revision_id
+        decision.bound_content_hash = await hosting.revision_content_hash(self.session, doc.bound_revision_id)
         decision.four_eyes, decision.approval_blocked_reason = four_eyes, ""
         model.change_request_id = None
         await self._fsm(MODEL_FSM, model, "approved", approver, decision_id=str(decision.id))
@@ -993,12 +1006,7 @@ class DeliveryModelService:
         return [_decision_view(d, model) for d in await self.repo.decisions(project_id)]
 
     async def _four_eyes(self, project_id: uuid.UUID) -> bool:
-        from app.modules.project_governance.models import GovernanceModel
-
-        gm = (
-            await self.session.execute(select(GovernanceModel).where(GovernanceModel.project_id == project_id))
-        ).scalar_one_or_none()
-        return bool(gm.four_eyes) if gm is not None else True
+        return await hosting.four_eyes(self.session, project_id)
 
     # ── risk allocation (rules 3 to 6, 12, 13) ─────────────────────────────
 

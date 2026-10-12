@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.delivery_model.permissions import register_delivery_model_permissions
 from app.modules.delivery_model.router import router
 from tests._pg import isolated_engine
-from tests.pg.delivery_fixtures import CONTRACT_DOC, GATE, build_world, call, compare, state, tag_governance
+from tests.pg.delivery_fixtures import CONTRACT_DOC, GATE, build_world, call, compare, state
 from tests.pg.governance_fixtures import World, decide, documents, prepare_gate
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
@@ -41,9 +41,8 @@ async def world():
 
 
 @pytest_asyncio.fixture
-async def governed(monkeypatch):
+async def governed():
     """A project with a governance model whose contract frame document hosts the delivery model."""
-    tag_governance(monkeypatch)
     register_delivery_model_permissions()
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -250,9 +249,11 @@ async def test_api_contract_envelope_and_coded_errors(world: World) -> None:
         export = await c.get(f"{p}/export?what=matrix&format=pdf")
     body = options.json()
     assert {"items", "total", "offset", "limit"} <= set(body) and body["total"] == 1
-    assert single.status_code == 422
-    assert single.json()["detail"]["code"] == "single_option_decision"
-    assert single.json()["detail"]["message_key"] == "delivery_model.errors.single_option_decision"
+    # This project has no governance model, so nothing could ever approve a decision: that is said first.
+    # The single-option rule itself is pinned in test_delivery_model_service_on_pg.py.
+    assert single.status_code == 409
+    assert single.json()["detail"]["code"] == "governance_model_missing"
+    assert single.json()["detail"]["message_key"] == "delivery_model.errors.governance_model_missing"
     assert float_weight.status_code == 422
     assert unknown_form.status_code == 422 and unknown_form.json()["detail"]["code"] == "form_unknown"
     assert missing.status_code == 404 and missing.json()["detail"]["code"] == "decision_missing"

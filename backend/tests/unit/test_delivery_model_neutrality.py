@@ -2,16 +2,14 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """The delivery model matches nothing by a literal code: carrier, procurement gate, rule 6, overrides.
 
-Every case shows the input that used to pass or be skipped. Where a governance
-catalogue is needed, a small stand-in answers the two accessors of the
-governance catalogue (``host_of`` and ``phases_enabling``) from tags, as
-module 1 does; one test reads the catalogues module 1 really ships.
+Every case shows the input that used to pass or be skipped. The governance
+side is read from the catalogues module 1 ships, through its read port.
 """
 
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal
 
 import pytest
@@ -43,64 +41,60 @@ def _raw() -> dict:
     return json.loads((CATALOGUE_DIR / "neutral.json").read_text(encoding="utf-8"))
 
 
-# ── carrier and procurement gate come from catalogue tags ──────────────────
-
-
-@dataclass(frozen=True)
-class _Doc:
-    code: str
-    area: str
-    hosts: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class _Phase:
-    code: str
-    enables: tuple[str, ...] = ()
+# ── carrier and procurement phase come from the governance read port ───────
 
 
 @dataclass(frozen=True)
 class _Gate:
     code: str
     to_phase: str
+    last_outcome: str = ""
 
 
-@dataclass(frozen=True)
-class _Governance:
-    document_types: tuple[_Doc, ...] = ()
-    phases: tuple[_Phase, ...] = ()
-    gates: tuple[_Gate, ...] = field(default=())
-
-    def host_of(self, subject: str) -> _Doc | None:
-        return next((d for d in self.document_types if subject in d.hosts), None)
-
-    def phases_enabling(self, capability: str) -> tuple[_Phase, ...]:
-        return tuple(p for p in self.phases if capability in p.enables)
+GO = ("go", "go_with_conditions")
 
 
-def test_the_carrier_is_the_tagged_document_whatever_it_is_called() -> None:
-    model = _Governance(
-        document_types=(
-            _Doc("leistungsverzeichnisse", "vergabe"),
-            _Doc("vergabestrategie", "vergabe", hosts=("delivery_model",)),
-        )
-    )
-    assert hosting.carrier_document_type(model) == "vergabestrategie"
+def test_every_shipped_phase_model_hosts_the_delivery_model_and_says_where_procurement_starts() -> None:
+    """Without the tags a project on that model could never approve a delivery decision (review finding 1)."""
+    from app.modules.project_governance import public
+    from app.modules.project_governance.catalogue import list_catalogues
+
+    catalogues = list_catalogues()
+    assert len(catalogues) >= 6
+    missing = {
+        c.id
+        for c in catalogues
+        if public.host_in(c, hosting.CARRIER_TAG) is None or not public.phases_enabling_in(c, hosting.PROCUREMENT_TAG)
+    }
+    assert missing == set()
 
 
-def test_an_untagged_model_has_no_carrier_and_no_other_document_stands_in() -> None:
-    # The old resolver took the first document of the area here (a bill of quantities under one model).
-    model = _Governance(document_types=(_Doc("bill_of_quantities", "procurement"), _Doc("x_frame", "procurement")))
-    assert hosting.carrier_document_type(model) is None
+def test_the_carrier_is_never_a_bill_of_quantities() -> None:
+    """Under the German phase model the old resolver took the first document of the area."""
+    from app.modules.project_governance import public
+    from app.modules.project_governance.catalogue import list_catalogues
+
+    hoai = next(c for c in list_catalogues() if c.id == "hoai_lph")
+    host = public.host_in(hoai, hosting.CARRIER_TAG)
+    assert host is not None and host.doc_type != "leistungsverzeichnisse"
 
 
-def test_the_procurement_gate_is_the_gate_into_the_tagged_phase() -> None:
-    model = _Governance(
-        phases=(_Phase("design"), _Phase("tender", enables=("procurement",)), _Phase("build")),
-        gates=(_Gate("g1", "design"), _Gate("g2", "tender"), _Gate("g3", "build")),
-    )
-    assert hosting.procurement_gate_codes(model) == ("g2",)
-    assert hosting.procurement_gate_codes(_Governance(phases=(_Phase("tender"),), gates=(_Gate("g2", "tender"),))) == ()
+def test_procurement_is_released_by_the_gate_into_the_tagged_phase() -> None:
+    gates = (_Gate("g1", "design"), _Gate("g2", "tender"), _Gate("g3", "build", "go"))
+    assert hosting.procurement_state(("tender",), gates, GO) == (False, ("g2",))
+    passed = (_Gate("g1", "design", "go"), _Gate("g2", "tender", "go_with_conditions"))
+    assert hosting.procurement_state(("tender",), passed, GO) == (True, ("g2",))
+    held = (_Gate("g2", "tender", "hold"),)
+    assert hosting.procurement_state(("tender",), held, GO) == (False, ("g2",))
+
+
+def test_a_model_that_starts_in_the_procurement_phase_has_it_released_and_no_guarding_gate() -> None:
+    gates = (_Gate("g1", "build"),)
+    assert hosting.procurement_state(("develop",), gates, GO) == (True, ())
+
+
+def test_a_model_that_tags_no_procurement_phase_answers_unknown_not_false() -> None:
+    assert hosting.procurement_state((), (_Gate("g1", "build", "go"),), GO) == (None, ())
 
 
 def test_the_delivery_catalogue_no_longer_names_governance_codes() -> None:
@@ -111,16 +105,23 @@ def test_the_delivery_catalogue_no_longer_names_governance_codes() -> None:
         DeliveryFormsCatalogue.model_validate({**raw, "governance_areas": ["contracts"]})
 
 
-def test_every_shipped_phase_model_names_one_carrier_and_a_procurement_phase() -> None:
-    """Module 1 data: without the tags a project on that model can never approve a delivery decision."""
-    from app.modules.project_governance.catalogue import list_catalogues
+def test_no_module_file_but_hosting_reads_governance_rows() -> None:
+    """One file talks to governance, through its read port; nothing else imports its models or repository."""
+    from pathlib import Path
 
-    missing = {
-        c.id: (hosting.carrier_document_type(c), hosting.procurement_gate_codes(c))
-        for c in list_catalogues()
-        if hosting.carrier_document_type(c) is None or not hosting.procurement_gate_codes(c)
-    }
-    assert missing == {}
+    module = Path(hosting.__file__).parent
+    offenders = sorted(
+        f.name
+        for f in module.glob("*.py")
+        if f.name != "hosting.py"
+        and any(
+            needle in f.read_text(encoding="utf-8")
+            for needle in ("project_governance.models", "project_governance.repository", "GovernanceService")
+        )
+    )
+    assert offenders == []
+    text = (module / "hosting.py").read_text(encoding="utf-8")
+    assert "project_governance.repository" not in text and "GovernanceService" not in text
 
 
 # ── rule 6 reads attributes, never codes ────────────────────────────────────

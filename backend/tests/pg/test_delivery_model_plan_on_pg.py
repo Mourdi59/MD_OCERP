@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.delivery_model.errors import DeliveryModelError
 from app.modules.delivery_model.service import DeliveryModelService
 from tests._pg import isolated_engine
-from tests.pg.delivery_fixtures import build_world, call, compare, tag_governance, view
+from tests.pg.delivery_fixtures import build_world, call, compare, view
 from tests.pg.governance_fixtures import add_project
 
 pytestmark = pytest.mark.asyncio
@@ -31,8 +31,7 @@ PACKAGE = {"title": "Works", "kind": "construction", "builds": True, "party": "c
 
 
 @pytest_asyncio.fixture
-async def world(monkeypatch):
-    tag_governance(monkeypatch)
+async def world():
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         yield await build_world(factory)
@@ -122,6 +121,28 @@ async def test_two_options_mapped_onto_one_form_are_refused_not_a_server_error(w
         "design_build",
     ]
     assert (await view(w))["catalogue_id"] == "neutral"
+
+
+async def test_another_tenants_catalogue_cannot_be_pinned_and_a_stored_pin_keeps_resolving(world) -> None:
+    """Finding 20: the id comes from the request, so it is resolved for the caller's tenant only."""
+    w = world
+    await compare(w)
+    cid = await _tenant_catalogue(w, {"design_build": "db_new"})
+    kw = {
+        "actor_id": w.manager,
+        "catalogue_source": "tenant",
+        "catalogue_id": cid,
+        "catalogue_version": None,
+        "form_mapping": {"design_build": "db_new"},
+        "category_mapping": {},
+    }
+    assert await _refused(call(w, "change_catalogue", tenant_id=str(w.outsider), **kw)) == ("unknown_catalogue", 404)
+    assert await _refused(call(w, "change_catalogue", tenant_id=None, **kw)) == ("unknown_catalogue", 404)
+    assert (await view(w))["catalogue_id"] == "neutral"
+    await call(w, "change_catalogue", tenant_id=str(w.manager), **kw)
+    # Once pinned, every member of the project reads it, whatever their own tenant is.
+    assert (await view(w))["catalogue_id"] == cid
+    assert "db_new" in {o["form_code"] for o in (await call(w, "comparison"))["options"]}
 
 
 # ── finding 10: overrides ───────────────────────────────────────────────────

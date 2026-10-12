@@ -10,15 +10,13 @@ routes for ``phase_gate`` and ``frame_change``, a CDE container per frame
 document, and the shipped ``neutral`` delivery forms catalogue pinned.
 Everything commits for real, so row locks behave as in production.
 
-Tags. The delivery model finds its carrier document and the procurement gate
-through tags in the governance catalogue (``hosts`` on a document type,
-``enables`` on a phase). Module 1 adds those tags on another branch; until
-they are in this tree, :func:`tag_governance` hands the service the project's
-real governance catalogue with the tags added, exactly where the service reads
-it. Nothing else is replaced: which document carries the tag, which document
-row that is and which gate leads into the tagged phase are all resolved by the
-production code. Once the shipped catalogue carries the tag the helper passes
-it through untouched.
+Tags. The delivery model finds its carrier document and the procurement phase
+through the governance read port (``hosts`` on a document type, ``enables`` on
+a phase). Under the eleven-area model the carrier is the contract management
+frame document, and procurement is enabled by the first phase, so no gate
+guards it. :func:`build_world` can also pin a tenant copy of a shipped model
+with the delivery tags taken out, which is the only way a project has no
+carrier now that every shipped model names one.
 """
 
 from __future__ import annotations
@@ -36,50 +34,39 @@ GATE = "development_to_execution"
 CONTRACT_DOC = "m02_contract_management_frame"
 
 
-class _Tagged:
-    """An object with a few attributes added or replaced; everything else is the wrapped object's."""
+async def _untagged_copy(session: AsyncSession, tenant: str, actor: uuid.UUID, catalogue_id: str) -> str:
+    """Publish a tenant copy of a shipped phase model that hosts the delivery model nowhere; return its id."""
+    import json
 
-    def __init__(self, inner: Any, **extra: Any) -> None:
-        self._inner, self._extra = inner, extra
+    from app.modules.project_governance.catalogue import CATALOGUE_DIR
+    from app.modules.project_governance.catalogue_store import CatalogueStore
 
-    def __getattr__(self, name: str) -> Any:
-        extra = self.__dict__["_extra"]
-        return extra[name] if name in extra else getattr(self.__dict__["_inner"], name)
-
-
-def tag_governance(
-    monkeypatch: Any,
-    *,
-    documents: dict[str, tuple[str, ...]] | None = None,
-    phases: dict[str, tuple[str, ...]] | None = None,
-) -> None:
-    """Serve governance catalogues with the delivery tags module 1 will ship (see the module docstring)."""
-    from app.modules.delivery_model import hosting
-
-    untagged = documents == {}  # a model that hosts the delivery model nowhere, whatever the tree ships
-    documents = {CONTRACT_DOC: (hosting.CARRIER_TAG,)} if documents is None else documents
-    phases = {"execution": (hosting.PROCUREMENT_TAG,)} if phases is None else phases
-    real = hosting.governance_catalogue
-
-    async def with_tags(session: Any, project_id: uuid.UUID) -> Any:
-        catalogue = await real(session, project_id)
-        if catalogue is None or (hasattr(catalogue, "host_of") and not untagged):
-            return catalogue
-        docs = tuple(_Tagged(d, hosts=documents.get(d.code, ())) for d in catalogue.document_types)
-        tagged = tuple(_Tagged(p, enables=phases.get(p.code, ())) for p in catalogue.phases)
-        return _Tagged(
-            catalogue,
-            document_types=docs,
-            phases=tagged,
-            host_of=lambda subject: next((d for d in docs if subject in d.hosts), None),
-            phases_enabling=lambda capability: tuple(p for p in tagged if capability in p.enables),
-        )
-
-    monkeypatch.setattr(hosting, "governance_catalogue", with_tags)
+    body = json.loads((CATALOGUE_DIR / f"{catalogue_id}.json").read_text(encoding="utf-8"))
+    for doc in body["document_types"]:
+        doc["hosts"] = [h for h in doc.get("hosts", []) if h != "delivery_model"]
+    for phase in body["phases"]:
+        phase["enables"] = [e for e in phase.get("enables", []) if e != "procurement"]
+    store = CatalogueStore(session)
+    row = await store.create(
+        tenant,
+        code=f"untagged_{uuid.uuid4().hex[:6]}",
+        name="Model without a delivery frame document",
+        based_on_source=None,
+        based_on_id=None,
+        based_on_version=None,
+        actor_id=actor,
+    )
+    await store.update_draft(tenant, row.id, body=body, name=None)
+    await store.publish(tenant, row.id, actor_id=actor)
+    return str(row.id)
 
 
 async def build_world(
-    factory: async_sessionmaker[AsyncSession], *, governance: bool = True, catalogue_id: str = "elf_module_framework"
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    governance: bool = True,
+    catalogue_id: str = "elf_module_framework",
+    carrier: bool = True,
 ) -> World:
     from app.modules.delivery_model.catalogue import register_kinds
 
@@ -95,14 +82,26 @@ async def build_world(
         if governance:
             w.gate_route_id = await add_route(s, pid, "phase_gate", decider)
             w.change_route_id = await add_route(s, pid, "frame_change", decider)
+            source = "shipped"
+            if not carrier:
+                source, catalogue_id = "tenant", await _untagged_copy(s, str(manager), manager, catalogue_id)
             await GovernanceService(s).set_model(
                 pid,
-                source="shipped",
+                source=source,
                 catalogue_id=catalogue_id,
                 version=None,
                 four_eyes=True,
                 actor_id=manager,
                 tenant_id=str(manager),
+            )
+            # Governance reads only a pinned route; nothing is found by project or kind.
+            await GovernanceService(s).update_settings(
+                pid,
+                four_eyes=None,
+                decision_route_id=w.gate_route_id,
+                change_route_id=w.change_route_id,
+                fields_set={"decision_route_id", "change_route_id"},
+                actor_id=manager,
             )
             for d in await GovernanceService(s).repo.list_documents(pid):
                 w.containers[d.doc_type] = await add_container(s, pid, d.doc_type)
@@ -199,7 +198,7 @@ async def change_request(w: World, *, reason: str = "The owner cannot staff the 
             impact="Delivery form",
             proposed_revision_id=None,
             actor_id=w.manager,
-            role="manager",
+            is_manager=True,
         )
         await s.commit()
         return cr.id

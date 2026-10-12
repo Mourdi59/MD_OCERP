@@ -31,14 +31,6 @@ from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, r
 PROVIDER_NAME = "delivery_model.decision_ready"
 
 
-async def _is_first_area(session: Any, project_id: uuid.UUID, area: Any) -> bool:
-    from app.modules.project_governance.repository import GovernanceRepository
-
-    asked = [a for a in await GovernanceRepository(session).list_areas(project_id) if a.applicable]
-    first = min(asked, key=lambda a: (a.sort_order, a.code), default=None)
-    return first is not None and first.id == area.id
-
-
 async def decision_ready(session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any) -> list[EvidenceItem]:
     from app.modules.delivery_model import hosting, rules
     from app.modules.delivery_model.service import DeliveryModelService
@@ -50,7 +42,7 @@ async def decision_ready(session: Any, project_id: uuid.UUID, attempt: GateAttem
     link = ("delivery_model", str(project_id))
     doc, why = await hosting.carrier_document(session, project_id)
     if doc is None:
-        if not await _is_first_area(session, project_id, area):
+        if await hosting.first_applicable_area_id(session, project_id) != area.id:
             return []
         return [
             EvidenceItem(
@@ -95,11 +87,10 @@ async def decision_ready(session: Any, project_id: uuid.UUID, attempt: GateAttem
                 detail=", ".join(sorted({f"{e['code']}:{e['ref']}" for e in others})),
             )
         )
-    catalogue = await hosting.governance_catalogue(session, project_id)
-    gates = hosting.procurement_gate_codes(catalogue) if catalogue is not None else ()
+    released, gates = await hosting.procurement(session, project_id, ("go", "go_with_conditions"))
     rows = await svc.ofi_rows(project_id)
     ofi_link = ("delivery_ofi", str(project_id))
-    if not gates:
+    if released is None:
         # No phase says where procurement starts, so rule 10 cannot be placed on a gate: say so where the
         # decision is checked, when there is something it would have checked.
         if rows and out:
@@ -112,7 +103,9 @@ async def decision_ready(session: Any, project_id: uuid.UUID, attempt: GateAttem
                     detail="procurement_phase_untagged",
                 )
             )
-    elif attempt.gate_code in gates:
+    elif attempt.gate_code in gates or (not gates and out):
+        # No gate guards procurement when the model starts in the phase that enables it: the routes are
+        # then checked where the decision is.
         open_items = rules.ofi_findings(rows, await svc.package_rows(project_id), procurement_released=True)
         missing = sorted(f.ref for f in open_items if f.code == "ofi_without_route")
         out.append(

@@ -75,21 +75,28 @@ def _has(payload: dict[str, Any], permission: str) -> bool:
     return permission_registry.role_has_permission(payload.get("role", ""), permission)
 
 
-async def _may_edit(project_id: uuid.UUID, payload: dict[str, Any], session: Any) -> bool:
-    """SPEC section 6: the plan is edited by a manager or by the owner (or deputy) of the area that hosts it."""
+async def _edit_denied(project_id: uuid.UUID, payload: dict[str, Any], session: Any) -> str | None:
+    """Why the caller may not edit the plan, or ``None``.
+
+    SPEC section 6: the plan is edited by a manager or by the owner (or deputy)
+    of the area that hosts it. The same answer refuses the request and fills
+    ``can.edit`` on the model.
+    """
     if not _has(payload, _EDIT):
-        return False
+        return "permission_missing"
     if _has(payload, _MANAGE):
-        return True
-    return await DeliveryModelService(session).is_carrier_area_owner(project_id, _uid(payload.get("sub", "")))
+        return None
+    owner = await DeliveryModelService(session).is_carrier_area_owner(project_id, _uid(payload.get("sub", "")))
+    return None if owner else "not_area_owner"
 
 
 async def _require_editor(project_id: uuid.UUID, session: SessionDep, payload: CurrentUserPayload) -> None:
-    if not _has(payload, _EDIT):
+    denied = await _edit_denied(project_id, payload, session)
+    if denied == "permission_missing":
         raise HTTPException(status_code=403, detail=f"Missing permission: {_EDIT}")
-    if not await _may_edit(project_id, payload, session):
-        err = DeliveryModelError("not_area_owner", 403)
-        message = translate("delivery_model.errors.not_area_owner", locale=get_locale() or "en")
+    if denied is not None:
+        err = DeliveryModelError(denied, 403)
+        message = translate(f"delivery_model.errors.{denied}", locale=get_locale() or "en")
         raise HTTPException(status_code=403, detail=err.as_detail(message))
 
 
@@ -124,11 +131,13 @@ def _uid(user_id: str) -> uuid.UUID:
 
 async def _model_out(svc: DeliveryModelService, project_id: uuid.UUID, payload: dict[str, Any]) -> dict[str, Any]:
     """The model view with the caller's ``can`` flags, computed by the functions that enforce them."""
+    denied = await _edit_denied(project_id, payload, svc.session)
     return await _run(
         svc.model_view(
             project_id,
-            can_edit=await _may_edit(project_id, payload, svc.session),
+            can_edit=denied is None,
             can_manage=_has(payload, _MANAGE),
+            edit_denied=denied or "permission_missing",
         )
     )
 

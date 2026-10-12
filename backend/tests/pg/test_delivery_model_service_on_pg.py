@@ -17,7 +17,7 @@ from decimal import Decimal
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.delivery_model.errors import DeliveryModelError
@@ -39,7 +39,6 @@ from tests.pg.delivery_fixtures import (
     propose,
     settle_change_request,
     state,
-    tag_governance,
 )
 from tests.pg.governance_fixtures import decide, documents, prepare_gate
 
@@ -47,8 +46,7 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest_asyncio.fixture
-async def world(monkeypatch):
-    tag_governance(monkeypatch)
+async def world():
     register_gate_evidence()
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -231,7 +229,6 @@ async def test_rules12_13_seeding_is_idempotent_and_deleted_link_is_flagged(worl
 
 
 async def test_rules10_11_owner_furnished_items(world) -> None:
-    from app.modules.project_governance.models import GovernanceGate
 
     w = world
     await _ready(w)
@@ -249,16 +246,8 @@ async def test_rules10_11_owner_furnished_items(world) -> None:
     assert exc.value.code == "ofi_without_route"
     report = await call(w, "consistency")
     sev = {(i["code"], i["severity"]) for i in report["items"] if i["ref"] == "OFI-1"}
-    assert sev == {("ofi_without_route", "warning"), ("ofi_late_for_installer", "warning")}
-    async with w.factory() as s:
-        await s.execute(
-            update(GovernanceGate)
-            .where(GovernanceGate.project_id == w.project_id, GovernanceGate.code == GATE)
-            .values(last_outcome="go")
-        )
-        await s.commit()
-    report = await call(w, "consistency")
-    assert ("ofi_without_route", "error") in {(i["code"], i["severity"]) for i in report["items"]}
+    # The eleven-area model enables procurement in its first phase: a missing route is an error from day one.
+    assert sev == {("ofi_without_route", "error"), ("ofi_late_for_installer", "warning")}
     await call(w, "set_ofi_route", ofi.id, route="framework", link_kind=None, link_id=None, actor_id=w.manager)
     report = await call(w, "consistency")
     assert "ofi_without_route" not in {i["code"] for i in report["items"]}
