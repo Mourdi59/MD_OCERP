@@ -93,7 +93,8 @@ async def test_a_project_without_the_document_row_reports_unknown_not_silence(wo
             )
         )
         await s.commit()
-    items = [i for i in (await _evidence(world))[register.area_code] if i.code == host_code(hosting.STAKEHOLDERS_TAG)]
+    code = host_code(hosting.STAKEHOLDERS_TAG, NO_DOCUMENT_REASON)
+    items = [i for i in (await _evidence(world))[register.area_code] if i.code == code]
     assert [(i.state, i.detail) for i in items] == [("unknown", NO_DOCUMENT_REASON)]
 
 

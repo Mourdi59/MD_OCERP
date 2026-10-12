@@ -42,11 +42,28 @@ CHECKS: tuple[str, ...] = tuple(CHECK_SUBJECT)
 _EXPORT_OF: dict[str, str] = {STAKEHOLDERS_TAG: "register", ORGANISATION_TAG: "organisation"}
 NO_HOST_REASON = "no_document_type_hosts_subject"
 NO_DOCUMENT_REASON = "frame_document_row_missing"
+# Message stem per reason; the subject completes the key.
+_REASON_STEM: dict[str, str] = {NO_HOST_REASON: "host", NO_DOCUMENT_REASON: "document"}
 
 
-def host_code(subject: str) -> str:
-    """Evidence code of the item that says a subject could not be placed."""
-    return f"stakeholders:host:{subject}"
+def host_code(subject: str, reason: str = NO_HOST_REASON) -> str:
+    """Stable evidence code of the item that says why a subject could not be placed."""
+    return f"stakeholders:{_REASON_STEM[reason]}:{subject}"
+
+
+def unknown_item(subject: str, reason: str, link: tuple[str, str]) -> EvidenceItem:
+    """The ``unknown`` item for a subject, with a sentence in every shipped locale that says what to do."""
+    from app.modules.stakeholders.messages import available_locales, translate
+
+    key = f"stakeholders.evidence.{_REASON_STEM[reason]}_{subject}"
+    return EvidenceItem(
+        code=host_code(subject, reason),
+        state="unknown",
+        label_key=key,
+        labels={locale: translate(key, locale=locale) for locale in available_locales()},
+        link=link,
+        detail=reason,
+    )
 
 
 def _detail(check: dict[str, Any]) -> str:
@@ -91,15 +108,7 @@ async def governance_readiness(
             if not await svc.frame_documents(project_id, _EXPORT_OF[subject]):
                 reason = NO_DOCUMENT_REASON
         if reason is not None:
-            out.append(
-                EvidenceItem(
-                    code=host_code(subject),
-                    state="unknown",
-                    label_key=f"stakeholders.evidence.host_{subject}",
-                    link=link,
-                    detail=reason,
-                )
-            )
+            out.append(unknown_item(subject, reason, link))
             continue
         if checks is None:
             checks = await svc.readiness(project_id, today=datetime.now(UTC).date())

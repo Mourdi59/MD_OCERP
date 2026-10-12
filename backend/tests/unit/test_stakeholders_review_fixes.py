@@ -105,6 +105,29 @@ def test_each_check_is_reported_under_a_subject_this_module_owns() -> None:
     assert host_code("organisation") == "stakeholders:host:organisation"
 
 
+def test_every_unknown_item_has_a_stable_code_and_says_what_to_do_in_each_locale() -> None:
+    from app.modules.stakeholders.evidence import NO_DOCUMENT_REASON, NO_HOST_REASON, unknown_item
+
+    codes = set()
+    for subject in hosting.SUBJECTS:
+        for reason in (NO_HOST_REASON, NO_DOCUMENT_REASON):
+            item = unknown_item(subject, reason, ("stakeholders", "p"))
+            codes.add(item.code)
+            assert (item.state, item.detail) == ("unknown", reason)
+            assert set(item.labels) == {"en", "de"}
+            for text in item.labels.values():
+                # A sentence, not a raw key, and it ends with an instruction.
+                assert text != item.label_key and "stakeholders." not in text
+            assert "before you decide" in item.labels["en"]
+            assert "bevor Sie entscheiden" in item.labels["de"]
+    assert codes == {
+        "stakeholders:host:stakeholders",
+        "stakeholders:host:organisation",
+        "stakeholders:document:stakeholders",
+        "stakeholders:document:organisation",
+    }
+
+
 def test_no_module_file_matches_a_governance_code() -> None:
     literals = ("m01_project_management", "project_handbook", "stakeholder_register", "projekthandbuch")
     offenders = [
@@ -333,8 +356,12 @@ def _can(**kw):
 def test_every_action_carries_allowed_and_a_reason_code() -> None:
     can = _can()
     assert set(can) == {"agreed", "in_progress", "fulfilled", "verified", "withdrawn", "breached", "edit"}
-    assert can["agreed"] == {"allowed": True, "reason": None}
-    assert can["verified"] == {"allowed": False, "reason": "invalid_transition"}
+    assert can["agreed"] == {"applies": True, "allowed": True, "reason": None}
+    # An action that does not exist in this state is hidden, not shown disabled.
+    assert can["verified"] == {"applies": False, "allowed": False, "reason": "invalid_transition"}
+    # A missing right or a precondition that can be met stays visible with its reason.
+    assert _can(is_decider=False)["agreed"] == {"applies": True, "allowed": False, "reason": "not_decider"}
+    assert _can(can_edit=False)["agreed"]["applies"] is True
 
 
 def test_the_reason_is_the_code_the_write_would_answer() -> None:

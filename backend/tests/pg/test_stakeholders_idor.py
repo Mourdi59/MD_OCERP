@@ -277,8 +277,9 @@ async def test_each_commitment_tells_the_caller_what_they_may_do_and_why_not(wor
         editor = (await c.get(p)).json()["items"][0]["can"]
     async with client_as(world, world.viewer, "viewer") as c:
         viewer = (await c.get(f"{p}/{cid}")).json()["can"]
-    assert decider["agreed"] == {"allowed": True, "reason": None}
-    assert editor["agreed"] == {"allowed": False, "reason": "not_decider"}
+    assert decider["agreed"] == {"applies": True, "allowed": True, "reason": None}
+    assert editor["agreed"] == {"applies": True, "allowed": False, "reason": "not_decider"}
+    assert decider["verified"]["applies"] is False
     assert editor["edit"]["allowed"] is True
     assert {v["reason"] for v in viewer.values()} == {"no_permission"}
 

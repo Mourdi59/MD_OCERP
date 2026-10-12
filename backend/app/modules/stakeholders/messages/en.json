@@ -264,8 +264,10 @@
     },
     "evidence": {
       "commitments_tracked": "No commitment is breached without a rationale",
-      "host_organisation": "The project organisation has no place in this project's phase model, so its readiness could not be shown",
-      "host_stakeholders": "The stakeholder register has no place in this project's phase model, so its readiness could not be shown",
+      "document_organisation": "This project has no frame document for the project organisation yet, so its readiness cannot be shown here. Check roles and mandates on the stakeholders page before you decide.",
+      "document_stakeholders": "This project has no frame document for the stakeholder register yet, so its readiness cannot be shown here. Check the register on the stakeholders page before you decide.",
+      "host_organisation": "The phase model of this project has no frame document for the project organisation, so its readiness cannot be shown here. Check roles and mandates on the stakeholders page before you decide.",
+      "host_stakeholders": "The phase model of this project has no frame document for the stakeholder register, so its readiness cannot be shown here. Check the register on the stakeholders page before you decide.",
       "key_stakeholders_planned": "Every key stakeholder with an engagement gap has a communication plan",
       "mandates_complete": "Every required decision type has one deciding role or body",
       "register_present": "At least one external stakeholder is assessed",

@@ -164,14 +164,17 @@ def commitment_actions(
     flags: list[str],
     is_decider: bool,
 ) -> dict[str, dict[str, Any]]:
-    """The ``can`` block of one commitment: every action with ``allowed`` and, when refused, the reason code.
+    """The ``can`` block of one commitment: ``{applies, allowed, reason}`` per action.
 
-    The reasons are the error codes the write itself would answer, so the screen
-    never has to guess why a button is off.
+    ``applies`` is false when the action does not exist in this state (the
+    screen hides it). It is true with ``allowed`` false and a reason when the
+    caller lacks a right or a precondition that can be met (the screen shows it
+    disabled with the reason). The reasons are the error codes the write
+    itself would answer.
     """
 
     def verdict(reason: str | None) -> dict[str, Any]:
-        return {"allowed": reason is None, "reason": reason}
+        return {"applies": reason != "invalid_transition", "allowed": reason is None, "reason": reason}
 
     def move(target: str) -> str | None:
         if not can_edit:
