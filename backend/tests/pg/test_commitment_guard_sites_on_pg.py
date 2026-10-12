@@ -552,3 +552,35 @@ async def test_a_checker_that_breaks_refuses_the_write_on_a_blocking_project(wor
         await _contract_act(world, cid)
     assert exc.value.detail["code"] == "commitment_guard_unavailable"
     assert await _contract_state(world, cid) == "draft"
+
+
+async def test_a_risk_cannot_reverse_the_drawdown_a_released_item_wrote(world: World) -> None:
+    """The record under the risk is the released money; reversing it would leave a release that drew nothing."""
+    from sqlalchemy import select
+
+    from app.modules.commitment_release.models import CommitmentItem
+    from app.modules.risk.service import RiskService
+
+    risk_id, line_id = await _risk_with_drawdown_item(world, "10000")
+
+    async def reverse() -> None:
+        async with world.factory() as s:
+            await RiskService(s).reverse_contingency_drawdown(world.project_id, risk_id, user_id=str(world.manager))
+            await s.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        await reverse()
+    assert exc.value.status_code == 409
+    assert exc.value.detail["code"] == "drawdown_released_by_commitment"
+    assert exc.value.detail["item_code"] == "CR-D"
+    assert await _drawn(world, line_id) == {f"contingency_drawdown:risk:{risk_id}": Decimal("10000")}
+
+    # Once the item no longer stands on a release, the risk takes its record back as before.
+    async with world.factory() as s:
+        row = (
+            await s.execute(select(CommitmentItem).where(CommitmentItem.project_id == world.project_id))
+        ).scalar_one()
+        row.status = "aborted"
+        await s.commit()
+    await reverse()
+    assert await _drawn(world, line_id) == {}

@@ -87,6 +87,7 @@
       "deferral_needs_reason": "Begründen Sie die Zurückstellung",
       "document_linked_elsewhere": "Dieses Dokument wird bereits in einer anderen Position gezählt",
       "document_not_found": "Dokument in diesem Projekt nicht gefunden",
+      "drawdown_released_by_commitment": "Diese Entnahme ist eine freigegebene Verpflichtungsposition. Brechen Sie diese Position ab, um die Mittel zurückzunehmen.",
       "edit_required": "Ihre Rolle darf keine Positionen bearbeiten",
       "enforcement_invalid": "Durchsetzung muss aus, warnen oder sperren sein",
       "external_approval_not_required": "Über diesen Betrag entscheidet eine Stufe der Freigabeordnung: entfernen Sie den Bezug der externen Zustimmung",

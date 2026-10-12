@@ -812,6 +812,19 @@ async def decide_release(
     return ReleaseOut.model_validate(decision)
 
 
+@router.get("/projects/{project_id}/items/{item_id}/abort/preview", dependencies=[READ])
+async def preview_abort(
+    project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    """What stopping the item would need today: the loss, the tier, and whether an outside reference is required.
+
+    Read only, and the same evaluation the abort request runs. 422 ``abort_exposure_unknown`` while
+    the abort terms do not give a residual loss.
+    """
+    await verify_project_access(project_id, user_id, session)
+    return await _run(CommitmentService(session).preview_abort(project_id, item_id, today=_today(None)))
+
+
 @router.post(
     "/projects/{project_id}/items/{item_id}/abort", response_model=ReleaseOut, status_code=201, dependencies=[EDIT]
 )

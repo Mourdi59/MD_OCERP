@@ -73,3 +73,19 @@ async def item_options(session: Any, project_id: uuid.UUID) -> list[ItemOption]:
         )
         for i in sorted(items, key=lambda i: i.code)
     ]
+
+
+async def released_drawdown_for_risk(session: Any, project_id: uuid.UUID, risk_id: uuid.UUID) -> str | None:
+    """The code of a released contingency drawdown item that names this risk, or ``None``.
+
+    Such an item wrote the risk's drawdown record when its release was approved, so the record is
+    the released money and is not the risk's alone to take back. An aborted item, or one whose
+    release was withdrawn or rejected, no longer stands on a release and answers ``None``.
+    """
+    from app.modules.commitment_release.drawdown import ITEM_TYPE
+    from app.modules.commitment_release.repository import CommitmentRepository
+
+    for item in await CommitmentRepository(session).items_by_risk(project_id, risk_id, ITEM_TYPE):
+        if item.status in RELEASED_STATES:
+            return item.code
+    return None

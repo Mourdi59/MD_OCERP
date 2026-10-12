@@ -1242,3 +1242,48 @@ async def test_the_demo_reads_its_gate_and_area_from_the_phase_model_and_names_n
         "governance_area_code": host.area_code,
     }
     assert start_gate == next(g.code for g in gates if g.to_phase in start)
+
+
+async def test_the_abort_preview_names_the_tier_and_the_reference_the_request_will_ask_for(world: World) -> None:
+    """The form reads what the request will require instead of learning it from a refused click."""
+    big = await item(world, code="CR-PB", amount="9000000")
+    cid = await add_contract(world, "9000000")
+    await link(world, big, "contract", cid)
+    small = await item(world, code="CR-PS", amount="10000")
+
+    async def preview(item_id: uuid.UUID) -> dict:
+        async with world.factory() as s:
+            return await CommitmentService(s).preview_abort(world.project_id, item_id, today=TODAY)
+
+    async def refusal(item_id: uuid.UUID, ref: str) -> str | None:
+        async with world.factory() as s:
+            try:
+                await CommitmentService(s).request_abort(
+                    world.project_id,
+                    item_id,
+                    reason="Scheme cancelled",
+                    actor_id=world.requester,
+                    today=TODAY,
+                    external_approval_ref=ref,
+                )
+            except CommitmentError as exc:
+                return exc.code
+            return None
+
+    # Money is bound and no terms say what stopping costs: the preview refuses exactly as the request does.
+    with pytest.raises(CommitmentError) as exc:
+        await preview(big)
+    assert exc.value.code == "abort_exposure_unknown"
+    assert await refusal(big, "") == "abort_exposure_unknown"
+
+    nothing = await preview(small)
+    assert (D(nothing["residual_loss"]), nothing["external_approval_required"]) == (D("0"), False)
+    assert nothing["required_tier"] is not None
+    assert await refusal(small, "Board minute 12") == "external_approval_not_required"
+
+    await _terms(world, big, "8000000")
+    above = await preview(big)
+    # The preview and the request agree on whether the outside reference is needed.
+    assert await refusal(big, "") == ("external_approval_required" if above["external_approval_required"] else None)
+    async with world.factory() as s:
+        assert (await s.execute(select(ReleaseDecision))).scalars().all() == []

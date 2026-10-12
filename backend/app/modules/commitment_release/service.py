@@ -2157,45 +2157,11 @@ class CommitmentService:
             raise CommitmentError("rationale_required", 422)
         if [r for r in await self.repo.list_releases(project_id, [item.id]) if r.outcome == "pending"]:
             raise conflict("release_pending")
-        matrix = await self.require_matrix(project_id)
-        project = await self._project(project_id)
-        schedule = await self.schedule_for(matrix)
-        if not ev.in_force(schedule, today):
-            raise conflict("schedule_not_in_force")
-        if ABORT_TYPE not in schedule.type_codes():
-            raise CommitmentError("abort_type_not_in_schedule", 422)
-        view = (await self.item_views(project_id, today=today, item_ids=[item.id], with_exposure=True))["items"][0]
-        exposure = view["exposure"]
-        if exposure.get("residual_loss") is None:
-            raise CommitmentError("abort_exposure_unknown", 422, detail=exposure.get("reason"))
-        loss = Decimal(exposure["residual_loss"])
-        base, sched_ccy = norm(project.currency), self.schedule_currency(schedule, project)
-        try:
-            q = await self.quote(matrix, project, base, sched_ccy, today)
-        except FxRateMissing as exc:
-            raise CommitmentError("fx_rate_missing", 422, detail=f"{exc.from_currency}->{exc.to_currency}") from exc
-        loss_sched = q.apply(loss)
-        # Judged on the signed figure: a stop that loses nothing, or recovers more than it cost, fits
-        # the lowest band and so the lowest tier that may settle a termination.
-        judged = loss_sched
-        tier = ev.required_tier(schedule, ABORT_TYPE, judged, item.flags or [])
+        e, exposure = await self._abort_evaluation(item, today)
+        matrix, tier, q = e["matrix"], e["tier"], e["quote"]
+        loss, loss_sched, judged = e["amount"], e["converted"], e["evaluated"]
+        base, sched_ccy = e["currency"], e["schedule_currency"]
         self._check_external_reference(tier, external_approval_ref)
-        e: dict[str, Any] = {
-            "matrix": matrix,
-            "schedule": schedule,
-            "quote": q,
-            "amount": loss,
-            "currency": base,
-            "schedule_currency": sched_ccy,
-            "converted": loss_sched,
-            "released_before": self.released_in_schedule_currency(await self.repo.list_releases(project_id, [item.id])),
-            "group_released": ZERO,
-            "evaluated": judged,
-            "tier": tier,
-            **await self._route_for(matrix, schedule, project_id, tier, today),
-            "preconditions": [],
-            "open_preconditions": [],
-        }
         route_tier = await self._require_route(e, item, actor_id, today)
         snapshot = await self._snapshot(item, e, route_tier.four_eyes, today)
         snapshot["exposure"] = exposure
@@ -2225,6 +2191,64 @@ class CommitmentService:
             tranche_note=reason,
         )
         return await self._open_decision(item, decision, e["route_id"], actor_id, residual_loss=str(loss_sched))
+
+    async def preview_abort(self, project_id: uuid.UUID, item_id: uuid.UUID, *, today: date) -> dict[str, Any]:
+        """What an abort request would need, without writing: the loss, the tier and the outside reference.
+
+        The same evaluation the request runs, so the form and the 4xx agree. Refusals that depend on
+        the person or on a pending request are not part of it; ``can.request_abort`` says those.
+        """
+        item = await self.get_item(project_id, item_id)
+        e, exposure = await self._abort_evaluation(item, today)
+        return {
+            **self.evaluation_out(e),
+            "residual_loss": str(e["amount"]),
+            "external_approval_required": e["tier"].escalate_outside,
+            "exposure": exposure,
+        }
+
+    async def _abort_evaluation(self, item: CommitmentItem, today: date) -> tuple[dict[str, Any], dict[str, Any]]:
+        """The tier a stop of ``item`` is judged on today, and the exposure it was read from."""
+        project_id = item.project_id
+        matrix = await self.require_matrix(project_id)
+        project = await self._project(project_id)
+        schedule = await self.schedule_for(matrix)
+        if not ev.in_force(schedule, today):
+            raise conflict("schedule_not_in_force")
+        if ABORT_TYPE not in schedule.type_codes():
+            raise CommitmentError("abort_type_not_in_schedule", 422)
+        view = (await self.item_views(project_id, today=today, item_ids=[item.id], with_exposure=True))["items"][0]
+        exposure = view["exposure"]
+        if exposure.get("residual_loss") is None:
+            raise CommitmentError("abort_exposure_unknown", 422, detail=exposure.get("reason"))
+        loss = Decimal(exposure["residual_loss"])
+        base, sched_ccy = norm(project.currency), self.schedule_currency(schedule, project)
+        try:
+            q = await self.quote(matrix, project, base, sched_ccy, today)
+        except FxRateMissing as exc:
+            raise CommitmentError("fx_rate_missing", 422, detail=f"{exc.from_currency}->{exc.to_currency}") from exc
+        loss_sched = q.apply(loss)
+        # Judged on the signed figure: a stop that loses nothing, or recovers more than it cost, fits
+        # the lowest band and so the lowest tier that may settle a termination.
+        judged = loss_sched
+        tier = ev.required_tier(schedule, ABORT_TYPE, judged, item.flags or [])
+        e: dict[str, Any] = {
+            "matrix": matrix,
+            "schedule": schedule,
+            "quote": q,
+            "amount": loss,
+            "currency": base,
+            "schedule_currency": sched_ccy,
+            "converted": loss_sched,
+            "released_before": self.released_in_schedule_currency(await self.repo.list_releases(project_id, [item.id])),
+            "group_released": ZERO,
+            "evaluated": judged,
+            "tier": tier,
+            **await self._route_for(matrix, schedule, project_id, tier, today),
+            "preconditions": [],
+            "open_preconditions": [],
+        }
+        return e, exposure
 
     async def withdraw_release(
         self, project_id: uuid.UUID, item_id: uuid.UUID, *, actor_id: uuid.UUID, manage: bool = False, reason: str

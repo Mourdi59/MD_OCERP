@@ -87,6 +87,7 @@
       "deferral_needs_reason": "Write down why the item is deferred",
       "document_linked_elsewhere": "This document is already counted in another item",
       "document_not_found": "Document not found in this project",
+      "drawdown_released_by_commitment": "This drawdown is a released commitment item. Abort that item to take the money back.",
       "edit_required": "Your role cannot edit commitment items",
       "enforcement_invalid": "Enforcement must be off, warn or block",
       "external_approval_not_required": "This amount is decided by a tier of the schedule: remove the external approval reference",
