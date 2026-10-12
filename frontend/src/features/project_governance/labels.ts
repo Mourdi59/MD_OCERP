@@ -14,6 +14,7 @@ import type {
   CheckStatus,
   ConditionStatus,
   DocumentStatus,
+  EvidenceItem,
   GateStatus,
   GovernanceLabel,
   Outcome,
@@ -186,6 +187,8 @@ export const ERROR_TEXT: Record<string, string> = {
   area_without_owner: 'This management area has no owner, so nobody can attest its readiness',
   area_not_ready: 'This management area is not ready for the gate',
   evidence_not_met: 'Required readiness evidence for this area is not met',
+  unknown_evidence_not_acknowledged:
+    'A module could not say whether this area is ready. Confirm that you have seen this before you let the gate pass',
   check_stale: 'A document changed after readiness was confirmed, so the area must be confirmed again',
   condition_overdue: 'A condition from an earlier gate is overdue and must be cleared or waived first',
   conditions_required: 'A go with conditions needs at least one condition',
@@ -238,6 +241,8 @@ export const ERROR_TEXT: Record<string, string> = {
   catalogue_invalid: 'The catalogue draft breaks a catalogue rule and cannot be published',
   pack_catalogue_invalid: 'The active pack declares this catalogue, but its file is missing or breaks the catalogue rules',
   area_retired: 'This area was retired by a change of the phase model and takes no new documents',
+  settings_frozen_in_review: 'This cannot be changed while a gate is in review or on hold; decide the gate first',
+  null_not_allowed: 'This field cannot be empty',
   gate_not_on_hold: 'Only a gate on hold can be resumed',
   gate_historic: 'This gate belongs to a phase model the project no longer uses',
   later_gate_active: 'A later gate was already started, so this gate cannot be reopened',
@@ -249,6 +254,28 @@ export const ERROR_TEXT: Record<string, string> = {
 };
 
 /** The sentence for a blocker or refusal code, translated when the locale has it. */
+/**
+ * What one evidence item says. A source that failed or gave no answer has no name of
+ * its own, so it reads as the sentence that says so.
+ */
+export function evidenceText(
+  t: TFn,
+  ctx: LabelContext,
+  item: Pick<EvidenceItem, 'code'> & Partial<Pick<EvidenceItem, 'label' | 'error'>>,
+): string {
+  if (item.error) {
+    return t('governance.evidence.provider_failed', {
+      defaultValue: 'This evidence source could not be read right now.',
+    });
+  }
+  if (item.code.endsWith(':no_answer')) {
+    return t('governance.evidence.no_answer', {
+      defaultValue: 'This evidence source gave no answer, so it counts as unknown.',
+    });
+  }
+  return catalogueName(ctx, { kind: 'doc', code: item.code, label: item.label });
+}
+
 export function errorText(t: TFn, code: string, serverMessage?: string | null): string {
   const english = ERROR_TEXT[code] ?? serverMessage ?? humanizeCode(code);
   return t(['governance', 'errors', code].join('.'), { defaultValue: english });

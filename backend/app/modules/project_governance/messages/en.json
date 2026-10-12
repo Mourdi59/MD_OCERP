@@ -12,6 +12,8 @@
       "area_without_owner": "This management area has no owner, so nobody can attest its readiness",
       "area_not_ready": "This management area is not ready for the gate",
       "evidence_not_met": "Required readiness evidence for this area is not met",
+      "unknown_evidence_not_acknowledged": "A module could not say whether this area is ready. Confirm that you have seen this before you let the gate pass",
+      "unknown_criterion": "This readiness criterion is not part of the project's model for this area and gate",
       "check_stale": "A document changed after readiness was confirmed, so the area must be confirmed again",
       "condition_overdue": "A condition from an earlier gate is overdue and must be cleared or waived first",
       "conditions_required": "A go with conditions needs at least one condition",
@@ -71,7 +73,9 @@
       "no_change_route": "No approval route is pinned for changes to binding documents. A governance manager pins one of the project's own routes in the governance settings",
       "route_not_pinnable": "This approval route cannot be pinned: it must be an active route of this project for this kind of decision",
       "area_retired": "This area was retired by a change of the phase model and takes no new documents",
-      "pack_catalogue_invalid": "The active pack declares this catalogue, but its file is missing or breaks the catalogue rules"
+      "pack_catalogue_invalid": "The active pack declares this catalogue, but its file is missing or breaks the catalogue rules",
+      "settings_frozen_in_review": "This cannot be changed while a gate is in review or on hold; decide the gate first",
+      "null_not_allowed": "This field cannot be empty"
     },
     "outcome": {
       "go": "Go",

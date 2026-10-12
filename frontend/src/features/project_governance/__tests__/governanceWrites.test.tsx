@@ -24,6 +24,10 @@ vi.mock('@/features/cde/api', () => ({
 }));
 vi.mock('@/features/documents/api', () => ({ uploadDocument: vi.fn() }));
 vi.mock('@/features/approval-routes/api', () => ({ listRoutes: vi.fn() }));
+vi.mock('@/features/approval-routes/ApprovalInstanceDetailDrawer', () => ({
+  ApprovalInstanceDetailDrawer: ({ instanceId }: { instanceId: string | null }) =>
+    instanceId ? <div data-testid="approval-drawer">{instanceId}</div> : null,
+}));
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
   return {
@@ -182,7 +186,7 @@ describe('GatePanel', () => {
     });
 
     it('tells somebody who may not manage whom to ask', async () => {
-      render(model({ can: { manage: false, edit: true } }), () => undefined);
+      render(model({ can: { manage: false } }), () => undefined);
       fireEvent.click(await screen.findByRole('button', { name: 'Submit for review' }));
       const notice = await screen.findByTestId('gate-no-route');
       expect(notice).toHaveTextContent('A governance manager chooses it in the phase model settings.');
@@ -208,6 +212,87 @@ describe('GatePanel', () => {
     expect(await screen.findByText('The gate could not be loaded')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Back to matrix' }));
     expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('an outcome that waits for more approvers leads to the approval itself', async () => {
+    open(
+      detail({
+        gate: gate({ status: 'in_review', approval_instance_id: 'inst-1' }),
+        can: {
+          edit: true,
+          decide: true,
+          outcomes: {
+            go: { allowed: false, reason: 'route_needs_more_approvals' },
+            go_with_conditions: { allowed: false, reason: 'route_needs_more_approvals' },
+            hold: { allowed: true, reason: null },
+            stop: { allowed: true, reason: null },
+          },
+        },
+      }),
+    );
+    expect(await screen.findByTestId('open-approval')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('open-decision'));
+    expect(screen.getByRole('radio', { name: /^Go\b(?! with)/ })).toBeDisabled();
+    fireEvent.click(screen.getByTestId('outcome-go-open-approval'));
+    expect(await screen.findByTestId('approval-drawer')).toHaveTextContent('inst-1');
+    expect(screen.queryByTestId('decision-dialog')).toBeNull();
+  });
+
+  describe('evidence no module could confirm', () => {
+    const unknown = {
+      code: 'budget:no_answer',
+      state: 'unknown' as const,
+      label: { key: null, text: null },
+      link: null,
+      detail: '',
+      provider: 'budget',
+      blocking: true,
+      error: false,
+      needs_acknowledgement: true,
+    };
+    const asked = () =>
+      detail({
+        gate: gate({ status: 'in_review' }),
+        areas: [{ code: 'cost_finance', evidence: [unknown] }],
+        can: {
+          edit: true,
+          decide: true,
+          go: true,
+          acknowledge: [{ area_code: 'cost_finance', code: 'budget:no_answer', provider: 'budget' }],
+        },
+      });
+
+    it('is marked in the readiness view', async () => {
+      open(asked());
+      expect(await screen.findByTestId('evidence-needs-acknowledgement')).toHaveTextContent('to confirm at the decision');
+    });
+
+    it('a go waits for the tick and then names the item to the server', async () => {
+      open(asked());
+      mocked.decideGate.mockResolvedValue(decision());
+      fireEvent.click(await screen.findByTestId('open-decision'));
+      expect(screen.queryByTestId('acknowledge-evidence')).toBeNull();
+      fireEvent.click(screen.getByRole('radio', { name: /^Go\b(?! with)/ }));
+      const box = within(screen.getByTestId('acknowledge-evidence'));
+      expect(box.getByText('This evidence source gave no answer, so it counts as unknown.')).toBeInTheDocument();
+      expect(screen.getByTestId('decision-submit')).toBeDisabled();
+      expect(screen.getByTestId('decision-problems')).toHaveTextContent('Tick every evidence item');
+      fireEvent.click(box.getByTestId('acknowledge-item'));
+      expect(screen.getByTestId('decision-submit')).not.toBeDisabled();
+      fireEvent.click(screen.getByTestId('decision-submit'));
+      await waitFor(() => expect(mocked.decideGate).toHaveBeenCalledTimes(1));
+      expect(mocked.decideGate.mock.calls[0]![2]).toMatchObject({
+        outcome: 'go',
+        acknowledged_evidence: [{ area_code: 'cost_finance', code: 'budget:no_answer' }],
+      });
+    });
+
+    it('a stop does not ask for it', async () => {
+      open(asked());
+      fireEvent.click(await screen.findByTestId('open-decision'));
+      fireEvent.click(screen.getByRole('radio', { name: /^Stop\b/ }));
+      expect(screen.queryByTestId('acknowledge-evidence')).toBeNull();
+    });
   });
 
   it('a gate on hold offers to resume, not to decide', async () => {
@@ -292,8 +377,12 @@ describe('GatePanel', () => {
         }),
       );
       expect(await screen.findByTestId('open-reopen')).toBeDisabled();
-      expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'server:later_gate_active');
-      expect(screen.getByTestId('disabled-reason')).toHaveTextContent(enT('governance.errors.later_gate_active'));
+      // Other buttons on the gate carry reasons of their own; this is the one of the reopen button.
+      const reason = screen
+        .getAllByTestId('disabled-reason')
+        .find((r) => r.getAttribute('data-reason') === 'server:later_gate_active');
+      expect(reason).toBeDefined();
+      expect(reason).toHaveTextContent(enT('governance.errors.later_gate_active'));
       view.unmount();
 
       open(detail({ gate: gate({ status: 'in_review' }) }));
@@ -372,6 +461,24 @@ describe('AreaPanel documents', () => {
       />,
     );
   }
+
+  it('whether the area applies is locked while a gate is in review, with the reason', () => {
+    wrap(
+      <AreaPanel
+        projectId="p1"
+        area={theArea({ na_rationale: 'Not part of this project' })}
+        model={model()}
+        documents={[]}
+        changeRequests={[]}
+        gates={[gate({ status: 'in_review' })]}
+        labels={labels}
+        personName={names}
+        onBack={() => undefined}
+      />,
+    );
+    expect(screen.getByRole('checkbox', { name: 'Applies to this project' })).toBeDisabled();
+    expect(screen.getByText(enT('governance.errors.settings_frozen_in_review'))).toBeInTheDocument();
+  });
 
   it('takes the owner off only through its own button', async () => {
     mocked.updateArea.mockResolvedValue(theArea());
@@ -691,7 +798,7 @@ describe('RoutePin', () => {
 
   it('is read-only with a reason for somebody who may not manage', async () => {
     mockedRoutes.listRoutes.mockResolvedValue([route('r1', 'Gate board')]);
-    wrap(<RoutePin projectId="p1" model={model({ can: { manage: false, edit: true } })} kind="gate" onDone={() => undefined} />);
+    wrap(<RoutePin projectId="p1" model={model({ can: { manage: false } })} kind="gate" onDone={() => undefined} />);
     expect(await screen.findByRole('combobox')).toBeDisabled();
     expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'role_manage');
   });

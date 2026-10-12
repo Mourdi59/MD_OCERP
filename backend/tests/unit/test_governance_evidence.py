@@ -22,10 +22,14 @@ PID = uuid.uuid4()
 @pytest.fixture(autouse=True)
 def _clean_registry():
     saved = dict(evd._REGISTRY)
+    links = dict(evd._LINK_ROUTES)
     evd._REGISTRY.clear()
+    evd._LINK_ROUTES.clear()
     yield
     evd._REGISTRY.clear()
     evd._REGISTRY.update(saved)
+    evd._LINK_ROUTES.clear()
+    evd._LINK_ROUTES.update(links)
 
 
 def _area(code: str, applicable: bool = True):
@@ -62,7 +66,7 @@ async def test_registration_matches_area_code_and_wildcard() -> None:
     got = await evd.collect_evidence(None, PID, ATTEMPT, [_area("site")])
     assert sorted(e.item.code for e in got) == ["a", "b"]
     assert {p.name for p in evd.evidence_providers()} == {"p_site", "p_all", "p_design"}
-    assert got[0].as_dict()["link"] == {"kind": "hold_point", "id": "1"}
+    assert got[0].as_dict()["link"] == {"kind": "hold_point", "id": "1", "href": None}
 
 
 async def test_not_met_blocks_only_from_a_blocking_provider() -> None:
@@ -105,3 +109,45 @@ async def test_a_not_applicable_area_is_not_asked() -> None:
 async def test_an_invalid_state_is_rejected() -> None:
     with pytest.raises(ValueError):
         evd.EvidenceItem(code="x", state="maybe")
+
+
+def _linked(kind: str = "plant_register", link_id: str = "42") -> evd.CollectedEvidence:
+    item = evd.EvidenceItem(code="c", state="met", link=(kind, link_id))
+    return evd.CollectedEvidence("site", "p", False, item)
+
+
+async def test_a_link_opens_where_the_owning_module_registered_its_kind() -> None:
+    evd.register_evidence_link("plant_register", "/projects/{project_id}/plant/{id}")
+    assert _linked().as_dict(PID)["link"] == {
+        "kind": "plant_register",
+        "id": "42",
+        "href": f"/projects/{PID}/plant/42",
+    }
+
+
+async def test_a_kind_nobody_registered_has_no_address() -> None:
+    evd.register_evidence_link("plant_register", "/projects/{project_id}/plant")
+    assert _linked("permits").as_dict(PID)["link"]["href"] is None
+
+
+async def test_a_route_that_needs_the_project_gives_nothing_without_one() -> None:
+    evd.register_evidence_link("plant_register", "/projects/{project_id}/plant")
+    assert _linked().as_dict()["link"]["href"] is None
+    evd.register_evidence_link("plant_register", "/plant/{id}")
+    assert _linked().as_dict()["link"]["href"] == "/plant/42"
+
+
+@pytest.mark.parametrize(
+    "route",
+    [
+        "projects/{project_id}/plant",
+        "https://elsewhere.example/{id}",
+        "//elsewhere.example/x",
+        "/plant/{name}",
+        "/x/{}",
+    ],
+)
+async def test_a_route_that_is_not_a_path_of_the_app_is_refused(route: str) -> None:
+    with pytest.raises(ValueError, match="evidence link route"):
+        evd.register_evidence_link("plant_register", route)
+    assert "plant_register" not in evd._LINK_ROUTES

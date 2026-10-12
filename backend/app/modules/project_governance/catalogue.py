@@ -389,6 +389,10 @@ def _tag_errors(catalogue: Catalogue) -> list[str]:
             errors.append(f"document_hosts_duplicate: document_type {doc.code!r}")
         for subject in set(doc.hosts):
             hosted.setdefault(subject, []).append(doc.code)
+        if doc.hosts and not doc.required_at_gates:
+            # A frame document becomes binding at a gate that lists it, and the module whose
+            # subject it hosts waits for that. With no gate it would wait for the whole project.
+            errors.append(f"hosting_document_never_required: document_type {doc.code!r} hosts {sorted(doc.hosts)}")
     for subject, codes in sorted(hosted.items()):
         if len(codes) > 1:
             errors.append(f"subject_hosted_twice: {subject!r} by {sorted(codes)}")

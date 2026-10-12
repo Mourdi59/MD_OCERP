@@ -56,7 +56,7 @@ export interface CatalogueSummary {
   based_on?: string;
   review_status: string;
   jurisdiction_countries: string[];
-  /** Not sent yet; the phase mapping step uses it as soon as it is. */
+  /** Only on a catalogue read in full; the phase mapping step offers a choice when it is there. */
   phases?: GovernancePhase[];
 }
 
@@ -80,9 +80,8 @@ export interface GovernanceModel {
   stopped: boolean;
   stopped_at: string | null;
   phases: GovernancePhase[];
-  /** What the caller may do on this project, decided by the server. */
-  /** `edit` is absent from a server that does not report it; the write then answers for itself. */
-  can: { manage: boolean; edit?: boolean };
+  /** What the caller may do on the model, decided by the server. Writes on areas and documents carry flags of their own. */
+  can: { manage: boolean };
 }
 
 export interface GovernanceArea {
@@ -95,7 +94,7 @@ export interface GovernanceArea {
   applicable: boolean;
   na_rationale: string;
   retired: boolean;
-  /** Not sent yet, see the report on API gaps. */
+  /** The area's label when the server sends one; the catalogue key names it otherwise. */
   name?: GovernanceLabel;
   /** The catalogue's frame document types for this area; `tracked` says which ones the project already holds. */
   document_types?: AreaDocumentType[];
@@ -148,6 +147,14 @@ export interface EvidenceItem {
   provider: string;
   blocking: boolean;
   error: boolean;
+  /** Unknown evidence of a blocking provider: a go has to name it. */
+  needs_acknowledgement?: boolean;
+}
+
+/** One evidence item by the pair the server matches on. */
+export interface EvidenceRef {
+  area_code: string;
+  code: string;
 }
 
 export interface GateCheck {
@@ -200,6 +207,8 @@ export interface DecisionSnapshot {
     required: boolean;
   }>;
   checks?: Array<{ area_code: string; status: string; rag?: string; stale?: boolean }>;
+  /** The unknown evidence the decider named when the decision was taken. */
+  acknowledged_evidence?: Array<EvidenceRef & { provider?: string }>;
   [key: string]: unknown;
 }
 
@@ -253,6 +262,12 @@ export interface GateCan {
   reopen_reason?: string | null;
   add_condition?: boolean;
   add_condition_reason?: string | null;
+  /**
+   * The unknown evidence a go or a go with conditions has to name, exactly as the
+   * request sends it back. Empty when nothing is pending. It is content of the
+   * request, so `go` stays open while this list is not empty.
+   */
+  acknowledge?: Array<EvidenceRef & { provider: string }>;
 }
 
 export interface MatrixCellOut {
@@ -296,6 +311,7 @@ export interface DecisionInput {
   proceed_at_risk_areas: string[];
   accepted_not_applicable: string[];
   hold_resume_date?: string | null;
+  acknowledged_evidence?: EvidenceRef[];
 }
 
 export interface FrameDocument {
@@ -332,7 +348,7 @@ export interface DocumentRevision {
   revision_number: number;
   content_hash: string;
   file_name: string;
-  created_at: string;
+  created_at: string | null;
   in_force: boolean;
 }
 
@@ -349,7 +365,7 @@ export interface ChangeRequest {
   requested_by: string | null;
   decided_by: string | null;
   decided_at: string | null;
-  created_at: string;
+  created_at: string | null;
 }
 
 export interface DocumentHistory {

@@ -45,6 +45,13 @@ G2 = "brief_to_concept"
 TODAY = datetime.now(UTC).date()
 
 
+@pytest.fixture(autouse=True)
+def _today_of_this_test() -> None:
+    """Writes read the server day when they run; a day fixed at import goes stale at midnight UTC."""
+    global TODAY
+    TODAY = datetime.now(UTC).date()
+
+
 @pytest_asyncio.fixture
 async def world(monkeypatch: pytest.MonkeyPatch):
     register_governance_permissions()

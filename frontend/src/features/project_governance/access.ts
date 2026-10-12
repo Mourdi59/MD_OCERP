@@ -17,6 +17,7 @@ import type {
   GateDetail,
   GovernanceArea,
   GovernanceCondition,
+  GovernanceGate,
   GovernanceModel,
   Outcome,
 } from './api';
@@ -141,6 +142,17 @@ function flagVerdict(
   permission: PermissionLevel,
 ): Verdict {
   return allowed ? null : reasonOfCode(reason, permission);
+}
+
+/**
+ * The server refuses to change the four-eyes rule or whether an area applies
+ * while a gate of the current model is in review or on hold, because either
+ * would change who may decide a gate that is already with its deciders. The
+ * screen says so before the click; the server stays the one that enforces it.
+ */
+export function frozenInReview(gates: ReadonlyArray<Pick<GovernanceGate, 'status' | 'historic'>>): Verdict {
+  const held = gates.some((g) => !g.historic && (g.status === 'in_review' || g.status === 'on_hold'));
+  return held ? { server: 'settings_frozen_in_review' } : null;
 }
 
 /** Manage rights, as the server reports them on the model. */
