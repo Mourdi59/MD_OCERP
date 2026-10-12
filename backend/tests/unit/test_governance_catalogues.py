@@ -237,8 +237,8 @@ def test_versioned_lookup() -> None:
 
 def test_unknown_id_raises_typed_error() -> None:
     with pytest.raises(cat.UnknownCatalogueError) as info:
-        cat.get_catalogue("prince2")
-    assert info.value.catalogue_id == "prince2"
+        cat.get_catalogue("no_such_model")
+    assert info.value.catalogue_id == "no_such_model"
     assert isinstance(info.value, LookupError)
 
 
@@ -298,7 +298,7 @@ def test_pack_declaration_is_keyed_by_exact_country(monkeypatch: pytest.MonkeyPa
         # a state pack never votes
         ({"countries": ["DE"], "parent_pack": "x", "governance_catalogue": {"DE": "aho_heft9"}},),
         # an id that is not shipped is ignored
-        ({"countries": ["DE"], "governance_catalogue": {"DE": "prince2"}},),
+        ({"countries": ["DE"], "governance_catalogue": {"DE": "no_such_model"}},),
     ],
 )
 def test_pack_declarations_that_do_not_count(monkeypatch: pytest.MonkeyPatch, configs) -> None:
