@@ -775,11 +775,11 @@ class CommitmentService:
         if "flags" in changes and list(changes["flags"]) != list(item.flags or []):
             changed.add("flags")
         guarded = changed & {*GATE_FIELDS, *OWNER_FIELDS}
-        if guarded:
-            if not manage:
-                raise forbidden("manage_required", detail=", ".join(sorted(guarded)))
-            if item.status != "planned":
-                raise conflict("field_frozen", detail=", ".join(sorted(guarded)))
+        refusal = self.gate_fields_refusal(item, manage) if guarded else None
+        if refusal == "manage_required":
+            raise forbidden(refusal, detail=", ".join(sorted(guarded)))
+        if refusal:
+            raise conflict(refusal, detail=", ".join(sorted(guarded)))
         split = changed & set(SPLIT_FIELDS)
         if split and await self.repo.has_release(item.id):
             # Review finding 7: the group and the flags decide the tier; they cannot move after a request.
@@ -1138,7 +1138,7 @@ class CommitmentService:
         return out
 
     async def _successor(self, item: CommitmentItem, actor_id: uuid.UUID | None) -> dict[str, Any] | None:
-        """Where a handed-over item went. The ids always; the names only for a reader who may open
+        """Where a handed-over item went. The ids always; ``can_open`` and the names only for a reader who may open
         the receiving project, so a hand-over does not publish another project's titles."""
         from app.modules.project_governance.public import user_can_access_project
 
@@ -1148,18 +1148,18 @@ class CommitmentService:
         if target is None:
             return None
         same = target.project_id == item.project_id
-        readable = same or (
+        can_open = same or (
             actor_id is not None and await user_can_access_project(self.session, target.project_id, actor_id)
         )
-        project = await self._project(target.project_id) if readable else None
+        project = await self._project(target.project_id) if can_open else None
         return {
             "project_id": str(target.project_id),
             "item_id": str(target.id),
             "same_project": same,
-            "readable": readable,
+            "can_open": can_open,
             "project_name": project.name if project is not None else None,
-            "code": target.code if readable else None,
-            "title": target.title if readable else None,
+            "code": target.code if can_open else None,
+            "title": target.title if can_open else None,
         }
 
     async def _gate_state(self, project_id: uuid.UUID, gate_code: str | None) -> str:
@@ -1445,6 +1445,7 @@ class CommitmentService:
             "resume": flag(self.hold_refusal(item, manage, hold=False)),
             "transfer": flag(self.transfer_refusal(item, manage)),
             "defer": flag(self.defer_refusal(item, manage)),
+            "edit_gate_fields": flag(self.gate_fields_refusal(item, manage)),
         }
 
     # ── abort exposure ─────────────────────────────────────────────────────
@@ -1884,7 +1885,16 @@ class CommitmentService:
 
     @classmethod
     def defer_refusal(cls, item: CommitmentItem, manage: bool) -> str | None:
-        """Deferring an item changes what a gate reads: a manager, and only while the item is planned."""
+        """Deferring an item changes what a gate reads, so it is one of the gate fields."""
+        return cls.gate_fields_refusal(item, manage)
+
+    @staticmethod
+    def gate_fields_refusal(item: CommitmentItem, manage: bool) -> str | None:
+        """Why the gate, area, deferral and owner fields of an item may not change, or ``None``.
+
+        ``update_item`` raises exactly this, and ``can.edit_gate_fields`` reports it: a manager, and
+        only while the item is planned.
+        """
         if item.status in ENDED:
             return "item_closed"
         if not manage:

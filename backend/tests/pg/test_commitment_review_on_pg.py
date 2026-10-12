@@ -760,12 +760,12 @@ async def test_a_handed_over_item_names_its_successor_only_to_a_reader_of_the_re
         "project_id": str(other),
         "item_id": str(target.id),
         "same_project": False,
-        "readable": True,
+        "can_open": True,
         "project_name": seen["project_name"],
         "code": "CR-T",
         "title": "Receiving item",
     }
     assert seen["project_name"]
     hidden = await successor(world.requester)
-    assert (hidden["project_id"], hidden["item_id"], hidden["readable"]) == (str(other), str(target.id), False)
+    assert (hidden["project_id"], hidden["item_id"], hidden["can_open"]) == (str(other), str(target.id), False)
     assert (hidden["project_name"], hidden["code"], hidden["title"]) == (None, None, None)

@@ -268,12 +268,20 @@ async def test_project_capabilities_and_route_states_come_from_the_server(world:
     async with client_as(world, world.requester, "editor") as c:
         can = (await c.get(f"{url}/items/{iid}")).json()["can"]
     assert can["defer"] == {"allowed": False, "reason": "manage_required"}
+    assert can["edit_gate_fields"] == {"allowed": False, "reason": "manage_required"}
+    async with client_as(world, world.requester, "editor") as c:
+        refused = await c.patch(f"{url}/items/{iid}", json={"governance_area_code": "cost"})
+    assert refused.status_code == 403, refused.text
+    assert can["edit_gate_fields"]["reason"] in refused.text
 
     async with client_as(world, world.manager, "manager") as c:
         tiers = {t["code"]: t for t in (await c.get(f"{url}/matrix")).json()["tiers"]}
         assert {t["route_state"] for t in tiers.values()} == {"generated"}
         can = (await c.get(f"{url}/items/{iid}")).json()["can"]
         assert can["defer"] == {"allowed": True, "reason": None}
+        assert can["edit_gate_fields"] == {"allowed": True, "reason": None}
+        moved = await c.patch(f"{url}/items/{iid}", json={"governance_area_code": "cost"})
+        assert moved.status_code == 200, moved.text
     async with world.factory() as s:
         step = (
             await s.execute(select(Step).where(Step.route_id == uuid.UUID(tiers["sponsor"]["route_id"])))
