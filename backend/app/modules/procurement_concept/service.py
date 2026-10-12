@@ -455,8 +455,6 @@ class ProcurementConceptService:
         The approver is whoever decided in governance: the go decision of the
         gate that bound the document, else the approved change request.
         """
-        from app.modules.project_governance.models import GovernanceChangeRequest
-
         concept = await self.find_concept(project_id, lock=True)
         if concept is None or concept.state != "in_review":
             return False
@@ -468,19 +466,13 @@ class ProcurementConceptService:
             go = await self._go_decisions(project_id, doc.approved_gate_id)
             if go:
                 approver, at = go[-1].decided_by, go[-1].decided_at
-        # Who decided an approved change request is not on the governance read port yet, so the row is read.
-        change = (
-            (
-                await self.session.execute(
-                    select(GovernanceChangeRequest)
-                    .where(GovernanceChangeRequest.document_id == doc.id, GovernanceChangeRequest.status == "approved")
-                    .order_by(GovernanceChangeRequest.decided_at.desc())
-                )
-            )
-            .scalars()
-            .first()
-        )
-        if change is not None and change.decided_at is not None and (at is None or change.decided_at > at):
+        approved = [
+            c
+            for c in await project_change_requests(self.session, project_id, doc.id)
+            if c.status == "approved" and c.decided_at is not None
+        ]
+        change = max(approved, key=lambda c: c.decided_at, default=None)
+        if change is not None and (at is None or change.decided_at > at):
             approver, at = change.decided_by, change.decided_at
         concept.state = "approved"
         concept.approved_by = approver
