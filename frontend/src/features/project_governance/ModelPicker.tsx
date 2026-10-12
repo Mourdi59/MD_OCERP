@@ -6,7 +6,7 @@
 // the decided history keeps a place in the new model; that step only appears
 // when it is needed.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Layers } from 'lucide-react';
@@ -20,6 +20,7 @@ import { useToastStore } from '@/stores/useToastStore';
 
 import {
   changeModel,
+  getProjectCountry,
   governanceErrorCode,
   governanceKeys,
   listCatalogues,
@@ -32,11 +33,13 @@ import {
 import { canManage, type Verdict } from './access';
 import { RoutePin } from './RoutePin';
 import { ReasonedButton } from './GovernanceBits';
-import { catalogueName, errorText, humanizeCode, type LabelContext } from './labels';
+import { catalogueName, errorText, humanizeCode, refusalText, type LabelContext } from './labels';
 
 export interface ModelPickerProps {
   projectId: string;
   model: GovernanceModel | null;
+  /** Without a model: the server's word on whether the reader may set one. */
+  canSet?: boolean | null;
   gates: GovernanceGate[];
   labels: LabelContext;
   onDone: () => void;
@@ -48,16 +51,37 @@ function catalogueTitle(labels: LabelContext, c: CatalogueSummary): string {
   return humanizeCode(c.code);
 }
 
-export function ModelPicker({ projectId, model, gates, labels, onDone }: ModelPickerProps) {
+export function ModelPicker({ projectId, model, canSet = null, gates, labels, onDone }: ModelPickerProps) {
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
-  // Before a model exists there is no model to carry the server's flag, so
-  // the picker is open and the server's refusal of the first try is what
-  // closes it. The reason then stays on the button.
+  // Before a model exists the flag comes with the `model_missing` answer.
+  // A server that sends none leaves the picker open, and its refusal of the
+  // first try is what closes it. The reason then stays on the button.
   const [refused, setRefused] = useState<Verdict>(null);
-  const verdict = model ? canManage(model) : refused;
-  const catalogues = useQuery({ queryKey: governanceKeys.catalogues, queryFn: () => listCatalogues().then((p) => p.items) });
+  const verdict: Verdict = model ? canManage(model) : canSet === false ? 'role_manage' : refused;
+  // The country matters only for the first choice: it lets the server mark
+  // the model to start with. A project that cannot be read simply gets none.
+  const countryQ = useQuery({
+    queryKey: [...governanceKeys.model(projectId), 'country'],
+    queryFn: () => getProjectCountry(projectId),
+    enabled: !model,
+    retry: false,
+  });
+  const country = countryQ.data ?? null;
+  const catalogues = useQuery({
+    queryKey: [...governanceKeys.catalogues, country ?? ''],
+    queryFn: () => listCatalogues(country).then((p) => p.items),
+    enabled: !!model || countryQ.isFetched,
+  });
   const [selected, setSelected] = useState<string>('');
+  // The server's default is offered once, as a selection the reader can change before saving.
+  const offeredDefault = useRef(false);
+  useEffect(() => {
+    if (model || offeredDefault.current || !catalogues.data) return;
+    offeredDefault.current = true;
+    const preset = catalogues.data.find((c) => c.default && c.state === 'published');
+    if (preset) setSelected(`${preset.source}:${preset.id}`);
+  }, [model, catalogues.data]);
   const [fourEyes, setFourEyes] = useState(true);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [askMapping, setAskMapping] = useState(false);
@@ -93,16 +117,16 @@ export function ModelPicker({ projectId, model, gates, labels, onDone }: ModelPi
         setRefused('role_manage');
         return;
       }
-      addToast({ type: 'error', title: getErrorMessage(err) });
+      addToast({ type: 'error', title: refusalText(t, err) });
     },
   });
   const toggleFourEyes = useMutation({
     mutationFn: (value: boolean) => updateModelSettings(projectId, { four_eyes: value }),
     onSuccess: onDone,
-    onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+    onError: (err) => addToast({ type: 'error', title: refusalText(t, err) }),
   });
 
-  if (catalogues.isLoading) return <SkeletonTable rows={4} columns={2} />;
+  if (catalogues.isPending) return <SkeletonTable rows={4} columns={2} />;
   if (catalogues.isError) {
     return (
       <ErrorState
@@ -142,7 +166,12 @@ export function ModelPicker({ projectId, model, gates, labels, onDone }: ModelPi
         </div>
       )}
 
-      {model && <RoutePin projectId={projectId} model={model} onDone={onDone} />}
+      {model && (
+        <div className="space-y-3" id="governance-routes">
+          <RoutePin projectId={projectId} model={model} kind="gate" onDone={onDone} />
+          <RoutePin projectId={projectId} model={model} kind="change" onDone={onDone} />
+        </div>
+      )}
 
       <div>
         <h3 className="mb-2 text-sm font-semibold text-content-primary">
@@ -150,6 +179,14 @@ export function ModelPicker({ projectId, model, gates, labels, onDone }: ModelPi
             ? t('governance.project.model.change_title', { defaultValue: 'Change the phase model' })
             : t('governance.project.model.choose_title', { defaultValue: 'Choose a phase model' })}
         </h3>
+        {items.length === 0 && (
+          <p className="text-sm text-content-secondary" data-testid="model-picker-empty">
+            {t('governance.project.model.none_published', {
+              defaultValue:
+                'No published phase model is available. A governance manager publishes one in the governance settings of the organisation.',
+            })}
+          </p>
+        )}
         <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3" role="radiogroup">
           {items.map((c) => {
             const key = `${c.source}:${c.id}`;
@@ -177,7 +214,11 @@ export function ModelPicker({ projectId, model, gates, labels, onDone }: ModelPi
                 <span className="text-xs text-content-tertiary">
                   {c.source === 'tenant'
                     ? t('governance.project.model.source_tenant', { defaultValue: 'Your organisation' })
-                    : t('governance.project.model.source_shipped', { defaultValue: 'Included with the platform' })}
+                    : c.source === 'pack'
+                      ? t('governance.project.model.source_pack', { defaultValue: 'From the active pack' })
+                      : t('governance.project.model.source_shipped', { defaultValue: 'Included with the platform' })}
+                  {c.default &&
+                    ` · ${t('governance.project.model.recommended', { defaultValue: 'Suggested for this project' })}`}
                   {c.jurisdiction_countries.length > 0 && ` · ${fmtList(c.jurisdiction_countries)}`}
                 </span>
                 {c.review_status === 'unconfirmed' && (

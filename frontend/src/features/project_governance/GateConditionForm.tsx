@@ -67,7 +67,8 @@ export function GateConditionForm({
     <div className="space-y-2 rounded-lg border border-border-light p-3" data-testid="gate-condition-form">
       <p className="text-xs text-content-secondary">
         {t('governance.project.gate.add_condition_hint', {
-          defaultValue: 'The condition joins the ones this gate was passed with. Give it an owner and a due date.',
+          defaultValue:
+            'The condition joins the ones this gate was passed with. An owner and a due date keep it from being forgotten.',
         })}
       </p>
       <ConditionFields

@@ -10,9 +10,10 @@
 import { useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { ClipboardList, Compass, Grid3x3, Layers } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Compass, Grid3x3, Layers } from 'lucide-react';
 
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
+import { Button } from '@/shared/ui/Button';
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -31,6 +32,7 @@ import {
   useGovernanceMatrix,
   useGovernanceAreas,
   useGovernanceDocuments,
+  useCanSetModel,
   useGovernanceModel,
   useInvalidateGovernance,
   useLabelContext,
@@ -51,6 +53,7 @@ export function ProjectGovernancePage() {
   const invalidate = useInvalidateGovernance(projectId);
 
   const modelQ = useGovernanceModel(projectId);
+  const canSetModel = useCanSetModel(projectId);
   const hasModel = !!modelQ.data;
   const areasQ = useGovernanceAreas(projectId, hasModel);
   const docsQ = useGovernanceDocuments(projectId, hasModel);
@@ -158,7 +161,7 @@ export function ProjectGovernancePage() {
             defaultValue: 'Choose the phase model this project runs through. Its phases, gates and management areas appear here right after.',
           })}
         />
-        <ModelPicker projectId={projectId} model={null} gates={[]} labels={labels} onDone={invalidate} />
+        <ModelPicker projectId={projectId} model={null} canSet={canSetModel} gates={[]} labels={labels} onDone={invalidate} />
       </div>
     );
   }
@@ -179,6 +182,7 @@ export function ProjectGovernancePage() {
         personName={personName}
         onBack={() => go({ gate: null })}
         onOpenArea={(id) => go({ gate: null, area: id })}
+        onOpenModel={() => go({ gate: null, tab: 'model' })}
       />
     );
   } else if (areaId && selectedArea) {
@@ -189,12 +193,44 @@ export function ProjectGovernancePage() {
         area={selectedArea}
         model={model}
         documents={docsQ.data ?? []}
+        documentsLoading={docsQ.isLoading}
+        documentsError={docsQ.isError ? docsQ.error : null}
+        onRetryDocuments={() => docsQ.refetch()}
         changeRequests={crQ.data ?? []}
         gates={matrixQ.data?.gates ?? []}
         labels={labels}
         personName={personName}
         onBack={() => go({ area: null })}
       />
+    );
+  } else if (areaId) {
+    // The link names an area that has not arrived, could not be loaded or is not in this project.
+    const back = (
+      <Button size="sm" variant="ghost" icon={<ArrowLeft size={14} />} onClick={() => go({ area: null })}>
+        {t('governance.project.back_to_matrix', { defaultValue: 'Back to matrix' })}
+      </Button>
+    );
+    body = (
+      <div className="space-y-4" data-testid="area-unavailable">
+        {back}
+        {areasQ.isLoading ? (
+          <SkeletonTable rows={4} columns={2} />
+        ) : areasQ.isError ? (
+          <ErrorState
+            title={t('governance.project.area.load_failed', { defaultValue: 'The management area could not be loaded' })}
+            hint={getErrorMessage(areasQ.error)}
+            onRetry={() => areasQ.refetch()}
+          />
+        ) : (
+          <EmptyState
+            icon={<Grid3x3 size={28} />}
+            title={t('governance.project.area.not_found_title', { defaultValue: 'This management area is not part of the project' })}
+            description={t('governance.project.area.not_found_body', {
+              defaultValue: 'It may belong to an earlier phase model. Go back to the matrix and open an area from there.',
+            })}
+          />
+        )}
+      </div>
     );
   } else if (tab === 'model') {
     body = (

@@ -7,7 +7,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
@@ -19,6 +19,7 @@ vi.mock('../api', async (importOriginal) => {
     ...actual,
     getModel: vi.fn(),
     listCatalogues: vi.fn(),
+    getProjectCountry: vi.fn(),
     listAreas: vi.fn(),
     getMatrix: vi.fn(),
     listDocuments: vi.fn(),
@@ -36,6 +37,7 @@ import { ALL_KEY_MAPS, ERROR_TEXT } from '../labels';
 import { DISABLED_REASON } from '../access';
 import { DECISION_PROBLEM } from '../decisionRules';
 import { AREA_KEY_MAPS } from '../AreaPanel';
+import { ROUTE_KEY_MAPS } from '../RoutePin';
 
 const mocked = vi.mocked(api);
 
@@ -57,6 +59,7 @@ const emptyPage = { items: [], total: 0, offset: 0, limit: 100 };
 describe('ProjectGovernancePage states', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocked.getProjectCountry.mockResolvedValue(null);
     mocked.listCatalogues.mockResolvedValue({
       ...emptyPage,
       total: 1,
@@ -86,6 +89,58 @@ describe('ProjectGovernancePage states', () => {
     expect(await screen.findByText('No phase model yet')).toBeInTheDocument();
     expect(await screen.findByText('Neutral phase model')).toBeInTheDocument();
     expect(screen.getByTestId('model-save')).toBeInTheDocument();
+  });
+
+  it('the first model follows the flag the missing-model answer carries', async () => {
+    mocked.getModel.mockRejectedValue(
+      new ApiError(404, 'Not Found', { detail: { code: 'model_missing', message: 'No governance model', can: { manage: false } } }),
+    );
+    const view = renderPage();
+    await screen.findByText('Neutral phase model');
+    const refused = () => screen.queryAllByTestId('disabled-reason').some((r) => r.getAttribute('data-reason') === 'role_manage');
+    await waitFor(() => expect(refused()).toBe(true));
+    view.unmount();
+
+    mocked.getModel.mockRejectedValue(
+      new ApiError(404, 'Not Found', { detail: { code: 'model_missing', message: 'No governance model', can: { manage: true } } }),
+    );
+    renderPage();
+    await screen.findByText('Neutral phase model');
+    expect(refused()).toBe(false);
+  });
+
+  it('asks for the models of the project country and preselects the one the server marks', async () => {
+    mocked.getModel.mockRejectedValue(
+      new ApiError(404, 'Not Found', { detail: { code: 'model_missing', message: 'No governance model', can: { manage: true } } }),
+    );
+    mocked.getProjectCountry.mockResolvedValue('DE');
+    const item = (over: object) => ({
+      kind: 'phase_model',
+      source: 'shipped',
+      id: 'neutral',
+      code: 'neutral',
+      name: { key: null, text: { en: 'Neutral phase model' } },
+      state: 'published',
+      versions: [1],
+      latest_version: 1,
+      review_status: 'verified',
+      jurisdiction_countries: [],
+      ...over,
+    });
+    mocked.listCatalogues.mockResolvedValue({
+      ...emptyPage,
+      total: 2,
+      items: [
+        item({ source: 'pack', pack: 'de', id: 'pack_model', code: 'pack_model', default: true, name: { key: null, text: { en: 'Pack phase model' } } }),
+        item({}),
+      ],
+    } as never);
+    renderPage();
+    const preset = await screen.findByRole('radio', { name: 'Pack phase model' });
+    await waitFor(() => expect(preset).toBeChecked());
+    expect(mocked.listCatalogues).toHaveBeenCalledWith('DE');
+    expect(screen.getByText(/From the active pack/)).toHaveTextContent('Suggested for this project');
+    expect(screen.getByRole('radio', { name: 'Neutral phase model' })).not.toBeChecked();
   });
 
   it('a failing model request shows the error, not the empty state', async () => {
@@ -139,7 +194,7 @@ describe('governance i18n keys', () => {
 
   const used = new Set<string>();
   for (const m of sources.matchAll(/t\(\s*'(governance\.[a-z_.]+)'/g)) used.add(m[1]!);
-  for (const map of [...Object.values(ALL_KEY_MAPS), DISABLED_REASON, DECISION_PROBLEM, ...Object.values(AREA_KEY_MAPS)]) {
+  for (const map of [...Object.values(ALL_KEY_MAPS), DISABLED_REASON, DECISION_PROBLEM, ...Object.values(AREA_KEY_MAPS), ...Object.values(ROUTE_KEY_MAPS)]) {
     for (const [key] of Object.values(map)) used.add(key);
   }
   for (const code of Object.keys(ERROR_TEXT)) used.add(`governance.errors.${code}`);

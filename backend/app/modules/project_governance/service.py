@@ -17,6 +17,10 @@ Who may decide a gate is answered by the approval route of the gate
   user who approved its final step;
 * no route configured: nobody, and the API says so.
 
+Revisiting a decision (reopening or resuming its gate, waiving one of its
+conditions, adding one) is for the decider of that decision or a user the
+project's gate route entitles, never for the decide permission alone.
+
 Concurrency: a decision locks the gate row (``SELECT ... FOR UPDATE``), the
 gate carries a version column, and one decision per attempt is a unique
 constraint. Whichever of two simultaneous deciders commits second finds the
@@ -27,9 +31,12 @@ from __future__ import annotations
 
 import logging
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from types import SimpleNamespace
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,8 +67,9 @@ logger = logging.getLogger(__name__)
 MODULE = "project_governance"
 GATE_TARGET_KIND = "phase_gate"
 CHANGE_TARGET_KIND = "frame_change"
-_MANAGER_ROLES = frozenset({"admin", "manager"})
 _UNDECIDED = ("not_started", "in_preparation", "in_review", "on_hold")
+_POSITIVE = ("go", "go_with_conditions")
+_NEGATIVE = ("hold", "recycle", "stop")
 
 
 def catalogue_key(source: str, catalogue_id: str, version: int) -> str:
@@ -84,6 +92,53 @@ def _parse_day(value: str) -> date | None:
         return date.fromisoformat(value) if value else None
     except ValueError:
         return None
+
+
+def server_today() -> date:
+    """The date every write is judged against. A client never supplies it."""
+    return datetime.now(UTC).date()
+
+
+def effective_condition_status(cond: GovernanceCondition, today: date) -> str:
+    """What a condition is today: an open one past its due date reads overdue before any sweep ran."""
+    return ev.condition_status(
+        ev.ConditionState(
+            id=str(cond.id),
+            gate_code=cond.gate_code,
+            area_code=cond.area_code,
+            status=cond.status,
+            due_date=_parse_day(cond.due_date),
+        ),
+        today,
+    )
+
+
+def _route_error(exc: HTTPException) -> GovernanceError:
+    """An approval-route refusal in this module's error contract.
+
+    The route engine answers with plain-text HTTP errors. Left alone they reach
+    the client without a code, in a shape no governance screen can read.
+    """
+    info = exc.detail if isinstance(exc.detail, str) else None
+    if exc.status_code == 403:
+        return forbidden("decider_not_entitled", detail=info)
+    return conflict("route_not_pending", detail=info)
+
+
+@dataclass(frozen=True)
+class _Authority:
+    """What one caller may revisit on one project, read once per request."""
+
+    actor_id: str
+    route_entitled: bool
+    four_eyes: bool
+    areas: tuple[ev.AreaState, ...]
+    deciders: dict[uuid.UUID, str]
+
+    def over(self, decision_id: uuid.UUID | None) -> str | None:
+        """Why this caller has no authority over that decision, or None."""
+        decided_by = self.deciders.get(decision_id) if decision_id else None
+        return ev.authority_violation(self.actor_id, decided_by=decided_by, route_entitled=self.route_entitled)
 
 
 class GovernanceService:
@@ -180,6 +235,8 @@ class GovernanceService:
 
     async def user_can_access_project(self, project_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         """Owner, team member or admin: who may be named an area owner."""
+        from app.core.permissions import Role
+        from app.modules.approval_routes.service import _caller_role_satisfies
         from app.modules.projects.models import Project
         from app.modules.teams.access import is_project_member
         from app.modules.users.models import User
@@ -190,7 +247,7 @@ class GovernanceService:
         if project.owner_id == user_id:
             return True
         user = await self.session.get(User, user_id)
-        if user is not None and (user.role or "") == "admin":
+        if user is not None and _caller_role_satisfies(user.role, Role.ADMIN.value):
             return True
         return await is_project_member(self.session, project_id, user_id)
 
@@ -370,8 +427,17 @@ class GovernanceService:
         *,
         existing_areas: dict[str, GovernanceArea],
         existing_docs: dict[tuple[str, str], GovernanceDocument],
+        historic_gates: dict[str, GovernanceGate] | None = None,
+        actor_id: uuid.UUID | None = None,
     ) -> None:
+        """Build the rows of the pinned catalogue around what the project already has.
+
+        ``historic_gates`` are the gates this very catalogue version left behind
+        on an earlier visit, by code. They are revived instead of inserted
+        again: they carry decisions, and ``(project, catalogue, code)`` is unique.
+        """
         key = catalogue_key(model.catalogue_source, model.catalogue_id, model.catalogue_version)
+        revivable = historic_gates or {}
         area_rows: dict[str, GovernanceArea] = {}
         codes = {a.code for a in catalogue.areas}
         for area in catalogue.areas:
@@ -389,6 +455,13 @@ class GovernanceService:
                 row.retired = True
         order = {p.code: p.order for p in catalogue.phases}
         for gate in sorted(catalogue.gates, key=lambda g: order.get(g.from_phase, 0)):
+            kept = revivable.get(gate.code)
+            if kept is not None:
+                kept.historic = False
+                kept.from_phase = gate.from_phase
+                kept.to_phase = gate.to_phase
+                kept.sort_order = order.get(gate.from_phase, 0)
+                continue
             await self.repo.add(
                 GovernanceGate(
                     project_id=model.project_id,
@@ -417,9 +490,15 @@ class GovernanceService:
                 )
             else:
                 doc.required_at_gates = list(dt.required_at_gates)
+                if doc.status == "superseded":
+                    # The model has this document type again: its bound revision is in force again.
+                    await self._fsm(DOCUMENT_FSM, doc, "binding", actor_id, reason="document type back in the model")
         for k, doc in existing_docs.items():
             if k not in seen:
                 doc.required_at_gates = []
+                if doc.status == "binding":
+                    # Out of the frame of the pinned model; the bound revision stays on record.
+                    await self._fsm(DOCUMENT_FSM, doc, "superseded", actor_id, reason="document type left the model")
         await self.session.flush()
 
     async def change_model(
@@ -436,8 +515,13 @@ class GovernanceService:
         """Move a project to another catalogue (or version) with an explicit phase mapping."""
         model = await self.require_model(project_id, lock=True)
         pinned = await CatalogueStore(self.session).assert_pinnable(tenant_id, source, catalogue_id, version)
+        if (source, catalogue_id, pinned) == (model.catalogue_source, model.catalogue_id, model.catalogue_version):
+            raise conflict("model_unchanged")
         new = await resolve_catalogue(self.session, source, catalogue_id, pinned, tenant_id=tenant_id)
-        gates = await self.repo.list_gates(project_id)
+        every_gate = await self.repo.list_gates(project_id, include_historic=True)
+        gates = [g for g in every_gate if not g.historic]
+        new_key = catalogue_key(source, catalogue_id, pinned)
+        returning = {g.code: g for g in every_gate if g.historic and g.catalogue_id == new_key}
         counts = await self.repo.decision_counts(project_id)
         violations = ev.validate_phase_mapping(
             new_phase_codes=[p.code for p in new.phases],
@@ -449,6 +533,8 @@ class GovernanceService:
             raise GovernanceError("phase_mapping_missing", 422, violations=[v.as_dict() for v in violations])
         kept = ev.gates_kept_on_model_change({str(g.id): counts.get(g.id, 0) for g in gates})
         for gate in gates:
+            # A review on a gate that leaves the model has nothing left to decide.
+            await self._withdraw_review(gate, actor_id, reason="governance model changed")
             if str(gate.id) in kept:
                 gate.historic = True
             else:
@@ -463,7 +549,9 @@ class GovernanceService:
         areas = {a.code: a for a in await self.repo.list_areas(project_id, include_retired=True)}
         by_id = {a.id: a for a in areas.values()}
         docs = {(by_id[d.area_id].code, d.doc_type): d for d in await self.repo.list_documents(project_id)}
-        await self._materialise(model, new, existing_areas=areas, existing_docs=docs)
+        await self._materialise(
+            model, new, existing_areas=areas, existing_docs=docs, historic_gates=returning, actor_id=actor_id
+        )
         await self._mirror_project_phase(project_id, new, model.current_phase)
         await self._audit(
             actor_id,
@@ -488,13 +576,26 @@ class GovernanceService:
         actor_id: uuid.UUID,
     ) -> GovernanceModel:
         model = await self.require_model(project_id, lock=True)
-        before = {"four_eyes": model.four_eyes}
+
+        def _state() -> dict[str, Any]:
+            return {
+                "four_eyes": model.four_eyes,
+                "decision_route_id": _s(model.decision_route_id),
+                "change_route_id": _s(model.change_route_id),
+            }
+
+        before = _state()
         if four_eyes is not None:
             model.four_eyes = four_eyes
-        if "decision_route_id" in fields_set:
-            model.decision_route_id = decision_route_id
-        if "change_route_id" in fields_set:
-            model.change_route_id = change_route_id
+        for field, kind, value in (
+            ("decision_route_id", GATE_TARGET_KIND, decision_route_id),
+            ("change_route_id", CHANGE_TARGET_KIND, change_route_id),
+        ):
+            if field not in fields_set:
+                continue
+            if value is not None and await self._pinnable_route(project_id, kind, value) is None:
+                raise GovernanceError("route_not_pinnable", 422)
+            setattr(model, field, value)
         await self.session.flush()
         await self._audit(
             actor_id,
@@ -502,7 +603,7 @@ class GovernanceService:
             model.id,
             "settings_changed",
             before_state=before,
-            after_state={"four_eyes": model.four_eyes},
+            after_state=_state(),
         )
         return model
 
@@ -576,28 +677,91 @@ class GovernanceService:
 
     # ── gates ──────────────────────────────────────────────────────────────
 
+    async def _pinnable_route(self, project_id: uuid.UUID, kind: str, route_id: uuid.UUID) -> Any:
+        """The route, when it is an active route of this project for ``kind``; else ``None``.
+
+        A route without a project is visible to every project and anyone who
+        may configure routes can create one, so it must never decide a gate:
+        only a route that belongs to the project qualifies.
+        """
+        from app.modules.approval_routes.models import Route
+
+        route = await self.session.get(Route, route_id)
+        if route is None or not route.is_active or route.target_kind != kind or route.project_id != project_id:
+            return None
+        return route
+
     async def _resolve_route(self, model: GovernanceModel, kind: str) -> Any:
+        """The route pinned on the model for ``kind``, or ``None``.
+
+        Nothing is looked up by project or kind: who decides a gate is a
+        setting a governance manager made (``update_settings``), never the
+        newest route somebody happened to create. The pin is checked again
+        here because a route can be deactivated after it was pinned.
+        """
+        pinned = model.decision_route_id if kind == GATE_TARGET_KIND else model.change_route_id
+        if pinned is None:
+            return None
+        return await self._pinnable_route(model.project_id, kind, pinned)
+
+    async def _withdraw_review(self, gate: GovernanceGate, actor_id: uuid.UUID | None, *, reason: str) -> None:
+        """Take a gate out of review: cancel its pending route instance, back to preparation."""
         from app.modules.approval_routes.service import ApprovalRouteService
 
-        svc = ApprovalRouteService(self.session)
-        pinned = model.decision_route_id if kind == GATE_TARGET_KIND else model.change_route_id
-        if pinned is not None:
+        if gate.approval_instance_id is not None:
+            routes = ApprovalRouteService(self.session)
             try:
-                route = await svc.get_route(pinned)
-            except Exception:
-                route = None
-            if (
-                route is not None
-                and route.is_active
-                and route.target_kind == kind
-                and route.project_id in (None, model.project_id)
-            ):
-                return route
-            return None
-        routes = await svc.list_routes(project_id=model.project_id, target_kind=kind, include_inactive=False)
-        routes = [r for r in routes if r.project_id in (None, model.project_id)]
-        routes.sort(key=lambda r: (r.project_id is None, r.created_at))
-        return routes[0] if routes else None
+                instance = await routes.get_instance(gate.approval_instance_id)
+                if instance.status == "pending":
+                    await routes.cancel_instance(instance.id, actor_id=actor_id, reason=reason)
+            except HTTPException:
+                logger.debug("governance: no pending route instance to cancel for gate %s", gate.id, exc_info=True)
+            gate.approval_instance_id = None
+        if gate.status == "in_review":
+            await self._fsm(GATE_FSM, gate, "in_preparation", actor_id, reason=reason)
+
+    async def _route_entitled(self, model: GovernanceModel, actor_id: uuid.UUID, role: str | None) -> bool:
+        """Whether the final step of the project's gate route names this caller.
+
+        Asked when no instance is running (the gate is decided or on hold), so
+        the answer comes from the route as configured: the named approver or an
+        active delegate of theirs, or for a role-based step a caller whose role
+        meets it.
+        """
+        from app.modules.approval_routes.service import ApprovalRouteService, _caller_role_satisfies
+
+        route = await self._resolve_route(model, GATE_TARGET_KIND)
+        if route is None:
+            return False
+        svc = ApprovalRouteService(self.session)
+        steps = sorted(await svc.list_steps(route.id), key=lambda s: s.ordinal)
+        if not steps:
+            return False
+        final = steps[-1]
+        # ``entitled_deciders`` reads two fields of an instance; there is none here.
+        template = SimpleNamespace(current_assignee_user_id=None, route_id=route.id)
+        entitled = await svc.entitled_deciders(template, final, now=datetime.now(UTC))  # type: ignore[arg-type]
+        if entitled is None:
+            return bool(final.approver_role) and _caller_role_satisfies(role, final.approver_role or "")
+        return actor_id in entitled
+
+    async def _authority(self, model: GovernanceModel, actor_id: uuid.UUID, role: str | None) -> _Authority:
+        areas = await self.repo.list_areas(model.project_id)
+        return _Authority(
+            actor_id=str(actor_id),
+            route_entitled=await self._route_entitled(model, actor_id, role),
+            four_eyes=model.four_eyes,
+            areas=tuple(
+                ev.AreaState(
+                    code=a.code,
+                    owner_user_id=_s(a.owner_user_id),
+                    deputy_user_id=_s(a.deputy_user_id),
+                    applicable=a.applicable,
+                )
+                for a in areas
+            ),
+            deciders={d.id: str(d.decided_by) for d in await self.repo.list_decisions(model.project_id)},
+        )
 
     async def _ensure_checks(self, gate: GovernanceGate, areas: list[GovernanceArea]) -> None:
         have = {c.area_id for c in await self.repo.list_checks(gate.id, gate.attempt_no)}
@@ -635,10 +799,13 @@ class GovernanceService:
         if gate.status == "not_started":
             await self._fsm(GATE_FSM, gate, "in_preparation", actor_id)
         await self._ensure_checks(gate, await self.repo.list_areas(project_id))
-        instance = await ApprovalRouteService(self.session).start_instance(
-            InstanceCreate(route_id=route.id, target_kind=GATE_TARGET_KIND, target_id=gate.id),
-            started_by=actor_id,
-        )
+        try:
+            instance = await ApprovalRouteService(self.session).start_instance(
+                InstanceCreate(route_id=route.id, target_kind=GATE_TARGET_KIND, target_id=gate.id),
+                started_by=actor_id,
+            )
+        except HTTPException as exc:
+            raise _route_error(exc) from exc
         gate.approval_instance_id = instance.id
         await self._fsm(GATE_FSM, gate, "in_review", actor_id, attempt_no=gate.attempt_no)
         self._publish("gate.submitted", {"project_id": str(project_id), "gate_id": str(gate.id)})
@@ -647,7 +814,17 @@ class GovernanceService:
     async def start_preparation(
         self, project_id: uuid.UUID, gate_id: uuid.UUID, *, actor_id: uuid.UUID
     ) -> GovernanceGate:
+        """Open the first attempt of a gate nobody has touched yet.
+
+        Only from ``not_started``. The machine also allows ``in_preparation``
+        from a review, a hold and a decision, but those moves belong to a route
+        rejection, :meth:`resume` and :meth:`reopen`, each with its own guard.
+        """
+        model = await self.require_model(project_id)
         gate = await self.get_gate(project_id, gate_id, lock=True)
+        code = ev.preparation_violation(gate.status, historic=gate.historic, model_stopped=model.stopped)
+        if code:
+            raise conflict(code)
         await self._fsm(GATE_FSM, gate, "in_preparation", actor_id)
         await self._ensure_checks(gate, await self.repo.list_areas(project_id))
         return gate
@@ -661,7 +838,10 @@ class GovernanceService:
         if gate.approval_instance_id is None:
             raise GovernanceError("no_decision_route", 422)
         svc = ApprovalRouteService(self.session)
-        instance = await svc.get_instance(gate.approval_instance_id)
+        try:
+            instance = await svc.get_instance(gate.approval_instance_id)
+        except HTTPException as exc:
+            raise _route_error(exc) from exc
         steps = sorted(await svc.list_steps(instance.route_id), key=lambda s: s.ordinal)
         if not steps:
             raise GovernanceError("no_decision_route", 422)
@@ -684,6 +864,29 @@ class GovernanceService:
             raise conflict("route_not_pending")
         return instance, final, ev.entitlement_violation(str(decider_id), entitled_user_ids=ids, role_satisfies=role_ok)
 
+    async def _admit_actor(
+        self, model: GovernanceModel, gate: GovernanceGate, *, outcome: str, decider_id: uuid.UUID, role: str | None
+    ) -> tuple[Any, Any]:
+        """Whether this caller may record this outcome now: gate state, phase, route entitlement.
+
+        Nothing here looks at what the decision says. Four-eyes and the content
+        rules need the gate context and follow in :meth:`_admit_decision`.
+        """
+        if gate.historic:
+            raise conflict("gate_historic")
+        if gate.status != "in_review":
+            existing = [
+                d for d in await self.repo.list_decisions(model.project_id, gate.id) if d.attempt_no == gate.attempt_no
+            ]
+            raise conflict("concurrent_decision" if existing or gate.status == "decided" else "gate_not_in_review")
+        if model.current_phase != gate.from_phase:
+            # A reopened earlier gate took the phase back; this gate waits for it.
+            raise conflict("gate_out_of_order")
+        instance, final_step, entitlement = await self._entitlement(gate, outcome, decider_id, role)
+        if entitlement:
+            raise forbidden(entitlement)
+        return instance, final_step
+
     async def _admit_decision(
         self,
         model: GovernanceModel,
@@ -696,48 +899,79 @@ class GovernanceService:
     ) -> tuple[Any, Any, ev.GateContext, dict[str, GovernanceArea], list[GovernanceDocument]]:
         """Every check that refuses a decision, in the order ``decide`` applies them.
 
-        The single source for both :meth:`decide` and :meth:`decide_capability`,
-        so what the screen offers cannot drift from what the endpoint accepts.
+        :meth:`decide_capability` runs the same two halves, so what the screen
+        offers cannot drift from what the endpoint accepts.
         """
-        if gate.status != "in_review":
-            existing = [
-                d for d in await self.repo.list_decisions(model.project_id, gate.id) if d.attempt_no == gate.attempt_no
-            ]
-            raise conflict("concurrent_decision" if existing or gate.status == "decided" else "gate_not_in_review")
-        instance, final_step, entitlement = await self._entitlement(gate, request.outcome, decider_id, role)
-        if entitlement:
-            raise forbidden(entitlement)
+        instance, final_step = await self._admit_actor(
+            model, gate, outcome=request.outcome, decider_id=decider_id, role=role
+        )
         ctx, areas, docs = await self.gate_context(model, gate, today)
         violations = ev.validate_decision(ctx, request)
         if violations:
-            owner = any(v.code == "decider_is_area_owner" for v in violations)
-            code = "decider_is_area_owner" if owner else violations[0].code
-            raise GovernanceError(code, 403 if owner else 422, violations=[v.as_dict() for v in violations])
+            code, status = ev.decision_refusal(violations)
+            raise GovernanceError(code, status, violations=[v.as_dict() for v in violations])
         return instance, final_step, ctx, areas, docs
 
     async def decide_capability(
         self, project_id: uuid.UUID, gate_id: uuid.UUID, *, decider_id: uuid.UUID, role: str | None, today: date
     ) -> dict[str, Any]:
-        """Whether this caller could decide the gate now, run through :meth:`_admit_decision`.
+        """What this caller could decide on the gate now. Nothing is written.
 
-        ``decide`` probes a ``stop`` (the outcome with the fewest content rules), so
-        it answers state, route entitlement and four-eyes; ``go`` probes a plain go,
-        so it also answers every readiness blocker. Nothing is written.
+        ``outcomes`` answers per outcome whether the caller may record it:
+        gate state, phase, route entitlement and four-eyes, the checks
+        :meth:`decide` applies before it reads the decision's content. The two
+        outcome classes differ once somebody approved the route in the approval
+        screen: the instance is then approved, a go is still the final
+        approver's to record, and hold, recycle and stop are no longer open.
+
+        ``decide`` is true when at least one outcome is open; ``go`` also needs
+        every readiness blocker gone, as a plain go would.
         """
         model = await self.require_model(project_id)
         gate = await self.get_gate(project_id, gate_id)
-        out: dict[str, Any] = {}
-        for key, outcome in (("decide", "stop"), ("go", "go")):
-            probe = ev.DecisionRequest(
-                outcome=outcome, rationale="" if outcome == "go" else "probe", decider_id=str(decider_id)
-            )
+        ctx: ev.GateContext | None = None
+        outcomes: dict[str, dict[str, Any]] = {}
+        for members in (_POSITIVE, _NEGATIVE):
+            reason: str | None = None
             try:
-                await self._admit_decision(model, gate, request=probe, decider_id=decider_id, role=role, today=today)
+                await self._admit_actor(model, gate, outcome=members[-1], decider_id=decider_id, role=role)
+                if ctx is None:
+                    ctx, _, _ = await self.gate_context(model, gate, today)
+                if ev.four_eyes_violation(ctx, str(decider_id)):
+                    reason = "decider_is_area_owner"
             except GovernanceError as exc:
-                out[key] = False
-                out[f"{key}_reason"] = exc.code
-            else:
-                out[key] = True
+                reason = exc.code
+            for outcome in members:
+                outcomes[outcome] = {"allowed": reason is None, "reason": reason}
+        out: dict[str, Any] = {"outcomes": outcomes, "decide": any(o["allowed"] for o in outcomes.values())}
+        if not out["decide"]:
+            out["decide_reason"] = outcomes["stop"]["reason"]
+        go_reason = outcomes["go"]["reason"]
+        if go_reason is None and ctx is not None:
+            probe = ev.DecisionRequest(outcome="go", rationale="", decider_id=str(decider_id))
+            violations = ev.validate_decision(ctx, probe)
+            go_reason = ev.decision_refusal(violations)[0] if violations else None
+        out["go"] = go_reason is None
+        if go_reason is not None:
+            out["go_reason"] = go_reason
+        return out
+
+    async def gate_capability(
+        self, project_id: uuid.UUID, gate_id: uuid.UUID, *, actor_id: uuid.UUID, role: str | None
+    ) -> dict[str, Any]:
+        """Whether this caller could resume, reopen or add a condition to the gate now."""
+        model = await self.require_model(project_id)
+        gate = await self.get_gate(project_id, gate_id)
+        authority = await self._authority(model, actor_id, role)
+        out: dict[str, Any] = {}
+        for key, refusal in (
+            ("resume", await self._resume_refusal(model, gate, authority)),
+            ("reopen", await self._reopen_refusal(model, gate, "probe", authority)),
+            ("add_condition", (await self._add_condition_target(gate, authority))[1]),
+        ):
+            out[key] = refusal is None
+            if refusal is not None:
+                out[f"{key}_reason"] = refusal.code
         return out
 
     async def matrix(self, project_id: uuid.UUID, *, today: date) -> dict[str, Any]:
@@ -801,6 +1035,9 @@ class GovernanceService:
         instance, final_step, ctx, areas, docs = await self._admit_decision(
             model, gate, request=request, decider_id=decider_id, role=role, today=today
         )
+        # Before anything is written: a refusal must leave no decision behind.
+        for cond in request.conditions:
+            await self._require_condition_owner(project_id, cond.owner_user_id)
 
         effects = ev.decision_effects(request.outcome)
         now = datetime.now(UTC)
@@ -844,17 +1081,27 @@ class GovernanceService:
         # Route: close the instance in the same transaction, as the decider.
         routes = ApprovalRouteService(self.session)
         if instance.status == "pending":
-            if effects.route_action in ("approved", "rejected"):
-                await routes.submit_decision(
-                    instance.id,
-                    DecisionSubmit(
-                        step_id=final_step.id, decision=effects.route_action, comment=request.rationale[:2000] or None
-                    ),
-                    approver_id=decider_id,
-                    caller_role=role,
-                )
-            elif effects.route_action == "cancel":
-                await routes.cancel_instance(instance.id, actor_id=decider_id, reason=request.rationale)
+            try:
+                if effects.route_action in ("approved", "rejected"):
+                    after = await routes.submit_decision(
+                        instance.id,
+                        DecisionSubmit(
+                            step_id=final_step.id,
+                            decision=effects.route_action,
+                            comment=request.rationale[:2000] or None,
+                        ),
+                        approver_id=decider_id,
+                        caller_role=role,
+                    )
+                    if effects.route_action == "approved" and after.status == "pending":
+                        # A role-based final step in mode all or majority is not cleared by one
+                        # approval. Recording the gate as decided here would leave the instance
+                        # pending for good; the caller rolls the request back instead.
+                        raise conflict("route_needs_more_approvals")
+                elif effects.route_action == "cancel":
+                    await routes.cancel_instance(instance.id, actor_id=decider_id, reason=request.rationale)
+            except HTTPException as exc:
+                raise _route_error(exc) from exc
 
         catalogue = await self.catalogue_for(model)
         if effects.approve_documents:
@@ -952,23 +1199,67 @@ class GovernanceService:
             )
         await self.session.flush()
 
+    async def _latest_decision_id(self, gate: GovernanceGate) -> uuid.UUID | None:
+        decisions = await self.repo.list_decisions(gate.project_id, gate.id)
+        return decisions[-1].id if decisions else None
+
+    async def _reopen_refusal(
+        self, model: GovernanceModel, gate: GovernanceGate, rationale: str, authority: _Authority
+    ) -> GovernanceError | None:
+        later = [
+            g.status
+            for g in await self.repo.list_gates(model.project_id)
+            if g.id != gate.id and g.sort_order > gate.sort_order
+        ]
+        code = ev.reopen_violation(gate.status, rationale, historic=gate.historic, later_gate_statuses=later)
+        if code:
+            return GovernanceError(code, 422 if code == "rationale_required" else 409)
+        code = authority.over(await self._latest_decision_id(gate))
+        return forbidden(code) if code else None
+
+    async def _resume_refusal(
+        self, model: GovernanceModel, gate: GovernanceGate, authority: _Authority
+    ) -> GovernanceError | None:
+        code = ev.resume_violation(gate.status, historic=gate.historic, model_stopped=model.stopped)
+        if code:
+            return conflict(code)
+        code = authority.over(await self._latest_decision_id(gate))
+        return forbidden(code) if code else None
+
     async def reopen(
-        self, project_id: uuid.UUID, gate_id: uuid.UUID, *, rationale: str, rewind_phase: bool, actor_id: uuid.UUID
+        self,
+        project_id: uuid.UUID,
+        gate_id: uuid.UUID,
+        *,
+        rationale: str,
+        actor_id: uuid.UUID,
+        role: str | None = None,
     ) -> GovernanceGate:
-        """Start attempt n+1 of a decided gate; the earlier decision stays as recorded."""
+        """Start attempt n+1 of a decided gate; the earlier decision stays as recorded.
+
+        A gate whose decision advanced the phase takes the phase back with it,
+        otherwise the reopened gate could never be submitted again. That is
+        also why no later gate may have been started: it would sit ahead of
+        the phase and could be decided past the reopened one.
+        """
         model = await self.require_model(project_id, lock=True)
         gate = await self.get_gate(project_id, gate_id, lock=True)
-        code = ev.reopen_violation(gate.status, rationale)
-        if code:
-            raise GovernanceError(code, 409 if code == "gate_not_decided" else 422)
+        refusal = await self._reopen_refusal(model, gate, rationale, await self._authority(model, actor_id, role))
+        if refusal is not None:
+            raise refusal
         if gate.last_outcome == "stop":
             model.stopped = False
             model.stopped_at = None
             for doc in await self.repo.list_documents(project_id):
                 doc.read_only = False
-        if rewind_phase:
+        if ev.reopen_rewinds_phase(gate.last_outcome):
+            before = model.current_phase
             model.current_phase = gate.from_phase
             await self._mirror_project_phase(project_id, await self.catalogue_for(model), gate.from_phase)
+            self._publish(
+                "phase.changed",
+                {"project_id": str(project_id), "from_phase": before, "to_phase": gate.from_phase},
+            )
         await self._fsm(GATE_FSM, gate, "in_preparation", actor_id, reason=rationale, reopened=True)
         await self._next_attempt(gate, carry_stale=True)
         self._publish(
@@ -976,9 +1267,15 @@ class GovernanceService:
         )
         return gate
 
-    async def resume(self, project_id: uuid.UUID, gate_id: uuid.UUID, *, actor_id: uuid.UUID) -> GovernanceGate:
+    async def resume(
+        self, project_id: uuid.UUID, gate_id: uuid.UUID, *, actor_id: uuid.UUID, role: str | None = None
+    ) -> GovernanceGate:
         """A held gate continues as a new attempt in preparation."""
+        model = await self.require_model(project_id)
         gate = await self.get_gate(project_id, gate_id, lock=True)
+        refusal = await self._resume_refusal(model, gate, await self._authority(model, actor_id, role))
+        if refusal is not None:
+            raise refusal
         await self._fsm(GATE_FSM, gate, "in_preparation", actor_id, resumed=True)
         await self._next_attempt(gate, carry_stale=False)
         return gate
@@ -997,6 +1294,75 @@ class GovernanceService:
         gate.approval_instance_id = None
         await self.session.flush()
         return True
+
+    # ── planning ───────────────────────────────────────────────────────────
+
+    async def gate_target_dates(self, gates: list[GovernanceGate]) -> dict[uuid.UUID, str]:
+        """The planned date of each gate: the linked schedule activity's, else the gate's own.
+
+        The schedule owns the date. A linked gate reads it on every request, so
+        a move in the schedule shows here without anything being copied.
+        """
+        linked = {g.schedule_activity_id for g in gates if g.schedule_activity_id}
+        dates: dict[uuid.UUID, str] = {}
+        if linked:
+            from app.modules.schedule.models import Activity
+
+            rows = await self.session.execute(
+                select(Activity.id, Activity.end_date, Activity.start_date).where(Activity.id.in_(linked))
+            )
+            dates = {aid: str(end or start or "")[:10] for aid, end, start in rows.all()}
+        return {
+            g.id: dates.get(g.schedule_activity_id, "") if g.schedule_activity_id else (g.target_date or "")
+            for g in gates
+        }
+
+    async def _activity_in_project(self, project_id: uuid.UUID, activity_id: uuid.UUID) -> bool:
+        from app.modules.schedule.models import Activity, Schedule
+
+        stmt = (
+            select(Activity.id)
+            .join(Schedule, Schedule.id == Activity.schedule_id)
+            .where(Activity.id == activity_id, Schedule.project_id == project_id)
+        )
+        return (await self.session.execute(stmt)).first() is not None
+
+    async def plan_gate(
+        self, project_id: uuid.UUID, gate_id: uuid.UUID, *, changes: dict[str, Any], actor_id: uuid.UUID
+    ) -> GovernanceGate:
+        """Set when a gate is planned: a link to a schedule activity, or its own date without one.
+
+        ``changes`` holds only the fields the caller sent: ``schedule_activity_id``
+        (None unlinks) and ``target_date`` (None clears). A linked gate has no
+        date of its own, so sending both is refused.
+        """
+        await self.require_model(project_id)
+        gate = await self.get_gate(project_id, gate_id, lock=True)
+        if gate.historic:
+            raise conflict("gate_historic")
+        before = {"schedule_activity_id": _s(gate.schedule_activity_id), "target_date": gate.target_date}
+        if "schedule_activity_id" in changes:
+            activity_id = changes["schedule_activity_id"]
+            if activity_id is not None:
+                if not await self._activity_in_project(project_id, activity_id):
+                    raise GovernanceError("activity_not_in_project", 422)
+                gate.target_date = ""
+            gate.schedule_activity_id = activity_id
+        if "target_date" in changes:
+            day = changes["target_date"]
+            if day is not None and gate.schedule_activity_id is not None:
+                raise GovernanceError("target_date_owned_by_schedule", 422)
+            gate.target_date = day.isoformat() if day is not None else ""
+        await self.session.flush()
+        await self._audit(
+            actor_id,
+            "governance_gate",
+            gate.id,
+            "planned",
+            before_state=before,
+            after_state={"schedule_activity_id": _s(gate.schedule_activity_id), "target_date": gate.target_date},
+        )
+        return gate
 
     # ── checks ─────────────────────────────────────────────────────────────
 
@@ -1105,15 +1471,29 @@ class GovernanceService:
     # ── documents ──────────────────────────────────────────────────────────
 
     async def _document_for_edit(
-        self, project_id: uuid.UUID, document_id: uuid.UUID, user_id: uuid.UUID, role: str | None, action: str
+        self, project_id: uuid.UUID, document_id: uuid.UUID, user_id: uuid.UUID, is_manager: bool, action: str
     ) -> tuple[GovernanceDocument, GovernanceArea]:
         doc = await self.repo.get_document(project_id, document_id, lock=True)
         if doc is None:
             raise not_found("document_not_found")
         area = await self.repo.get_area(project_id, doc.area_id)
         assert area is not None
-        if (role or "") not in _MANAGER_ROLES and user_id not in (area.owner_user_id, area.deputy_user_id):
-            raise forbidden("not_area_owner")
+        refusal = self._document_refusal(doc, area, user_id, is_manager, action)
+        if refusal is not None:
+            raise refusal
+        return doc, area
+
+    @staticmethod
+    def _document_refusal(
+        doc: GovernanceDocument, area: GovernanceArea, user_id: uuid.UUID, is_manager: bool, action: str
+    ) -> GovernanceError | None:
+        """Why this caller may not ``attach``, ``submit`` or ``return`` the document, or ``None``.
+
+        The write routes raise this and :meth:`document_capabilities` reports
+        it, so a button and its request can never disagree.
+        """
+        if not is_manager and user_id not in (area.owner_user_id, area.deputy_user_id):
+            return forbidden("not_area_owner")
         state = ev.DocumentState(
             id=str(doc.id),
             area_code=area.code,
@@ -1127,17 +1507,147 @@ class GovernanceService:
         )
         code = ev.document_edit_violation(state, action)
         if code:
-            raise conflict(code)
-        return doc, area
+            return conflict(code)
+        target = {"submit": "in_review", "return": "draft"}.get(action)
+        if target is not None and not DOCUMENT_FSM.has_transition(doc.status, target):
+            return conflict("invalid_transition")
+        return None
+
+    async def document_capabilities(
+        self,
+        project_id: uuid.UUID,
+        documents: list[GovernanceDocument],
+        *,
+        actor_id: uuid.UUID,
+        can_edit: bool,
+        is_manager: bool,
+    ) -> dict[uuid.UUID, dict[str, Any]]:
+        """Per document what this caller may do, each with a reason code.
+
+        ``{attach, submit, return, change_request}``. ``submit`` is also
+        refused with ``no_pending_revision`` while the document has no
+        container. Whether an attached container holds a newer revision is
+        only known to the write, so ``change_request`` can still answer
+        ``no_pending_revision`` there.
+        """
+        areas = {a.id: a for a in await self.repo.list_areas(project_id, include_retired=True)}
+        model = await self.repo.get_model(project_id)
+        open_requests = {
+            cr.document_id for cr in await self.repo.list_change_requests(project_id) if cr.status == "submitted"
+        }
+        has_route = model is not None and await self._resolve_route(model, CHANGE_TARGET_KIND) is not None
+        out: dict[uuid.UUID, dict[str, Any]] = {}
+        for doc in documents:
+            flags: dict[str, Any] = {}
+            area = areas.get(doc.area_id)
+            if not can_edit:
+                change: str | None = "missing_permission"
+            elif model is None:
+                change = "model_missing"
+            else:
+                refused = self._change_request_refusal(
+                    model,
+                    doc,
+                    area,
+                    actor_id,
+                    is_manager,
+                    has_open=doc.id in open_requests,
+                    has_route=has_route,
+                )
+                change = refused.code if refused is not None else None
+            flags["change_request"] = change is None
+            flags["change_request_reason"] = change
+            for action in ("attach", "submit", "return"):
+                if not can_edit:
+                    code: str | None = "missing_permission"
+                elif area is None:
+                    code = "area_not_found"
+                else:
+                    refusal = self._document_refusal(doc, area, actor_id, is_manager, action)
+                    code = refusal.code if refusal is not None else None
+                    if code is None and action == "submit" and not doc.container_id:
+                        code = "no_pending_revision"
+                flags[action] = code is None
+                flags[f"{action}_reason"] = code
+            out[doc.id] = flags
+        return out
+
+    @staticmethod
+    def _add_document_refusal(area: GovernanceArea, user_id: uuid.UUID, is_manager: bool) -> GovernanceError | None:
+        """Why this caller may not add a frame document to the area, or ``None``.
+
+        A new document can be required at a gate, so it changes what the gate
+        reads: like every other document write it belongs to the area's owner
+        or deputy, or to a governance manager.
+        """
+        if area.retired:
+            return conflict("area_retired")
+        if not is_manager and user_id not in (area.owner_user_id, area.deputy_user_id):
+            return forbidden("not_area_owner")
+        return None
+
+    def area_capabilities(
+        self, areas: list[GovernanceArea], *, actor_id: uuid.UUID, can_edit: bool, is_manager: bool
+    ) -> dict[uuid.UUID, dict[str, Any]]:
+        """Per area what this caller may do: ``{add_document, add_document_reason}``."""
+        out: dict[uuid.UUID, dict[str, Any]] = {}
+        for area in areas:
+            if not can_edit:
+                code: str | None = "missing_permission"
+            else:
+                refusal = self._add_document_refusal(area, actor_id, is_manager)
+                code = refusal.code if refusal is not None else None
+            out[area.id] = {"add_document": code is None, "add_document_reason": code}
+        return out
+
+    @staticmethod
+    def _change_request_refusal(
+        model: GovernanceModel,
+        doc: GovernanceDocument,
+        area: GovernanceArea | None,
+        user_id: uuid.UUID,
+        is_manager: bool,
+        *,
+        has_open: bool,
+        has_route: bool,
+    ) -> GovernanceError | None:
+        """Why this caller may not raise a change request on the document, or ``None``.
+
+        Everything that can be known before the request body is read; the
+        write raises it and :meth:`document_capabilities` reports it.
+        """
+        if not is_manager and area is not None and user_id not in (area.owner_user_id, area.deputy_user_id):
+            return forbidden("not_area_owner")
+        if model.stopped:
+            # A stopped project keeps the baseline it was stopped with.
+            return conflict("project_stopped")
+        if doc.read_only:
+            return conflict("document_read_only")
+        if doc.status != "binding":
+            return conflict("document_not_binding")
+        if has_open:
+            return conflict("change_request_not_open")
+        if not has_route:
+            return GovernanceError("no_change_route", 422)
+        return None
 
     async def create_document(
-        self, project_id: uuid.UUID, *, area_id: uuid.UUID, doc_type: str, actor_id: uuid.UUID
+        self,
+        project_id: uuid.UUID,
+        *,
+        area_id: uuid.UUID,
+        doc_type: str,
+        actor_id: uuid.UUID,
+        is_manager: bool = False,
     ) -> GovernanceDocument:
         """Add an optional frame document of a catalogue type the project does not track yet."""
         model = await self.require_model(project_id)
         area = await self.repo.get_area(project_id, area_id)
         if area is None:
             raise not_found("area_not_found")
+        refusal = self._add_document_refusal(area, actor_id, is_manager)
+        if refusal is not None:
+            raise refusal
         catalogue = await self.catalogue_for(model)
         known = {d.code: d for d in catalogue.document_types if d.area == area.code}
         if doc_type not in known:
@@ -1163,9 +1673,9 @@ class GovernanceService:
         *,
         container_id: uuid.UUID,
         actor_id: uuid.UUID,
-        role: str | None,
+        is_manager: bool = False,
     ) -> GovernanceDocument:
-        doc, _ = await self._document_for_edit(project_id, document_id, actor_id, role, "attach")
+        doc, _ = await self._document_for_edit(project_id, document_id, actor_id, is_manager, "attach")
         if not await self._container_in_project(project_id, container_id):
             raise GovernanceError("container_not_in_project", 422)
         before = _s(doc.container_id)
@@ -1182,9 +1692,9 @@ class GovernanceService:
         return doc
 
     async def submit_document(
-        self, project_id: uuid.UUID, document_id: uuid.UUID, *, actor_id: uuid.UUID, role: str | None
+        self, project_id: uuid.UUID, document_id: uuid.UUID, *, actor_id: uuid.UUID, is_manager: bool = False
     ) -> GovernanceDocument:
-        doc, _ = await self._document_for_edit(project_id, document_id, actor_id, role, "submit")
+        doc, _ = await self._document_for_edit(project_id, document_id, actor_id, is_manager, "submit")
         if (
             not doc.container_id
             or not (await self._revision_facts([doc.container_id])).get(doc.container_id, (None,))[0]
@@ -1198,9 +1708,9 @@ class GovernanceService:
         return doc
 
     async def return_document(
-        self, project_id: uuid.UUID, document_id: uuid.UUID, *, actor_id: uuid.UUID, role: str | None
+        self, project_id: uuid.UUID, document_id: uuid.UUID, *, actor_id: uuid.UUID, is_manager: bool = False
     ) -> GovernanceDocument:
-        doc, _ = await self._document_for_edit(project_id, document_id, actor_id, role, "return")
+        doc, _ = await self._document_for_edit(project_id, document_id, actor_id, is_manager, "return")
         await self._fsm(DOCUMENT_FSM, doc, "draft", actor_id)
         return doc
 
@@ -1237,25 +1747,51 @@ class GovernanceService:
 
     # ── conditions ─────────────────────────────────────────────────────────
 
-    async def add_condition(
-        self, project_id: uuid.UUID, gate_id: uuid.UUID, *, cond: ev.ProposedCondition, actor_id: uuid.UUID
-    ) -> GovernanceCondition:
-        """Attach a further condition to the gate's latest go-with-conditions decision."""
-        gate = await self.get_gate(project_id, gate_id)
+    async def _require_condition_owner(self, project_id: uuid.UUID, owner_user_id: Any) -> None:
+        """A condition owner clears the condition, so they must be able to open the project."""
+        owner = _uuid(owner_user_id)
+        if owner is not None and not await self.user_can_access_project(project_id, owner):
+            raise GovernanceError("owner_not_project_member", 422)
+
+    async def _add_condition_target(
+        self, gate: GovernanceGate, authority: _Authority
+    ) -> tuple[GovernanceDecision | None, GovernanceError | None]:
+        """The decision a further condition would attach to, or why there is none for this caller."""
+        if gate.historic:
+            return None, conflict("gate_historic")
         decisions = [
-            d for d in await self.repo.list_decisions(project_id, gate.id) if d.outcome == "go_with_conditions"
+            d for d in await self.repo.list_decisions(gate.project_id, gate.id) if d.outcome == "go_with_conditions"
         ]
         if not decisions:
-            raise conflict("conditions_not_allowed")
+            return None, conflict("conditions_not_allowed")
+        code = authority.over(decisions[-1].id)
+        return decisions[-1], forbidden(code) if code else None
+
+    async def add_condition(
+        self,
+        project_id: uuid.UUID,
+        gate_id: uuid.UUID,
+        *,
+        cond: ev.ProposedCondition,
+        actor_id: uuid.UUID,
+        role: str | None = None,
+    ) -> GovernanceCondition:
+        """Attach a further condition to the gate's latest go-with-conditions decision."""
+        model = await self.require_model(project_id)
+        gate = await self.get_gate(project_id, gate_id)
+        target, refusal = await self._add_condition_target(gate, await self._authority(model, actor_id, role))
+        if refusal is not None or target is None:
+            raise refusal or conflict("conditions_not_allowed")
         if not cond.text.strip():
             raise GovernanceError("condition_text_required", 422)
         areas = {a.code for a in await self.repo.list_areas(project_id)}
         if cond.area_code is not None and cond.area_code not in areas:
             raise GovernanceError("condition_unknown_area", 422)
+        await self._require_condition_owner(project_id, cond.owner_user_id)
         row = await self.repo.add(
             GovernanceCondition(
                 project_id=project_id,
-                decision_id=decisions[-1].id,
+                decision_id=target.id,
                 gate_id=gate.id,
                 gate_code=gate.code,
                 area_code=cond.area_code,
@@ -1269,16 +1805,72 @@ class GovernanceService:
         await self._audit(actor_id, "governance_condition", row.id, "created", to_status="open")
         return row
 
+    def _waive_code(self, cond: GovernanceCondition, authority: _Authority) -> str | None:
+        return ev.condition_waive_violation(
+            cond.status,
+            actor_id=authority.actor_id,
+            decided_by=authority.deciders.get(cond.decision_id),
+            route_entitled=authority.route_entitled,
+            four_eyes=authority.four_eyes,
+            areas=authority.areas,
+            area_code=cond.area_code,
+        )
+
+    async def condition_capabilities(
+        self,
+        project_id: uuid.UUID,
+        conditions: list[GovernanceCondition],
+        *,
+        actor_id: uuid.UUID,
+        role: str | None,
+        can_edit: bool,
+        can_decide: bool,
+        is_manager: bool,
+    ) -> dict[uuid.UUID, dict[str, Any]]:
+        """Per condition what this caller may do, from the rules :meth:`clear_condition` and :meth:`waive_condition` apply.
+
+        ``can_edit``, ``can_decide`` and ``is_manager`` are the caller's
+        permission answers; a missing one reads ``missing_permission``.
+        """
+        model = await self.repo.get_model(project_id)
+        authority = (
+            await self._authority(model, actor_id, role) if model is not None and can_decide and conditions else None
+        )
+        out: dict[uuid.UUID, dict[str, Any]] = {}
+        for cond in conditions:
+            clear = (
+                ev.condition_clear_violation(
+                    cond.status, _s(cond.owner_user_id), actor_id=str(actor_id), is_manager=is_manager
+                )
+                if can_edit
+                else "missing_permission"
+            )
+            waive = self._waive_code(cond, authority) if authority is not None else "missing_permission"
+            out[cond.id] = {
+                "clear": clear is None,
+                "clear_reason": clear,
+                "waive": waive is None,
+                "waive_reason": waive,
+            }
+        return out
+
     async def clear_condition(
-        self, project_id: uuid.UUID, condition_id: uuid.UUID, *, evidence: str, actor_id: uuid.UUID, role: str | None
+        self,
+        project_id: uuid.UUID,
+        condition_id: uuid.UUID,
+        *,
+        evidence: str,
+        actor_id: uuid.UUID,
+        is_manager: bool = False,
     ) -> GovernanceCondition:
         cond = await self.repo.get_condition(project_id, condition_id, lock=True)
         if cond is None:
             raise not_found("condition_not_found")
-        if cond.status not in ("open", "overdue"):
-            raise conflict("condition_not_open")
-        if (role or "") not in _MANAGER_ROLES and actor_id != cond.owner_user_id:
-            raise forbidden("not_area_owner")
+        code = ev.condition_clear_violation(
+            cond.status, _s(cond.owner_user_id), actor_id=str(actor_id), is_manager=is_manager
+        )
+        if code:
+            raise conflict(code) if code == "condition_not_open" else forbidden(code)
         before = cond.status
         cond.status = "cleared"
         cond.evidence = evidence or ""
@@ -1289,16 +1881,25 @@ class GovernanceService:
         return cond
 
     async def waive_condition(
-        self, project_id: uuid.UUID, condition_id: uuid.UUID, *, rationale: str, actor_id: uuid.UUID
+        self,
+        project_id: uuid.UUID,
+        condition_id: uuid.UUID,
+        *,
+        rationale: str,
+        actor_id: uuid.UUID,
+        role: str | None = None,
     ) -> GovernanceCondition:
+        """Waive an open condition: a written reason, and authority over the decision that set it."""
         code = ev.waiver_violation(rationale)
         if code:
             raise GovernanceError(code, 422)
+        model = await self.require_model(project_id)
         cond = await self.repo.get_condition(project_id, condition_id, lock=True)
         if cond is None:
             raise not_found("condition_not_found")
-        if cond.status not in ("open", "overdue"):
-            raise conflict("condition_not_open")
+        code = self._waive_code(cond, await self._authority(model, actor_id, role))
+        if code:
+            raise conflict(code) if code == "condition_not_open" else forbidden(code)
         before = cond.status
         cond.status = "waived"
         cond.waiver_rationale = rationale.strip()
@@ -1362,7 +1963,7 @@ class GovernanceService:
         impact: str,
         proposed_revision_id: uuid.UUID | None,
         actor_id: uuid.UUID,
-        role: str | None,
+        is_manager: bool = False,
     ) -> GovernanceChangeRequest:
         """Ask to make a newer revision binding; starts the ``frame_change`` route."""
         from app.modules.approval_routes.schemas import InstanceCreate
@@ -1373,16 +1974,18 @@ class GovernanceService:
         if doc is None:
             raise not_found("document_not_found")
         area = await self.repo.get_area(project_id, doc.area_id)
-        if (
-            (role or "") not in _MANAGER_ROLES
-            and area is not None
-            and actor_id not in (area.owner_user_id, area.deputy_user_id)
-        ):
-            raise forbidden("not_area_owner")
-        if doc.read_only:
-            raise conflict("document_read_only")
-        if doc.status != "binding":
-            raise conflict("document_not_binding")
+        route = await self._resolve_route(model, CHANGE_TARGET_KIND)
+        refusal = self._change_request_refusal(
+            model,
+            doc,
+            area,
+            actor_id,
+            is_manager,
+            has_open=any(cr.status == "submitted" for cr in await self.repo.list_change_requests(project_id, doc.id)),
+            has_route=route is not None,
+        )
+        if refusal is not None:
+            raise refusal
         if not (reason or "").strip():
             raise GovernanceError("rationale_required", 422)
         current = (
@@ -1398,12 +2001,6 @@ class GovernanceService:
         rev = await self.session.get(DocumentRevision, proposed)
         if rev is None or rev.container_id != doc.container_id:
             raise GovernanceError("no_pending_revision", 422)
-        for open_cr in await self.repo.list_change_requests(project_id, doc.id):
-            if open_cr.status == "submitted":
-                raise conflict("change_request_not_open")
-        route = await self._resolve_route(model, CHANGE_TARGET_KIND)
-        if route is None:
-            raise GovernanceError("no_decision_route", 422)
         cr = await self.repo.add(
             GovernanceChangeRequest(
                 project_id=project_id,
@@ -1416,9 +2013,12 @@ class GovernanceService:
                 requested_by=actor_id,
             )
         )
-        instance = await ApprovalRouteService(self.session).start_instance(
-            InstanceCreate(route_id=route.id, target_kind=CHANGE_TARGET_KIND, target_id=cr.id), started_by=actor_id
-        )
+        try:
+            instance = await ApprovalRouteService(self.session).start_instance(
+                InstanceCreate(route_id=route.id, target_kind=CHANGE_TARGET_KIND, target_id=cr.id), started_by=actor_id
+            )
+        except HTTPException as exc:
+            raise _route_error(exc) from exc
         cr.approval_instance_id = instance.id
         await self.session.flush()
         await self._audit(
@@ -1537,6 +2137,8 @@ class GovernanceService:
         facts = await self._revision_facts([d.container_id for d in docs if d.container_id])
         conditions, _ = await self.repo.list_conditions(project_id)
         decisions = await self.repo.list_decisions(project_id)
+        gates = await self.repo.list_gates(project_id)
+        planned = await self.gate_target_dates(gates)
         return {
             "today": today.isoformat(),
             "areas": [
@@ -1552,11 +2154,11 @@ class GovernanceService:
                 {
                     "code": g.code,
                     "status": g.status,
-                    "target_date": g.target_date,
+                    "target_date": planned[g.id],
                     "sort_order": g.sort_order,
                     "historic": g.historic,
                 }
-                for g in await self.repo.list_gates(project_id)
+                for g in gates
             ],
             "documents": [
                 {

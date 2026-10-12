@@ -295,3 +295,147 @@ def test_the_migration_declares_the_same_indexes_as_the_models() -> None:
         for ix in t.indexes
     }
     assert declared == in_models
+
+
+# ── document capabilities: the flag and the write share one refusal ──
+
+
+def _doc_refusal(status: str, action: str, *, actor: str = "owner", is_manager: bool = False, read_only: bool = False):
+    import uuid as _uuid
+    from types import SimpleNamespace
+
+    from app.modules.project_governance.service import GovernanceService
+
+    owner, other = _uuid.UUID(int=1), _uuid.UUID(int=2)
+    doc = SimpleNamespace(
+        id=_uuid.UUID(int=9),
+        doc_type="business_case",
+        status=status,
+        container_id=None,
+        bound_revision_id=None,
+        read_only=read_only,
+    )
+    area = SimpleNamespace(code="cost_finance", owner_user_id=owner, deputy_user_id=None)
+    refusal = GovernanceService._document_refusal(doc, area, owner if actor == "owner" else other, is_manager, action)
+    return None if refusal is None else (refusal.code, refusal.status_code)
+
+
+@pytest.mark.parametrize(
+    ("status", "action", "kwargs", "expected"),
+    [
+        ("draft", "attach", {}, None),
+        ("draft", "submit", {}, None),
+        ("draft", "return", {}, ("invalid_transition", 409)),
+        ("in_review", "return", {}, None),
+        ("in_review", "submit", {}, ("invalid_transition", 409)),
+        ("binding", "attach", {}, ("binding_requires_change_request", 409)),
+        ("binding", "submit", {}, ("binding_requires_change_request", 409)),
+        ("draft", "attach", {"read_only": True}, ("document_read_only", 409)),
+        ("draft", "attach", {"actor": "other"}, ("not_area_owner", 403)),
+        ("draft", "submit", {"actor": "other", "is_manager": True}, None),
+    ],
+)
+def test_document_refusal(status: str, action: str, kwargs: dict, expected) -> None:
+    assert _doc_refusal(status, action, **kwargs) == expected
+
+
+def test_document_writes_and_flags_share_the_refusal() -> None:
+    import inspect
+
+    from app.modules.project_governance.service import GovernanceService
+
+    assert "_document_refusal(" in inspect.getsource(GovernanceService._document_for_edit)
+    assert "_document_refusal(" in inspect.getsource(GovernanceService.document_capabilities)
+
+
+# ── add document and change request: flags from the enforcing functions ──
+
+
+def _refusal_code(refusal) -> tuple[str, int] | None:
+    return None if refusal is None else (refusal.code, refusal.status_code)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        ({}, None),
+        ({"actor": 2}, ("not_area_owner", 403)),
+        ({"actor": 3}, None),
+        ({"actor": 2, "is_manager": True}, None),
+        ({"retired": True}, ("area_retired", 409)),
+        ({"retired": True, "is_manager": True}, ("area_retired", 409)),
+    ],
+)
+def test_add_document_refusal(kwargs: dict, expected) -> None:
+    import uuid as _uuid
+    from types import SimpleNamespace
+
+    from app.modules.project_governance.service import GovernanceService
+
+    area = SimpleNamespace(
+        owner_user_id=_uuid.UUID(int=1), deputy_user_id=_uuid.UUID(int=3), retired=kwargs.get("retired", False)
+    )
+    refusal = GovernanceService._add_document_refusal(
+        area, _uuid.UUID(int=kwargs.get("actor", 1)), kwargs.get("is_manager", False)
+    )
+    assert _refusal_code(refusal) == expected
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        ({}, None),
+        ({"actor": 2}, ("not_area_owner", 403)),
+        ({"actor": 2, "is_manager": True}, None),
+        ({"stopped": True}, ("project_stopped", 409)),
+        ({"read_only": True}, ("document_read_only", 409)),
+        ({"status": "draft"}, ("document_not_binding", 409)),
+        ({"status": "superseded"}, ("document_not_binding", 409)),
+        ({"has_open": True}, ("change_request_not_open", 409)),
+        ({"has_route": False}, ("no_change_route", 422)),
+        # The caller's own standing is reported before the state of the document.
+        ({"actor": 2, "status": "draft", "has_route": False}, ("not_area_owner", 403)),
+    ],
+)
+def test_change_request_refusal(kwargs: dict, expected) -> None:
+    import uuid as _uuid
+    from types import SimpleNamespace
+
+    from app.modules.project_governance.service import GovernanceService
+
+    model = SimpleNamespace(stopped=kwargs.get("stopped", False))
+    doc = SimpleNamespace(read_only=kwargs.get("read_only", False), status=kwargs.get("status", "binding"))
+    area = SimpleNamespace(owner_user_id=_uuid.UUID(int=1), deputy_user_id=None)
+    refusal = GovernanceService._change_request_refusal(
+        model,
+        doc,
+        area,
+        _uuid.UUID(int=kwargs.get("actor", 1)),
+        kwargs.get("is_manager", False),
+        has_open=kwargs.get("has_open", False),
+        has_route=kwargs.get("has_route", True),
+    )
+    assert _refusal_code(refusal) == expected
+
+
+def test_add_document_and_change_request_flags_share_the_refusal_with_the_write() -> None:
+    from app.modules.project_governance.service import GovernanceService as S
+
+    assert "_add_document_refusal(" in inspect.getsource(S.create_document)
+    assert "_add_document_refusal(" in inspect.getsource(S.area_capabilities)
+    assert "_change_request_refusal(" in inspect.getsource(S.create_change_request)
+    assert "_change_request_refusal(" in inspect.getsource(S.document_capabilities)
+
+
+def test_area_flags_without_the_edit_permission() -> None:
+    import uuid as _uuid
+    from types import SimpleNamespace
+
+    from app.modules.project_governance.service import GovernanceService
+
+    area = SimpleNamespace(id=_uuid.UUID(int=5), owner_user_id=_uuid.UUID(int=1), deputy_user_id=None, retired=False)
+    svc = GovernanceService.__new__(GovernanceService)
+    flags = svc.area_capabilities([area], actor_id=_uuid.UUID(int=1), can_edit=False, is_manager=False)
+    assert flags == {area.id: {"add_document": False, "add_document_reason": "missing_permission"}}
+    flags = svc.area_capabilities([area], actor_id=_uuid.UUID(int=1), can_edit=True, is_manager=False)
+    assert flags == {area.id: {"add_document": True, "add_document_reason": None}}

@@ -32,6 +32,8 @@ vi.mock('../api', async (importOriginal) => {
     decideGate: vi.fn(),
     reopenGate: vi.fn(),
     resumeGate: vi.fn(),
+    updateArea: vi.fn(),
+    submitGate: vi.fn(),
     addGateCondition: vi.fn(),
     createDocument: vi.fn(),
     attachDocument: vi.fn(),
@@ -48,7 +50,7 @@ import * as approvalRoutes from '@/features/approval-routes/api';
 import { ApiError } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import * as api from '../api';
-import type { GateDetail, GovernanceArea } from '../api';
+import type { GateDetail, GovernanceArea, GovernanceModel } from '../api';
 import { AreaPanel } from '../AreaPanel';
 import { GatePanel } from '../GatePanel';
 import { RoutePin } from '../RoutePin';
@@ -147,6 +149,71 @@ describe('GatePanel', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('A required frame document is not ready');
     expect(screen.getByTestId('open-decision')).not.toBeDisabled();
     expect(mocked.getGate).toHaveBeenCalledTimes(1);
+  });
+
+  describe('submitting with no approval route chosen', () => {
+    const render = (m: GovernanceModel, onOpenModel: () => void) => {
+      mocked.getGate.mockResolvedValue(detail({ gate: gate({ status: 'in_preparation' }) }));
+      mocked.submitGate.mockRejectedValue(refusal(422, 'no_decision_route'));
+      return wrap(
+        <GatePanel
+          projectId="p1"
+          gateId="g1"
+          model={m}
+          viewer={{ userId: 'u-me' }}
+          labels={labels}
+          personName={names}
+          onBack={() => undefined}
+          onOpenArea={() => undefined}
+          onOpenModel={onOpenModel}
+        />,
+      );
+    };
+
+    it('leads a manager to where the route is chosen', async () => {
+      const onOpenModel = vi.fn();
+      render(model(), onOpenModel);
+      fireEvent.click(await screen.findByRole('button', { name: 'Submit for review' }));
+      const notice = await screen.findByTestId('gate-no-route');
+      expect(notice).toHaveTextContent('no approval route is chosen');
+      fireEvent.click(within(notice).getByTestId('gate-open-route'));
+      expect(onOpenModel).toHaveBeenCalledTimes(1);
+      expect(toastTitles()).toEqual([]);
+    });
+
+    it('tells somebody who may not manage whom to ask', async () => {
+      render(model({ can: { manage: false, edit: true } }), () => undefined);
+      fireEvent.click(await screen.findByRole('button', { name: 'Submit for review' }));
+      const notice = await screen.findByTestId('gate-no-route');
+      expect(notice).toHaveTextContent('A governance manager chooses it in the phase model settings.');
+      expect(within(notice).queryByTestId('gate-open-route')).toBeNull();
+    });
+  });
+
+  it('a gate that cannot be loaded still offers the way back', async () => {
+    mocked.getGate.mockRejectedValue(new Error('offline'));
+    const onBack = vi.fn();
+    wrap(
+      <GatePanel
+        projectId="p1"
+        gateId="g1"
+        model={model()}
+        viewer={{ userId: 'u-me' }}
+        labels={labels}
+        personName={names}
+        onBack={onBack}
+        onOpenArea={() => undefined}
+      />,
+    );
+    expect(await screen.findByText('The gate could not be loaded')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to matrix' }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('a gate on hold offers to resume, not to decide', async () => {
+    open(detail({ gate: gate({ status: 'on_hold', hold_resume_date: '2026-11-01', last_outcome: 'hold' }) }));
+    await screen.findByTestId('resume-gate');
+    expect(screen.queryByTestId('open-decision')).toBeNull();
   });
 
   it('the resume button follows can.resume', async () => {
@@ -284,8 +351,8 @@ describe('AreaPanel documents', () => {
   const theArea = (over: Partial<GovernanceArea> = {}) =>
     area({
       document_types: [
-        { code: 'business_case', required_at_gates: ['strategy_to_brief'] },
-        { code: 'charter', required_at_gates: [] },
+        { code: 'business_case', required_at_gates: ['strategy_to_brief'], tracked: false },
+        { code: 'charter', required_at_gates: [], tracked: false },
       ],
       ...over,
     });
@@ -305,6 +372,45 @@ describe('AreaPanel documents', () => {
       />,
     );
   }
+
+  it('takes the owner off only through its own button', async () => {
+    mocked.updateArea.mockResolvedValue(theArea());
+    open();
+    expect(screen.queryByTestId('unassign-deputy_user_id')).toBeNull();
+    fireEvent.click(screen.getByTestId('unassign-owner_user_id'));
+    await waitFor(() => expect(mocked.updateArea).toHaveBeenCalledWith('p1', 'a1', { owner_user_id: null }));
+  });
+
+  it('documents that are loading or failed never read as an empty area', () => {
+    const render = (props: object) =>
+      wrap(
+        <AreaPanel
+          projectId="p1"
+          area={theArea()}
+          model={model()}
+          documents={[]}
+          changeRequests={[]}
+          gates={[gate()]}
+          labels={labels}
+          personName={names}
+          onBack={() => undefined}
+          {...props}
+        />,
+      );
+    const loading = render({ documentsLoading: true });
+    expect(screen.getByTestId('area-documents-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('area-no-documents')).toBeNull();
+    expect(screen.queryByTestId('add-document')).toBeNull();
+    loading.unmount();
+
+    const onRetry = vi.fn();
+    render({ documentsError: new Error('offline'), onRetryDocuments: onRetry });
+    const failed = screen.getByTestId('area-documents-error');
+    expect(failed).toHaveTextContent('The frame documents could not be loaded.');
+    expect(screen.queryByTestId('area-no-documents')).toBeNull();
+    fireEvent.click(within(failed).getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
 
   it('a document without a file says so, cannot be submitted, and offers to attach one', () => {
     open();
@@ -453,6 +559,20 @@ describe('AreaPanel documents', () => {
     await waitFor(() => expect(mocked.createDocument).toHaveBeenCalledWith('p1', { area_id: 'a1', doc_type: 'charter' }));
   });
 
+  it('leaves out a type the server reports as tracked, whatever the list on screen holds', () => {
+    open(
+      [],
+      theArea({
+        document_types: [
+          { code: 'business_case', required_at_gates: ['strategy_to_brief'], tracked: true },
+          { code: 'charter', required_at_gates: [], tracked: false },
+        ],
+      }),
+    );
+    const select = within(screen.getByTestId('add-document')).getByLabelText('Document type');
+    expect(within(select).getAllByRole('option').map((o) => o.getAttribute('value'))).toEqual(['', 'charter']);
+  });
+
   it('names the gates a document type is required at', () => {
     open([]);
     expect(screen.getByTestId('area-no-documents')).toHaveTextContent('Add the first one below');
@@ -460,7 +580,19 @@ describe('AreaPanel documents', () => {
     expect(screen.getByTestId('add-document')).toHaveTextContent('Required at: Strategy to brief');
   });
 
-  it('says so when nothing is left to add, and follows the edit flag', () => {
+  it('the change request button follows the flag of the document', () => {
+    const can = { attach: true, submit: true, return: true };
+    const binding = (over: object) => frameDocument({ status: 'binding', can: { ...can, ...over } });
+    const view = open([binding({ change_request: false, change_request_reason: 'no_change_route' })]);
+    expect(screen.getByRole('button', { name: 'Raise change request' })).toBeDisabled();
+    expect(screen.getByText(enT('governance.errors.no_change_route'))).toBeInTheDocument();
+    view.unmount();
+
+    open([binding({ change_request: true })]);
+    expect(screen.getByRole('button', { name: 'Raise change request' })).not.toBeDisabled();
+  });
+
+  it('says so when nothing is left to add, and follows the flag of the area', () => {
     const view = open([frameDocument(), frameDocument({ id: 'd2', doc_type: 'charter' })]);
     expect(screen.getByTestId('add-document-none')).toHaveTextContent('Every frame document the phase model names for this area is tracked.');
     view.unmount();
@@ -469,10 +601,10 @@ describe('AreaPanel documents', () => {
     expect(screen.getByTestId('add-document-none')).toHaveTextContent('The phase model names no frame document type for this area.');
     second.unmount();
 
-    open([frameDocument()], theArea(), model({ can: { manage: false, edit: false } }));
+    open([frameDocument()], theArea({ can: { add_document: false, add_document_reason: 'not_area_owner' } }));
     fireEvent.change(screen.getByLabelText('Document type'), { target: { value: 'charter' } });
     expect(screen.getByTestId('add-document-send')).toBeDisabled();
-    expect(within(screen.getByTestId('add-document')).getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'role_edit');
+    expect(within(screen.getByTestId('add-document')).getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'not_area_owner');
   });
 });
 
@@ -480,62 +612,93 @@ describe('RoutePin', () => {
   const route = (id: string, name: string, project_id: string | null = 'p1') =>
     ({ id, name, project_id, target_kind: 'phase_gate', is_active: true, steps: [] }) as never;
 
-  it('asks for the active phase gate routes of the project', async () => {
+  it('asks for the active routes of the project, by the kind of decision', async () => {
     mockedRoutes.listRoutes.mockResolvedValue([]);
-    wrap(<RoutePin projectId="p1" model={model()} onDone={() => undefined} />);
+    const view = wrap(<RoutePin projectId="p1" model={model()} kind="gate" onDone={() => undefined} />);
     await screen.findByTestId('route-pin-empty');
     expect(mockedRoutes.listRoutes).toHaveBeenCalledWith({ projectId: 'p1', targetKind: 'phase_gate', includeInactive: false });
+    view.unmount();
+
+    wrap(<RoutePin projectId="p1" model={model()} kind="change" onDone={() => undefined} />);
+    await screen.findByTestId('route-pin-empty');
+    expect(mockedRoutes.listRoutes).toHaveBeenLastCalledWith({ projectId: 'p1', targetKind: 'frame_change', includeInactive: false });
   });
 
-  it('with no route says that no gate can be submitted and where to create one', async () => {
-    mockedRoutes.listRoutes.mockResolvedValue([]);
-    wrap(<RoutePin projectId="p1" model={model()} onDone={() => undefined} />);
+  it('with no route of the project says where to create one', async () => {
+    // A route shared across projects cannot be pinned, so it does not count.
+    mockedRoutes.listRoutes.mockResolvedValue([route('r2', 'Steering group', null)]);
+    wrap(<RoutePin projectId="p1" model={model()} kind="gate" onDone={() => undefined} />);
     const empty = await screen.findByTestId('route-pin-empty');
-    expect(empty).toHaveTextContent('no gate can be submitted for review');
+    expect(empty).toHaveTextContent('This project has no active approval route of this kind yet.');
     expect(within(empty).getByRole('link', { name: 'Open approval routes' })).toHaveAttribute('href', '/governance?tab=approvals');
     expect(screen.queryByRole('combobox')).toBeNull();
   });
 
-  it('pins a route and goes back to the default', async () => {
-    mockedRoutes.listRoutes.mockResolvedValue([route('r1', 'Gate board'), route('r2', 'Steering group', null)]);
+  it('offers only the routes of this project and says that nothing is chosen yet', async () => {
+    mockedRoutes.listRoutes.mockResolvedValue([
+      route('r1', 'Gate board'),
+      route('r2', 'Steering group', null),
+      route('r3', 'Other project board', 'p2'),
+    ]);
+    wrap(<RoutePin projectId="p1" model={model()} kind="gate" onDone={() => undefined} />);
+    const select = await screen.findByRole('combobox');
+    expect(within(select).getAllByRole('option').map((o) => o.getAttribute('value'))).toEqual(['', 'r1']);
+    expect(select).toHaveValue('');
+    expect(screen.getByTestId('route-pin-none')).toHaveTextContent('no gate can be submitted for review');
+  });
+
+  it('pins a route and removes the pin', async () => {
+    mockedRoutes.listRoutes.mockResolvedValue([route('r1', 'Gate board')]);
     mocked.updateModelSettings.mockResolvedValue(model());
     const onDone = vi.fn();
-    const view = wrap(<RoutePin projectId="p1" model={model()} onDone={onDone} />);
-    const select = await screen.findByRole('combobox');
-    expect(select).toHaveValue('');
-    expect(within(select).getByRole('option', { name: 'Steering group (shared)' })).toBeInTheDocument();
-    fireEvent.change(select, { target: { value: 'r1' } });
+    const view = wrap(<RoutePin projectId="p1" model={model()} kind="gate" onDone={onDone} />);
+    fireEvent.change(await screen.findByRole('combobox'), { target: { value: 'r1' } });
     await waitFor(() => expect(mocked.updateModelSettings).toHaveBeenCalledWith('p1', { decision_route_id: 'r1' }));
     await waitFor(() => expect(onDone).toHaveBeenCalled());
     view.unmount();
 
-    wrap(<RoutePin projectId="p1" model={model({ decision_route_id: 'r1' })} onDone={onDone} />);
+    wrap(<RoutePin projectId="p1" model={model({ decision_route_id: 'r1' })} kind="gate" onDone={onDone} />);
     const pinned = await screen.findByRole('combobox');
     expect(pinned).toHaveValue('r1');
+    expect(screen.queryByTestId('route-pin-none')).toBeNull();
     fireEvent.change(pinned, { target: { value: '' } });
     await waitFor(() => expect(mocked.updateModelSettings).toHaveBeenLastCalledWith('p1', { decision_route_id: null }));
   });
 
-  it('warns when the pinned route is no longer active and offers the default', async () => {
-    mockedRoutes.listRoutes.mockResolvedValue([route('r2', 'Steering group')]);
+  it('pins the route for changes to binding documents in its own field', async () => {
+    mockedRoutes.listRoutes.mockResolvedValue([route('r5', 'Change board')]);
     mocked.updateModelSettings.mockResolvedValue(model());
-    wrap(<RoutePin projectId="p1" model={model({ decision_route_id: 'r-gone' })} onDone={() => undefined} />);
-    const warning = await screen.findByTestId('route-pin-missing');
-    expect(warning).toHaveTextContent('The pinned route is no longer active');
-    fireEvent.click(within(warning).getByRole('button', { name: 'Use the project default' }));
-    await waitFor(() => expect(mocked.updateModelSettings).toHaveBeenCalledWith('p1', { decision_route_id: null }));
+    wrap(<RoutePin projectId="p1" model={model()} kind="change" onDone={() => undefined} />);
+    expect(await screen.findByTestId('route-pin-none')).toHaveTextContent('no change request can be raised');
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'r5' } });
+    await waitFor(() => expect(mocked.updateModelSettings).toHaveBeenCalledWith('p1', { change_route_id: 'r5' }));
+  });
+
+  it('warns when the chosen route is no longer an active route of the project', async () => {
+    mockedRoutes.listRoutes.mockResolvedValue([route('r2', 'Steering group')]);
+    wrap(<RoutePin projectId="p1" model={model({ decision_route_id: 'r-gone' })} kind="gate" onDone={() => undefined} />);
+    expect(await screen.findByTestId('route-pin-missing')).toHaveTextContent('The chosen route is no longer an active route of this project');
+    expect(screen.getByRole('combobox')).toHaveValue('');
+  });
+
+  it('shows the refusal of the server in words', async () => {
+    mockedRoutes.listRoutes.mockResolvedValue([route('r1', 'Gate board')]);
+    mocked.updateModelSettings.mockRejectedValue(refusal(422, 'route_not_pinnable'));
+    wrap(<RoutePin projectId="p1" model={model()} kind="gate" onDone={() => undefined} />);
+    fireEvent.change(await screen.findByRole('combobox'), { target: { value: 'r1' } });
+    await waitFor(() => expect(toastTitles()).toEqual([enT('governance.errors.route_not_pinnable')]));
   });
 
   it('is read-only with a reason for somebody who may not manage', async () => {
     mockedRoutes.listRoutes.mockResolvedValue([route('r1', 'Gate board')]);
-    wrap(<RoutePin projectId="p1" model={model({ can: { manage: false, edit: true } })} onDone={() => undefined} />);
+    wrap(<RoutePin projectId="p1" model={model({ can: { manage: false, edit: true } })} kind="gate" onDone={() => undefined} />);
     expect(await screen.findByRole('combobox')).toBeDisabled();
     expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'role_manage');
   });
 
   it('says when the routes could not be loaded', async () => {
     mockedRoutes.listRoutes.mockRejectedValue(new Error('offline'));
-    wrap(<RoutePin projectId="p1" model={model()} onDone={() => undefined} />);
+    wrap(<RoutePin projectId="p1" model={model()} kind="gate" onDone={() => undefined} />);
     expect(await screen.findByRole('alert')).toHaveTextContent('The approval routes could not be loaded.');
   });
 });

@@ -16,8 +16,10 @@ import {
   getGate,
   getMatrix,
   getModel,
+  type GovernanceModel,
   governanceErrorCode,
   governanceKeys,
+  missingModelCanManage,
   listAreas,
   listChangeRequests,
   listConditions,
@@ -26,23 +28,44 @@ import {
 import type { Viewer } from './access';
 import type { LabelContext } from './labels';
 
+interface ModelAnswer {
+  model: GovernanceModel | null;
+  /** Without a model: whether the reader may set the first one. Null when the server did not say. */
+  canSet: boolean | null;
+}
+
+async function fetchModel(projectId: string): Promise<ModelAnswer> {
+  try {
+    return { model: await getModel(projectId), canSet: null };
+  } catch (err) {
+    // Only `model_missing` is the empty state. A bare 404 also means the
+    // project is not visible to this user, and that must read as an error.
+    if (governanceErrorCode(err) === 'model_missing') return { model: null, canSet: missingModelCanManage(err) };
+    throw err;
+  }
+}
+
 /** The model, or null when the project has none yet (404 `model_missing`), which is an empty state and not an error. */
 export function useGovernanceModel(projectId: string) {
   return useQuery({
     queryKey: governanceKeys.model(projectId),
-    queryFn: async () => {
-      try {
-        return await getModel(projectId);
-      } catch (err) {
-        // Only `model_missing` is the empty state. A bare 404 also means the
-        // project is not visible to this user, and that must read as an error.
-        if (governanceErrorCode(err) === 'model_missing') return null;
-        throw err;
-      }
-    },
+    queryFn: () => fetchModel(projectId),
+    select: (answer) => answer.model,
     enabled: !!projectId,
     retry: false,
   });
+}
+
+/** For a project without a model: the server's word on whether the reader may set one. Null when it gave none. */
+export function useCanSetModel(projectId: string): boolean | null {
+  const query = useQuery({
+    queryKey: governanceKeys.model(projectId),
+    queryFn: () => fetchModel(projectId),
+    select: (answer) => answer.canSet,
+    enabled: !!projectId,
+    retry: false,
+  });
+  return query.data ?? null;
 }
 
 export function useGovernanceAreas(projectId: string, enabled = true) {

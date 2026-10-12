@@ -1364,7 +1364,8 @@
       ],
       "source_ref": "Module 2",
       "hosts": [
-        "delivery_model"
+        "delivery_model",
+        "permits"
       ]
     },
     {
@@ -1421,8 +1422,7 @@
       ],
       "source_ref": "Module 7",
       "hosts": [
-        "design",
-        "permits"
+        "design"
       ]
     },
     {
