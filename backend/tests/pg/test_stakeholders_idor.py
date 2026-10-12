@@ -281,3 +281,32 @@ async def test_each_commitment_tells_the_caller_what_they_may_do_and_why_not(wor
     assert editor["agreed"] == {"allowed": False, "reason": "not_decider"}
     assert editor["edit"]["allowed"] is True
     assert {v["reason"] for v in viewer.values()} == {"no_permission"}
+
+
+async def test_before_the_first_pin_the_404_still_says_who_may_pin(world: World) -> None:
+    from tests.pg.governance_fixtures import add_project
+
+    async with world.factory() as s:
+        bare = await add_project(s, world.manager, [world.viewer])
+        await s.commit()
+    url = f"{BASE}/projects/{bare}/settings"
+    async with client_as(world, world.manager, "manager") as c:
+        manager = await c.get(url)
+    async with client_as(world, world.viewer, "viewer") as c:
+        viewer = await c.get(url)
+    assert (manager.status_code, _code(manager)) == (404, "settings_missing")
+    assert manager.json()["detail"]["can"] == {"edit": True, "read_personal": True, "manage_organisation": True}
+    assert viewer.json()["detail"]["can"] == {"edit": False, "read_personal": False, "manage_organisation": False}
+
+
+async def test_who_decides_names_each_party(world: World) -> None:
+    await seat(world, "client_pm", world.manager)
+    async with client_as(world, world.viewer, "viewer") as c:
+        r = await c.get(
+            f"{BASE}/projects/{world.project_id}/organisation/who-decides",
+            params={"decision_type": "stakeholder_commitment"},
+        )
+    body = r.json()
+    assert r.status_code == 200
+    assert body["user_ids"] == [str(world.manager)]
+    assert [p["name"] for p in body["parties"]] == ["Team member"]

@@ -2294,6 +2294,38 @@ class StakeholderService:
             "warnings": await self._frame_warnings(project_id),
         }
 
+    async def _party_names(
+        self, project_id: uuid.UUID, parties: list[md.Party], roster: dict[uuid.UUID, Any]
+    ) -> list[str | None]:
+        """A display name per party: the roster entry, else the contact, else the user's account name."""
+        from app.modules.teams.models import RosterMember
+        from app.modules.users.models import User
+
+        contacts = await self._contacts({_uuid(p.contact_id) for p in parties if p.contact_id})
+        user_ids = {_uuid(p.user_id) for p in parties if p.user_id}
+        by_user: dict[str, str] = {}
+        if user_ids:
+            users = await self.session.execute(select(User.id, User.full_name).where(User.id.in_(user_ids)))
+            by_user = {str(uid): name for uid, name in users.all() if name}
+            entries = await self.session.execute(
+                select(RosterMember.user_id, RosterMember.display_name).where(
+                    RosterMember.project_id == project_id, RosterMember.user_id.in_(user_ids)
+                )
+            )
+            # The project's own people list wins over the account name.
+            by_user.update({str(uid): name for uid, name in entries.all() if name})
+        out: list[str | None] = []
+        for p in parties:
+            member = roster.get(_uuid(p.roster_member_id)) if p.roster_member_id else None
+            contact = contacts.get(_uuid(p.contact_id)) if p.contact_id else None
+            out.append(
+                (member.display_name if member is not None else None)
+                or (self._contact_name(contact) if contact is not None else None)
+                or by_user.get(p.user_id or "")
+                or None
+            )
+        return out
+
     async def who_decides(
         self,
         project_id: uuid.UUID,
@@ -2309,11 +2341,12 @@ class StakeholderService:
         dt = fw.decision_type(decision_type)
         if dt is None:
             raise StakeholderError("unknown_decision_type")
-        _roles, holders, _roster = await self._holders(project_id)
+        _roles, holders, roster = await self._holders(project_id)
         _b, bodies = await self._bodies(project_id)
         res = md.who_decides(
             self._mandate_rows(await self.repo.mandates(project_id)), decision_type, scope, holders, bodies, today
         )
+        names = await self._party_names(project_id, res.parties, roster)
         out: dict[str, Any] = {
             "decision_type": decision_type,
             "scope": scope,
@@ -2328,8 +2361,9 @@ class StakeholderService:
                     "roster_member_id": p.roster_member_id,
                     "role_code": p.via_role,
                     "voting": p.voting,
+                    "name": names[i],
                 }
-                for p in res.parties
+                for i, p in enumerate(res.parties)
             ],
             "quorum_needed": res.quorum_needed,
             "quorum_present": res.quorum_present,

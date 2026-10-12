@@ -250,6 +250,15 @@ async def diff_framework(
 # ── settings ───────────────────────────────────────────────────────────────
 
 
+def _can(payload: dict[str, Any]) -> dict[str, bool]:
+    """What the caller's permissions allow in this module; the same block with and without a pinned framework."""
+    return {
+        "edit": _has(payload, "stakeholders.edit"),
+        "read_personal": _has(payload, "stakeholders.read_personal"),
+        "manage_organisation": _has(payload, "organisation.manage"),
+    }
+
+
 def _settings_out(s: Any, fw: Any, payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(s.id),
@@ -262,11 +271,7 @@ def _settings_out(s: Any, fw: Any, payload: dict[str, Any]) -> dict[str, Any]:
         "owner_area_code": s.owner_area_code,
         "commitment_route_id": str(s.commitment_route_id) if s.commitment_route_id else None,
         "framework": fw.model_dump(mode="json"),
-        "can": {
-            "edit": _has(payload, "stakeholders.edit"),
-            "read_personal": _has(payload, "stakeholders.read_personal"),
-            "manage_organisation": _has(payload, "organisation.manage"),
-        },
+        "can": _can(payload),
     }
 
 
@@ -274,10 +279,18 @@ def _settings_out(s: Any, fw: Any, payload: dict[str, Any]) -> dict[str, Any]:
 async def get_settings(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    """Pinned framework (full body) and register options; 404 ``settings_missing`` before the first pin."""
+    """Pinned framework (full body) and register options; 404 ``settings_missing`` before the first pin.
+
+    The 404 carries ``detail.can`` too, so the screen knows whether to offer the first pin.
+    """
     await verify_project_access(project_id, user_id, session)
     svc = StakeholderService(session)
-    settings, fw = await _run(svc.context(project_id))
+    try:
+        settings, fw = await _run(svc.context(project_id))
+    except HTTPException as exc:
+        if exc.status_code == 404 and isinstance(exc.detail, dict) and exc.detail.get("code") == "settings_missing":
+            raise HTTPException(status_code=404, detail={**exc.detail, "can": _can(payload)}) from exc
+        raise
     return _settings_out(settings, fw, payload)
 
 
