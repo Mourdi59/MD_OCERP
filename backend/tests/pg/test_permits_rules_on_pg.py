@@ -464,8 +464,8 @@ async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_
         svc = PermitService(s)
         start = await svc.readiness(pid, "start", NOW)
         assert start["status"] == "ready" and start["needed_from"] == (NOW + timedelta(days=21)).isoformat()
-        assert [(i["code"], i["state"]) for i in start["items"] if i["state"] != "met"] == [
-            ("permit_due_later", "warning")
+        assert [(i["code"], i["state"], i.get("needed_by")) for i in start["items"] if i["state"] != "met"] == [
+            ("permit_due_later", "warning", road_needed)
         ]
         # A gate without a planned day cannot show that anything is needed later: the permit blocks.
         (await s.get(GovernanceGate, gate.id)).target_date = ""

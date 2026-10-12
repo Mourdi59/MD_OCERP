@@ -120,9 +120,16 @@ class Item:
     state: str  # met | not_met | at_risk | warning
     detail: str = ""
     ref: str | None = None
+    # A permit needed later: what it is and the day, apart from the sentence, for the screen to format.
+    title: str | None = None
+    needed_by: date | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        return {"code": self.code, "state": self.state, "detail": self.detail, "ref": self.ref}
+        out: dict[str, Any] = {"code": self.code, "state": self.state, "detail": self.detail, "ref": self.ref}
+        if self.needed_by is not None:
+            out["title"] = self.title
+            out["needed_by"] = self.needed_by.isoformat()
+        return out
 
 
 @dataclass
@@ -187,7 +194,8 @@ def start_readiness(
         elif ahead:
             out.add(Item("start_at_risk_early_start", "at_risk", r.title or r.type_code, r.id))
         elif needed_from is not None and r.needed_by is not None and r.needed_by > needed_from:
-            out.add(Item("permit_due_later", "warning", f"{r.title or r.type_code} {r.needed_by.isoformat()}", r.id))
+            name = r.title or r.type_code
+            out.add(Item("permit_due_later", "warning", f"{name} {r.needed_by.isoformat()}", r.id, name, r.needed_by))
         else:
             out.add(Item("permit_missing", "not_met", r.title or r.type_code, r.id))
     live_ids = {p.id for p in live}

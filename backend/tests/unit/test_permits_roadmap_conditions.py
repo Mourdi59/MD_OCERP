@@ -259,7 +259,11 @@ def test_a_permit_needed_after_the_gate_date_is_a_warning_that_names_the_date() 
     later = date(2027, 4, 5)
     r = start_readiness([REQ, _road(later)], [PERMIT], [], GATE_DAY)
     assert r.status == "ready"
-    assert r.items[-1] == Item("permit_due_later", "warning", "Road 2027-04-05", "r9")
+    assert r.items[-1] == Item("permit_due_later", "warning", "Road 2027-04-05", "r9", "Road", later)
+    # The title and the day are also served apart from the sentence, and only on this item.
+    said = r.as_dict()["items"]
+    assert (said[-1]["title"], said[-1]["needed_by"]) == ("Road", "2027-04-05")
+    assert "needed_by" not in said[0] and "title" not in said[0]
     # Never silent: the warning is an item of the check, and a granted permit raises none.
     assert [i["state"] for i in r.as_dict()["items"]] == ["met", "warning"]
     granted = PermitView("p9", "r9", "road_occupation", "traffic_road", "full", "in_force", ("site_start",))
