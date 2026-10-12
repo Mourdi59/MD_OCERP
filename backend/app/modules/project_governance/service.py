@@ -1522,18 +1522,42 @@ class GovernanceService:
         can_edit: bool,
         is_manager: bool,
     ) -> dict[uuid.UUID, dict[str, Any]]:
-        """Per document what this caller may do: ``{attach, submit, return}`` each with a reason code.
+        """Per document what this caller may do, each with a reason code.
 
-        ``submit`` is also refused with ``no_pending_revision`` while the
-        document has no container; whether an attached container holds a
-        revision is only known to the write.
+        ``{attach, submit, return, change_request}``. ``submit`` is also
+        refused with ``no_pending_revision`` while the document has no
+        container. Whether an attached container holds a newer revision is
+        only known to the write, so ``change_request`` can still answer
+        ``no_pending_revision`` there.
         """
         areas = {a.id: a for a in await self.repo.list_areas(project_id, include_retired=True)}
+        model = await self.repo.get_model(project_id)
+        open_requests = {
+            cr.document_id for cr in await self.repo.list_change_requests(project_id) if cr.status == "submitted"
+        }
+        has_route = model is not None and await self._resolve_route(model, CHANGE_TARGET_KIND) is not None
         out: dict[uuid.UUID, dict[str, Any]] = {}
         for doc in documents:
             flags: dict[str, Any] = {}
+            area = areas.get(doc.area_id)
+            if not can_edit:
+                change: str | None = "missing_permission"
+            elif model is None:
+                change = "model_missing"
+            else:
+                refused = self._change_request_refusal(
+                    model,
+                    doc,
+                    area,
+                    actor_id,
+                    is_manager,
+                    has_open=doc.id in open_requests,
+                    has_route=has_route,
+                )
+                change = refused.code if refused is not None else None
+            flags["change_request"] = change is None
+            flags["change_request_reason"] = change
             for action in ("attach", "submit", "return"):
-                area = areas.get(doc.area_id)
                 if not can_edit:
                     code: str | None = "missing_permission"
                 elif area is None:
@@ -1548,14 +1572,82 @@ class GovernanceService:
             out[doc.id] = flags
         return out
 
+    @staticmethod
+    def _add_document_refusal(area: GovernanceArea, user_id: uuid.UUID, is_manager: bool) -> GovernanceError | None:
+        """Why this caller may not add a frame document to the area, or ``None``.
+
+        A new document can be required at a gate, so it changes what the gate
+        reads: like every other document write it belongs to the area's owner
+        or deputy, or to a governance manager.
+        """
+        if area.retired:
+            return conflict("area_retired")
+        if not is_manager and user_id not in (area.owner_user_id, area.deputy_user_id):
+            return forbidden("not_area_owner")
+        return None
+
+    def area_capabilities(
+        self, areas: list[GovernanceArea], *, actor_id: uuid.UUID, can_edit: bool, is_manager: bool
+    ) -> dict[uuid.UUID, dict[str, Any]]:
+        """Per area what this caller may do: ``{add_document, add_document_reason}``."""
+        out: dict[uuid.UUID, dict[str, Any]] = {}
+        for area in areas:
+            if not can_edit:
+                code: str | None = "missing_permission"
+            else:
+                refusal = self._add_document_refusal(area, actor_id, is_manager)
+                code = refusal.code if refusal is not None else None
+            out[area.id] = {"add_document": code is None, "add_document_reason": code}
+        return out
+
+    @staticmethod
+    def _change_request_refusal(
+        model: GovernanceModel,
+        doc: GovernanceDocument,
+        area: GovernanceArea | None,
+        user_id: uuid.UUID,
+        is_manager: bool,
+        *,
+        has_open: bool,
+        has_route: bool,
+    ) -> GovernanceError | None:
+        """Why this caller may not raise a change request on the document, or ``None``.
+
+        Everything that can be known before the request body is read; the
+        write raises it and :meth:`document_capabilities` reports it.
+        """
+        if not is_manager and area is not None and user_id not in (area.owner_user_id, area.deputy_user_id):
+            return forbidden("not_area_owner")
+        if model.stopped:
+            # A stopped project keeps the baseline it was stopped with.
+            return conflict("project_stopped")
+        if doc.read_only:
+            return conflict("document_read_only")
+        if doc.status != "binding":
+            return conflict("document_not_binding")
+        if has_open:
+            return conflict("change_request_not_open")
+        if not has_route:
+            return GovernanceError("no_change_route", 422)
+        return None
+
     async def create_document(
-        self, project_id: uuid.UUID, *, area_id: uuid.UUID, doc_type: str, actor_id: uuid.UUID
+        self,
+        project_id: uuid.UUID,
+        *,
+        area_id: uuid.UUID,
+        doc_type: str,
+        actor_id: uuid.UUID,
+        is_manager: bool = False,
     ) -> GovernanceDocument:
         """Add an optional frame document of a catalogue type the project does not track yet."""
         model = await self.require_model(project_id)
         area = await self.repo.get_area(project_id, area_id)
         if area is None:
             raise not_found("area_not_found")
+        refusal = self._add_document_refusal(area, actor_id, is_manager)
+        if refusal is not None:
+            raise refusal
         catalogue = await self.catalogue_for(model)
         known = {d.code: d for d in catalogue.document_types if d.area == area.code}
         if doc_type not in known:
@@ -1882,15 +1974,18 @@ class GovernanceService:
         if doc is None:
             raise not_found("document_not_found")
         area = await self.repo.get_area(project_id, doc.area_id)
-        if not is_manager and area is not None and actor_id not in (area.owner_user_id, area.deputy_user_id):
-            raise forbidden("not_area_owner")
-        if model.stopped:
-            # A stopped project keeps the baseline it was stopped with.
-            raise conflict("project_stopped")
-        if doc.read_only:
-            raise conflict("document_read_only")
-        if doc.status != "binding":
-            raise conflict("document_not_binding")
+        route = await self._resolve_route(model, CHANGE_TARGET_KIND)
+        refusal = self._change_request_refusal(
+            model,
+            doc,
+            area,
+            actor_id,
+            is_manager,
+            has_open=any(cr.status == "submitted" for cr in await self.repo.list_change_requests(project_id, doc.id)),
+            has_route=route is not None,
+        )
+        if refusal is not None:
+            raise refusal
         if not (reason or "").strip():
             raise GovernanceError("rationale_required", 422)
         current = (
@@ -1906,12 +2001,6 @@ class GovernanceService:
         rev = await self.session.get(DocumentRevision, proposed)
         if rev is None or rev.container_id != doc.container_id:
             raise GovernanceError("no_pending_revision", 422)
-        for open_cr in await self.repo.list_change_requests(project_id, doc.id):
-            if open_cr.status == "submitted":
-                raise conflict("change_request_not_open")
-        route = await self._resolve_route(model, CHANGE_TARGET_KIND)
-        if route is None:
-            raise GovernanceError("no_change_route", 422)
         cr = await self.repo.add(
             GovernanceChangeRequest(
                 project_id=project_id,

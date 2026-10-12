@@ -144,6 +144,9 @@ class AreaOut(_Out):
     # Document types the phase model defines for this area: [{code, name, required_at_gates, tracked}];
     # ``tracked`` says the project already has that document.
     document_types: list[dict[str, Any]] = []
+    # What the caller may do in this area: {add_document, add_document_reason}; the reason is an
+    # error code or null.
+    can: dict[str, Any] = {}
 
 
 # ── gates ──
@@ -289,8 +292,8 @@ class DocumentOut(_Out):
     approved_gate_id: UUID | None
     read_only: bool
     name: dict[str, Any] = _NO_LABEL
-    # What the caller may do with this document: {attach, attach_reason, submit, submit_reason,
-    # return, return_reason}; reasons are error codes or null.
+    # What the caller may do with this document: {attach, submit, return, change_request}, each with
+    # a ``<name>_reason`` that is an error code or null.
     can: dict[str, Any] = {}
 
 

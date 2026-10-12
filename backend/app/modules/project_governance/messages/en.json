@@ -69,7 +69,8 @@
       "activity_not_in_project": "The schedule activity does not belong to this project",
       "target_date_owned_by_schedule": "This gate is linked to a schedule activity, which owns its date; unlink it to set a date here",
       "no_change_route": "No approval route is pinned for changes to binding documents. A governance manager pins one of the project's own routes in the governance settings",
-      "route_not_pinnable": "This approval route cannot be pinned: it must be an active route of this project for this kind of decision"
+      "route_not_pinnable": "This approval route cannot be pinned: it must be an active route of this project for this kind of decision",
+      "area_retired": "This area was retired by a change of the phase model and takes no new documents"
     },
     "outcome": {
       "go": "Go",
