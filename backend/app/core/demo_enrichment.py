@@ -136,6 +136,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         from app.modules.procurement_concept.seed import seed_procurement_concept_demo
         from app.modules.qms.models import ITPPlan
         from app.modules.qms.seed import seed_qms
+        from app.modules.quality_concept.seed import seed_quality_concept_demo
         from app.modules.reconciliation.seed import seed_reconciliation_demo
         from app.modules.schedule_advanced.seed import seed_schedule_advanced_demo
         from app.modules.service.seed import seed_service_demo, seed_service_recurring_schedules
@@ -415,6 +416,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             # Binds handover evidence to documents that really exist in the
             # project's CDE, so it runs after the documents seed above.
             ("closeout", None, lambda s: seed_closeout_demo(s, _demo_pids)),
+            ("quality_concept", None, lambda s: seed_quality_concept_demo(s, _demo_pids)),
             # A structure over the projects rather than a register inside one:
             # it files the whole estate into one tree, so it runs once the
             # estate is complete.

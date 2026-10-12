@@ -82,8 +82,10 @@ class CommissioningService:
 
     async def create_system(self, data: SystemCreate, user_id: str | None = None) -> CxSystem:
         """Create a new commissionable system."""
+        await self._check_plant_item(data.project_id, data.plant_item_id)
         system = CxSystem(
             project_id=data.project_id,
+            plant_item_id=data.plant_item_id,
             name=data.name,
             system_type=data.system_type,
             tag=data.tag,
@@ -127,6 +129,20 @@ class CommissioningService:
             system_type=system_type,
         )
 
+    async def _check_plant_item(self, project_id: uuid.UUID, plant_item_id: str | None) -> None:
+        """A plant link is stored only when the plant register confirms the item in this project."""
+        from app.core.project_scope_directory import plant_item_facts, plant_reader_registered
+
+        if plant_item_id is None:
+            return
+        if not plant_reader_registered():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No plant register is installed, so a plant item cannot be linked",
+            )
+        if await plant_item_facts(self.session, project_id, plant_item_id) is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plant item not found in this project")
+
     async def update_system(self, system_id: uuid.UUID, data: SystemUpdate) -> CxSystem:
         """Update system fields.
 
@@ -141,6 +157,8 @@ class CommissioningService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Use the commission action to commission a system",
             )
+        if fields.get("plant_item_id") is not None:
+            await self._check_plant_item(system.project_id, fields["plant_item_id"])
         if "metadata" in fields:
             incoming = fields.pop("metadata")
             fields["metadata_"] = (
@@ -204,6 +222,17 @@ class CommissioningService:
         system_type = system.system_type
         current_metadata = dict(system.metadata_ or {})
 
+        # A project with a staged commissioning model (quality concept) commissions a
+        # system only when its final stage is released.
+        from app.core.commissioning_stage_guard import commissioning_blockers
+
+        stage_blockers = await commissioning_blockers(self.session, system.project_id, system_id)
+        if stage_blockers:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Cannot commission system: {' '.join(stage_blockers)}",
+            )
+
         readiness = await self.readiness_summary(system_id)
         if not readiness["can_commission"]:
             reasons = " ".join(readiness["blocking_reasons"]) or "System is not ready to be commissioned."
@@ -248,6 +277,7 @@ class CommissioningService:
         checklist = CxChecklist(
             system_id=system_id,
             kind=data.kind,
+            stage_code=data.stage_code,
             title=data.title,
             description=data.description,
             created_by=user_id,

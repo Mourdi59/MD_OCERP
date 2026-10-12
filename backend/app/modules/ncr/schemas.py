@@ -44,6 +44,8 @@ class NCRCreate(BaseModel):
     location_lon: Decimal | None = Field(default=None, ge=-180, le=180)
     location_accuracy_m: Decimal | None = Field(default=None, ge=0)
     linked_inspection_id: str | None = Field(default=None, max_length=36)
+    # Soft link to a contract package (id or code); scopes this report for package acceptance.
+    package_ref: str | None = Field(default=None, max_length=64)
     change_order_id: str | None = Field(default=None, max_length=36)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -98,6 +100,8 @@ class NCRUpdate(BaseModel):
     location_lon: Decimal | None = Field(default=None, ge=-180, le=180)
     location_accuracy_m: Decimal | None = Field(default=None, ge=0)
     linked_inspection_id: str | None = Field(default=None, max_length=36)
+    # Soft link to a contract package (id or code); scopes this report for package acceptance.
+    package_ref: str | None = Field(default=None, max_length=64)
     change_order_id: str | None = Field(default=None, max_length=36)
     metadata: dict[str, Any] | None = None
 
@@ -126,6 +130,7 @@ class NCRResponse(BaseModel):
     location_lon: Decimal | None = None
     location_accuracy_m: Decimal | None = None
     linked_inspection_id: str | None = None
+    package_ref: str | None = None
     change_order_id: str | None = None
     created_by: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")

@@ -386,6 +386,10 @@ class TestResult(Base):
     result_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     # NCR auto-raised on a failed / conditional result.
     raised_ncr_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # The instrument's calibration certificate (soft id of ``oe_qms_calibration``). A
+    # result whose instrument was out of calibration on ``tested_at`` does not count
+    # as evidence in a quality concept.
+    calibration_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     sampled_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     tested_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     performed_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
@@ -535,9 +539,13 @@ class HoldGate(Base):
     # Inspection that satisfies the point (soft id), and the criterion it checks.
     inspection_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     criterion_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    # What the gate is attached to: activity | handover_package | inspection.
+    # What the gate is attached to: activity | handover_package | inspection | cx_stage
+    # (a commissioning stage of one system in a quality concept, released only here).
     attached_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
     attached_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # Contract package the gate belongs to (soft ref); a partial handover counts only
+    # the gates of its own packages.
+    package_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # The single source of truth for whether the gate stops progress. A hold gate
     # blocks by default; witness/surveillance/review default to soft but are overridable.
     blocks_progress: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
@@ -625,6 +633,13 @@ class HandoverPackage(Base):
     completion_type: Mapped[str] = mapped_column(String(20), nullable=False, default="whole", server_default="whole")
     # Free-text section / area reference for a sectional or partial handover.
     section_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Acceptance regime code from the project's quality concept catalogue (de_vob_b,
+    # uk_jct_practical, ...). When set it names the act; ``completion_regime`` stays the
+    # coarse legal tradition.
+    regime_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Contract packages this handover covers (soft refs). When set, the completion gate
+    # counts only NCRs and hold gates of these packages.
+    package_refs: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     # ── Lifecycle ───────────────────────────────────────────────────────────--
     # draft | assembling | ready | issued | revoked

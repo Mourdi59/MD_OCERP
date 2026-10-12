@@ -757,6 +757,7 @@ class ConstructionControlService:
             specimen_age_days=data.specimen_age_days,
             status="draft",
             sampled_at=data.sampled_at,
+            calibration_id=str(data.calibration_id) if data.calibration_id else None,
             created_by=user_id,
             metadata_=data.metadata,
         )

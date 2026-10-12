@@ -1,0 +1,1517 @@
+{
+  "id": "neutral",
+  "version": 1,
+  "name_key": "quality_concept.catalogue.name.neutral",
+  "source_url": "https://www.gesetze-im-internet.de/zpo/__485.html",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [],
+  "standard_families": [
+    {
+      "code": "concrete",
+      "name_key": "quality_concept.catalogue.standard_family.concrete",
+      "discipline": "structural",
+      "examples": [
+        "EN 206",
+        "EN 13670",
+        "DIN 1045-2",
+        "ACI 318",
+        "BS 8500"
+      ]
+    },
+    {
+      "code": "steel",
+      "name_key": "quality_concept.catalogue.standard_family.steel",
+      "discipline": "structural",
+      "examples": [
+        "EN 1090-2",
+        "EN 1993",
+        "AISC 360"
+      ]
+    },
+    {
+      "code": "geotechnics",
+      "name_key": "quality_concept.catalogue.standard_family.geotechnics",
+      "discipline": "civil",
+      "examples": [
+        "EN 1997",
+        "EN 1536",
+        "EN 12699"
+      ]
+    },
+    {
+      "code": "fire",
+      "name_key": "quality_concept.catalogue.standard_family.fire",
+      "discipline": "fire",
+      "examples": [
+        "EN 13501",
+        "NFPA 101"
+      ]
+    },
+    {
+      "code": "energy",
+      "name_key": "quality_concept.catalogue.standard_family.energy",
+      "discipline": "building_physics",
+      "examples": [
+        "EN ISO 52000",
+        "ASHRAE 90.1"
+      ]
+    },
+    {
+      "code": "acoustics",
+      "name_key": "quality_concept.catalogue.standard_family.acoustics",
+      "discipline": "building_physics",
+      "examples": [
+        "EN ISO 717",
+        "DIN 4109"
+      ]
+    },
+    {
+      "code": "building_services",
+      "name_key": "quality_concept.catalogue.standard_family.building_services",
+      "discipline": "mep",
+      "examples": [
+        "EN 12599",
+        "EN 14336",
+        "IEC 60364-6"
+      ]
+    },
+    {
+      "code": "information",
+      "name_key": "quality_concept.catalogue.standard_family.information",
+      "discipline": "information",
+      "examples": [
+        "ISO 19650",
+        "COBie"
+      ]
+    }
+  ],
+  "requirement_categories": [
+    {
+      "code": "quality.standards_basis",
+      "name_key": "quality_concept.catalogue.requirement_category.standards_basis",
+      "verification_method": "document_review"
+    },
+    {
+      "code": "quality.availability",
+      "name_key": "quality_concept.catalogue.requirement_category.availability",
+      "verification_method": "test"
+    },
+    {
+      "code": "quality.energy",
+      "name_key": "quality_concept.catalogue.requirement_category.energy",
+      "verification_method": "analysis"
+    },
+    {
+      "code": "quality.user",
+      "name_key": "quality_concept.catalogue.requirement_category.user",
+      "verification_method": "inspection"
+    },
+    {
+      "code": "quality.material",
+      "name_key": "quality_concept.catalogue.requirement_category.material",
+      "verification_method": "test"
+    },
+    {
+      "code": "quality.durability",
+      "name_key": "quality_concept.catalogue.requirement_category.durability",
+      "verification_method": "analysis"
+    },
+    {
+      "code": "quality.acoustics",
+      "name_key": "quality_concept.catalogue.requirement_category.acoustics",
+      "verification_method": "test"
+    },
+    {
+      "code": "quality.fire",
+      "name_key": "quality_concept.catalogue.requirement_category.fire",
+      "verification_method": "inspection"
+    },
+    {
+      "code": "quality.fm_data",
+      "name_key": "quality_concept.catalogue.requirement_category.fm_data",
+      "verification_method": "document_review"
+    }
+  ],
+  "certification_schemes": [
+    {
+      "code": "dgnb_new_construction",
+      "name_key": "quality_concept.catalogue.scheme.dgnb_new_construction",
+      "scope": "building",
+      "versions": [
+        "current"
+      ],
+      "source_url": "https://www.dgnb.de/en",
+      "review_status": "unconfirmed",
+      "levels": [
+        {
+          "code": "bronze",
+          "name_key": "quality_concept.catalogue.level.bronze",
+          "min_score": "35",
+          "score_unit": "percent",
+          "source_url": "https://www.dgnb.de/en",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "silver",
+          "name_key": "quality_concept.catalogue.level.silver",
+          "min_score": "50",
+          "score_unit": "percent",
+          "source_url": "https://www.dgnb.de/en",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "gold",
+          "name_key": "quality_concept.catalogue.level.gold",
+          "min_score": "65",
+          "score_unit": "percent",
+          "source_url": "https://www.dgnb.de/en",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "platinum",
+          "name_key": "quality_concept.catalogue.level.platinum",
+          "min_score": "80",
+          "score_unit": "percent",
+          "source_url": "https://www.dgnb.de/en",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "credit_categories": [
+        "energy",
+        "water",
+        "materials",
+        "indoor_environment",
+        "site",
+        "management",
+        "innovation"
+      ]
+    },
+    {
+      "code": "breeam_new_construction",
+      "name_key": "quality_concept.catalogue.scheme.breeam_new_construction",
+      "scope": "building",
+      "versions": [
+        "current"
+      ],
+      "source_url": "https://bregroup.com/products/breeam",
+      "review_status": "unconfirmed",
+      "levels": [
+        {
+          "code": "pass",
+          "name_key": "quality_concept.catalogue.level.pass",
+          "min_score": "30",
+          "score_unit": "percent",
+          "source_url": "https://bregroup.com/products/breeam",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "good",
+          "name_key": "quality_concept.catalogue.level.good",
+          "min_score": "45",
+          "score_unit": "percent",
+          "source_url": "https://bregroup.com/products/breeam",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "very_good",
+          "name_key": "quality_concept.catalogue.level.very_good",
+          "min_score": "55",
+          "score_unit": "percent",
+          "source_url": "https://bregroup.com/products/breeam",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "excellent",
+          "name_key": "quality_concept.catalogue.level.excellent",
+          "min_score": "70",
+          "score_unit": "percent",
+          "source_url": "https://bregroup.com/products/breeam",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "outstanding",
+          "name_key": "quality_concept.catalogue.level.outstanding",
+          "min_score": "85",
+          "score_unit": "percent",
+          "source_url": "https://bregroup.com/products/breeam",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "credit_categories": [
+        "energy",
+        "water",
+        "materials",
+        "indoor_environment",
+        "site",
+        "management",
+        "innovation"
+      ]
+    },
+    {
+      "code": "leed_bd_c",
+      "name_key": "quality_concept.catalogue.scheme.leed_bd_c",
+      "scope": "building",
+      "versions": [
+        "current"
+      ],
+      "source_url": "https://www.usgbc.org/leed",
+      "review_status": "unconfirmed",
+      "levels": [
+        {
+          "code": "certified",
+          "name_key": "quality_concept.catalogue.level.certified",
+          "min_score": "40",
+          "score_unit": "points",
+          "source_url": "https://www.usgbc.org/leed",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "silver",
+          "name_key": "quality_concept.catalogue.level.silver",
+          "min_score": "50",
+          "score_unit": "points",
+          "source_url": "https://www.usgbc.org/leed",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "gold",
+          "name_key": "quality_concept.catalogue.level.gold",
+          "min_score": "60",
+          "score_unit": "points",
+          "source_url": "https://www.usgbc.org/leed",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "platinum",
+          "name_key": "quality_concept.catalogue.level.platinum",
+          "min_score": "80",
+          "score_unit": "points",
+          "source_url": "https://www.usgbc.org/leed",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "credit_categories": [
+        "energy",
+        "water",
+        "materials",
+        "indoor_environment",
+        "site",
+        "management",
+        "innovation"
+      ]
+    },
+    {
+      "code": "leed_o_m",
+      "name_key": "quality_concept.catalogue.scheme.leed_o_m",
+      "scope": "operation",
+      "versions": [
+        "current"
+      ],
+      "source_url": "https://www.usgbc.org/leed",
+      "review_status": "unconfirmed",
+      "levels": [
+        {
+          "code": "certified",
+          "name_key": "quality_concept.catalogue.level.certified",
+          "min_score": "40",
+          "score_unit": "points",
+          "source_url": "https://www.usgbc.org/leed",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "silver",
+          "name_key": "quality_concept.catalogue.level.silver",
+          "min_score": "50",
+          "score_unit": "points",
+          "source_url": "https://www.usgbc.org/leed",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "gold",
+          "name_key": "quality_concept.catalogue.level.gold",
+          "min_score": "60",
+          "score_unit": "points",
+          "source_url": "https://www.usgbc.org/leed",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "platinum",
+          "name_key": "quality_concept.catalogue.level.platinum",
+          "min_score": "80",
+          "score_unit": "points",
+          "source_url": "https://www.usgbc.org/leed",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "credit_categories": [
+        "energy",
+        "water",
+        "materials",
+        "indoor_environment",
+        "site",
+        "management",
+        "innovation"
+      ]
+    },
+    {
+      "code": "well_building",
+      "name_key": "quality_concept.catalogue.scheme.well_building",
+      "scope": "building",
+      "versions": [
+        "current"
+      ],
+      "source_url": null,
+      "source_title": "Technical manual of the scheme owner",
+      "review_status": "unconfirmed",
+      "levels": [
+        {
+          "code": "bronze",
+          "name_key": "quality_concept.catalogue.level.bronze",
+          "min_score": "40",
+          "score_unit": "points",
+          "source_url": null,
+          "source_title": "Technical manual of the scheme owner",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "silver",
+          "name_key": "quality_concept.catalogue.level.silver",
+          "min_score": "50",
+          "score_unit": "points",
+          "source_url": null,
+          "source_title": "Technical manual of the scheme owner",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "gold",
+          "name_key": "quality_concept.catalogue.level.gold",
+          "min_score": "60",
+          "score_unit": "points",
+          "source_url": null,
+          "source_title": "Technical manual of the scheme owner",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "platinum",
+          "name_key": "quality_concept.catalogue.level.platinum",
+          "min_score": "80",
+          "score_unit": "points",
+          "source_url": null,
+          "source_title": "Technical manual of the scheme owner",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "credit_categories": [
+        "energy",
+        "water",
+        "materials",
+        "indoor_environment",
+        "site",
+        "management",
+        "innovation"
+      ]
+    },
+    {
+      "code": "other",
+      "name_key": "quality_concept.catalogue.scheme.other",
+      "scope": "building",
+      "versions": [
+        "current"
+      ],
+      "source_url": null,
+      "review_status": "unconfirmed",
+      "levels": [],
+      "credit_categories": []
+    }
+  ],
+  "evidence_types": [
+    {
+      "code": "design_calculation",
+      "name_key": "quality_concept.catalogue.evidence_type.design_calculation",
+      "kind": "report",
+      "fulfilled_by": [
+        "cde_document",
+        "submittal"
+      ],
+      "default_deliverer": "designer"
+    },
+    {
+      "code": "static_proof_check",
+      "name_key": "quality_concept.catalogue.evidence_type.static_proof_check",
+      "kind": "report",
+      "fulfilled_by": [
+        "cde_document"
+      ],
+      "default_deliverer": "independent_expert"
+    },
+    {
+      "code": "fire_protection_proof",
+      "name_key": "quality_concept.catalogue.evidence_type.fire_protection_proof",
+      "kind": "document",
+      "fulfilled_by": [
+        "cde_document",
+        "submittal"
+      ],
+      "default_deliverer": "designer"
+    },
+    {
+      "code": "thermal_proof",
+      "name_key": "quality_concept.catalogue.evidence_type.thermal_proof",
+      "kind": "report",
+      "fulfilled_by": [
+        "cde_document"
+      ],
+      "default_deliverer": "designer"
+    },
+    {
+      "code": "acoustic_proof",
+      "name_key": "quality_concept.catalogue.evidence_type.acoustic_proof",
+      "kind": "report",
+      "fulfilled_by": [
+        "cde_document",
+        "cc_test_result"
+      ],
+      "default_deliverer": "designer"
+    },
+    {
+      "code": "material_certificate_3_1",
+      "name_key": "quality_concept.catalogue.evidence_type.material_certificate_3_1",
+      "kind": "certificate",
+      "fulfilled_by": [
+        "cc_material_record"
+      ],
+      "default_deliverer": "supplier"
+    },
+    {
+      "code": "declaration_of_performance",
+      "name_key": "quality_concept.catalogue.evidence_type.declaration_of_performance",
+      "kind": "certificate",
+      "fulfilled_by": [
+        "cc_material_record",
+        "submittal"
+      ],
+      "default_deliverer": "supplier"
+    },
+    {
+      "code": "concrete_conformity_tests",
+      "name_key": "quality_concept.catalogue.evidence_type.concrete_conformity_tests",
+      "kind": "test",
+      "fulfilled_by": [
+        "cc_test_result"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "asphalt_conformity_tests",
+      "name_key": "quality_concept.catalogue.evidence_type.asphalt_conformity_tests",
+      "kind": "test",
+      "fulfilled_by": [
+        "cc_test_result"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "concrete_delivery_notes",
+      "name_key": "quality_concept.catalogue.evidence_type.concrete_delivery_notes",
+      "kind": "record",
+      "fulfilled_by": [
+        "cc_material_record"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "suspension_tests",
+      "name_key": "quality_concept.catalogue.evidence_type.suspension_tests",
+      "kind": "test",
+      "fulfilled_by": [
+        "cc_test_result"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "steel_mill_certificates",
+      "name_key": "quality_concept.catalogue.evidence_type.steel_mill_certificates",
+      "kind": "certificate",
+      "fulfilled_by": [
+        "cc_material_record"
+      ],
+      "default_deliverer": "supplier"
+    },
+    {
+      "code": "weld_inspection",
+      "name_key": "quality_concept.catalogue.evidence_type.weld_inspection",
+      "kind": "test",
+      "fulfilled_by": [
+        "cc_test_result",
+        "cc_inspection"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "pile_integrity_test",
+      "name_key": "quality_concept.catalogue.evidence_type.pile_integrity_test",
+      "kind": "test",
+      "fulfilled_by": [
+        "cc_test_result"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "load_test",
+      "name_key": "quality_concept.catalogue.evidence_type.load_test",
+      "kind": "test",
+      "fulfilled_by": [
+        "cc_test_result"
+      ],
+      "default_deliverer": "independent_expert"
+    },
+    {
+      "code": "pressure_test",
+      "name_key": "quality_concept.catalogue.evidence_type.pressure_test",
+      "kind": "test",
+      "fulfilled_by": [
+        "cc_test_result",
+        "cx_checklist"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "insulation_resistance_test",
+      "name_key": "quality_concept.catalogue.evidence_type.insulation_resistance_test",
+      "kind": "test",
+      "fulfilled_by": [
+        "cc_test_result",
+        "cx_checklist"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "functional_test_protocol",
+      "name_key": "quality_concept.catalogue.evidence_type.functional_test_protocol",
+      "kind": "protocol",
+      "fulfilled_by": [
+        "cx_checklist"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "integrated_systems_test_protocol",
+      "name_key": "quality_concept.catalogue.evidence_type.integrated_systems_test_protocol",
+      "kind": "protocol",
+      "fulfilled_by": [
+        "cx_checklist"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "performance_test",
+      "name_key": "quality_concept.catalogue.evidence_type.performance_test",
+      "kind": "test",
+      "fulfilled_by": [
+        "cx_checklist",
+        "cc_test_result"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "calibration_certificate",
+      "name_key": "quality_concept.catalogue.evidence_type.calibration_certificate",
+      "kind": "certificate",
+      "fulfilled_by": [
+        "qms_calibration"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "as_built_drawings",
+      "name_key": "quality_concept.catalogue.evidence_type.as_built_drawings",
+      "kind": "document",
+      "fulfilled_by": [
+        "cc_asbuilt",
+        "closeout_slot",
+        "cde_document"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "as_built_survey",
+      "name_key": "quality_concept.catalogue.evidence_type.as_built_survey",
+      "kind": "record",
+      "fulfilled_by": [
+        "cc_asbuilt"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "om_manual",
+      "name_key": "quality_concept.catalogue.evidence_type.om_manual",
+      "kind": "document",
+      "fulfilled_by": [
+        "closeout_slot",
+        "cde_document"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "warranty_certificate",
+      "name_key": "quality_concept.catalogue.evidence_type.warranty_certificate",
+      "kind": "certificate",
+      "fulfilled_by": [
+        "closeout_slot",
+        "cde_document"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "fm_asset_dataset",
+      "name_key": "quality_concept.catalogue.evidence_type.fm_asset_dataset",
+      "kind": "dataset",
+      "fulfilled_by": [
+        "requirement_deliverable",
+        "closeout_slot"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "training_record",
+      "name_key": "quality_concept.catalogue.evidence_type.training_record",
+      "kind": "record",
+      "fulfilled_by": [
+        "closeout_slot",
+        "cde_document"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "authority_acceptance",
+      "name_key": "quality_concept.catalogue.evidence_type.authority_acceptance",
+      "kind": "certificate",
+      "fulfilled_by": [
+        "cc_inspection",
+        "inspection",
+        "cde_document"
+      ],
+      "default_deliverer": "authority"
+    },
+    {
+      "code": "expert_report",
+      "name_key": "quality_concept.catalogue.evidence_type.expert_report",
+      "kind": "report",
+      "fulfilled_by": [
+        "cde_document"
+      ],
+      "default_deliverer": "independent_expert"
+    },
+    {
+      "code": "quality_plan",
+      "name_key": "quality_concept.catalogue.evidence_type.quality_plan",
+      "kind": "protocol",
+      "fulfilled_by": [
+        "qms_itp_plan"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
+      "code": "preservation_survey_report",
+      "name_key": "quality_concept.catalogue.evidence_type.preservation_survey_report",
+      "kind": "report",
+      "fulfilled_by": [
+        "cde_document",
+        "diary_photo",
+        "diary_reality_capture"
+      ],
+      "default_deliverer": "independent_expert"
+    }
+  ],
+  "material_test_plans": [
+    {
+      "code": "concrete_compressive",
+      "material_family": "concrete",
+      "evidence_type": "concrete_conformity_tests",
+      "test_method": "EN 12390-3",
+      "frequency": {
+        "per_quantity": "150",
+        "unit": "m3",
+        "min_per_period": 1,
+        "period": "day"
+      },
+      "source_url": null,
+      "source_title": "EN 206, Concrete: specification, performance, production and conformity",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "concrete_delivery",
+      "material_family": "concrete",
+      "evidence_type": "concrete_delivery_notes",
+      "test_method": "",
+      "per_lot": true,
+      "source_url": null,
+      "source_title": "EN 206, Concrete: specification, performance, production and conformity",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "suspension_density",
+      "material_family": "suspension",
+      "evidence_type": "suspension_tests",
+      "test_method": "EN 1538 annex",
+      "frequency": {
+        "per_quantity": "1",
+        "unit": "panel"
+      },
+      "source_url": null,
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "rebar_certificates",
+      "material_family": "reinforcing_steel",
+      "evidence_type": "steel_mill_certificates",
+      "test_method": "EN 10204 3.1",
+      "per_lot": true,
+      "source_url": null,
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "structural_steel_welds",
+      "material_family": "structural_steel",
+      "evidence_type": "weld_inspection",
+      "test_method": "EN ISO 17637",
+      "frequency": {
+        "per_quantity": "10",
+        "unit": "t"
+      },
+      "source_url": null,
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "soil_compaction",
+      "material_family": "soil",
+      "evidence_type": "load_test",
+      "test_method": "plate load test",
+      "frequency": {
+        "per_quantity": "500",
+        "unit": "m2"
+      },
+      "source_url": null,
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "asphalt_cores",
+      "material_family": "asphalt",
+      "evidence_type": "asphalt_conformity_tests",
+      "test_method": "core sample",
+      "frequency": {
+        "per_quantity": "1000",
+        "unit": "m2"
+      },
+      "source_url": null,
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "raw_material_dop",
+      "material_family": "raw_material",
+      "evidence_type": "declaration_of_performance",
+      "test_method": "",
+      "per_lot": true,
+      "source_url": null,
+      "review_status": "unconfirmed"
+    }
+  ],
+  "commissioning_stages": [
+    {
+      "code": "delivery_limit",
+      "order": 0,
+      "name_key": "quality_concept.catalogue.stage.delivery_limit",
+      "description_key": "quality_concept.catalogue.stage.delivery_limit.description",
+      "default_owner_role": "owner",
+      "default_release_party": "qa",
+      "default_preconditions": [
+        {
+          "code": "delivery_limit_agreed",
+          "params": {}
+        }
+      ],
+      "evidence_types": [],
+      "aliases": [
+        {
+          "context": "data_centre",
+          "term": "Level 0",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
+          "review_status": "unconfirmed"
+        }
+      ]
+    },
+    {
+      "code": "factory_test",
+      "order": 1,
+      "name_key": "quality_concept.catalogue.stage.factory_test",
+      "description_key": "quality_concept.catalogue.stage.factory_test.description",
+      "default_owner_role": "supplier",
+      "default_release_party": "qa",
+      "default_preconditions": [
+        {
+          "code": "previous_stage_released",
+          "params": {}
+        }
+      ],
+      "evidence_types": [
+        "performance_test"
+      ],
+      "aliases": [
+        {
+          "context": "data_centre",
+          "term": "Level 1",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
+          "review_status": "unconfirmed"
+        }
+      ]
+    },
+    {
+      "code": "installation_check",
+      "order": 2,
+      "name_key": "quality_concept.catalogue.stage.installation_check",
+      "description_key": "quality_concept.catalogue.stage.installation_check.description",
+      "default_owner_role": "contractor",
+      "default_release_party": "qc",
+      "default_preconditions": [
+        {
+          "code": "previous_stage_released",
+          "params": {}
+        },
+        {
+          "code": "plant_item_delivered",
+          "params": {}
+        },
+        {
+          "code": "hold_gates_released",
+          "params": {}
+        }
+      ],
+      "evidence_types": [
+        "pressure_test",
+        "insulation_resistance_test"
+      ],
+      "aliases": [
+        {
+          "context": "data_centre",
+          "term": "Level 2",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
+          "review_status": "unconfirmed"
+        },
+        {
+          "context": "de_vdi_6039",
+          "term": "Montageprüfung",
+          "source_url": "https://www.dinmedia.de/de/technische-regel/vdi-6039/142074819",
+          "review_status": "unconfirmed"
+        }
+      ]
+    },
+    {
+      "code": "startup_prefunctional",
+      "order": 3,
+      "name_key": "quality_concept.catalogue.stage.startup_prefunctional",
+      "description_key": "quality_concept.catalogue.stage.startup_prefunctional.description",
+      "default_owner_role": "contractor",
+      "default_release_party": "qa",
+      "default_preconditions": [
+        {
+          "code": "previous_stage_released",
+          "params": {}
+        },
+        {
+          "code": "proofs_delivered",
+          "params": {
+            "evidence_types": [
+              "pressure_test",
+              "insulation_resistance_test"
+            ]
+          }
+        }
+      ],
+      "evidence_types": [
+        "calibration_certificate"
+      ],
+      "aliases": [
+        {
+          "context": "data_centre",
+          "term": "Level 3",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
+          "review_status": "unconfirmed"
+        },
+        {
+          "context": "de_vdi_6039",
+          "term": "Inbetriebnahme",
+          "source_url": "https://www.dinmedia.de/de/technische-regel/vdi-6039/142074819",
+          "review_status": "unconfirmed"
+        }
+      ]
+    },
+    {
+      "code": "functional_test",
+      "order": 4,
+      "name_key": "quality_concept.catalogue.stage.functional_test",
+      "description_key": "quality_concept.catalogue.stage.functional_test.description",
+      "default_owner_role": "contractor",
+      "default_release_party": "qa",
+      "default_preconditions": [
+        {
+          "code": "previous_stage_released",
+          "params": {}
+        },
+        {
+          "code": "no_open_cx_issues",
+          "params": {
+            "severity": "high"
+          }
+        }
+      ],
+      "evidence_types": [
+        "functional_test_protocol"
+      ],
+      "aliases": [
+        {
+          "context": "data_centre",
+          "term": "Level 4",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
+          "review_status": "unconfirmed"
+        },
+        {
+          "context": "ashrae_cx",
+          "term": "Functional performance testing",
+          "source_url": "https://www.ashrae.org/technical-resources/bookstore/commissioning",
+          "review_status": "unconfirmed"
+        }
+      ]
+    },
+    {
+      "code": "integrated_systems_test",
+      "order": 5,
+      "name_key": "quality_concept.catalogue.stage.integrated_systems_test",
+      "description_key": "quality_concept.catalogue.stage.integrated_systems_test.description",
+      "default_owner_role": "owner",
+      "default_release_party": "tpi",
+      "default_preconditions": [
+        {
+          "code": "previous_stage_released",
+          "params": {}
+        },
+        {
+          "code": "systems_released",
+          "params": {
+            "stage": "functional_test"
+          }
+        },
+        {
+          "code": "no_open_cx_issues",
+          "params": {
+            "severity": "high"
+          }
+        }
+      ],
+      "evidence_types": [
+        "integrated_systems_test_protocol"
+      ],
+      "aliases": [
+        {
+          "context": "data_centre",
+          "term": "Level 5",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
+          "review_status": "unconfirmed"
+        }
+      ]
+    },
+    {
+      "code": "performance_proof",
+      "order": 6,
+      "name_key": "quality_concept.catalogue.stage.performance_proof",
+      "description_key": "quality_concept.catalogue.stage.performance_proof.description",
+      "default_owner_role": "owner",
+      "default_release_party": "qa",
+      "default_preconditions": [
+        {
+          "code": "previous_stage_released",
+          "params": {}
+        },
+        {
+          "code": "documentation_slots_delivered",
+          "params": {
+            "keys": [
+              "om_manual",
+              "training_record"
+            ]
+          }
+        }
+      ],
+      "evidence_types": [
+        "performance_test",
+        "training_record"
+      ],
+      "aliases": [
+        {
+          "context": "de_vdi_6039",
+          "term": "Probebetrieb",
+          "source_url": "https://www.dinmedia.de/de/technische-regel/vdi-6039/142074819",
+          "review_status": "unconfirmed"
+        },
+        {
+          "context": "ashrae_cx",
+          "term": "Seasonal testing",
+          "source_url": "https://www.ashrae.org/technical-resources/bookstore/commissioning",
+          "review_status": "unconfirmed"
+        }
+      ]
+    }
+  ],
+  "acceptance_regimes": [
+    {
+      "code": "de_bgb",
+      "country_code": "DE",
+      "contract_basis": "statute",
+      "name_key": "quality_concept.catalogue.regime.de_bgb",
+      "act_name": "Abnahme",
+      "partial_allowed": true,
+      "partial_term": "Teilabnahme by agreement",
+      "refusal_threshold": "insignificant_defect_no_refusal",
+      "reservable": [
+        "defects"
+      ],
+      "refusal_needs_defect": true,
+      "source_url": "https://www.gesetze-im-internet.de/bgb/__640.html",
+      "review_status": "verified",
+      "deemed_acceptance": [
+        {
+          "trigger": "deadline_set",
+          "reasonable_period": true,
+          "consumer_notice_required": true,
+          "source_url": "https://www.gesetze-im-internet.de/bgb/__640.html",
+          "review_status": "verified"
+        }
+      ],
+      "effects": [
+        {
+          "effect": "risk_transfer",
+          "source_url": "https://www.gesetze-im-internet.de/bgb/__644.html",
+          "review_status": "verified",
+          "detail_key": "quality_concept.catalogue.effect.risk_passes_on_acceptance"
+        },
+        {
+          "effect": "payment_due",
+          "source_url": "https://www.gesetze-im-internet.de/bgb/__641.html",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.payment_due_on_acceptance"
+        },
+        {
+          "effect": "limitation_starts",
+          "source_url": "https://www.gesetze-im-internet.de/bgb/__634a.html",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.limitation_five_years",
+          "value": "60 months"
+        },
+        {
+          "effect": "burden_of_proof_shifts",
+          "source_url": "https://www.gesetze-im-internet.de/bgb/__640.html",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.burden_shifts_to_client"
+        }
+      ],
+      "limitation_regime_code": "de_bgb",
+      "unconfirmed_facts": [
+        "partial_acceptance_by_agreement_only"
+      ]
+    },
+    {
+      "code": "de_vob_b",
+      "country_code": "DE",
+      "contract_basis": "standard_form",
+      "name_key": "quality_concept.catalogue.regime.de_vob_b",
+      "act_name": "Abnahme",
+      "partial_allowed": true,
+      "partial_term": "Teilabnahme of self-contained parts",
+      "refusal_threshold": "material_defect_only",
+      "reservable": [
+        "defects",
+        "documentation"
+      ],
+      "refusal_needs_defect": true,
+      "source_url": null,
+      "source_title": "VOB/B (2016), section 12",
+      "review_status": "unconfirmed",
+      "deemed_acceptance": [
+        {
+          "trigger": "completion_notice",
+          "working_days": 12,
+          "saturday_is_working_day": true,
+          "source_url": null,
+          "source_title": "VOB/B (2016), section 12",
+          "review_status": "unconfirmed"
+        },
+        {
+          "trigger": "use_start",
+          "working_days": 6,
+          "saturday_is_working_day": true,
+          "source_url": null,
+          "source_title": "VOB/B (2016), section 12",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "effects": [
+        {
+          "effect": "risk_transfer",
+          "source_url": "https://www.gesetze-im-internet.de/bgb/__644.html",
+          "review_status": "verified",
+          "detail_key": "quality_concept.catalogue.effect.risk_passes_on_acceptance"
+        },
+        {
+          "effect": "payment_due",
+          "source_url": null,
+          "source_title": "VOB/B (2016), section 12",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.payment_due_on_acceptance"
+        },
+        {
+          "effect": "limitation_starts",
+          "source_url": null,
+          "source_title": "VOB/B (2016), section 13",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.limitation_four_years",
+          "value": "48 months"
+        },
+        {
+          "effect": "burden_of_proof_shifts",
+          "source_url": null,
+          "source_title": "VOB/B (2016), section 12",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.burden_shifts_to_client"
+        }
+      ],
+      "limitation_regime_code": "de_vob_b",
+      "unconfirmed_facts": [
+        "deemed_period_days"
+      ]
+    },
+    {
+      "code": "uk_jct_practical",
+      "country_code": "GB",
+      "contract_basis": "standard_form",
+      "name_key": "quality_concept.catalogue.regime.uk_jct_practical",
+      "act_name": "Practical Completion Certificate",
+      "partial_allowed": true,
+      "partial_term": "Sectional completion",
+      "refusal_threshold": "",
+      "reservable": [
+        "defects",
+        "documentation"
+      ],
+      "source_url": null,
+      "source_title": "JCT Standard Building Contract",
+      "review_status": "unconfirmed",
+      "effects": [
+        {
+          "effect": "defects_period_starts",
+          "source_url": null,
+          "source_title": "JCT Standard Building Contract",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.rectification_period_starts"
+        },
+        {
+          "effect": "retention_release_part",
+          "source_url": null,
+          "source_title": "JCT Standard Building Contract",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.half_retention_released",
+          "value": "50 percent"
+        },
+        {
+          "effect": "liquidated_damages_end",
+          "source_url": null,
+          "source_title": "JCT Standard Building Contract",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.liquidated_damages_stop"
+        },
+        {
+          "effect": "occupation_permitted",
+          "source_url": null,
+          "source_title": "JCT Standard Building Contract",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.client_takes_possession"
+        },
+        {
+          "effect": "insurance_responsibility_shifts",
+          "source_url": null,
+          "source_title": "JCT Standard Building Contract",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.insurance_passes_to_client"
+        }
+      ],
+      "unconfirmed_facts": [
+        "effects",
+        "reservable_kinds"
+      ]
+    },
+    {
+      "code": "us_aia_substantial",
+      "country_code": "US",
+      "contract_basis": "standard_form",
+      "name_key": "quality_concept.catalogue.regime.us_aia_substantial",
+      "act_name": "Certificate of Substantial Completion",
+      "partial_allowed": true,
+      "partial_term": "Designated portion",
+      "refusal_threshold": "",
+      "reservable": [
+        "defects",
+        "documentation"
+      ],
+      "source_url": "https://learn.aiacontracts.com/?p=13891",
+      "review_status": "unconfirmed",
+      "effects": [
+        {
+          "effect": "occupation_permitted",
+          "source_url": "https://learn.aiacontracts.com/?p=13891",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.owner_may_occupy"
+        },
+        {
+          "effect": "defects_period_starts",
+          "source_url": null,
+          "source_title": "AIA Document A201, General Conditions of the Contract for Construction",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.warranties_start"
+        },
+        {
+          "effect": "retention_release_part",
+          "source_url": null,
+          "source_title": "AIA Document A201, General Conditions of the Contract for Construction",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.retention_reduced"
+        },
+        {
+          "effect": "insurance_responsibility_shifts",
+          "source_url": "https://learn.aiacontracts.com/?p=13891",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.responsibilities_fixed_in_certificate"
+        }
+      ],
+      "unconfirmed_facts": [
+        "effects",
+        "reservable_kinds"
+      ]
+    },
+    {
+      "code": "fidic_taking_over",
+      "country_code": null,
+      "contract_basis": "standard_form",
+      "name_key": "quality_concept.catalogue.regime.fidic_taking_over",
+      "act_name": "Taking-Over Certificate",
+      "partial_allowed": true,
+      "partial_term": "Sections and parts",
+      "refusal_threshold": "",
+      "reservable": [
+        "defects",
+        "documentation"
+      ],
+      "source_url": null,
+      "source_title": "FIDIC Conditions of Contract for Construction",
+      "review_status": "unconfirmed",
+      "deemed_acceptance": [
+        {
+          "trigger": "completion_notice",
+          "source_url": null,
+          "source_title": "FIDIC Conditions of Contract for Construction",
+          "review_status": "unconfirmed",
+          "calendar_days": 28
+        }
+      ],
+      "effects": [
+        {
+          "effect": "defects_period_starts",
+          "source_url": null,
+          "source_title": "FIDIC Conditions of Contract for Construction",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.defects_notification_period_starts"
+        },
+        {
+          "effect": "liquidated_damages_end",
+          "source_url": null,
+          "source_title": "FIDIC Conditions of Contract for Construction",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.delay_damages_stop"
+        },
+        {
+          "effect": "risk_transfer",
+          "source_url": null,
+          "source_title": "FIDIC Conditions of Contract for Construction",
+          "review_status": "unconfirmed",
+          "detail_key": "quality_concept.catalogue.effect.care_of_works_passes"
+        }
+      ],
+      "unconfirmed_facts": [
+        "deemed_period_days",
+        "contract_edition",
+        "effects"
+      ]
+    }
+  ],
+  "documentation_sets": [
+    {
+      "code": "building_standard",
+      "name_key": "quality_concept.catalogue.documentation_set.building_standard",
+      "closeout_template": "commercial",
+      "slot_keys": [
+        "as_built_drawings",
+        "om_manual",
+        "warranty",
+        "cobie_asset_register",
+        "commissioning_certs",
+        "training_record",
+        "authority_acceptance"
+      ],
+      "fm_data": [
+        {
+          "code": "cobie_handover",
+          "deliverable_type": "cobie",
+          "loi": "3",
+          "name_key": "quality_concept.catalogue.fm_data.cobie_handover"
+        },
+        {
+          "code": "asset_psets",
+          "deliverable_type": "pset",
+          "loi": "3",
+          "name_key": "quality_concept.catalogue.fm_data.asset_psets"
+        }
+      ]
+    },
+    {
+      "code": "residential",
+      "name_key": "quality_concept.catalogue.documentation_set.residential",
+      "closeout_template": "residential",
+      "slot_keys": [
+        "as_built_drawings",
+        "om_manual",
+        "warranty",
+        "epc_certificate"
+      ],
+      "fm_data": []
+    },
+    {
+      "code": "infrastructure",
+      "name_key": "quality_concept.catalogue.documentation_set.infrastructure",
+      "closeout_template": "infrastructure",
+      "slot_keys": [
+        "as_built_drawings",
+        "om_manual",
+        "warranty",
+        "cobie_asset_register",
+        "geotechnical_records",
+        "authority_acceptance"
+      ],
+      "fm_data": [
+        {
+          "code": "asset_dataset",
+          "deliverable_type": "other",
+          "loi": "2",
+          "name_key": "quality_concept.catalogue.fm_data.asset_dataset"
+        }
+      ]
+    }
+  ],
+  "preservation_subjects": [
+    {
+      "code": "neighbour_building",
+      "name_key": "quality_concept.catalogue.preservation_subject.neighbour_building",
+      "influence_triggers": [
+        "excavation",
+        "piling",
+        "dewatering",
+        "vibration",
+        "demolition"
+      ],
+      "survey_methods": [
+        "photo",
+        "crack_mapping",
+        "level_survey"
+      ]
+    },
+    {
+      "code": "own_existing_structure",
+      "name_key": "quality_concept.catalogue.preservation_subject.own_existing_structure",
+      "influence_triggers": [
+        "excavation",
+        "demolition",
+        "vibration"
+      ],
+      "survey_methods": [
+        "photo",
+        "crack_mapping",
+        "level_survey",
+        "reality_capture"
+      ]
+    },
+    {
+      "code": "public_road",
+      "name_key": "quality_concept.catalogue.preservation_subject.public_road",
+      "influence_triggers": [
+        "excavation",
+        "crane_oversail"
+      ],
+      "survey_methods": [
+        "photo",
+        "reality_capture"
+      ]
+    },
+    {
+      "code": "utility",
+      "name_key": "quality_concept.catalogue.preservation_subject.utility",
+      "influence_triggers": [
+        "excavation",
+        "piling"
+      ],
+      "survey_methods": [
+        "photo",
+        "level_survey"
+      ]
+    },
+    {
+      "code": "heritage",
+      "name_key": "quality_concept.catalogue.preservation_subject.heritage",
+      "influence_triggers": [
+        "vibration",
+        "excavation",
+        "dewatering"
+      ],
+      "survey_methods": [
+        "photo",
+        "crack_mapping",
+        "vibration_monitoring",
+        "reality_capture"
+      ]
+    },
+    {
+      "code": "trees",
+      "name_key": "quality_concept.catalogue.preservation_subject.trees",
+      "influence_triggers": [
+        "excavation",
+        "crane_oversail"
+      ],
+      "survey_methods": [
+        "photo"
+      ]
+    },
+    {
+      "code": "watercourse",
+      "name_key": "quality_concept.catalogue.preservation_subject.watercourse",
+      "influence_triggers": [
+        "dewatering",
+        "excavation"
+      ],
+      "survey_methods": [
+        "photo",
+        "level_survey"
+      ]
+    }
+  ]
+}

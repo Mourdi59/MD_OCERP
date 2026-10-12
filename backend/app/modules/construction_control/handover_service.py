@@ -33,6 +33,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.events import publish_after_commit
 from app.core.json_merge import merge_metadata
 from app.modules.construction_control.deletion import HolderCount, refuse_if_held, refuse_if_locked
 from app.modules.construction_control.gating_service import GatingService
@@ -40,6 +41,7 @@ from app.modules.construction_control.models import (
     AsBuiltRecord,
     ElementRef,
     HandoverPackage,
+    HoldGate,
     Inspection,
     MaterialRecord,
     TestResult,
@@ -105,6 +107,8 @@ class HandoverService:
             completion_regime=data.completion_regime,
             completion_type=data.completion_type,
             section_ref=data.section_ref,
+            regime_code=data.regime_code,
+            package_refs=data.package_refs,
             status="draft",
             gating_state="blocked",
             created_by=user_id,
@@ -221,8 +225,9 @@ class HandoverService:
         if package.status in _HANDOVER_LOCKED_STATUSES:
             return package, blocking_numbers
 
-        open_ncr_count = await self._open_ncr_count(package.project_id)
-        unreleased_hold_count = await self.gating.count_unreleased_holds(package.project_id)
+        scope = list(package.package_refs or [])
+        open_ncr_count = await self._open_ncr_count(package.project_id, scope)
+        unreleased_hold_count = await self._unreleased_hold_count(package.project_id, scope)
 
         clear = open_ncr_count == 0 and unreleased_hold_count == 0
         if package.gating_state == "overridden":
@@ -413,6 +418,21 @@ class HandoverService:
 
         await self.packages.update_fields(package_id, **fields)
         await self.session.refresh(package)
+        # After commit: a quality concept's acceptance unit that points at this act
+        # moves to accepted and proposes the regime's legal effects.
+        publish_after_commit(
+            self.session,
+            "cc.handover.issued",
+            {
+                "package_id": str(package.id),
+                "project_id": str(package.project_id),
+                "regime_code": package.regime_code,
+                "issued_at": issued_at,
+                "issued_by": user_id,
+                "overridden": package.gating_state == "overridden",
+            },
+            source_module="construction_control",
+        )
         logger.info(
             "Handover package %s issued (%s, certificate %s) by %s",
             package.package_number,
@@ -436,6 +456,12 @@ class HandoverService:
         await self.packages.update_fields(package_id, **fields)
         await self.session.refresh(package)
         logger.info("Handover package %s revoked by %s", package.package_number, user_id)
+        publish_after_commit(
+            self.session,
+            "cc.handover.revoked",
+            {"package_id": str(package.id), "project_id": str(package.project_id), "revoked_by": user_id},
+            source_module="construction_control",
+        )
         return package
 
     # ── Element links (UER) ──────────────────────────────────────────────────
@@ -453,8 +479,11 @@ class HandoverService:
 
     # ── Internals ──────────────────────────────────────────────────────────--
 
-    async def _open_ncr_count(self, project_id: uuid.UUID) -> int:
+    async def _open_ncr_count(self, project_id: uuid.UUID, package_refs: list[str] | None = None) -> int:
         """Count project NCRs whose status is not a terminal (closed / void) state.
+
+        With ``package_refs`` (a partial handover of named contract packages) only the
+        NCRs of those packages count; an NCR of another package does not block it.
 
         Lazy-imported so the handover package degrades to zero open NCRs if the NCR
         module is disabled, rather than failing the gate computation.
@@ -468,6 +497,22 @@ class HandoverService:
             .select_from(NCR)
             .where(NCR.project_id == project_id)
             .where(NCR.status.notin_(_CLOSED_NCR_STATUSES))
+        )
+        if package_refs:
+            stmt = stmt.where(NCR.package_ref.in_(package_refs))
+        return (await self.session.execute(stmt)).scalar_one()
+
+    async def _unreleased_hold_count(self, project_id: uuid.UUID, package_refs: list[str] | None = None) -> int:
+        """Pending blocking hold gates of the project, or of ``package_refs`` only."""
+        if not package_refs:
+            return await self.gating.count_unreleased_holds(project_id)
+        stmt = (
+            select(func.count())
+            .select_from(HoldGate)
+            .where(HoldGate.project_id == project_id)
+            .where(HoldGate.status == "pending")
+            .where(HoldGate.blocks_progress.is_(True))
+            .where(HoldGate.package_ref.in_(package_refs))
         )
         return (await self.session.execute(stmt)).scalar_one()
 

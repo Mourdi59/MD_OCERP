@@ -1884,6 +1884,15 @@ export function ProjectDetailPage() {
           {t('permits.ui.title', { defaultValue: 'Permits' })}
         </Button>
         <Button
+          variant="ghost"
+          size="sm"
+          icon={<ShieldCheck size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/quality-concept`)}
+          data-testid="quality-concept-link"
+        >
+          {t('qualityConcept.title', { defaultValue: 'Quality concept' })}
+        </Button>
+        <Button
           variant={customizing ? 'primary' : 'ghost'}
           size="sm"
           icon={<LayoutGrid size={14} />}

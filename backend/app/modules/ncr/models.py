@@ -58,6 +58,9 @@ class NCR(Base):
     location_accuracy_m: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
     linked_inspection_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     change_order_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # Contract package the NCR belongs to (soft ref); a partial handover counts only
+    # the NCRs of its own packages.
+    package_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # When an NCR is auto-raised from a critical clash, this carries the
     # originating ``ClashResult.id`` so the rows stay traceable and the
     # auto-creation is idempotent on the same clash. Nullable + no
