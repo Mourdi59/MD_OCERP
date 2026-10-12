@@ -13,6 +13,7 @@
       "area_not_ready": "This management area is not ready for the gate",
       "evidence_not_met": "Required readiness evidence for this area is not met",
       "unknown_evidence_not_acknowledged": "A module could not say whether this area is ready. Confirm that you have seen this before you let the gate pass",
+      "unknown_criterion": "This readiness criterion is not part of the project's model for this area and gate",
       "check_stale": "A document changed after readiness was confirmed, so the area must be confirmed again",
       "condition_overdue": "A condition from an earlier gate is overdue and must be cleared or waived first",
       "conditions_required": "A go with conditions needs at least one condition",

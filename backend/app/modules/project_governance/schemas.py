@@ -263,6 +263,15 @@ class NotApplicableIn(BaseModel):
     rationale: str = Field(max_length=4000)
 
 
+class CriterionTick(BaseModel):
+    """One line of an area's readiness checklist. Who and when come from the server."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    met: bool
+    note: str = Field(default="", max_length=2000)
+
+
 class CheckOut(_Out):
     id: UUID
     gate_id: UUID
@@ -276,6 +285,8 @@ class CheckOut(_Out):
     confirmed_revisions: dict[str, str]
     stale: bool
     na_rationale: str
+    # {criterion code: {met, note, by, at}}; the gate detail serves the same as a list.
+    criteria: dict[str, Any] = {}
 
 
 # ── documents ──

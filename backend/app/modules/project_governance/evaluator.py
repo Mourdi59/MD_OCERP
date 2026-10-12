@@ -48,6 +48,7 @@ ALL_CODES: tuple[str, ...] = (
     "area_not_ready",
     "evidence_not_met",
     "unknown_evidence_not_acknowledged",
+    "unknown_criterion",
     "check_stale",
     "condition_overdue",
     "conditions_required",
@@ -131,6 +132,7 @@ class CheckState:
     rag: str = ""
     note: str = ""
     confirmed_at: str | None = None
+    criteria: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -311,6 +313,36 @@ def reset_checks_for_owner_change(checks: Iterable[CheckState], *, area_code: st
         else c
         for c in checks
     )
+
+
+def criterion_tick(
+    ticks: Mapping[str, Any], code: str, *, met: bool, note: str, actor_id: str, at: str
+) -> dict[str, dict[str, Any]]:
+    """The ticks of a check after one criterion was ticked or unticked; the input is left alone.
+
+    Taking a tick back is recorded like setting it, with who and when, so the
+    list never shows an unticked line that silently lost its history.
+    """
+    out = {k: dict(v) for k, v in ticks.items()}
+    out[code] = {"met": bool(met), "note": (note or "").strip(), "by": actor_id, "at": at}
+    return out
+
+
+def criteria_rows(codes: Iterable[str], ticks: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """The checklist of one area at one gate: every criterion of the catalogue, ticked or not."""
+    rows = []
+    for code in codes:
+        tick = ticks.get(code) or {}
+        rows.append(
+            {
+                "code": code,
+                "met": bool(tick.get("met")),
+                "note": tick.get("note") or "",
+                "ticked_by": tick.get("by"),
+                "ticked_at": tick.get("at"),
+            }
+        )
+    return rows
 
 
 def gate_accepts_readiness_reset(gate_status: str) -> bool:
@@ -703,6 +735,7 @@ def build_snapshot(ctx: GateContext, req: DecisionRequest) -> dict[str, Any]:
                 "confirmed_revisions": dict(c.confirmed_revisions),
                 "stale": check_is_stale(c, ctx.documents),
                 "na_rationale": c.na_rationale,
+                "criteria": {code: dict(tick) for code, tick in c.criteria.items()},
             }
             for c in ctx.checks
         ],
