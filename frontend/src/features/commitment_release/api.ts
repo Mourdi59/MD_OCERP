@@ -69,6 +69,8 @@ export type ReleasePurpose = 'release' | 'abort';
 export type DateBasis = 'fixed' | 'late_start' | 'start_date' | 'none';
 export type Transferable = 'no' | 'to_project' | 'resale';
 
+export type RouteState = 'generated' | 'pinned' | 'changed' | 'none';
+
 export interface Approver {
   kind: 'role' | 'project_role' | 'user';
   ref: string;
@@ -81,6 +83,8 @@ export interface MatrixTier {
   steps_mode: 'all' | 'any';
   four_eyes: boolean;
   route_id: string | null;
+  /** `changed`: the route's steps were edited since a manager accepted them; requests of the tier are refused. */
+  route_state?: RouteState;
 }
 
 export interface MatrixCode {
@@ -152,7 +156,7 @@ export interface AssignmentInput {
 }
 
 /** What route generation did per tier. */
-export type RouteReport = 'created' | 'replaced' | 'unchanged' | 'edited' | 'unfilled';
+export type RouteReport = 'created' | 'replaced' | 'unchanged' | 'edited' | 'unfilled' | 'pinned';
 
 export interface Precondition {
   id: string;
@@ -215,6 +219,15 @@ export interface CanFlag {
   reason: string | null;
 }
 
+export type ProjectAction = 'manage' | 'add_item' | 'save_scenario';
+export type ProjectCan = Partial<Record<ProjectAction, CanFlag>>;
+
+/** What the caller may do on the project's matrix. Answered before the matrix exists too. */
+export interface ProjectCapabilities {
+  matrix_exists: boolean;
+  can: ProjectCan;
+}
+
 export type ItemAction =
   | 'edit'
   | 'link'
@@ -224,7 +237,8 @@ export type ItemAction =
   | 'decide'
   | 'hold'
   | 'resume'
-  | 'transfer';
+  | 'transfer'
+  | 'defer';
 
 /** What is left to do by hand after an abort was decided: the module ends no contract or order itself. */
 export interface AbortFollowUp {
@@ -550,6 +564,7 @@ export const commitmentKeys = {
   all: ['commitment-release'] as const,
   project: (projectId: string) => ['commitment-release', projectId] as const,
   matrix: (projectId: string) => ['commitment-release', projectId, 'matrix'] as const,
+  capabilities: (projectId: string) => ['commitment-release', projectId, 'capabilities'] as const,
   items: (projectId: string) => ['commitment-release', projectId, 'items'] as const,
   item: (projectId: string, itemId: string) => ['commitment-release', projectId, 'item', itemId] as const,
   releases: (projectId: string, itemId: string) => ['commitment-release', projectId, 'releases', itemId] as const,
@@ -580,6 +595,10 @@ export function evaluateSchedule(body: EvaluateInput): Promise<EvaluateResult> {
 }
 
 /* ── Matrix, assignments and routes ───────────────────────────────────── */
+
+export function getCapabilities(projectId: string): Promise<ProjectCapabilities> {
+  return apiGet<ProjectCapabilities>(`${p(projectId)}/capabilities`);
+}
 
 export function getMatrix(projectId: string): Promise<CommitmentMatrix> {
   return apiGet<CommitmentMatrix>(`${p(projectId)}/matrix`);

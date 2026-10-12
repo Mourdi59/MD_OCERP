@@ -31,7 +31,7 @@ import {
   type Exposure,
   type Release,
 } from './api';
-import { deferVerdict, holdVerdict, itemVerdict } from './access';
+import { holdVerdict, itemVerdict } from './access';
 import {
   Amount,
   FIELD_CLASS,
@@ -61,7 +61,7 @@ import {
   type LabelContext,
 } from './labels';
 import { ReleaseDialog } from './ReleaseDialog';
-import { overRelease, remainingToRelease } from './rules';
+import { nothingCommitted, overRelease, remainingToRelease, shownExposureLines } from './rules';
 
 export interface ItemPanelProps {
   projectId: string;
@@ -92,7 +92,7 @@ function Figure({ label, children, hint }: { label: string; children: ReactNode;
 export function ExposureBlock({ exposure, labels }: { exposure: Exposure; labels: LabelContext }) {
   const { t } = labels;
   const currency = exposure.currency;
-  if (exposure.note === 'nothing_committed') {
+  if (nothingCommitted(exposure)) {
     return (
       <p className="text-sm text-content-secondary" data-testid="exposure-nothing">
         {t('commitment.exposure.nothing_committed_item', {
@@ -101,6 +101,7 @@ export function ExposureBlock({ exposure, labels }: { exposure: Exposure; labels
       </p>
     );
   }
+  const lines = shownExposureLines(exposure);
   const rows: Array<[string, string | null | undefined]> = [
     [t('commitment.exposure.sunk', { defaultValue: 'Already spent' }), exposure.sunk],
     [t('commitment.exposure.committed_not_spent', { defaultValue: 'Committed, not yet spent' }), exposure.committed_not_spent],
@@ -135,9 +136,9 @@ export function ExposureBlock({ exposure, labels }: { exposure: Exposure; labels
           />
         </span>
       </div>
-      {(exposure.lines ?? []).length > 0 && (
-        <ul className="space-y-0.5 text-xs text-content-tertiary">
-          {(exposure.lines ?? []).map((line, i) => (
+      {lines.length > 0 && (
+        <ul className="space-y-0.5 text-xs text-content-tertiary" data-testid="exposure-lines">
+          {lines.map((line, i) => (
             <li key={`${line.code}-${i}`} className="flex flex-wrap gap-x-2">
               <span>{vocab(t, EXPOSURE_LINE, line.code)}</span>
               {line.milestone && <span>{line.milestone}</span>}
@@ -274,7 +275,7 @@ export function ItemPanel({
   const editV = itemVerdict(item, 'edit');
   const linkV = itemVerdict(item, 'link');
   const holdV = holdVerdict(item);
-  const deferV = deferVerdict(item);
+  const deferV = itemVerdict(item, 'defer');
   const withdrawV = itemVerdict(item, 'withdraw');
   const pending = (historyQ.data ?? []).find((r) => r.outcome === 'pending') ?? null;
   const ended = item.status === 'aborted' || item.status === 'transferred';

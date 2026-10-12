@@ -43,7 +43,19 @@ import { ExposureBlock, ItemPanel, ReleaseHistory } from '../ItemPanel';
 import { ReleaseDialog, approverNames } from '../ReleaseDialog';
 import type { LabelContext } from '../labels';
 import { enT } from './i18nMock';
-import { READER_CAN, can, exposure, item, link, matrix, precondition, preview, release, totals } from './fixtures';
+import {
+  READER_CAN,
+  can,
+  exposure,
+  item,
+  link,
+  matrix,
+  nothingBound,
+  precondition,
+  preview,
+  release,
+  totals,
+} from './fixtures';
 
 const mocked = vi.mocked(api);
 const labels: LabelContext = { t: enT, language: 'en', exists: () => false };
@@ -248,14 +260,14 @@ describe('ReasonedButton', () => {
 
   it('stays visible, disabled, and says who can act', () => {
     wrap(
-      <ReasonedButton verdict="role_manage" data-testid="btn">
+      <ReasonedButton verdict="manage_required" data-testid="btn">
         Put on hold
       </ReasonedButton>,
     );
     expect(screen.getByTestId('btn')).toBeDisabled();
     const reason = screen.getByTestId('disabled-reason');
-    expect(reason.getAttribute('data-reason')).toBe('role_manage');
-    expect(reason.textContent).toBe(enT('commitment.disabled.role_manage'));
+    expect(reason.getAttribute('data-reason')).toBe('manage_required');
+    expect(reason.textContent).toBe(enT('commitment.disabled.manage_required'));
     expect(screen.getByTestId('btn').getAttribute('aria-describedby')).toBe(reason.id);
   });
 
@@ -272,7 +284,7 @@ describe('ReasonedButton', () => {
 
 describe('ExposureBlock and ReleaseHistory', () => {
   it('an item with nothing committed says so in a sentence', () => {
-    wrap(<ExposureBlock exposure={exposure({ note: 'nothing_committed', residual_loss: null })} labels={labels} />);
+    wrap(<ExposureBlock exposure={nothingBound()} labels={labels} />);
     expect(screen.getByTestId('exposure-nothing')).toBeInTheDocument();
     expect(screen.queryByTestId('exposure-residual')).toBeNull();
   });
@@ -286,6 +298,26 @@ describe('ExposureBlock and ReleaseHistory', () => {
     );
     expect(screen.getByTestId('exposure-residual').textContent).toBe('Unknown: abort terms missing');
     expect(screen.getByTestId('exposure-unconfirmed')).toBeInTheDocument();
+  });
+
+  it('explains the residual with the money already spent, without rows of zeros', () => {
+    wrap(
+      <ExposureBlock
+        exposure={exposure({
+          lines: [
+            { code: 'paid', amount: '200000.00' },
+            { code: 'invoiced_unpaid', amount: '0' },
+            { code: 'schedule_milestone', milestone: 'fabrication', amount: '40000.00' },
+          ],
+        })}
+        labels={labels}
+      />,
+    );
+    const list = screen.getByTestId('exposure-lines');
+    expect(list.querySelectorAll('li')).toHaveLength(2);
+    expect(list.textContent).toContain(enT('commitment.exposure.line.paid'));
+    expect(list.textContent).not.toContain(enT('commitment.exposure.line.invoiced_unpaid'));
+    expect(list.textContent).toContain('fabrication');
   });
 
   it('a known residual is printed as money, not as "unknown"', () => {
@@ -483,7 +515,7 @@ describe('ItemPanel', () => {
   });
 
   it('deferring is off for an item that left the planned state', () => {
-    panel({ status: 'released' });
+    panel({ status: 'released', can: can({ defer: 'field_frozen' }) });
     expect(screen.getByTestId('item-defer')).toBeDisabled();
     expect(reasonOf('item-defer')).toBe('field_frozen');
   });

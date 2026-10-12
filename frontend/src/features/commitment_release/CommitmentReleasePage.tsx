@@ -24,7 +24,7 @@ import { getErrorMessage } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { downloadMatrix, type Finding } from './api';
-import { canAddItem } from './access';
+import { projectVerdict } from './access';
 import { ReasonedButton } from './CommitmentBits';
 import { CommitmentGrid } from './CommitmentGrid';
 import { ExposurePanel } from './ExposurePanel';
@@ -35,7 +35,7 @@ import {
   useInvalidateCommitments,
   useLabelContext,
   usePeopleNames,
-  useViewer,
+  useCapabilities,
 } from './hooks';
 import { ItemDialog } from './ItemDialog';
 import { ItemPanel } from './ItemPanel';
@@ -69,7 +69,8 @@ export function CommitmentReleasePage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
   const [params, setParams] = useSearchParams();
-  const viewer = useViewer();
+  const capsQ = useCapabilities(projectId);
+  const can = capsQ.data?.can;
   const labels = useLabelContext();
   const personName = usePeopleNames(projectId);
   const invalidate = useInvalidateCommitments(projectId);
@@ -167,14 +168,14 @@ export function CommitmentReleasePage() {
             defaultValue: 'First choose who may approve up to which amount. After that you add the items the project will commit money to.',
           })}
         />
-        <MatrixSettings projectId={projectId} matrix={null} viewer={viewer} labels={labels} onSaved={invalidate} />
+        <MatrixSettings projectId={projectId} matrix={null} can={can} labels={labels} onSaved={invalidate} />
       </div>
     );
   }
 
   const items = itemsQ.data?.items ?? [];
   const selected = itemId ? items.find((i) => i.id === itemId) ?? null : null;
-  const addV = canAddItem(viewer);
+  const addV = projectVerdict(can, 'add_item');
 
   let body: ReactNode;
   if (itemId) {
@@ -211,14 +212,14 @@ export function CommitmentReleasePage() {
       <SetupPanel
         projectId={projectId}
         matrix={matrix}
-        viewer={viewer}
+        can={can}
         labels={labels}
         personName={personName}
         onSaved={invalidate}
       />
     );
   } else if (tab === 'exposure') {
-    body = <ExposurePanel projectId={projectId} items={items} viewer={viewer} onOpenItem={(id) => go({ item: id })} />;
+    body = <ExposurePanel projectId={projectId} items={items} can={can} onOpenItem={(id) => go({ item: id })} />;
   } else if (itemsQ.isLoading) {
     body = <SkeletonTable rows={5} columns={7} />;
   } else if (itemsQ.isError) {

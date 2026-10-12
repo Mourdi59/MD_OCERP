@@ -13,6 +13,7 @@ import type {
   ItemLink,
   ItemTotals,
   Precondition,
+  ProjectAction,
   Release,
   ReleasePreview,
 } from '../api';
@@ -39,6 +40,7 @@ export function matrix(over: Partial<CommitmentMatrix> = {}): CommitmentMatrix {
         steps_mode: 'any',
         four_eyes: true,
         route_id: 'r1',
+        route_state: 'generated',
       },
       {
         code: 'sponsor',
@@ -47,6 +49,7 @@ export function matrix(over: Partial<CommitmentMatrix> = {}): CommitmentMatrix {
         steps_mode: 'any',
         four_eyes: true,
         route_id: null,
+        route_state: 'none',
       },
     ],
     commitment_types: [
@@ -110,7 +113,18 @@ export function exposure(over: Partial<Exposure> = {}): Exposure {
   };
 }
 
-const ACTIONS: ItemAction[] = ['edit', 'link', 'request_release', 'request_abort', 'withdraw', 'decide', 'hold', 'resume', 'transfer'];
+const ACTIONS: ItemAction[] = [
+  'edit',
+  'link',
+  'request_release',
+  'request_abort',
+  'withdraw',
+  'decide',
+  'hold',
+  'resume',
+  'transfer',
+  'defer',
+];
 
 /**
  * The `can` block as the server sends it: every action allowed unless a
@@ -139,7 +153,37 @@ export const READER_CAN = can({
   hold: 'manage_required',
   resume: 'manage_required',
   transfer: 'manage_required',
+  defer: 'manage_required',
 });
+
+/** The project capabilities as the server sends them: all allowed unless a refusal code is named. */
+export function projectCan(refused: Partial<Record<ProjectAction, string>> = {}): Record<ProjectAction, CanFlag> {
+  const flag = (action: ProjectAction): CanFlag => ({ allowed: !refused[action], reason: refused[action] ?? null });
+  return { manage: flag('manage'), add_item: flag('add_item'), save_scenario: flag('save_scenario') };
+}
+
+/** The exposure of an item with nothing bound and nothing spent, as the server sends it: a known zero. */
+export function nothingBound(): Exposure {
+  return exposure({
+    sunk: '0',
+    committed: '0',
+    committed_not_spent: '0',
+    cancellation_charge: '0',
+    recoverable: '0',
+    residual_loss: '0',
+    method: null,
+    basis_review_status: null,
+    basis_code: null,
+    transferable: null,
+    lines: [
+      { code: 'paid', amount: '0' },
+      { code: 'invoiced_unpaid', amount: '0' },
+      { code: 'certified_not_invoiced', amount: '0' },
+      { code: 'received_not_invoiced', amount: '0' },
+      { code: 'nothing_committed', amount: '0' },
+    ],
+  });
+}
 
 export function item(over: Partial<CommitmentItem> = {}): CommitmentItem {
   return {
@@ -180,7 +224,7 @@ export function item(over: Partial<CommitmentItem> = {}): CommitmentItem {
     transferred_to_item_id: null,
     abort: null,
     can: OWNER_CAN,
-    exposure: exposure({ residual_loss: null, reason: 'abort_terms_missing', note: 'nothing_committed' }),
+    exposure: nothingBound(),
     ...over,
   };
 }

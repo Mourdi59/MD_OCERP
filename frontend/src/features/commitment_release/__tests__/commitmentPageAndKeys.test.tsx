@@ -7,7 +7,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
@@ -16,11 +16,14 @@ vi.mock('@/features/teams/api', () => ({ listRoster: vi.fn(async () => ({ items:
 vi.mock('@/shared/ui/ProjectPeopleSelect', () => ({
   ProjectPeopleSelect: ({ placeholder }: { placeholder?: string }) => <input aria-label={placeholder} readOnly />,
 }));
+vi.mock('@/features/approval-routes/api', () => ({ listRoutes: vi.fn(async () => []) }));
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
   return {
     ...actual,
     getMatrix: vi.fn(),
+    getCapabilities: vi.fn(),
+    listAssignments: vi.fn(),
     listItems: vi.fn(),
     listFindings: vi.fn(),
     listSchedules: vi.fn(),
@@ -38,7 +41,7 @@ import { CAN_REASONS, DISABLED_REASON } from '../access';
 import { CommitmentReleasePage, FindingsList } from '../CommitmentReleasePage';
 import { ALL_KEY_MAPS, ERROR_TEXT } from '../labels';
 import { ABORT_TERMS_PROBLEM, ITEM_PROBLEM, RELEASE_PROBLEM } from '../rules';
-import { item, matrix, totals } from './fixtures';
+import { item, matrix, projectCan, totals } from './fixtures';
 
 const mocked = vi.mocked(api);
 
@@ -63,6 +66,8 @@ const NO_MATRIX = 'No commitment matrix yet';
 describe('CommitmentReleasePage states', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocked.getCapabilities.mockResolvedValue({ matrix_exists: true, can: projectCan() });
+    mocked.listAssignments.mockResolvedValue(page([]));
     mocked.listSchedules.mockResolvedValue(page([]));
     mocked.listFindings.mockResolvedValue(page([]));
     mocked.listReleases.mockResolvedValue(page([]));
@@ -80,6 +85,52 @@ describe('CommitmentReleasePage states', () => {
     expect(screen.getByText(/First choose who may approve up to which amount/)).toBeInTheDocument();
     expect(screen.getByTestId('matrix-save')).toBeInTheDocument();
     expect(mocked.listItems).not.toHaveBeenCalled();
+  });
+
+  it('starting the matrix follows the manage flag the server sends before a matrix exists', async () => {
+    mocked.getMatrix.mockRejectedValue(
+      new ApiError(404, 'Not Found', { detail: { code: 'matrix_missing', message: 'No commitment matrix' } }),
+    );
+    mocked.getCapabilities.mockResolvedValue({
+      matrix_exists: false,
+      can: projectCan({ manage: 'manage_required', add_item: 'matrix_missing', save_scenario: 'matrix_missing' }),
+    });
+    renderPage();
+    await screen.findByText(NO_MATRIX);
+    await waitFor(() =>
+      expect(screen.getByTestId('disabled-reason').getAttribute('data-reason')).toBe('manage_required'),
+    );
+    expect(screen.getByTestId('matrix-save')).toBeDisabled();
+  });
+
+  it('adding an item follows the server flag, and stays off while the server has not answered', async () => {
+    let answer: (v: Awaited<ReturnType<typeof api.getCapabilities>>) => void = () => undefined;
+    mocked.getCapabilities.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    mocked.getMatrix.mockResolvedValue(matrix());
+    mocked.listItems.mockResolvedValue({ ...page([item()]), totals: totals() });
+    renderPage();
+    await screen.findByTestId('commitment-grid');
+    expect(screen.getByTestId('item-add')).toBeDisabled();
+    answer({ matrix_exists: true, can: projectCan({ add_item: 'edit_required' }) });
+    await waitFor(() =>
+      expect(screen.getByTestId('disabled-reason').getAttribute('data-reason')).toBe('edit_required'),
+    );
+    expect(screen.getByTestId('item-add')).toBeDisabled();
+  });
+
+  it('the setup tab marks a tier whose route was changed and offers to confirm it', async () => {
+    const m = matrix();
+    m.tiers[0] = { ...m.tiers[0]!, route_state: 'changed' };
+    mocked.getMatrix.mockResolvedValue(m);
+    mocked.listItems.mockResolvedValue({ ...page([item()]), totals: totals() });
+    const { listRoutes } = await import('@/features/approval-routes/api');
+    vi.mocked(listRoutes).mockResolvedValue([{ id: 'r1', name: 'Project manager route' }] as never);
+    renderPage('?tab=setup');
+    expect(await screen.findByTestId('tier-route-changed')).toBeInTheDocument();
+    expect(await screen.findByTestId('tier-route-confirm')).toBeInTheDocument();
+    // The untouched tier offers neither a confirmation nor a reset.
+    expect(screen.getAllByTestId('tier-route-confirm')).toHaveLength(1);
+    expect(screen.getAllByTestId('tier-route-reset')).toHaveLength(1);
   });
 
   it('a failing matrix request shows the error, not the empty state', async () => {
@@ -184,7 +235,7 @@ describe('commitment i18n keys', () => {
     expect(used.size).toBeGreaterThan(300);
     expect(used.has('commitment.page.empty_matrix_title')).toBe(true);
     expect(used.has('commitment.errors.preconditions_open')).toBe(true);
-    expect(used.has('commitment.disabled.role_manage')).toBe(true);
+    expect(used.has('commitment.disabled.manage_required')).toBe(true);
     expect(used.has('commitment.decide.approve')).toBe(true);
   });
 

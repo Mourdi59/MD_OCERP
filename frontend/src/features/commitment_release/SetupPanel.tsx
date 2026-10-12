@@ -34,9 +34,10 @@ import {
   type Enforcement,
   type EvaluateResult,
   type FxPolicy,
+  type ProjectCan,
   type RouteReport,
 } from './api';
-import { canManage, type Viewer } from './access';
+import { projectVerdict } from './access';
 import { FIELD_CLASS, Field, ReasonedButton, RefusalBox, refusalText } from './CommitmentBits';
 import { useAssignments, useSchedules } from './hooks';
 import {
@@ -59,13 +60,13 @@ export interface MatrixSettingsProps {
   projectId: string;
   /** The current matrix, or null when the project has none yet. */
   matrix: CommitmentMatrix | null;
-  viewer: Viewer;
+  can: ProjectCan | undefined;
   labels: LabelContext;
   onSaved: () => void;
 }
 
 /** Schedule, enforcement and exchange rate rule. Creates the matrix when there is none. */
-export function MatrixSettings({ projectId, matrix, viewer, labels, onSaved }: MatrixSettingsProps) {
+export function MatrixSettings({ projectId, matrix, can, labels, onSaved }: MatrixSettingsProps) {
   const { t } = useTranslation();
   const schedulesQ = useSchedules();
   const schedules = (schedulesQ.data ?? []).filter((s) => s.state === 'published' && s.latest_version != null);
@@ -73,7 +74,7 @@ export function MatrixSettings({ projectId, matrix, viewer, labels, onSaved }: M
   const [enforcement, setEnforcement] = useState<Enforcement>(matrix?.enforcement ?? 'warn');
   const [fxPolicy, setFxPolicy] = useState<FxPolicy>(matrix?.fx_policy ?? 'fx_service_rate_set');
   const [requireLink, setRequireLink] = useState(matrix?.require_link ?? false);
-  const manageV = canManage(viewer);
+  const manageV = projectVerdict(can, 'manage');
   const chosen = schedules.find((s) => `${s.source}:${s.id}` === picked) ?? null;
 
   const save = useMutation({
@@ -270,19 +271,19 @@ export function untouchedAssignments(assignments: readonly Assignment[]): Assign
 export interface ApproverSetupProps {
   projectId: string;
   matrix: CommitmentMatrix;
-  viewer: Viewer;
+  can: ProjectCan | undefined;
   labels: LabelContext;
   personName: (userId: string | null | undefined) => string | null;
   onSaved: () => void;
 }
 
 /** Who stands behind each tier, and the approval route each tier uses. */
-export function ApproverSetup({ projectId, matrix, viewer, labels, personName, onSaved }: ApproverSetupProps) {
+export function ApproverSetup({ projectId, matrix, can, labels, personName, onSaved }: ApproverSetupProps) {
   const { t } = useTranslation();
   const assignmentsQ = useAssignments(projectId);
   const [rows, setRows] = useState<Record<string, TierRow> | null>(null);
   const [report, setReport] = useState<Record<string, RouteReport> | null>(null);
-  const manageV = canManage(viewer);
+  const manageV = projectVerdict(can, 'manage');
 
   useEffect(() => {
     if (assignmentsQ.data && rows === null) setRows(rowsOf(assignmentsQ.data));
@@ -372,10 +373,22 @@ export function ApproverSetup({ projectId, matrix, viewer, labels, personName, o
                       {t('commitment.setup.four_eyes', { defaultValue: 'Four-eyes' })}
                     </Badge>
                   )}
-                  {!tier.route_id && (
+                  {(!tier.route_id || tier.route_state === 'none') && (
                     <Badge variant="warning" size="sm">
                       {t('commitment.setup.no_route', { defaultValue: 'No approval route yet' })}
                     </Badge>
+                  )}
+                  {tier.route_state === 'pinned' && (
+                    <Badge variant="neutral" size="sm">
+                      {t('commitment.setup.route_state.pinned', { defaultValue: 'Route chosen by hand' })}
+                    </Badge>
+                  )}
+                  {tier.route_state === 'changed' && (
+                    <span data-testid="tier-route-changed">
+                      <Badge variant="error" size="sm">
+                        {t('commitment.setup.route_state.changed', { defaultValue: 'Route changed, confirm it' })}
+                      </Badge>
+                    </span>
                   )}
                   {report?.[tier.code] && (
                     <span className="text-xs text-content-tertiary" data-testid="tier-report">
@@ -462,8 +475,17 @@ export function ApproverSetup({ projectId, matrix, viewer, labels, personName, o
                           'Choosing a route here confirms its steps as they are now. If somebody changes the steps later, requests of this tier are refused until a manager confirms the route again.',
                       })}
                     </p>
-                    {tier.route_id && (
+                    {tier.route_state === 'changed' && (
+                      <p className="mt-1 text-xs text-semantic-error">
+                        {t('commitment.setup.route_changed_hint', {
+                          defaultValue:
+                            'The steps of this route were changed after it was set up. Release requests of this tier are refused until you confirm the route or go back to the generated one.',
+                        })}
+                      </p>
+                    )}
+                    {(tier.route_state === 'pinned' || tier.route_state === 'changed') && (
                       <div className="mt-1 flex flex-wrap gap-2">
+                        {tier.route_state === 'changed' && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -473,6 +495,7 @@ export function ApproverSetup({ projectId, matrix, viewer, labels, personName, o
                         >
                           {t('commitment.setup.route_confirm', { defaultValue: 'Confirm the route as it is now' })}
                         </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -612,7 +635,7 @@ export function TierCalculator({ matrix, labels }: { matrix: CommitmentMatrix; l
 export function SetupPanel(props: ApproverSetupProps) {
   return (
     <div className="space-y-5" data-testid="setup-panel">
-      <MatrixSettings projectId={props.projectId} matrix={props.matrix} viewer={props.viewer} labels={props.labels} onSaved={props.onSaved} />
+      <MatrixSettings projectId={props.projectId} matrix={props.matrix} can={props.can} labels={props.labels} onSaved={props.onSaved} />
       <ApproverSetup {...props} />
       <TierCalculator matrix={props.matrix} labels={props.labels} />
     </div>

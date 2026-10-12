@@ -21,8 +21,8 @@ import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { getErrorMessage } from '@/shared/lib/api';
 import { fmtDate } from '@/shared/lib/formatters';
 
-import { localToday, saveScenario, type CommitmentItem, type ExposureRow } from './api';
-import { canAddItem, type Viewer } from './access';
+import { localToday, saveScenario, type CommitmentItem, type ExposureRow, type ProjectCan } from './api';
+import { projectVerdict } from './access';
 import { Amount, FIELD_CLASS, ITEM_STATUS_TONE, ReasonedButton, RefusalBox, ToneBadge, refusalText } from './CommitmentBits';
 import { useExposure, useScenarios } from './hooks';
 import { EXPOSURE_REASON, ITEM_STATUS, vocab } from './labels';
@@ -31,7 +31,7 @@ import { EXPOSURE_REASON, ITEM_STATUS, vocab } from './labels';
  * How many rows have a residual loss and how many read "unknown". A row with
  * nothing committed is neither: there is nothing to lose on it yet.
  */
-export function exposureCounts(rows: ReadonlyArray<Pick<ExposureRow, 'residual_loss' | 'note'>>): {
+export function exposureCounts(rows: ReadonlyArray<Pick<ExposureRow, 'residual_loss' | 'note' | 'lines'>>): {
   known: number;
   unknown: number;
 } {
@@ -39,7 +39,7 @@ export function exposureCounts(rows: ReadonlyArray<Pick<ExposureRow, 'residual_l
   let unknown = 0;
   for (const row of rows) {
     if (row.residual_loss != null) known += 1;
-    else if (row.note !== 'nothing_committed') unknown += 1;
+    else if (!nothingCommitted(row)) unknown += 1;
   }
   return { known, unknown };
 }
@@ -48,11 +48,12 @@ export interface ExposurePanelProps {
   projectId: string;
   /** The matrix items, for the title behind each code. */
   items: CommitmentItem[];
-  viewer: Viewer;
+  /** The project capabilities the server sent; undefined while they load. */
+  can: ProjectCan | undefined;
   onOpenItem: (itemId: string) => void;
 }
 
-export function ExposurePanel({ projectId, items, viewer, onOpenItem }: ExposurePanelProps) {
+export function ExposurePanel({ projectId, items, can, onOpenItem }: ExposurePanelProps) {
   const { t } = useTranslation();
   const [asOf, setAsOf] = useState(localToday());
   const [saving, setSaving] = useState(false);
@@ -60,7 +61,7 @@ export function ExposurePanel({ projectId, items, viewer, onOpenItem }: Exposure
   const exposureQ = useExposure(projectId, asOf);
   const scenariosQ = useScenarios(projectId);
   const titles = new Map(items.map((i) => [i.id, i.title]));
-  const saveV = canAddItem(viewer);
+  const saveV = projectVerdict(can, 'save_scenario');
 
   const save = useMutation({
     mutationFn: () => saveScenario(projectId, { as_of: asOf, label: label.trim() }),
@@ -164,7 +165,7 @@ export function ExposurePanel({ projectId, items, viewer, onOpenItem }: Exposure
             </thead>
             <tbody>
               {data.items.map((row) => {
-                const nothing = row.note === 'nothing_committed';
+                const nothing = nothingCommitted(row);
                 return (
                   <tr key={row.item_id} className="border-b border-border-light/60 align-top" data-testid="exposure-row">
                     <td className="px-3 py-2">

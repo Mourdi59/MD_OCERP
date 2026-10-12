@@ -19,7 +19,7 @@ import { fmtDate } from '@/shared/lib/formatters';
 import type { CommitmentItem, CommitmentMatrix, ItemTotals } from './api';
 import { Amount, ITEM_STATUS_TONE, ToneBadge } from './CommitmentBits';
 import { EXPOSURE_REASON, ITEM_STATUS, codeName, humanizeCode, vocab, type KeyText, type LabelContext } from './labels';
-import { groupItems, matrixCounts, type GroupBy } from './rules';
+import { groupItems, matrixCounts, nothingCommitted, type GroupBy } from './rules';
 
 const GROUPINGS: GroupBy[] = ['none', 'type', 'gate'];
 
@@ -201,7 +201,7 @@ export function CommitmentGrid({ items, totals, matrix, labels, onOpenItem }: Co
                       )}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums" data-testid="grid-residual">
-                      {item.exposure?.note === 'nothing_committed' ? (
+                      {item.exposure && nothingCommitted(item.exposure) ? (
                         <span className="text-content-tertiary">
                           {t('commitment.grid.nothing_committed', { defaultValue: 'Nothing committed' })}
                         </span>

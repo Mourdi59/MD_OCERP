@@ -3,39 +3,19 @@
 //
 // Who may press which commitment button, and in words why not.
 //
-// For everything done to an item the server decides and says so: each item
-// carries `can`, computed by the same function that enforces the write, with
-// the refusal code when the answer is no. The screens read that flag and never
-// work the answer out again from a role, an owner or a state.
-//
-// Two things have no flag yet because they are not about an item: adding an
-// item and changing the approval setup. For those the role is read as a
-// prediction only, and a refusal still comes back as the server's sentence.
+// The server decides and says so. Each item carries `can`, and the project
+// answers `capabilities` for what is not about one item (starting or changing
+// the matrix, adding an item, saving a scenario). Every flag is computed by
+// the function that enforces the write and carries the refusal code when the
+// answer is no. The screens read the flag and never work the answer out again
+// from a role, an owner or a state.
 
-import type { CanFlag, CommitmentItem, ItemAction } from './api';
+import type { CanFlag, CommitmentItem, ItemAction, ProjectAction, ProjectCan } from './api';
 import type { KeyText } from './labels';
-import { ROLE_ALIASES, ROLE_RANK } from '@/shared/lib/roles';
-
-export type CommitmentLevel = 'read' | 'edit' | 'manage';
-
-const LEVEL_RANK: Record<CommitmentLevel, number> = { read: 0, edit: 1, manage: 2 };
 
 /**
- * Whether a role reaches a commitment level, ranked by the shared mirror of the
- * backend hierarchy. No role and an unknown role both deny.
- */
-export function roleAllows(role: string | null | undefined, level: CommitmentLevel): boolean {
-  if (!role) return false;
-  const r = role.trim().toLowerCase();
-  const canonical = ROLE_ALIASES[r] ?? r;
-  const rank = (ROLE_RANK as Record<string, number>)[canonical];
-  if (rank === undefined) return false;
-  return rank >= LEVEL_RANK[level];
-}
-
-/**
- * null means allowed; otherwise the code of the reason that stops the action.
- * For an item action that is the server's refusal code.
+ * null means allowed; otherwise the refusal code the server gave, or
+ * `unavailable` when it gave no answer at all.
  */
 export type Verdict = string | null;
 
@@ -48,12 +28,12 @@ export const UNAVAILABLE = 'unavailable';
  * with its refusal sentence (`commitment.errors.<code>`).
  */
 export const DISABLED_REASON: Record<string, KeyText> = {
-  role_edit: [
-    'commitment.disabled.role_edit',
+  edit_required: [
+    'commitment.disabled.edit_required',
     'Your role can view the commitments but not change them. An editor or manager can.',
   ],
-  role_manage: ['commitment.disabled.role_manage', 'Only a project manager can change this.'],
   manage_required: ['commitment.disabled.manage_required', 'Only a project manager can do this.'],
+  matrix_missing: ['commitment.disabled.matrix_missing', 'Start the commitment matrix first.'],
   not_item_owner: ['commitment.disabled.not_item_owner', 'Only the owner of this item or a project manager can do this.'],
   not_requester: [
     'commitment.disabled.not_requester',
@@ -78,7 +58,7 @@ export const DISABLED_REASON: Record<string, KeyText> = {
   [UNAVAILABLE]: ['commitment.disabled.unavailable', 'The server did not say whether this is allowed.'],
 };
 
-/** Every refusal code the server puts into a `can` flag. A test holds each of them to a sentence in both locales. */
+/** Every refusal code the server puts into a flag. A test holds each of them to a sentence in both locales. */
 export const CAN_REASONS = [
   'not_item_owner',
   'item_closed',
@@ -87,14 +67,12 @@ export const CAN_REASONS = [
   'no_pending_release',
   'not_requester',
   'manage_required',
+  'edit_required',
+  'matrix_missing',
+  'field_frozen',
   'not_entitled_decider',
   'four_eyes_violation',
 ] as const;
-
-export interface Viewer {
-  userId: string | null;
-  role: string | null;
-}
 
 /** Read one capability flag. A missing flag or a refusal without a code both deny. */
 export function verdictOf(flag: CanFlag | null | undefined): Verdict {
@@ -112,26 +90,7 @@ export function holdVerdict(item: Pick<CommitmentItem, 'can' | 'status'>): Verdi
   return itemVerdict(item, item.status === 'on_hold' ? 'resume' : 'hold');
 }
 
-/**
- * Deferring the decision. The server has no flag for it: it asks for the
- * manage permission and for an item that is still planned, and answers
- * `manage_required` or `field_frozen` otherwise. Whether the caller manages is
- * read from the transfer flag, which the server refuses with `manage_required`
- * before it looks at anything else.
- */
-export function deferVerdict(item: Pick<CommitmentItem, 'can' | 'status'>): Verdict {
-  const transfer = item.can?.transfer;
-  if (!transfer) return UNAVAILABLE;
-  if (transfer.reason === 'manage_required') return 'manage_required';
-  return item.status === 'planned' ? null : 'field_frozen';
-}
-
-/* ── No server flag yet: predicted from the role ──────────────────────── */
-
-export function canManage(viewer: Viewer): Verdict {
-  return roleAllows(viewer.role, 'manage') ? null : 'role_manage';
-}
-
-export function canAddItem(viewer: Viewer): Verdict {
-  return roleAllows(viewer.role, 'edit') ? null : 'role_edit';
+/** What is not about one item: the matrix and its setup, a new item, a saved scenario. */
+export function projectVerdict(can: ProjectCan | null | undefined, action: ProjectAction): Verdict {
+  return verdictOf(can?.[action]);
 }

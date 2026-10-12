@@ -12,12 +12,9 @@ import { ApiError } from '@/shared/lib/api';
 import {
   CAN_REASONS,
   UNAVAILABLE,
-  canAddItem,
-  canManage,
-  deferVerdict,
   holdVerdict,
   itemVerdict,
-  roleAllows,
+  projectVerdict,
   verdictOf,
 } from '../access';
 import { reasonText } from '../CommitmentBits';
@@ -45,10 +42,12 @@ import {
   isPositiveAmount,
   itemProblems,
   matrixCounts,
+  nothingCommitted,
   normalizeAmount,
   overRelease,
   percentToFraction,
   releaseProblems,
+  shownExposureLines,
   remainingToRelease,
   toAbortTermsInput,
   toItemInput,
@@ -58,7 +57,7 @@ import {
   type ReleaseDraft,
 } from '../rules';
 import { untouchedAssignments } from '../SetupPanel';
-import { READER_CAN, can, exposure, item } from './fixtures';
+import { READER_CAN, can, exposure, item, nothingBound, projectCan } from './fixtures';
 
 const noKeys: LabelContext = { t: (k) => k, language: 'en', exists: () => false };
 
@@ -308,11 +307,32 @@ describe('grid', () => {
   });
 });
 
-describe('access', () => {
-  const editor = { userId: 'u1', role: 'editor' };
-  const manager = { userId: 'u2', role: 'manager' };
-  const viewer = { userId: 'u3', role: 'viewer' };
+describe('exposure lines', () => {
+  it('knows an item with nothing bound from the line the server sends, and from the older note', () => {
+    expect(nothingCommitted(nothingBound())).toBe(true);
+    expect(nothingCommitted({ note: 'nothing_committed' })).toBe(true);
+    expect(nothingCommitted(exposure())).toBe(false);
+    expect(nothingCommitted({ lines: [{ code: 'paid', amount: '0' }] })).toBe(false);
+  });
 
+  it('leaves out the kinds of spent money with nothing in them, and keeps every other line', () => {
+    const lines = shownExposureLines({
+      lines: [
+        { code: 'paid', amount: '200000.00' },
+        { code: 'invoiced_unpaid', amount: '0.00' },
+        { code: 'certified_not_invoiced', amount: '0' },
+        { code: 'received_not_invoiced' },
+        { code: 'schedule_milestone', milestone: 'fabrication', amount: '0' },
+      ],
+    });
+    // A spent line without a readable figure stays: it is not known to be zero.
+    expect(lines.map((l) => l.code)).toEqual(['paid', 'received_not_invoiced', 'schedule_milestone']);
+    expect(shownExposureLines(nothingBound())).toEqual([]);
+    expect(shownExposureLines({})).toEqual([]);
+  });
+});
+
+describe('access', () => {
   it('reads the server flag and passes its refusal code through unchanged', () => {
     expect(verdictOf({ allowed: true, reason: null })).toBeNull();
     expect(verdictOf({ allowed: false, reason: 'four_eyes_violation' })).toBe('four_eyes_violation');
@@ -324,7 +344,8 @@ describe('access', () => {
     expect(verdictOf(undefined)).toBe(UNAVAILABLE);
     expect(verdictOf({ allowed: false, reason: null })).toBe(UNAVAILABLE);
     expect(itemVerdict(item({ can: {} }), 'edit')).toBe(UNAVAILABLE);
-    expect(deferVerdict(item({ can: {} }))).toBe(UNAVAILABLE);
+    expect(projectVerdict(undefined, 'manage')).toBe(UNAVAILABLE);
+    expect(projectVerdict({}, 'add_item')).toBe(UNAVAILABLE);
   });
 
   it('never allows what the server refused, whatever the role or state suggests', () => {
@@ -340,17 +361,17 @@ describe('access', () => {
     expect(holdVerdict(item({ can: READER_CAN }))).toBe('manage_required');
   });
 
-  it('deferring needs a manager and an item that is still planned', () => {
-    expect(deferVerdict(item())).toBeNull();
-    expect(deferVerdict(item({ can: READER_CAN }))).toBe('manage_required');
-    expect(deferVerdict(item({ status: 'released' }))).toBe('field_frozen');
-    // A manager whose transfer is refused for another reason still manages.
-    expect(deferVerdict(item({ can: can({ transfer: 'release_pending' }) }))).toBeNull();
+  it('deferring reads its own flag, not the state or another flag', () => {
+    expect(itemVerdict(item(), 'defer')).toBeNull();
+    expect(itemVerdict(item({ can: READER_CAN }), 'defer')).toBe('manage_required');
+    // A released item whose flag still says yes is offered the button: the server knows, the state does not.
+    expect(itemVerdict(item({ status: 'released' }), 'defer')).toBeNull();
+    expect(itemVerdict(item({ can: can({ defer: 'field_frozen' }) }), 'defer')).toBe('field_frozen');
   });
 
   it('every refusal code a flag can carry has a sentence for the button', () => {
     const english = (k: string, o?: Record<string, unknown>) => String(o?.defaultValue ?? k);
-    for (const code of [...CAN_REASONS, UNAVAILABLE, 'field_frozen']) {
+    for (const code of [...CAN_REASONS, UNAVAILABLE]) {
       const text = reasonText(english, code);
       expect(text, code).toMatch(/ /);
       expect(text, code).not.toBe(humanizeCode(code));
@@ -359,19 +380,12 @@ describe('access', () => {
     expect(reasonText(english, 'fx_rate_missing')).toBe(ERROR_TEXT.fx_rate_missing);
   });
 
-  it('ranks roles by the backend hierarchy and denies an unknown or absent role', () => {
-    expect(roleAllows('estimator', 'edit')).toBe(true);
-    expect(roleAllows('viewer', 'edit')).toBe(false);
-    expect(roleAllows('admin', 'manage')).toBe(true);
-    expect(roleAllows('somebody', 'read')).toBe(false);
-    expect(roleAllows(null, 'read')).toBe(false);
-  });
-
-  it('adding an item and the approval setup have no flag and are predicted from the role', () => {
-    expect(canAddItem(editor)).toBeNull();
-    expect(canAddItem(viewer)).toBe('role_edit');
-    expect(canManage(editor)).toBe('role_manage');
-    expect(canManage(manager)).toBeNull();
+  it('adding an item and the approval setup read the project capabilities', () => {
+    const editor = projectCan({ manage: 'manage_required' });
+    expect(projectVerdict(editor, 'add_item')).toBeNull();
+    expect(projectVerdict(editor, 'manage')).toBe('manage_required');
+    expect(projectVerdict(projectCan({ add_item: 'edit_required' }), 'add_item')).toBe('edit_required');
+    expect(projectVerdict(projectCan({ save_scenario: 'matrix_missing' }), 'save_scenario')).toBe('matrix_missing');
   });
 });
 

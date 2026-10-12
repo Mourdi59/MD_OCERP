@@ -168,6 +168,7 @@ export const ROUTE_REPORT: Record<RouteReport, KeyText> = {
   unchanged: ['commitment.setup.route_report.unchanged', 'Route unchanged'],
   edited: ['commitment.setup.route_report.edited', 'Edited by hand, kept as it is'],
   unfilled: ['commitment.setup.route_report.unfilled', 'Nobody assigned yet, no route'],
+  pinned: ['commitment.setup.route_report.pinned', 'Chosen by hand, kept as it is'],
 };
 
 /** Why the residual loss of an item is unknown. */
@@ -178,6 +179,10 @@ export const EXPOSURE_REASON: Record<string, KeyText> = {
 
 /** How the cancellation charge of an item was worked out, line by line. */
 export const EXPOSURE_LINE: Record<string, KeyText> = {
+  paid: ['commitment.exposure.line.paid', 'Paid'],
+  invoiced_unpaid: ['commitment.exposure.line.invoiced_unpaid', 'Invoiced, not yet paid'],
+  certified_not_invoiced: ['commitment.exposure.line.certified_not_invoiced', 'Certified, not yet invoiced'],
+  received_not_invoiced: ['commitment.exposure.line.received_not_invoiced', 'Goods received, not yet invoiced'],
   schedule_milestone: ['commitment.exposure.line.schedule_milestone', 'Cancellation step reached'],
   unperformed_less_saved: ['commitment.exposure.line.unperformed_less_saved', 'Work not done, less saved cost'],
   presumed_pct_of_unperformed: [
@@ -197,6 +202,13 @@ export const LINK_NOTE: Record<string, KeyText> = {
     'commitment.link_note.currency_mismatch_not_netted',
     'A linked part is in another currency and was not netted off.',
   ],
+  contract_header_value: ['commitment.link_note.contract_header_value', 'Counted with the contract sum, changes included.'],
+  inside_contract_value: [
+    'commitment.link_note.inside_contract_value',
+    'Already inside the sum of its contract. Not counted a second time.',
+  ],
+  contract_terminated: ['commitment.link_note.contract_terminated', 'Its contract was terminated.'],
+  mirror_counted_once: ['commitment.link_note.mirror_counted_once', 'The same award is linked twice and counted once.'],
   award_pair_counted_above_contract: [
     'commitment.link_note.award_pair_counted_above_contract',
     'Counted on top of the contract it belongs to.',
@@ -372,6 +384,7 @@ export const ERROR_TEXT: Record<string, string> = {
   commitment_guard_unavailable: 'The release check could not be made, so this was not allowed',
   decider_not_tier_holder: 'Approved by someone who does not hold the tier',
   four_eyes_no_approver: 'Nobody on this tier may decide this request under the four-eyes rule',
+  edit_required: 'Your role cannot edit commitment items',
 };
 
 /** The sentence for a refusal code, translated when the locale has it. */

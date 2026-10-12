@@ -14,6 +14,8 @@ import { isDecimalString, subtractDecimalStrings } from '@/shared/lib/exactDecim
 import type {
   AbortTermsInput,
   CommitmentItem,
+  Exposure,
+  ExposureLine,
   ItemInput,
   PlannedSource,
   PreconditionKind,
@@ -201,6 +203,25 @@ export function toItemInput(draft: ItemDraft, mode: 'create' | 'edit'): ItemInpu
     input.currency = draft.currency.trim().toUpperCase();
   }
   return input;
+}
+
+const SUNK_LINES = ['paid', 'invoiced_unpaid', 'certified_not_invoiced', 'received_not_invoiced'];
+
+/** Nothing is bound and nothing was spent on the item: stopping it today costs nothing. */
+export function nothingCommitted(exposure: Pick<Exposure, 'note' | 'lines'>): boolean {
+  return exposure.note === 'nothing_committed' || (exposure.lines ?? []).some((l) => l.code === 'nothing_committed');
+}
+
+/**
+ * The lines that explain an exposure to a reader. The server lists every
+ * kind of money already spent, also the kinds with nothing in them; a row
+ * of zeros explains nothing, so those are left out. A line with a figure
+ * that cannot be read stays.
+ */
+export function shownExposureLines(exposure: Pick<Exposure, 'lines'>): ExposureLine[] {
+  return (exposure.lines ?? []).filter(
+    (l) => l.code !== 'nothing_committed' && !(SUNK_LINES.includes(l.code) && compareAmounts(l.amount, '0') === 0),
+  );
 }
 
 /**
@@ -395,7 +416,7 @@ export function matrixCounts(items: readonly CommitmentItem[]): MatrixCounts {
     waitingForDecision: items.filter((i) => i.status === 'release_requested').length,
     decisionOverdue: items.filter((i) => i.decision_overdue).length,
     overRelease: items.filter((i) => i.over_release).length,
-    unknownExposure: items.filter((i) => i.exposure && i.exposure.residual_loss == null && !i.exposure.note).length,
+    unknownExposure: items.filter((i) => i.exposure && i.exposure.residual_loss == null && !nothingCommitted(i.exposure)).length,
   };
 }
 
