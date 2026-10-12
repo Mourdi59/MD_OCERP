@@ -466,6 +466,56 @@ export function toSlotInput(draft: SlotDraft): SlotInput {
   return out;
 }
 
+/**
+ * How one field of a draft travels in an edit. `text` may be emptied, `date`
+ * and `amount` are cleared with null, and a `code`, a `currency` or a
+ * `quantity` cannot be emptied at all: the server takes neither null nor an
+ * empty string there, so an emptied one is left as it was.
+ */
+type FieldKind = 'text' | 'date' | 'amount' | 'quantity' | 'code' | 'currency' | 'flag';
+
+function wire(kind: FieldKind, value: string | boolean): string | boolean | null {
+  if (typeof value === 'boolean') return value;
+  const text = value.trim();
+  if (text === '') return kind === 'text' ? '' : null;
+  if (kind === 'amount' || kind === 'quantity') return toDecimalPayloadString(text);
+  return kind === 'currency' ? text.toUpperCase() : text;
+}
+
+/**
+ * Only the fields an edit changed. Sending the whole form back would touch
+ * fields the reader never saw as changed, and leaving an emptied field out
+ * would close the dialog as saved while the server keeps the old value.
+ */
+function draftChanges<D extends object>(before: D, after: D, kinds: { [K in keyof D]: FieldKind }): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(kinds) as Array<keyof D & string>) {
+    const kind = kinds[key];
+    const now = wire(kind, after[key] as string | boolean);
+    if (now === wire(kind, before[key] as string | boolean)) continue;
+    if (now === null && kind !== 'date' && kind !== 'amount') continue;
+    out[key] = now;
+  }
+  return out;
+}
+
+const SLOT_FIELDS: { [K in keyof SlotDraft]: FieldKind } = {
+  vendor_name: 'text',
+  slot_from: 'date',
+  slot_to: 'date',
+  reservation_fee: 'amount',
+  currency: 'currency',
+  fee_refundable: 'code',
+  fee_credited_to_order: 'flag',
+  convert_by_date: 'date',
+  terms: 'text',
+  document_ref: 'text',
+};
+
+export function slotChanges(original: SlotDraft, draft: SlotDraft): SlotInput {
+  return draftChanges(original, draft, SLOT_FIELDS) as SlotInput;
+}
+
 /* ── Decision paper ───────────────────────────────────────────────────── */
 
 export interface OptionDraft {
@@ -587,6 +637,19 @@ export function toSpareInput(draft: SpareDraft): SpareInput {
   return out;
 }
 
+const SPARE_FIELDS: { [K in keyof SpareDraft]: FieldKind } = {
+  category: 'code',
+  description: 'text',
+  quantity: 'quantity',
+  unit: 'text',
+  supply_by: 'code',
+  handover_target: 'text',
+};
+
+export function spareChanges(original: SpareDraft, draft: SpareDraft): SpareInput {
+  return draftChanges(original, draft, SPARE_FIELDS) as SpareInput;
+}
+
 export interface ItServiceDraft {
   kind: string;
   description: string;
@@ -608,6 +671,18 @@ export function toItServiceInput(draft: ItServiceDraft): ItServiceInput {
   if (draft.needed_from) out.needed_from = draft.needed_from;
   if (draft.needed_until) out.needed_until = draft.needed_until;
   return out;
+}
+
+const IT_SERVICE_FIELDS: { [K in keyof ItServiceDraft]: FieldKind } = {
+  kind: 'code',
+  description: 'text',
+  responsible_party: 'code',
+  needed_from: 'date',
+  needed_until: 'date',
+};
+
+export function itServiceChanges(original: ItServiceDraft, draft: ItServiceDraft): ItServiceInput {
+  return draftChanges(original, draft, IT_SERVICE_FIELDS) as ItServiceInput;
 }
 
 /* ── Register filters and the timeline ────────────────────────────────── */

@@ -102,6 +102,8 @@ export interface PlantCatalogue {
 export interface Capability {
   allowed: boolean;
   reason?: string | null;
+  /** False when the action does not exist in this state at all, so it is not shown. */
+  applies?: boolean;
 }
 
 export interface PlantSettings {
@@ -265,15 +267,16 @@ export interface Slot {
   created_at: string;
 }
 
+/** On an edit, null clears a date or the fee; no other field takes null. */
 export interface SlotInput {
   vendor_name?: string;
-  slot_from?: string;
-  slot_to?: string;
-  reservation_fee?: string;
+  slot_from?: string | null;
+  slot_to?: string | null;
+  reservation_fee?: string | null;
   currency?: string;
   fee_refundable?: FeeRefundable;
   fee_credited_to_order?: boolean;
-  convert_by_date?: string;
+  convert_by_date?: string | null;
   terms?: string;
   document_ref?: string;
 }
@@ -382,8 +385,9 @@ export interface ItServiceInput {
   kind?: string;
   description?: string;
   responsible_party?: string;
-  needed_from?: string;
-  needed_until?: string;
+  /** On an edit, null clears the date. */
+  needed_from?: string | null;
+  needed_until?: string | null;
 }
 
 /* ── Read views ───────────────────────────────────────────────────────── */

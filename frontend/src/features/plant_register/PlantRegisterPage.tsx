@@ -66,8 +66,10 @@ export function PlantRegisterPage() {
 
   const catalogueQ = usePlantCatalogue(projectId);
   const itemsQ = usePlantItems(projectId);
-  const can = canOf(usePlantSettings(projectId).data);
+  const settingsQ = usePlantSettings(projectId);
+  const can = canOf(settingsQ.data, settingsQ.isLoading);
   const readOnly = withheldReason(t, can.edit, 'edit_permission_required');
+  const mayAdd = !can.pending && readOnly === null && can.edit.applies !== false;
   const loaded = !!catalogueQ.data && !!itemsQ.data;
   const matrixQ = useLimitMatrix(projectId, loaded && tab === 'limits' && !itemId);
   const itQ = useItServices(projectId, loaded && tab === 'site_it' && !itemId);
@@ -186,7 +188,7 @@ export function PlantRegisterPage() {
           defaultValue:
             'Start with the equipment that takes longest to get, such as the main transformer or the switchgear. Add it here, then record its lead time and the day it is needed.',
         })}
-        action={readOnly ? undefined : { label: t('plant.item.add_submit', { defaultValue: 'Add item' }), onClick: () => setAdding(true) }}
+        action={!mayAdd ? undefined : { label: t('plant.item.add_submit', { defaultValue: 'Add item' }), onClick: () => setAdding(true) }}
       />
     );
   } else if (tab === 'long_lead') {

@@ -22,13 +22,16 @@ import {
   filterItems,
   itemChanges,
   itemDraftOf,
+  itServiceChanges,
   itemProblems,
   nextManualStep,
   nextSpareStep,
   orderDateOpen,
   paperProblems,
   quoteProblems,
+  slotChanges,
   slotProblems,
+  spareChanges,
   slugCode,
   toCreateInput,
   toPaperInput,
@@ -270,6 +273,54 @@ describe('production slot draft', () => {
   it('a fee is not sent without its currency', () => {
     expect(slotProblems({ ...emptySlotDraft(), reservation_fee: '500' })).toEqual(['fee_currency_required']);
     expect(slotProblems({ ...emptySlotDraft(), reservation_fee: '500', currency: 'eur' })).toEqual([]);
+  });
+});
+
+describe('edits of a slot, a spare and an IT service', () => {
+  const held = {
+    ...emptySlotDraft(),
+    vendor_name: 'Manufacturer A',
+    slot_from: '2027-03-01',
+    reservation_fee: '12500.50',
+    currency: 'EUR',
+    fee_refundable: 'partial' as const,
+    terms: 'Fee credited to the order.',
+  };
+
+  it('an untouched edit sends nothing', () => {
+    expect(slotChanges(held, { ...held })).toEqual({});
+    expect(slotChanges(held, { ...held, currency: 'eur', vendor_name: ' Manufacturer A ' })).toEqual({});
+  });
+
+  it('an emptied fee or date is cleared with null, an emptied text with an empty string', () => {
+    expect(slotChanges(held, { ...held, reservation_fee: '', slot_from: '', terms: ' ' })).toEqual({
+      reservation_fee: null,
+      slot_from: null,
+      terms: '',
+    });
+  });
+
+  it('sends a changed fee as a string and a changed flag as it is', () => {
+    expect(slotChanges(held, { ...held, reservation_fee: '13000', fee_credited_to_order: true })).toEqual({
+      reservation_fee: '13000',
+      fee_credited_to_order: true,
+    });
+  });
+
+  it('never sends null where the server does not clear: refund terms and currency stay as they were', () => {
+    expect(slotChanges(held, { ...held, fee_refundable: '', currency: '' })).toEqual({});
+  });
+
+  it('a spare edit sends only the changed field, not the category and quantity again', () => {
+    const spare = { category: 'strategic_spares', description: 'Bushing set', quantity: '1.0000', unit: 'set', supply_by: 'supplier', handover_target: '' };
+    expect(spareChanges(spare, { ...spare, handover_target: 'Estate store' })).toEqual({ handover_target: 'Estate store' });
+    expect(spareChanges(spare, { ...spare, quantity: '2' })).toEqual({ quantity: '2' });
+  });
+
+  it('an IT service edit clears a date with null and keeps the kind', () => {
+    const service = { kind: 'site_network', description: '', responsible_party: 'contractor', needed_from: '2027-01-10', needed_until: '2028-06-30' };
+    expect(itServiceChanges(service, { ...service, needed_until: '' })).toEqual({ needed_until: null });
+    expect(itServiceChanges(service, { ...service })).toEqual({});
   });
 });
 
