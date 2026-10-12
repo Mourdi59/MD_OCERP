@@ -50170,7 +50170,7 @@ const resource = {
     "site_logistics.plan.evidence.balance_closed": "Flächenbilanz für jede offene Ausbaustufe geschlossen",
     "site_logistics.plan.evidence.first_stage_media_contracted": "Medien für die erste Ausbaustufe vertraglich gesichert",
     "site_logistics.plan.evidence.concept_saved_and_exported": "Logistikkonzept gespeichert und abgelegt",
-    "site_logistics.plan.evidence.heavy_transports_applied": "Genehmigung für jeden Schwertransport erteilt",
+    "site_logistics.plan.evidence.heavy_transports_permitted": "Genehmigung für jeden Schwertransport erteilt",
     "site_logistics.plan.evidence.neighbourhood_limit_source": "Quelle der Lärmrichtwerte festgelegt",
     "site_logistics.plan.finding.allocation_exceeds_area": "Ausbaustufe {{stage}}: Eine Belegung ist größer als ihre Fläche.",
     "site_logistics.plan.finding.area_balance_not_closed": "Ausbaustufe {{stage}}: Die Flächenbilanz geht nicht auf ({{difference_m2}} m2 Differenz).",
@@ -50676,6 +50676,14 @@ const resource = {
     "site_logistics.errors.window_outside_permit": "Das Transportfenster liegt außerhalb der Gültigkeit oder der erlaubten Zeiten der Genehmigung.",
     "site_logistics.errors.zone_not_found": "Lagerfläche in diesem Projekt nicht gefunden.",
     "site_logistics.errors.zone_type_invalid": "Unbekannte Gebietsart.",
+    "site_logistics.evidence.balance_closed": "Flächenbilanz für jede offene Ausbaustufe geschlossen",
+    "site_logistics.evidence.concept_saved_and_exported": "Logistikkonzept gespeichert und abgelegt",
+    "site_logistics.evidence.first_stage_media_contracted": "Medien für die erste Ausbaustufe gesichert",
+    "site_logistics.evidence.gate_loads_admitted": "Jede Last von der Zufahrt zugelassen oder durch eine Sondergenehmigung gedeckt",
+    "site_logistics.evidence.heavy_transports_permitted": "Genehmigung für jeden Schwertransport erteilt",
+    "site_logistics.evidence.neighbourhood_limit_source": "Quelle der Lärmgrenzwerte festgelegt",
+    "site_logistics.evidence.no_errors": "Keine offenen Logistikfehler",
+    "site_logistics.evidence.unresolved": "Logistikplan konnte im Projektmodell nicht eingeordnet werden",
   }
 } as { translation: Record<string, string> };
 

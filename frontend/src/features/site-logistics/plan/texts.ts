@@ -307,7 +307,7 @@ export const EN = {
   'evidence.balance_closed': 'Area balance closed for every open stage',
   'evidence.first_stage_media_contracted': 'Utilities for the first stage contracted',
   'evidence.concept_saved_and_exported': 'Logistics concept saved and filed',
-  'evidence.heavy_transports_applied': 'Permit granted for every heavy transport',
+  'evidence.heavy_transports_permitted': 'Permit granted for every heavy transport',
   'evidence.neighbourhood_limit_source': 'Noise limit source set',
   'evidence.gate_loads_admitted': 'Every load admitted by its entrance or covered by an oversize permit',
   'evidence.unresolved': 'The logistics plan could not be placed in the governance model',

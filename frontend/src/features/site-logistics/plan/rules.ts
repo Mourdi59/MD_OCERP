@@ -172,8 +172,8 @@ export function findingText(words: Words, finding: Finding | Violation, catalogu
 
 /**
  * What a readiness item still waits for, where the server names it. The detail
- * reads `permit_applied: <titles>; permit_missing: <titles>`; any other detail
- * is for the log and gives nothing here.
+ * reads `permit_applied: <titles>; permit_missing: <titles>`, the titles joined
+ * by a bare comma; any other detail is for the log and gives nothing here.
  */
 export function openParts(detail: string | null | undefined): { key: TextKey; titles: string }[] {
   const parts: { key: TextKey; titles: string }[] = [];
@@ -181,7 +181,10 @@ export function openParts(detail: string | null | undefined): { key: TextKey; ti
     const at = piece.indexOf(': ');
     if (at < 0) continue;
     const key = `readiness.open.${piece.slice(0, at)}`;
-    const titles = piece.slice(at + 2).trim();
+    const titles = piece
+      .slice(at + 2)
+      .trim()
+      .replace(/,(?=\S)/g, ', ');
     if (isTextKey(key) && titles) parts.push({ key, titles });
   }
   return parts;

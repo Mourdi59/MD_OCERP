@@ -42324,7 +42324,7 @@ const resource = {
     "site_logistics.plan.evidence.balance_closed": "Area balance closed for every open stage",
     "site_logistics.plan.evidence.first_stage_media_contracted": "Utilities for the first stage contracted",
     "site_logistics.plan.evidence.concept_saved_and_exported": "Logistics concept saved and filed",
-    "site_logistics.plan.evidence.heavy_transports_applied": "Permit granted for every heavy transport",
+    "site_logistics.plan.evidence.heavy_transports_permitted": "Permit granted for every heavy transport",
     "site_logistics.plan.evidence.neighbourhood_limit_source": "Noise limit source set",
     "site_logistics.plan.evidence.gate_loads_admitted": "Every load admitted by its entrance or covered by an oversize permit",
     "site_logistics.plan.evidence.unresolved": "The logistics plan could not be placed in the governance model",
@@ -42755,6 +42755,14 @@ const resource = {
     "site_logistics.errors.window_outside_permit": "The transport window is outside the permit validity or its allowed times.",
     "site_logistics.errors.zone_not_found": "Laydown zone not found in this project.",
     "site_logistics.errors.zone_type_invalid": "Unknown zone type.",
+    "site_logistics.evidence.balance_closed": "Area balance closed for every open stage",
+    "site_logistics.evidence.concept_saved_and_exported": "Logistics concept saved and filed",
+    "site_logistics.evidence.first_stage_media_contracted": "Utilities for the first stage contracted",
+    "site_logistics.evidence.gate_loads_admitted": "Every load admitted by its gate or covered by an oversize permit",
+    "site_logistics.evidence.heavy_transports_permitted": "Permit granted for every heavy transport",
+    "site_logistics.evidence.neighbourhood_limit_source": "Noise limit source set",
+    "site_logistics.evidence.no_errors": "No open logistics errors",
+    "site_logistics.evidence.unresolved": "Logistics plan could not be placed in the governance model",
   }
 } as { translation: Record<string, string> };
 

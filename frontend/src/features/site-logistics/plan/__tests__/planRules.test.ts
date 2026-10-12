@@ -326,7 +326,7 @@ describe('what a verdict does to a button', () => {
 
 describe('what a readiness item still waits for', () => {
   it('reads the permits in progress and the missing ones out of the detail', () => {
-    expect(openParts('permit_applied: Transformer; permit_missing: Crane, Girder')).toEqual([
+    expect(openParts('permit_applied: Transformer; permit_missing: Crane,Girder')).toEqual([
       { key: 'readiness.open.permit_applied', titles: 'Transformer' },
       { key: 'readiness.open.permit_missing', titles: 'Crane, Girder' },
     ]);
@@ -338,5 +338,9 @@ describe('what a readiness item still waits for', () => {
     expect(openParts('3 of 4 stages')).toEqual([]);
     expect(openParts('other_reason: something')).toEqual([]);
     expect(openParts('permit_missing: ')).toEqual([]);
+  });
+
+  it('reads one part when the other is absent', () => {
+    expect(openParts('permit_missing: Crane')).toEqual([{ key: 'readiness.open.permit_missing', titles: 'Crane' }]);
   });
 });

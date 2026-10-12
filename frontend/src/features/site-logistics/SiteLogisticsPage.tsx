@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
@@ -2731,7 +2731,10 @@ export function SiteLogisticsPage() {
   const addToast = useToastStore((s) => s.addToast);
   const activeProjectId = useActiveProjectId();
 
-  const [tab, setTab] = useState<TabKey>('deliveries');
+  // A link that names the project (a gate item, a notification) means its
+  // logistics plan; the bare address opens the delivery board as before.
+  const { projectId: linkedProjectId } = useParams<{ projectId?: string }>();
+  const [tab, setTab] = useState<TabKey>(linkedProjectId ? 'plan' : 'deliveries');
   const [planTab, setPlanTab] = useState<PlanTab>('balance');
   const [showBook, setShowBook] = useState(false);
   // The delivery being edited (shared by the board and the gate timeline so a
