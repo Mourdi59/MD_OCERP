@@ -1,11 +1,12 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""The demo register of the recorded project stands before the gate, on PostgreSQL.
+"""The demo register of a project that has not started building, on PostgreSQL.
 
-The project whose phase model is pinned from a pack is seeded as one day of
-its life: in development, three weeks before the gate that enables construction
-start. Nothing may contradict that day: no item past ``ordered``, need dates
-after the construction start, long-lead order dates before the gate date.
+A project whose gate into the phase that enables construction start is still
+undecided is seeded as one day before that gate. Nothing may contradict that
+day: no item past ``ordered``, need dates after the construction start,
+long-lead order dates before the gate date. A project past the gate, or
+without a governance model, gets the full range of states.
 """
 
 from __future__ import annotations
@@ -50,18 +51,55 @@ async def _as_demo_project(w: World) -> None:
         await s.commit()
 
 
-async def test_a_project_with_a_shipped_phase_model_is_not_the_recorded_one(world: World) -> None:
-    async with world.factory() as s:
-        assert await seed._pins_a_pack_model(s, world.project_id) is False
+async def _seed(w: World) -> set[str]:
+    async with w.factory() as s:
+        out = await seed.seed_plant_register_demo(s, [w.project_id])
+        await s.commit()
+    assert out["projects"] == 1 and out["items"] == 13
+    async with w.factory() as s:
+        rows = await s.execute(select(PlantItem.status).where(PlantItem.project_id == w.project_id))
+        return set(rows.scalars())
 
 
-async def test_the_recorded_project_is_seeded_as_the_day_before_its_gate(world: World, monkeypatch) -> None:
+_PAST_ORDERED = {"manufactured", "delivered", "commissioned", "handed_over"}
+
+
+async def test_a_project_whose_construction_gate_is_decided_gets_the_full_story(world: World) -> None:
+    from app.modules.project_governance.models import GovernanceGate
+
     await _as_demo_project(world)
+    async with world.factory() as s:
+        assert await seed._before_construction_gate(s, world.project_id) is True
+        gates = await s.execute(select(GovernanceGate).where(GovernanceGate.project_id == world.project_id))
+        for gate in gates.scalars():
+            if gate.to_phase == "execution":
+                gate.status = "decided"  # the fixture's shortcut for a decision taken earlier
+        await s.commit()
+    async with world.factory() as s:
+        assert await seed._before_construction_gate(s, world.project_id) is False
+    assert _PAST_ORDERED <= await _seed(world)
 
-    async def recorded(session, project_id) -> bool:
-        return True
 
-    monkeypatch.setattr(seed, "_pins_a_pack_model", recorded)
+async def test_a_project_without_a_governance_model_gets_the_full_story(world: World) -> None:
+    from app.modules.projects.models import Project
+    from tests.pg.governance_fixtures import add_project
+
+    async with world.factory() as s:
+        bare = await add_project(s, world.manager, [world.area_owner])
+        (await s.get(Project, bare)).metadata_ = {"demo_id": "plant-demo-bare"}
+        await s.commit()
+        assert await seed._before_construction_gate(s, bare) is False
+    world.provider.plans[bare] = world.provider.plans[world.project_id]
+    async with world.factory() as s:
+        out = await seed.seed_plant_register_demo(s, [bare])
+        await s.commit()
+        rows = await s.execute(select(PlantItem.status).where(PlantItem.project_id == bare))
+        states = set(rows.scalars())
+    assert out["projects"] == 1 and _PAST_ORDERED <= states
+
+
+async def test_a_project_before_its_construction_gate_is_seeded_as_that_day(world: World) -> None:
+    await _as_demo_project(world)
     today = datetime.now(UTC).date()
     async with world.factory() as s:
         out = await seed.seed_plant_register_demo(s, [world.project_id])

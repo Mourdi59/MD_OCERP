@@ -19,15 +19,15 @@ because a fee binds money only through a released commitment. ``installed`` is
 read from an owner-furnished item of the delivery-model module and is not
 seeded here. Money is in the project's own currency or left out.
 
-One demo project is told differently: the one whose phase model is pinned
-from a pack is the project a walkthrough is recorded on, and every seeder
-describes the same day of it. It stands in development, three weeks before the
-gate that enables construction start, with construction another three and a
-half weeks behind that. So there nothing is past ``ordered`` and only one item
-is ordered at all, every need date lies after the construction start, each
+A project that has not started building is told differently. Whether it has
+is read from its governance model: the gate into the phase that enables
+construction start exists and is not decided yet. Such a project stands before
+that gate, so nothing in its register is past ``ordered`` and only one item is
+ordered at all, every need date lies after the construction start, each
 long-lead item must be ordered before the gate date (which is why it cannot
 wait for the gate), and the construction-phase IT services are still planned.
-All of it in day offsets from the seed day, never a calendar date.
+All of it in day offsets from the seed day, never a calendar date. A project
+without a governance model, or past that gate, gets the full range of states.
 
 Only projects carrying the demo marker are touched; a project that already has
 plant items is skipped, so a re-run never duplicates.
@@ -50,10 +50,10 @@ logger = logging.getLogger(__name__)
 
 ROUTE = "contractor_furnished_installed"
 
-# The recorded project, in days from the seed day.
+# A project before its construction gate, in days from the seed day.
 GATE_TARGET_DAYS = 21
 CONSTRUCTION_START_DAYS = 45
-# The one item already ordered on the recorded project; every other stops at ``route_set``.
+# The one item already ordered before the gate; every other stops at ``route_set``.
 _ORDERED_BEFORE_GATE = "PL-005"
 
 # quotes: (source, source_name, enquiry offset days, response offset days, min weeks, max weeks, basis)
@@ -318,7 +318,7 @@ async def seed_plant_register_demo(session: AsyncSession, project_ids: Iterable[
         try:
             async with session.begin_nested():
                 counts = await _seed_project(
-                    session, pid, owner, currency or "", before_gate=await _pins_a_pack_model(session, pid)
+                    session, pid, owner, currency or "", before_gate=await _before_construction_gate(session, pid)
                 )
         except Exception:
             logger.warning("plant_register demo seed skipped for %s", pid, exc_info=True)
@@ -329,13 +329,22 @@ async def seed_plant_register_demo(session: AsyncSession, project_ids: Iterable[
     return totals
 
 
-async def _pins_a_pack_model(session: AsyncSession, project_id: uuid.UUID) -> bool:
-    """Whether the project's phase model comes from a pack: that is the recorded project."""
-    from app.modules.project_governance.catalogue_packs import PACK_SOURCE
-    from app.modules.project_governance.repository import GovernanceRepository
+async def _before_construction_gate(session: AsyncSession, project_id: uuid.UUID) -> bool:
+    """Whether the project still stands before the gate that lets construction start.
 
-    model = await GovernanceRepository(session).get_model(project_id)
-    return model is not None and model.catalogue_source == PACK_SOURCE
+    Read through the governance port: the phases whose entry enables
+    construction start, and the project's gate into one of them. No model, no
+    such phase or a decided gate all mean the project is not (or no longer)
+    before construction.
+    """
+    from app.modules.plant_register.hosting import CONSTRUCTION_START
+    from app.modules.project_governance.public import phases_enabling, project_gates
+
+    phases = set(await phases_enabling(session, project_id, CONSTRUCTION_START))
+    if not phases:
+        return False
+    gates = [g for g in await project_gates(session, project_id) if g.to_phase in phases]
+    return bool(gates) and any(g.status != "decided" for g in gates)
 
 
 def _reach_before_gate(spec: dict[str, Any]) -> str:
