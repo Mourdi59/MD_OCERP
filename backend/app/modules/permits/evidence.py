@@ -30,7 +30,7 @@ all, gets one ``unknown`` item with the reason on every area. A provider that ha
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from app.modules.permits.hosting import Hosting, project_hosting
@@ -58,7 +58,8 @@ async def _missing(session: Any, project_id: uuid.UUID, hosting: Hosting) -> str
     return None
 
 
-async def _context(session: Any, project_id: uuid.UUID, attempt: GateAttempt) -> tuple[Any, Hosting, str | None]:
+async def _context(session: Any, project_id: uuid.UUID, attempt: GateAttempt) -> tuple[Any, Hosting, Any]:
+    """The roadmap, where the model hosts permits, and the gate being read (``None`` when unknown)."""
     from app.modules.permits.repository import PermitRepository
     from app.modules.project_governance import public
 
@@ -67,7 +68,17 @@ async def _context(session: Any, project_id: uuid.UUID, attempt: GateAttempt) ->
         return None, Hosting(), None
     gates = await public.project_gates(session, project_id)
     gate = next((g for g in gates if g.id == attempt.gate_id), None)
-    return roadmap, await project_hosting(session, project_id, roadmap), getattr(gate, "to_phase", None)
+    return roadmap, await project_hosting(session, project_id, roadmap), gate
+
+
+def needed_from(gate: Any, today: date) -> date | None:
+    """The date a gate's permits check is made for: the gate's target date, never earlier than today.
+
+    The day is the server's. A gate without a target date gives ``None``: nothing can then be
+    shown to be needed later, so every missing permit blocks.
+    """
+    target = getattr(gate, "target_date", None)
+    return max(target, today) if target is not None else None
 
 
 def unresolved(provider: str, attempt: GateAttempt, reason: str, project_id: uuid.UUID) -> EvidenceItem:
@@ -81,16 +92,19 @@ def unresolved(provider: str, attempt: GateAttempt, reason: str, project_id: uui
 
 
 def to_evidence(readiness: dict[str, Any], code: str, label: str, project_id: uuid.UUID) -> EvidenceItem:
-    """One evidence item per readiness check; anything not plainly met is ``not_met`` and says why."""
-    open_items = [i for i in readiness["items"] if i["state"] != "met"]
+    """One evidence item per readiness check; anything not plainly met is ``not_met`` and says why.
+
+    A ``warning`` is carried in the detail and does not change the state: the item can be
+    ``met`` and still say what is due later.
+    """
+    said = [i for i in readiness["items"] if i["state"] != "met"]
+    prefix = {"at_risk": "at_risk ", "warning": "warning "}
     return EvidenceItem(
         code=code,
-        state="not_met" if open_items else "met",
+        state="not_met" if any(i["state"] != "warning" for i in said) else "met",
         label_key=label,
         link=("permits", str(project_id)),
-        detail=", ".join(
-            f"{'at_risk ' if i['state'] == 'at_risk' else ''}{i['code']}:{i['detail']}" for i in open_items
-        ),
+        detail=", ".join(f"{prefix.get(i['state'], '')}{i['code']}:{i['detail']}" for i in said),
     )
 
 
@@ -99,7 +113,8 @@ async def roadmap_and_register(
 ) -> list[EvidenceItem]:
     from app.modules.permits.service import PermitService
 
-    roadmap, hosting, phase = await _context(session, project_id, attempt)
+    roadmap, hosting, read = await _context(session, project_id, attempt)
+    phase = getattr(read, "to_phase", None)
     if roadmap is None:
         return []
     if (reason := await _missing(session, project_id, hosting)) is not None:
@@ -123,7 +138,8 @@ async def start_and_handover(
 ) -> list[EvidenceItem]:
     from app.modules.permits.service import PermitService
 
-    roadmap, hosting, phase = await _context(session, project_id, attempt)
+    roadmap, hosting, read = await _context(session, project_id, attempt)
+    phase = getattr(read, "to_phase", None)
     if roadmap is None:
         return []
     if (reason := await _missing(session, project_id, hosting)) is not None:
@@ -136,7 +152,7 @@ async def start_and_handover(
     today = datetime.now(UTC).date()
     out: list[EvidenceItem] = []
     for gate in hosting.gates(phase):
-        r = await svc.readiness(project_id, gate, today)
+        r = await svc.readiness(project_id, gate, today, needed_from=needed_from(read, today))
         out.append(to_evidence(r, f"permits_{gate}:{attempt.gate_code}", f"permits.evidence.{gate}", project_id))
     return out
 

@@ -97,6 +97,28 @@ def test_an_unresolved_provider_answers_unknown_with_the_reason() -> None:
 # ── finding 2: at risk is never met; an early start covers only what it runs ahead of ──
 
 
+def test_a_warning_reaches_the_gate_in_the_detail_and_does_not_block() -> None:
+    from datetime import date as day
+    from types import SimpleNamespace as Gate
+
+    from app.modules.permits.evidence import needed_from
+
+    due = {"code": "permit_due_later", "state": "warning", "detail": "Road 2027-04-05", "ref": "r"}
+    granted = {"code": "permit_granted", "state": "met", "detail": "P"}
+    item = to_evidence({"items": [granted, due]}, "c", "l", uuid.uuid4())
+    assert item.state == "met" and item.detail == "warning permit_due_later:Road 2027-04-05"
+    missing = {"code": "permit_missing", "state": "not_met", "detail": "Crane", "ref": "r"}
+    both = to_evidence({"items": [missing, due]}, "c", "l", uuid.uuid4())
+    assert both.state == "not_met"
+    assert both.detail == "permit_missing:Crane, warning permit_due_later:Road 2027-04-05"
+    # The check is made for the gate's target date, never for a day already past, on the server's day.
+    today = day(2026, 10, 13)
+    assert needed_from(Gate(target_date=day(2026, 11, 2)), today) == day(2026, 11, 2)
+    assert needed_from(Gate(target_date=day(2026, 9, 1)), today) == today
+    assert needed_from(Gate(target_date=None), today) is None
+    assert needed_from(None, today) is None
+
+
 def test_at_risk_reaches_the_gate_as_not_met_with_a_detail() -> None:
     assert "at_risk" not in EVIDENCE_STATES
     readiness = {"items": [{"code": "start_at_risk_early_start", "state": "at_risk", "detail": "Permit", "ref": "r"}]}

@@ -198,9 +198,19 @@ def test_permit_start_interruption_and_resumption() -> None:
         "start_already_notified",
         False,
     )
+    # A suspended permit can come back: the action waits. Any other state is final for it.
     assert _refusal(lambda: guards.permit_start(_permit("suspended"))) == (409, "permit_not_in_force", True)
+    for gone in ("revoked", "lapsed", "expired", "superseded"):
+        assert _refusal(lambda gone=gone: guards.permit_start(_permit(gone))) == (409, "permit_not_in_force", False)
+        assert _refusal(lambda gone=gone: guards.permit_interruption(_permit(gone, started="2026-01-01"), False)) == (
+            409,
+            "permit_not_in_force",
+            False,
+        )
     guards.permit_start(_permit())
-    assert _refusal(lambda: guards.permit_interruption(_permit(), False))[1] == "work_not_started"
+    # Work that has not started can be neither interrupted nor resumed: not an action of this permit yet.
+    assert _refusal(lambda: guards.permit_interruption(_permit(), False)) == (409, "work_not_started", False)
+    assert _refusal(lambda: guards.permit_interruption(_permit(), True)) == (409, "work_not_started", False)
     running = _permit(started="2026-01-01")
     paused = _permit(started="2026-01-01", paused="2026-02-01")
     guards.permit_interruption(running, False)

@@ -177,18 +177,25 @@ def decision_complete_register(decision: Any, newest: Any) -> None:
 # ── permits ────────────────────────────────────────────────────────────────
 
 
+def _permit_in_force(permit: Any) -> None:
+    """A suspended permit can come back, so the action waits; any other state is final for it."""
+    if permit.status == "suspended":
+        raise conflict("permit_not_in_force")
+    if permit.status != "in_force":
+        raise not_applicable("permit_not_in_force")
+
+
 def permit_start(permit: Any) -> None:
     if permit.start_notified_at is not None:
         raise not_applicable("start_already_notified")
-    if permit.status != "in_force":
-        raise conflict("permit_not_in_force")
+    _permit_in_force(permit)
 
 
 def permit_interruption(permit: Any, resumed: bool) -> None:
-    if permit.status != "in_force":
-        raise conflict("permit_not_in_force")
+    _permit_in_force(permit)
     if permit.start_notified_at is None:
-        raise conflict("work_not_started")
+        # Work that has not started cannot be interrupted or resumed.
+        raise not_applicable("work_not_started")
     if resumed and permit.paused_since is None:
         raise not_applicable("work_not_interrupted")
     if not resumed and permit.paused_since is not None:

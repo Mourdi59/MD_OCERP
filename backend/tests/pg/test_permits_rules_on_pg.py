@@ -379,6 +379,7 @@ async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_
     from app.modules.permits.seed import seed_permits_demo
     from app.modules.project_governance import public
     from app.modules.project_governance.evidence import GateAttempt
+    from app.modules.project_governance.models import GovernanceGate
     from app.modules.project_governance.service import GovernanceService
     from app.modules.projects.models import Project
 
@@ -396,6 +397,10 @@ async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_
             actor_id=world.manager,
             tenant_id=str(world.manager),
         )
+        # The gate into construction is planned three weeks out, as in the demo timeline.
+        phases = await public.phases_enabling(s, pid, "construction_start")
+        planned = next(g for g in await public.project_gates(s, pid) if g.to_phase in phases)
+        (await s.get(GovernanceGate, planned.id)).target_date = (NOW + timedelta(days=21)).isoformat()
         await s.commit()
     async with world.factory() as s:
         assert (await seed_permits_demo(s, [pid]))["projects"] == 1
@@ -433,9 +438,13 @@ async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_
         area = next(a for a in await public.project_areas(s, pid) if a.code == host.area_code)
         attempt = GateAttempt(gate.id, gate.code, 1)
         items = {i.code.split(":")[0]: i for i in await permits_evidence.start_and_handover(s, pid, attempt, area)}
+        # The one blocker is the fence. The road occupation is needed at mobilisation, long after the
+        # gate date: it is said as a warning next to the blocker and does not hold the gate.
         assert items["permits_start"].state == "not_met"
-        assert "before_start_obligation_open" in items["permits_start"].detail
-        assert "suspensive_condition_open" not in items["permits_start"].detail
+        assert [d.split(":")[0] for d in items["permits_start"].detail.split(", ")] == [
+            "warning permit_due_later",
+            "before_start_obligation_open",
+        ]
         # One confirmation by the project owner, who is neither the owner of the condition nor the submitter.
         can = svc.condition_can(
             fence, guards.Caller(world.manager, edit=True, manage=True, verify=True), 1, await svc._involved(fence)
@@ -445,12 +454,17 @@ async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_
         await s.commit()
     async with world.factory() as s:
         items = {i.code.split(":")[0]: i for i in await permits_evidence.start_and_handover(s, pid, attempt, area)}
-        detail = items["permits_start"].detail
-        assert "before_start_obligation_open" not in detail and "suspensive_condition_open" not in detail
-        # What still holds the gate is not a condition: the road occupation permit is only in preparation
-        # and its type is needed for the start on site (the catalogue's ``enables``).
-        assert items["permits_start"].state == "not_met" and detail.startswith("permit_missing:")
-        assert detail.count("permit_missing:") == 1
+        # Discharged: the area is met, with exactly one warning that names the day the road
+        # occupation is needed.
+        road_needed = (NOW + timedelta(days=175)).isoformat()
+        assert items["permits_start"].state == "met"
+        assert items["permits_start"].detail == (
+            f"warning permit_due_later:Road occupation for crane and site access {road_needed}"
+        )
+        # Asked without a gate date (the site is to start now) the same permit blocks.
+        start = await PermitService(s).readiness(pid, "start", NOW)
+        assert start["status"] == "not_ready"
+        assert [i["code"] for i in start["items"] if i["state"] == "not_met"] == ["permit_missing"]
 
 
 # ── finding 10, rules 2, 20, 21, 22: the ports other modules call ─────────

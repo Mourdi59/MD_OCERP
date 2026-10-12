@@ -2439,6 +2439,7 @@ class PermitService:
                     str(r.id) in snap["conditions_pending"],
                     r.title,
                     _filed(snap["latest"].get(str(r.id))),
+                    r.needed_by_date,
                 )
             )
         permits_rows = await self.repo.list_permits(project_id)
@@ -2463,8 +2464,14 @@ class PermitService:
         conds = [_cond_view(c) for c in await self.repo.list_conditions(project_id)]
         return {"roadmap": roadmap, "reqs": reqs, "permits": permits, "conds": conds, "snap": snap}
 
-    async def readiness(self, project_id: uuid.UUID, gate: str, today: date, *, enables: Any = None) -> dict[str, Any]:
+    async def readiness(
+        self, project_id: uuid.UUID, gate: str, today: date, *, enables: Any = None, needed_from: date | None = None
+    ) -> dict[str, Any]:
         """One readiness check: ``start`` | ``handover`` | ``register`` | ``roadmap``.
+
+        ``needed_from`` (start check only) is the date the check is made for, the target date of
+        the governance gate being read: a permit the roadmap needs only after it is a warning,
+        not a blocker (``conditions.start_readiness``). Left out, every missing permit blocks.
 
         ``enables`` (roadmap check only) is what the next phase needs a permit for; the caller
         resolves it from the governance catalogue's phase tags. Left out, the check asks for
@@ -2476,7 +2483,7 @@ class PermitService:
         if v["roadmap"] is None:
             return {"gate": gate, "status": "no_roadmap", "items": []}
         if gate == "start":
-            out = cnd.start_readiness(v["reqs"], v["permits"], v["conds"]).as_dict()
+            out = cnd.start_readiness(v["reqs"], v["permits"], v["conds"], needed_from).as_dict()
             needing = {
                 str(r.needed_by_activity_id): str(r.id) for r in v["snap"]["requirements"] if r.needed_by_activity_id
             }

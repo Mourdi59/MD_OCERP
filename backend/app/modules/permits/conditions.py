@@ -109,12 +109,15 @@ class ReqView:
     title: str = ""
     # The newest application is with the authority (filed, not yet decided).
     submitted: bool = False
+    # The date the roadmap says the permit must be in hand.
+    needed_by: date | None = None
 
 
 @dataclass(frozen=True)
 class Item:
     code: str
-    state: str  # met | not_met | at_risk
+    # ``warning`` is said and never blocks: it does not change the status of the check.
+    state: str  # met | not_met | at_risk | warning
     detail: str = ""
     ref: str | None = None
 
@@ -152,8 +155,21 @@ def _in_force(p: PermitView) -> bool:
     return p.state == "in_force"
 
 
-def start_readiness(reqs: Sequence[ReqView], permits: Sequence[PermitView], conds: Sequence[CondView]) -> Readiness:
-    """Rules 10, 12, 19 (construction gate) and 20 (site mobilisation)."""
+def start_readiness(
+    reqs: Sequence[ReqView],
+    permits: Sequence[PermitView],
+    conds: Sequence[CondView],
+    needed_from: date | None = None,
+) -> Readiness:
+    """Rules 10, 12, 19 (construction gate) and 20 (site mobilisation).
+
+    ``needed_from`` is the date the check is made for: the target date of the gate being read.
+    A permit not yet granted blocks when the roadmap needs it on or before that date, and
+    also when the roadmap gives it no date at all, because an undated permit cannot be shown
+    to be needed later. One the roadmap needs after that date is a ``warning`` that names
+    the date: said, never silent, and not a blocker. Without ``needed_from`` (the site is to
+    start now) every missing permit blocks.
+    """
     out = Readiness("start")
     live = [p for p in permits if _in_force(p)]
     early = [p for p in live if p.scope == "early_start" and "site_start" in p.enables]
@@ -170,6 +186,8 @@ def start_readiness(reqs: Sequence[ReqView], permits: Sequence[PermitView], cond
             out.add(Item("permit_partial", "at_risk", r.title or r.type_code, r.id))
         elif ahead:
             out.add(Item("start_at_risk_early_start", "at_risk", r.title or r.type_code, r.id))
+        elif needed_from is not None and r.needed_by is not None and r.needed_by > needed_from:
+            out.add(Item("permit_due_later", "warning", f"{r.title or r.type_code} {r.needed_by.isoformat()}", r.id))
         else:
             out.add(Item("permit_missing", "not_met", r.title or r.type_code, r.id))
     live_ids = {p.id for p in live}

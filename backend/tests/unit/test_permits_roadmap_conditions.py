@@ -9,6 +9,7 @@ from datetime import date
 from app.modules.permits.catalogue import Period, Validity
 from app.modules.permits.conditions import (
     CondView,
+    Item,
     NewCondition,
     OldCondition,
     PermitView,
@@ -229,3 +230,47 @@ def test_variation_keeps_discharge_only_when_text_is_unchanged() -> None:
     assert "4" not in out
     assert out["5"].original_id is None and out["5"].keep_state is None
     assert text_hash("a  b") == text_hash(" a b ")
+
+
+# ── a permit the roadmap needs only after the gate date warns, it does not block ──
+
+GATE_DAY = date(2026, 11, 2)
+
+
+def _road(needed_by: date | None, state: str = "in_progress") -> ReqView:
+    return ReqView(
+        "r9", "road_occupation", "traffic_road", "full", ("site_start",), state, title="Road", needed_by=needed_by
+    )
+
+
+def test_a_permit_without_a_needed_by_date_blocks() -> None:
+    r = start_readiness([REQ, _road(None)], [PERMIT], [], GATE_DAY)
+    assert r.status == "not_ready"
+    assert [(i.code, i.state) for i in r.items] == [("permit_granted", "met"), ("permit_missing", "not_met")]
+
+
+def test_a_permit_needed_on_or_before_the_gate_date_blocks() -> None:
+    for needed in (date(2026, 10, 1), GATE_DAY):
+        r = start_readiness([REQ, _road(needed)], [PERMIT], [], GATE_DAY)
+        assert r.status == "not_ready" and r.items[-1].code == "permit_missing", needed
+
+
+def test_a_permit_needed_after_the_gate_date_is_a_warning_that_names_the_date() -> None:
+    later = date(2027, 4, 5)
+    r = start_readiness([REQ, _road(later)], [PERMIT], [], GATE_DAY)
+    assert r.status == "ready"
+    assert r.items[-1] == Item("permit_due_later", "warning", "Road 2027-04-05", "r9")
+    # Never silent: the warning is an item of the check, and a granted permit raises none.
+    assert [i["state"] for i in r.as_dict()["items"]] == ["met", "warning"]
+    granted = PermitView("p9", "r9", "road_occupation", "traffic_road", "full", "in_force", ("site_start",))
+    done = start_readiness([REQ, _road(later, "granted")], [PERMIT, granted], [], GATE_DAY)
+    assert [i.code for i in done.items] == ["permit_granted", "permit_granted"]
+    # A warning does not hide a blocker next to it.
+    mixed = start_readiness([REQ, _road(later)], [PERMIT], [_cond()], GATE_DAY)
+    assert mixed.status == "not_ready"
+
+
+def test_without_a_gate_date_every_missing_permit_blocks() -> None:
+    """The site is to start now (site readiness, the readiness screen): nothing is needed later."""
+    r = start_readiness([REQ, _road(date(2027, 4, 5))], [PERMIT], [])
+    assert r.status == "not_ready" and r.items[-1].code == "permit_missing"

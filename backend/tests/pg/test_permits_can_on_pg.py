@@ -248,8 +248,8 @@ async def test_permit_flags_and_the_writes_behind_them(world: World, monkeypatch
         (row,) = await svc.permit_rows(p, TODAY, editor)
         can = row["can"]
         assert can["start"] == YES
-        assert can["interrupt"] == _no("work_not_started")
-        assert can["resume"] == _no("work_not_started")
+        assert can["interrupt"] == _no("work_not_started", applies=False)
+        assert can["resume"] == _no("work_not_started", applies=False)
         assert can["transition"]["suspended"] == _no("manage_required")
         assert can["add_condition"] == _no("manage_required")
         # The decision was recorded without its notice: there is nothing to read.
