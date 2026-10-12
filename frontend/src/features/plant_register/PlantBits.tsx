@@ -64,16 +64,19 @@ export const IT_TONE: Record<ItStatus, BadgeVariant> = {
 export interface PlantCan {
   edit: Capability;
   manage: Capability;
+  /** The server has not answered yet: every write waits, switched off. */
+  pending?: boolean;
 }
 
 const OPEN: Capability = { allowed: true };
 
 /**
- * What the server lets the reader do. Until the answer is in, and when it
- * cannot be read, nothing is held back here: the server still refuses the
- * write and its reason is shown.
+ * What the server lets the reader do. While the answer is on its way every
+ * write is off. When it cannot be read at all nothing is held back here: the
+ * server still refuses the write and its reason is shown.
  */
-export function canOf(settings: PlantSettings | null | undefined): PlantCan {
+export function canOf(settings: PlantSettings | null | undefined, loading = false): PlantCan {
+  if (loading) return { edit: OPEN, manage: OPEN, pending: true };
   return { edit: settings?.can?.edit ?? OPEN, manage: settings?.can?.manage ?? OPEN };
 }
 
@@ -88,7 +91,12 @@ export function withheldReason(t: TFn, capability: Capability, fallback: string)
   return capability.allowed ? null : errorText(t, capability.reason ?? fallback);
 }
 
-/** A button for a write. It is off, with the server's reason as its tooltip, when the server withholds the capability. */
+/**
+ * A button for a write. It is off while the server's answer is on its way and
+ * when the server withholds the capability, with the reason as its tooltip
+ * (the page states the same reason in plain sight), and it is not there at
+ * all when the server says the action does not apply.
+ */
 export function WriteButton({
   need = 'edit',
   disabled,
@@ -96,8 +104,10 @@ export function WriteButton({
   ...rest
 }: ComponentProps<typeof Button> & { need?: keyof PlantCan }) {
   const { t } = useTranslation();
-  const reason = withheldReason(t, usePlantCan()[need], need === 'edit' ? 'edit_permission_required' : 'manage_required');
-  return <Button {...rest} disabled={disabled || reason !== null} title={reason ?? title} />;
+  const can = usePlantCan();
+  if (can[need].applies === false) return null;
+  const reason = withheldReason(t, can[need], need === 'edit' ? 'edit_permission_required' : 'manage_required');
+  return <Button {...rest} disabled={disabled || can.pending || reason !== null} title={reason ?? title} />;
 }
 
 export function ToneBadge({ tone, children, testId }: { tone: BadgeVariant; children: ReactNode; testId?: string }) {

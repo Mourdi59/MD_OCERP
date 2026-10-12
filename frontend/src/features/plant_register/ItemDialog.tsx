@@ -64,8 +64,9 @@ export function ItemDialog({ open, onClose, projectId, item, catalogue, labels, 
   };
 
   // The two overrides need the manage capability and stop changing once the route is set.
+  const manage = usePlantCan().manage;
   const overrideLock =
-    withheldReason(t, usePlantCan().manage, 'manage_required') ??
+    withheldReason(t, manage, 'manage_required') ??
     (item && classificationFrozen(item.status) ? errorText(t, 'classification_frozen') : null);
   const overrideLabel = (value: Override, kind: 'critical' | 'long_lead') => {
     if (value === 'default') {

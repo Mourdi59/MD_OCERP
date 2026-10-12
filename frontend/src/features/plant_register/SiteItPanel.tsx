@@ -25,7 +25,7 @@ import {
 } from './api';
 import { IT_STATE, catalogueName, vocab, type LabelContext } from './labels';
 import { DialogFooter, Field, IT_TONE, Refusal, Section, ToneBadge, WriteButton, fieldClass } from './PlantBits';
-import { itServiceProblems, toItServiceInput, type ItServiceDraft } from './rules';
+import { itServiceChanges, itServiceProblems, toItServiceInput, type ItServiceDraft } from './rules';
 
 interface ItServiceDialogProps {
   onClose: () => void;
@@ -38,19 +38,22 @@ interface ItServiceDialogProps {
 
 export function ItServiceDialog({ onClose, projectId, service, catalogue, labels, onSaved }: ItServiceDialogProps) {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState<ItServiceDraft>(() => ({
+  const [original] = useState<ItServiceDraft>(() => ({
     kind: service?.kind ?? '',
     description: service?.description ?? '',
     responsible_party: service?.responsible_party ?? '',
     needed_from: service?.needed_from ?? '',
     needed_until: service?.needed_until ?? '',
   }));
+  const [draft, setDraft] = useState<ItServiceDraft>(original);
   const [tried, setTried] = useState(false);
   const problems = itServiceProblems(draft);
   const set = <K extends keyof ItServiceDraft>(key: K, value: ItServiceDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const save = useMutation({
     mutationFn: () =>
-      service ? updateItService(projectId, service.id, toItServiceInput(draft)) : createItService(projectId, toItServiceInput(draft)),
+      service
+        ? updateItService(projectId, service.id, itServiceChanges(original, draft))
+        : createItService(projectId, toItServiceInput(draft)),
     onSuccess: onSaved,
   });
   const submit = () => {

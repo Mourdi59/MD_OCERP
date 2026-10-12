@@ -291,6 +291,7 @@ const resource = {
     "modules.catalog.phonelog": "Phone Log",
     "modules.catalog.pipelines": "Pipeline Builder",
     "modules.catalog.plan_room": "Plan Room",
+    "modules.catalog.plant_register": "Plant register",
     "modules.catalog.pointcloud": "Point Cloud / Reality Capture",
     "modules.catalog.portal": "Client & Partner Portal",
     "modules.catalog.portfolio": "Portfolio",

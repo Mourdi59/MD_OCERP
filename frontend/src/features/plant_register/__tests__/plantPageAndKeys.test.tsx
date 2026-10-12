@@ -146,6 +146,26 @@ describe('PlantRegisterPage states', () => {
     expect(screen.queryByRole('button', { name: 'Add item' })).toBeNull();
   });
 
+  it('no write is offered while the capability answer is on its way', async () => {
+    mocked.getSettings.mockReturnValue(new Promise(() => undefined));
+    renderPage();
+    expect(await screen.findAllByTestId('register-row')).toHaveLength(2);
+    expect(screen.getByTestId('plant-add-item')).toBeDisabled();
+    expect(screen.queryByTestId('plant-read-only')).toBeNull();
+  });
+
+  it('an action the server says does not apply is not shown at all', async () => {
+    mocked.getSettings.mockResolvedValue(settings({ allowed: false, reason: null, applies: false }));
+    renderPage();
+    expect(await screen.findAllByTestId('register-row')).toHaveLength(2);
+    expect(screen.queryByTestId('plant-add-item')).toBeNull();
+  });
+
+  it('names the module in the module catalogue in both languages', () => {
+    expect(en.translation['modules.catalog.plant_register']).toBe('Plant register');
+    expect(de.translation['modules.catalog.plant_register']).toBe('Anlagenregister');
+  });
+
   it('the buttons stay on when the capability answer cannot be read; the server still decides', async () => {
     mocked.getSettings.mockRejectedValue(new ApiError(500, 'Server Error', { detail: 'settings failed' }));
     renderPage();

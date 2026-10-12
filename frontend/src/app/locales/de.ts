@@ -289,6 +289,7 @@ const resource = {
     "modules.catalog.phonelog": "Anrufprotokoll",
     "modules.catalog.pipelines": "Pipeline-Builder",
     "modules.catalog.plan_room": "Planraum",
+    "modules.catalog.plant_register": "Anlagenregister",
     "modules.catalog.pointcloud": "Punktwolke / Reality Capture",
     "modules.catalog.portal": "Kunden- & Partnerportal",
     "modules.catalog.portfolio": "Portfolio",

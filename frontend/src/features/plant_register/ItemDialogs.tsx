@@ -37,7 +37,9 @@ import {
   emptyQuoteDraft,
   emptySlotDraft,
   quoteProblems,
+  slotChanges,
   slotProblems,
+  spareChanges,
   spareProblems,
   toQuoteInput,
   toSlotInput,
@@ -251,13 +253,16 @@ function slotDraftOf(slot: Slot): SlotDraft {
 
 export function SlotDialog({ open, onClose, projectId, item, slot, onSaved }: ItemDialogBase & { slot: Slot | null }) {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState<SlotDraft>(() => (slot ? slotDraftOf(slot) : emptySlotDraft()));
+  const [original] = useState<SlotDraft>(() => (slot ? slotDraftOf(slot) : emptySlotDraft()));
+  const [draft, setDraft] = useState<SlotDraft>(original);
   const [tried, setTried] = useState(false);
   const problems = slotProblems(draft);
   const set = <K extends keyof SlotDraft>(key: K, value: SlotDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const save = useMutation({
     mutationFn: () =>
-      slot ? updateSlot(projectId, item.id, slot.id, toSlotInput(draft)) : createSlot(projectId, item.id, toSlotInput(draft)),
+      slot
+        ? updateSlot(projectId, item.id, slot.id, slotChanges(original, draft))
+        : createSlot(projectId, item.id, toSlotInput(draft)),
     onSuccess: onSaved,
   });
   const submit = () => {
@@ -569,7 +574,7 @@ export function SpareDialog({
   onSaved,
 }: ItemDialogBase & WithCatalogue & { spare: Spare | null }) {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState<SpareDraft>(() => ({
+  const [original] = useState<SpareDraft>(() => ({
     category: spare?.category ?? '',
     description: spare?.description ?? '',
     quantity: spare?.quantity ?? '1',
@@ -577,13 +582,14 @@ export function SpareDialog({
     supply_by: spare?.supply_by ?? '',
     handover_target: spare?.handover_target ?? '',
   }));
+  const [draft, setDraft] = useState<SpareDraft>(original);
   const [tried, setTried] = useState(false);
   const problems = spareProblems(draft);
   const set = <K extends keyof SpareDraft>(key: K, value: SpareDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const save = useMutation({
     mutationFn: () =>
       spare
-        ? updateSpare(projectId, item.id, spare.id, toSpareInput(draft))
+        ? updateSpare(projectId, item.id, spare.id, spareChanges(original, draft))
         : createSpare(projectId, item.id, toSpareInput(draft)),
     onSuccess: onSaved,
   });
