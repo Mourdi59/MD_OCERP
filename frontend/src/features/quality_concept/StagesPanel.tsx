@@ -42,6 +42,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useQcWrite, useStageMatrix } from './hooks';
+import { ClosedReasons } from './ClosedReasons';
 import {
   PARTY_ROLE,
   PRECONDITION,
@@ -209,6 +210,7 @@ export function StagesPanel(props: PanelProps) {
                   onClick={() => setRemoving(s)}
                 />
               </span>
+              <ClosedReasons row={s} actions={['edit', 'delete']} />
             </li>
           ))}
         </ol>
@@ -382,6 +384,7 @@ export function StagesPanel(props: PanelProps) {
             <Button size="sm" variant="ghost" {...gate(t as TFn, current, 'set_dependencies', manage)} onClick={() => setDialog({ kind: 'depends', progress: current })} data-testid="stage-depends">
               {t('qualityConcept.stages.depends', { defaultValue: 'Systems it depends on' })}
             </Button>
+            <ClosedReasons row={current} actions={['set_dependencies', ...(STAGE_ACTIONS[current.computed_state] ?? [])]} />
           </div>
           <div className="mt-3">
             <EvidenceLinks projectId={projectId} ownerKind="stage_progress" ownerId={current.id} row={current} />

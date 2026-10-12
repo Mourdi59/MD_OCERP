@@ -34,6 +34,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useCertifications, useQcWrite } from './hooks';
+import { ClosedReasons } from './ClosedReasons';
 import { OptionPicker } from './OptionPicker';
 import {
   CERTIFICATION_ACTION,
@@ -226,6 +227,7 @@ export function CertificationPanel(props: PanelProps) {
                       {vocab(t as TFn, CERTIFICATION_ACTION, action)}
                     </Button>
                   ))}
+                  <ClosedReasons row={target} actions={['edit', 'delete', 'add_credits', ...(CERTIFICATION_ACTIONS[target.state] ?? [])]} />
                 </div>
 
                 {target.credits.length === 0 ? (
@@ -273,6 +275,7 @@ export function CertificationPanel(props: PanelProps) {
                             />
                           </span>
                         </div>
+                        <ClosedReasons row={c} actions={['delete', ...(CREDIT_ACTIONS[c.state] ?? [])]} />
                         {linksOf === c.id && (
                           <div className="mt-2">
                             <EvidenceLinks projectId={projectId} ownerKind="credit" ownerId={c.id} row={c} />

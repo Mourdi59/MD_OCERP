@@ -35,6 +35,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useExpertReports, useQcWrite, useSurveys } from './hooks';
+import { ClosedReasons } from './ClosedReasons';
 import { OptionPicker } from './OptionPicker';
 import {
   EXPERT_FREQUENCY,
@@ -223,6 +224,7 @@ export function PreservationPanel(props: PanelProps) {
                       onClick={() => setRemoving({ survey: s })}
                     />
                   )}
+                  <ClosedReasons row={s} actions={['edit', 'delete', 'pair', ...(SURVEY_ACTIONS[s.state] ?? [])]} />
                 </div>
                 {linksOf === s.id && (
                   <div className="mt-2">
@@ -293,6 +295,7 @@ export function PreservationPanel(props: PanelProps) {
                 {r.trigger && (
                   <p className="mt-0.5 text-xs text-content-tertiary">{vocabOrRaw(t as TFn, EXPERT_TRIGGER, r.trigger)}</p>
                 )}
+                <ClosedReasons row={r} actions={['edit', 'delete']} />
                 {linksOf === r.id && (
                   <div className="mt-2">
                     <EvidenceLinks projectId={projectId} ownerKind="expert_report" ownerId={r.id} row={r} />

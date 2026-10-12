@@ -30,6 +30,7 @@ import {
   STAGE_ACTIONS,
   SURVEY_ACTIONS,
   canKey,
+  closedReasons,
   conceptEditable,
   filledPackages,
   isAccepted,
@@ -270,5 +271,20 @@ describe('references to records of another module', () => {
     expect(refChange('expert_contact_id', null, '')).toEqual({});
     expect(refChange('expert_contact_id', undefined, 'c2')).toEqual({ expert_contact_id: 'c2' });
     expect(refChange('expert_contact_id', 'c1', '')).toEqual({ expert_contact_id: null });
+  });
+});
+
+describe('reasons of closed actions', () => {
+  it('lists each reason once, only for the actions asked about', () => {
+    const row = {
+      can: { edit: false, delete: false, accept: false, reopen: true },
+      can_reason: { edit: 'manage_required', delete: 'manage_required', accept: 'invalid_transition' },
+    };
+    expect(closedReasons(row, ['edit', 'delete', 'reopen'])).toEqual(['manage_required']);
+    expect(closedReasons(row, ['accept', 'edit'])).toEqual(['invalid_transition', 'manage_required']);
+    expect(closedReasons({}, ['edit'])).toEqual([]);
+    expect(closedReasons({ can: { decide_waiver: false }, can_reason: { decide_waiver: 'approver_is_requester' } }, ['approve_waiver', 'reject_waiver'])).toEqual([
+      'approver_is_requester',
+    ]);
   });
 });

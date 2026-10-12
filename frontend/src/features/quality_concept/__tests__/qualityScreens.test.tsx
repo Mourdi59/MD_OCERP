@@ -701,3 +701,29 @@ describe('gate, retests and names', () => {
     expect(line.textContent).toBe('Waiver requested by Site manager one: Out of scope');
   });
 });
+
+describe('the reason of a closed button', () => {
+  it('is written out beside the buttons, once per reason', async () => {
+    mocked.listUnits.mockResolvedValue(
+      page([
+        unit({
+          can: { request: false, edit: false, delete: false, record_dates: true },
+          can_reason: { request: 'edit_required', edit: 'manage_required', delete: 'manage_required' },
+        }),
+      ]),
+    );
+    renderPage('acceptance');
+    const card = await screen.findByTestId('acceptance-unit');
+    const note = within(card).getByTestId('closed-reason');
+    expect(note.textContent).toContain('Only a manager or the owner of the quality area can change the plan.');
+    expect(note.querySelectorAll('span')).toHaveLength(2);
+    expect(note.textContent).not.toContain('quality_concept.');
+  });
+
+  it('is absent when nothing is closed', async () => {
+    mocked.listUnits.mockResolvedValue(page([unit({ can: { request: true, edit: true, delete: true }, can_reason: {} })]));
+    renderPage('acceptance');
+    const card = await screen.findByTestId('acceptance-unit');
+    expect(within(card).queryByTestId('closed-reason')).toBeNull();
+  });
+});

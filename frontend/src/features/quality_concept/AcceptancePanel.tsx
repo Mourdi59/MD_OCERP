@@ -34,6 +34,7 @@ import {
 } from './api';
 import { ExportButtons } from './ExportButtons';
 import { useAcceptanceUnits, useQcWrite } from './hooks';
+import { ClosedReasons } from './ClosedReasons';
 import { OptionPicker } from './OptionPicker';
 import {
   ACCEPTANCE_ACTION,
@@ -381,6 +382,7 @@ export function AcceptancePanel(props: PanelProps) {
                     {vocab(t as TFn, ACCEPTANCE_ACTION, action)}
                   </Button>
                 ))}
+              <ClosedReasons row={u} actions={['edit', 'delete', 'confirm_effect', ...(ACCEPTANCE_ACTIONS[u.state] ?? [])]} />
             </div>
           </Section>
         );

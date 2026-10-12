@@ -21,6 +21,7 @@ import {
   type Mandate,
 } from './api';
 import { useQcWrite, useRequirements, useStandards } from './hooks';
+import { ClosedReasons } from './ClosedReasons';
 import { MANDATE, VERIFICATION_METHOD, catalogueName, gate, nameIn, vocab, type TFn } from './labels';
 import type { PanelProps } from './panel';
 import { Field, FormDialog, Hint, RefusalNote, Section, VocabSelect, inputCls } from './QualityBits';
@@ -86,6 +87,7 @@ export function StandardsSection(props: PanelProps) {
                   aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
                   onClick={() => setRemoving(s)}
                 />
+                <ClosedReasons row={s} actions={['edit', 'delete']} />
               </li>
             ))}
           </ul>

@@ -17,6 +17,7 @@ import { getErrorMessage } from '@/shared/lib/api';
 
 import { addLink, removeLink, type Capable, type LinkOwnerKind } from './api';
 import { useEvidenceLinks, useLinkCandidates, useQcWrite } from './hooks';
+import { ClosedReasons } from './ClosedReasons';
 import { FACT_OUTCOME, LINK_KIND, gate, vocab, type TFn } from './labels';
 import { Hint, RefusalNote, inputCls } from './QualityBits';
 
@@ -58,6 +59,7 @@ export function EvidenceLinks({ projectId, ownerKind, ownerId, allowedKinds, row
         {t('qualityConcept.evidence.title', { defaultValue: 'Linked records' })}
       </p>
       <RefusalNote refusal={write.refusal} />
+      <ClosedReasons row={row} actions={['link_evidence']} />
       {links.isLoading ? (
         <p className="text-xs text-content-tertiary">{t('qualityConcept.common.loading', { defaultValue: 'Loading...' })}</p>
       ) : links.isError ? (

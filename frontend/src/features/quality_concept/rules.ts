@@ -41,6 +41,16 @@ export function whyNot(row: Capable | null | undefined, action: string): string 
   return row.can_reason?.[action] ?? null;
 }
 
+/** The distinct reasons the server gives for those of the named actions that are closed, in button order. */
+export function closedReasons(row: Capable | null | undefined, actions: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const action of actions) {
+    const reason = whyNot(row, canKey(action));
+    if (reason && !out.includes(reason)) out.push(reason);
+  }
+  return out;
+}
+
 /** The capability flag behind each button, where the two are not named alike. */
 export const CAN_KEY: Record<string, string> = {
   approve_waiver: 'decide_waiver',

@@ -34,6 +34,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useAcceptanceUnits, useCoverage, useProofs, useQcWrite, useStageMatrix } from './hooks';
+import { ClosedReasons } from './ClosedReasons';
 import { OptionPicker } from './OptionPicker';
 import { DELIVERER_ROLE, PROOF_ACTION, PROOF_STATE, REQUIRED_BY_KIND, gate, nameIn, vocab, type TFn } from './labels';
 import { packageName, type PanelProps } from './panel';
@@ -354,6 +355,7 @@ export function ProofsPanel(props: PanelProps) {
                     aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
                     onClick={() => setRemoving(p)}
                   />
+                  <ClosedReasons row={p} actions={['edit', 'delete', ...proofActions(p)]} />
                 </div>
                 {linksOf === p.id && (
                   <div className="mt-2">
