@@ -326,9 +326,12 @@ export function toPackageInput(d: PackageDraft, original: PackageDraft): Package
   if (d.prequal_profile_id !== original.prequal_profile_id) out.prequal_profile_id = d.prequal_profile_id || null;
   if (d.notes.trim() !== original.notes.trim()) out.notes = d.notes.trim();
   if (d.evaluation_method !== original.evaluation_method) out.evaluation_method = d.evaluation_method;
-  // The server refuses null here: an empty object is how the criteria are cleared.
+  // Criteria belong to a best value award: under lowest price the form hides them, so the stored ones are
+  // left as they are. The server refuses null here: an empty object is how the criteria are cleared.
   const weights = toWeights(d.weights);
-  if (!sameWeights(weights, toWeights(original.weights))) out.evaluation_weights = weights;
+  if (d.evaluation_method === 'best_value' && !sameWeights(weights, toWeights(original.weights))) {
+    out.evaluation_weights = weights;
+  }
   // The kind and the id of the cost reference travel together, and clear together.
   if (d.cost_ref_id !== original.cost_ref_id) {
     out.cost_ref_kind = d.cost_ref_id ? 'boq_section' : null;
@@ -590,7 +593,8 @@ export type FrameworkProblem =
   | 'value_invalid'
   | 'currency_invalid'
   | 'dates_required'
-  | 'dates_inverted';
+  | 'dates_inverted'
+  | 'lot_code_required';
 
 export const FRAMEWORK_PROBLEM: Record<FrameworkProblem, KeyText> = {
   code_required: ['procurement_concept.ui.problem.framework_code_required', 'Give the agreement a code.'],
@@ -601,6 +605,7 @@ export const FRAMEWORK_PROBLEM: Record<FrameworkProblem, KeyText> = {
   ],
   dates_required: ['procurement_concept.ui.problem.framework_dates_required', 'Give the start and the end date.'],
   dates_inverted: ['procurement_concept.errors.framework_dates_inverted', 'The end date is before the start date.'],
+  lot_code_required: ['procurement_concept.ui.problem.lot_code_required', 'Give every lot a code.'],
 };
 
 export function frameworkProblems(d: FrameworkDraft): FrameworkProblem[] {
@@ -610,6 +615,7 @@ export function frameworkProblems(d: FrameworkDraft): FrameworkProblem[] {
   if (!/^[A-Za-z]{3}$/.test(d.currency.trim())) out.push('currency_invalid');
   if (!d.start_date || !d.end_date) out.push('dates_required');
   else if (d.end_date < d.start_date) out.push('dates_inverted');
+  if (typedLots(d.lots).some((l) => !l.code)) out.push('lot_code_required');
   return out;
 }
 

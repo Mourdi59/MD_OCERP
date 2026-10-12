@@ -49222,6 +49222,7 @@ const resource = {
     "procurement_concept.ui.problem.framework_dates_required": "Geben Sie Beginn und Ende an.",
     "procurement_concept.ui.problem.framework_value_invalid": "Der Höchstwert ist kein Betrag.",
     "procurement_concept.ui.problem.lead_time_invalid": "Die Vorlaufzeit ist eine ganze Zahl von Tagen zwischen 0 und 1500.",
+    "procurement_concept.ui.problem.lot_code_required": "Geben Sie jedem Los eine Nummer.",
     "procurement_concept.ui.problem.no_criteria": "Wählen Sie mindestens ein Kriterium.",
     "procurement_concept.ui.problem.pass_mark_invalid": "Die Mindestpunktzahl ist eine Zahl von 0 bis 100.",
     "procurement_concept.ui.problem.profile_name_required": "Geben Sie dem Profil einen Namen.",

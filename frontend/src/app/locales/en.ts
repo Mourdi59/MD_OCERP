@@ -40950,6 +40950,7 @@ const resource = {
     "procurement_concept.ui.problem.framework_dates_required": "Give the start and the end date.",
     "procurement_concept.ui.problem.framework_value_invalid": "The maximum value is not an amount.",
     "procurement_concept.ui.problem.lead_time_invalid": "The lead time is a whole number of days between 0 and 1500.",
+    "procurement_concept.ui.problem.lot_code_required": "Give every lot a code.",
     "procurement_concept.ui.problem.no_criteria": "Choose at least one criterion.",
     "procurement_concept.ui.problem.pass_mark_invalid": "The pass mark is a number from 0 to 100.",
     "procurement_concept.ui.problem.profile_name_required": "Give the profile a name.",

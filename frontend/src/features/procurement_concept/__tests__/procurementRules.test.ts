@@ -290,6 +290,12 @@ describe('award criteria and the cost reference', () => {
     expect(toPackageInput({ ...stored, weights: [] }, stored)).toEqual({ evaluation_weights: {} });
   });
 
+  it('leaves the stored criteria alone once the award goes by lowest price', () => {
+    const half = { ...best, weights: [{ name: 'Price', weight: '70' }] };
+    expect(packageProblems({ ...half, evaluation_method: 'lowest_price' })).toEqual([]);
+    expect(toPackageInput({ ...half, evaluation_method: 'lowest_price' }, best)).toEqual({ evaluation_method: 'lowest_price' });
+  });
+
   it('sets and clears the kind and the id of the cost reference together', () => {
     expect(toPackageInput({ ...base, cost_ref_id: 'sec1' }, base)).toEqual({ cost_ref_kind: 'boq_section', cost_ref_id: 'sec1' });
     const named = { ...base, cost_ref_id: 'sec1' };
@@ -586,6 +592,8 @@ describe('framework agreements', () => {
     expect(toFrameworkPatch({ ...draft, lots }, [{ code: 'L1', title: 'North' }])).not.toHaveProperty('lots');
     expect(toFrameworkPatch({ ...draft, lots }, []).lots).toEqual([{ code: 'L1', title: 'North' }]);
     expect(toFrameworkPatch({ ...draft, lots: [] }, [{ code: 'L1', title: 'North' }]).lots).toEqual([]);
+    expect(frameworkProblems({ ...draft, lots })).toEqual([]);
+    expect(frameworkProblems({ ...draft, lots: [{ code: '', title: 'North' }] })).toEqual(['lot_code_required']);
   });
 
   it('the called-off share stays between nothing and everything', () => {
