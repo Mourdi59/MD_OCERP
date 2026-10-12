@@ -6,10 +6,10 @@
 // the decided history keeps a place in the new model; that step only appears
 // when it is needed.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Layers } from 'lucide-react';
+import { ArrowRight, Layers } from 'lucide-react';
 import clsx from 'clsx';
 
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -20,6 +20,7 @@ import { useToastStore } from '@/stores/useToastStore';
 
 import {
   changeModel,
+  getProjectCountry,
   governanceErrorCode,
   governanceKeys,
   listCatalogues,
@@ -32,7 +33,7 @@ import {
 import { canManage, type Verdict } from './access';
 import { RoutePin } from './RoutePin';
 import { ReasonedButton } from './GovernanceBits';
-import { catalogueName, errorText, humanizeCode, type LabelContext } from './labels';
+import { catalogueName, errorText, humanizeCode, refusalText, type LabelContext } from './labels';
 
 export interface ModelPickerProps {
   projectId: string;
@@ -58,8 +59,29 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
   // first try is what closes it. The reason then stays on the button.
   const [refused, setRefused] = useState<Verdict>(null);
   const verdict: Verdict = model ? canManage(model) : canSet === false ? 'role_manage' : refused;
-  const catalogues = useQuery({ queryKey: governanceKeys.catalogues, queryFn: () => listCatalogues().then((p) => p.items) });
+  // The country matters only for the first choice: it lets the server mark
+  // the model to start with. A project that cannot be read simply gets none.
+  const countryQ = useQuery({
+    queryKey: [...governanceKeys.model(projectId), 'country'],
+    queryFn: () => getProjectCountry(projectId),
+    enabled: !model,
+    retry: false,
+  });
+  const country = countryQ.data ?? null;
+  const catalogues = useQuery({
+    queryKey: [...governanceKeys.catalogues, country ?? ''],
+    queryFn: () => listCatalogues(country).then((p) => p.items),
+    enabled: !!model || countryQ.isFetched,
+  });
   const [selected, setSelected] = useState<string>('');
+  // The server's default is offered once, as a selection the reader can change before saving.
+  const offeredDefault = useRef(false);
+  useEffect(() => {
+    if (model || offeredDefault.current || !catalogues.data) return;
+    offeredDefault.current = true;
+    const preset = catalogues.data.find((c) => c.default && c.state === 'published');
+    if (preset) setSelected(`${preset.source}:${preset.id}`);
+  }, [model, catalogues.data]);
   const [fourEyes, setFourEyes] = useState(true);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [askMapping, setAskMapping] = useState(false);
@@ -95,16 +117,16 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
         setRefused('role_manage');
         return;
       }
-      addToast({ type: 'error', title: getErrorMessage(err) });
+      addToast({ type: 'error', title: refusalText(t, err) });
     },
   });
   const toggleFourEyes = useMutation({
     mutationFn: (value: boolean) => updateModelSettings(projectId, { four_eyes: value }),
     onSuccess: onDone,
-    onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+    onError: (err) => addToast({ type: 'error', title: refusalText(t, err) }),
   });
 
-  if (catalogues.isLoading) return <SkeletonTable rows={4} columns={2} />;
+  if (catalogues.isPending) return <SkeletonTable rows={4} columns={2} />;
   if (catalogues.isError) {
     return (
       <ErrorState
@@ -131,7 +153,9 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
               return current ? catalogueTitle(labels, current) : humanizeCode(model.catalogue_id);
             })()}
           </span>
-          <span className="text-xs text-content-tertiary">v{model.catalogue_version}</span>
+          <span className="text-xs text-content-tertiary">
+            {t('governance.project.model.version', { defaultValue: 'Version {{n}}', n: model.catalogue_version })}
+          </span>
           <label className="ml-auto inline-flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -157,6 +181,14 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
             ? t('governance.project.model.change_title', { defaultValue: 'Change the phase model' })
             : t('governance.project.model.choose_title', { defaultValue: 'Choose a phase model' })}
         </h3>
+        {items.length === 0 && (
+          <p className="text-sm text-content-secondary" data-testid="model-picker-empty">
+            {t('governance.project.model.none_published', {
+              defaultValue:
+                'No published phase model is available. A governance manager publishes one in the governance settings of the organisation.',
+            })}
+          </p>
+        )}
         <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3" role="radiogroup">
           {items.map((c) => {
             const key = `${c.source}:${c.id}`;
@@ -184,7 +216,11 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
                 <span className="text-xs text-content-tertiary">
                   {c.source === 'tenant'
                     ? t('governance.project.model.source_tenant', { defaultValue: 'Your organisation' })
-                    : t('governance.project.model.source_shipped', { defaultValue: 'Included with the platform' })}
+                    : c.source === 'pack'
+                      ? t('governance.project.model.source_pack', { defaultValue: 'From the active pack' })
+                      : t('governance.project.model.source_shipped', { defaultValue: 'Included with the platform' })}
+                  {c.default &&
+                    ` · ${t('governance.project.model.recommended', { defaultValue: 'Suggested for this project' })}`}
                   {c.jurisdiction_countries.length > 0 && ` · ${fmtList(c.jurisdiction_countries)}`}
                 </span>
                 {c.review_status === 'unconfirmed' && (
@@ -228,9 +264,7 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
                 <span className="w-40 shrink-0 truncate text-content-primary">
                   {catalogueName(labels, { kind: 'phase', code: p.code, catalogueId: model?.catalogue_id, label: p.name })}
                 </span>
-                <span aria-hidden className="text-content-tertiary">
-                  {'->'}
-                </span>
+                <ArrowRight size={14} aria-hidden className="shrink-0 text-content-tertiary" />
                 {choice.phases && choice.phases.length > 0 ? (
                   <select
                     className="flex-1 rounded-md border border-border-light bg-surface-primary px-2 py-1 text-sm"

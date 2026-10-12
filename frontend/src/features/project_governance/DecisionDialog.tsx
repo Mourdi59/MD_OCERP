@@ -32,6 +32,7 @@ import {
   emptyCondition,
   needsRationale,
   notApplicableAreas,
+  dayAfter,
   toDecisionInput,
   type ConditionDraft,
   type DecisionDraft,
@@ -134,7 +135,7 @@ export function DecisionDialog({
       })}
       footer={
         <div className="flex w-full flex-wrap items-center justify-end gap-3">
-          {problems.length > 0 && draft.outcome && (
+          {problems.length > 0 && (
             <ul className="mr-auto space-y-0.5 text-xs text-semantic-error" data-testid="decision-problems">
               {problems.map((p) => (
                 <li key={p} data-problem={p}>
@@ -255,7 +256,7 @@ export function DecisionDialog({
             <input
               id="decision-resume"
               type="date"
-              min={today}
+              min={dayAfter(today)}
               className={clsx(fieldClass, 'max-w-xs')}
               value={draft.holdResumeDate}
               onChange={(e) => setDraft((d) => ({ ...d, holdResumeDate: e.target.value }))}

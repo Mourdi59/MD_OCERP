@@ -184,3 +184,15 @@ async def test_the_port_reads_decisions_conditions_and_change_requests(world: Wo
     approved = documents["business_case"]
     assert approved.approved_gate_id == g.id and approved.container_id == world.containers["business_case"]
     assert approved.bound_revision_id is not None
+
+
+async def test_the_port_answers_who_may_be_named_on_a_project(world: World) -> None:
+    async with world.factory() as s:
+        answers = {
+            "owner": await public.user_can_access_project(s, world.project_id, world.manager),
+            "member": await public.user_can_access_project(s, world.project_id, world.editor),
+            "stranger": await public.user_can_access_project(s, world.project_id, world.outsider),
+            "nobody": await public.user_can_access_project(s, world.project_id, uuid.uuid4()),
+            "no project": await public.user_can_access_project(s, uuid.uuid4(), world.manager),
+        }
+    assert answers == {"owner": True, "member": True, "stranger": False, "nobody": False, "no project": False}

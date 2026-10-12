@@ -41,17 +41,20 @@ from app.modules.project_governance.catalogue_kinds import (
     register_host_subject,
     register_phase_capability,
 )
-from app.modules.project_governance.catalogue_store import resolve_catalogue
+from app.modules.project_governance.catalogue_packs import CataloguePin
+from app.modules.project_governance.catalogue_store import default_catalogue_pin, resolve_catalogue
 from app.modules.project_governance.repository import GovernanceRepository
 
 __all__ = [
     "AreaView",
+    "CataloguePin",
     "ChangeRequestView",
     "ConditionView",
     "DecisionView",
     "DocumentView",
     "GateView",
     "Host",
+    "default_catalogue_pin",
     "host_for",
     "host_in",
     "host_subjects",
@@ -67,6 +70,7 @@ __all__ = [
     "project_gates",
     "register_host_subject",
     "register_phase_capability",
+    "user_can_access_project",
 ]
 
 
@@ -283,6 +287,7 @@ class ChangeRequestView:
         reason: Why the change is asked for.
         proposed_revision_id: The revision that would become binding.
         requested_by: Who raised it.
+        decided_by: Who closed it on the route; ``None`` while it is open.
         decided_at: When the route closed it.
     """
 
@@ -294,6 +299,7 @@ class ChangeRequestView:
     proposed_revision_id: uuid.UUID | None
     requested_by: uuid.UUID | None
     decided_at: datetime | None
+    decided_by: uuid.UUID | None = None
 
 
 def _day(value: Any) -> date | None:
@@ -470,6 +476,7 @@ def change_request_views(rows: Any) -> tuple[ChangeRequestView, ...]:
             proposed_revision_id=r.proposed_revision_id,
             requested_by=r.requested_by,
             decided_at=r.decided_at,
+            decided_by=r.decided_by,
         )
         for r in rows
     )
@@ -507,3 +514,14 @@ async def project_change_requests(
     """
     views = change_request_views(await GovernanceRepository(session).list_change_requests(project_id, document_id))
     return tuple(v for v in views if v.open) if open_only else views
+
+
+async def user_can_access_project(session: AsyncSession, project_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    """Whether a user may be named on this project: its owner, a member of one of its teams, or an admin.
+
+    The same answer governance uses before it accepts an area owner or a
+    condition owner. ``False`` for an unknown project or user.
+    """
+    from app.modules.project_governance.service import GovernanceService
+
+    return await GovernanceService(session).user_can_access_project(project_id, user_id)
