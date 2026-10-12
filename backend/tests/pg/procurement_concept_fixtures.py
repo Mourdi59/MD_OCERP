@@ -156,11 +156,17 @@ async def add_decision(w: World, gate_code: str, *, outcome: str = "go", by: uui
     from app.modules.project_governance.models import GovernanceDecision
 
     async with w.factory() as s:
+        earlier = await s.execute(
+            sa.select(sa.func.count())
+            .select_from(GovernanceDecision)
+            .where(GovernanceDecision.gate_id == w.gates[gate_code])
+        )
         d = GovernanceDecision(
             project_id=w.project_id,
             gate_id=w.gates[gate_code],
             gate_code=gate_code,
-            attempt_no=1,
+            # One decision per attempt of a gate (governance's own unique rule).
+            attempt_no=earlier.scalar_one() + 1,
             outcome=outcome,
             decided_by=by or w.manager,
             decided_at=datetime.now(UTC),

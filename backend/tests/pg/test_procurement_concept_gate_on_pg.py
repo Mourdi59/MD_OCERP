@@ -311,7 +311,9 @@ async def test_the_seed_leaves_a_concept_that_can_go_to_the_gate(world: World) -
         cands = (await s.execute(sa.select(BidderCandidate).where(BidderCandidate.project_id == pid))).scalars().all()
         from app.modules.subcontractors.models import Subcontractor
 
-        names = sorted((await s.get(Subcontractor, c.subcontractor_id)).legal_name for c in cands if c.subcontractor_id)
+        names = sorted(
+            [(await s.get(Subcontractor, c.subcontractor_id)).legal_name for c in cands if c.subcontractor_id]
+        )
         advance = next(r for r in rows if r.is_advance)
         release = await svc.advance_release_status(pid, advance, await svc.release_gate(pid, concept))
     assert "DE" in cat.jurisdiction_countries

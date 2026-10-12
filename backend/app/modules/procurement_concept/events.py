@@ -34,7 +34,6 @@ from app.database import async_session_factory
 
 logger = logging.getLogger(__name__)
 
-_SUBSCRIBED_FLAG = "_procurement_concept_subscribers_registered"
 FRAME_DOCUMENT_EVENT = "project_governance.frame_document.state_changed"
 
 # event name -> (link kind, payload key of the vehicle id, target state)
@@ -118,10 +117,12 @@ async def _on_frame_document(event: Event) -> None:
 
 
 def register_procurement_concept_subscribers() -> None:
-    """Idempotently wire the read-back subscribers."""
-    if getattr(event_bus, _SUBSCRIBED_FLAG, False):
-        return
+    """Wire the subscribers; safe to call again.
+
+    ``subscribe_once`` is what makes a second call harmless. A flag kept beside
+    the bus would outlive the handlers whenever the bus is emptied (an app
+    restarted in one process), and the module would then never hear an event.
+    """
     for name in READ_BACK_EVENTS:
         event_bus.subscribe_once(name, _on_event)
     event_bus.subscribe_once(FRAME_DOCUMENT_EVENT, _on_frame_document)
-    setattr(event_bus, _SUBSCRIBED_FLAG, True)

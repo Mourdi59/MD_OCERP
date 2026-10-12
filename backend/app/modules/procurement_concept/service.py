@@ -120,6 +120,16 @@ def _dec(v: Decimal | str | None) -> str | None:
     return None if v is None else format(Decimal(v), "f")
 
 
+def _number(v: Decimal | str | int | None) -> Decimal | None:
+    """An amount or a rate as a number, whatever form the caller handed in.
+
+    Parsed where the value enters the service, so nothing later compares or
+    stores a string. The request schemas already hand in ``Decimal``; a seeder
+    or another module calling the service directly may not.
+    """
+    return None if v is None else Decimal(str(v))
+
+
 def _answer(reason: str | None, *, applies: bool = True) -> dict[str, Any]:
     """One ``can`` flag: allowed, or the error code that would refuse it.
 
@@ -375,7 +385,7 @@ class ProcurementConceptService:
             concept.catalogue_source, concept.catalogue_id = source, catalogue_id
         for key in ("jurisdiction", "client_type", "vat_rate_pct", "public_client"):
             if key in data:
-                setattr(concept, key, data[key])
+                setattr(concept, key, _number(data[key]) if key == "vat_rate_pct" else data[key])
         if "release_gate_code" in data:
             code = data["release_gate_code"]
             if code and code not in {g.code for g in await self._project_gates(project_id)}:
@@ -785,6 +795,8 @@ class ProcurementConceptService:
         for key, value in data.items():
             if key in ("need_date", "planned_start"):
                 setattr(row, key, _iso(value))
+            elif key == "estimated_value":
+                row.estimated_value = _number(value)
             else:
                 setattr(row, key, value)
         if row.estimated_value is not None and not row.currency:
@@ -1890,6 +1902,7 @@ class ProcurementConceptService:
             raise forbidden("no_tenant")
         if data["end_date"] < data["start_date"]:
             raise ProcurementError("framework_dates_inverted", 422)
+        data = {**data, "max_value": _number(data["max_value"])}
         await self._require_company(data)
         row = FrameworkAgreement(
             tenant_id=tenant_id,
@@ -1916,6 +1929,7 @@ class ProcurementConceptService:
         if "end_date" in data and data["end_date"] < _day(row.start_date):
             raise ProcurementError("framework_dates_inverted", 422)
         if "max_value" in data:
+            data = {**data, "max_value": _number(data["max_value"])}
             ledger = await self._ledger_of(row)
             if data["max_value"] < Decimal(ledger["call_off_value"]):
                 # The ceiling may not drop below what has already been called off.
