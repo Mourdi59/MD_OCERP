@@ -486,15 +486,15 @@ export function ApproverSetup({ projectId, matrix, can, labels, personName, onSa
                     {(tier.route_state === 'pinned' || tier.route_state === 'changed') && (
                       <div className="mt-1 flex flex-wrap gap-2">
                         {tier.route_state === 'changed' && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          loading={pin.isPending && pin.variables?.tier === tier.code}
-                          onClick={() => pin.mutate({ tier: tier.code, routeId: tier.route_id as string })}
-                          data-testid="tier-route-confirm"
-                        >
-                          {t('commitment.setup.route_confirm', { defaultValue: 'Confirm the route as it is now' })}
-                        </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            loading={pin.isPending && pin.variables?.tier === tier.code}
+                            onClick={() => pin.mutate({ tier: tier.code, routeId: tier.route_id as string })}
+                            data-testid="tier-route-confirm"
+                          >
+                            {t('commitment.setup.route_confirm', { defaultValue: 'Confirm the route as it is now' })}
+                          </Button>
                         )}
                         <Button
                           size="sm"
