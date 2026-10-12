@@ -104,7 +104,7 @@ class GovernanceService:
 
     async def catalogue_for(self, model: GovernanceModel) -> Catalogue:
         return await resolve_catalogue(
-            self.session, model.catalogue_source, model.catalogue_id, model.catalogue_version
+            self.session, model.catalogue_source, model.catalogue_id, model.catalogue_version, from_pin=True
         )
 
     async def _fsm(self, fsm: Any, entity: Any, target: str, actor_id: Any, reason: str | None = None, **meta: Any):
@@ -339,7 +339,7 @@ class GovernanceService:
         if await self.repo.get_model(project_id) is not None:
             raise conflict("model_exists")
         pinned = await CatalogueStore(self.session).assert_pinnable(tenant_id, source, catalogue_id, version)
-        catalogue = await resolve_catalogue(self.session, source, catalogue_id, pinned)
+        catalogue = await resolve_catalogue(self.session, source, catalogue_id, pinned, tenant_id=tenant_id)
         model = await self.repo.add(
             GovernanceModel(
                 project_id=project_id,
@@ -436,7 +436,7 @@ class GovernanceService:
         """Move a project to another catalogue (or version) with an explicit phase mapping."""
         model = await self.require_model(project_id, lock=True)
         pinned = await CatalogueStore(self.session).assert_pinnable(tenant_id, source, catalogue_id, version)
-        new = await resolve_catalogue(self.session, source, catalogue_id, pinned)
+        new = await resolve_catalogue(self.session, source, catalogue_id, pinned, tenant_id=tenant_id)
         gates = await self.repo.list_gates(project_id)
         counts = await self.repo.decision_counts(project_id)
         violations = ev.validate_phase_mapping(

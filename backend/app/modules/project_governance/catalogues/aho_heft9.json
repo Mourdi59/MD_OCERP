@@ -41,6 +41,9 @@
         "tender",
         "award"
       ],
+      "enables": [
+        "procurement"
+      ],
       "source_ref": "AHO Heft 9, Projektstufe 3",
       "review_status": "unconfirmed"
     },
@@ -51,6 +54,9 @@
       "spine_keys": [
         "construction"
       ],
+      "enables": [
+        "construction_start"
+      ],
       "source_ref": "AHO Heft 9, Projektstufe 4",
       "review_status": "unconfirmed"
     },
@@ -59,6 +65,9 @@
       "order": 5,
       "name_key": "governance.catalogue.aho_heft9.phase.stufe5",
       "spine_keys": [
+        "handover"
+      ],
+      "enables": [
         "handover"
       ],
       "source_ref": "AHO Heft 9, Projektstufe 5",
@@ -133,7 +142,11 @@
       "required_at_gates": [
         "stufe1_to_stufe2"
       ],
-      "source_ref": "AHO Heft 9, 1A"
+      "source_ref": "AHO Heft 9, 1A",
+      "hosts": [
+        "organisation",
+        "stakeholders"
+      ]
     },
     {
       "code": "kostenrahmen",
@@ -142,7 +155,10 @@
       "required_at_gates": [
         "stufe1_to_stufe2"
       ],
-      "source_ref": "AHO Heft 9, 1C"
+      "source_ref": "AHO Heft 9, 1C",
+      "hosts": [
+        "commitment_release"
+      ]
     },
     {
       "code": "rahmenterminplan",
@@ -151,7 +167,12 @@
       "required_at_gates": [
         "stufe1_to_stufe2"
       ],
-      "source_ref": "AHO Heft 9, 1D"
+      "source_ref": "AHO Heft 9, 1D",
+      "hosts": [
+        "plant",
+        "staffing",
+        "site_logistics"
+      ]
     },
     {
       "code": "vertragsstruktur",
@@ -160,7 +181,22 @@
       "required_at_gates": [
         "stufe1_to_stufe2"
       ],
-      "source_ref": "AHO Heft 9, 1E"
+      "source_ref": "AHO Heft 9, 1E",
+      "hosts": [
+        "delivery_model",
+        "procurement"
+      ]
+    },
+    {
+      "code": "planungsvorgaben",
+      "area": "b",
+      "name_key": "governance.catalogue.aho_heft9.doc.planungsvorgaben",
+      "required_at_gates": [],
+      "hosts": [
+        "design",
+        "quality",
+        "permits"
+      ]
     }
   ]
 }

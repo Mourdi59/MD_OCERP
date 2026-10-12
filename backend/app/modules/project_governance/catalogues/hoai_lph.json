@@ -68,6 +68,9 @@
       "spine_keys": [
         "tender"
       ],
+      "enables": [
+        "procurement"
+      ],
       "source_ref": "HOAI § 34 Abs. 3 Nr. 6",
       "review_status": "verified"
     },
@@ -89,6 +92,10 @@
         "construction",
         "handover"
       ],
+      "enables": [
+        "construction_start",
+        "handover"
+      ],
       "source_ref": "HOAI § 34 Abs. 3 Nr. 8",
       "review_status": "verified"
     },
@@ -97,6 +104,9 @@
       "order": 9,
       "name_key": "governance.catalogue.hoai_lph.phase.lph9",
       "spine_keys": [
+        "operation"
+      ],
+      "enables": [
         "operation"
       ],
       "source_ref": "HOAI § 34 Abs. 3 Nr. 9",
@@ -182,7 +192,10 @@
       "required_at_gates": [
         "lph3_to_lph4"
       ],
-      "source_ref": "HOAI Anlage 10.1 LPH 3 c"
+      "source_ref": "HOAI Anlage 10.1 LPH 3 c",
+      "hosts": [
+        "design"
+      ]
     },
     {
       "code": "kostenberechnung",
@@ -191,7 +204,10 @@
       "required_at_gates": [
         "lph3_to_lph4"
       ],
-      "source_ref": "HOAI Anlage 10.1 LPH 3 e"
+      "source_ref": "HOAI Anlage 10.1 LPH 3 e",
+      "hosts": [
+        "commitment_release"
+      ]
     },
     {
       "code": "genehmigungsunterlagen",
@@ -200,7 +216,10 @@
       "required_at_gates": [
         "lph4_to_lph5"
       ],
-      "source_ref": "HOAI Anlage 10.1 LPH 4 a"
+      "source_ref": "HOAI Anlage 10.1 LPH 4 a",
+      "hosts": [
+        "permits"
+      ]
     },
     {
       "code": "leistungsverzeichnisse",
@@ -237,6 +256,54 @@
         "lph8_to_lph9"
       ],
       "source_ref": "HOAI Anlage 10.1 LPH 8 m"
+    },
+    {
+      "code": "procurement_strategy",
+      "area": "procurement",
+      "name_key": "governance.catalogue.neutral.doc.procurement_strategy",
+      "required_at_gates": [],
+      "hosts": [
+        "delivery_model",
+        "procurement"
+      ]
+    },
+    {
+      "code": "stakeholder_register",
+      "area": "stakeholders",
+      "name_key": "governance.catalogue.neutral.doc.stakeholder_register",
+      "required_at_gates": [],
+      "hosts": [
+        "stakeholders"
+      ]
+    },
+    {
+      "code": "project_handbook",
+      "area": "integration",
+      "name_key": "governance.catalogue.neutral.doc.project_handbook",
+      "required_at_gates": [],
+      "hosts": [
+        "organisation"
+      ]
+    },
+    {
+      "code": "quality_management_plan",
+      "area": "quality",
+      "name_key": "governance.catalogue.neutral.doc.quality_management_plan",
+      "required_at_gates": [],
+      "hosts": [
+        "quality"
+      ]
+    },
+    {
+      "code": "resource_plan",
+      "area": "resources",
+      "name_key": "governance.catalogue.neutral.doc.resource_plan",
+      "required_at_gates": [],
+      "hosts": [
+        "plant",
+        "staffing",
+        "site_logistics"
+      ]
     }
   ]
 }

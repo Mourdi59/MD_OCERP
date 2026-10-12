@@ -23,6 +23,9 @@
         "tender",
         "award"
       ],
+      "enables": [
+        "procurement"
+      ],
       "source_ref": null,
       "review_status": "verified"
     },
@@ -32,6 +35,10 @@
       "name_key": "governance.catalogue.elf_module_framework.phase.execution",
       "spine_keys": [
         "construction",
+        "handover"
+      ],
+      "enables": [
+        "construction_start",
         "handover"
       ],
       "source_ref": null,
@@ -1342,7 +1349,11 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 1"
+      "source_ref": "Module 1",
+      "hosts": [
+        "organisation",
+        "stakeholders"
+      ]
     },
     {
       "code": "m02_contract_management_frame",
@@ -1351,7 +1362,10 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 2"
+      "source_ref": "Module 2",
+      "hosts": [
+        "delivery_model"
+      ]
     },
     {
       "code": "m03_engineering_scheduling_frame",
@@ -1369,7 +1383,10 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 4"
+      "source_ref": "Module 4",
+      "hosts": [
+        "plant"
+      ]
     },
     {
       "code": "m05_personnel_frame",
@@ -1378,7 +1395,10 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 5"
+      "source_ref": "Module 5",
+      "hosts": [
+        "staffing"
+      ]
     },
     {
       "code": "m06_logistics_frame",
@@ -1387,7 +1407,10 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 6"
+      "source_ref": "Module 6",
+      "hosts": [
+        "site_logistics"
+      ]
     },
     {
       "code": "m07_design_management_frame",
@@ -1396,7 +1419,11 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 7"
+      "source_ref": "Module 7",
+      "hosts": [
+        "design",
+        "permits"
+      ]
     },
     {
       "code": "m08_procurement_frame",
@@ -1405,7 +1432,10 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 8"
+      "source_ref": "Module 8",
+      "hosts": [
+        "procurement"
+      ]
     },
     {
       "code": "m09_commercial_frame",
@@ -1414,7 +1444,10 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 9"
+      "source_ref": "Module 9",
+      "hosts": [
+        "commitment_release"
+      ]
     },
     {
       "code": "m10_quality_frame",
@@ -1423,7 +1456,10 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 10"
+      "source_ref": "Module 10",
+      "hosts": [
+        "quality"
+      ]
     },
     {
       "code": "m11_hse_frame",

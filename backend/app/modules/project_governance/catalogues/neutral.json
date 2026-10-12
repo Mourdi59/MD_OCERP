@@ -76,6 +76,9 @@
       "spine_keys": [
         "tender"
       ],
+      "enables": [
+        "procurement"
+      ],
       "source_ref": null,
       "review_status": "verified"
     },
@@ -96,6 +99,9 @@
       "spine_keys": [
         "construction"
       ],
+      "enables": [
+        "construction_start"
+      ],
       "source_ref": null,
       "review_status": "verified"
     },
@@ -106,6 +112,9 @@
       "spine_keys": [
         "handover"
       ],
+      "enables": [
+        "handover"
+      ],
       "source_ref": null,
       "review_status": "verified"
     },
@@ -114,6 +123,9 @@
       "order": 11,
       "name_key": "governance.catalogue.neutral.phase.operation",
       "spine_keys": [
+        "operation"
+      ],
+      "enables": [
         "operation"
       ],
       "source_ref": null,
@@ -262,7 +274,10 @@
       "required_at_gates": [
         "brief_to_concept"
       ],
-      "source_ref": null
+      "source_ref": null,
+      "hosts": [
+        "organisation"
+      ]
     },
     {
       "code": "requirements_brief",
@@ -299,7 +314,10 @@
       "required_at_gates": [
         "concept_to_design"
       ],
-      "source_ref": null
+      "source_ref": null,
+      "hosts": [
+        "design"
+      ]
     },
     {
       "code": "approval_conditions_register",
@@ -308,7 +326,10 @@
       "required_at_gates": [
         "approval_to_detail"
       ],
-      "source_ref": null
+      "source_ref": null,
+      "hosts": [
+        "permits"
+      ]
     },
     {
       "code": "master_schedule",
@@ -337,7 +358,10 @@
       "required_at_gates": [
         "award_to_construction"
       ],
-      "source_ref": null
+      "source_ref": null,
+      "hosts": [
+        "commitment_release"
+      ]
     },
     {
       "code": "final_account",
@@ -355,7 +379,10 @@
       "required_at_gates": [
         "design_to_approval"
       ],
-      "source_ref": null
+      "source_ref": null,
+      "hosts": [
+        "quality"
+      ]
     },
     {
       "code": "inspection_test_plan",
@@ -382,7 +409,12 @@
       "required_at_gates": [
         "concept_to_design"
       ],
-      "source_ref": null
+      "source_ref": null,
+      "hosts": [
+        "plant",
+        "staffing",
+        "site_logistics"
+      ]
     },
     {
       "code": "responsibility_matrix",
@@ -400,7 +432,10 @@
       "required_at_gates": [
         "concept_to_design"
       ],
-      "source_ref": null
+      "source_ref": null,
+      "hosts": [
+        "stakeholders"
+      ]
     },
     {
       "code": "communication_plan",
@@ -438,7 +473,11 @@
       "required_at_gates": [
         "design_to_approval"
       ],
-      "source_ref": null
+      "source_ref": null,
+      "hosts": [
+        "delivery_model",
+        "procurement"
+      ]
     },
     {
       "code": "tender_documents",
