@@ -284,6 +284,7 @@ class ChangeRequestView:
         reason: Why the change is asked for.
         proposed_revision_id: The revision that would become binding.
         requested_by: Who raised it.
+        decided_by: Who closed it on the route; ``None`` while it is open.
         decided_at: When the route closed it.
     """
 
@@ -295,6 +296,7 @@ class ChangeRequestView:
     proposed_revision_id: uuid.UUID | None
     requested_by: uuid.UUID | None
     decided_at: datetime | None
+    decided_by: uuid.UUID | None = None
 
 
 def _day(value: Any) -> date | None:
@@ -471,6 +473,7 @@ def change_request_views(rows: Any) -> tuple[ChangeRequestView, ...]:
             proposed_revision_id=r.proposed_revision_id,
             requested_by=r.requested_by,
             decided_at=r.decided_at,
+            decided_by=r.decided_by,
         )
         for r in rows
     )

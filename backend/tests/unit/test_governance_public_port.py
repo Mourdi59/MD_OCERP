@@ -200,11 +200,13 @@ def test_change_request_views_say_which_is_open() -> None:
             proposed_revision_id=_id(60 + n),
             requested_by=_id(7),
             decided_at=None,
+            decided_by=None if status == "submitted" else _id(8),
         )
 
     views = public.change_request_views([row(1, "rejected"), row(2, "submitted"), row(3, "approved")])
     assert [(v.id, v.open) for v in views] == [(_id(1), False), (_id(2), True), (_id(3), False)]
     assert views[1].proposed_revision_id == _id(62)
+    assert [(v.requested_by, v.decided_by) for v in views] == [(_id(7), _id(8)), (_id(7), None), (_id(7), _id(8))]
 
 
 def test_the_port_exports_its_second_round() -> None:
