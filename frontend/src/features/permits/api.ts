@@ -168,6 +168,8 @@ export interface CatalogueBody {
 
 export interface Roadmap {
   can?: RoadmapCan;
+  /** Approved change requests a structural change already used up; each covers one change. */
+  consumed_change_request_ids?: string[];
   id: string;
   project_id: string;
   catalogue_source: 'shipped' | 'tenant';

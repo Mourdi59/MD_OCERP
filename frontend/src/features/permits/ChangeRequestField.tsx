@@ -37,8 +37,10 @@ export function ChangeRequestField({ projectId, roadmap, value, onChange, enable
     enabled: enabled && binding && !!projectId,
   });
   if (!binding) return null;
+  // One approved request covers one change, so a request already used up is not offered again.
+  const consumed = roadmap?.consumed_change_request_ids ?? [];
   const approved = (requestsQ.data ?? []).filter(
-    (r) => r.status === 'approved' && r.document_id === roadmap?.governance_document_id,
+    (r) => r.status === 'approved' && r.document_id === roadmap?.governance_document_id && !consumed.includes(r.id),
   );
   return (
     <div className="space-y-1 rounded-md border border-border-light bg-surface-secondary p-3" data-testid="change-request-field">
