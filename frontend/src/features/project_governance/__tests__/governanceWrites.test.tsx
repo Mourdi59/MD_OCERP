@@ -377,6 +377,24 @@ describe('AreaPanel documents', () => {
     );
   }
 
+  it('whether the area applies is locked while a gate is in review, with the reason', () => {
+    wrap(
+      <AreaPanel
+        projectId="p1"
+        area={theArea({ na_rationale: 'Not part of this project' })}
+        model={model()}
+        documents={[]}
+        changeRequests={[]}
+        gates={[gate({ status: 'in_review' })]}
+        labels={labels}
+        personName={names}
+        onBack={() => undefined}
+      />,
+    );
+    expect(screen.getByRole('checkbox', { name: 'Applies to this project' })).toBeDisabled();
+    expect(screen.getByText(enT('governance.errors.settings_frozen_in_review'))).toBeInTheDocument();
+  });
+
   it('takes the owner off only through its own button', async () => {
     mocked.updateArea.mockResolvedValue(theArea());
     open();

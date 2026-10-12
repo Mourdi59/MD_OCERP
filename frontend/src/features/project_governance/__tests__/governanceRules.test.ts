@@ -21,6 +21,7 @@ import {
   canResume,
   canSubmitGate,
   canWaiveCondition,
+  frozenInReview,
   documentVerdict,
   outcomeVerdict,
   reasonOfCode,
@@ -387,6 +388,17 @@ describe('conditions on a document', () => {
       area_code: null,
       document_type: null,
     });
+  });
+});
+
+describe('settings frozen while a gate is with its deciders', () => {
+  it.each(['in_review', 'on_hold'] as const)('a gate %s freezes them', (status) => {
+    expect(frozenInReview([gate({ status: 'decided' }), gate({ status })])).toEqual({ server: 'settings_frozen_in_review' });
+  });
+  it('other states, and gates of an earlier model, do not', () => {
+    expect(frozenInReview([gate({ status: 'in_preparation' }), gate({ status: 'decided' })])).toBeNull();
+    expect(frozenInReview([gate({ status: 'in_review', historic: true })])).toBeNull();
+    expect(frozenInReview([])).toBeNull();
   });
 });
 
