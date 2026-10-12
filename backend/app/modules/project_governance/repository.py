@@ -120,6 +120,19 @@ class GovernanceRepository:
         )
         return list((await self.session.execute(stmt)).scalars())
 
+    async def list_current_checks(self, project_id: uuid.UUID) -> list[GovernanceCheck]:
+        """Checks of the current attempt of every live gate of the project, in one query."""
+        stmt = (
+            select(GovernanceCheck)
+            .join(GovernanceGate, GovernanceGate.id == GovernanceCheck.gate_id)
+            .where(
+                GovernanceCheck.project_id == project_id,
+                GovernanceCheck.attempt_no == GovernanceGate.attempt_no,
+                GovernanceGate.historic.is_(False),
+            )
+        )
+        return list((await self.session.execute(stmt)).scalars())
+
     # ── decisions and conditions ──
     async def list_decisions(self, project_id: uuid.UUID, gate_id: uuid.UUID | None = None) -> list[GovernanceDecision]:
         stmt = select(GovernanceDecision).where(GovernanceDecision.project_id == project_id)

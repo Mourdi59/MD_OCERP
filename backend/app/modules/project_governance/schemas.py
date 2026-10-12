@@ -22,6 +22,10 @@ Severity = Literal["critical", "essential", "recommended"]
 CatalogueSource = Literal["shipped", "tenant"]
 
 
+# Label of a catalogue item: {key, text}; both null when the catalogue no longer has the item.
+_NO_LABEL: dict[str, Any] = {"key": None, "text": None}
+
+
 class Page(BaseModel, Generic[T]):
     """The list envelope every collection endpoint answers with."""
 
@@ -109,6 +113,8 @@ class ModelOut(_Out):
     stopped: bool
     stopped_at: datetime | None
     phases: list[dict[str, Any]] = []
+    # What the caller may do: {manage}.
+    can: dict[str, bool] = {}
 
 
 # ── areas ──
@@ -134,6 +140,7 @@ class AreaOut(_Out):
     applicable: bool
     na_rationale: str
     retired: bool
+    name: dict[str, Any] = _NO_LABEL
 
 
 # ── gates ──
@@ -155,6 +162,7 @@ class GateOut(_Out):
     last_outcome: str
     historic: bool
     version: int
+    name: dict[str, Any] = _NO_LABEL
 
 
 class ConditionIn(BaseModel):
@@ -205,6 +213,14 @@ class GateDetailOut(BaseModel):
     blockers: list[dict[str, Any]]
     areas: list[dict[str, Any]]
     decisions: list[DecisionOut]
+    # What the caller may do: {edit, decide, decide_reason?, go, go_reason?}; reasons are error codes.
+    can: dict[str, Any] = {}
+
+
+class MatrixOut(BaseModel):
+    gates: list[GateOut]
+    next_gate: dict[str, Any] | None
+    areas: list[dict[str, Any]]
 
 
 # ── checks ──
@@ -258,6 +274,7 @@ class DocumentOut(_Out):
     bound_content_hash: str | None
     approved_gate_id: UUID | None
     read_only: bool
+    name: dict[str, Any] = _NO_LABEL
 
 
 class ChangeRequestIn(BaseModel):

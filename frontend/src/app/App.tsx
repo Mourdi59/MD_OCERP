@@ -78,6 +78,9 @@ const FundingPage = lazy(() =>
 const PlantRegisterPage = lazy(() =>
   import('@/features/plant_register').then((m) => ({ default: m.PlantRegisterPage }))
 );
+const ProjectGovernancePage = lazy(() =>
+  import('@/features/project_governance').then((m) => ({ default: m.ProjectGovernancePage }))
+);
 const TenderingPage = lazy(() =>
   import('@/features/tendering/TenderingPage').then((m) => ({ default: m.TenderingPage }))
 );
@@ -1441,6 +1444,7 @@ export default function App() {
         <Route path="/projects/:projectId/site-supervision" element={<P title="Site Supervision"><SiteSupervisionPage /></P>} />
         <Route path="/site-supervision" element={<P title="Site Supervision"><SiteSupervisionPage /></P>} />
         <Route path="/projects/:projectId/plant-register" element={<P title="Plant register"><PlantRegisterPage /></P>} />
+        <Route path="/projects/:projectId/governance" element={<P title="Project governance"><ProjectGovernancePage /></P>} />
         <Route path="/projects/:projectId/cde" element={<P title="CDE"><CDEPage /></P>} />
         <Route path="/cde" element={<P title="CDE"><CDEPage /></P>} />
         <Route path="/projects/:projectId/transmittals" element={<P title="Transmittals"><TransmittalsPage /></P>} />

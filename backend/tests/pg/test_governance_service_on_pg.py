@@ -8,6 +8,7 @@ approval-route subscribers.
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 import pytest
 import pytest_asyncio
@@ -26,7 +27,6 @@ from app.modules.project_governance.models import (
 from app.modules.project_governance.service import GovernanceService
 from tests._pg import isolated_engine
 from tests.pg.governance_fixtures import (
-    TODAY,
     World,
     add_revision,
     areas,
@@ -36,6 +36,9 @@ from tests.pg.governance_fixtures import (
     gate,
     prepare_gate,
 )
+
+# Same instant as the fixtures' decide() default, kept local to this file.
+TODAY = date(2026, 10, 11)
 
 pytestmark = pytest.mark.asyncio
 
