@@ -65,35 +65,51 @@ def test_masked_fields_blank_the_name_carrier_and_the_address() -> None:
 # ── hosting by catalogue tag, never by code ───────────────────────────────
 
 
-def _catalogue(area_hosts: dict[str, tuple[str, ...]], doc_hosts: dict[str, tuple[str, ...]]):
-    return SimpleNamespace(
-        areas=[SimpleNamespace(code=c, hosts=h) for c, h in area_hosts.items()],
-        document_types=[SimpleNamespace(code=c, hosts=h) for c, h in doc_hosts.items()],
+def _phase_models():
+    from app.modules.project_governance.catalogue_kinds import PHASE_MODEL_KIND, get_catalogue_kind
+
+    return list(get_catalogue_kind(PHASE_MODEL_KIND).shipped())
+
+
+def test_every_shipped_phase_model_hosts_both_subjects() -> None:
+    models = _phase_models()
+    assert len(models) >= 5
+    for model in models:
+        area_codes = {a.code for a in model.areas}
+        for subject in hosting.SUBJECTS:
+            found = hosting.host(model, subject)
+            assert found is not None, (model.id, subject)
+            assert found.area_code in area_codes, (model.id, subject)
+
+
+def test_the_two_subjects_may_live_in_different_areas_or_in_one() -> None:
+    split = [m.id for m in _phase_models() if len({hosting.host(m, s).area_code for s in hosting.SUBJECTS}) == 2]
+    joint = [m.id for m in _phase_models() if len({hosting.host(m, s).doc_type for s in hosting.SUBJECTS}) == 1]
+    # Both shapes ship, so neither may be assumed.
+    assert split and joint
+
+
+def test_a_model_without_the_tag_hosts_nothing() -> None:
+    model = _phase_models()[0]
+    bare = model.model_copy(
+        update={"document_types": tuple(d.model_copy(update={"hosts": ()}) for d in model.document_types)}
     )
+    assert [hosting.host(bare, s) for s in hosting.SUBJECTS] == [None, None]
 
 
-def test_the_hosting_area_is_the_tagged_one_whatever_it_is_called() -> None:
-    cat = _catalogue({"alpha": (), "people_and_mandates": ("stakeholders",)}, {})
-    assert hosting.hosting_area_code(cat) == "people_and_mandates"
+def test_each_check_is_reported_under_a_subject_this_module_owns() -> None:
+    from app.modules.stakeholders.evidence import CHECK_SUBJECT, host_code
+
+    assert set(CHECK_SUBJECT.values()) == set(hosting.SUBJECTS)
+    assert set(hosting.EXPORT_TAGS.values()) == set(hosting.SUBJECTS)
+    assert host_code("organisation") == "stakeholders:host:organisation"
 
 
-def test_a_catalogue_without_the_tag_hosts_nothing() -> None:
-    untagged = SimpleNamespace(areas=[SimpleNamespace(code="alpha")], document_types=[SimpleNamespace(code="d")])
-    assert hosting.hosting_area_code(untagged) is None
-    assert hosting.frame_document_types(untagged, hosting.STAKEHOLDERS_TAG) == ()
-
-
-def test_each_export_is_filed_under_its_own_document_tag() -> None:
-    cat = _catalogue(
-        {"a": ("stakeholders",)},
-        {"plan": ("stakeholders",), "org": ("organisation",), "mandates": ("organisation",), "phases": ()},
-    )
-    assert hosting.frame_document_types(cat, hosting.EXPORT_TAGS["register"]) == ("plan",)
-    assert hosting.frame_document_types(cat, hosting.EXPORT_TAGS["organisation"]) == ("org", "mandates")
-
-
-def test_no_module_file_matches_a_governance_area_by_code() -> None:
-    offenders = [f.name for f in _MODULE.glob("*.py") if "m01_project_management" in f.read_text(encoding="utf-8")]
+def test_no_module_file_matches_a_governance_code() -> None:
+    literals = ("m01_project_management", "project_handbook", "stakeholder_register", "projekthandbuch")
+    offenders = [
+        (f.name, code) for f in _MODULE.glob("*.py") for code in literals if code in f.read_text(encoding="utf-8")
+    ]
     assert offenders == []
 
 

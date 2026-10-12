@@ -256,7 +256,8 @@
     },
     "evidence": {
       "commitments_tracked": "Keine Zusage ist ohne Begründung gebrochen",
-      "host_area": "Kein Bereich führt das Stakeholderregister, daher ließ sich seine Bereitschaft nicht zuordnen",
+      "host_organisation": "Die Projektorganisation hat im Phasenmodell dieses Projekts keinen Platz, daher ließ sich ihre Bereitschaft nicht zeigen",
+      "host_stakeholders": "Das Stakeholderregister hat im Phasenmodell dieses Projekts keinen Platz, daher ließ sich seine Bereitschaft nicht zeigen",
       "key_stakeholders_planned": "Jeder Schlüssel-Stakeholder mit Engagementlücke hat einen Kommunikationsplan",
       "mandates_complete": "Jeder Pflicht-Entscheidungstyp hat eine entscheidende Rolle oder ein Gremium",
       "register_present": "Mindestens ein externer Stakeholder ist eingeschätzt",

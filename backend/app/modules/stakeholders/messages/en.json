@@ -256,7 +256,8 @@
     },
     "evidence": {
       "commitments_tracked": "No commitment is breached without a rationale",
-      "host_area": "No governance area hosts the stakeholder register, so its readiness could not be placed",
+      "host_organisation": "The project organisation has no place in this project's phase model, so its readiness could not be shown",
+      "host_stakeholders": "The stakeholder register has no place in this project's phase model, so its readiness could not be shown",
       "key_stakeholders_planned": "Every key stakeholder with an engagement gap has a communication plan",
       "mandates_complete": "Every required decision type has one deciding role or body",
       "register_present": "At least one external stakeholder is assessed",

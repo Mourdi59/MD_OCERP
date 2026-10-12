@@ -362,14 +362,26 @@ class StakeholderService:
 
     # ── settings and framework ─────────────────────────────────────────────
 
-    async def framework(self, source: str, fid: str, version: int | None) -> StakeholderFramework:
+    async def framework(
+        self, source: str, fid: str, version: int | None, *, tenant_id: str | None = None, from_pin: bool = False
+    ) -> StakeholderFramework:
+        """Resolve a framework.
+
+        ``from_pin`` is for a triple the server stored on the project: it keeps
+        resolving for every project member and after the framework is retired.
+        Anything that came from a request passes the caller's ``tenant_id``
+        instead; a foreign tenant framework is then unknown and a retired one
+        is refused. With neither, nothing of the tenant source resolves.
+        """
         from app.modules.project_governance.catalogue_store import resolve_catalogue
         from app.modules.project_governance.errors import GovernanceError
 
         try:
-            return await resolve_catalogue(self.session, source, fid, version, kind=FRAMEWORK_KIND)
+            return await resolve_catalogue(
+                self.session, source, fid, version, kind=FRAMEWORK_KIND, tenant_id=tenant_id, from_pin=from_pin
+            )
         except GovernanceError as exc:
-            raise not_found("unknown_catalogue") from exc
+            raise StakeholderError(exc.code, exc.status_code, detail=exc.detail) from exc
 
     async def get_settings(self, project_id: uuid.UUID) -> StakeholderSettings | None:
         return await self.repo.get_settings(project_id)
@@ -382,7 +394,9 @@ class StakeholderService:
 
     async def context(self, project_id: uuid.UUID) -> tuple[StakeholderSettings, StakeholderFramework]:
         settings = await self.require_settings(project_id)
-        fw = await self.framework(settings.framework_source, settings.framework_id, settings.framework_version)
+        fw = await self.framework(
+            settings.framework_source, settings.framework_id, settings.framework_version, from_pin=True
+        )
         return settings, fw
 
     async def put_settings(
@@ -408,17 +422,10 @@ class StakeholderService:
             version = settings.framework_version
         fid = fid or DEFAULT_FRAMEWORK_ID
         repinned = settings is None or (source, str(fid)) != (settings.framework_source, settings.framework_id)
-        if source == "tenant" and (repinned or data.get("framework_version") is not None):
-            from app.modules.project_governance.catalogue_store import CatalogueStore
-            from app.modules.project_governance.errors import GovernanceError
-
-            try:
-                await CatalogueStore(self.session).assert_pinnable(
-                    tenant_id, source, str(fid), version, kind=FRAMEWORK_KIND
-                )
-            except GovernanceError as exc:
-                raise StakeholderError(exc.code, exc.status_code, detail=exc.detail) from exc
-        fw = await self.framework(source, fid, version)
+        # The stored pin keeps resolving as it is. A new id or version came from the request, so it resolves
+        # for the caller's tenant only (foreign: unknown_catalogue, retired: catalogue_retired).
+        from_request = repinned or data.get("framework_version") is not None
+        fw = await self.framework(source, fid, version, tenant_id=tenant_id, from_pin=not from_request)
         method = data.get("analysis_method") or (settings.analysis_method if settings else fw.default_method)
         if fw.method(method) is None:
             raise StakeholderError("unknown_method")
@@ -498,15 +505,18 @@ class StakeholderService:
             )
         await self.session.flush()
 
-    async def host_area_code(self, project_id: uuid.UUID, settings: StakeholderSettings | None = None) -> str | None:
-        """The governance area that hosts this module: the project's override, else the catalogue's tag."""
+    async def host_area_code(
+        self, project_id: uuid.UUID, settings: StakeholderSettings | None = None, *, subject: str = "stakeholders"
+    ) -> str | None:
+        """The area that hosts a subject of this module: the project's override, else the phase model's tag."""
         from app.modules.stakeholders import hosting
 
         settings = settings or await self.repo.get_settings(project_id)
         if settings is not None and settings.owner_area_code:
             return settings.owner_area_code
         catalogue = await hosting.project_catalogue(self.session, project_id)
-        return hosting.hosting_area_code(catalogue) if catalogue is not None else None
+        found = hosting.host(catalogue, subject) if catalogue is not None else None
+        return found.area_code if found is not None else None
 
     async def _check_route(self, project_id: uuid.UUID, route_id: Any) -> None:
         from app.modules.approval_routes.models import Route
@@ -2019,18 +2029,9 @@ class StakeholderService:
 
     async def _frame_warnings(self, project_id: uuid.UUID) -> list[str]:
         """Rule 21 / decision n: editing the organisation after the gate warns that the frame document is binding."""
-        from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
 
-        area_code = await self.host_area_code(project_id)
-        if area_code is None:
-            return []
-        stmt = (
-            select(GovernanceDocument.status)
-            .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
-            .where(GovernanceDocument.project_id == project_id, GovernanceArea.code == area_code)
-        )
-        statuses = set((await self.session.execute(stmt)).scalars().all())
-        return ["frame_document_binding"] if "binding" in statuses else []
+        documents = await self.frame_documents(project_id, "organisation")
+        return ["frame_document_binding"] if any(d.status == "binding" for d in documents) else []
 
     # ── bodies ────────────────────────────────────────────────────────────
 
@@ -2404,26 +2405,25 @@ class StakeholderService:
     async def frame_documents(self, project_id: uuid.UUID, which: str) -> list[Any]:
         """The module 1 frame documents one export of this module is filed into.
 
-        Module 1 keys a document by (area, document type). The type is found by
-        the catalogue's ``hosts`` tag for this export, never by a code.
+        Module 1 keys a document by (area, document type). Both come from the
+        phase model's ``hosts`` tag for this export, never from a code. Empty
+        when the model hosts the subject nowhere, and also when the project
+        was pinned before its model gained the document type.
         """
         from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
         from app.modules.stakeholders import hosting
 
         catalogue = await hosting.project_catalogue(self.session, project_id)
-        if catalogue is None:
-            return []
-        doc_types = hosting.frame_document_types(catalogue, hosting.EXPORT_TAGS[which])
-        area_code = await self.host_area_code(project_id)
-        if not doc_types or area_code is None:
+        found = hosting.host(catalogue, hosting.EXPORT_TAGS[which]) if catalogue is not None else None
+        if found is None:
             return []
         stmt = (
             select(GovernanceDocument)
             .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
             .where(
                 GovernanceDocument.project_id == project_id,
-                GovernanceArea.code == area_code,
-                GovernanceDocument.doc_type.in_(doc_types),
+                GovernanceArea.code == found.area_code,
+                GovernanceDocument.doc_type == found.doc_type,
             )
             .order_by(GovernanceDocument.created_at)
         )

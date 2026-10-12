@@ -1,16 +1,17 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Which governance area and frame documents host this module on a project.
+"""Where this module lives in a project's phase model.
 
-Governance models name their areas and documents differently, so nothing here
-matches a code. The pinned module 1 catalogue says it as data: an area lists
-what it hosts (``hosts: ["stakeholders"]``) and so does a document type
-(``hosts: ["stakeholders"]`` for the stakeholder and communication plan,
-``hosts: ["organisation"]`` for the project organisation and mandates).
+Phase models name their areas and documents differently, so nothing here
+matches a code. Module 1 says it as data and answers through its read port:
+a frame document type lists the subjects it hosts, and the hosting area is the
+area that document belongs to. This module has two subjects:
 
-The tags are read with ``getattr`` so this works against a module 1 catalogue
-model that does not declare ``hosts`` yet: then nothing is hosted, and the
-callers say so instead of guessing an area.
+* ``stakeholders``: the stakeholder register, communication plan and commitments;
+* ``organisation``: project roles, bodies and the mandate matrix.
+
+They may live in different areas, or in one. A model that hosts a subject
+nowhere answers ``None``, and the callers say so instead of guessing an area.
 """
 
 from __future__ import annotations
@@ -18,24 +19,19 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from app.modules.project_governance.public import Host, host_in
+from app.modules.project_governance.public import project_catalogue as _project_catalogue
+
 STAKEHOLDERS_TAG = "stakeholders"
 ORGANISATION_TAG = "organisation"
-# Which tag each export of this module is filed under.
+SUBJECTS: tuple[str, ...] = (STAKEHOLDERS_TAG, ORGANISATION_TAG)
+# Which subject each export of this module is filed under.
 EXPORT_TAGS: dict[str, str] = {"register": STAKEHOLDERS_TAG, "organisation": ORGANISATION_TAG}
 
 
-def _hosts(item: Any) -> tuple[str, ...]:
-    return tuple(getattr(item, "hosts", ()) or ())
-
-
-def hosting_area_code(catalogue: Any) -> str | None:
-    """The code of the area tagged for stakeholders, or ``None`` when the catalogue tags none."""
-    return next((a.code for a in catalogue.areas if STAKEHOLDERS_TAG in _hosts(a)), None)
-
-
-def frame_document_types(catalogue: Any, tag: str) -> tuple[str, ...]:
-    """Document types tagged ``tag``, in catalogue order."""
-    return tuple(d.code for d in catalogue.document_types if tag in _hosts(d))
+def host(catalogue: Any, subject: str) -> Host | None:
+    """The area and frame document type hosting ``subject``, or ``None`` when the model hosts it nowhere."""
+    return host_in(catalogue, subject)
 
 
 def first_area_code(catalogue: Any) -> str | None:
@@ -44,11 +40,5 @@ def first_area_code(catalogue: Any) -> str | None:
 
 
 async def project_catalogue(session: Any, project_id: uuid.UUID) -> Any | None:
-    """The project's pinned governance catalogue; ``None`` when the project has no governance model."""
-    from app.modules.project_governance.repository import GovernanceRepository
-    from app.modules.project_governance.service import GovernanceService
-
-    model = await GovernanceRepository(session).get_model(project_id)
-    if model is None:
-        return None
-    return await GovernanceService(session).catalogue_for(model)
+    """The project's pinned phase model; ``None`` when the project pinned none."""
+    return await _project_catalogue(session, project_id)

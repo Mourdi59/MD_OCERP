@@ -2,16 +2,20 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """Gate readiness evidence for module 1 (SPEC rule 20).
 
-For the area that hosts this module the provider returns five items: register
-present, key stakeholders planned, mandates complete, roles filled,
-commitments tracked, each with its counts in ``detail``.
+The module reports five checks under two subjects. ``stakeholders``: register
+present, key stakeholders planned, commitments tracked. ``organisation``:
+mandates complete, roles filled. Each subject is reported on the area that
+hosts it, with its counts in ``detail``.
 
 Which area that is comes from data: the project's own override in the
-settings, else the governance catalogue's ``hosts`` tag (see ``hosting``). No
-area code is matched here. When the project has a register but no area hosts
-it, the provider does not go quiet: it reports one ``unknown`` item on the
-first area of the catalogue, so the gate shows that the stakeholder evidence
-could not be placed instead of passing without it.
+settings, else the phase model's ``hosts`` tag read through module 1's port
+(see ``hosting``). No area code is matched here. The provider never goes quiet
+about a register that exists:
+
+* the model hosts a subject nowhere: one ``unknown`` item for that subject on
+  the first area of the model;
+* the model hosts it, but the project has no document row for that type yet
+  (pinned before the model gained it): one ``unknown`` item on the hosting area.
 
 A project that has not pinned a framework has no register and answers nothing.
 """
@@ -23,17 +27,26 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, register_evidence_provider
+from app.modules.stakeholders.hosting import ORGANISATION_TAG, STAKEHOLDERS_TAG, SUBJECTS
 
 PROVIDER_NAME = "stakeholders.governance_readiness"
-CHECKS: tuple[str, ...] = (
-    "register_present",
-    "key_stakeholders_planned",
-    "mandates_complete",
-    "roles_filled",
-    "commitments_tracked",
-)
-NO_HOST_CODE = "stakeholders:host_area"
-NO_HOST_DETAIL = "no_governance_area_hosts_stakeholders"
+CHECK_SUBJECT: dict[str, str] = {
+    "register_present": STAKEHOLDERS_TAG,
+    "key_stakeholders_planned": STAKEHOLDERS_TAG,
+    "mandates_complete": ORGANISATION_TAG,
+    "roles_filled": ORGANISATION_TAG,
+    "commitments_tracked": STAKEHOLDERS_TAG,
+}
+CHECKS: tuple[str, ...] = tuple(CHECK_SUBJECT)
+# Which export's frame document proves that a subject has a place in the project.
+_EXPORT_OF: dict[str, str] = {STAKEHOLDERS_TAG: "register", ORGANISATION_TAG: "organisation"}
+NO_HOST_REASON = "no_document_type_hosts_subject"
+NO_DOCUMENT_REASON = "frame_document_row_missing"
+
+
+def host_code(subject: str) -> str:
+    """Evidence code of the item that says a subject could not be placed."""
+    return f"stakeholders:host:{subject}"
 
 
 def _detail(check: dict[str, Any]) -> str:
@@ -43,10 +56,10 @@ def _detail(check: dict[str, Any]) -> str:
 
 
 def placement(area_code: str, host: str | None, first_area: str | None) -> str:
-    """What the provider answers for one area: ``items``, ``unplaced`` or ``nothing``.
+    """What the provider answers for one subject on one area: ``items``, ``unplaced`` or ``nothing``.
 
     ``unplaced`` is the single ``unknown`` item, reported once (on the first
-    area) when no area hosts the module.
+    area) when no area hosts the subject.
     """
     if host is not None:
         return "items" if area_code == host else "nothing"
@@ -63,36 +76,45 @@ async def governance_readiness(
     settings = await svc.get_settings(project_id)
     if settings is None:
         return []
-    host = await svc.host_area_code(project_id, settings)
-    first = None
-    if host is None:
-        catalogue = await hosting.project_catalogue(session, project_id)
-        first = hosting.first_area_code(catalogue) if catalogue is not None else None
-    where = placement(area.code, host, first)
+    catalogue = await hosting.project_catalogue(session, project_id)
+    first = hosting.first_area_code(catalogue) if catalogue is not None else None
     link = ("stakeholders", str(project_id))
-    if where == "nothing":
-        return []
-    if where == "unplaced":
-        return [
-            EvidenceItem(
-                code=NO_HOST_CODE,
-                state="unknown",
-                label_key="stakeholders.evidence.host_area",
-                link=link,
-                detail=NO_HOST_DETAIL,
+    checks: dict[str, dict[str, Any]] | None = None
+    out: list[EvidenceItem] = []
+    for subject in SUBJECTS:
+        host = await svc.host_area_code(project_id, settings, subject=subject)
+        where = placement(area.code, host, first)
+        if where == "nothing":
+            continue
+        reason = NO_HOST_REASON if where == "unplaced" else None
+        if reason is None and not settings.owner_area_code:
+            if not await svc.frame_documents(project_id, _EXPORT_OF[subject]):
+                reason = NO_DOCUMENT_REASON
+        if reason is not None:
+            out.append(
+                EvidenceItem(
+                    code=host_code(subject),
+                    state="unknown",
+                    label_key=f"stakeholders.evidence.host_{subject}",
+                    link=link,
+                    detail=reason,
+                )
             )
-        ]
-    checks = await svc.readiness(project_id, today=datetime.now(UTC).date())
-    return [
-        EvidenceItem(
-            code=f"stakeholders:{code}",
-            state=checks[code]["status"],
-            label_key=f"stakeholders.evidence.{code}",
-            link=link,
-            detail=_detail(checks[code]),
+            continue
+        if checks is None:
+            checks = await svc.readiness(project_id, today=datetime.now(UTC).date())
+        out.extend(
+            EvidenceItem(
+                code=f"stakeholders:{code}",
+                state=checks[code]["status"],
+                label_key=f"stakeholders.evidence.{code}",
+                link=link,
+                detail=_detail(checks[code]),
+            )
+            for code in CHECKS
+            if CHECK_SUBJECT[code] == subject
         )
-        for code in CHECKS
-    ]
+    return out
 
 
 def register_gate_evidence() -> None:
