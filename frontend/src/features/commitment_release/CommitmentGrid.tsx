@@ -63,7 +63,9 @@ export function CommitmentGrid({ items, totals, matrix, labels, onOpenItem }: Co
       : key
         ? humanizeCode(key)
         : t('commitment.grid.no_gate', { defaultValue: 'Not tied to a gate' });
-  const incomplete = totals.incomplete.filter((k) => TOTAL_COLUMN[k]);
+  // The released column shows the sum in force, so it is incomplete when either released total is.
+  const left = new Set(totals.incomplete.map((k) => (k === 'released_in_force' ? 'released' : k)));
+  const incomplete = Object.keys(TOTAL_COLUMN).filter((k) => left.has(k));
 
   return (
     <div className="space-y-4" data-testid="commitment-grid">

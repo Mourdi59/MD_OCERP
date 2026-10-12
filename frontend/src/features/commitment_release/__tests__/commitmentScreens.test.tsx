@@ -157,6 +157,29 @@ describe('CommitmentGrid', () => {
     expect(screen.getByTestId('grid-totals-incomplete').textContent).toContain('Planned');
   });
 
+  it('an in-force total that leaves an item out is said once under the released column, and no lapsed sum is invented', () => {
+    wrap(
+      <CommitmentGrid
+        items={[works]}
+        totals={totals({
+          released_in_force: null,
+          released_lapsed: null,
+          committed: null,
+          incomplete: ['released', 'released_in_force', 'committed'],
+        })}
+        matrix={matrix()}
+        labels={labels}
+        onOpenItem={() => undefined}
+      />,
+    );
+    const lines = within(screen.getByTestId('grid-totals-incomplete')).getAllByRole('listitem');
+    expect(lines.map((li) => li.textContent)).toEqual([
+      enT('commitment.grid.total_incomplete', { column: enT('commitment.grid.released') }),
+      enT('commitment.grid.total_incomplete', { column: enT('commitment.grid.committed') }),
+    ]);
+    expect(screen.queryByTestId('grid-totals-lapsed')).toBeNull();
+  });
+
   it('opens the item that was clicked and groups by type on request', () => {
     const onOpen = vi.fn();
     wrap(<CommitmentGrid items={[works, lifts]} totals={totals()} matrix={matrix()} labels={labels} onOpenItem={onOpen} />);
