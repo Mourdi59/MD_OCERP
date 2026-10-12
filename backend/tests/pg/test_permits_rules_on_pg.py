@@ -375,3 +375,48 @@ async def test_the_demo_seed_fills_every_list_in_a_plausible_order(world: World)
             key=lambda d: d.decision_date,
         )
         assert early.decision_date < full.decision_date
+
+
+# ── finding 10, rules 2, 20, 21, 22: the ports other modules call ─────────
+
+
+async def test_the_ports_answer_for_site_readiness_closeout_and_release(world: World) -> None:
+    from app.modules.permits import public
+
+    async def allocation(_session, _project_id, category: str) -> str | None:
+        return "contractor" if category == "permit_conditions_change" else None
+
+    rid = await requirement(world, BUILDING)
+    out = await decide(
+        world,
+        await file(world, rid),
+        "granted_with_conditions",
+        conditions=[cond("1", "suspensive", trigger="before_occupation", requires_authority_approval=True)],
+    )
+    p = world.project_id
+    async with world.factory() as s:
+        (c,) = await PermitService(s).repo.conditions_of_permit(p, out["permit"].id)
+    public.register_applicant_resolver("test_allocation", allocation)
+    try:
+        aid = await application(
+            world,
+            rid,
+            kind="discharge_of_conditions",
+            parent_permit_id=out["permit"].id,
+            discharges_condition_ids=[c.id],
+        )
+    finally:
+        public.unregister_applicant_resolver("test_allocation")
+    await move(world, aid, "preparing")
+    await move(world, aid, "submitted", TODAY - timedelta(days=20))
+    await decide(world, aid, "granted")
+    async with world.factory() as s:
+        app = await PermitService(s).repo.get_application(p, aid)
+        assert (app.applicant_role, app.applicant_source) == ("contractor", "allocation")
+        assert await public.requirement_state(s, p, rid) == "granted"
+        assert await public.requirement_state(s, p, uuid.uuid4()) is None
+        start = await public.start_readiness(s, p)
+        assert start["gate"] == "start" and start["status"] == "ready"
+        (entry,) = await public.closeout_entries(s, p)
+        (condition,) = entry["conditions"]
+        assert condition["state"] == "discharged" and len(condition["discharges"]) == 1
