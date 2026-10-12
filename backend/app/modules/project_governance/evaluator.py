@@ -47,6 +47,8 @@ ALL_CODES: tuple[str, ...] = (
     "area_without_owner",
     "area_not_ready",
     "evidence_not_met",
+    "unknown_evidence_not_acknowledged",
+    "unknown_criterion",
     "check_stale",
     "condition_overdue",
     "conditions_required",
@@ -79,6 +81,8 @@ ALL_CODES: tuple[str, ...] = (
     "no_change_route",
     "area_retired",
     "pack_catalogue_invalid",
+    "settings_frozen_in_review",
+    "null_not_allowed",
     "activity_not_in_project",
     "target_date_owned_by_schedule",
 )
@@ -128,6 +132,7 @@ class CheckState:
     rag: str = ""
     note: str = ""
     confirmed_at: str | None = None
+    criteria: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -193,6 +198,8 @@ class DecisionRequest:
     proceed_at_risk_areas: Sequence[str] = ()
     accepted_not_applicable: Sequence[str] = ()
     hold_resume_date: date | None = None
+    # (area_code, evidence code) of every unknown item the decider has seen.
+    acknowledged_evidence: Sequence[tuple[str, str]] = ()
 
 
 @dataclass(frozen=True)
@@ -306,6 +313,36 @@ def reset_checks_for_owner_change(checks: Iterable[CheckState], *, area_code: st
         else c
         for c in checks
     )
+
+
+def criterion_tick(
+    ticks: Mapping[str, Any], code: str, *, met: bool, note: str, actor_id: str, at: str
+) -> dict[str, dict[str, Any]]:
+    """The ticks of a check after one criterion was ticked or unticked; the input is left alone.
+
+    Taking a tick back is recorded like setting it, with who and when, so the
+    list never shows an unticked line that silently lost its history.
+    """
+    out = {k: dict(v) for k, v in ticks.items()}
+    out[code] = {"met": bool(met), "note": (note or "").strip(), "by": actor_id, "at": at}
+    return out
+
+
+def criteria_rows(codes: Iterable[str], ticks: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """The checklist of one area at one gate: every criterion of the catalogue, ticked or not."""
+    rows = []
+    for code in codes:
+        tick = ticks.get(code) or {}
+        rows.append(
+            {
+                "code": code,
+                "met": bool(tick.get("met")),
+                "note": tick.get("note") or "",
+                "ticked_by": tick.get("by"),
+                "ticked_at": tick.get("at"),
+            }
+        )
+    return rows
 
 
 def gate_accepts_readiness_reset(gate_status: str) -> bool:
@@ -425,9 +462,24 @@ def reopen_violation(
         return "gate_not_decided"
     if not (rationale or "").strip():
         return "rationale_required"
-    if any(s != "not_started" for s in later_gate_statuses):
+    # A later gate counts from the moment it is submitted. Its preparation can be opened by
+    # anyone who may edit and cannot be taken back, so it must not lock the gate before it.
+    if any(s in GATE_UNDER_DECISION or s == "decided" for s in later_gate_statuses):
         return "later_gate_active"
     return None
+
+
+GATE_UNDER_DECISION: tuple[str, ...] = ("in_review", "on_hold")
+
+
+def settings_freeze_violation(gate_statuses: Iterable[str]) -> str | None:
+    """What decides who may decide a gate does not change while a gate is being decided.
+
+    Four-eyes and the applicability of an area are inputs of the decision. If
+    they could be changed with a gate in review or on hold, a manager could
+    switch a rule off, decide, and switch it back.
+    """
+    return "settings_frozen_in_review" if any(s in GATE_UNDER_DECISION for s in gate_statuses) else None
 
 
 def reopen_rewinds_phase(last_outcome: str) -> bool:
@@ -521,6 +573,18 @@ def gate_blockers(ctx: GateContext, *, accepted_not_applicable: Iterable[str] = 
     return out
 
 
+def evidence_to_acknowledge(ctx: GateContext) -> list[EvidenceState]:
+    """The unknown items of blocking providers a go on this gate has to name.
+
+    Unknown never blocks: a provider that failed, or said nothing about the
+    area it is registered for, has not said the area is unready. It is not a
+    yes either, so the decider names each item and the record keeps the list.
+    An item is one code in one area; the same code in two areas is two items.
+    """
+    applicable = {a.code for a in ctx.areas if a.applicable}
+    return [e for e in ctx.evidence if e.blocking and e.state == "unknown" and e.area_code in applicable]
+
+
 # ── Decisions ───────────────────────────────────────────────────────────────
 
 
@@ -587,6 +651,11 @@ def validate_decision(ctx: GateContext, req: DecisionRequest) -> list[Violation]
             out.append(blocker)
         for code in sorted(at_risk - not_ready_areas):
             out.append(Violation("proceed_at_risk_area_not_blocking", area_code=code))
+        # Proceeding at risk answers a known gap. It says nothing about an answer nobody got.
+        named = {(area, code) for area, code in req.acknowledged_evidence}
+        for item in evidence_to_acknowledge(ctx):
+            if (item.area_code, item.code) not in named:
+                out.append(Violation("unknown_evidence_not_acknowledged", area_code=item.area_code, ref=item.code))
     return out
 
 
@@ -666,12 +735,24 @@ def build_snapshot(ctx: GateContext, req: DecisionRequest) -> dict[str, Any]:
                 "confirmed_revisions": dict(c.confirmed_revisions),
                 "stale": check_is_stale(c, ctx.documents),
                 "na_rationale": c.na_rationale,
+                "criteria": {code: dict(tick) for code, tick in c.criteria.items()},
             }
             for c in ctx.checks
         ],
         "blockers": [b.as_dict() for b in gate_blockers(ctx, accepted_not_applicable=req.accepted_not_applicable)],
         "accepted_not_applicable": list(req.accepted_not_applicable),
         "proceed_at_risk_areas": list(req.proceed_at_risk_areas),
+        "evidence": [
+            {"area_code": e.area_code, "code": e.code, "state": e.state, "blocking": e.blocking, "provider": e.provider}
+            for e in ctx.evidence
+        ],
+        # Only what was unknown when the decision was taken: a name the request carried for an
+        # item that had been answered meanwhile is not part of the record.
+        "acknowledged_evidence": [
+            {"area_code": e.area_code, "code": e.code, "provider": e.provider}
+            for e in evidence_to_acknowledge(ctx)
+            if (e.area_code, e.code) in {(area, code) for area, code in req.acknowledged_evidence}
+        ],
     }
 
 
