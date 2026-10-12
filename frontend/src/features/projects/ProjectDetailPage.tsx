@@ -38,6 +38,7 @@ import {
   Calendar,
   Image as ImageIcon,
   LayoutGrid,
+  Handshake,
   Flag,
   Receipt,
   Stamp,
@@ -1816,6 +1817,15 @@ export function ProjectDetailPage() {
           data-testid="project-commitments-link"
         >
           {t('commitment.page.title', { defaultValue: 'Commitments and releases' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Handshake size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/delivery`)}
+          data-testid="project-delivery-model-link"
+        >
+          {t('delivery_model.ui.title', { defaultValue: 'Delivery model' })}
         </Button>
         <Button
           variant="ghost"

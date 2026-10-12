@@ -70,6 +70,10 @@ _SOURCE_TO_MODULE = {
 # Modules holding a defect register the hub does not read. Each line is a work
 # item, so each carries what the register is and why it is still outside.
 KNOWN_ABSENT_FROM_HUB: dict[str, str] = {
+    "delivery_model": (
+        "DecisionCriterion is a weighted selection criterion for comparing delivery forms, "
+        "not a defect. The census matches it by name only; the module holds no defect register."
+    ),
     "qms": (
         "QMSNCR and QMSPunchItem. The QMS module was built as a unified replacement for "
         "the legacy inspections, ncr and punchlist modules and its docstring says the "

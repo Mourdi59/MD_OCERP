@@ -1,0 +1,2615 @@
+{
+  "id": "neutral",
+  "version": 1,
+  "name_key": "delivery_model.catalogue.neutral.name",
+  "review_status": "unconfirmed",
+  "source_url": "https://fidic.org/bookshop/about-bookshop/which-fidic-contract-should-i-use",
+  "source_title": "FIDIC book selection guide; UK, US and PPP guidance pages (see each alias)",
+  "jurisdiction_countries": [],
+  "forms": [
+    {
+      "code": "design_bid_build_split",
+      "name_key": "delivery_model.catalogue.neutral.form.design_bid_build_split.name",
+      "description_key": "delivery_model.catalogue.neutral.form.design_bid_build_split.description",
+      "aliases": [
+        {
+          "country": "DE",
+          "term": "Einzelvergabe / Fachlosvergabe",
+          "source_url": "https://bau.de/presse/thema-generalunternehmer",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "design_responsibility": "owner",
+      "owner_construction_contracts": "many",
+      "contractor_role": "builder",
+      "price_basis_at_award": "remeasure",
+      "allowed_price_bases": [
+        "remeasure",
+        "lump_sum"
+      ],
+      "compatible_contract_types": [
+        "unit_price",
+        "remeasurement",
+        "lump_sum"
+      ],
+      "compatible_standard_forms": [
+        "VOB/B"
+      ],
+      "source_url": "https://www.designingbuildings.co.uk/wiki/Common_procurement",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "design_bid_build_single",
+      "name_key": "delivery_model.catalogue.neutral.form.design_bid_build_single.name",
+      "description_key": "delivery_model.catalogue.neutral.form.design_bid_build_single.description",
+      "aliases": [
+        {
+          "country": "DE",
+          "term": "Generalunternehmer (GU)",
+          "source_url": "https://bau.de/presse/thema-generalunternehmer",
+          "review_status": "unconfirmed",
+          "self_performs": true
+        },
+        {
+          "country": "DE",
+          "term": "Generalübernehmer (GÜ)",
+          "source_url": "https://bau.de/presse/thema-generalunternehmer",
+          "review_status": "unconfirmed",
+          "self_performs": false
+        },
+        {
+          "country": "GB",
+          "term": "Traditional procurement",
+          "source_url": "https://www.designingbuildings.co.uk/wiki/Common_procurement",
+          "review_status": "unconfirmed"
+        },
+        {
+          "country": "US",
+          "term": "Design-Bid-Build (DBB)",
+          "source_url": "https://www.archtoolbox.com/construction-project-delivery-methods/",
+          "review_status": "unconfirmed"
+        },
+        {
+          "country": "",
+          "term": "FIDIC Red Book",
+          "source_url": "https://fidic.org/bookshop/about-bookshop/which-fidic-contract-should-i-use",
+          "review_status": "unconfirmed"
+        },
+        {
+          "country": "",
+          "term": "FIDIC Emerald Book (underground works, GBR)",
+          "source_url": "https://cms.law/en/srb/legal-updates/introducing-the-fidic-emerald-book",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "design_responsibility": "owner",
+      "owner_construction_contracts": "one",
+      "contractor_role": "builder",
+      "price_basis_at_award": "lump_sum",
+      "allowed_price_bases": [
+        "lump_sum",
+        "remeasure"
+      ],
+      "self_performs": true,
+      "compatible_contract_types": [
+        "lump_sum",
+        "unit_price",
+        "remeasurement"
+      ],
+      "compatible_standard_forms": [
+        "FIDIC Red 2017",
+        "JCT SBC 2016",
+        "AIA A101",
+        "VOB/B"
+      ],
+      "source_url": "https://fidic.org/bookshop/about-bookshop/which-fidic-contract-should-i-use",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "design_build",
+      "name_key": "delivery_model.catalogue.neutral.form.design_build.name",
+      "description_key": "delivery_model.catalogue.neutral.form.design_build.description",
+      "aliases": [
+        {
+          "country": "DE",
+          "term": "Totalunternehmer (TU)",
+          "source_url": "https://www.ibau.de/akademie/glossar/totalunternehmer-tu/",
+          "review_status": "unconfirmed"
+        },
+        {
+          "country": "GB",
+          "term": "Design and build",
+          "source_url": "https://www.designingbuildings.co.uk/wiki/Common_procurement",
+          "review_status": "unconfirmed"
+        },
+        {
+          "country": "US",
+          "term": "Design-Build (DB)",
+          "source_url": "https://www.archtoolbox.com/construction-project-delivery-methods/",
+          "review_status": "unconfirmed"
+        },
+        {
+          "country": "",
+          "term": "FIDIC Yellow Book",
+          "source_url": "https://fidic.org/bookshop/about-bookshop/which-fidic-contract-should-i-use",
+          "review_status": "unconfirmed"
+        },
+        {
+          "country": "",
+          "term": "FIDIC Emerald Book (underground works, GBR)",
+          "source_url": "https://cms.law/en/srb/legal-updates/introducing-the-fidic-emerald-book",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "design_responsibility": "contractor",
+      "owner_construction_contracts": "one",
+      "contractor_role": "builder",
+      "price_basis_at_award": "lump_sum",
+      "allowed_price_bases": [
+        "lump_sum",
+        "gmp"
+      ],
+      "compatible_contract_types": [
+        "design_build",
+        "lump_sum",
+        "gmp"
+      ],
+      "compatible_standard_forms": [
+        "FIDIC Yellow 2017",
+        "JCT DB 2016",
+        "AIA A141"
+      ],
+      "source_url": "https://fidic.org/bookshop/about-bookshop/which-fidic-contract-should-i-use",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "design_build_novated",
+      "name_key": "delivery_model.catalogue.neutral.form.design_build_novated.name",
+      "description_key": "delivery_model.catalogue.neutral.form.design_build_novated.description",
+      "aliases": [
+        {
+          "country": "GB",
+          "term": "Design and build with novation",
+          "source_url": "https://lexisnexis.co.uk/legal/construction-law/procurement-in-construction/construction-procurement-routes",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "design_responsibility": "split_at_stage",
+      "design_transfer_stage": "design",
+      "owner_construction_contracts": "one",
+      "contractor_role": "builder",
+      "price_basis_at_award": "lump_sum",
+      "allowed_price_bases": [
+        "lump_sum",
+        "gmp"
+      ],
+      "compatible_contract_types": [
+        "design_build",
+        "lump_sum",
+        "gmp"
+      ],
+      "compatible_standard_forms": [
+        "JCT DB 2016"
+      ],
+      "source_url": "https://lexisnexis.co.uk/legal/construction-law/procurement-in-construction/construction-procurement-routes",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "turnkey_epc",
+      "name_key": "delivery_model.catalogue.neutral.form.turnkey_epc.name",
+      "description_key": "delivery_model.catalogue.neutral.form.turnkey_epc.description",
+      "aliases": [
+        {
+          "country": "",
+          "term": "FIDIC Silver Book (EPC/Turnkey)",
+          "source_url": "https://fidic.org/bookshop/about-bookshop/which-fidic-contract-should-i-use",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "design_responsibility": "contractor",
+      "owner_construction_contracts": "one",
+      "contractor_role": "builder",
+      "price_basis_at_award": "lump_sum",
+      "allowed_price_bases": [
+        "lump_sum"
+      ],
+      "compatible_contract_types": [
+        "design_build",
+        "lump_sum"
+      ],
+      "compatible_standard_forms": [
+        "FIDIC Silver 2017"
+      ],
+      "source_url": "https://fidic.org/bookshop/about-bookshop/which-fidic-contract-should-i-use",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "cm_at_risk",
+      "name_key": "delivery_model.catalogue.neutral.form.cm_at_risk.name",
+      "description_key": "delivery_model.catalogue.neutral.form.cm_at_risk.description",
+      "aliases": [
+        {
+          "country": "US",
+          "term": "Construction Manager at Risk (CMAR)",
+          "source_url": "https://www.archtoolbox.com/construction-project-delivery-methods/",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "design_responsibility": "owner",
+      "owner_construction_contracts": "one",
+      "contractor_role": "manager_at_risk",
+      "price_basis_at_award": "gmp",
+      "allowed_price_bases": [
+        "gmp",
+        "cost_reimbursable",
+        "lump_sum"
+      ],
+      "early_involvement": "preconstruction_services",
+      "compatible_contract_types": [
+        "gmp",
+        "cost_plus"
+      ],
+      "compatible_standard_forms": [
+        "AIA A133"
+      ],
+      "source_url": "https://www.archtoolbox.com/construction-project-delivery-methods/",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "cm_agency",
+      "name_key": "delivery_model.catalogue.neutral.form.cm_agency.name",
+      "description_key": "delivery_model.catalogue.neutral.form.cm_agency.description",
+      "aliases": [
+        {
+          "country": "GB",
+          "term": "Construction management",
+          "source_url": "https://www.designingbuildings.co.uk/wiki/Common_procurement",
+          "review_status": "unconfirmed"
+        },
+        {
+          "country": "US",
+          "term": "CM Agency (CMa)",
+          "source_url": "https://www.archtoolbox.com/construction-project-delivery-methods/",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "design_responsibility": "owner",
+      "owner_construction_contracts": "many",
+      "contractor_role": "manager_agency",
+      "price_basis_at_award": "cost_reimbursable",
+      "allowed_price_bases": [
+        "cost_reimbursable",
+        "lump_sum",
+        "remeasure"
+      ],
+      "early_involvement": "preconstruction_services",
+      "compatible_contract_types": [
+        "cost_plus",
+        "tm",
+        "lump_sum",
+        "unit_price",
+        "remeasurement"
+      ],
+      "compatible_standard_forms": [
+        "JCT CM 2016"
+      ],
+      "source_url": "https://www.designingbuildings.co.uk/wiki/Common_procurement",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "management_contracting",
+      "name_key": "delivery_model.catalogue.neutral.form.management_contracting.name",
+      "description_key": "delivery_model.catalogue.neutral.form.management_contracting.description",
+      "aliases": [
+        {
+          "country": "GB",
+          "term": "Management contracting",
+          "source_url": "https://www.designingbuildings.co.uk/wiki/Common_procurement",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "design_responsibility": "owner",
+      "owner_construction_contracts": "one_per_package_managed",
+      "contractor_role": "manager_agency",
+      "price_basis_at_award": "cost_reimbursable",
+      "allowed_price_bases": [
+        "cost_reimbursable",
+        "lump_sum",
+        "remeasure"
+      ],
+      "early_involvement": "preconstruction_services",
+      "compatible_contract_types": [
+        "cost_plus",
+        "tm",
+        "lump_sum"
+      ],
+      "compatible_standard_forms": [
+        "JCT MC 2016"
+      ],
+      "source_url": "https://www.designingbuildings.co.uk/wiki/Common_procurement",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "partnering_two_stage",
+      "name_key": "delivery_model.catalogue.neutral.form.partnering_two_stage.name",
+      "description_key": "delivery_model.catalogue.neutral.form.partnering_two_stage.description",
+      "aliases": [
+        {
+          "country": "GB",
+          "term": "Two-stage tendering",
+          "source_url": "https://www.designingbuildings.co.uk/wiki/Common_procurement",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "design_responsibility": "shared",
+      "owner_construction_contracts": "one",
+      "contractor_role": "builder",
+      "price_basis_at_award": "target_cost",
+      "allowed_price_bases": [
+        "target_cost",
+        "gmp",
+        "lump_sum"
+      ],
+      "early_involvement": "two_stage",
+      "compatible_contract_types": [
+        "gmp",
+        "cost_plus",
+        "combination",
+        "lump_sum"
+      ],
+      "compatible_standard_forms": [
+        "NEC4 ECC Option C"
+      ],
+      "source_url": "https://www.designingbuildings.co.uk/wiki/Common_procurement",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "alliance_ipd",
+      "name_key": "delivery_model.catalogue.neutral.form.alliance_ipd.name",
+      "description_key": "delivery_model.catalogue.neutral.form.alliance_ipd.description",
+      "aliases": [
+        {
+          "country": "US",
+          "term": "Integrated Project Delivery (IPD)",
+          "source_url": "https://learn.aiacontracts.com/contract-doc-pages/27166-integrated-project-delivery-ipd-family/",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "design_responsibility": "shared",
+      "owner_construction_contracts": "one",
+      "contractor_role": "builder",
+      "price_basis_at_award": "target_cost",
+      "allowed_price_bases": [
+        "target_cost",
+        "cost_reimbursable"
+      ],
+      "early_involvement": "multi_party",
+      "compatible_contract_types": [
+        "cost_plus",
+        "combination"
+      ],
+      "compatible_standard_forms": [
+        "AIA C191"
+      ],
+      "source_url": "https://learn.aiacontracts.com/contract-doc-pages/27166-integrated-project-delivery-ipd-family/",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "integrator",
+      "name_key": "delivery_model.catalogue.neutral.form.integrator.name",
+      "description_key": "delivery_model.catalogue.neutral.form.integrator.description",
+      "aliases": [],
+      "design_responsibility": "owner",
+      "owner_construction_contracts": "many",
+      "contractor_role": "integrator",
+      "price_basis_at_award": "cost_reimbursable",
+      "allowed_price_bases": [
+        "cost_reimbursable",
+        "lump_sum",
+        "remeasure"
+      ],
+      "early_involvement": "preconstruction_services",
+      "compatible_contract_types": [
+        "cost_plus",
+        "tm",
+        "lump_sum",
+        "unit_price",
+        "remeasurement"
+      ],
+      "compatible_standard_forms": [],
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "ppp_dbfom",
+      "name_key": "delivery_model.catalogue.neutral.form.ppp_dbfom.name",
+      "description_key": "delivery_model.catalogue.neutral.form.ppp_dbfom.description",
+      "aliases": [
+        {
+          "country": "",
+          "term": "Public-private partnership (PPP) / concession",
+          "source_url": "https://ppp.worldbank.org/structuring-ppp-projects",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "design_responsibility": "contractor",
+      "owner_construction_contracts": "one",
+      "contractor_role": "concessionaire",
+      "price_basis_at_award": "availability_payment",
+      "allowed_price_bases": [
+        "availability_payment"
+      ],
+      "scope_extends": [
+        "finance",
+        "operate",
+        "maintain"
+      ],
+      "compatible_contract_types": [
+        "combination",
+        "lump_sum"
+      ],
+      "compatible_standard_forms": [
+        "FIDIC Gold 2008"
+      ],
+      "source_url": "https://ppp.worldbank.org/structuring-ppp-projects",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "parties": [
+    {
+      "code": "owner",
+      "name_key": "delivery_model.catalogue.neutral.party.owner",
+      "contract_party_role": "employer",
+      "side": "owner"
+    },
+    {
+      "code": "designer",
+      "name_key": "delivery_model.catalogue.neutral.party.designer",
+      "contract_party_role": "architect",
+      "side": "owner"
+    },
+    {
+      "code": "contractor",
+      "name_key": "delivery_model.catalogue.neutral.party.contractor",
+      "contract_party_role": "contractor",
+      "side": "contractor"
+    },
+    {
+      "code": "trade_contractor",
+      "name_key": "delivery_model.catalogue.neutral.party.trade_contractor",
+      "contract_party_role": "contractor",
+      "side": "contractor"
+    },
+    {
+      "code": "construction_manager",
+      "name_key": "delivery_model.catalogue.neutral.party.construction_manager",
+      "contract_party_role": "consultant"
+    },
+    {
+      "code": "supplier",
+      "name_key": "delivery_model.catalogue.neutral.party.supplier",
+      "contract_party_role": "contractor"
+    },
+    {
+      "code": "operator",
+      "name_key": "delivery_model.catalogue.neutral.party.operator",
+      "contract_party_role": "other",
+      "side": "operator"
+    },
+    {
+      "code": "insurer",
+      "name_key": "delivery_model.catalogue.neutral.party.insurer",
+      "contract_party_role": "other"
+    },
+    {
+      "code": "shared",
+      "name_key": "delivery_model.catalogue.neutral.party.shared",
+      "contract_party_role": "other"
+    },
+    {
+      "code": "public_authority",
+      "name_key": "delivery_model.catalogue.neutral.party.public_authority",
+      "contract_party_role": "other"
+    }
+  ],
+  "risk_categories": [
+    {
+      "code": "design_errors",
+      "name_key": "delivery_model.catalogue.neutral.risk.design_errors.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.design_errors.description",
+      "register_category": "technical",
+      "concerns": "design"
+    },
+    {
+      "code": "design_coordination",
+      "name_key": "delivery_model.catalogue.neutral.risk.design_coordination.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.design_coordination.description",
+      "register_category": "technical"
+    },
+    {
+      "code": "ground_conditions",
+      "name_key": "delivery_model.catalogue.neutral.risk.ground_conditions.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.ground_conditions.description",
+      "register_category": "technical"
+    },
+    {
+      "code": "utilities_existing",
+      "name_key": "delivery_model.catalogue.neutral.risk.utilities_existing.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.utilities_existing.description",
+      "register_category": "technical"
+    },
+    {
+      "code": "permits_approval",
+      "name_key": "delivery_model.catalogue.neutral.risk.permits_approval.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.permits_approval.description",
+      "register_category": "regulatory"
+    },
+    {
+      "code": "permit_conditions_change",
+      "name_key": "delivery_model.catalogue.neutral.risk.permit_conditions_change.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.permit_conditions_change.description",
+      "register_category": "regulatory"
+    },
+    {
+      "code": "scope_change_owner",
+      "name_key": "delivery_model.catalogue.neutral.risk.scope_change_owner.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.scope_change_owner.description",
+      "register_category": "financial"
+    },
+    {
+      "code": "quantity_variance",
+      "name_key": "delivery_model.catalogue.neutral.risk.quantity_variance.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.quantity_variance.description",
+      "register_category": "financial"
+    },
+    {
+      "code": "price_escalation",
+      "name_key": "delivery_model.catalogue.neutral.risk.price_escalation.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.price_escalation.description",
+      "register_category": "financial"
+    },
+    {
+      "code": "labour_productivity",
+      "name_key": "delivery_model.catalogue.neutral.risk.labour_productivity.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.labour_productivity.description",
+      "register_category": "schedule"
+    },
+    {
+      "code": "subcontractor_default",
+      "name_key": "delivery_model.catalogue.neutral.risk.subcontractor_default.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.subcontractor_default.description",
+      "register_category": "procurement"
+    },
+    {
+      "code": "interface_between_packages",
+      "name_key": "delivery_model.catalogue.neutral.risk.interface_between_packages.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.interface_between_packages.description",
+      "register_category": "technical"
+    },
+    {
+      "code": "schedule_delay",
+      "name_key": "delivery_model.catalogue.neutral.risk.schedule_delay.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.schedule_delay.description",
+      "register_category": "schedule"
+    },
+    {
+      "code": "weather_force_majeure",
+      "name_key": "delivery_model.catalogue.neutral.risk.weather_force_majeure.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.weather_force_majeure.description",
+      "register_category": "schedule"
+    },
+    {
+      "code": "change_in_law",
+      "name_key": "delivery_model.catalogue.neutral.risk.change_in_law.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.change_in_law.description",
+      "register_category": "regulatory"
+    },
+    {
+      "code": "latent_defects",
+      "name_key": "delivery_model.catalogue.neutral.risk.latent_defects.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.latent_defects.description",
+      "register_category": "technical"
+    },
+    {
+      "code": "commissioning_performance",
+      "name_key": "delivery_model.catalogue.neutral.risk.commissioning_performance.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.commissioning_performance.description",
+      "register_category": "technical"
+    },
+    {
+      "code": "operation_availability",
+      "name_key": "delivery_model.catalogue.neutral.risk.operation_availability.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.operation_availability.description",
+      "register_category": "financial",
+      "concerns": "operation"
+    },
+    {
+      "code": "financing_interest",
+      "name_key": "delivery_model.catalogue.neutral.risk.financing_interest.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.financing_interest.description",
+      "register_category": "financial"
+    },
+    {
+      "code": "demand_revenue",
+      "name_key": "delivery_model.catalogue.neutral.risk.demand_revenue.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.demand_revenue.description",
+      "register_category": "financial"
+    },
+    {
+      "code": "environmental_contamination",
+      "name_key": "delivery_model.catalogue.neutral.risk.environmental_contamination.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.environmental_contamination.description",
+      "register_category": "environmental"
+    },
+    {
+      "code": "archaeology_uxo",
+      "name_key": "delivery_model.catalogue.neutral.risk.archaeology_uxo.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.archaeology_uxo.description",
+      "register_category": "environmental"
+    },
+    {
+      "code": "hse_site",
+      "name_key": "delivery_model.catalogue.neutral.risk.hse_site.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.hse_site.description",
+      "register_category": "safety"
+    },
+    {
+      "code": "insurance",
+      "name_key": "delivery_model.catalogue.neutral.risk.insurance.name",
+      "description_key": "delivery_model.catalogue.neutral.risk.insurance.description",
+      "register_category": "financial"
+    }
+  ],
+  "default_allocations": [
+    {
+      "risk_category": "design_errors",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.designer_controls_design",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "design_errors",
+      "forms": [
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "partnering_two_stage"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_designs",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "design_errors",
+      "forms": [
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "design_errors",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "design_coordination",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.designer_controls_design",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "design_coordination",
+      "forms": [
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "partnering_two_stage"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_designs",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "design_coordination",
+      "forms": [
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "design_coordination",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "ground_conditions",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "integrator",
+        "partnering_two_stage"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.owner_has_site_information",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "ground_conditions",
+      "forms": [
+        "turnkey_epc"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.price_fixed_at_award",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "ground_conditions",
+      "forms": [
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "ground_conditions",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "utilities_existing",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "integrator",
+        "partnering_two_stage"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.owner_has_site_information",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "utilities_existing",
+      "forms": [
+        "turnkey_epc"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.price_fixed_at_award",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "utilities_existing",
+      "forms": [
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "utilities_existing",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "permits_approval",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.owner_controls_scope",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "permits_approval",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "public_authority",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.authority_retains",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "permit_conditions_change",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.statute_or_contract_relief",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "permit_conditions_change",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "public_authority",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.authority_retains",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "scope_change_owner",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.owner_controls_scope",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "scope_change_owner",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "public_authority",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.authority_retains",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "quantity_variance",
+      "forms": [
+        "design_bid_build_split",
+        "cm_agency",
+        "management_contracting",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.remeasured_on_owner",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "quantity_variance",
+      "forms": [
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.price_fixed_at_award",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "quantity_variance",
+      "forms": [
+        "cm_at_risk"
+      ],
+      "party": "construction_manager",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.within_gmp",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "quantity_variance",
+      "forms": [
+        "partnering_two_stage",
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "quantity_variance",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "price_escalation",
+      "forms": [
+        "design_bid_build_split",
+        "cm_agency",
+        "management_contracting",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.remeasured_on_owner",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "price_escalation",
+      "forms": [
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.price_fixed_at_award",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "price_escalation",
+      "forms": [
+        "cm_at_risk"
+      ],
+      "party": "construction_manager",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.within_gmp",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "price_escalation",
+      "forms": [
+        "partnering_two_stage",
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "price_escalation",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "labour_productivity",
+      "forms": [
+        "design_bid_build_split"
+      ],
+      "party": "trade_contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "labour_productivity",
+      "forms": [
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "partnering_two_stage"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "labour_productivity",
+      "forms": [
+        "cm_at_risk"
+      ],
+      "party": "construction_manager",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.within_gmp",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "labour_productivity",
+      "forms": [
+        "cm_agency",
+        "management_contracting",
+        "integrator"
+      ],
+      "party": "trade_contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "labour_productivity",
+      "forms": [
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "labour_productivity",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "subcontractor_default",
+      "forms": [
+        "design_bid_build_split",
+        "cm_agency",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.owner_holds_trades",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "subcontractor_default",
+      "forms": [
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "partnering_two_stage",
+        "management_contracting"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "subcontractor_default",
+      "forms": [
+        "cm_at_risk"
+      ],
+      "party": "construction_manager",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.within_gmp",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "subcontractor_default",
+      "forms": [
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "subcontractor_default",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "interface_between_packages",
+      "forms": [
+        "design_bid_build_split",
+        "cm_agency",
+        "management_contracting",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.owner_holds_trades",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "interface_between_packages",
+      "forms": [
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "partnering_two_stage"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "interface_between_packages",
+      "forms": [
+        "cm_at_risk"
+      ],
+      "party": "construction_manager",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.within_gmp",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "interface_between_packages",
+      "forms": [
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "interface_between_packages",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "schedule_delay",
+      "forms": [
+        "design_bid_build_split",
+        "cm_agency",
+        "management_contracting",
+        "integrator"
+      ],
+      "party": "trade_contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "schedule_delay",
+      "forms": [
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "partnering_two_stage"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "schedule_delay",
+      "forms": [
+        "cm_at_risk"
+      ],
+      "party": "construction_manager",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.within_gmp",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "schedule_delay",
+      "forms": [
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "schedule_delay",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "weather_force_majeure",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.statute_or_contract_relief",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "weather_force_majeure",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.best_placed",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed",
+      "shares": {
+        "public_authority": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "change_in_law",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "statute",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.statute_or_contract_relief",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "change_in_law",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.authority_retains",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed",
+      "shares": {
+        "public_authority": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "latent_defects",
+      "forms": [
+        "design_bid_build_split",
+        "cm_agency",
+        "management_contracting",
+        "integrator"
+      ],
+      "party": "trade_contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "latent_defects",
+      "forms": [
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "partnering_two_stage"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "latent_defects",
+      "forms": [
+        "cm_at_risk"
+      ],
+      "party": "construction_manager",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.within_gmp",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "latent_defects",
+      "forms": [
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "latent_defects",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "commissioning_performance",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "integrator",
+        "partnering_two_stage"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.designer_controls_design",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "commissioning_performance",
+      "forms": [
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_designs",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "commissioning_performance",
+      "forms": [
+        "alliance_ipd"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.pain_gain_shared",
+      "source_url": "",
+      "review_status": "unconfirmed",
+      "shares": {
+        "owner": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "commissioning_performance",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "operation_availability",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.owner_controls_scope",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "operation_availability",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "financing_interest",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.owner_controls_scope",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "financing_interest",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.concession_transfers",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "demand_revenue",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.owner_controls_scope",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "demand_revenue",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "public_authority",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.authority_retains",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "environmental_contamination",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.owner_has_site_information",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "environmental_contamination",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "shared",
+      "basis": "shared_pain_gain",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.best_placed",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed",
+      "shares": {
+        "public_authority": "50",
+        "contractor": "50"
+      }
+    },
+    {
+      "risk_category": "archaeology_uxo",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "integrator"
+      ],
+      "party": "owner",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.owner_has_site_information",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "archaeology_uxo",
+      "forms": [
+        "ppp_dbfom"
+      ],
+      "party": "public_authority",
+      "basis": "contract",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.authority_retains",
+      "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "hse_site",
+      "forms": [
+        "design_bid_build_split",
+        "cm_agency",
+        "management_contracting",
+        "integrator"
+      ],
+      "party": "trade_contractor",
+      "basis": "statute",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "hse_site",
+      "forms": [
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "ppp_dbfom"
+      ],
+      "party": "contractor",
+      "basis": "statute",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "hse_site",
+      "forms": [
+        "cm_at_risk"
+      ],
+      "party": "construction_manager",
+      "basis": "statute",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.contractor_controls_methods",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    },
+    {
+      "risk_category": "insurance",
+      "forms": [
+        "design_bid_build_split",
+        "design_bid_build_single",
+        "design_build",
+        "design_build_novated",
+        "turnkey_epc",
+        "cm_at_risk",
+        "cm_agency",
+        "management_contracting",
+        "partnering_two_stage",
+        "alliance_ipd",
+        "integrator",
+        "ppp_dbfom"
+      ],
+      "party": "insurer",
+      "basis": "insurance",
+      "rationale_key": "delivery_model.catalogue.neutral.rationale.insured",
+      "source_url": "",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "criteria": [
+    {
+      "code": "cost_certainty_at_award",
+      "name_key": "delivery_model.catalogue.neutral.criterion.cost_certainty_at_award.name",
+      "default_weight": "15",
+      "rationale_key": "delivery_model.catalogue.neutral.criterion.cost_certainty_at_award.scale",
+      "scores": {
+        "design_bid_build_split": 2,
+        "design_bid_build_single": 4,
+        "design_build": 4,
+        "design_build_novated": 4,
+        "turnkey_epc": 5,
+        "cm_at_risk": 3,
+        "cm_agency": 2,
+        "management_contracting": 2,
+        "partnering_two_stage": 3,
+        "alliance_ipd": 2,
+        "integrator": 2,
+        "ppp_dbfom": 4
+      }
+    },
+    {
+      "code": "time_to_start",
+      "name_key": "delivery_model.catalogue.neutral.criterion.time_to_start.name",
+      "default_weight": "10",
+      "rationale_key": "delivery_model.catalogue.neutral.criterion.time_to_start.scale",
+      "scores": {
+        "design_bid_build_split": 2,
+        "design_bid_build_single": 2,
+        "design_build": 3,
+        "design_build_novated": 3,
+        "turnkey_epc": 3,
+        "cm_at_risk": 4,
+        "cm_agency": 5,
+        "management_contracting": 5,
+        "partnering_two_stage": 4,
+        "alliance_ipd": 4,
+        "integrator": 4,
+        "ppp_dbfom": 1
+      }
+    },
+    {
+      "code": "owner_control_of_design",
+      "name_key": "delivery_model.catalogue.neutral.criterion.owner_control_of_design.name",
+      "default_weight": "10",
+      "rationale_key": "delivery_model.catalogue.neutral.criterion.owner_control_of_design.scale",
+      "scores": {
+        "design_bid_build_split": 5,
+        "design_bid_build_single": 5,
+        "design_build": 2,
+        "design_build_novated": 3,
+        "turnkey_epc": 1,
+        "cm_at_risk": 4,
+        "cm_agency": 5,
+        "management_contracting": 4,
+        "partnering_two_stage": 3,
+        "alliance_ipd": 3,
+        "integrator": 5,
+        "ppp_dbfom": 1
+      }
+    },
+    {
+      "code": "single_point_responsibility",
+      "name_key": "delivery_model.catalogue.neutral.criterion.single_point_responsibility.name",
+      "default_weight": "10",
+      "rationale_key": "delivery_model.catalogue.neutral.criterion.single_point_responsibility.scale",
+      "scores": {
+        "design_bid_build_split": 1,
+        "design_bid_build_single": 3,
+        "design_build": 5,
+        "design_build_novated": 4,
+        "turnkey_epc": 5,
+        "cm_at_risk": 3,
+        "cm_agency": 1,
+        "management_contracting": 2,
+        "partnering_two_stage": 3,
+        "alliance_ipd": 3,
+        "integrator": 2,
+        "ppp_dbfom": 5
+      }
+    },
+    {
+      "code": "owner_capability_required",
+      "name_key": "delivery_model.catalogue.neutral.criterion.owner_capability_required.name",
+      "default_weight": "10",
+      "rationale_key": "delivery_model.catalogue.neutral.criterion.owner_capability_required.scale",
+      "scores": {
+        "design_bid_build_split": 1,
+        "design_bid_build_single": 3,
+        "design_build": 4,
+        "design_build_novated": 4,
+        "turnkey_epc": 5,
+        "cm_at_risk": 3,
+        "cm_agency": 1,
+        "management_contracting": 2,
+        "partnering_two_stage": 3,
+        "alliance_ipd": 2,
+        "integrator": 2,
+        "ppp_dbfom": 4
+      }
+    },
+    {
+      "code": "market_capacity",
+      "name_key": "delivery_model.catalogue.neutral.criterion.market_capacity.name",
+      "default_weight": "8",
+      "rationale_key": "delivery_model.catalogue.neutral.criterion.market_capacity.scale",
+      "scores": {
+        "design_bid_build_split": 5,
+        "design_bid_build_single": 5,
+        "design_build": 4,
+        "design_build_novated": 3,
+        "turnkey_epc": 2,
+        "cm_at_risk": 3,
+        "cm_agency": 3,
+        "management_contracting": 3,
+        "partnering_two_stage": 3,
+        "alliance_ipd": 2,
+        "integrator": 3,
+        "ppp_dbfom": 2
+      }
+    },
+    {
+      "code": "change_flexibility",
+      "name_key": "delivery_model.catalogue.neutral.criterion.change_flexibility.name",
+      "default_weight": "10",
+      "rationale_key": "delivery_model.catalogue.neutral.criterion.change_flexibility.scale",
+      "scores": {
+        "design_bid_build_split": 4,
+        "design_bid_build_single": 3,
+        "design_build": 2,
+        "design_build_novated": 2,
+        "turnkey_epc": 1,
+        "cm_at_risk": 3,
+        "cm_agency": 5,
+        "management_contracting": 4,
+        "partnering_two_stage": 4,
+        "alliance_ipd": 4,
+        "integrator": 4,
+        "ppp_dbfom": 1
+      }
+    },
+    {
+      "code": "innovation",
+      "name_key": "delivery_model.catalogue.neutral.criterion.innovation.name",
+      "default_weight": "7",
+      "rationale_key": "delivery_model.catalogue.neutral.criterion.innovation.scale",
+      "scores": {
+        "design_bid_build_split": 1,
+        "design_bid_build_single": 1,
+        "design_build": 4,
+        "design_build_novated": 3,
+        "turnkey_epc": 4,
+        "cm_at_risk": 3,
+        "cm_agency": 2,
+        "management_contracting": 2,
+        "partnering_two_stage": 4,
+        "alliance_ipd": 5,
+        "integrator": 3,
+        "ppp_dbfom": 4
+      }
+    },
+    {
+      "code": "public_procurement_constraints",
+      "name_key": "delivery_model.catalogue.neutral.criterion.public_procurement_constraints.name",
+      "default_weight": "8",
+      "rationale_key": "delivery_model.catalogue.neutral.criterion.public_procurement_constraints.scale",
+      "scores": {
+        "design_bid_build_split": 5,
+        "design_bid_build_single": 5,
+        "design_build": 4,
+        "design_build_novated": 3,
+        "turnkey_epc": 3,
+        "cm_at_risk": 3,
+        "cm_agency": 3,
+        "management_contracting": 3,
+        "partnering_two_stage": 3,
+        "alliance_ipd": 2,
+        "integrator": 3,
+        "ppp_dbfom": 2
+      }
+    },
+    {
+      "code": "lifecycle_value",
+      "name_key": "delivery_model.catalogue.neutral.criterion.lifecycle_value.name",
+      "default_weight": "7",
+      "rationale_key": "delivery_model.catalogue.neutral.criterion.lifecycle_value.scale",
+      "scores": {
+        "design_bid_build_split": 2,
+        "design_bid_build_single": 2,
+        "design_build": 3,
+        "design_build_novated": 3,
+        "turnkey_epc": 3,
+        "cm_at_risk": 3,
+        "cm_agency": 2,
+        "management_contracting": 2,
+        "partnering_two_stage": 3,
+        "alliance_ipd": 4,
+        "integrator": 3,
+        "ppp_dbfom": 5
+      }
+    },
+    {
+      "code": "funding_constraints",
+      "name_key": "delivery_model.catalogue.neutral.criterion.funding_constraints.name",
+      "default_weight": "5",
+      "rationale_key": "delivery_model.catalogue.neutral.criterion.funding_constraints.scale",
+      "scores": {
+        "design_bid_build_split": 5,
+        "design_bid_build_single": 4,
+        "design_build": 4,
+        "design_build_novated": 4,
+        "turnkey_epc": 4,
+        "cm_at_risk": 4,
+        "cm_agency": 4,
+        "management_contracting": 4,
+        "partnering_two_stage": 4,
+        "alliance_ipd": 3,
+        "integrator": 4,
+        "ppp_dbfom": 1
+      }
+    }
+  ],
+  "price_basis_contract_types": {
+    "remeasure": [
+      "remeasurement",
+      "unit_price"
+    ],
+    "lump_sum": [
+      "lump_sum",
+      "design_build"
+    ],
+    "gmp": [
+      "gmp"
+    ],
+    "target_cost": [
+      "cost_plus",
+      "combination"
+    ],
+    "cost_reimbursable": [
+      "cost_plus",
+      "tm"
+    ],
+    "availability_payment": [
+      "combination"
+    ]
+  },
+  "country_rules": [
+    {
+      "code": "de_public_lot_splitting",
+      "country": "DE",
+      "name_key": "delivery_model.catalogue.neutral.country_rule.de_public_lot_splitting",
+      "severity": "info",
+      "source_url": "https://www.gesetze-im-internet.de/gwb/__97.html",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "package_templates": [
+    {
+      "form": "design_bid_build_split",
+      "packages": [
+        {
+          "code": "design_services",
+          "title_key": "delivery_model.catalogue.neutral.package.design_services",
+          "kind": "design",
+          "designs": true,
+          "builds": false,
+          "supplies": false,
+          "manages": false,
+          "party": "designer",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "shell_core",
+          "title_key": "delivery_model.catalogue.neutral.package.shell_core",
+          "kind": "construction",
+          "designs": false,
+          "builds": true,
+          "supplies": false,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "owner",
+          "price_basis": "remeasure",
+          "parent": null
+        },
+        {
+          "code": "envelope",
+          "title_key": "delivery_model.catalogue.neutral.package.envelope",
+          "kind": "construction",
+          "designs": false,
+          "builds": true,
+          "supplies": false,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "owner",
+          "price_basis": "remeasure",
+          "parent": null
+        },
+        {
+          "code": "mep",
+          "title_key": "delivery_model.catalogue.neutral.package.mep",
+          "kind": "supply_and_install",
+          "designs": false,
+          "builds": true,
+          "supplies": true,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "owner",
+          "price_basis": "remeasure",
+          "parent": null
+        },
+        {
+          "code": "fit_out",
+          "title_key": "delivery_model.catalogue.neutral.package.fit_out",
+          "kind": "construction",
+          "designs": false,
+          "builds": true,
+          "supplies": false,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "owner",
+          "price_basis": "remeasure",
+          "parent": null
+        }
+      ]
+    },
+    {
+      "form": "design_bid_build_single",
+      "packages": [
+        {
+          "code": "design_services",
+          "title_key": "delivery_model.catalogue.neutral.package.design_services",
+          "kind": "design",
+          "designs": true,
+          "builds": false,
+          "supplies": false,
+          "manages": false,
+          "party": "designer",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "main_works",
+          "title_key": "delivery_model.catalogue.neutral.package.main_works",
+          "kind": "construction",
+          "designs": false,
+          "builds": true,
+          "supplies": false,
+          "manages": false,
+          "party": "contractor",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        }
+      ]
+    },
+    {
+      "form": "design_build",
+      "packages": [
+        {
+          "code": "owner_advisor",
+          "title_key": "delivery_model.catalogue.neutral.package.owner_advisor",
+          "kind": "management_services",
+          "designs": false,
+          "builds": false,
+          "supplies": false,
+          "manages": true,
+          "party": "designer",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "design_and_build",
+          "title_key": "delivery_model.catalogue.neutral.package.design_and_build",
+          "kind": "design_and_construction",
+          "designs": true,
+          "builds": true,
+          "supplies": false,
+          "manages": false,
+          "party": "contractor",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        }
+      ]
+    },
+    {
+      "form": "design_build_novated",
+      "packages": [
+        {
+          "code": "concept_design",
+          "title_key": "delivery_model.catalogue.neutral.package.concept_design",
+          "kind": "design",
+          "designs": true,
+          "builds": false,
+          "supplies": false,
+          "manages": false,
+          "party": "designer",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "design_and_build",
+          "title_key": "delivery_model.catalogue.neutral.package.design_and_build",
+          "kind": "design_and_construction",
+          "designs": true,
+          "builds": true,
+          "supplies": false,
+          "manages": false,
+          "party": "contractor",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        }
+      ]
+    },
+    {
+      "form": "turnkey_epc",
+      "packages": [
+        {
+          "code": "owner_engineer",
+          "title_key": "delivery_model.catalogue.neutral.package.owner_engineer",
+          "kind": "management_services",
+          "designs": false,
+          "builds": false,
+          "supplies": false,
+          "manages": true,
+          "party": "designer",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "epc_works",
+          "title_key": "delivery_model.catalogue.neutral.package.epc_works",
+          "kind": "design_and_construction",
+          "designs": true,
+          "builds": true,
+          "supplies": true,
+          "manages": false,
+          "party": "contractor",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        }
+      ]
+    },
+    {
+      "form": "cm_at_risk",
+      "packages": [
+        {
+          "code": "design_services",
+          "title_key": "delivery_model.catalogue.neutral.package.design_services",
+          "kind": "design",
+          "designs": true,
+          "builds": false,
+          "supplies": false,
+          "manages": false,
+          "party": "designer",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "preconstruction",
+          "title_key": "delivery_model.catalogue.neutral.package.preconstruction",
+          "kind": "management_services",
+          "designs": false,
+          "builds": false,
+          "supplies": false,
+          "manages": true,
+          "party": "construction_manager",
+          "contracting_party": "owner",
+          "price_basis": "cost_reimbursable",
+          "parent": null
+        },
+        {
+          "code": "gmp_works",
+          "title_key": "delivery_model.catalogue.neutral.package.gmp_works",
+          "kind": "construction",
+          "designs": false,
+          "builds": true,
+          "supplies": false,
+          "manages": true,
+          "party": "construction_manager",
+          "contracting_party": "owner",
+          "price_basis": "gmp",
+          "parent": null
+        },
+        {
+          "code": "trade_structure",
+          "title_key": "delivery_model.catalogue.neutral.package.trade_structure",
+          "kind": "construction",
+          "designs": false,
+          "builds": true,
+          "supplies": false,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "manager",
+          "price_basis": "lump_sum",
+          "parent": "gmp_works"
+        },
+        {
+          "code": "trade_mep",
+          "title_key": "delivery_model.catalogue.neutral.package.trade_mep",
+          "kind": "supply_and_install",
+          "designs": false,
+          "builds": true,
+          "supplies": true,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "manager",
+          "price_basis": "lump_sum",
+          "parent": "gmp_works"
+        }
+      ]
+    },
+    {
+      "form": "cm_agency",
+      "packages": [
+        {
+          "code": "design_services",
+          "title_key": "delivery_model.catalogue.neutral.package.design_services",
+          "kind": "design",
+          "designs": true,
+          "builds": false,
+          "supplies": false,
+          "manages": false,
+          "party": "designer",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "construction_management",
+          "title_key": "delivery_model.catalogue.neutral.package.construction_management",
+          "kind": "management_services",
+          "designs": false,
+          "builds": false,
+          "supplies": false,
+          "manages": true,
+          "party": "construction_manager",
+          "contracting_party": "owner",
+          "price_basis": "cost_reimbursable",
+          "parent": null
+        },
+        {
+          "code": "trade_structure",
+          "title_key": "delivery_model.catalogue.neutral.package.trade_structure",
+          "kind": "construction",
+          "designs": false,
+          "builds": true,
+          "supplies": false,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "trade_mep",
+          "title_key": "delivery_model.catalogue.neutral.package.trade_mep",
+          "kind": "supply_and_install",
+          "designs": false,
+          "builds": true,
+          "supplies": true,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        }
+      ]
+    },
+    {
+      "form": "management_contracting",
+      "packages": [
+        {
+          "code": "design_services",
+          "title_key": "delivery_model.catalogue.neutral.package.design_services",
+          "kind": "design",
+          "designs": true,
+          "builds": false,
+          "supplies": false,
+          "manages": false,
+          "party": "designer",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "management_contract",
+          "title_key": "delivery_model.catalogue.neutral.package.management_contract",
+          "kind": "management_services",
+          "designs": false,
+          "builds": false,
+          "supplies": false,
+          "manages": true,
+          "party": "construction_manager",
+          "contracting_party": "owner",
+          "price_basis": "cost_reimbursable",
+          "parent": null
+        },
+        {
+          "code": "works_structure",
+          "title_key": "delivery_model.catalogue.neutral.package.works_structure",
+          "kind": "construction",
+          "designs": false,
+          "builds": true,
+          "supplies": false,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "manager",
+          "price_basis": "lump_sum",
+          "parent": "management_contract"
+        },
+        {
+          "code": "works_mep",
+          "title_key": "delivery_model.catalogue.neutral.package.works_mep",
+          "kind": "supply_and_install",
+          "designs": false,
+          "builds": true,
+          "supplies": true,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "manager",
+          "price_basis": "lump_sum",
+          "parent": "management_contract"
+        }
+      ]
+    },
+    {
+      "form": "partnering_two_stage",
+      "packages": [
+        {
+          "code": "design_services",
+          "title_key": "delivery_model.catalogue.neutral.package.design_services",
+          "kind": "design",
+          "designs": true,
+          "builds": false,
+          "supplies": false,
+          "manages": false,
+          "party": "designer",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "first_stage",
+          "title_key": "delivery_model.catalogue.neutral.package.first_stage",
+          "kind": "management_services",
+          "designs": false,
+          "builds": false,
+          "supplies": false,
+          "manages": true,
+          "party": "contractor",
+          "contracting_party": "owner",
+          "price_basis": "cost_reimbursable",
+          "parent": null
+        },
+        {
+          "code": "second_stage",
+          "title_key": "delivery_model.catalogue.neutral.package.second_stage",
+          "kind": "construction",
+          "designs": false,
+          "builds": true,
+          "supplies": false,
+          "manages": false,
+          "party": "contractor",
+          "contracting_party": "owner",
+          "price_basis": "target_cost",
+          "parent": null
+        }
+      ]
+    },
+    {
+      "form": "alliance_ipd",
+      "packages": [
+        {
+          "code": "alliance_agreement",
+          "title_key": "delivery_model.catalogue.neutral.package.alliance_agreement",
+          "kind": "project_agreement",
+          "designs": true,
+          "builds": true,
+          "supplies": false,
+          "manages": true,
+          "party": "shared",
+          "contracting_party": "owner",
+          "price_basis": "target_cost",
+          "parent": null
+        }
+      ]
+    },
+    {
+      "form": "integrator",
+      "packages": [
+        {
+          "code": "integration_services",
+          "title_key": "delivery_model.catalogue.neutral.package.integration_services",
+          "kind": "management_services",
+          "designs": false,
+          "builds": false,
+          "supplies": false,
+          "manages": true,
+          "party": "construction_manager",
+          "contracting_party": "owner",
+          "price_basis": "cost_reimbursable",
+          "parent": null
+        },
+        {
+          "code": "design_services",
+          "title_key": "delivery_model.catalogue.neutral.package.design_services",
+          "kind": "design",
+          "designs": true,
+          "builds": false,
+          "supplies": false,
+          "manages": false,
+          "party": "designer",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "trade_structure",
+          "title_key": "delivery_model.catalogue.neutral.package.trade_structure",
+          "kind": "construction",
+          "designs": false,
+          "builds": true,
+          "supplies": false,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        },
+        {
+          "code": "trade_mep",
+          "title_key": "delivery_model.catalogue.neutral.package.trade_mep",
+          "kind": "supply_and_install",
+          "designs": false,
+          "builds": true,
+          "supplies": true,
+          "manages": false,
+          "party": "trade_contractor",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        }
+      ]
+    },
+    {
+      "form": "ppp_dbfom",
+      "packages": [
+        {
+          "code": "project_agreement",
+          "title_key": "delivery_model.catalogue.neutral.package.project_agreement",
+          "kind": "project_agreement",
+          "designs": true,
+          "builds": true,
+          "supplies": false,
+          "manages": true,
+          "party": "contractor",
+          "contracting_party": "owner",
+          "price_basis": "availability_payment",
+          "parent": null
+        },
+        {
+          "code": "independent_engineer",
+          "title_key": "delivery_model.catalogue.neutral.package.independent_engineer",
+          "kind": "management_services",
+          "designs": false,
+          "builds": false,
+          "supplies": false,
+          "manages": true,
+          "party": "designer",
+          "contracting_party": "owner",
+          "price_basis": "lump_sum",
+          "parent": null
+        }
+      ]
+    }
+  ],
+  "flags": [
+    {
+      "code": "underground_risk_sharing",
+      "name_key": "delivery_model.catalogue.neutral.flag.underground_risk_sharing",
+      "aliases": [
+        {
+          "country": "",
+          "term": "FIDIC Emerald Book (underground works, GBR)",
+          "source_url": "https://cms.law/en/srb/legal-updates/introducing-the-fidic-emerald-book",
+          "review_status": "unconfirmed"
+        }
+      ],
+      "source_url": "https://cms.law/en/srb/legal-updates/introducing-the-fidic-emerald-book",
+      "review_status": "unconfirmed"
+    }
+  ]
+}
