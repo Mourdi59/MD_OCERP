@@ -347,6 +347,14 @@ export type CommitmentStatus =
 
 export type CommitmentTarget = Exclude<CommitmentStatus, 'proposed'>;
 
+/** Whether the reader may make one move on one commitment, and the server's reason code when not. */
+export interface CommitmentPermission {
+  allowed: boolean;
+  reason: string | null;
+}
+
+export type CommitmentCan = Record<CommitmentTarget | 'edit', CommitmentPermission>;
+
 export interface Commitment {
   id: string;
   code: string;
@@ -371,6 +379,8 @@ export interface Commitment {
   breach_rationale: string;
   communicated_back_at: string | null;
   loop_not_required_rationale: string;
+  /** What the reader may do with this commitment, decided by the server with the same checks as the writes. */
+  can: CommitmentCan;
   warnings?: string[];
 }
 
@@ -715,7 +725,7 @@ export function updateCommitment(projectId: string, id: string, body: Commitment
 }
 
 export function transitionCommitment(projectId: string, id: string, body: TransitionInput): Promise<Commitment> {
-  return apiPost<Commitment>(`${p(projectId)}/commitments/${id}/transition?${day()}`, body);
+  return apiPost<Commitment>(`${p(projectId)}/commitments/${id}/transition`, body);
 }
 
 /* ── Exports ──────────────────────────────────────────────────────────── */

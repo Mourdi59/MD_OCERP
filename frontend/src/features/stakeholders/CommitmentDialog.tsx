@@ -60,18 +60,25 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
   );
 
   const ready = !!draft.text.trim() && draft.stakeholders.length > 0;
+  // Once a commitment left its first state the server keeps what was promised,
+  // its cost and its currency as they were agreed. Those fields are shown and
+  // not sent, and the owner is sent only when it changed, because changing it
+  // then needs a higher permission.
+  const frozen = !!commitment && commitment.status !== 'proposed';
 
   const submit = () => {
     const body: CommitmentInput = {
-      text: draft.text.trim(),
       stakeholder_ids: draft.stakeholders,
       category: draft.category,
-      owner_user_id: draft.owner || null,
       due_date: draft.due_date || null,
       verification: draft.verification.trim(),
-      cost_estimate: draft.cost.trim() || null,
     };
-    if (draft.currency.trim()) body.currency = draft.currency.trim().toUpperCase();
+    if (!frozen) {
+      body.text = draft.text.trim();
+      body.cost_estimate = draft.cost.trim() || null;
+      if (draft.currency.trim()) body.currency = draft.currency.trim().toUpperCase();
+    }
+    if (!frozen || (draft.owner || null) !== (commitment?.owner_user_id ?? null)) body.owner_user_id = draft.owner || null;
     // The source is fixed once the commitment exists; the server ignores it on an edit.
     if (!commitment) {
       body.source_kind = draft.event ? 'event' : 'manual';
@@ -108,6 +115,13 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
     >
       <div className="space-y-4">
         <RefusalBox refusal={write.refusal} />
+        {frozen && (
+          <p className="text-sm text-content-secondary" data-testid="commitment-frozen">
+            {t('stakeholders.ui.commitment.frozen_hint', {
+              defaultValue: 'This commitment was agreed, so what was promised and its cost stay as they are. To change them, withdraw it and record a new one.',
+            })}
+          </p>
+        )}
         <WideModalField
           label={t('stakeholders.ui.commitment.text', { defaultValue: 'What was promised' })}
           required
@@ -118,6 +132,7 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
             rows={3}
             className={FIELD_CLASS}
             value={draft.text}
+            disabled={frozen}
             onChange={(e) => set('text', e.target.value)}
           />
         </WideModalField>
@@ -182,6 +197,7 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
               inputMode="decimal"
               className={FIELD_CLASS}
               value={draft.cost}
+              disabled={frozen}
               onChange={(e) => set('cost', e.target.value)}
             />
           </WideModalField>
@@ -195,6 +211,7 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
               className={FIELD_CLASS}
               value={draft.currency}
               maxLength={3}
+              disabled={frozen}
               onChange={(e) => set('currency', e.target.value)}
             />
           </WideModalField>

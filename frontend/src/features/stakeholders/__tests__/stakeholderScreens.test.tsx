@@ -20,15 +20,17 @@ vi.mock('@/shared/ui/ContactSearchInput', () => ({ ContactSearchInput: () => nul
 vi.mock('../api', async (original) => ({
   ...(await original<typeof import('../api')>()),
   transitionCommitment: vi.fn(),
+  updateCommitment: vi.fn(),
 }));
 
-import { transitionCommitment } from '../api';
+import { transitionCommitment, updateCommitment } from '../api';
 import { CommitmentsPanel } from '../CommitmentsPanel';
 import { RegisterPanel, ReadinessStrip } from '../RegisterPanel';
 import { GatedButton, RefusalBox } from '../StakeholderBits';
-import { commitment, readiness, screen, settings, stakeholder } from './fixtures';
+import { canOf, commitment, readiness, screen, settings, stakeholder } from './fixtures';
 
 const transition = vi.mocked(transitionCommitment);
+const update = vi.mocked(updateCommitment);
 
 function mount(ui: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -41,6 +43,7 @@ const readOnly = () =>
 beforeEach(() => {
   cleanup();
   transition.mockReset();
+  update.mockReset();
 });
 
 describe('a button that follows a server flag', () => {
@@ -235,13 +238,37 @@ describe('the commitments', () => {
   it('offer nothing on a closed commitment', () => {
     panel([commitment({ status: 'verified' })]);
     fireEvent.click(page.getByTestId('commitment-filter-closed'));
-    expect(within(page.getByTestId('commitment-moves')).queryAllByRole('button')).toEqual([]);
+    expect(page.getByTestId('commitment-entry')).toBeTruthy();
+    expect(page.queryByTestId('commitment-moves')).toBeNull();
   });
 
-  it('offer no moves to a reader who may not edit', () => {
-    panel([commitment()], readOnly());
-    expect(page.queryByTestId('commitment-moves')).toBeNull();
+  it('keep a move the server switched off visible, unpressable and explained', () => {
+    const can = canOf('proposed', {
+      agreed: { allowed: false, reason: 'not_decider' },
+      withdrawn: { allowed: false, reason: 'not_decider' },
+    });
+    panel([commitment({ can })]);
+    expect((page.getByTestId('commitment-move-agreed') as HTMLButtonElement).disabled).toBe(true);
+    const lines = within(page.getByTestId('commitment-blocked')).getAllByRole('listitem');
+    expect(lines.map((li) => li.getAttribute('data-reason'))).toEqual(['not_decider', 'not_decider']);
+    expect(lines[0]?.textContent).toBe('Agree: Only whoever decides commitments to stakeholders can do this.');
+    fireEvent.click(page.getByTestId('commitment-move-agreed'));
+    expect(page.queryByTestId('transition-dialog')).toBeNull();
+  });
+
+  it('follow the flag of each commitment, not the role of the reader', () => {
+    const viewer = { allowed: false, reason: 'no_permission' };
+    const can = canOf('proposed', { agreed: viewer, withdrawn: viewer, edit: viewer });
+    panel([commitment({ can })], readOnly());
+    expect((page.getByTestId('commitment-move-withdrawn') as HTMLButtonElement).disabled).toBe(true);
+    expect(page.queryByTestId('commitment-edit')).toBeNull();
     expect((page.getByTestId('commitment-add') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('reads a reason it does not know as words, never as a code', () => {
+    const can = canOf('fulfilled', { verified: { allowed: false, reason: 'brand_new_reason' } });
+    panel([commitment({ status: 'fulfilled', can })]);
+    expect(within(page.getByTestId('commitment-blocked')).getByRole('listitem').textContent).toContain('Brand new reason');
   });
 
   it('say what a commitment waits for while an approval runs, and offer no second move', () => {
@@ -258,6 +285,37 @@ describe('the commitments', () => {
     expect(page.getByText('Withdrawn because: Design changed')).toBeTruthy();
     fireEvent.click(page.getByTestId('commitment-filter-overdue'));
     expect(page.getByText('No commitment in this group.')).toBeTruthy();
+  });
+
+  it('send every field of a proposed commitment on an edit', async () => {
+    update.mockResolvedValue(commitment());
+    panel([commitment()]);
+    fireEvent.click(page.getByTestId('commitment-edit'));
+    expect(page.queryByTestId('commitment-frozen')).toBeNull();
+    fireEvent.click(page.getByTestId('commitment-save'));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    expect(update.mock.calls[0]?.[2]).toMatchObject({
+      text: 'No deliveries before seven in the morning',
+      owner_user_id: 'u-owner',
+      cost_estimate: null,
+    });
+  });
+
+  it('keep the wording, cost and owner of an agreed commitment out of an edit, and say why', async () => {
+    update.mockResolvedValue(commitment({ status: 'agreed' }));
+    panel([commitment({ status: 'agreed' })]);
+    fireEvent.click(page.getByTestId('commitment-edit'));
+    const dialog = page.getByTestId('commitment-dialog');
+    expect(within(dialog).getByTestId('commitment-frozen')).toBeTruthy();
+    expect((dialog.querySelector('#commitment-text') as HTMLTextAreaElement).disabled).toBe(true);
+    expect((dialog.querySelector('#commitment-cost') as HTMLInputElement).disabled).toBe(true);
+    fireEvent.change(dialog.querySelector('#commitment-due') as HTMLInputElement, { target: { value: '2026-12-15' } });
+    fireEvent.click(page.getByTestId('commitment-save'));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    const sent = update.mock.calls[0]?.[2] ?? {};
+    expect(sent).toMatchObject({ due_date: '2026-12-15' });
+    expect(Object.keys(sent)).not.toEqual(expect.arrayContaining(['text']));
+    expect('cost_estimate' in sent || 'currency' in sent || 'owner_user_id' in sent).toBe(false);
   });
 
   it('will not send a withdrawal without a reason', () => {

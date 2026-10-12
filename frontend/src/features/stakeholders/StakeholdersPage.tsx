@@ -6,7 +6,8 @@
 // The register is the home view. The analysis, the communication plan, the
 // commitments and the project organisation sit behind tabs, and the URL
 // remembers the tab and the open stakeholder (?tab=, ?stakeholder=), so a
-// link reopens the same view.
+// link reopens the same view. Notifications link to a section by path
+// (/stakeholders/communication, /stakeholders/commitments).
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,9 +48,16 @@ type Tab = 'register' | 'analysis' | 'plan' | 'commitments' | 'organisation' | '
 
 const TABS: Tab[] = ['register', 'analysis', 'plan', 'commitments', 'organisation', 'settings'];
 
+/** The path sections the server links to, and the tab each one opens. */
+const SECTION_TAB: Record<string, Tab> = {
+  communication: 'plan',
+  commitments: 'commitments',
+  organisation: 'organisation',
+};
+
 export function StakeholdersPage() {
   const { t } = useTranslation();
-  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { projectId = '', section = '' } = useParams<{ projectId: string; section: string }>();
   const [params, setParams] = useSearchParams();
   const labels = useLabelContext();
   const personName = usePeopleNames(projectId);
@@ -66,7 +74,7 @@ export function StakeholdersPage() {
   const commitmentsQ = useCommitments(projectId, ready);
 
   const rawTab = params.get('tab') as Tab | null;
-  const tab: Tab = rawTab && TABS.includes(rawTab) ? rawTab : 'register';
+  const tab: Tab = rawTab && TABS.includes(rawTab) ? rawTab : (SECTION_TAB[section] ?? 'register');
   const stakeholderId = params.get('stakeholder');
   const method = params.get('method') ?? settingsQ.data?.analysis_method ?? '';
   const go = (next: Record<string, string | null>) => {
@@ -222,7 +230,7 @@ export function StakeholdersPage() {
         <TabBar<Tab>
           ariaLabel={t('stakeholders.ui.tabs', { defaultValue: 'Stakeholder sections' })}
           activeId={tab}
-          onChange={(id) => go({ tab: id === 'register' ? null : id })}
+          onChange={(id) => go({ tab: id === 'register' && !SECTION_TAB[section] ? null : id })}
           idPrefix="stakeholders"
           tabs={[
             {

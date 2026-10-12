@@ -46,6 +46,7 @@ function open(url = '/projects/p1/stakeholders') {
       <MemoryRouter initialEntries={[url]}>
         <Routes>
           <Route path="/projects/:projectId/stakeholders" element={<StakeholdersPage />} />
+          <Route path="/projects/:projectId/stakeholders/:section" element={<StakeholdersPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -146,6 +147,11 @@ describe('the stakeholders page', () => {
     open('/projects/p1/stakeholders?tab=commitments');
     expect(await page.findByText('The commitments could not be loaded')).toBeTruthy();
     expect(page.getAllByRole('tab')).toHaveLength(6);
+  });
+
+  it('opens the section a notification links to by path', async () => {
+    open('/projects/p1/stakeholders/commitments?commitment=c1');
+    expect(await page.findByTestId('commitments-panel')).toBeTruthy();
   });
 
   it('falls back to the register on a tab it does not know', async () => {

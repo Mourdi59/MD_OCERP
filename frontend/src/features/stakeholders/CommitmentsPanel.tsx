@@ -3,9 +3,9 @@
 //
 // The commitments register: every promise the project made to a stakeholder,
 // who delivers it, by when, and where it stands. Each row offers the moves its
-// state allows. Whether the reader may make a move is the server's call
-// (agreeing and withdrawing belong to the deciding role), so a refused move
-// shows the server's reason in the dialog.
+// state allows. Whether the reader may make a move is the server's call: each
+// commitment carries a flag per move, and a move that is off stays visible
+// with the server's reason next to it.
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import type { Commitment, CommitmentStatus, CommitmentTarget, EngagementEvent, Stakeholder } from './api';
 import { CommitmentDialog, TransitionDialog } from './CommitmentDialog';
 import { COMMITMENT_TONE, GatedButton, ToneBadge } from './StakeholderBits';
-import { COMMITMENT_ACTION, COMMITMENT_CATEGORY, COMMITMENT_STATUS, WRITE_NOTE, vocab } from './labels';
+import { COMMITMENT_ACTION, COMMITMENT_BLOCK, COMMITMENT_CATEGORY, COMMITMENT_STATUS, WRITE_NOTE, vocab } from './labels';
 import { COMMITMENT_MOVES } from './rules';
 import { namesOf, type Screen } from './screen';
 
@@ -175,7 +175,11 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events }: 
         </p>
       ) : (
         <ul className="space-y-2" data-testid="commitment-list">
-          {shown.map((c) => (
+          {shown.map((c) => {
+            // The moves this state has. One the server rules out as a transition is not offered at all.
+            const moves = COMMITMENT_MOVES[c.status].filter((m) => c.can[m].allowed || c.can[m].reason !== 'invalid_transition');
+            const blocked = moves.filter((m) => !c.can[m].allowed && c.can[m].reason);
+            return (
             <li key={c.id} className="rounded-lg border border-border-light p-3" data-testid="commitment-entry" data-status={c.status}>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-content-tertiary">{c.code}</span>
@@ -238,35 +242,52 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events }: 
                   })}
                 </p>
               ) : (
-                can && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="commitment-moves">
-                    {COMMITMENT_MOVES[c.status].map((target, i) => (
-                      <Button
-                        key={target}
-                        size="sm"
-                        variant={i === 0 ? 'secondary' : 'ghost'}
-                        onClick={() => setDialog({ kind: 'move', commitment: c, target })}
-                        data-testid={`commitment-move-${target}`}
-                      >
-                        {vocab(t, COMMITMENT_ACTION, target)}
-                      </Button>
-                    ))}
-                    {COMMITMENT_MOVES[c.status].length > 0 && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        icon={<Pencil size={13} />}
-                        onClick={() => setDialog({ kind: 'edit', commitment: c })}
-                        data-testid="commitment-edit"
-                      >
-                        {t('stakeholders.ui.edit', { defaultValue: 'Edit' })}
-                      </Button>
+                moves.length > 0 && (
+                  <>
+                    <div className="mt-2 flex flex-wrap items-center gap-2" data-testid="commitment-moves">
+                      {moves.map((target, i) => (
+                        <Button
+                          key={target}
+                          size="sm"
+                          variant={i === 0 ? 'secondary' : 'ghost'}
+                          disabled={!c.can[target].allowed}
+                          onClick={() => setDialog({ kind: 'move', commitment: c, target })}
+                          data-testid={`commitment-move-${target}`}
+                        >
+                          {vocab(t, COMMITMENT_ACTION, target)}
+                        </Button>
+                      ))}
+                      {c.can.edit.allowed && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          icon={<Pencil size={13} />}
+                          onClick={() => setDialog({ kind: 'edit', commitment: c })}
+                          data-testid="commitment-edit"
+                        >
+                          {t('stakeholders.ui.edit', { defaultValue: 'Edit' })}
+                        </Button>
+                      )}
+                    </div>
+                    {blocked.length > 0 && (
+                      <ul className="mt-1 space-y-0.5 text-2xs text-content-tertiary" data-testid="commitment-blocked">
+                        {blocked.map((target) => (
+                          <li key={target} data-move={target} data-reason={c.can[target].reason ?? undefined}>
+                            {t('stakeholders.ui.commitment.blocked_line', {
+                              defaultValue: '{{action}}: {{reason}}',
+                              action: vocab(t, COMMITMENT_ACTION, target),
+                              reason: vocab(t, COMMITMENT_BLOCK, c.can[target].reason),
+                            })}
+                          </li>
+                        ))}
+                      </ul>
                     )}
-                  </div>
+                  </>
                 )
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
       {dialogs}

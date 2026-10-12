@@ -122,6 +122,23 @@ export const DECIDER_FLAG: Record<string, KeyText> = {
   ],
 };
 
+/** Why the server will not let the reader make a move on a commitment. */
+export const COMMITMENT_BLOCK: Record<string, KeyText> = {
+  no_permission: ['stakeholders.ui.block.no_permission', 'Your role can view commitments but not change them.'],
+  approval_pending: ['stakeholders.ui.block.approval_pending', 'An approval is still running for this commitment.'],
+  owner_and_due_required: ['stakeholders.ui.block.owner_and_due_required', 'Set an owner and a due date first.'],
+  owner_cannot_verify: [
+    'stakeholders.ui.block.owner_cannot_verify',
+    'The owner of a commitment cannot verify it. Someone else has to.',
+  ],
+  mandate_missing: [
+    'stakeholders.ui.block.mandate_missing',
+    'The mandate matrix names nobody who decides commitments to stakeholders.',
+  ],
+  body_inquorate: ['stakeholders.ui.block.body_inquorate', 'The deciding body has too few valid members to decide.'],
+  not_decider: ['stakeholders.ui.block.not_decider', 'Only whoever decides commitments to stakeholders can do this.'],
+};
+
 /** Notes a write on the organisation or a commitment may come back with. */
 export const WRITE_NOTE: Record<string, KeyText> = {
   frame_document_binding: [
@@ -154,6 +171,7 @@ export const ALL_KEY_MAPS: Record<string, Record<string, KeyText>> = {
   LETTER,
   QUORUM,
   DECIDER_FLAG,
+  COMMITMENT_BLOCK,
   WRITE_NOTE,
 };
 

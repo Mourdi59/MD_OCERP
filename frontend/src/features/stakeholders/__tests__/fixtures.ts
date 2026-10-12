@@ -7,6 +7,7 @@
 import type {
   AnalysisMethod,
   Commitment,
+  CommitmentCan,
   DueOccurrence,
   EngagementEvent,
   Framework,
@@ -178,6 +179,33 @@ export function stakeholder(over: Partial<Stakeholder> = {}): Stakeholder {
   };
 }
 
+const yes = { allowed: true, reason: null };
+const no = (reason: string) => ({ allowed: false, reason });
+
+/** What the server allows on a commitment in `status` for someone who may edit and decides commitments. */
+export function canOf(status: Commitment['status'], over: Partial<CommitmentCan> = {}): CommitmentCan {
+  const moves: Record<Commitment['status'], string[]> = {
+    proposed: ['agreed', 'withdrawn'],
+    agreed: ['in_progress', 'fulfilled', 'withdrawn', 'breached'],
+    in_progress: ['fulfilled', 'withdrawn', 'breached'],
+    fulfilled: ['verified', 'breached'],
+    breached: ['fulfilled', 'withdrawn'],
+    verified: [],
+    withdrawn: [],
+  };
+  const flag = (target: string) => (moves[status].includes(target) ? yes : no('invalid_transition'));
+  return {
+    agreed: flag('agreed'),
+    in_progress: flag('in_progress'),
+    fulfilled: flag('fulfilled'),
+    verified: flag('verified'),
+    withdrawn: flag('withdrawn'),
+    breached: flag('breached'),
+    edit: moves[status].length > 0 ? yes : no('invalid_transition'),
+    ...over,
+  };
+}
+
 export function commitment(over: Partial<Commitment> = {}): Commitment {
   return {
     id: 'c1',
@@ -202,6 +230,7 @@ export function commitment(over: Partial<Commitment> = {}): Commitment {
     breach_rationale: '',
     communicated_back_at: null,
     loop_not_required_rationale: '',
+    can: canOf(over.status ?? 'proposed'),
     ...over,
   };
 }

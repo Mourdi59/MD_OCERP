@@ -1441,6 +1441,7 @@ export default function App() {
         <Route path="/projects/:projectId/site-supervision" element={<P title="Site Supervision"><SiteSupervisionPage /></P>} />
         <Route path="/site-supervision" element={<P title="Site Supervision"><SiteSupervisionPage /></P>} />
         <Route path="/projects/:projectId/stakeholders" element={<P title="Stakeholders"><StakeholdersPage /></P>} />
+        <Route path="/projects/:projectId/stakeholders/:section" element={<P title="Stakeholders"><StakeholdersPage /></P>} />
         <Route path="/projects/:projectId/cde" element={<P title="CDE"><CDEPage /></P>} />
         <Route path="/cde" element={<P title="CDE"><CDEPage /></P>} />
         <Route path="/projects/:projectId/transmittals" element={<P title="Transmittals"><TransmittalsPage /></P>} />
