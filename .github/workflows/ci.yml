@@ -511,6 +511,24 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=12288
         run: npm run build
 
+      - name: Upload the built bundle
+        # The bundle this job has just built, kept for a week so a smoke run or
+        # a wheel size check can take it instead of building again on a machine
+        # that has no room for a build. One runner is enough: the output does
+        # not depend on the OS, and ubuntu is the runner the wheel is built on.
+        # It sits before the tests so a red test run still leaves the bundle
+        # behind. The path is relative to the workspace, not to the job's
+        # working directory. Vite emits no source maps and reads no secrets, and
+        # the same files ship in the public wheel. Fetch with
+        # `gh run download <run id> -n frontend-dist -D frontend/dist`.
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+          if-no-files-found: error
+
       - name: Run tests
         # Two steps rather than one because of the Build step above. The
         # tests under frontend/tests/pwa read the build output, and they now
