@@ -153,6 +153,7 @@ export const EN = {
   'siteplan.image_empty':
     'No image among the project documents yet. Upload the site plan as an image under Documents, then choose it here.',
   'siteplan.image_failed': 'The plan image could not be loaded.',
+  'siteplan.image_formats': 'Only image files are listed. Export a plan kept as PDF to PNG or JPG and upload that.',
   'siteplan.scale_missing':
     'This plan has no scale yet, so the drawing does not match it. Set the scale before drawing.',
   'siteplan.scale_set': 'Set the scale',

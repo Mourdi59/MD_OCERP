@@ -133,6 +133,11 @@ export function PlanImageBar({
           </Button>
         )}
       </div>
+      {!readOnly && (
+        <p className="text-xs text-content-tertiary" data-testid="siteplan-image-formats">
+          {tx(t, 'siteplan.image_formats')}
+        </p>
+      )}
       {images.isSuccess && choices.length === 0 && !stage.plan_document_id && (
         <p className="text-xs text-content-tertiary" data-testid="siteplan-image-empty">
           {tx(t, 'siteplan.image_empty')}
