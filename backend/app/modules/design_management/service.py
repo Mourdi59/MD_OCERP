@@ -396,17 +396,19 @@ class DesignService:
         """Rules 1-3 over the stored tree, for writes made outside this module (``core/wbs_rules``).
 
         Settings come from the project's setup, else from ``settings_project_id``
-        (a copy's source). With no setup on either, only the rules that hold for
-        every project apply: unique codes and no open child under a closed node.
-        Hierarchical codes are a design setting and are not imposed on a project
-        that never chose them.
+        (a copy's source). With no setup on either the project does not use
+        design management and keeps exactly the behaviour it had: nothing is
+        checked, so existing data can still be copied and restored as it is.
         """
         setup = await self.get_setup(project_id)
         if setup is None and settings_project_id is not None:
             setup = await self.get_setup(settings_project_id)
-        hierarchical, sep = (setup.hierarchical_codes, setup.wbs_separator) if setup else (False, ".")
+        if setup is None:
+            return []
         rows = await self.wbs_rows(project_id)
-        return wr.tree_errors([self._node(r) for r in rows], hierarchical=hierarchical, separator=sep)
+        return wr.tree_errors(
+            [self._node(r) for r in rows], hierarchical=setup.hierarchical_codes, separator=setup.wbs_separator
+        )
 
     async def wbs_tree(self, project_id: uuid.UUID) -> dict[str, Any]:
         rows = await self.wbs_rows(project_id)

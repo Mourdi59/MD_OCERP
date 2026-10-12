@@ -1957,7 +1957,10 @@ class ProjectService:
         ) -> list[ProjectWBS]:
             result: list[ProjectWBS] = []
             for node_data in nodes:
+                # The id is assigned here, not left to the column default: that default
+                # only fires at flush, and the children below need it as their parent_id now.
                 wbs_node = ProjectWBS(
+                    id=uuid.uuid4(),
                     project_id=project.id,
                     parent_id=parent_id,
                     code=node_data.code,
