@@ -119,7 +119,16 @@ export function ProofsPanel(props: PanelProps) {
 
   const toolbar = (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <ExportButtons projectId={projectId} what="proofs" />
+      <ExportButtons
+        projectId={projectId}
+        what="proofs"
+        label={t('qualityConcept.export.proof_list', { defaultValue: 'Proof list' })}
+      />
+      <ExportButtons
+        projectId={projectId}
+        what="proof_matrix"
+        label={t('qualityConcept.export.proof_matrix', { defaultValue: 'Proof matrix' })}
+      />
       <Button variant="secondary" icon={<Plus size={14} />} disabled={!editable} onClick={() => setEditing('new')} data-testid="proof-add">
         {t('qualityConcept.proofs.add', { defaultValue: 'Add proof' })}
       </Button>

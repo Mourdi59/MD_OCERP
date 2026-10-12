@@ -12,7 +12,8 @@ import { getErrorMessage } from '@/shared/lib/api';
 
 import { downloadExport, type ExportWhat } from './api';
 
-export function ExportButtons({ projectId, what }: { projectId: string; what: ExportWhat }) {
+/** The two download formats of one export. `label` names the export when a screen offers more than one. */
+export function ExportButtons({ projectId, what, label }: { projectId: string; what: ExportWhat; label?: string }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState<'pdf' | 'xlsx' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +25,8 @@ export function ExportButtons({ projectId, what }: { projectId: string; what: Ex
       .finally(() => setBusy(null));
   };
   return (
-    <span className="inline-flex flex-wrap items-center gap-1" data-testid="export-buttons">
+    <span className="inline-flex flex-wrap items-center gap-1" data-testid="export-buttons" data-export={what}>
+      {label && <span className="text-xs text-content-secondary">{label}</span>}
       <Button variant="ghost" size="sm" icon={<Download size={14} />} loading={busy === 'xlsx'} onClick={() => run('xlsx')}>
         {t('qualityConcept.export.xlsx', { defaultValue: 'Spreadsheet' })}
       </Button>

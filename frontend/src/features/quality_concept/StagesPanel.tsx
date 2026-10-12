@@ -221,7 +221,16 @@ export function StagesPanel(props: PanelProps) {
         })}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <ExportButtons projectId={projectId} what="stages" />
+            <ExportButtons
+              projectId={projectId}
+              what="stages"
+              label={t('qualityConcept.export.stage_list', { defaultValue: 'Stage list' })}
+            />
+            <ExportButtons
+              projectId={projectId}
+              what="stage_matrix"
+              label={t('qualityConcept.export.stage_matrix', { defaultValue: 'Stage matrix' })}
+            />
             <Button size="sm" variant="secondary" icon={<RefreshCw size={14} />} loading={write.pending} onClick={() => write.send(() => syncStageProgress(projectId))} data-testid="stages-sync">
               {t('qualityConcept.stages.sync', { defaultValue: 'Update from commissioning' })}
             </Button>
