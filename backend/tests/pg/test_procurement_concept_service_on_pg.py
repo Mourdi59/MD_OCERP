@@ -1,14 +1,16 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Procurement concept service on PostgreSQL: approval, binding, execution, read-back, frameworks, shortlist, schedule.
+"""Procurement concept service on PostgreSQL: gate approval, binding, execution, read-back, frameworks, shortlist.
 
-Each test is a SPEC rule with the case that would pass if the rule were missing.
+Each test is a SPEC rule or a review finding with the case that would pass if
+the rule were missing.
 """
 
 from __future__ import annotations
 
 import asyncio
 import uuid
+from contextlib import contextmanager
 from datetime import date
 
 import pytest
@@ -19,25 +21,38 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.procurement_concept import plan_source as plan
 from app.modules.procurement_concept.errors import ProcurementError
-from app.modules.procurement_concept.events import handle_read_back
-from app.modules.procurement_concept.models import AwardPackage
+from app.modules.procurement_concept.events import handle_frame_document, handle_read_back
+from app.modules.procurement_concept.hosting import ProcurementHosting
+from app.modules.procurement_concept.models import AwardPackage, ProcurementConcept
 from app.modules.procurement_concept.service import ProcurementConceptService
 from tests._pg import isolated_engine
 from tests.pg.procurement_concept_fixtures import (
+    OTHER_GATE,
+    RELEASE_GATE,
     World,
+    add_condition,
     add_contract_package,
+    add_frame_document,
     add_procurement_area,
+    approve,
+    bind_frame_document,
     build_world,
+    execute,
+    patch_hosting,
     put,
+    set_condition,
     set_delivery_form,
     svc_call,
 )
 
 pytestmark = pytest.mark.asyncio
 
+OPEN_WORKS = {"estimated_value": "900000", "currency": "EUR", "procedure_code": "open"}
+
 
 @pytest_asyncio.fixture
-async def world():
+async def world(monkeypatch: pytest.MonkeyPatch):
+    patch_hosting(monkeypatch)
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         yield await build_world(factory)
@@ -48,137 +63,363 @@ async def _state(w: World, code: str) -> str:
         return (await s.get(AwardPackage, w.packages[code])).state
 
 
-async def _three_lots(w: World, procedure: str) -> None:
-    for code in ("W1", "W2", "W3"):
-        await add_contract_package(w, code, "construction")
-        await put(w, code, {"estimated_value": "2000000", "currency": "EUR", "procedure_code": procedure})
+async def _concept(w: World) -> tuple[ProcurementConcept, str]:
+    async with w.factory() as s:
+        svc = ProcurementConceptService(s)
+        c = await svc.get_concept(w.project_id)
+        return c, await svc.effective_state(c)
 
 
-async def test_public_client_three_lots_above_eu_threshold_force_open_procedure(world: World) -> None:
-    """E2E path (SPEC 8.7): 3 x 2m works lots aggregate to 6m; a direct award blocks approval, open passes."""
-    await _three_lots(world, "direct_award")
-    await svc_call(world, "transition", world.project_id, "in_review", actor_id=world.manager, role="manager")
+async def _submit(w: World, actor: uuid.UUID | None = None, can_manage: bool = True) -> ProcurementConcept:
+    return await svc_call(
+        w, "transition", w.project_id, "in_review", actor_id=actor or w.manager, can_manage=can_manage
+    )
+
+
+@contextmanager
+def _raises(code: str, status: int):
     with pytest.raises(ProcurementError) as exc:
-        await svc_call(world, "transition", world.project_id, "approved", actor_id=world.manager, role="manager")
-    assert exc.value.code == "concept_has_blocking_findings"
-    assert {v["code"] for v in exc.value.violations} == {"lot_splitting_avoids_threshold"}
-    await svc_call(world, "transition", world.project_id, "draft", actor_id=world.manager, role="manager")
+        yield exc
+    assert (exc.value.code, exc.value.status_code) == (code, status)
+
+
+# ── Approval is the governance gate (findings 6, 11) ────────────────────
+
+
+async def test_three_lots_above_the_threshold_keep_the_gate_closed_until_the_procedure_is_open(world: World) -> None:
+    """E2E path (SPEC 8.7): 3 x 2m works lots are 6m together; a direct award is not ready for the gate."""
+    for code in ("W1", "W2", "W3"):
+        await add_contract_package(world, code, "construction")
+        await put(world, code, {"estimated_value": "2000000", "currency": "EUR", "procedure_code": "direct_award"})
+    await _submit(world)
+    ready = await svc_call(world, "readiness", world.project_id)
+    assert (ready["submitted"], ready["ready_for_gate"]) == (True, False)
+    assert ready["blocking"] >= 3
+    await svc_call(world, "transition", world.project_id, "draft", actor_id=world.manager, can_manage=True)
     for code in ("W1", "W2", "W3"):
         await put(world, code, {"procedure_code": "open"})
-    await svc_call(world, "transition", world.project_id, "in_review", actor_id=world.manager, role="manager")
-    concept = await svc_call(world, "transition", world.project_id, "approved", actor_id=world.manager, role="manager")
-    assert concept.state == "approved"
+    await _submit(world)
+    assert (await svc_call(world, "readiness", world.project_id))["ready_for_gate"] is True
+    assert await bind_frame_document(world) is True
+    concept, state = await _concept(world)
+    assert (concept.state, state) == ("approved", "binding")
+
+
+async def test_nobody_can_approve_by_hand(world: World) -> None:
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    await _submit(world)
+    for target in ("approved", "reopened", "binding"):
+        with _raises("invalid_transition", 409):
+            await svc_call(world, "transition", world.project_id, target, actor_id=world.manager, can_manage=True)
+    assert (await _concept(world))[0].state == "in_review"
+
+
+async def test_the_gate_decision_approves_once_and_records_who_decided(world: World) -> None:
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    await add_procurement_area(world, world.area_owner)
+    await _submit(world, world.area_owner, can_manage=False)
+    assert await bind_frame_document(world, by=world.manager) is True
+    concept, _ = await _concept(world)
+    assert (concept.submitted_by, concept.approved_by) == (world.area_owner, world.manager)
+    assert concept.approved_at is not None
+    payload = {"project_id": str(world.project_id), "document_id": str(world.document_id), "status": "binding"}
+    # A repeated event, an event of another document and a non-binding status change nothing.
+    assert await handle_frame_document(payload, session_factory=world.factory) is False
+    assert (
+        await handle_frame_document({**payload, "document_id": str(uuid.uuid4())}, session_factory=world.factory)
+        is False
+    )
+    assert await handle_frame_document({**payload, "status": "submitted"}, session_factory=world.factory) is False
+
+
+async def test_a_binding_document_never_makes_a_draft_concept_binding(world: World) -> None:
+    """Finding 11: a concept nobody submitted is not approved by a document that became binding."""
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    assert await bind_frame_document(world) is False
+    concept, state = await _concept(world)
+    assert (concept.state, state) == ("draft", "draft")
+    assert (await svc_call(world, "readiness", world.project_id))["approved"] is False
+    with _raises("concept_not_approved", 409):
+        await execute(world, "W1")
+    # The frame is already binding: a new concept version needs a change request, not a plain submit.
+    with _raises("binding_requires_change_request", 409):
+        await _submit(world)
+
+
+async def test_a_document_of_another_type_does_not_approve_the_concept(world: World) -> None:
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    other = await add_frame_document(world, status="binding", doc_type="some_other_plan")
+    await _submit(world)
+    payload = {"project_id": str(world.project_id), "document_id": str(other), "status": "binding"}
+    assert await handle_frame_document(payload, session_factory=world.factory) is False
+    assert (await _concept(world))[1] == "in_review"
+
+
+async def test_without_a_frame_document_a_submitted_concept_stays_in_review(world: World) -> None:
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    await _submit(world)
+    assert (await _concept(world))[1] == "in_review"
+    with _raises("concept_not_approved", 409):
+        await execute(world, "W1")
+
+
+async def test_binding_concept_is_changed_only_through_a_change_request(world: World) -> None:
+    from app.modules.project_governance.models import GovernanceChangeRequest
+
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    await approve(world)
+    assert (await _concept(world))[1] == "binding"
+    with _raises("binding_requires_change_request", 409):
+        await put(world, "W1", {"procedure_code": "restricted"})
+    async with world.factory() as s:
+        s.add(
+            GovernanceChangeRequest(
+                project_id=world.project_id,
+                document_id=world.document_id,
+                proposed_revision_id=uuid.uuid4(),
+                status="submitted",
+            )
+        )
+        await s.commit()
+    assert (await _concept(world))[1] == "reopened"
+    row = await put(world, "W1", {"procedure_code": "restricted"})
+    assert row.procedure_code == "restricted"
+    # What the gate reads stays frozen outside the first state, even for a manager.
+    with _raises("gate_fields_frozen", 409):
+        await svc_call(
+            world,
+            "set_concept",
+            world.project_id,
+            {"release_gate_code": OTHER_GATE},
+            actor_id=world.manager,
+            can_manage=True,
+            tenant_id=str(world.manager),
+        )
+
+
+# ── Concept input (findings 1, 2, 11, 15) ───────────────────────────────
+
+
+async def _set(w: World, data: dict, *, actor: uuid.UUID | None = None, can_manage: bool = True):
+    return await svc_call(
+        w,
+        "set_concept",
+        w.project_id,
+        data,
+        actor_id=actor or w.manager,
+        can_manage=can_manage,
+        tenant_id=str(w.manager),
+    )
+
+
+async def test_a_public_client_cannot_sit_on_a_client_type_that_switches_thresholds_off(world: World) -> None:
+    with _raises("public_client_needs_client_type", 422):
+        await _set(world, {"client_type": "private"})
+    with _raises("client_type_not_in_jurisdiction", 422):
+        await _set(world, {"client_type": "ministry"})
+    with _raises("jurisdiction_not_in_catalogue", 422):
+        await _set(world, {"jurisdiction": "uk"})
+    concept, _ = await _concept(world)
+    assert (concept.jurisdiction, concept.client_type, concept.public_client) == ("eu", "sub_central", True)
+    # Declaring the client private is the honest way to no thresholds; the client type follows.
+    private = await _set(world, {"public_client": False})
+    assert private.client_type == "private"
+
+
+async def test_a_planned_start_no_threshold_version_covers_blocks(world: World) -> None:
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", {**OPEN_WORKS, "planned_start": date(2028, 3, 1)})
+    found = [f for f in await svc_call(world, "findings", world.project_id) if f["ref"] == "W1"]
+    gap = next(f for f in found if f["code"] == "threshold_not_available_for_date")
+    assert (gap["severity"], gap["blocks_approval"]) == ("error", True)
+    await put(world, "W1", {"planned_start": date(2026, 12, 1)})
+    codes = {f["code"] for f in await svc_call(world, "findings", world.project_id)}
+    assert "threshold_not_available_for_date" not in codes
+
+
+async def test_the_release_gate_must_be_a_gate_of_the_project_and_needs_the_manage_permission(world: World) -> None:
+    with _raises("release_gate_unknown", 422):
+        await _set(world, {"release_gate_code": "no_such_gate"})
+    await add_procurement_area(world, world.area_owner)
+    with _raises("manage_required", 403):
+        await _set(world, {"release_gate_code": OTHER_GATE}, actor=world.area_owner, can_manage=False)
+    # The area owner still steers everything that is not a gate field.
+    assert (await _set(world, {"vat_rate_pct": "19"}, actor=world.area_owner, can_manage=False)).vat_rate_pct == 19
+    assert (await _set(world, {"release_gate_code": OTHER_GATE})).release_gate_code == OTHER_GATE
+
+
+async def test_an_unknown_or_foreign_catalogue_cannot_be_pinned(world: World) -> None:
+    with _raises("unknown_catalogue", 404):
+        await _set(world, {"catalogue_source": "tenant", "catalogue_id": str(uuid.uuid4())})
+    with _raises("unknown_catalogue", 404):
+        await _set(world, {"catalogue_source": "shipped", "catalogue_id": "eu", "catalogue_version": 99})
+
+
+async def test_a_project_whose_model_tags_no_release_gate_says_so(world: World, monkeypatch) -> None:
+    """Nothing is matched by a familiar code: with no tag and no named gate the release is unknown."""
+    patch_hosting(monkeypatch, ProcurementHosting())
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    found = await svc_call(world, "findings", world.project_id)
+    assert [(f["code"], f["severity"]) for f in found if f["ref"] == "project"] == [
+        ("release_gate_unresolved", "warning")
+    ]
+    await _set(world, {"release_gate_code": RELEASE_GATE})
+    assert "release_gate_unresolved" not in {f["code"] for f in await svc_call(world, "findings", world.project_id)}
+
+
+# ── Plan and steering ───────────────────────────────────────────────────
 
 
 async def test_every_contract_package_needs_an_award_package_before_review(world: World) -> None:
     await add_contract_package(world, "W1", "construction")
     await add_contract_package(world, "PA", "project_agreement")
     with pytest.raises(ProcurementError) as exc:
-        await svc_call(world, "transition", world.project_id, "in_review", actor_id=world.manager, role="manager")
+        await _submit(world)
     assert [v["ref"] for v in exc.value.violations] == ["W1"]
     await put(world, "W1", {"estimated_value": "100000", "currency": "EUR", "procedure_code": "open"})
-    concept = await svc_call(world, "transition", world.project_id, "in_review", actor_id=world.manager, role="manager")
-    assert concept.state == "in_review"
-    with pytest.raises(ProcurementError) as kind:
+    with _raises("package_kind_not_procured", 422):
         await put(world, "PA", {"procedure_code": "open"})
-    assert kind.value.code in ("package_kind_not_procured", "concept_locked")
+    assert (await _submit(world)).state == "in_review"
+    with _raises("concept_locked", 409):
+        await put(world, "W1", {"procedure_code": "restricted"})
+    with _raises("concept_locked", 409):
+        await svc_call(
+            world,
+            "set_package_state",
+            world.project_id,
+            world.packages["W1"],
+            "hold",
+            actor_id=world.manager,
+            can_manage=True,
+        )
 
 
-async def test_editor_without_procurement_ownership_cannot_steer_or_approve(world: World) -> None:
+async def test_an_editor_who_does_not_own_the_procurement_area_cannot_steer(world: World) -> None:
     await add_contract_package(world, "W1", "construction")
-    with pytest.raises(ProcurementError) as exc:
-        await put(world, "W1", {"procedure_code": "open"}, actor=world.editor, role="editor")
-    assert exc.value.status_code == 403
+    with _raises("not_procurement_owner", 403):
+        await put(world, "W1", {"procedure_code": "open"}, actor=world.editor, can_manage=False)
+    # An area with a familiar name but not the tagged code gives nobody rights.
+    await add_procurement_area(world, world.editor, code="m08_procurement")
+    with _raises("not_procurement_owner", 403):
+        await put(world, "W1", {"procedure_code": "open"}, actor=world.editor, can_manage=False)
     await add_procurement_area(world, world.area_owner)
     row = await put(
         world,
         "W1",
         {"estimated_value": "1", "currency": "EUR", "procedure_code": "open"},
         actor=world.area_owner,
-        role="editor",
+        can_manage=False,
     )
     assert row.state == "procedure_set"
-    await svc_call(world, "transition", world.project_id, "in_review", actor_id=world.area_owner, role="editor")
-    with pytest.raises(ProcurementError) as denied:
-        await svc_call(world, "transition", world.project_id, "approved", actor_id=world.editor, role="editor")
-    assert denied.value.status_code == 403
-    ok = await svc_call(world, "transition", world.project_id, "approved", actor_id=world.area_owner, role="editor")
-    assert ok.state == "approved"
+    with _raises("not_procurement_owner", 403):
+        await _submit(world, world.editor, can_manage=False)
+    caps = await svc_call(world, "capabilities", world.project_id, world.editor, False)
+    assert caps["submit"] == {"allowed": False, "reason": "not_procurement_owner"}
+    owner_caps = await svc_call(world, "capabilities", world.project_id, world.area_owner, False)
+    assert owner_caps["submit"] == {"allowed": True, "reason": None}
+    assert owner_caps["set_gate_fields"] == {"allowed": False, "reason": "manage_required"}
+    assert (await _submit(world, world.area_owner, can_manage=False)).state == "in_review"
 
 
-async def test_binding_concept_is_changed_only_through_a_change_request(world: World) -> None:
-    from app.modules.project_governance.models import GovernanceChangeRequest, GovernanceDocument
-
+async def test_an_amount_needs_a_currency(world: World) -> None:
     await add_contract_package(world, "W1", "construction")
-    await put(world, "W1", {"estimated_value": "100000", "currency": "EUR", "procedure_code": "open"})
-    area_id = await add_procurement_area(world, world.area_owner)
+    with _raises("currency_required", 422):
+        await put(world, "W1", {"estimated_value": "100000", "procedure_code": "open"})
+    with _raises("currency_required", 422):
+        await put(world, "W1", {"estimated_value": "100000", "currency": "", "procedure_code": "open"})
     async with world.factory() as s:
-        doc = GovernanceDocument(
-            project_id=world.project_id, area_id=area_id, doc_type="m08_procurement_frame", status="binding"
-        )
-        s.add(doc)
-        await s.commit()
-        doc_id = doc.id
-    async with world.factory() as s:
-        svc = ProcurementConceptService(s)
-        assert await svc.effective_state(await svc.get_concept(world.project_id)) == "binding"
-    with pytest.raises(ProcurementError) as exc:
-        await put(world, "W1", {"procedure_code": "restricted"})
-    assert (exc.value.code, exc.value.status_code) == ("binding_requires_change_request", 409)
-    async with world.factory() as s:
-        s.add(
-            GovernanceChangeRequest(project_id=world.project_id, document_id=doc_id, proposed_revision_id=uuid.uuid4())
-        )
-        await s.commit()
-    row = await put(world, "W1", {"procedure_code": "restricted"})
-    assert row.procedure_code == "restricted"
-
-
-async def test_without_governance_the_concept_tops_out_at_approved(world: World) -> None:
-    await add_contract_package(world, "W1", "construction")
-    await put(world, "W1", {"estimated_value": "100000", "currency": "EUR", "procedure_code": "open"})
-    await svc_call(world, "transition", world.project_id, "in_review", actor_id=world.manager, role="manager")
-    await svc_call(world, "transition", world.project_id, "approved", actor_id=world.manager, role="manager")
-    async with world.factory() as s:
-        svc = ProcurementConceptService(s)
-        assert await svc.effective_state(await svc.get_concept(world.project_id)) == "approved"
+        assert await s.get(AwardPackage, world.packages["W1"]) is None
 
 
 async def test_advance_package_without_reason_is_rejected(world: World) -> None:
     await add_contract_package(world, "S1", "supply")
-    with pytest.raises(ProcurementError) as exc:
+    with _raises("advance_without_reason", 422):
         await put(world, "S1", {"is_advance": True})
-    assert exc.value.code == "advance_without_reason"
+
+
+# ── Execution (findings 5, 12) ──────────────────────────────────────────
+
+
+async def test_execution_needs_an_approved_concept(world: World) -> None:
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    with _raises("concept_not_approved", 409):
+        await execute(world, "W1")
+    await approve(world)
+    assert (await execute(world, "W1"))["kind"] == "bid_package"
+
+
+async def test_only_a_cleared_condition_of_the_release_gate_releases_an_advance_package(world: World) -> None:
+    await add_contract_package(world, "S1", "supply")
+    foreign = await add_condition(world, OTHER_GATE, status="cleared")
+    own = await add_condition(world, RELEASE_GATE, status="open")
+    base = {
+        "estimated_value": "50000",
+        "currency": "EUR",
+        "procedure_code": "request_for_quotation",
+        "is_advance": True,
+        "advance_reason": "Fabrication slot",
+        "advance_release_kind": "condition",
+    }
+    with _raises("advance_release_other_gate", 422):
+        await put(world, "S1", {**base, "advance_release_id": foreign})
+    with _raises("advance_release_not_found", 404):
+        await put(world, "S1", {**base, "advance_release_id": uuid.uuid4()})
+    await put(world, "S1", {**base, "advance_release_id": own})
+    for status in ("open", "overdue", "waived"):
+        await set_condition(world, own, status)
+        codes = {f["code"] for f in await svc_call(world, "findings", world.project_id) if f["ref"] == "S1"}
+        assert "advance_package_not_released" in codes, status
+        with _raises("concept_not_approved", 409):
+            await execute(world, "S1")
+    await set_condition(world, own, "cleared")
+    codes = {f["code"] for f in await svc_call(world, "findings", world.project_id) if f["ref"] == "S1"}
+    assert "advance_package_not_released" not in codes
+    # The concept is still a draft: the released advance package alone may go out.
+    assert (await execute(world, "S1"))["kind"] == "rfq"
+
+
+async def test_a_package_with_an_error_finding_gets_no_execution_vehicle(world: World) -> None:
+    await add_contract_package(world, "W1", "construction")
+    cond = await add_condition(world, RELEASE_GATE, status="cleared")
+    await put(
+        world,
+        "W1",
+        {
+            "estimated_value": "6000000",
+            "currency": "EUR",
+            "procedure_code": "direct_award",
+            "is_advance": True,
+            "advance_reason": "Enabling works",
+            "advance_release_kind": "condition",
+            "advance_release_id": cond,
+        },
+    )
+    with pytest.raises(ProcurementError) as exc:
+        await execute(world, "W1")
+    assert (exc.value.code, exc.value.status_code) == ("package_has_blocking_findings", 422)
+    assert "procedure_not_allowed_above_threshold" in {v["code"] for v in exc.value.violations}
+    await put(world, "W1", {"procedure_code": "open"})
+    assert (await execute(world, "W1"))["kind"] == "bid_package"
 
 
 async def test_execution_creates_exactly_one_bid_package_and_reads_back_idempotently(world: World) -> None:
     from app.modules.bid_management.models import BidPackage
 
     await add_contract_package(world, "W1", "construction")
-    await put(world, "W1", {"estimated_value": "900000", "currency": "EUR", "procedure_code": "open"})
-    out = await svc_call(
-        world,
-        "create_execution",
-        world.project_id,
-        world.packages["W1"],
-        vehicle=None,
-        submission_deadline=None,
-        actor_id=world.manager,
-        role="manager",
-    )
+    await put(world, "W1", OPEN_WORKS)
+    await approve(world)
+    out = await execute(world, "W1")
     assert out["kind"] == "bid_package"
-    with pytest.raises(ProcurementError) as again:
-        await svc_call(
-            world,
-            "create_execution",
-            world.project_id,
-            world.packages["W1"],
-            vehicle=None,
-            submission_deadline=None,
-            actor_id=world.manager,
-            role="manager",
-        )
-    assert again.value.code == "execution_exists"
+    with _raises("execution_exists", 409):
+        await execute(world, "W1")
     async with world.factory() as s:
         n = (
             await s.execute(
@@ -186,25 +427,15 @@ async def test_execution_creates_exactly_one_bid_package_and_reads_back_idempote
             )
         ).scalar_one()
     assert n == 1
-    bp = uuid.UUID(out["id"])
-    assert (
-        await handle_read_back(
-            "bid_management.package.published", {"package_id": str(bp)}, session_factory=world.factory
+    event = {"package_id": out["id"]}
+    for _ in range(2):
+        assert (
+            await handle_read_back("bid_management.package.published", event, session_factory=world.factory)
+            == "in_tender"
         )
-        == "in_tender"
-    )
-    assert (
-        await handle_read_back(
-            "bid_management.package.published", {"package_id": str(bp)}, session_factory=world.factory
-        )
-        == "in_tender"
-    )
-    assert (
-        await handle_read_back("bid_management.package.awarded", {"package_id": str(bp)}, session_factory=world.factory)
-        == "awarded"
-    )
+    assert await handle_read_back("bid_management.package.awarded", event, session_factory=world.factory) == "awarded"
     # A late publish never moves an awarded package back.
-    await handle_read_back("bid_management.package.published", {"package_id": str(bp)}, session_factory=world.factory)
+    await handle_read_back("bid_management.package.published", event, session_factory=world.factory)
     assert await _state(world, "W1") == "awarded"
 
 
@@ -214,16 +445,8 @@ async def test_supply_package_creates_an_rfq_never_a_bid_package(world: World) -
 
     await add_contract_package(world, "S1", "supply")
     await put(world, "S1", {"estimated_value": "50000", "currency": "EUR", "procedure_code": "request_for_quotation"})
-    out = await svc_call(
-        world,
-        "create_execution",
-        world.project_id,
-        world.packages["S1"],
-        vehicle=None,
-        submission_deadline=None,
-        actor_id=world.manager,
-        role="manager",
-    )
+    await approve(world)
+    out = await execute(world, "S1")
     assert out["kind"] == "rfq"
     async with world.factory() as s:
         rfqs = (
@@ -247,20 +470,12 @@ async def test_concurrent_execution_creation_ends_with_one_link(world: World) ->
     from app.modules.bid_management.models import BidPackage
 
     await add_contract_package(world, "W1", "construction")
-    await put(world, "W1", {"estimated_value": "900000", "currency": "EUR", "procedure_code": "open"})
+    await put(world, "W1", OPEN_WORKS)
+    await approve(world)
 
     async def create() -> str:
         try:
-            await svc_call(
-                world,
-                "create_execution",
-                world.project_id,
-                world.packages["W1"],
-                vehicle=None,
-                submission_deadline=None,
-                actor_id=world.manager,
-                role="manager",
-            )
+            await execute(world, "W1")
             return "ok"
         except ProcurementError as exc:
             return exc.code
@@ -276,128 +491,317 @@ async def test_concurrent_execution_creation_ends_with_one_link(world: World) ->
     assert n == 1
 
 
-async def test_framework_call_off_ledger_and_exhaustion(world: World) -> None:
-    tenant = str(world.manager)
+async def test_an_existing_tender_package_of_the_project_can_be_linked_once(world: World) -> None:
+    from app.modules.tendering.models import TenderPackage
+
+    other = await build_world(world.factory, concept=False)
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
     async with world.factory() as s:
+        own = TenderPackage(project_id=world.project_id, name="Own tender")
+        foreign = TenderPackage(project_id=other.project_id, name="Foreign tender")
+        s.add_all([own, foreign])
+        await s.commit()
+
+    async def link(tender_id: uuid.UUID) -> dict:
+        return await svc_call(
+            world,
+            "link_tender_package",
+            world.project_id,
+            world.packages["W1"],
+            tender_id,
+            actor_id=world.manager,
+            can_manage=True,
+        )
+
+    with _raises("tender_package_not_found", 404):
+        await link(foreign.id)
+    with _raises("concept_not_approved", 409):
+        await link(own.id)
+    await approve(world)
+    assert (await link(own.id))["kind"] == plan.LINK_TENDER_PACKAGE
+    with _raises("execution_exists", 409):
+        await execute(world, "W1")
+
+
+# ── Frameworks (findings 7, 19) ─────────────────────────────────────────
+
+
+async def _framework(w: World, code: str, *, max_value: str = "500000", currency: str = "EUR", tenant=None):
+    tenant = tenant or str(w.manager)
+    async with w.factory() as s:
         svc = ProcurementConceptService(s)
         fw = await svc.create_framework(
             tenant,
             {
-                "code": "FW-1",
+                "code": code,
                 "title": "Rebar",
                 "package_kinds": ["supply"],
                 "lots": [],
-                "max_value": "500000",
-                "currency": "EUR",
+                "max_value": max_value,
+                "currency": currency,
                 "start_date": date(2026, 1, 1),
                 "end_date": date(2028, 12, 31),
             },
-            actor_id=world.manager,
+            actor_id=w.manager,
         )
-        await svc.transition_framework(tenant, fw.id, "active", actor_id=world.manager)
+        await svc.transition_framework(tenant, fw.id, "active", actor_id=w.manager)
         await s.commit()
+        return fw
+
+
+def _call_off(fw, value: str = "300000", currency: str = "EUR") -> dict:
+    return {
+        "estimated_value": value,
+        "currency": currency,
+        "procedure_code": "framework_call_off",
+        "framework_agreement_id": fw.id,
+    }
+
+
+async def test_framework_call_off_ledger_and_exhaustion(world: World) -> None:
+    tenant = str(world.manager)
+    fw = await _framework(world, "FW-1")
     await add_contract_package(world, "S1", "supply")
     await add_contract_package(world, "S2", "supply")
-    await put(
-        world,
-        "S1",
-        {
-            "estimated_value": "300000",
-            "currency": "EUR",
-            "procedure_code": "framework_call_off",
-            "framework_agreement_id": fw.id,
-        },
-    )
-    with pytest.raises(ProcurementError) as exc:
-        await put(
-            world,
-            "S2",
-            {
-                "estimated_value": "300000",
-                "currency": "EUR",
-                "procedure_code": "framework_call_off",
-                "framework_agreement_id": fw.id,
-            },
-        )
-    assert exc.value.code == "framework_exhausted"
+    await put(world, "S1", _call_off(fw))
+    with _raises("framework_exhausted", 422):
+        await put(world, "S2", _call_off(fw))
     ledger = await svc_call(world, "ledger", tenant, fw.id)
-    assert (ledger["call_off_value"], ledger["remaining_value"]) == ("300000.00", "200000.00")
+    assert (ledger["call_off_value"], ledger["remaining_value"], ledger["remaining_known"]) == (
+        "300000.00",
+        "200000.00",
+        True,
+    )
     # Another company cannot see or call off this framework.
-    with pytest.raises(ProcurementError) as other:
+    with _raises("framework_not_found", 404):
         await svc_call(world, "ledger", str(uuid.uuid4()), fw.id)
-    assert other.value.status_code == 404
+
+
+async def test_a_framework_in_another_currency_cannot_be_called_off(world: World) -> None:
+    fw = await _framework(world, "FW-USD", currency="USD")
+    await add_contract_package(world, "S1", "supply")
+    with _raises("framework_currency_mismatch", 422):
+        await put(world, "S1", _call_off(fw, "100"))
+    async with world.factory() as s:
+        assert await s.get(AwardPackage, world.packages["S1"]) is None
+
+
+async def test_a_project_member_calls_off_the_framework_of_the_projects_company(world: World) -> None:
+    """Finding 19: the tenant is the user on shipped installs; the framework belongs to the project's company."""
+    fw = await _framework(world, "FW-1")
+    await add_procurement_area(world, world.area_owner)
+    await add_contract_package(world, "S1", "supply")
+    async with world.factory() as s:
+        row = await ProcurementConceptService(s).put_package(
+            world.project_id,
+            world.packages["S1"],
+            _call_off(fw),
+            actor_id=world.area_owner,
+            can_manage=False,
+            tenant_id=str(world.area_owner),
+        )
+        await s.commit()
+    assert row.framework_agreement_id == fw.id
+    listed = await svc_call(world, "project_frameworks", world.project_id, str(world.area_owner))
+    assert [f.id for f in listed] == [fw.id]
+    # Their own company list stays empty, and so does a stranger's view of the project list.
+    assert await svc_call(world, "list_frameworks", str(world.area_owner)) == []
+
+
+async def test_a_purchase_order_of_another_company_does_not_consume_the_framework(world: World) -> None:
+    from app.modules.procurement.models import PurchaseOrder
+
+    other = await build_world(world.factory, concept=False)
+    fw = await _framework(world, "FW-1")
+    meta = {"framework_agreement_id": str(fw.id)}
+    async with world.factory() as s:
+        s.add(
+            PurchaseOrder(
+                project_id=other.project_id,
+                po_number="PO-FOREIGN",
+                amount_subtotal="450000",
+                currency_code="EUR",
+                metadata_=meta,
+            )
+        )
+        s.add(
+            PurchaseOrder(
+                project_id=world.project_id,
+                po_number="PO-OWN",
+                amount_subtotal="120000",
+                currency_code="EUR",
+                metadata_=meta,
+            )
+        )
+        await s.commit()
+    ledger = await svc_call(world, "ledger", str(world.manager), fw.id)
+    assert [(e["kind"], e["amount"]) for e in ledger["items"]] == [("purchase_order", "120000")]
+    assert ledger["remaining_value"] == "380000.00"
+
+
+async def test_a_ledger_entry_in_another_currency_makes_the_remainder_unknown(world: World) -> None:
+    from app.modules.procurement.models import PurchaseOrder
+
+    fw = await _framework(world, "FW-1")
+    async with world.factory() as s:
+        s.add(
+            PurchaseOrder(
+                project_id=world.project_id,
+                po_number="PO-USD",
+                amount_subtotal="10",
+                currency_code="USD",
+                metadata_={"framework_agreement_id": str(fw.id)},
+            )
+        )
+        await s.commit()
+    ledger = await svc_call(world, "ledger", str(world.manager), fw.id)
+    assert (ledger["remaining_value"], ledger["remaining_known"], ledger["unconverted_entries"]) == (None, False, 1)
+    await add_contract_package(world, "S1", "supply")
+    with _raises("framework_remaining_unknown", 422):
+        await put(world, "S1", _call_off(fw, "100"))
+
+
+async def test_framework_changes_keep_its_ledger_consistent(world: World) -> None:
+    tenant = str(world.manager)
+    fw = await _framework(world, "FW-1")
+    await add_contract_package(world, "S1", "supply")
+    await put(world, "S1", _call_off(fw))
+    with _raises("framework_max_below_call_off", 422):
+        await svc_call(world, "patch_framework", tenant, fw.id, {"max_value": "299999"}, actor_id=world.manager)
+    with _raises("framework_dates_inverted", 422):
+        await svc_call(world, "patch_framework", tenant, fw.id, {"end_date": date(2025, 1, 1)}, actor_id=world.manager)
+    ok = await svc_call(world, "patch_framework", tenant, fw.id, {"max_value": "300000"}, actor_id=world.manager)
+    assert ok.max_value == 300000
+
+
+# ── Prequalification (finding 13) ───────────────────────────────────────
+
+
+async def _subs(w: World, n: int) -> list:
+    from app.modules.subcontractors.models import Subcontractor
+
+    async with w.factory() as s:
+        subs = [Subcontractor(legal_name=f"Trade contractor {uuid.uuid4().hex[:6]}") for _ in range(n)]
+        s.add_all(subs)
+        await s.commit()
+    return subs
+
+
+async def _add(w: World, code: str, data: dict, *, actor: uuid.UUID | None = None, can_manage: bool = True):
+    return await svc_call(
+        w, "add_candidate", w.project_id, w.packages[code], data, actor_id=actor or w.manager, can_manage=can_manage
+    )
 
 
 async def test_shortlist_needs_min_bidders_and_rationale_for_exclusions(world: World) -> None:
-    from app.modules.subcontractors.models import Subcontractor
-
     await add_contract_package(world, "W1", "construction")
-    await put(world, "W1", {"estimated_value": "900000", "currency": "EUR", "procedure_code": "competitive_negotiated"})
-    async with world.factory() as s:
-        subs = [Subcontractor(legal_name=f"Trade contractor {i}") for i in range(4)]
-        s.add_all(subs)
-        await s.commit()
+    await put(world, "W1", {**OPEN_WORKS, "procedure_code": "competitive_negotiated"})
+    subs = await _subs(world, 4)
     pkg = world.packages["W1"]
     for sub in subs[:2]:
-        await svc_call(
-            world,
-            "add_candidate",
-            world.project_id,
-            pkg,
-            {"subcontractor_id": sub.id, "list": "short"},
-            actor_id=world.manager,
-        )
+        await _add(world, "W1", {"subcontractor_id": sub.id, "list": "short"})
     with pytest.raises(ProcurementError) as exc:
-        await svc_call(world, "confirm_shortlist", world.project_id, pkg, actor_id=world.manager, role="manager")
+        await svc_call(world, "confirm_shortlist", world.project_id, pkg, actor_id=world.manager, can_manage=True)
     assert "shortlist_below_min_bidders" in {v["code"] for v in exc.value.violations}
-    with pytest.raises(ProcurementError) as no_reason:
-        await svc_call(
-            world,
-            "add_candidate",
-            world.project_id,
-            pkg,
-            {"subcontractor_id": subs[3].id, "list": "excluded"},
-            actor_id=world.manager,
-        )
-    assert no_reason.value.code == "excluded_candidate_without_rationale"
-    await svc_call(
-        world,
-        "add_candidate",
-        world.project_id,
-        pkg,
-        {"subcontractor_id": subs[2].id, "list": "short"},
-        actor_id=world.manager,
-    )
-    row = await svc_call(world, "confirm_shortlist", world.project_id, pkg, actor_id=world.manager, role="manager")
+    with _raises("excluded_candidate_without_rationale", 422):
+        await _add(world, "W1", {"subcontractor_id": subs[3].id, "list": "excluded"})
+    await _add(world, "W1", {"subcontractor_id": subs[2].id, "list": "short"})
+    row = await svc_call(world, "confirm_shortlist", world.project_id, pkg, actor_id=world.manager, can_manage=True)
     assert row.state == "shortlisted"
+    # The short list was confirmed for a minimum of three; another procedure has another minimum.
+    changed = await put(world, "W1", {"procedure_code": "restricted"})
+    assert changed.state == "procedure_set"
+
+
+async def test_list_changes_and_deletes_need_steering_rights(world: World) -> None:
+    from app.modules.procurement_concept.models import BidderCandidate
+
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    subs = await _subs(world, 2)
+    editor = {"actor": world.editor, "can_manage": False}
+    cand = await _add(world, "W1", {"subcontractor_id": subs[0].id, "list": "long"}, **editor)
+    with _raises("not_procurement_owner", 403):
+        await _add(world, "W1", {"subcontractor_id": subs[1].id, "list": "short"}, **editor)
+    for change in ({"list": "short"}, {"list": "excluded", "decision_rationale": "No capacity"}):
+        with _raises("not_procurement_owner", 403):
+            await svc_call(
+                world, "patch_candidate", world.project_id, cand.id, change, actor_id=world.editor, can_manage=False
+            )
+    with _raises("not_procurement_owner", 403):
+        await svc_call(world, "delete_candidate", world.project_id, cand.id, actor_id=world.editor, can_manage=False)
+    # Data entry stays open to the editor.
+    noted = await svc_call(
+        world,
+        "patch_candidate",
+        world.project_id,
+        cand.id,
+        {"conflict_note": "None declared"},
+        actor_id=world.editor,
+        can_manage=False,
+    )
+    assert noted.conflict_note == "None declared"
+    async with world.factory() as s:
+        assert (await s.get(BidderCandidate, cand.id)).list_kind == "long"
+    moved = await svc_call(
+        world, "patch_candidate", world.project_id, cand.id, {"list": "short"}, actor_id=world.manager, can_manage=True
+    )
+    assert moved.list_kind == "short"
+
+
+async def test_a_profile_in_use_cannot_be_deleted_and_a_criterion_is_scored_once(world: World) -> None:
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    profile = await svc_call(
+        world,
+        "save_profile",
+        world.project_id,
+        {"name": "Works", "criteria": [{"code": "similar_projects", "weight": "100"}], "pass_mark": "50"},
+        actor_id=world.manager,
+        can_manage=True,
+    )
+    await put(world, "W1", {"prequal_profile_id": profile.id})
+    with _raises("profile_in_use", 409):
+        await svc_call(world, "delete_profile", world.project_id, profile.id, actor_id=world.manager, can_manage=True)
+    (sub,) = await _subs(world, 1)
+    cand = await _add(world, "W1", {"subcontractor_id": sub.id, "list": "long"})
+    score = {"criterion_code": "similar_projects", "score": "70"}
+    with _raises("criterion_scored_twice", 422):
+        await svc_call(world, "put_scores", world.project_id, cand.id, [score, score], actor_id=world.manager)
+    await put(world, "W1", {"prequal_profile_id": None})
+    await svc_call(world, "delete_profile", world.project_id, profile.id, actor_id=world.manager, can_manage=True)
+
+
+# ── Schedule and consistency ────────────────────────────────────────────
 
 
 async def test_schedule_proposal_is_written_only_on_confirm_and_idempotently(world: World) -> None:
     from app.modules.schedule.models import Activity, Schedule
 
     await add_contract_package(world, "W1", "construction")
-    await put(
-        world,
-        "W1",
-        {"estimated_value": "900000", "currency": "EUR", "procedure_code": "open", "need_date": date(2027, 6, 30)},
-    )
+    await put(world, "W1", {**OPEN_WORKS, "need_date": date(2027, 6, 30)})
     view = await svc_call(world, "schedule_view", world.project_id, today=date(2026, 10, 11))
     assert view["items"][0]["proposed_award_date"] == "2027-06-30"
     assert view["items"][0]["proposed_start_date"] == "2027-03-07"
-    with pytest.raises(ProcurementError) as no_schedule:
-        await svc_call(
-            world, "confirm_schedule", world.project_id, [world.packages["W1"]], actor_id=world.manager, role="manager"
+
+    async def confirm():
+        return await svc_call(
+            world,
+            "confirm_schedule",
+            world.project_id,
+            [world.packages["W1"]],
+            actor_id=world.manager,
+            can_manage=True,
         )
-    assert no_schedule.value.code == "no_schedule"
+
+    with _raises("no_schedule", 409):
+        await confirm()
     async with world.factory() as s:
         s.add(Schedule(project_id=world.project_id, name="Master"))
         await s.commit()
-    first = await svc_call(
-        world, "confirm_schedule", world.project_id, [world.packages["W1"]], actor_id=world.manager, role="manager"
-    )
-    second = await svc_call(
-        world, "confirm_schedule", world.project_id, [world.packages["W1"]], actor_id=world.manager, role="manager"
-    )
+    first = await confirm()
+    second = await confirm()
     assert first == second
     async with world.factory() as s:
         acts = (await s.execute(sa.select(Activity))).scalars().all()

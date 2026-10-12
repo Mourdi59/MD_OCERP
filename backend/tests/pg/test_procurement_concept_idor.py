@@ -18,13 +18,21 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.procurement_concept.errors import ProcurementError
 from app.modules.procurement_concept.models import BidderCandidate, MarketSounding
 from tests._pg import isolated_engine
-from tests.pg.procurement_concept_fixtures import World, add_contract_package, build_world, put, svc_call
+from tests.pg.procurement_concept_fixtures import (
+    World,
+    add_contract_package,
+    build_world,
+    patch_hosting,
+    put,
+    svc_call,
+)
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
 
 
 @pytest_asyncio.fixture
-async def pair():
+async def pair(monkeypatch: pytest.MonkeyPatch):
+    patch_hosting(monkeypatch)
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         a = await build_world(factory)
@@ -52,7 +60,7 @@ async def test_award_package_of_another_project_is_not_found(pair) -> None:
             b.packages["W1"],
             {"procedure_code": "restricted"},
             actor_id=a.manager,
-            role="manager",
+            can_manage=True,
             tenant_id=str(a.manager),
         )
     assert exc.value.status_code == 404
@@ -64,7 +72,7 @@ async def test_award_package_of_another_project_is_not_found(pair) -> None:
         vehicle=None,
         submission_deadline=None,
         actor_id=a.manager,
-        role="manager",
+        can_manage=True,
     )
 
 
@@ -83,6 +91,7 @@ async def test_candidate_and_sounding_ids_are_bound_to_their_project(pair) -> No
         b.packages["W1"],
         {"subcontractor_id": sub.id, "list": "long"},
         actor_id=b.manager,
+        can_manage=True,
     )
     snd: MarketSounding = await svc_call(
         b,
@@ -91,8 +100,8 @@ async def test_candidate_and_sounding_ids_are_bound_to_their_project(pair) -> No
         {"trade": "Rebar", "held_on": "2026-09-01", "package_ids": [b.packages["W1"]]},
         actor_id=b.manager,
     )
-    await _404(a, "patch_candidate", a.project_id, cand.id, {"list": "short"}, actor_id=a.manager)
-    await _404(a, "delete_candidate", a.project_id, cand.id, actor_id=a.manager)
+    await _404(a, "patch_candidate", a.project_id, cand.id, {"list": "short"}, actor_id=a.manager, can_manage=True)
+    await _404(a, "delete_candidate", a.project_id, cand.id, actor_id=a.manager, can_manage=True)
     await _404(a, "delete_sounding", a.project_id, snd.id, actor_id=a.manager)
     await _404(
         a,
@@ -136,6 +145,7 @@ async def test_framework_of_another_company_is_invisible(pair) -> None:
     )
     assert [f.id for f in await svc_call(a, "list_frameworks", str(a.manager))] == []
     assert await svc_call(a, "list_frameworks", None) == []
+    assert await svc_call(a, "project_frameworks", a.project_id, str(a.manager)) == []
     await _404(a, "patch_framework", str(a.manager), fw.id, {"title": "taken"}, actor_id=a.manager)
     await _404(a, "ledger", str(a.manager), fw.id)
     await add_contract_package(a, "S1", "supply")
@@ -147,3 +157,36 @@ async def test_framework_of_another_company_is_invisible(pair) -> None:
 async def test_concept_of_a_project_without_one_is_not_found(pair) -> None:
     a, _ = pair
     await _404(a, "get_concept", uuid.uuid4())
+
+
+async def test_tender_package_and_release_acts_of_another_project_are_not_found(pair) -> None:
+    from app.modules.tendering.models import TenderPackage
+    from tests.pg.procurement_concept_fixtures import RELEASE_GATE, add_condition
+
+    a, b = pair
+    async with b.factory() as s:
+        tender = TenderPackage(project_id=b.project_id, name="Tender of B")
+        s.add(tender)
+        await s.commit()
+    await _404(
+        a,
+        "link_tender_package",
+        a.project_id,
+        a.packages["W1"],
+        tender.id,
+        actor_id=a.manager,
+        can_manage=True,
+    )
+    foreign_condition = await add_condition(b, RELEASE_GATE, status="cleared")
+    with pytest.raises(ProcurementError) as exc:
+        await put(
+            a,
+            "W1",
+            {
+                "is_advance": True,
+                "advance_reason": "Long lead",
+                "advance_release_kind": "condition",
+                "advance_release_id": foreign_condition,
+            },
+        )
+    assert (exc.value.code, exc.value.status_code) == ("advance_release_not_found", 404)

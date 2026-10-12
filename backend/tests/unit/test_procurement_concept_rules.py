@@ -222,7 +222,17 @@ def test_a_value_without_a_currency_is_unresolved_never_compared() -> None:
     p = pkg(value="9000000", currency="")
     assert ev.aggregated_values(_cat("eu"), [p]) == {"W1": None}
     assert ev.threshold_view(_cat("eu"), EU, p, [p], D2026).status == "unresolved"
-    assert ev.convert_to_threshold(_cat("eu"), Decimal("1"), "", _cat("eu").jurisdictions[0].thresholds[0]) is None
+    assert (
+        ev.convert_to_threshold(
+            _cat("eu"),
+            Decimal("1"),
+            "",
+            _cat("eu").jurisdictions[0].thresholds[0],
+            vat_rate_pct=Decimal("0"),
+            day=D2026,
+        )
+        is None
+    )
 
 
 def test_cancelled_lots_do_not_count() -> None:
@@ -524,7 +534,11 @@ def test_a_company_catalogue_may_define_its_own_jurisdiction_and_client_types() 
     assert errors == []
     facts = ev.ConceptFacts("br_federal", "uniao", True)
     p = pkg(value="6000000")
-    assert ev.threshold_view(cat, facts, p, [p], D2026).status == "above"
+    view = ev.threshold_view(cat, facts, p, [p], D2026)
+    assert view.thresholds
+    assert {t["position"] for t in view.thresholds} == {"above"}
+    # The codes the shipped catalogue used no longer name a regime in this one.
+    assert ev.threshold_view(cat, EU, p, [p], D2026).status == "not_applicable"
 
 
 def test_a_threshold_for_a_client_type_the_jurisdiction_does_not_list_is_refused() -> None:
