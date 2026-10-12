@@ -407,16 +407,9 @@ def _regime_for(country: str | None, currency: str) -> tuple | None:
 
 async def _cleared_release(session: AsyncSession, project_id: uuid.UUID):
     """A cleared gate condition of the project's governance demo data, or ``None``. Nothing is written."""
-    from app.modules.project_governance.models import GovernanceCondition
+    from app.modules.project_governance.public import project_conditions
 
-    return (
-        (
-            await session.execute(
-                select(GovernanceCondition)
-                .where(GovernanceCondition.project_id == project_id, GovernanceCondition.status == "cleared")
-                .order_by(GovernanceCondition.cleared_at, GovernanceCondition.id)
-            )
-        )
-        .scalars()
-        .first()
-    )
+    cleared = [c for c in await project_conditions(session, project_id) if c.status == "cleared"]
+    # Conditions cleared without a timestamp sort last; the id makes the pick repeatable.
+    cleared.sort(key=lambda c: (c.cleared_at is None, c.cleared_at.isoformat() if c.cleared_at else "", str(c.id)))
+    return cleared[0] if cleared else None

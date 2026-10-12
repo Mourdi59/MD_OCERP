@@ -74,7 +74,14 @@ from app.modules.procurement_concept.models import (
     ProcurementConcept,
     ProjectReference,
 )
-from app.modules.project_governance.public import project_areas, project_documents, project_gates
+from app.modules.project_governance.public import (
+    project_areas,
+    project_change_requests,
+    project_conditions,
+    project_documents,
+    project_gate_decisions,
+    project_gates,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -209,18 +216,8 @@ class ProcurementConceptService:
         types = (await self.hosting(project_id)).document_types
         return next((d for d in documents if d.code in types), None)
 
-    async def _open_change_requests(self, document_id: uuid.UUID) -> int:
-        from app.modules.project_governance.models import GovernanceChangeRequest
-
-        return (
-            await self.session.execute(
-                select(func.count())
-                .select_from(GovernanceChangeRequest)
-                .where(
-                    GovernanceChangeRequest.document_id == document_id, GovernanceChangeRequest.status == "submitted"
-                )
-            )
-        ).scalar_one()
+    async def _open_change_requests(self, project_id: uuid.UUID, document_id: uuid.UUID) -> int:
+        return len(await project_change_requests(self.session, project_id, document_id, open_only=True))
 
     async def effective_state(self, concept: ProcurementConcept) -> str:
         """The stored state, or what governance made of a submitted concept.
@@ -235,22 +232,13 @@ class ProcurementConceptService:
         doc = await self._frame_document(concept.project_id, concept)
         if doc is None or doc.status != "binding" or concept.state not in _SUBMITTED:
             return concept.state
-        if await self._open_change_requests(doc.id):
+        if await self._open_change_requests(concept.project_id, doc.id):
             return "reopened" if concept.state == "approved" else concept.state
         return "binding"
 
     async def _project_gates(self, project_id: uuid.UUID) -> list[Any]:
         """The gates of the project's current phase model, in order (governance's read model)."""
         return list(await project_gates(self.session, project_id))
-
-    async def _gate_target_dates(self, project_id: uuid.UUID) -> dict[uuid.UUID, str]:
-        """Target date per gate. The governance read port does not carry it yet, so this reads the row."""
-        from app.modules.project_governance.models import GovernanceGate
-
-        rows = await self.session.execute(
-            select(GovernanceGate.id, GovernanceGate.target_date).where(GovernanceGate.project_id == project_id)
-        )
-        return {gate_id: target for gate_id, target in rows.all() if target}
 
     async def release_gate(self, project_id: uuid.UUID, concept: ProcurementConcept) -> Any:
         """The gate whose go releases procurement: the one named on the concept, else the tagged one.
@@ -267,20 +255,17 @@ class ProcurementConceptService:
 
     async def _release_date(self, project_id: uuid.UUID, gate: Any) -> date | None:
         """Date procurement is released: the go decision of the release gate, else its target date."""
-        from app.modules.project_governance.models import GovernanceDecision
-
         if gate is None:
             return None
-        decided = (
-            await self.session.execute(
-                select(GovernanceDecision.decided_at)
-                .where(GovernanceDecision.gate_id == gate.id, GovernanceDecision.outcome.in_(_GO))
-                .order_by(GovernanceDecision.decided_at.desc())
-            )
-        ).scalar()
-        if decided is not None:
-            return decided.date()
-        return _day((await self._gate_target_dates(project_id)).get(gate.id))
+        go = await self._go_decisions(project_id, gate.id)
+        if go:
+            return go[-1].decided_at.date()
+        return gate.target_date
+
+    async def _go_decisions(self, project_id: uuid.UUID, gate_id: uuid.UUID) -> list[Any]:
+        """The go decisions of one gate (governance's read model), oldest first."""
+        decisions = await project_gate_decisions(self.session, project_id, gate_id)
+        return sorted((d for d in decisions if d.outcome in _GO), key=lambda d: d.decided_at)
 
     async def advance_release_status(self, project_id: uuid.UUID, row: AwardPackage, gate: Any) -> str:
         """``released`` | ``none`` | ``missing`` | ``other_gate`` | ``not_cleared`` (rule 12).
@@ -289,13 +274,15 @@ class ProcurementConceptService:
         condition of that gate that is cleared (open, overdue and waived do not
         count), or its go decision.
         """
-        from app.modules.project_governance.models import GovernanceCondition, GovernanceDecision
-
         if row.advance_release_id is None or row.advance_release_kind not in ("gate_decision", "condition"):
             return "none"
-        model = GovernanceDecision if row.advance_release_kind == "gate_decision" else GovernanceCondition
-        act = await self.session.get(model, row.advance_release_id)
-        if act is None or act.project_id != project_id:
+        # The listings are scoped to the project, so an act of another project is not found.
+        if row.advance_release_kind == "gate_decision":
+            acts = await project_gate_decisions(self.session, project_id)
+        else:
+            acts = await project_conditions(self.session, project_id)
+        act = next((a for a in acts if a.id == row.advance_release_id), None)
+        if act is None:
             return "missing"
         if gate is None or act.gate_id != gate.id:
             return "other_gate"
@@ -445,7 +432,11 @@ class ProcurementConceptService:
             raise conflict("invalid_transition", detail=f"{current}->{target}")
         if target == "in_review":
             doc = await self._frame_document(project_id, concept)
-            if doc is not None and doc.status == "binding" and not await self._open_change_requests(doc.id):
+            if (
+                doc is not None
+                and doc.status == "binding"
+                and not await self._open_change_requests(concept.project_id, doc.id)
+            ):
                 # The frame document is already binding: a new concept version needs a change request on it.
                 raise conflict("binding_requires_change_request")
             plan_findings = await self._plan_findings(project_id)
@@ -464,40 +455,25 @@ class ProcurementConceptService:
         The approver is whoever decided in governance: the go decision of the
         gate that bound the document, else the approved change request.
         """
-        from app.modules.project_governance.models import (
-            GovernanceChangeRequest,
-            GovernanceDecision,
-            GovernanceDocument,
-        )
+        from app.modules.project_governance.models import GovernanceChangeRequest
 
         concept = await self.find_concept(project_id, lock=True)
         if concept is None or concept.state != "in_review":
             return False
-        view = await self._frame_document(project_id, concept)
-        if view is None or view.id != document_id or view.status != "binding":
+        doc = await self._frame_document(project_id, concept)
+        if doc is None or doc.id != document_id or doc.status != "binding":
             return False
-        # Who approved: the read port names neither the binding gate nor the decision, so the row is read here.
-        doc = await self.session.get(GovernanceDocument, view.id)
         approver, at = None, None
-        if doc is not None and doc.approved_gate_id is not None:
-            decision = (
-                (
-                    await self.session.execute(
-                        select(GovernanceDecision)
-                        .where(GovernanceDecision.gate_id == doc.approved_gate_id, GovernanceDecision.outcome.in_(_GO))
-                        .order_by(GovernanceDecision.decided_at.desc())
-                    )
-                )
-                .scalars()
-                .first()
-            )
-            if decision is not None:
-                approver, at = decision.decided_by, decision.decided_at
+        if doc.approved_gate_id is not None:
+            go = await self._go_decisions(project_id, doc.approved_gate_id)
+            if go:
+                approver, at = go[-1].decided_by, go[-1].decided_at
+        # Who decided an approved change request is not on the governance read port yet, so the row is read.
         change = (
             (
                 await self.session.execute(
                     select(GovernanceChangeRequest)
-                    .where(GovernanceChangeRequest.document_id == view.id, GovernanceChangeRequest.status == "approved")
+                    .where(GovernanceChangeRequest.document_id == doc.id, GovernanceChangeRequest.status == "approved")
                     .order_by(GovernanceChangeRequest.decided_at.desc())
                 )
             )
@@ -2215,7 +2191,6 @@ class ProcurementConceptService:
         concept = await self.get_concept(project_id)
         resolved = await self.release_gate(project_id, concept)
         tagged = set((await self.hosting(project_id)).release_gate_codes)
-        targets = await self._gate_target_dates(project_id)
         items = [
             {
                 "code": g.code,
@@ -2223,7 +2198,7 @@ class ProcurementConceptService:
                 "from_phase": g.from_phase,
                 "to_phase": g.to_phase,
                 "status": g.status,
-                "target_date": targets.get(g.id),
+                "target_date": _iso(g.target_date),
                 "sort_order": g.order,
                 "tagged_release_gate": g.code in tagged,
                 "selected": resolved is not None and g.id == resolved.id,
@@ -2238,31 +2213,23 @@ class ProcurementConceptService:
 
     async def advance_release_options(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
         """Acts of the release gate an advance package may name: its conditions and its go decisions."""
-        from app.modules.project_governance.repository import GovernanceRepository
-
         concept = await self.get_concept(project_id)
         gate = await self.release_gate(project_id, concept)
         if gate is None:
             return []
-        repo = GovernanceRepository(self.session)
-        out: list[dict[str, Any]] = []
-        for d in await repo.list_decisions(project_id, gate.id):
-            if d.outcome in _GO:
-                out.append(
-                    {
-                        "kind": "gate_decision",
-                        "id": str(d.id),
-                        "gate_code": gate.code,
-                        "label": d.outcome,
-                        "status": d.outcome,
-                        "date": d.decided_at.date().isoformat(),
-                        "releases": True,
-                    }
-                )
-        conditions, _total = await repo.list_conditions(project_id)
-        for c in conditions:
-            if c.gate_id != gate.id:
-                continue
+        out: list[dict[str, Any]] = [
+            {
+                "kind": "gate_decision",
+                "id": str(d.id),
+                "gate_code": gate.code,
+                "label": d.outcome,
+                "status": d.outcome,
+                "date": d.decided_at.date().isoformat(),
+                "releases": True,
+            }
+            for d in await self._go_decisions(project_id, gate.id)
+        ]
+        for c in await project_conditions(self.session, project_id, gate.id):
             out.append(
                 {
                     "kind": "condition",
