@@ -72,7 +72,9 @@ export function ReadinessCard({ gate, readiness }: { gate: ReadinessGate; readin
           {items.map((item, idx) => (
             <li key={`${item.code}-${item.ref ?? idx}`} className="flex items-start gap-2" data-state={item.state}>
               {ITEM_ICON[item.state]}
-              {vocab(t, READINESS_ITEM, item.code, { detail: item.detail })}
+              {item.code === 'permit_due_later' && item.title && item.needed_by
+                ? vocab(t, READINESS_ITEM, 'permit_due_later_dated', { title: item.title, date: dateText(item.needed_by) })
+                : vocab(t, READINESS_ITEM, item.code, { detail: item.detail })}
             </li>
           ))}
         </ul>

@@ -623,6 +623,9 @@ export interface ReadinessItem {
   /** The condition number or the roadmap row title the item is about. */
   detail: string;
   ref: string | null;
+  /** Only on `permit_due_later`: the permit and the day it is needed, apart, so the date reads in the reader's format. */
+  title?: string;
+  needed_by?: string;
 }
 
 export interface Readiness {

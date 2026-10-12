@@ -42771,6 +42771,7 @@ const resource = {
     "permits.ui.readiness_item.conditions_pending": "{{detail}}: the conditions of the decision are not entered yet",
     "permits.ui.readiness_item.occupancy_permit": "{{detail}}: permission to occupy",
     "permits.ui.readiness_item.permit_due_later": "{{detail}}: needed later, not granted yet",
+    "permits.ui.readiness_item.permit_due_later_dated": "{{title}}: needed from {{date}}, not granted yet",
     "permits.ui.readiness_item.permit_granted": "{{detail}}: granted",
     "permits.ui.readiness_item.permit_missing": "{{detail}}: not granted yet",
     "permits.ui.readiness_item.permit_partial": "{{detail}}: granted in part only",

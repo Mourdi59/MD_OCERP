@@ -573,6 +573,26 @@ describe('ChecksPanel', () => {
     expect(screen.queryByTestId('readiness-handover-date')).toBeNull();
   });
 
+  it('writes the permit and its day apart when the server sends them apart', () => {
+    const start = readiness({
+      status: 'ready',
+      items: [
+        { code: 'permit_due_later', state: 'warning', detail: 'Crane road closure 2027-03-01', ref: 'r2', title: 'Crane road closure', needed_by: '2027-03-01' },
+      ],
+    });
+    renderIn(
+      <ChecksPanel
+        readiness={{ start: loaded(start), handover: loaded(readiness()), register: loaded(readiness()) }}
+        validation={loaded([])}
+      />,
+    );
+    const card = screen.getByTestId('readiness-start');
+    expect(card).toHaveTextContent('Crane road closure: needed from');
+    expect(card).toHaveTextContent('not granted yet');
+    // The raw detail, with its machine date glued to the title, is not what the reader sees.
+    expect(card).not.toHaveTextContent('Crane road closure 2027-03-01');
+  });
+
   it('shows each gate with its status and names what is missing', () => {
     renderIn(
       <ChecksPanel

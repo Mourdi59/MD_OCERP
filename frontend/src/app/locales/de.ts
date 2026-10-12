@@ -50692,6 +50692,7 @@ const resource = {
     "permits.ui.readiness_item.conditions_pending": "{{detail}}: die Auflagen des Bescheids sind noch nicht erfasst",
     "permits.ui.readiness_item.occupancy_permit": "{{detail}}: Genehmigung zur Nutzung",
     "permits.ui.readiness_item.permit_due_later": "{{detail}}: erst später nötig, noch nicht erteilt",
+    "permits.ui.readiness_item.permit_due_later_dated": "{{title}}: nötig ab {{date}}, noch nicht erteilt",
     "permits.ui.readiness_item.permit_granted": "{{detail}}: erteilt",
     "permits.ui.readiness_item.permit_missing": "{{detail}}: noch nicht erteilt",
     "permits.ui.readiness_item.permit_partial": "{{detail}}: nur teilweise erteilt",
