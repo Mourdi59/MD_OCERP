@@ -44,7 +44,7 @@ def _validate(monkeypatch: pytest.MonkeyPatch, payload: dict) -> dict:
 def test_validate_runs_every_plan_rule(monkeypatch: pytest.MonkeyPatch) -> None:
     report = _validate(monkeypatch, _payload([]))
     expected = {f"site_logistics.{r.key}" for r in validators.PLAN_RULES}
-    assert len(expected) == 22
+    assert len(expected) == 23
     # Fails when the payload does not reach the rules: a plan rule without ``findings`` returns nothing.
     assert expected <= set(report["rules_run"])
     assert report["counts"]["errors"] == 0
@@ -108,10 +108,16 @@ def test_gate_hours_are_read_on_the_site_clock() -> None:
     assert ok is False and "same day" in str(reason)
 
 
-def test_gate_hours_without_a_zone_do_not_guess() -> None:
-    ok, reason = validators.delivery_within_gate_hours("07:00", "18:00", _at(8), _at(9))
-    assert ok is False
-    assert str(reason).startswith("site_timezone_missing")
+def test_gate_hours_without_a_zone_are_not_checked_and_say_so() -> None:
+    # 22:00 to 23:00 is outside 07:00 to 18:00 on the UTC clock and on most others. Without a
+    # zone nothing is compared: the window passes, and the reason says the hours were not checked.
+    for start, end in ((_at(8), _at(9)), (_at(22), _at(23))):
+        ok, reason = validators.delivery_within_gate_hours("07:00", "18:00", start, end)
+        assert ok is True
+        assert str(reason).startswith("gate_hours_unchecked")
+    # A window that ends before it starts is wrong on every clock.
+    ok, reason = validators.delivery_within_gate_hours("07:00", "18:00", _at(9), _at(8))
+    assert ok is False and not str(reason).startswith("gate_hours_unchecked")
 
 
 def test_a_gate_without_hours_needs_no_zone() -> None:
@@ -142,7 +148,9 @@ def test_gate_hours_rule_reports_the_missing_zone_once() -> None:
     results = _run(validators.SiteLogisticsGateHoursRule().validate(_gate_context(None)))
     assert len(results) == 1
     assert results[0].passed is False
-    assert results[0].message.startswith("site_timezone_missing")
+    assert results[0].message.startswith("gate_hours_unchecked")
+    # A warning: unchecked hours do not turn the report into an error.
+    assert results[0].severity == validators.Severity.WARNING
 
 
 # ── FIX_BRIEF: no client date on a write route ─────────────────────────────
@@ -652,3 +660,114 @@ def test_german_texts_are_written_with_umlauts_and_eszett() -> None:
         found = sorted(set(re.findall(r"[A-Za-z]+", text)) & set(TRANSLITERATED))
         assert not found, (path.name, found)
         assert re.search("[äöüß]", text), path.name
+
+
+# ── decisions of 2026-10-13 ─────────────────────────────────────────────────
+
+
+def _board(tz: ZoneInfo | None, gate: SimpleNamespace | None, concept_hours=None):
+    from app.modules.site_logistics import service as board
+
+    svc = board.SiteLogisticsService.__new__(board.SiteLogisticsService)
+
+    async def site_tz(project_id):
+        return tz
+
+    async def get_by_id(gate_id):
+        return gate
+
+    async def hours(project_id):
+        return concept_hours
+
+    svc._plan = lambda: SimpleNamespace(site_tz=site_tz)
+    svc.gate_repo = SimpleNamespace(get_by_id=get_by_id)
+    svc._concept_hours = hours
+    return svc
+
+
+def _booked(gate_id: uuid.UUID | None = None) -> SimpleNamespace:
+    return SimpleNamespace(project_id=uuid.uuid4(), gate_id=gate_id, window_start=_at(22), window_end=_at(23))
+
+
+def test_a_delivery_on_a_site_without_a_zone_carries_the_warning() -> None:
+    gate = SimpleNamespace(open_time="07:00", close_time="18:00")
+    warning = {"code": "gate_hours_unchecked", "severity": "warning", "field": "site_timezone"}
+    assert _run(_board(None, gate).delivery_warnings(_booked(uuid.uuid4()))) == [warning]
+    # Hours of the concept count like hours of the gate.
+    open_gate = SimpleNamespace(open_time=None, close_time=None)
+    assert _run(_board(None, open_gate, ("07:00", "18:00")).delivery_warnings(_booked(uuid.uuid4()))) == [warning]
+
+
+def test_no_warning_where_nothing_was_skipped() -> None:
+    gate = SimpleNamespace(open_time="07:00", close_time="18:00")
+    open_gate = SimpleNamespace(open_time=None, close_time=None)
+    # The site has a zone: the hours were compared.
+    assert _run(_board(SITE, gate).delivery_warnings(_booked(uuid.uuid4()))) == []
+    # No hours to compare with, and no gate at all.
+    assert _run(_board(None, open_gate).delivery_warnings(_booked(uuid.uuid4()))) == []
+    assert _run(_board(None, gate).delivery_warnings(_booked(None))) == []
+
+
+def test_the_gate_hours_check_never_refuses_for_a_missing_zone() -> None:
+    from fastapi import HTTPException
+
+    from app.modules.site_logistics import service as board
+
+    gate = SimpleNamespace(open_time="07:00", close_time="18:00")
+    check = board.SiteLogisticsService._assert_within_gate_hours
+    assert check(gate, _at(22), _at(23), None, None) is None
+    with pytest.raises(HTTPException) as exc:
+        # 22:00 UTC is 03:30 on site: with a zone the same window is refused.
+        check(gate, _at(22), _at(23), None, SITE)
+    assert exc.value.code == "outside_gate_hours"
+
+
+def test_unchecked_hours_have_their_texts() -> None:
+    for locale in ("en", "de"):
+        for key in ("errors.gate_hours_unchecked", "findings.gate_hours_unchecked.fail"):
+            text = translate(f"site_logistics.{key}", locale=locale)
+            assert text and "gate_hours_unchecked" not in text, (locale, key)
+
+
+def test_only_a_granted_permit_makes_a_heavy_transport_ready() -> None:
+    from app.modules.site_logistics import planning as pl
+
+    kinds = {"oversize_permit"}
+
+    def permit(state: str, kind: str = "oversize_permit") -> dict:
+        return {"permit_kind": kind, "state": state}
+
+    assert pl.heavy_permit_standing([], kinds) == "missing"
+    assert pl.heavy_permit_standing([permit("draft")], kinds) == "missing"
+    # The defect: an application used to count as enough.
+    assert pl.heavy_permit_standing([permit("applied")], kinds) == "applied"
+    assert pl.heavy_permit_standing([permit("applied"), permit("granted")], kinds) == "granted"
+    # A granted permit of another kind does not carry a heavy load.
+    assert pl.heavy_permit_standing([permit("granted", "night_work")], kinds) == "missing"
+
+
+def test_a_pack_catalogue_is_a_source_the_pin_accepts() -> None:
+    from app.modules.project_governance.catalogue_packs import PACK_SOURCE
+
+    assert plan_schemas.CataloguePinIn(source=PACK_SOURCE, catalogue_id="site").source == "pack"
+    with pytest.raises(ValueError, match="source"):
+        plan_schemas.CataloguePinIn(source="elsewhere", catalogue_id="site")
+
+
+def test_a_pinned_catalogue_that_no_longer_loads_is_named_not_a_crash(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.modules.project_governance import catalogue_store
+    from app.modules.project_governance.catalogue import InvalidCatalogueError
+    from app.modules.site_logistics.errors import LogisticsError
+
+    async def broken(*args, **kwargs):
+        raise InvalidCatalogueError("/srv/packs/site.json", ["area kind 'x' is declared twice"])
+
+    async def concept(self, project_id):
+        return SimpleNamespace(catalogue_source="pack", catalogue_id="site", catalogue_version=1)
+
+    monkeypatch.setattr(catalogue_store, "resolve_catalogue", broken)
+    monkeypatch.setattr(plan_service.LogisticsPlanService, "concept", concept)
+    with pytest.raises(LogisticsError) as exc:
+        _run(plan_service.LogisticsPlanService(None).catalogue(uuid.uuid4()))
+    assert (exc.value.code, exc.value.status_code) == ("catalogue_invalid", 422)
+    assert exc.value.detail == "area kind 'x' is declared twice"

@@ -326,24 +326,29 @@ async def test_site_clock_gate_load_and_rate_on_every_approval_path(world: World
         await s.commit()
     async with world.factory() as s:
         legacy = SiteLogisticsService(s)
-        detail = await _refused(
-            legacy.create_delivery(_booking(clockless, gate2.id, _utc(day, 10), _utc(day, 11)), str(world.manager))
+        # The site keeps booking: the opening hours are not compared, on no clock at all.
+        booked = await legacy.create_delivery(
+            _booking(clockless, gate2.id, _utc(day, 22), _utc(day, 23)), str(world.manager)
         )
-        assert detail.startswith("site_timezone_missing")
+        assert [w["code"] for w in await legacy.delivery_warnings(booked)] == ["gate_hours_unchecked"]
+    async with world.factory() as s:
         svc = LogisticsPlanService(s)
         findings = await svc.findings(clockless)
-        assert [f["code"] for f in findings].count("site_timezone_missing") == 1
-        assert findings[0]["severity"] == "error"
+        assert [f["code"] for f in findings].count("gate_hours_unchecked") == 1
+        assert findings[0]["severity"] == "warning"
+        assert "site_timezone_missing" not in [f["code"] for f in findings]
         report = await svc.validate(clockless)
         failed = {r["rule_id"] for r in report["results"] if not r["passed"]}
-        assert "site_logistics.site_timezone_set" in failed
+        assert "site_logistics.gate_hours_checked" in failed
+        assert "site_logistics.site_timezone_set" not in failed
         with pytest.raises(LogisticsError) as exc:
             await svc.put_concept(clockless, {"site_timezone": "Mars/Olympus"}, world.manager)
         assert (exc.value.code, exc.value.status_code) == ("timezone_invalid", 422)
         await svc.put_concept(clockless, {"site_timezone": "Europe/Berlin"}, world.manager)
         await s.commit()
     async with world.factory() as s:
-        assert "site_timezone_missing" not in [f["code"] for f in await LogisticsPlanService(s).findings(clockless)]
+        codes = [f["code"] for f in await LogisticsPlanService(s).findings(clockless)]
+        assert "site_timezone_missing" not in codes and "gate_hours_unchecked" not in codes
 
 
 # ── arrivals, frozen records and first writes that race ────────────────────

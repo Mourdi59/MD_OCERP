@@ -165,6 +165,7 @@ def _zone_out(perms: PlanPerms, zone: object) -> LaydownZoneResponse:
 async def _delivery_out(service: SiteLogisticsService, perms: PlanPerms, delivery: Any) -> DeliveryResponse:
     out = _delivery_to_response(delivery)
     out.can = await service.can_delivery(delivery, perms)
+    out.warnings = await service.delivery_warnings(delivery)
     return out
 
 

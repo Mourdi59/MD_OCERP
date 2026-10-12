@@ -35,7 +35,7 @@ from app.modules.site_logistics.events import (
     DELIVERY_BOOKED,
     DELIVERY_REJECTED,
 )
-from app.modules.site_logistics.models import DeliveryBooking, DeliveryLine, Gate, LaydownZone
+from app.modules.site_logistics.models import DeliveryBooking, DeliveryLine, Gate, LaydownZone, LogisticsConcept
 from app.modules.site_logistics.planning import narrower_hours
 from app.modules.site_logistics.repository import (
     BillPositionRepository,
@@ -58,6 +58,7 @@ from app.modules.site_logistics.schemas import (
     SiteLogisticsStatsResponse,
 )
 from app.modules.site_logistics.validators import (
+    GATE_HOURS_UNCHECKED,
     delivery_within_gate_hours,
     find_first_overlap,
 )
@@ -231,6 +232,8 @@ class SiteLogisticsService:
             )
         )
         gate = None
+        if data.status == "approved":
+            await self._lock_approvals(data.project_id, data.gate_id)
         if data.gate_id is not None:
             gate = await self._load_project_gate(data.gate_id, data.project_id)
             self._assert_within_gate_hours(
@@ -321,6 +324,11 @@ class SiteLogisticsService:
     async def update_delivery(self, delivery_id: uuid.UUID, data: DeliveryUpdate) -> DeliveryBooking:
         """Update a delivery, re-validating window and gate rules on the result."""
         delivery = await self.get_delivery(delivery_id)
+        sent = data.model_dump(exclude_unset=True)
+        if sent.get("status", delivery.status) == "approved":
+            await self._lock_approvals(delivery.project_id, sent.get("gate_id", delivery.gate_id))
+            # The booking as it stands once the writers before this one are done.
+            await self.session.refresh(delivery)
         previous_status = delivery.status
         fields = self._merge_metadata_fields(data.model_dump(exclude_unset=True), delivery)
         # Lines are their own rows, so they never travel in the column update.
@@ -410,6 +418,9 @@ class SiteLogisticsService:
     ) -> DeliveryBooking:
         """Approve a delivery: requested/rejected -> approved, clash-checked."""
         delivery = await self.get_delivery(delivery_id)
+        await self._lock_approvals(delivery.project_id, delivery.gate_id)
+        # Read again behind the lock: another approval may have decided this booking meanwhile.
+        await self.session.refresh(delivery)
         if delivery.status == "approved":
             return delivery
         await self._guard_approve(delivery)
@@ -442,6 +453,24 @@ class SiteLogisticsService:
         logger.info("Delivery rejected: %s by %s", delivery_id, user_id)
         self._emit(DELIVERY_REJECTED, delivery, user_id)
         return delivery
+
+    async def _lock_approvals(self, project_id: uuid.UUID, gate_id: uuid.UUID | None) -> None:
+        """Queue the writers that produce an approved delivery, for the check and the write.
+
+        The hourly rate of the concept and the slot on a gate are both counted over
+        the approved bookings. Two approvals that read that set before either
+        commits would both pass, so each one first takes the row the count hangs
+        on: the concept row (the rate) and then the gate row (the slot), always in
+        this order. The locks last until the transaction ends. A read never takes
+        them: the ``can`` flags call the guards, not this. The lock is the kind
+        that lets a new booking reference the gate meanwhile, so a request for a
+        slot does not wait behind an approval.
+        """
+        await self.session.execute(
+            select(LogisticsConcept.id).where(LogisticsConcept.project_id == project_id).with_for_update(key_share=True)
+        )
+        if gate_id is not None:
+            await self.session.execute(select(Gate.id).where(Gate.id == gate_id).with_for_update(key_share=True))
 
     # ── Guards and allowed moves ──────────────────────────────────────────
     #
@@ -787,14 +816,35 @@ class SiteLogisticsService:
 
         ``concept_hours`` are the logistics concept's delivery hours; they apply
         only where they are narrower than the gate's (rule 12). ``tz`` is the site
-        time zone; a gate with hours on a site without one is refused with
-        ``site_timezone_missing`` instead of being compared on a guessed clock.
+        time zone. On a site without one the hours are not compared and the window
+        passes: see :meth:`delivery_warnings` for how that is told.
         """
         open_time, close_time = narrower_hours((gate.open_time, gate.close_time), concept_hours)
         ok, reason = delivery_within_gate_hours(open_time, close_time, window_start, window_end, tz)
         if not ok:
-            missing_zone = str(reason or "").startswith("site_timezone_missing")
-            raise _refusal("site_timezone_missing" if missing_zone else "outside_gate_hours", str(reason))
+            raise _refusal("outside_gate_hours", str(reason))
+
+    async def delivery_warnings(self, delivery: DeliveryBooking) -> list[dict[str, Any]]:
+        """What was not checked for this delivery, each ``{code, severity, field}``.
+
+        ``gate_hours_unchecked``: the gate (or the concept) has opening hours and
+        the site has no time zone, so the window was not compared with them.
+        ``field`` names the concept field that ends the warning.
+        """
+        if delivery.gate_id is None or delivery.window_start is None or delivery.window_end is None:
+            return []
+        if await self._plan().site_tz(delivery.project_id) is not None:
+            return []
+        gate = await self.gate_repo.get_by_id(delivery.gate_id)
+        if gate is None:
+            return []
+        open_time, close_time = narrower_hours(
+            (gate.open_time, gate.close_time), await self._concept_hours(delivery.project_id)
+        )
+        _, reason = delivery_within_gate_hours(open_time, close_time, delivery.window_start, delivery.window_end, None)
+        if str(reason or "").startswith(GATE_HOURS_UNCHECKED):
+            return [{"code": GATE_HOURS_UNCHECKED, "severity": "warning", "field": "site_timezone"}]
+        return []
 
     async def _concept_hours(self, project_id: uuid.UUID) -> tuple[str | None, str | None] | None:
         """The logistics concept's delivery hours of a project, ``None`` without a concept."""

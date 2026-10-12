@@ -324,6 +324,8 @@ class DeliveryResponse(BaseModel):
 
     # What the caller may do with this record now; set by the routes, absent elsewhere.
     can: dict[str, Any] | None = None
+    # Checks that were not made for this delivery (``gate_hours_unchecked``); set by the routes.
+    warnings: list[dict[str, Any]] = Field(default_factory=list)
     id: UUID
     project_id: UUID
     gate_id: UUID | None = None

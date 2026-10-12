@@ -737,6 +737,7 @@ class LogisticsPlanService:
 
     async def catalogue(self, project_id: uuid.UUID) -> SiteLogisticsCatalogue:
         """The pinned catalogue with its ``extends`` chain resolved; the country default before any pin."""
+        from app.modules.project_governance.catalogue import InvalidCatalogueError
         from app.modules.project_governance.catalogue_store import resolve_catalogue
         from app.modules.project_governance.errors import GovernanceError
 
@@ -751,6 +752,10 @@ class LogisticsPlanService:
             obj = await resolve_catalogue(self.session, source, cid, version, kind=SITE_LOGISTICS_KIND, from_pin=True)
         except GovernanceError as exc:
             raise LogisticsError(exc.code, exc.status_code) from exc
+        except InvalidCatalogueError as exc:
+            # A pinned pack catalogue whose file no longer loads. The rule faults are the
+            # detail; the message of the exception carries a server path and is not shown.
+            raise LogisticsError("catalogue_invalid", 422, detail="; ".join(exc.errors)) from exc
         shipped = shipped_catalogues()
         try:
             return merged(obj, shipped.__getitem__)
@@ -788,7 +793,7 @@ class LogisticsPlanService:
         version: int | None,
         actor_id: Any,
     ) -> LogisticsConcept:
-        """Re-pin the project's catalogue (shipped or a tenant's published version)."""
+        """Re-pin the project's catalogue: shipped, of the active pack, or a tenant's published version."""
         from app.modules.project_governance.catalogue_store import CatalogueStore
         from app.modules.project_governance.errors import GovernanceError
 
@@ -2837,7 +2842,9 @@ class LogisticsPlanService:
 
         Time-of-day, weekday and site-date rules run on the site clock. While the
         site has no time zone they are not evaluated at all and the plan carries
-        one ``site_timezone_missing`` error instead.
+        one ``site_timezone_missing`` error instead. The opening hours of a gate
+        are the exception: unchecked hours are one ``gate_hours_unchecked``
+        warning, because deliveries were booked before a site could state a zone.
         """
         tz = await self.site_tz(project_id)
         today = today or self._today(tz)
@@ -2845,6 +2852,7 @@ class LogisticsPlanService:
         th = cat.resolved_thresholds()
         out: list[dict[str, Any]] = []
         needs_tz = False
+        hours_unchecked = False
         balance = await self.balance(project_id, today=today)
         for item in balance["items"]:
             stage = item["stage"]
@@ -2917,7 +2925,7 @@ class LogisticsPlanService:
             if tz is None and gate is not None:
                 # Gate hours are a site clock rule (see validators.delivery_within_gate_hours).
                 o, c = pl.narrower_hours((gate.open_time, gate.close_time), concept_hours)
-                needs_tz = needs_tz or (pl.hhmm(o) is not None and pl.hhmm(c) is not None)
+                hours_unchecked = hours_unchecked or (pl.hhmm(o) is not None and pl.hhmm(c) is not None)
             load = await self.gate_load(
                 project_id,
                 cat,
@@ -3047,6 +3055,10 @@ class LogisticsPlanService:
                 out.append(
                     _finding("neighbour_issue_on_time", "neighbour_issue_overdue", "error", c.id, due=c.response_due)
                 )
+        if hours_unchecked:
+            # Deliveries were booked on this site before it had a zone and keep being booked:
+            # the opening hours are simply not compared, and the plan says so.
+            out.insert(0, _finding("gate_hours_checked", "gate_hours_unchecked", "warning", None))
         if needs_tz:
             out.insert(0, _finding("site_timezone_set", "site_timezone_missing", "error", None))
         return out
@@ -3163,7 +3175,9 @@ class LogisticsPlanService:
             else:
                 items.append(_item("concept_saved_and_exported", exported, "" if exported else "not_exported"))
         heavy_kinds = cat.permit_kinds_for("heavy_transport")
-        unpermitted = []
+        # A heavy transport is ready for the gate with a granted permit only. An applied one
+        # is in progress and a missing one is not started; the detail says which.
+        waiting: dict[str, list[str]] = {"permit_applied": [], "permit_missing": []}
         blocked = []
         passed_by_permit = []
         for t in await self._list(Transport, project_id, Transport.created_at):
@@ -3171,15 +3185,21 @@ class LogisticsPlanService:
                 continue
             view = await self.transport_view(t, cat, tz)
             name = t.title or str(t.id)
-            if view["is_heavy"] and not any(
-                p["permit_kind"] in heavy_kinds and p["state"] in ("applied", "granted") for p in view["permits"]
-            ):
-                unpermitted.append(name)
+            if view["is_heavy"]:
+                standing = pl.heavy_permit_standing(view["permits"], heavy_kinds)
+                if standing != "granted":
+                    waiting[f"permit_{standing}"].append(name)
             if view["gate_blocked"]:
                 blocked.append(name)
             elif view["gate_passed_by_permit"] is not None:
                 passed_by_permit.append({"transport_id": str(t.id), "title": name, **view["gate_passed_by_permit"]})
-        items.append(_item("heavy_transports_applied", not unpermitted, ",".join(unpermitted)))
+        items.append(
+            _item(
+                "heavy_transports_applied",
+                not any(waiting.values()),
+                "; ".join(f"{reason}: {','.join(names)}" for reason, names in waiting.items() if names),
+            )
+        )
         # Met while no load is refused by its gate; a load above the limit that an
         # oversize permit covers passes, and the detail names the permit it passes on.
         items.append(

@@ -69,6 +69,9 @@ def parse_hhmm(value: str | None) -> int | None:
 
 
 TIMEZONE_MISSING = "site_timezone_missing"
+# Opening hours could not be compared because the site has no time zone. A warning, never a refusal:
+# a site that booked deliveries before it had a zone keeps booking them.
+GATE_HOURS_UNCHECKED = "gate_hours_unchecked"
 
 
 def delivery_within_gate_hours(
@@ -85,9 +88,10 @@ def delivery_within_gate_hours(
     hours (either bound missing/malformed) is treated as unrestricted -> passes.
 
     Gate hours are times on the site's wall clock, so the window is converted to
-    ``tz``, the site time zone, before it is compared. Without a zone the check
-    cannot be made: it answers ``site_timezone_missing`` and never reads the
-    clock of whatever offset the window happened to arrive with.
+    ``tz``, the site time zone, before it is compared. Without a zone the hours
+    are not compared at all: the window passes and ``reason`` starts with
+    ``gate_hours_unchecked``. The clock of whatever offset the window happened
+    to arrive with is never read, and UTC is never assumed.
     """
     if window_end <= window_start:
         return False, "Delivery window end must be after its start"
@@ -102,7 +106,7 @@ def delivery_within_gate_hours(
         return True, None
 
     if tz is None:
-        return False, f"{TIMEZONE_MISSING}: set the site time zone, gate hours are checked on the site clock"
+        return True, f"{GATE_HOURS_UNCHECKED}: opening hours are not checked until the site time zone is set"
     window_start = window_start.astimezone(tz)
     window_end = window_end.astimezone(tz)
 
@@ -276,7 +280,7 @@ class SiteLogisticsGateHoursRule(ValidationRule):
                 (gate.get("open_time"), gate.get("close_time")), _concept_hours(context)
             )
             ok, reason = delivery_within_gate_hours(open_time, close_time, start, end, tz)
-            if not ok and tz is None and str(reason).startswith(TIMEZONE_MISSING):
+            if ok and str(reason or "").startswith(GATE_HOURS_UNCHECKED):
                 # One row for the plan, not one per delivery: nothing was compared.
                 missing_zone = True
                 continue
@@ -298,10 +302,10 @@ class SiteLogisticsGateHoursRule(ValidationRule):
                 RuleResult(
                     rule_id=self.rule_id,
                     rule_name=self.name,
-                    severity=self.severity,
+                    severity=Severity.WARNING,
                     category=self.category,
                     passed=False,
-                    message=f"{TIMEZONE_MISSING}: gate hours were not checked, the site has no time zone",
+                    message=f"{GATE_HOURS_UNCHECKED}: gate hours were not checked, the site has no time zone",
                     element_ref=None,
                     suggestion="Set the site time zone in the logistics concept",
                 )
@@ -475,6 +479,12 @@ _PLAN_RULE_SPECS: tuple[tuple[str, str, Severity, str], ...] = (
         "Site time zone set",
         Severity.ERROR,
         "Time-of-day rules are evaluated on the site clock, so the site states its time zone",
+    ),
+    (
+        "gate_hours_checked",
+        "Gate hours checked",
+        Severity.WARNING,
+        "Opening hours of a gate are compared on the site clock, which needs the site time zone",
     ),
     (
         "delivery_rate_respected",

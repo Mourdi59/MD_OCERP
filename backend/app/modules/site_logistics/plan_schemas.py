@@ -32,7 +32,8 @@ class TransitionIn(_In):
 
 
 class CataloguePinIn(_In):
-    source: Literal["shipped", "tenant"] = "shipped"
+    # The three sources the governance resolver knows; "pack" is a catalogue of the active pack.
+    source: Literal["shipped", "pack", "tenant"] = "shipped"
     catalogue_id: str = Field(min_length=1, max_length=64)
     version: int | None = Field(default=None, ge=1)
 

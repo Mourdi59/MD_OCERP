@@ -405,6 +405,19 @@ def covering_permit(
     )
 
 
+def heavy_permit_standing(permits: Sequence[Mapping[str, Any]], kinds: Iterable[str]) -> str:
+    """Where a heavy transport stands with the authority: ``granted``, ``applied`` or ``missing``.
+
+    Only ``granted`` lets the transport run. An application is work in progress:
+    the authority may still refuse it or change the route.
+    """
+    wanted = set(kinds)
+    states = {p.get("state") for p in permits if p.get("permit_kind") in wanted}
+    if "granted" in states:
+        return "granted"
+    return "applied" if "applied" in states else "missing"
+
+
 def heavy_permit_finding(
     permits: Sequence[Mapping[str, Any]],
     start: datetime | None,

@@ -121,6 +121,7 @@
       "flow_code_unknown": "The logistics concept has no material flow with this code.",
       "flow_mode_invalid": "Unknown material flow mode.",
       "frame_invalid": "Unknown coordinate frame.",
+      "gate_hours_unchecked": "Opening hours are not checked until the site time zone is set.",
       "gate_load_exceeded": "The load exceeds the limits of the site entrance.",
       "gate_not_found": "Site entrance not found in this project.",
       "geo_overlay_not_found": "Site plan overlay not found in this project.",
@@ -193,7 +194,7 @@
       "concept_saved_and_exported": "Logistics concept saved and filed",
       "first_stage_media_contracted": "Utilities for the first stage contracted",
       "gate_loads_admitted": "Every load admitted by its gate or covered by an oversize permit",
-      "heavy_transports_applied": "Permits applied for every heavy transport",
+      "heavy_transports_applied": "Permit granted for every heavy transport",
       "neighbourhood_limit_source": "Noise limit source set",
       "no_errors": "No open logistics errors",
       "unresolved": "Logistics plan could not be placed in the governance model"
@@ -258,6 +259,10 @@
       "delivery_rate_exceeded": {
         "fail": "{count} approved deliveries start in the hour from {hour}, the concept allows {limit}.",
         "suggestion": "Move deliveries to another hour or raise the limit in the concept."
+      },
+      "gate_hours_unchecked": {
+        "fail": "The site has no time zone, so deliveries were not compared with the opening hours.",
+        "suggestion": "Set the site time zone in the logistics concept."
       },
       "gate_limits_unknown": {
         "fail": "Site entrance {gate} states no load limits.",
