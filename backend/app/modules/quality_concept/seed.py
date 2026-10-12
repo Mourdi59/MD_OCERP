@@ -39,17 +39,17 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.quality_concept import schemas as s
-from app.modules.quality_concept.errors import QualityConceptError
 from app.modules.quality_concept.models import QualityConcept
 
 logger = logging.getLogger(__name__)
 
 _REGIME = "fidic_taking_over"
+# Who may sign off in the demo, most senior first.
+_SIGN_OFF_ROLES = ("manager", "admin", "estimator", "editor")
 # Before construction the demo is told under the German standard form of the catalogue.
 _REGIME_BEFORE_CONSTRUCTION = "de_vob_b"
 # Days from the seed day to the start of construction in the story before construction.
@@ -119,16 +119,25 @@ async def _named(session: AsyncSession, pid: uuid.UUID, user_id: uuid.UUID, owne
     return user_id if await public.user_can_access_project(session, pid, user_id) else owner_id
 
 
-async def _actors(session: AsyncSession, owner_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID]:
-    """``(engineer, authority)``: who records and who signs off. The owner stands in for a missing side."""
+async def _actors(session: AsyncSession, pid: uuid.UUID, owner_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID]:
+    """``(engineer, authority)``: who records and who signs off.
+
+    Who signs off is a second person who can open the project when the project has one;
+    the owner stands in for a missing side.
+    """
+    from app.modules.project_governance import public
     from app.modules.users.models import User
 
+    stmt = select(User.id, User.role).where(User.role.in_(_SIGN_OFF_ROLES)).order_by(User.email).limit(200)
+    users = [(uid, str(role or "")) for uid, role in (await session.execute(stmt)).all()]
     by_role: dict[str, uuid.UUID] = {}
-    for uid, role in (await session.execute(select(User.id, User.role).order_by(User.email))).all():
-        by_role.setdefault(str(role or ""), uid)
+    for uid, role in users:
+        by_role.setdefault(role, uid)
     engineer = by_role.get("editor") or owner_id
-    authority = by_role.get("manager") or by_role.get("admin") or owner_id
-    return engineer, authority
+    for uid, _role in sorted(users, key=lambda item: _SIGN_OFF_ROLES.index(item[1])):
+        if uid != engineer and await public.user_can_access_project(session, pid, uid):
+            return engineer, uid
+    return engineer, by_role.get("manager") or by_role.get("admin") or owner_id
 
 
 async def _seed_plan(
@@ -272,7 +281,10 @@ async def _seed_stages(
         await svc.open_test(pid, row.id, engineer)
         await svc.record_result(pid, row.id, s.StageResultIn(result="pass"), engineer)
         gate = await svc.request_release(pid, row.id, engineer)
-        if index or authority == engineer:
+        if index:
+            continue
+        if authority == engineer:
+            logger.warning("quality_concept demo seed: project %s has no second person to release a stage", pid)
             continue
         await GatingService(session).release_gate(
             gate.id, HoldGateReleaseIn(party_role=first.release_party_role), str(authority), signature_ip=None
@@ -365,6 +377,8 @@ async def _seed_proofs(
     if authority != engineer:
         for proof in delivered[:2]:
             await svc.accept_proof(pid, proof.id, authority)
+    elif delivered:
+        logger.warning("quality_concept demo seed: project %s has no second person to accept a proof", pid)
     open_proofs = [p for p in proofs if p not in delivered]
     if open_proofs:
         await svc.request_waiver(
@@ -506,27 +520,24 @@ async def seed_quality_concept_demo(session: AsyncSession, project_ids: Iterable
     for pid, owner, meta in rows:
         if pid in seeded or not (isinstance(meta, dict) and str(meta.get("demo_id") or "").strip()):
             continue
-        engineer, authority = await _actors(session, owner)
+        engineer, authority = await _actors(session, pid, owner)
         counts = dict.fromkeys(_TOTALS, 0)
-        try:
-            # One project is one unit of work: a refused step leaves that project without a
-            # concept and the others untouched.
-            async with session.begin_nested():
-                before = await _before_construction(session, pid)
-                named = await _named(session, pid, engineer, owner)
-                await svc.ensure_concept(pid, engineer)
-                refs = await _seed_plan(svc, pid, engineer, named, today, counts, before)
-                await _seed_stages(svc, pid, engineer, authority, named, counts, before)
-                await _seed_units(svc, pid, refs, today, counts, before)
-                await _seed_proofs(svc, pid, refs, engineer, authority, counts, before)
-                if before:
-                    await _seed_surveys_ahead(svc, pid, today, counts)
-                else:
-                    await _seed_surveys(svc, pid, engineer, today, counts)
-                    await _seed_course(svc, pid, engineer, today)
-        except (QualityConceptError, HTTPException) as exc:
-            logger.warning("quality_concept demo seed refused for project %s: %s", pid, exc)
-            continue
+        # One project is one unit of work. A refusal is not caught: it rolls this project back
+        # and reaches the caller with its code, so a seed that no longer fits the rules is seen.
+        # Steps that need a second person are left out above, with a warning, when there is none.
+        async with session.begin_nested():
+            before = await _before_construction(session, pid)
+            named = await _named(session, pid, engineer, owner)
+            await svc.ensure_concept(pid, engineer)
+            refs = await _seed_plan(svc, pid, engineer, named, today, counts, before)
+            await _seed_stages(svc, pid, engineer, authority, named, counts, before)
+            await _seed_units(svc, pid, refs, today, counts, before)
+            await _seed_proofs(svc, pid, refs, engineer, authority, counts, before)
+            if before:
+                await _seed_surveys_ahead(svc, pid, today, counts)
+            else:
+                await _seed_surveys(svc, pid, engineer, today, counts)
+                await _seed_course(svc, pid, engineer, today)
         counts["projects"] = 1
         for key, value in counts.items():
             totals[key] += value

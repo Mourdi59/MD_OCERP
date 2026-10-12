@@ -459,6 +459,46 @@ async def _unit(svc: QualityConceptService, pid: uuid.UUID, unit_id: uuid.UUID) 
     return await svc.get_row(AcceptanceUnit, pid, unit_id)
 
 
+async def test_an_act_whose_event_never_arrived_is_followed_by_the_next_unit_write(pg_session) -> None:
+    from app.modules.construction_control.models import HandoverPackage
+
+    p = await _plan(pg_session)
+    svc, pid = p.svc, p.pid
+    units = await _units(p)
+    today = datetime.now(UTC).date()
+    package = HandoverPackage(project_id=pid, package_number="HP-009", title="Section B", status="draft", metadata_={})
+    pg_session.add(package)
+    await pg_session.flush()
+    for code in ("AU-1", "AU-2"):
+        await svc.patch_unit(pid, units[code], s.AcceptanceUnitPatch(handover_package_id=package.id))
+    first, second = await _unit(svc, pid, units["AU-1"]), await _unit(svc, pid, units["AU-2"])
+
+    # The act is issued and its event is lost: nothing has moved.
+    package.status, package.issued_at = "issued", datetime.now(UTC).isoformat()
+    await pg_session.flush()
+    assert (first.state, second.state) == ("planned", "planned")
+
+    # The next write on any unit of the project catches up; the unit written is not on the act.
+    noticed = s.AcceptanceRecordIn(completion_notice_at=today - timedelta(days=1))
+    await svc.record_dates(pid, units["AU-T"], noticed)
+    assert (first.state, second.state) == ("accepted", "accepted")
+    assert first.accepted_on == today.isoformat()
+    assert (await _unit(svc, pid, units["AU-T"])).state == "planned"
+    assert await svc.reconcile_handover(pid) == 0
+
+    # The act is revoked and that event is lost too: the units are requested again by the next write.
+    package.status = "revoked"
+    await pg_session.flush()
+    await svc.record_dates(pid, units["AU-T"], noticed)
+    assert (first.state, first.accepted_on, second.state) == ("requested", None, "requested")
+    # A unit decided by a person since then is left alone: nothing is on the act to follow.
+    await svc.record_dates(pid, first.id, s.AcceptanceRecordIn(completion_notice_at=today - timedelta(days=40)))
+    deemed = await svc.act_on_unit(pid, first.id, "confirm_deemed", p.manager)
+    assert deemed.state == "deemed_accepted"
+    await svc.record_dates(pid, units["AU-T"], noticed)
+    assert (first.state, second.state) == ("deemed_accepted", "requested")
+
+
 # ── the concept follows its governance frame document ──────────────────────
 
 

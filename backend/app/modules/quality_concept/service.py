@@ -103,6 +103,28 @@ def _refuse(code: str | None, **kw: Any) -> None:
         raise QualityConceptError(code, caps.status_of(code), **kw)
 
 
+# A unit reaches these two states only through its handover act.
+_ACCEPTED_BY_ACT = ("accepted", "accepted_with_reservations")
+
+
+def _state_after_issue(state: str, reserved: bool) -> str:
+    """Where an issued act takes a unit; refused when the unit cannot follow it."""
+    if state in ("planned", "refused"):
+        # The certificate is the request and its answer; a refusal was overtaken by it.
+        state = _transition("acceptance", state, "request")
+    return _transition("acceptance", state, "accept_with_reservations" if reserved else "accept", mirror=True)
+
+
+def _follows_issue(state: str) -> bool:
+    if state in ev.ACCEPTED_STATES:
+        return False
+    try:
+        _state_after_issue(state, False)
+    except QualityConceptError:
+        return False
+    return True
+
+
 def _text(key: str, **params: Any) -> str:
     """A sentence this module stores or hands to another module, in the request locale."""
     return translate(f"quality_concept.text.{key}", locale=get_locale() or "en", **params)
@@ -1578,6 +1600,7 @@ class QualityConceptService:
         )
 
     async def patch_unit(self, project_id: uuid.UUID, unit_id: uuid.UUID, data: Any) -> AcceptanceUnit:
+        await self.reconcile_handover(project_id)
         concept = await self.require_concept(project_id)
         unit = await self.get_row(AcceptanceUnit, project_id, unit_id)
         fields = data.model_dump(exclude_unset=True)
@@ -1701,6 +1724,7 @@ class QualityConceptService:
     async def request_acceptance(
         self, project_id: uuid.UUID, unit_id: uuid.UUID, data: Any, actor: uuid.UUID
     ) -> AcceptanceUnit:
+        await self.reconcile_handover(project_id)
         unit = await self.repo.get(AcceptanceUnit, project_id, unit_id, lock=True)
         if unit is None:
             raise not_found("not_found")
@@ -1729,6 +1753,7 @@ class QualityConceptService:
 
         The deemed date is compared with the server's date; no caller supplies the clock.
         """
+        await self.reconcile_handover(project_id)
         unit = await self.repo.get(AcceptanceUnit, project_id, unit_id, lock=True)
         if unit is None:
             raise not_found("not_found")
@@ -1744,6 +1769,7 @@ class QualityConceptService:
         return unit
 
     async def refuse(self, project_id: uuid.UUID, unit_id: uuid.UUID, data: Any, actor: uuid.UUID) -> AcceptanceUnit:
+        await self.reconcile_handover(project_id)
         unit = await self.repo.get(AcceptanceUnit, project_id, unit_id, lock=True)
         if unit is None:
             raise not_found("not_found")
@@ -1759,6 +1785,7 @@ class QualityConceptService:
 
     async def record_dates(self, project_id: uuid.UUID, unit_id: uuid.UUID, data: Any) -> AcceptanceUnit:
         """The dates a deemed acceptance counts from. Open until the unit is decided; never in the future."""
+        await self.reconcile_handover(project_id)
         unit = await self.repo.get(AcceptanceUnit, project_id, unit_id, lock=True)
         if unit is None:
             raise not_found("not_found")
@@ -1786,6 +1813,37 @@ class QualityConceptService:
             holidays=holidays,
         )
 
+    async def reconcile_handover(self, project_id: uuid.UUID) -> int:
+        """Follow the acts issued or revoked although their event never arrived (rule 15).
+
+        A unit is accepted only through its act, so an accepted unit on a revoked act missed
+        the revocation; nothing a person decided is undone. Only acts with a unit that can
+        still move are touched, so a project in step costs one read. Called from the unit
+        write routes only.
+        """
+        from app.modules.construction_control.models import HandoverPackage
+
+        stmt = (
+            select(HandoverPackage.id, HandoverPackage.status, AcceptanceUnit.state)
+            .join(AcceptanceUnit, AcceptanceUnit.handover_package_id == HandoverPackage.id)
+            .where(AcceptanceUnit.project_id == project_id)
+            .where(HandoverPackage.project_id == project_id)
+            .where(HandoverPackage.status.in_(("issued", "revoked")))
+        )
+        issued: set[uuid.UUID] = set()
+        revoked: set[uuid.UUID] = set()
+        for package_id, status, state in (await self.session.execute(stmt)).all():
+            if status == "issued" and _follows_issue(state):
+                issued.add(package_id)
+            elif status == "revoked" and state in _ACCEPTED_BY_ACT:
+                revoked.add(package_id)
+        moved = 0
+        for package_id in issued:
+            moved += len(await self.apply_handover_issued(package_id, None))
+        for package_id in revoked:
+            moved += len(await self.apply_handover_revoked(package_id))
+        return moved
+
     async def apply_handover_issued(self, package_id: uuid.UUID, issued_at: str | None) -> list[AcceptanceUnit]:
         """Mirror of ``cc.handover.issued``: units pointing at the act are accepted (rule 15).
 
@@ -1807,13 +1865,8 @@ class QualityConceptService:
         for unit in (await self.session.execute(stmt)).scalars():
             if unit.state in ev.ACCEPTED_STATES:
                 continue
-            action = "accept_with_reservations" if unit.reservations else "accept"
             try:
-                state = unit.state
-                if state in ("planned", "refused"):
-                    # The certificate is the request and its answer; a refusal was overtaken by it.
-                    state = _transition("acceptance", state, "request")
-                state = _transition("acceptance", state, action, mirror=True)
+                state = _state_after_issue(unit.state, bool(unit.reservations))
             except QualityConceptError:
                 logger.warning(
                     "quality_concept: unit %s in state %s cannot follow handover package %s",
@@ -1849,7 +1902,7 @@ class QualityConceptService:
         )
         moved = []
         for unit in (await self.session.execute(stmt)).scalars():
-            if unit.state not in ("accepted", "accepted_with_reservations"):
+            if unit.state not in _ACCEPTED_BY_ACT:
                 continue
             unit.state = _transition("acceptance", unit.state, "revoke", mirror=True)
             unit.accepted_on = None
@@ -1878,6 +1931,8 @@ class QualityConceptService:
         An effect revoked with its certificate is confirmed again on the same row.
         """
         from app.core.acceptance_effects import apply_effect
+
+        await self.reconcile_handover(project_id)
 
         unit = await self.get_row(AcceptanceUnit, project_id, unit_id)
         _refuse(caps.effect_refusal(unit.state))

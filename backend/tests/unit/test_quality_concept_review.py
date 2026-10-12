@@ -615,3 +615,85 @@ async def test_the_module_hears_events_again_after_the_bus_was_emptied(monkeypat
         for name, handlers in saved.items():
             event_bus._handlers[name].extend(handlers)
         event_bus._wildcard_handlers.extend(wildcard)
+
+
+@pytest.mark.asyncio
+async def test_a_neighbour_refusal_reaches_the_screen_with_a_code() -> None:
+    """A neighbouring service refuses with a bare string; the screens read ``detail.code``."""
+    from fastapi import HTTPException
+
+    from app.modules.quality_concept import router as qc_router
+
+    async def neighbour() -> None:
+        raise HTTPException(status_code=409, detail="Package is already issued")
+
+    with pytest.raises(HTTPException) as caught:
+        await qc_router._run(neighbour())
+    detail = caught.value.detail
+    assert caught.value.status_code == 409
+    assert (detail["code"], detail["message_key"]) == ("neighbour_refused", "quality_concept.errors.neighbour_refused")
+    assert detail["detail"] == "Package is already issued"
+    assert detail["message"]
+
+    async def coded() -> None:
+        raise HTTPException(status_code=403, detail={"code": "manage_required"})
+
+    with pytest.raises(HTTPException) as kept:
+        await qc_router._run(coded())
+    assert kept.value.detail == {"code": "manage_required"}
+
+
+@pytest.mark.asyncio
+async def test_the_unit_list_reads_names_and_acts_once_for_all_units(monkeypatch) -> None:
+    from app.modules.quality_concept import capabilities as caps
+    from app.modules.quality_concept import references
+    from app.modules.quality_concept import router as qc_router
+    from app.modules.quality_concept.models import AcceptanceUnit
+
+    calls = {"labels": 0, "acts": 0}
+
+    async def labels(session, project_id, refs):
+        calls["labels"] += 1
+        return {}
+
+    async def acts(session, project_id, ids):
+        calls["acts"] += 1
+        return {}
+
+    async def nothing(*args, **kwargs):
+        return []
+
+    async def catalogue(concept):
+        return SimpleNamespace(regime=lambda code: None)
+
+    monkeypatch.setattr(references, "labels", labels)
+    monkeypatch.setattr(references, "handover_packages", acts)
+    pid = uuid.uuid4()
+    caller = caps.Caller(user_id=uuid.uuid4(), edit=True, manage=True, waive=True)
+    svc = SimpleNamespace(
+        session=None,
+        require_concept=nothing,
+        catalogue_for=catalogue,
+        unmet_preconditions=nothing,
+        deemed_dates=nothing,
+        proposed_effects=nothing,
+        repo=SimpleNamespace(effects=nothing),
+        ctx=SimpleNamespace(caller=caller, concept_state="draft"),
+    )
+    units = [
+        AcceptanceUnit(
+            id=uuid.uuid4(),
+            project_id=pid,
+            code=f"AU-{i}",
+            kind="total",
+            state="planned",
+            package_refs=[],
+            preconditions={},
+            reservations=[],
+            refusal_defects=[],
+        )
+        for i in range(3)
+    ]
+    out = await qc_router._units_out(svc, pid, units, date(2026, 1, 1))
+    assert [o["code"] for o in out] == ["AU-0", "AU-1", "AU-2"]
+    assert calls == {"labels": 1, "acts": 1}

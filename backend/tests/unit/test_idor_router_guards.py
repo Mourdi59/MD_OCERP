@@ -442,7 +442,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "export_trail",
         "get_matrix",
     ],
-    # Every route: each one is project scoped and builds its service through ``_svc``.
+    # Every route: each one is project scoped and builds its service through ``_project_service``.
     "quality_concept": [
         "get_concept",
         "create_concept",
@@ -573,9 +573,9 @@ _GUARD_WRAPPERS = frozenset(
         # bid and delegates to _verify_package_owner for its package.
         "_verify_package_owner",
         "_verify_bid_access",
-        # quality_concept.router: _svc calls verify_project_access on the path's project
+        # quality_concept.router: _project_service calls verify_project_access on the path's project
         # before it builds the service every handler works through.
-        "_svc",
+        "_project_service",
     }
 )
 

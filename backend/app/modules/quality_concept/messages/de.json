@@ -35,6 +35,7 @@
   "quality_concept.errors.link_exists": "Dieser Datensatz ist bereits verknüpft.",
   "quality_concept.errors.linked_record_not_found": "Der zu verknüpfende Datensatz wurde in diesem Projekt nicht gefunden.",
   "quality_concept.errors.manage_required": "Nur die Projektleitung oder die verantwortliche Person des Qualitätsbereichs kann den Plan ändern.",
+  "quality_concept.errors.neighbour_refused": "Ein anderer Bereich des Systems hat diesen Schritt abgelehnt. Die Details nennen den Grund.",
   "quality_concept.errors.no_warranty_to_start": "Zu dieser Abnahmeeinheit passt keine Gewährleistung ohne Beginn. Es wurde nichts geändert.",
   "quality_concept.errors.not_found": "Nicht gefunden.",
   "quality_concept.errors.null_not_allowed": "Dieses Feld darf nicht leer sein.",

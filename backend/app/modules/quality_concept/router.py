@@ -127,6 +127,18 @@ async def _run[T](awaitable: Awaitable[T]) -> T:
     except QualityConceptError as exc:
         message = translate(f"quality_concept.errors.{exc.code}", locale=get_locale() or "en")
         raise HTTPException(status_code=exc.status_code, detail=exc.as_detail(message)) from exc
+    except HTTPException as exc:
+        if isinstance(exc.detail, dict) and exc.detail.get("code"):
+            raise
+        # A neighbouring module refused in its own words; the screens read a code and a key.
+        key = "quality_concept.errors.neighbour_refused"
+        detail = {
+            "code": "neighbour_refused",
+            "message_key": key,
+            "message": translate(key, locale=get_locale() or "en"),
+            "detail": exc.detail if isinstance(exc.detail, str) else str(exc.detail),
+        }
+        raise HTTPException(status_code=exc.status_code, detail=detail, headers=exc.headers) from exc
 
 
 async def _refused(code: str) -> None:
@@ -176,7 +188,7 @@ class _Ctx:
         self.four_eyes = four_eyes
 
 
-async def _svc(
+async def _project_service(
     project_id: uuid.UUID, user_id: str, session: Any, payload: dict[str, Any] | None = None
 ) -> QualityConceptService:
     await verify_project_access(project_id, user_id, session)
@@ -282,7 +294,7 @@ async def _concept_out(
 async def get_concept(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     return await _concept_out(svc, project_id, user_id, payload)
 
 
@@ -291,7 +303,7 @@ async def create_concept(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     """Create the project's concept. The one explicit write that brings it into being."""
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     if await svc.concept(project_id) is not None:
         await _run(svc.refuse_duplicate_concept())
     await _run(svc.ensure_concept(project_id, _uid(user_id)))
@@ -308,7 +320,7 @@ async def patch_concept(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.patch_concept(project_id, body))
     out = await _concept_out(svc, project_id, user_id, payload)
     await session.commit()
@@ -320,7 +332,7 @@ async def apply_documentation_set(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, list[str]]:
     """Create the closeout slots and FM data deliverables of the chosen documentation set."""
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = await _run(svc.apply_documentation_set(project_id, _uid(user_id)))
     await session.commit()
     return out
@@ -334,7 +346,7 @@ async def pin_catalogue(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(
         svc.pin_catalogue(
             project_id, resolve_tenant_id(payload), body.catalogue_source, body.catalogue_id, body.catalogue_version
@@ -350,7 +362,7 @@ async def list_catalogues(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     """Catalogues the caller may pin: shipped, the active pack's and the company's own."""
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     concept = await svc.concept(project_id)
     items = await svc.available_catalogues(resolve_tenant_id(payload))
     for item in items:
@@ -385,7 +397,7 @@ async def list_options(
     owner_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     """What a reference field may hold, by the rule the write applies. ``available`` false names why."""
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     found = await references.options(
         session,
         project_id,
@@ -404,7 +416,7 @@ async def get_catalogue(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     """The pinned catalogue; before a concept exists, the shipped default it would start with."""
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     concept = await svc.concept(project_id)
     catalogue = shipped_catalogue() if concept is None else await _run(svc.catalogue_for(concept))
     return catalogue.model_dump(mode="json")
@@ -414,7 +426,7 @@ async def get_catalogue(
 async def submit_concept(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.submit(project_id, _uid(user_id)))
     out = await _concept_out(svc, project_id, user_id, payload)
     await session.commit()
@@ -429,7 +441,7 @@ async def concept_action(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.act_on_concept(project_id, action, _uid(user_id)))
     out = await _concept_out(svc, project_id, user_id, payload)
     await session.commit()
@@ -440,7 +452,7 @@ async def concept_action(
 async def revisions(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     return _page(await _with_people(svc, [_row(r) for r in await svc.revisions(project_id)]))
 
 
@@ -451,7 +463,7 @@ async def revisions(
 async def list_standards(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     plan = caps.plan_row(svc.ctx.caller, svc.ctx.concept_state)
     return _page([{**_row(r), **plan} for r in await svc.repo.list(AppliedStandard, project_id)])
 
@@ -460,7 +472,7 @@ async def list_standards(
 async def create_standard(
     project_id: uuid.UUID, body: s.StandardIn, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     row = await _run(svc.create_standard(project_id, body))
     out = {**_row(row), **caps.plan_row(svc.ctx.caller, svc.ctx.concept_state)}
     await session.commit()
@@ -476,7 +488,7 @@ async def patch_standard(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc._plan_concept(project_id))
     row = await _run(svc.patch_row(AppliedStandard, project_id, row_id, body.model_dump(exclude_unset=True)))
     out = {**_row(row), **caps.plan_row(svc.ctx.caller, svc.ctx.concept_state)}
@@ -488,7 +500,7 @@ async def patch_standard(
 async def delete_standard(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> Response:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc._plan_concept(project_id))
     await _run(svc.delete_row(AppliedStandard, project_id, row_id))
     await session.commit()
@@ -515,7 +527,7 @@ def _requirement_out(r: Any) -> dict[str, Any]:
 async def list_requirements(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     return _page([_requirement_out(r) for r in await _run(svc.list_requirements(project_id))])
 
 
@@ -527,7 +539,7 @@ async def add_requirement(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.require_concept(project_id))
     out = _requirement_out(await _run(svc.add_requirement(project_id, body, _uid(user_id))))
     await session.commit()
@@ -556,7 +568,7 @@ async def _certification_out(
 async def list_certifications(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     rows = await _with_contacts(
         svc,
         [await _certification_out(svc, project_id, r) for r in await svc.repo.list(CertificationTarget, project_id)],
@@ -574,7 +586,7 @@ async def create_certification(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.require_concept(project_id))
     row = await _run(svc.create_certification(project_id, body))
     out = await _certification_out(svc, project_id, row)
@@ -591,7 +603,7 @@ async def patch_certification(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     row = await _run(svc.patch_certification(project_id, row_id, body.model_dump(exclude_unset=True)))
     out = await _certification_out(svc, project_id, row)
     await session.commit()
@@ -607,7 +619,7 @@ async def transition_certification(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     row = await _run(svc.transition_certification(project_id, row_id, body))
     out = await _certification_out(svc, project_id, row)
     await session.commit()
@@ -618,7 +630,7 @@ async def transition_certification(
 async def delete_certification(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> Response:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.delete_certification(project_id, row_id))
     await session.commit()
     return Response(status_code=204)
@@ -633,7 +645,7 @@ async def add_credits(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     rows = await _run(svc.add_credits(project_id, row_id, body.items))
     out = _page([{**_row(r), **caps.credit(svc.ctx.caller, state=r.state)} for r in rows])
     await session.commit()
@@ -649,7 +661,7 @@ async def patch_credit(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     if body.action in caps.CREDIT_DECISIONS and not svc.ctx.caller.manage:
         # Whoever submits the evidence of a credit does not also decide it.
         await _run(_refused("manage_required"))
@@ -663,7 +675,7 @@ async def patch_credit(
 async def delete_credit(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> Response:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.delete_row(CreditTarget, project_id, row_id, owner_kind="credit"))
     await session.commit()
     return Response(status_code=204)
@@ -717,7 +729,7 @@ async def list_proofs(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=500, ge=1, le=2000),
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     filters = {"package_ref": package_ref} if package_ref else {}
     proofs = await svc.repo.list(ProofRequirement, project_id, **filters)
     rows = await _with_contacts(svc, await _proofs_out(svc, project_id, proofs))
@@ -728,7 +740,7 @@ async def list_proofs(
 async def create_proof(
     project_id: uuid.UUID, body: s.ProofIn, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     row = await _run(svc.create_proof(project_id, body, _uid(user_id)))
     (out,) = await _proofs_out(svc, project_id, [row])
     await session.commit()
@@ -744,7 +756,7 @@ async def patch_proof(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     row = await _run(svc.patch_proof(project_id, row_id, body))
     (out,) = await _proofs_out(svc, project_id, [row])
     await session.commit()
@@ -755,7 +767,7 @@ async def patch_proof(
 async def delete_proof(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> Response:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc._plan_concept(project_id))
     await _run(svc.delete_row(ProofRequirement, project_id, row_id, owner_kind="proof"))
     await session.commit()
@@ -770,7 +782,7 @@ async def generate_proofs(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     result = await _run(svc.generate_proofs(project_id, body))
     out = {
         **_page(result["preview"]),
@@ -785,7 +797,7 @@ async def generate_proofs(
 async def coverage(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     cov = await svc.coverage(project_id)
     return {**_page(cov["packages"]), "findings": await _labelled(svc, project_id, cov["findings"])}
 
@@ -799,7 +811,7 @@ async def request_waiver(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     row = await _run(svc.request_waiver(project_id, row_id, body.rationale, _uid(user_id)))
     (out,) = await _proofs_out(svc, project_id, [row])
     await session.commit()
@@ -815,7 +827,7 @@ async def decide_waiver(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     row = await _run(svc.decide_waiver(project_id, row_id, body.approve, _uid(user_id)))
     (out,) = await _proofs_out(svc, project_id, [row])
     await session.commit()
@@ -831,7 +843,7 @@ async def proof_action(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     if action == "accept":
         row = await _run(svc.accept_proof(project_id, row_id, _uid(user_id)))
     else:
@@ -865,7 +877,7 @@ async def list_links(
     owner_kind: Literal["proof", "credit", "stage_progress", "preservation", "expert_report"] = Query(...),
     owner_id: uuid.UUID = Query(...),
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     rows = await _run(svc.links_of(project_id, owner_kind, owner_id))
     names = await references.link_labels(session, project_id, [(r["link"].link_kind, r["link"].link_id) for r in rows])
     return _page(
@@ -890,7 +902,7 @@ async def add_link(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = _row(await _run(svc.add_link(project_id, body, _uid(user_id))))
     await session.commit()
     return out
@@ -900,7 +912,7 @@ async def add_link(
 async def remove_link(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> Response:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.delete_row(EvidenceLink, project_id, row_id))
     await session.commit()
     return Response(status_code=204)
@@ -916,7 +928,7 @@ async def link_candidates(
     q: str = Query(default="", max_length=120),
     limit: int = Query(default=50, ge=1, le=200),
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     return _page(await svc.candidates(project_id, link_kind, q, limit))
 
 
@@ -927,7 +939,7 @@ async def link_candidates(
 async def list_stages(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     plan = caps.plan_row(svc.ctx.caller, svc.ctx.concept_state)
     rows = await svc.repo.list(CommissioningStageDef, project_id, CommissioningStageDef.order)
     return _page(await _with_people(svc, [{**_row(r), **plan} for r in rows]))
@@ -937,7 +949,7 @@ async def list_stages(
 async def apply_stages(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.require_concept(project_id))
     out = _page([_row(r) for r in await _run(svc.apply_catalogue_stages(project_id))])
     await session.commit()
@@ -948,7 +960,7 @@ async def apply_stages(
 async def add_stage(
     project_id: uuid.UUID, body: s.StageDefIn, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = _row(await _run(svc.add_stage(project_id, body)))
     await session.commit()
     return out
@@ -963,7 +975,7 @@ async def patch_stage(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = _row(await _run(svc.patch_stage(project_id, row_id, body)))
     await session.commit()
     return out
@@ -973,7 +985,7 @@ async def patch_stage(
 async def delete_stage(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> Response:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.delete_stage(project_id, row_id))
     await session.commit()
     return Response(status_code=204)
@@ -1040,7 +1052,7 @@ async def _matrix(svc: QualityConceptService, project_id: uuid.UUID) -> dict[str
 async def stage_matrix(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     return await _matrix(svc, project_id)
 
 
@@ -1048,7 +1060,7 @@ async def stage_matrix(
 async def sync_progress(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.sync_progress(project_id))
     out = await _matrix(svc, project_id)
     await session.commit()
@@ -1059,7 +1071,7 @@ async def sync_progress(
 async def open_test(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = await _one_progress(svc, project_id, await _run(svc.open_test(project_id, row_id, _uid(user_id))))
     await session.commit()
     return out
@@ -1074,7 +1086,7 @@ async def record_result(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     row = await _run(svc.record_result(project_id, row_id, body, _uid(user_id)))
     out = await _one_progress(svc, project_id, row)
     await session.commit()
@@ -1085,7 +1097,7 @@ async def record_result(
 async def request_release(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     gate = await _run(svc.request_release(project_id, row_id, _uid(user_id)))
     out = {
         "progress_id": str(row_id),
@@ -1104,7 +1116,7 @@ async def stage_na(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     row = await _run(svc.mark_not_applicable(project_id, row_id, body.rationale))
     out = await _one_progress(svc, project_id, row)
     await session.commit()
@@ -1115,7 +1127,7 @@ async def stage_na(
 async def stage_reinstate(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = await _one_progress(svc, project_id, await _run(svc.reinstate(project_id, row_id)))
     await session.commit()
     return out
@@ -1130,7 +1142,7 @@ async def stage_depends(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     row = await _run(svc.set_dependencies(project_id, row_id, body.system_ids))
     out = await _one_progress(svc, project_id, row)
     await session.commit()
@@ -1148,24 +1160,51 @@ def _unmet_label(x: ev.UnmetPrecondition, names: dict[str, str]) -> str | None:
     return names.get(x.ref)
 
 
+async def _units_out(
+    svc: QualityConceptService, project_id: uuid.UUID, units: list[AcceptanceUnit], today: date
+) -> list[dict[str, Any]]:
+    """Units as the screens read them; names and handover acts are read once for the whole list."""
+    if not units:
+        return []
+    concept = await _run(svc.require_concept(project_id))
+    cat = await _run(svc.catalogue_for(concept))
+    open_states = ("planned", "requested", "inspection_scheduled", "refused")
+    facts = []
+    for u in units:
+        unmet = await svc.unmet_preconditions(project_id, u) if u.state in open_states else []
+        facts.append(
+            (cat.regime(u.regime_code), await svc.deemed_dates(project_id, u), await svc.repo.effects(u.id), unmet)
+        )
+    refs = {x.ref.partition(":")[0] if x.kind == "stage" else x.ref for *_, unmet in facts for x in unmet}
+    names = await references.labels(svc.session, project_id, refs)
+    acts = await references.handover_packages(svc.session, project_id, [u.handover_package_id for u in units])
+    return [
+        await _unit_dict(svc, project_id, u, today, fact, names, acts) for u, fact in zip(units, facts, strict=True)
+    ]
+
+
 async def _unit_out(
     svc: QualityConceptService, project_id: uuid.UUID, u: AcceptanceUnit, today: date
 ) -> dict[str, Any]:
-    concept = await _run(svc.require_concept(project_id))
-    regime = (await _run(svc.catalogue_for(concept))).regime(u.regime_code)
-    dates = await svc.deemed_dates(project_id, u)
-    applied = await svc.repo.effects(u.id)
-    open_states = ("planned", "requested", "inspection_scheduled", "refused")
-    unmet = await svc.unmet_preconditions(project_id, u) if u.state in open_states else []
+    return (await _units_out(svc, project_id, [u], today))[0]
+
+
+async def _unit_dict(
+    svc: QualityConceptService,
+    project_id: uuid.UUID,
+    u: AcceptanceUnit,
+    today: date,
+    fact: tuple[Any, list[Any], list[Any], list[Any]],
+    names: dict[str, str],
+    acts: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    regime, dates, applied, unmet = fact
     # What still blocks a request when every reservable precondition is taken as a reservation.
     blocking, _reserved = ev.acceptance_request_check(
         unmet, reservable=regime.reservable if regime else (), with_reservations=True
     )
     # The server's date decides whether a deemed acceptance is due, as it does on the confirm.
     server_today = datetime.now(UTC).date()
-    refs = {x.ref.partition(":")[0] if x.kind == "stage" else x.ref for x in unmet}
-    names = await references.labels(svc.session, project_id, refs)
-    acts = await references.handover_packages(svc.session, project_id, [u.handover_package_id])
     return {
         **_row(u),
         **caps.acceptance_unit(
@@ -1207,10 +1246,10 @@ async def list_units(
     payload: CurrentUserPayload,
     today: date | None = None,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.require_concept(project_id))
     t = _today(today)
-    return _page([await _unit_out(svc, project_id, u, t) for u in await svc.repo.list(AcceptanceUnit, project_id)])
+    return _page(await _units_out(svc, project_id, await svc.repo.list(AcceptanceUnit, project_id), t))
 
 
 @router.post(P + "/acceptance-units", status_code=201, dependencies=[MANAGE])
@@ -1221,7 +1260,7 @@ async def create_unit(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.require_concept(project_id))
     out = await _unit_out(svc, project_id, await _run(svc.create_unit(project_id, body)), _today(None))
     await session.commit()
@@ -1237,7 +1276,7 @@ async def patch_unit(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = await _unit_out(svc, project_id, await _run(svc.patch_unit(project_id, row_id, body)), _today(None))
     await session.commit()
     return out
@@ -1247,7 +1286,7 @@ async def patch_unit(
 async def delete_unit(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> Response:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc._plan_concept(project_id))
     await _run(svc.delete_row(AcceptanceUnit, project_id, row_id))
     await session.commit()
@@ -1263,7 +1302,7 @@ async def request_unit(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     unit = await _run(svc.request_acceptance(project_id, row_id, body, _uid(user_id)))
     out = await _unit_out(svc, project_id, unit, _today(None))
     await session.commit()
@@ -1279,7 +1318,7 @@ async def unit_dates(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = await _unit_out(svc, project_id, await _run(svc.record_dates(project_id, row_id, body)), _today(None))
     await session.commit()
     return out
@@ -1294,7 +1333,7 @@ async def refuse_unit(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = await _unit_out(
         svc, project_id, await _run(svc.refuse(project_id, row_id, body, _uid(user_id))), _today(None)
     )
@@ -1311,7 +1350,7 @@ async def confirm_effect(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = _row(await _run(svc.confirm_effect(project_id, row_id, body, _uid(user_id))))
     await session.commit()
     return out
@@ -1326,7 +1365,7 @@ async def unit_action(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     unit = await _run(svc.act_on_unit(project_id, row_id, action, _uid(user_id)))
     out = await _unit_out(svc, project_id, unit, _today(None))
     await session.commit()
@@ -1351,7 +1390,7 @@ async def list_surveys(
     payload: CurrentUserPayload,
     today: date | None = None,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     rows = await _with_contacts(
         svc, [_survey_out(r, svc.ctx) for r in await svc.repo.list(PreservationSurvey, project_id)]
     )
@@ -1368,7 +1407,7 @@ async def create_survey(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = _survey_out(await _run(svc.create_survey(project_id, body)), svc.ctx)
     await session.commit()
     return out
@@ -1383,7 +1422,7 @@ async def patch_survey(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = _survey_out(await _run(svc.patch_survey(project_id, row_id, body)), svc.ctx)
     await session.commit()
     return out
@@ -1398,7 +1437,7 @@ async def survey_action(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = _survey_out(await _run(svc.survey_action(project_id, row_id, body, _uid(user_id))), svc.ctx)
     await session.commit()
     return out
@@ -1413,7 +1452,7 @@ async def pair_survey(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = _survey_out(await _run(svc.pair_survey(project_id, row_id, body.before_id)), svc.ctx)
     await session.commit()
     return out
@@ -1423,7 +1462,7 @@ async def pair_survey(
 async def delete_survey(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> Response:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.delete_survey(project_id, row_id))
     await session.commit()
     return Response(status_code=204)
@@ -1433,7 +1472,7 @@ async def delete_survey(
 async def list_expert_reports(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     can = caps.editable(svc.ctx.caller)
     rows = [{**_row(r), **can} for r in await svc.repo.list(ExpertReportPlan, project_id)]
     return _page(await _with_contacts(svc, rows))
@@ -1447,7 +1486,7 @@ async def create_expert_report(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     out = {**_row(await _run(svc.create_expert_report(project_id, body))), **caps.editable(svc.ctx.caller)}
     await session.commit()
     return out
@@ -1462,7 +1501,7 @@ async def patch_expert_report(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     fields = body.model_dump(exclude_unset=True)
     if fields.get("due_dates") is not None:
         fields["due_dates"] = [d.isoformat() for d in fields["due_dates"]]
@@ -1477,7 +1516,7 @@ async def patch_expert_report(
 async def delete_expert_report(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> Response:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.delete_row(ExpertReportPlan, project_id, row_id, owner_kind="expert_report"))
     await session.commit()
     return Response(status_code=204)
@@ -1494,7 +1533,7 @@ async def readiness(
     payload: CurrentUserPayload,
     today: date | None = None,
 ) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     return await svc.readiness(project_id, _today(today))
 
 
@@ -1509,7 +1548,7 @@ async def validation(
     from app.core.validation.engine import ValidationContext, rule_registry
     from app.modules.quality_concept.validators import QUALITY_CONCEPT_RULE_SET
 
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     payload = await _run(svc.validation_payload(project_id, _today(today)))
     context = ValidationContext(data=payload, metadata={"locale": get_locale() or "en"})
     items = []
@@ -1541,7 +1580,7 @@ async def export(
 ) -> Response:
     from app.modules.quality_concept.export import render
 
-    svc = await _svc(project_id, user_id, session, payload)
+    svc = await _project_service(project_id, user_id, session, payload)
     data = await _run(render(svc, project_id, what=what, fmt=format, locale=get_locale() or "en"))
     media = (
         "application/pdf" if format == "pdf" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

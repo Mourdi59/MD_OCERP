@@ -35,6 +35,7 @@
   "quality_concept.errors.link_exists": "This record is already linked.",
   "quality_concept.errors.linked_record_not_found": "The record to link was not found in this project.",
   "quality_concept.errors.manage_required": "Only a manager or the owner of the quality area can change the plan.",
+  "quality_concept.errors.neighbour_refused": "Another part of the system refused this step. The details say why.",
   "quality_concept.errors.no_warranty_to_start": "No warranty without a start date matches this acceptance unit. Nothing was changed.",
   "quality_concept.errors.not_found": "Not found.",
   "quality_concept.errors.null_not_allowed": "This field cannot be empty.",
