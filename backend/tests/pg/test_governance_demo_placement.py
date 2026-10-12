@@ -499,13 +499,18 @@ async def test_conditions_of_the_walk_are_cleared_once_the_module_answers_met(fa
 # ── events and savepoints ──
 
 
-async def test_an_event_deferred_in_a_rolled_back_savepoint_still_fires_on_the_outer_commit(
+async def test_pin_of_current_core_behaviour_a_rolled_back_savepoint_still_fires_its_deferred_events(
     factory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """What the platform does today, measured: the reason the seed holds its events back.
+    """A pin of what ``app.core.events.publish_after_commit`` does today. It is a defect, not a contract.
 
-    If this starts failing, deferred events have learned about savepoints and
-    the outbox in ``seed._attempt`` can go.
+    An event deferred inside a savepoint fires on the outer commit although the
+    savepoint was rolled back and its rows are gone. Governance works around it
+    for its own events (the outbox in ``seed._attempt``); events of the other
+    services a story calls are still exposed.
+
+    Whoever fixes the core: this test fails on your change, as it should. Flip
+    the last assertion to ``not in`` and remove the outbox from the seed.
     """
     from sqlalchemy import text
 
