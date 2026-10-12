@@ -17,7 +17,7 @@ import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { fmtNumber } from '@/shared/lib/formatters';
 
-import { canEditComparison, canPropose } from './access';
+import { actionApplies, canEditComparison, canPropose } from './access';
 import {
   deleteOption,
   patchWeights,
@@ -138,11 +138,13 @@ export function ComparisonPanel({ projectId, model, comparison, catalogue, packa
               'Add at least two ways the project could be contracted, for example one main contractor and design and build. Then score them against each other.',
           })}
         />
-        <div className="flex justify-center">
-          <ReasonedButton verdict={editV} icon={<Plus size={14} />} onClick={() => setDialog('add')} data-testid="add-form-button">
-            {t('delivery_model.ui.comparison.add_form', { defaultValue: 'Add a form' })}
-          </ReasonedButton>
-        </div>
+        {actionApplies(model, 'edit') && (
+          <div className="flex justify-center">
+            <ReasonedButton verdict={editV} icon={<Plus size={14} />} onClick={() => setDialog('add')} data-testid="add-form-button">
+              {t('delivery_model.ui.comparison.add_form', { defaultValue: 'Add a form' })}
+            </ReasonedButton>
+          </div>
+        )}
         {dialogs}
       </div>
     );
@@ -156,9 +158,11 @@ export function ComparisonPanel({ projectId, model, comparison, catalogue, packa
   return (
     <div className="space-y-4" data-testid="comparison-panel">
       <div className="flex flex-wrap items-start gap-3">
-        <ReasonedButton verdict={proposeV} icon={<Scale size={14} />} onClick={() => setDialog('propose')} data-testid="propose-button">
-          {t('delivery_model.ui.comparison.propose', { defaultValue: 'Propose decision' })}
-        </ReasonedButton>
+        {actionApplies(model, 'propose') && (
+          <ReasonedButton verdict={proposeV} icon={<Scale size={14} />} onClick={() => setDialog('propose')} data-testid="propose-button">
+            {t('delivery_model.ui.comparison.propose', { defaultValue: 'Propose decision' })}
+          </ReasonedButton>
+        )}
         {!readOnly && (
           <>
             <Button variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog('add')} data-testid="add-form-button">

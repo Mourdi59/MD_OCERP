@@ -18,6 +18,7 @@ import {
   canPropose,
   canReopen,
   canWithdraw,
+  actionApplies,
   personOnly,
   roleAllows,
 } from '../access';
@@ -373,6 +374,22 @@ describe('button verdicts', () => {
     expect(canChangeCatalogue(m)).toBeNull();
     expect(canChangeCatalogue(model({ status: 'proposed' }))).toBe('decision_pending');
     expect(canChangeCatalogue(model({}, 'editor'))).toBe('permission_missing');
+    // a draft cannot be proposed yet (one form), which says nothing about its catalogue
+    expect(canPropose(model({ status: 'draft' }))).toBe('single_option_decision');
+    expect(canChangeCatalogue(model({ status: 'draft' }))).toBeNull();
+    expect(canChangeCatalogue(model({ status: 'binding' }))).toBe('model_not_editable');
+  });
+
+  it('an action that does not exist in this state is not shown at all', () => {
+    expect(actionApplies(model({ status: 'proposed' }), 'withdraw')).toBe(true);
+    expect(actionApplies(model(), 'withdraw')).toBe(false);
+    expect(actionApplies(model({ status: 'binding' }), 'reopen')).toBe(true);
+    expect(actionApplies(model({ status: 'proposed' }), 'propose')).toBe(false);
+    expect(actionApplies(model({ status: 'reopened' }), 'close_reopening')).toBe(true);
+    // lacking the right does not make the action disappear: it is shown and refused
+    expect(actionApplies(model({}, 'viewer'), 'propose')).toBe(true);
+    // a flag without `applies`, or no flag, is shown and denied rather than dropped
+    expect(actionApplies({ can: {} as ReturnType<typeof model>['can'] }, 'propose')).toBe(true);
   });
 
   it('tells a reason about the person from a reason about the state', () => {

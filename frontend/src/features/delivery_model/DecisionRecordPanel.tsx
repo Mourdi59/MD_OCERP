@@ -17,7 +17,7 @@ import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { fmtDate, fmtNumber } from '@/shared/lib/formatters';
 
-import { canCloseReopening, canReopen, canWithdraw } from './access';
+import { actionApplies, canCloseReopening, canReopen, canWithdraw } from './access';
 import { closeReopening, reopenModel, withdrawDecision, type Decision, type DeliveryModel, type Readiness } from './api';
 import { DECISION_TONE, FindingList, ReasonedButton, ToneBadge } from './DeliveryBits';
 import { ExportButtons } from './ExportButtons';
@@ -213,7 +213,7 @@ export function DecisionRecordPanel({
           )}
 
           <div className="flex flex-wrap items-start gap-3">
-            {current.status === 'proposed' && (
+            {actionApplies(model, 'withdraw') && (
               <ReasonedButton
                 variant="secondary"
                 verdict={canWithdraw(model)}
@@ -224,7 +224,7 @@ export function DecisionRecordPanel({
                 {t('delivery_model.ui.decision.withdraw', { defaultValue: 'Withdraw proposal' })}
               </ReasonedButton>
             )}
-            {model.status === 'binding' && (
+            {actionApplies(model, 'reopen') && (
               <ReasonedButton
                 variant="secondary"
                 verdict={canReopen(model)}
@@ -242,7 +242,7 @@ export function DecisionRecordPanel({
         </section>
       )}
 
-      {(model.status === 'reopened' || !closeV) && (
+      {actionApplies(model, 'close_reopening') && (
         <section className="space-y-2 rounded-xl border border-border-light p-4" data-testid="reopening">
           <p className="text-sm text-content-secondary">
             {t('delivery_model.ui.decision.reopened_body', {

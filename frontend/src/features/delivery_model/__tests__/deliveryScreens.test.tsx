@@ -114,8 +114,9 @@ describe('ComparisonPanel', () => {
 
   it('is read-only while a decision waits for the gate, and says so', () => {
     wrap(<ComparisonPanel {...props} model={model({ status: 'proposed', selected_form_code: 'design_build' })} comparison={comparison()} />);
-    expect(screen.getByTestId('propose-button')).toBeDisabled();
-    expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'decision_pending');
+    // proposing does not exist while a decision is pending: nothing is shown for it, not a dead button
+    expect(screen.queryByTestId('propose-button')).toBeNull();
+    expect(screen.queryByTestId('disabled-reason')).toBeNull();
     expect(screen.queryByTestId('add-form-button')).toBeNull();
     expect(screen.getAllByTestId('score-cell').every((n) => (n as HTMLSelectElement).disabled)).toBe(true);
     expect(screen.getByTestId('chosen-option')).toHaveTextContent('Chosen');
@@ -582,6 +583,22 @@ describe('DecisionRecordPanel', () => {
     wrap(<DecisionRecordPanel {...props} model={model({ status: 'binding' })} decisions={[approved]} />);
     expect(screen.getByTestId('current-decision')).toBeInTheDocument();
     expect(screen.queryByTestId('record-differs')).toBeNull();
+  });
+
+  it('shows no button for an action that does not exist in this state', () => {
+    const approved = decision({ status: 'approved' });
+    wrap(<DecisionRecordPanel {...props} model={model({ status: 'approved' })} decisions={[approved]} />);
+    expect(screen.queryByTestId('withdraw-button')).toBeNull();
+    expect(screen.queryByTestId('reopen-button')).toBeNull();
+    expect(screen.queryByTestId('close-reopening-button')).toBeNull();
+    expect(screen.queryByTestId('disabled-reason')).toBeNull();
+  });
+
+  it('a reopening that exists but may not be given up by this reader is shown disabled with the reason', () => {
+    const approved = decision({ status: 'approved' });
+    wrap(<DecisionRecordPanel {...props} model={model({ status: 'reopened' }, 'editor')} decisions={[approved]} />);
+    expect(screen.getByTestId('close-reopening-button')).toBeDisabled();
+    expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'permission_missing');
   });
 
   it('without any decision it sends the reader to the comparison', () => {

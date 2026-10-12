@@ -142,6 +142,8 @@ export interface OwnerCapability {
 
 /** The server's answer for one action: may the caller do it now, and if not, why. */
 export interface Capability {
+  /** false: the action does not exist in this state, so nothing is shown for it. */
+  applies?: boolean;
   allowed: boolean;
   reason: string | null;
 }

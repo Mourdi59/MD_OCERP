@@ -17,7 +17,7 @@
 //   For those the state half of `can.edit` is replaced by the status rule the
 //   API documents; the permission half is kept as sent.
 
-import type { Capability, DeliveryModel } from './api';
+import type { Capability, DeliveryModel, ModelAction } from './api';
 import type { KeyText } from './labels';
 import { allocationsFrozen } from './rules';
 import { ROLE_ALIASES, ROLE_RANK } from '@/shared/lib/roles';
@@ -62,6 +62,16 @@ function verdictOf(flag: Capability | undefined): Verdict {
   return flag.allowed ? null : (flag.reason ?? 'permission_missing');
 }
 
+/**
+ * Whether the action exists in this state at all. When it does not, the screen
+ * shows nothing for it: no disabled button and no reason. A flag that did not
+ * arrive, or one without `applies`, counts as existing, so it is shown and
+ * denied rather than silently dropped.
+ */
+export function actionApplies(model: CanModel, action: ModelAction): boolean {
+  return model.can?.[action]?.applies !== false;
+}
+
 /** Reasons about the person, not about the state of the model. */
 const PERSON_REASONS = new Set(['permission_missing', 'not_area_owner']);
 
@@ -97,12 +107,15 @@ export function canCloseReopening(model: CanModel): Verdict {
 }
 
 /**
- * Pinning another catalogue has no flag of its own. It needs what proposing
- * needs, except a carrier document, so the carrier reasons do not stop it.
+ * Pinning another catalogue has no flag of its own. It needs the right to
+ * propose and a model that can still be proposed for, and nothing else: a
+ * missing carrier document or a comparison that is not ready does not stop it.
  */
 export function canChangeCatalogue(model: CanModel): Verdict {
   const verdict = verdictOf(model.can?.propose);
-  return verdict === 'carrier_missing' || verdict === 'governance_model_missing' ? null : verdict;
+  const person = personOnly(verdict);
+  if (person) return person;
+  return actionApplies(model, 'propose') ? null : (verdict ?? 'model_not_editable');
 }
 
 /** Risk allocations, packages and owner-furnished items: open until the decision is approved. */
