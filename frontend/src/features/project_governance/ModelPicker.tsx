@@ -14,7 +14,7 @@ import clsx from 'clsx';
 
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
-import { getErrorMessage } from '@/shared/lib/api';
+import { ApiError, getErrorMessage } from '@/shared/lib/api';
 import { fmtList } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 
@@ -29,7 +29,8 @@ import {
   type GovernanceGate,
   type GovernanceModel,
 } from './api';
-import { canManage, roleManage, type Viewer } from './access';
+import { canManage, type Verdict } from './access';
+import { RoutePin } from './RoutePin';
 import { ReasonedButton } from './GovernanceBits';
 import { catalogueName, errorText, humanizeCode, type LabelContext } from './labels';
 
@@ -37,7 +38,6 @@ export interface ModelPickerProps {
   projectId: string;
   model: GovernanceModel | null;
   gates: GovernanceGate[];
-  viewer: Viewer;
   labels: LabelContext;
   onDone: () => void;
 }
@@ -48,10 +48,14 @@ function catalogueTitle(labels: LabelContext, c: CatalogueSummary): string {
   return humanizeCode(c.code);
 }
 
-export function ModelPicker({ projectId, model, gates, viewer, labels, onDone }: ModelPickerProps) {
+export function ModelPicker({ projectId, model, gates, labels, onDone }: ModelPickerProps) {
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
-  const verdict = model ? canManage(model) : roleManage(viewer);
+  // Before a model exists there is no model to carry the server's flag, so
+  // the picker is open and the server's refusal of the first try is what
+  // closes it. The reason then stays on the button.
+  const [refused, setRefused] = useState<Verdict>(null);
+  const verdict = model ? canManage(model) : refused;
   const catalogues = useQuery({ queryKey: governanceKeys.catalogues, queryFn: () => listCatalogues().then((p) => p.items) });
   const [selected, setSelected] = useState<string>('');
   const [fourEyes, setFourEyes] = useState(true);
@@ -83,6 +87,10 @@ export function ModelPicker({ projectId, model, gates, viewer, labels, onDone }:
     onError: (err) => {
       if (governanceErrorCode(err) === 'phase_mapping_missing') {
         setAskMapping(true);
+        return;
+      }
+      if (!model && err instanceof ApiError && err.status === 403) {
+        setRefused('role_manage');
         return;
       }
       addToast({ type: 'error', title: getErrorMessage(err) });
@@ -133,6 +141,8 @@ export function ModelPicker({ projectId, model, gates, viewer, labels, onDone }:
           </label>
         </div>
       )}
+
+      {model && <RoutePin projectId={projectId} model={model} onDone={onDone} />}
 
       <div>
         <h3 className="mb-2 text-sm font-semibold text-content-primary">

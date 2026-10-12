@@ -24,7 +24,8 @@ import { ConditionsRegister } from '../ConditionsRegister';
 import { buildMatrix } from '../matrix';
 import type { LabelContext } from '../labels';
 import { enT } from './i18nMock';
-import { blocker, condition, detail, gate, matrixArea, matrixResponse, model } from './fixtures';
+import type { GateDetail } from '../api';
+import { blocker, condition, detail, gate, gateDocument, matrixArea, matrixResponse, model } from './fixtures';
 
 const labels: LabelContext = { t: enT, language: 'en', exists: () => false };
 const names = (id: string | null | undefined) => (id === 'u-owner' ? 'Dana Weber' : null);
@@ -119,13 +120,13 @@ describe('BlockerList', () => {
 });
 
 describe('DecisionDialog', () => {
-  function open(onSubmit = vi.fn()) {
+  function open(onSubmit = vi.fn(), gateDetail: GateDetail = detail({ gate: gate({ status: 'in_review' }) })) {
     wrap(
       <DecisionDialog
         open
         onClose={() => undefined}
         projectId="p1"
-        detail={detail({ gate: gate({ status: 'in_review' }) })}
+        detail={gateDetail}
         catalogueId="neutral"
         labels={labels}
         today="2026-10-11"
@@ -170,6 +171,95 @@ describe('DecisionDialog', () => {
     expect(screen.getByTestId('decision-submit')).toBeDisabled();
     expect(screen.getByTestId('decision-problems')).toHaveTextContent('Every condition needs a text.');
   });
+
+  it('disables each outcome by its own server flag and says why', () => {
+    // The final approver already approved on the route: a go is still theirs, a stop is not.
+    const approved = detail({
+      gate: gate({ status: 'in_review' }),
+      can: {
+        edit: true,
+        decide: true,
+        outcomes: {
+          go: { allowed: true },
+          go_with_conditions: { allowed: true },
+          hold: { allowed: false, reason: 'route_not_pending' },
+          recycle: { allowed: false, reason: 'route_not_pending' },
+          stop: { allowed: false, reason: 'route_not_pending' },
+        },
+      },
+    });
+    const onSubmit = open(vi.fn(), approved);
+    expect(screen.getByRole('radio', { name: /^Go\b(?! with)/ })).not.toBeDisabled();
+    expect(screen.getByRole('radio', { name: /^Go with conditions/ })).not.toBeDisabled();
+    for (const name of [/^Stop/, /^Hold/, /^Recycle/]) expect(screen.getByRole('radio', { name })).toBeDisabled();
+    expect(within(screen.getByTestId('outcome-stop')).getByTestId('disabled-reason')).toHaveTextContent(
+      'The approval route of this gate is no longer pending',
+    );
+    expect(within(screen.getByTestId('outcome-go')).queryByTestId('disabled-reason')).toBeNull();
+
+    fireEvent.click(screen.getByRole('radio', { name: /^Stop/ }));
+    expect(screen.getByTestId('decision-submit')).toBeDisabled();
+    fireEvent.click(screen.getByRole('radio', { name: /^Go\b(?! with)/ }));
+    fireEvent.click(screen.getByTestId('decision-submit'));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'go' }));
+  });
+
+  describe('a missing required document', () => {
+    const blocked = () =>
+      detail({
+        gate: gate({ status: 'in_review' }),
+        areas: [
+          { code: 'organisation', documents: [gateDocument({ doc_type: 'business_case' })] },
+          { area_id: 'a2', code: 'cost_finance', documents: [gateDocument({ document_id: 'd2', doc_type: 'cost_plan' })] },
+        ],
+        blockers: [blocker('required_document_not_approved', 'organisation', 'business_case')],
+      });
+
+    it('becomes a condition that carries the area and the document type', () => {
+      const onSubmit = open(vi.fn(), blocked());
+      const missing = screen.getByTestId('missing-document');
+      expect(missing).toHaveTextContent('Business case');
+      fireEvent.click(within(missing).getByRole('button', { name: 'Turn into a condition' }));
+
+      // The outcome follows, and the one row is the document's, not an empty one beside it.
+      expect(screen.getByRole('radio', { name: /^Go with conditions/ })).toBeChecked();
+      const rows = screen.getAllByTestId('condition-row');
+      expect(rows).toHaveLength(1);
+      expect(within(rows[0]!).getByLabelText('Area')).toHaveValue('organisation');
+      expect(within(rows[0]!).getByLabelText('Frame document')).toHaveValue('business_case');
+      expect(screen.getByTestId('missing-document')).toHaveTextContent('Covered by a condition');
+
+      fireEvent.change(screen.getByLabelText(/Rationale/), { target: { value: 'Business case follows after funding' } });
+      fireEvent.click(screen.getByTestId('decision-submit'));
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      const body = onSubmit.mock.calls[0]![0];
+      expect(body.outcome).toBe('go_with_conditions');
+      expect(body.conditions).toEqual([
+        expect.objectContaining({ area_code: 'organisation', document_type: 'business_case' }),
+      ]);
+      expect(body.conditions[0].text).toContain('Business case');
+    });
+
+    it('offers only the documents of the chosen area, and forgets the document when the area changes', () => {
+      open(vi.fn(), blocked());
+      fireEvent.click(screen.getByRole('radio', { name: /^Go with conditions/ }));
+      const row = screen.getByTestId('condition-row');
+      const documentSelect = within(row).getByLabelText('Frame document');
+      // Whole gate: there is no area, so no document can be named.
+      expect(documentSelect).toBeDisabled();
+
+      fireEvent.change(within(row).getByLabelText('Area'), { target: { value: 'organisation' } });
+      expect(documentSelect).not.toBeDisabled();
+      expect(within(documentSelect).getAllByRole('option').map((o) => o.getAttribute('value'))).toEqual(['', 'business_case']);
+      fireEvent.change(documentSelect, { target: { value: 'business_case' } });
+      expect(screen.getByTestId('missing-document')).toHaveTextContent('Covered by a condition');
+
+      fireEvent.change(within(row).getByLabelText('Area'), { target: { value: 'cost_finance' } });
+      expect(documentSelect).toHaveValue('');
+      expect(within(documentSelect).getAllByRole('option').map((o) => o.getAttribute('value'))).toEqual(['', 'cost_plan']);
+      expect(screen.getByTestId('missing-document')).not.toHaveTextContent('Covered by a condition');
+    });
+  });
 });
 
 describe('ReasonedButton', () => {
@@ -210,11 +300,10 @@ describe('ConditionsRegister', () => {
     labels,
     personName: names,
     onChanged: () => undefined,
-    modelCan: { manage: true },
   };
 
   it('shows the next step when there are no conditions', () => {
-    wrap(<ConditionsRegister {...props} conditions={[]} viewer={{ userId: 'u', role: 'manager' }} />);
+    wrap(<ConditionsRegister {...props} conditions={[]} />);
     expect(screen.getByText('No conditions yet')).toBeInTheDocument();
   });
 
@@ -222,7 +311,6 @@ describe('ConditionsRegister', () => {
     wrap(
       <ConditionsRegister
         {...props}
-        viewer={{ userId: 'u', role: 'manager' }}
         conditions={[condition({ id: 'c1' }), condition({ id: 'c2', status: 'overdue' }), condition({ id: 'c3', status: 'waived' })]}
       />,
     );
@@ -231,24 +319,50 @@ describe('ConditionsRegister', () => {
     expect(screen.getAllByTestId('condition-entry')).toHaveLength(1);
   });
 
+  it('counts a condition the server reports as overdue under Overdue, escalated or not', () => {
+    // Nobody ran the escalation: escalated_at is empty, and the server still says overdue.
+    wrap(
+      <ConditionsRegister
+        {...props}
+        conditions={[
+          condition({ id: 'c1', status: 'overdue', escalated_at: null, due_date: '2026-09-01' }),
+          condition({ id: 'c2', status: 'open', due_date: '2027-01-01' }),
+        ]}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /^Overdue/ })).toHaveTextContent('1');
+    expect(screen.getByRole('button', { name: /^Open/ })).toHaveTextContent('1');
+    fireEvent.click(screen.getByRole('button', { name: /^Overdue/ }));
+    const shown = screen.getAllByTestId('condition-entry');
+    expect(shown).toHaveLength(1);
+    // An overdue condition is still open work: both actions stay on offer.
+    expect(within(shown[0]!).getByRole('button', { name: 'Clear with evidence' })).not.toBeDisabled();
+    expect(within(shown[0]!).getByRole('button', { name: 'Waive' })).not.toBeDisabled();
+  });
+
   it('refuses a waiver without a written reason', () => {
-    wrap(<ConditionsRegister {...props} viewer={{ userId: 'u', role: 'manager' }} conditions={[condition()]} />);
+    wrap(<ConditionsRegister {...props} conditions={[condition()]} />);
     fireEvent.click(screen.getByRole('button', { name: 'Waive' }));
     fireEvent.click(screen.getByTestId('condition-action-send'));
     expect(screen.getByTestId('waiver-error')).toHaveTextContent('A waiver needs a written reason');
   });
 
-  it('shows an editor why waiving is not theirs', () => {
+  it('follows the flags of each condition, and says why an action is not open', () => {
     wrap(
       <ConditionsRegister
         {...props}
-        modelCan={{ manage: false }}
-        viewer={{ userId: 'u-owner', role: 'editor' }}
-        conditions={[condition()]}
+        conditions={[
+          condition({ id: 'c1', can: { clear: true, waive: false, waive_reason: 'missing_permission' } }),
+          condition({ id: 'c2', can: { clear: false, clear_reason: 'not_condition_owner', waive: true } }),
+        ]}
       />,
     );
-    expect(screen.getByRole('button', { name: 'Waive' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Clear with evidence' })).not.toBeDisabled();
-    expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'role_decide');
+    const [first, second] = screen.getAllByTestId('condition-entry');
+    expect(within(first!).getByRole('button', { name: 'Clear with evidence' })).not.toBeDisabled();
+    expect(within(first!).getByRole('button', { name: 'Waive' })).toBeDisabled();
+    expect(within(first!).getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'role_decide');
+    expect(within(second!).getByRole('button', { name: 'Clear with evidence' })).toBeDisabled();
+    expect(within(second!).getByRole('button', { name: 'Waive' })).not.toBeDisabled();
+    expect(within(second!).getByTestId('disabled-reason')).toHaveTextContent('Only the condition owner or a manager can clear it.');
   });
 });

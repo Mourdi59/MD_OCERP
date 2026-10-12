@@ -7,6 +7,9 @@
 // built from the code at runtime, so the key test can enumerate them and a
 // translator can find every key by grep.
 
+import { getErrorMessage } from '@/shared/lib/api';
+
+import { governanceErrorCode } from './api';
 import type {
   CheckStatus,
   ConditionStatus,
@@ -237,4 +240,13 @@ export const ERROR_TEXT: Record<string, string> = {
 export function errorText(t: TFn, code: string, serverMessage?: string | null): string {
   const english = ERROR_TEXT[code] ?? serverMessage ?? humanizeCode(code);
   return t(['governance', 'errors', code].join('.'), { defaultValue: english });
+}
+
+/**
+ * The sentence for a failed request: the governance refusal in the reader's
+ * language when the server named a code, the shared error message otherwise.
+ */
+export function refusalText(t: TFn, err: unknown): string {
+  const code = governanceErrorCode(err);
+  return code ? errorText(t, code, getErrorMessage(err)) : getErrorMessage(err);
 }

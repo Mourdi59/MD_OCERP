@@ -84,10 +84,9 @@ def test_every_project_route_calls_verify_project_access_first() -> None:
     assert len(project_routes) >= 25
     missing = []
     for h in project_routes:
-        first_await = next(
-            (n for n in ast.walk(h) if isinstance(n, ast.Await) and isinstance(n.value, ast.Call)),
-            None,
-        )
+        # ast.walk is breadth-first, so "first" has to be taken by source position.
+        awaits = [n for n in ast.walk(h) if isinstance(n, ast.Await) and isinstance(n.value, ast.Call)]
+        first_await = min(awaits, key=lambda n: (n.lineno, n.col_offset), default=None)
         name = getattr(getattr(first_await, "value", None), "func", None)
         if getattr(name, "id", None) != "verify_project_access":
             missing.append(h.name)

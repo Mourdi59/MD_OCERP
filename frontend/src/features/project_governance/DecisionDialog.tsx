@@ -6,37 +6,45 @@
 // one condition with an owner and a date for a go with conditions, a resume
 // date for a hold. The submit button stays disabled and lists what is missing
 // until the draft is complete; the server repeats every check.
+//
+// Which outcomes the caller may record is the server's answer, one flag per
+// outcome: a final approver who already approved on the route may still record
+// a go, but no longer a stop. A refused outcome stays visible and says why.
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2 } from 'lucide-react';
+import { FileWarning, Plus, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 
 import { Button } from '@/shared/ui/Button';
 import { WideModal } from '@/shared/ui/WideModal';
-import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 
-import type { GateDetail, Outcome, Severity, Violation } from './api';
+import type { ConditionInput, DecisionInput, GateDetail, Outcome, Violation } from './api';
+import { outcomeVerdict } from './access';
+import { ConditionFields } from './ConditionFields';
 import {
   DECISION_PROBLEM,
   atRiskCandidates,
+  conditionForDocument,
+  coversDocument,
   decisionProblems,
+  documentBlockers,
+  emptyCondition,
   needsRationale,
   notApplicableAreas,
   toDecisionInput,
   type ConditionDraft,
   type DecisionDraft,
 } from './decisionRules';
-import { OUTCOME, OUTCOME_HINT, SEVERITY, catalogueName, errorText, vocab, type LabelContext } from './labels';
-import type { DecisionInput } from './api';
+import { VerdictReason } from './GovernanceBits';
+import { OUTCOME, OUTCOME_HINT, catalogueName, errorText, vocab, type LabelContext } from './labels';
 
 const OUTCOMES: Outcome[] = ['go', 'go_with_conditions', 'hold', 'recycle', 'stop'];
-const SEVERITIES: Severity[] = ['critical', 'essential', 'recommended'];
 
 let rowSeq = 0;
-function newCondition(): ConditionDraft {
+function newCondition(seed: ConditionInput = emptyCondition()): ConditionDraft {
   rowSeq += 1;
-  return { rowId: `c${rowSeq}`, text: '', severity: 'essential', area_code: '', owner_user_id: '', due_date: '' };
+  return { ...seed, rowId: `c${rowSeq}` };
 }
 
 export interface DecisionDialogProps {
@@ -70,6 +78,7 @@ export function DecisionDialog({
   const { t } = useTranslation();
   const naAreas = useMemo(() => notApplicableAreas(detail), [detail]);
   const riskAreas = useMemo(() => atRiskCandidates(detail), [detail]);
+  const missingDocuments = useMemo(() => documentBlockers(detail), [detail]);
   const [draft, setDraft] = useState<DecisionDraft>({
     outcome: null,
     rationale: '',
@@ -80,6 +89,20 @@ export function DecisionDialog({
   });
   const problems = decisionProblems(draft, detail, today);
   const areaName = (code: string) => catalogueName(labels, { kind: 'area', code, catalogueId });
+  const documentName = (code: string) => catalogueName(labels, { kind: 'doc', code, catalogueId });
+  // A missing document becomes a condition that already names the pair the
+  // server matches on, with a sentence the decider can still rewrite.
+  const coverDocument = (blocker: Violation) =>
+    setDraft((d) => {
+      const text = t('governance.project.decision.document_condition_text', {
+        defaultValue: 'Hand in "{{document}}" and have it approved',
+        document: documentName(blocker.document_type ?? ''),
+      });
+      const row = newCondition(conditionForDocument(blocker, text));
+      // The row the dialog opened by itself is still empty: replace it rather than leave it behind.
+      const kept = d.conditions.filter((c) => c.text.trim() || c.document_type);
+      return { ...d, outcome: 'go_with_conditions', conditions: [...kept, row] };
+    });
 
   const setOutcome = (outcome: Outcome) =>
     setDraft((d) => ({
@@ -168,31 +191,38 @@ export function DecisionDialog({
             {t('governance.project.decision.outcome', { defaultValue: 'Outcome' })}
           </legend>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5" role="radiogroup">
-            {OUTCOMES.map((o) => (
-              <label
-                key={o}
-                className={clsx(
-                  'flex cursor-pointer flex-col gap-1 rounded-lg border p-3 text-sm transition-colors',
-                  draft.outcome === o
-                    ? o === 'stop'
-                      ? 'border-semantic-error bg-semantic-error-bg'
-                      : 'border-oe-blue bg-oe-blue-subtle'
-                    : 'border-border-light hover:border-border',
-                )}
-              >
-                <span className="flex items-center gap-2 font-medium text-content-primary">
-                  <input
-                    type="radio"
-                    name="outcome"
-                    value={o}
-                    checked={draft.outcome === o}
-                    onChange={() => setOutcome(o)}
-                  />
-                  {vocab(t, OUTCOME, o)}
-                </span>{' '}
-                <span className="text-xs text-content-secondary">{vocab(t, OUTCOME_HINT, o)}</span>
-              </label>
-            ))}
+            {OUTCOMES.map((o) => {
+              const refused = outcomeVerdict(detail, o);
+              return (
+                <label
+                  key={o}
+                  data-testid={`outcome-${o}`}
+                  className={clsx(
+                    'flex flex-col gap-1 rounded-lg border p-3 text-sm transition-colors',
+                    refused ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
+                    draft.outcome === o
+                      ? o === 'stop'
+                        ? 'border-semantic-error bg-semantic-error-bg'
+                        : 'border-oe-blue bg-oe-blue-subtle'
+                      : 'border-border-light hover:border-border',
+                  )}
+                >
+                  <span className="flex items-center gap-2 font-medium text-content-primary">
+                    <input
+                      type="radio"
+                      name="outcome"
+                      value={o}
+                      checked={draft.outcome === o}
+                      disabled={!!refused}
+                      onChange={() => setOutcome(o)}
+                    />
+                    {vocab(t, OUTCOME, o)}
+                  </span>{' '}
+                  <span className="text-xs text-content-secondary">{vocab(t, OUTCOME_HINT, o)}</span>
+                  <VerdictReason verdict={refused} />
+                </label>
+              );
+            })}
           </div>
         </fieldset>
 
@@ -233,6 +263,51 @@ export function DecisionDialog({
           </div>
         )}
 
+        {missingDocuments.length > 0 && (
+          <div className="rounded-lg border border-border-light p-3" data-testid="missing-documents">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-content-primary">
+              <FileWarning size={15} className="text-[#b45309]" aria-hidden />
+              {t('governance.project.decision.missing_documents', { defaultValue: 'Required documents not ready' })}
+            </h3>
+            <p className="mt-1 text-xs text-content-secondary">
+              {t('governance.project.decision.missing_documents_hint', {
+                defaultValue:
+                  'A go is refused while these are missing. Turn one into a condition to go ahead with an owner and a due date for it.',
+              })}
+            </p>
+            <ul className="mt-2 space-y-1.5">
+              {missingDocuments.map((b) => {
+                const covered = coversDocument(draft.conditions, b);
+                return (
+                  <li
+                    key={`${b.area_code}-${b.document_type}`}
+                    className="flex flex-wrap items-center gap-2 text-sm"
+                    data-testid="missing-document"
+                  >
+                    <span className="text-content-primary">{documentName(b.document_type ?? '')}</span>
+                    <span className="text-xs text-content-tertiary">({areaName(b.area_code ?? '')})</span>
+                    {covered ? (
+                      <span className="ml-auto text-xs font-medium text-semantic-success">
+                        {t('governance.project.decision.document_covered', { defaultValue: 'Covered by a condition' })}
+                      </span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="ml-auto"
+                        disabled={!!outcomeVerdict(detail, 'go_with_conditions')}
+                        onClick={() => coverDocument(b)}
+                      >
+                        {t('governance.project.decision.document_to_condition', { defaultValue: 'Turn into a condition' })}
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
         {draft.outcome === 'go_with_conditions' && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -249,66 +324,27 @@ export function DecisionDialog({
               </Button>
             </div>
             {draft.conditions.map((c, idx) => (
-              <div
-                key={c.rowId}
-                data-testid="condition-row"
-                className="grid gap-2 rounded-lg border border-border-light p-3 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]"
-              >
-                <input
-                  aria-label={t('governance.project.decision.condition_text', { defaultValue: 'What must be done' })}
-                  placeholder={t('governance.project.decision.condition_text', { defaultValue: 'What must be done' })}
-                  className={fieldClass}
-                  value={c.text}
-                  onChange={(e) => patchCondition(c.rowId, { text: e.target.value })}
-                />
-                <select
-                  aria-label={t('governance.project.decision.condition_area', { defaultValue: 'Area' })}
-                  className={fieldClass}
-                  value={c.area_code ?? ''}
-                  onChange={(e) => patchCondition(c.rowId, { area_code: e.target.value })}
-                >
-                  <option value="">{t('governance.project.decision.whole_gate', { defaultValue: 'Whole gate' })}</option>
-                  {detail.areas.map((a) => (
-                    <option key={a.area_id} value={a.code}>
-                      {areaName(a.code)}
-                    </option>
-                  ))}
-                </select>
-                <ProjectPeopleSelect
+              <div key={c.rowId} data-testid="condition-row" className="rounded-lg border border-border-light p-3">
+                <ConditionFields
                   projectId={projectId}
-                  value={c.owner_user_id ?? ''}
-                  onChange={(userId) => patchCondition(c.rowId, { owner_user_id: userId })}
-                  placeholder={t('governance.project.decision.condition_owner', { defaultValue: 'Owner' })}
-                />
-                <input
-                  type="date"
-                  aria-label={t('governance.project.decision.condition_due', { defaultValue: 'Due date' })}
-                  className={fieldClass}
-                  value={c.due_date ?? ''}
-                  onChange={(e) => patchCondition(c.rowId, { due_date: e.target.value })}
-                />
-                <select
-                  aria-label={t('governance.project.decision.condition_severity', { defaultValue: 'Severity' })}
-                  className={fieldClass}
-                  value={c.severity}
-                  onChange={(e) => patchCondition(c.rowId, { severity: e.target.value as Severity })}
-                >
-                  {SEVERITIES.map((s) => (
-                    <option key={s} value={s}>
-                      {vocab(t, SEVERITY, s)}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  icon={<Trash2 size={14} />}
-                  aria-label={t('governance.project.decision.remove_condition', {
-                    defaultValue: 'Remove condition {{n}}',
-                    n: idx + 1,
-                  })}
-                  onClick={() =>
-                    setDraft((d) => ({ ...d, conditions: d.conditions.filter((x) => x.rowId !== c.rowId) }))
+                  value={c}
+                  areas={detail.areas}
+                  areaName={areaName}
+                  documentName={documentName}
+                  onChange={(patch) => patchCondition(c.rowId, patch)}
+                  trailing={
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={<Trash2 size={14} />}
+                      aria-label={t('governance.project.decision.remove_condition', {
+                        defaultValue: 'Remove condition {{n}}',
+                        n: idx + 1,
+                      })}
+                      onClick={() =>
+                        setDraft((d) => ({ ...d, conditions: d.conditions.filter((x) => x.rowId !== c.rowId) }))
+                      }
+                    />
                   }
                 />
               </div>

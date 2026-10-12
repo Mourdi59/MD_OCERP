@@ -2,12 +2,25 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
 // One gate: what blocks it, how ready each area is and on what evidence, and
-// every attempt decided so far with the snapshot it froze.
+// every attempt decided so far with the snapshot it froze. A decided gate can
+// be reopened from here, and one passed with conditions can take a further
+// condition.
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
-import { AlertTriangle, ArrowLeft, CheckCircle2, CircleDashed, ExternalLink, History, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  CircleDashed,
+  ExternalLink,
+  History,
+  Paperclip,
+  Plus,
+  Undo2,
+  XCircle,
+} from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -24,6 +37,7 @@ import {
   localToday,
   markCheckNotApplicable,
   prepareGate,
+  reopenGate,
   resumeGate,
   submitGate,
   type CheckStatus,
@@ -35,8 +49,19 @@ import {
   type Rag,
   type Violation,
 } from './api';
-import { canConfirmCheck, canDecide, canSubmitGate, roleAllows, type Verdict, type Viewer } from './access';
+import {
+  canAddCondition,
+  canConfirmCheck,
+  canDecide,
+  canReopen,
+  canResume,
+  canSubmitGate,
+  reasonOfCode,
+  type Verdict,
+  type Viewer,
+} from './access';
 import { DecisionDialog } from './DecisionDialog';
+import { GateConditionForm } from './GateConditionForm';
 import {
   CHECK_TONE,
   DOCUMENT_TONE,
@@ -47,6 +72,7 @@ import {
   ToneBadge,
 } from './GovernanceBits';
 import { useGateDetail, useInvalidateGovernance } from './hooks';
+import { ReopenDialog } from './ReopenDialog';
 import {
   CHECK_STATUS,
   DOCUMENT_STATUS,
@@ -55,6 +81,7 @@ import {
   catalogueIdOf,
   catalogueName,
   errorText,
+  refusalText,
   vocab,
   type LabelContext,
 } from './labels';
@@ -72,13 +99,19 @@ export interface GatePanelProps {
 
 const CONFIRMABLE: Array<Exclude<CheckStatus, 'not_applicable'>> = ['ready', 'ready_with_risks', 'not_ready'];
 
-/** Server refusals that name a person-level reason the button could not predict. */
-const REFUSAL_VERDICT: Record<string, Verdict> = {
-  decider_is_area_owner: 'four_eyes',
-  decider_not_entitled: 'role_decide',
-  not_area_owner: 'not_area_owner',
-  area_without_owner: 'area_without_owner',
-};
+/**
+ * Refusals of a decision that are about who decides, not about what the
+ * decision says. Only these close the dialog's door; a missing rationale or
+ * an open blocker is fixed inside the dialog.
+ */
+const PERSON_REFUSALS = new Set(['decider_is_area_owner', 'decider_not_entitled', 'missing_permission']);
+
+/** A refusal the button shows until the server's own flags arrive again. */
+interface Refusal {
+  verdict: Verdict;
+  /** `dataUpdatedAt` of the gate detail the refused request was made on. */
+  seenAt: number;
+}
 
 export function BlockerList({
   blockers,
@@ -212,9 +245,15 @@ function AreaReadiness({
                 </span>
               )}
               {!d.container_id && (
-                <span className="text-2xs text-semantic-error">
-                  {t('governance.project.gate.no_container', { defaultValue: 'No CDE container attached' })}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => onOpenArea(area.area_id)}
+                  className="inline-flex items-center gap-1 text-2xs font-medium text-semantic-error underline-offset-2 hover:underline"
+                  data-testid="gate-document-attach"
+                >
+                  <Paperclip size={11} aria-hidden />
+                  {t('governance.project.gate.attach_file', { defaultValue: 'No file yet: attach one' })}
+                </button>
               )}
             </li>
           ))}
@@ -364,13 +403,35 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
   const [openSnapshot, setOpenSnapshot] = useState<string | null>(null);
   const [serverViolations, setServerViolations] = useState<Violation[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [refusal, setRefusal] = useState<Verdict>(null);
+  const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopenError, setReopenError] = useState<string | null>(null);
+  const [conditionOpen, setConditionOpen] = useState(false);
   const today = localToday();
 
   const onFail = (err: unknown) => addToast({ type: 'error', title: getErrorMessage(err) });
   const prepare = useMutation({ mutationFn: () => prepareGate(projectId, gateId), onSuccess: invalidate, onError: onFail });
   const submit = useMutation({ mutationFn: () => submitGate(projectId, gateId), onSuccess: invalidate, onError: onFail });
-  const resume = useMutation({ mutationFn: () => resumeGate(projectId, gateId), onSuccess: invalidate, onError: onFail });
+  const resume = useMutation({
+    mutationFn: () => resumeGate(projectId, gateId),
+    onSuccess: invalidate,
+    onError: (err) => addToast({ type: 'error', title: refusalText(t, err) }),
+  });
+  const reopen = useMutation({
+    mutationFn: (body: { rationale: string; rewind_phase: boolean }) => reopenGate(projectId, gateId, body),
+    onSuccess: () => {
+      setReopenOpen(false);
+      setReopenError(null);
+      addToast({ type: 'success', title: t('governance.project.reopen.done', { defaultValue: 'Gate reopened' }) });
+      invalidate();
+    },
+    onError: (err) => setReopenError(refusalText(t, err)),
+  });
+  const closeDecision = () => {
+    setDialogOpen(false);
+    setServerViolations([]);
+    setServerError(null);
+  };
   const decide = useMutation({
     mutationFn: (input: DecisionInput) => decideGate(projectId, gateId, input),
     onSuccess: () => {
@@ -384,7 +445,13 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
       const code = governanceErrorCode(err);
       setServerViolations(governanceViolations(err));
       setServerError(code ? errorText(t, code, getErrorMessage(err)) : getErrorMessage(err));
-      if (code && REFUSAL_VERDICT[code]) setRefusal(REFUSAL_VERDICT[code] ?? null);
+      if (code && PERSON_REFUSALS.has(code)) {
+        // The server knows better than the flags this screen holds. Show its
+        // reason on the button, and ask for the flags again: the refusal lasts
+        // only until they arrive, so one refused try never locks the button.
+        setRefusal({ verdict: reasonOfCode(code), seenAt: query.dataUpdatedAt });
+        invalidate();
+      }
     },
   });
 
@@ -402,8 +469,14 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
   const gate = detail.gate;
   const catalogueId = catalogueIdOf(gate.catalogue_id) ?? model.catalogue_id;
   const areaName = (code: string) => catalogueName(labels, { kind: 'area', code, catalogueId });
-  const decideVerdict = refusal ?? canDecide(model, detail);
+  const liveRefusal = refusal && refusal.seenAt === query.dataUpdatedAt ? refusal.verdict : null;
+  const decideVerdict = liveRefusal ?? canDecide(model, detail);
   const submitVerdict = canSubmitGate(model, detail);
+  const documentName = (code: string) => catalogueName(labels, { kind: 'doc', code, catalogueId });
+  const gateName = catalogueName(labels, { kind: 'gate', code: gate.code, catalogueId, label: gate.name });
+  const fromPhase = model.phases.find((ph) => ph.code === gate.from_phase);
+  const fromPhaseName = catalogueName(labels, { kind: 'phase', code: gate.from_phase, catalogueId, label: fromPhase?.name });
+  const passedWithConditions = detail.decisions.some((d) => d.outcome === 'go_with_conditions');
 
   return (
     <div className="space-y-5" data-testid="gate-panel">
@@ -412,7 +485,7 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
           {t('governance.project.back_to_matrix', { defaultValue: 'Back to matrix' })}
         </Button>
         <h2 className="text-lg font-semibold text-content-primary">
-          {catalogueName(labels, { kind: 'gate', code: gate.code, catalogueId, label: gate.name })}
+          {gateName}
         </h2>
         <ToneBadge tone={GATE_STATUS_TONE[gate.status]}>{vocab(t, GATE_STATUS, gate.status)}</ToneBadge>
         <span className="text-xs text-content-tertiary">
@@ -444,9 +517,10 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
         {gate.status === 'on_hold' && (
           <ReasonedButton
             variant="secondary"
-            verdict={roleAllows(viewer.role, 'manage') ? null : 'role_decide'}
+            verdict={canResume(detail)}
             loading={resume.isPending}
             onClick={() => resume.mutate()}
+            data-testid="resume-gate"
           >
             {t('governance.project.gate.resume', { defaultValue: 'Resume gate' })}
           </ReasonedButton>
@@ -456,7 +530,47 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
             {t('governance.project.gate.decide', { defaultValue: 'Record decision' })}
           </ReasonedButton>
         )}
+        {gate.status === 'decided' && (
+          <ReasonedButton
+            variant="secondary"
+            icon={<Undo2 size={14} />}
+            verdict={canReopen(detail)}
+            onClick={() => {
+              setReopenError(null);
+              setReopenOpen(true);
+            }}
+            data-testid="open-reopen"
+          >
+            {t('governance.project.gate.reopen', { defaultValue: 'Reopen gate' })}
+          </ReasonedButton>
+        )}
+        {gate.status === 'decided' && passedWithConditions && !conditionOpen && (
+          <ReasonedButton
+            variant="secondary"
+            icon={<Plus size={14} />}
+            verdict={canAddCondition(detail)}
+            onClick={() => setConditionOpen(true)}
+            data-testid="open-add-condition"
+          >
+            {t('governance.project.gate.add_condition', { defaultValue: 'Add a condition' })}
+          </ReasonedButton>
+        )}
       </div>
+
+      {conditionOpen && (
+        <GateConditionForm
+          projectId={projectId}
+          gateId={gateId}
+          areas={detail.areas}
+          areaName={areaName}
+          documentName={documentName}
+          onCancel={() => setConditionOpen(false)}
+          onDone={() => {
+            setConditionOpen(false);
+            invalidate();
+          }}
+        />
+      )}
 
       <section>
         <h3 className="mb-2 text-sm font-semibold text-content-primary">
@@ -554,7 +668,7 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
       {dialogOpen && (
         <DecisionDialog
           open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
+          onClose={closeDecision}
           projectId={projectId}
           detail={detail}
           catalogueId={catalogueId}
@@ -564,6 +678,18 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
           serverViolations={serverViolations}
           serverError={serverError}
           onSubmit={(input) => decide.mutate(input)}
+        />
+      )}
+      {reopenOpen && (
+        <ReopenDialog
+          open={reopenOpen}
+          onClose={() => setReopenOpen(false)}
+          gate={gate}
+          gateName={gateName}
+          fromPhaseName={fromPhaseName}
+          busy={reopen.isPending}
+          serverError={reopenError}
+          onSubmit={(body) => reopen.mutate(body)}
         />
       )}
     </div>

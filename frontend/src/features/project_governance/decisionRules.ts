@@ -6,7 +6,7 @@
 // request instead of after it. The server stays the authority: it repeats
 // every check and adds the blockers the client cannot see.
 
-import type { ConditionInput, DecisionInput, GateDetail, Outcome } from './api';
+import type { ConditionInput, DecisionInput, GateArea, GateDetail, GovernanceGate, Outcome, Violation } from './api';
 import type { KeyText } from './labels';
 
 export interface ConditionDraft extends ConditionInput {
@@ -67,13 +67,19 @@ export function notApplicableAreas(detail: GateDetail): string[] {
     .map((a) => a.code);
 }
 
+/**
+ * The blocker codes a proceed-at-risk lifts. This is the server's set
+ * (`PROCEED_AT_RISK_LIFTABLE` in evaluator.py), not a wider one: naming an area whose only
+ * blocker is anything else, a stale check included, is refused with
+ * `proceed_at_risk_area_not_blocking`.
+ */
+export const AT_RISK_LIFTABLE: readonly string[] = ['area_not_ready', 'evidence_not_met'];
+
 /** Area codes whose readiness blocks the gate, which are the only ones a decider may name as proceeding at risk. */
 export function atRiskCandidates(detail: GateDetail): string[] {
   const codes = new Set<string>();
   for (const b of detail.blockers) {
-    if (b.area_code && (b.code === 'area_not_ready' || b.code === 'check_stale' || b.code === 'evidence_not_met')) {
-      codes.add(b.area_code);
-    }
+    if (b.area_code && AT_RISK_LIFTABLE.includes(b.code)) codes.add(b.area_code);
   }
   return [...codes];
 }
@@ -96,6 +102,70 @@ export function decisionProblems(draft: DecisionDraft, detail: GateDetail, today
   return problems;
 }
 
+/**
+ * A condition as the server takes it: empty fields as null and the text
+ * trimmed. A document type without an area is dropped, because the server
+ * matches a document only as the pair (area, document type).
+ */
+export function toConditionInput(c: ConditionInput): ConditionInput {
+  const area = c.area_code || null;
+  return {
+    text: c.text.trim(),
+    severity: c.severity,
+    area_code: area,
+    document_type: area ? c.document_type || null : null,
+    owner_user_id: c.owner_user_id || null,
+    due_date: c.due_date || null,
+  };
+}
+
+/** A condition with nothing filled in yet. */
+export function emptyCondition(): ConditionInput {
+  return { text: '', severity: 'essential', area_code: '', document_type: '', owner_user_id: '', due_date: '' };
+}
+
+/** The frame document types of one area on this gate, which are the only ones a condition on that area may name. */
+export function areaDocumentTypes(areas: GateArea[], areaCode: string | null | undefined): string[] {
+  if (!areaCode) return [];
+  const area = areas.find((a) => a.code === areaCode);
+  return [...new Set((area?.documents ?? []).map((d) => d.doc_type))];
+}
+
+/** The gate's blockers that name a missing required frame document. */
+export function documentBlockers(detail: GateDetail): Violation[] {
+  return detail.blockers.filter(
+    (b) => b.code === 'required_document_not_approved' && !!b.area_code && !!b.document_type,
+  );
+}
+
+/** Whether a condition of the draft covers this missing document, by the pair the server matches on. */
+export function coversDocument(conditions: ConditionInput[], blocker: Violation): boolean {
+  return conditions.some(
+    (c) => !!c.document_type && c.area_code === blocker.area_code && c.document_type === blocker.document_type,
+  );
+}
+
+/** The condition that turns a missing required document into a go with conditions. */
+export function conditionForDocument(blocker: Violation, text: string): ConditionInput {
+  return { ...emptyCondition(), text, area_code: blocker.area_code ?? '', document_type: blocker.document_type ?? '' };
+}
+
+/**
+ * Whether reopening a gate moves the project back to the phase before it.
+ *
+ * After a go the project already sits in the next phase, and a gate can only
+ * be submitted from the phase it leaves, so the server forces the rewind
+ * there. After a stop the phase never moved, so there is nothing to choose.
+ */
+export function reopenRewind(gate: Pick<GovernanceGate, 'last_outcome'>): 'forced' | 'none' {
+  return gate.last_outcome === 'go' || gate.last_outcome === 'go_with_conditions' ? 'forced' : 'none';
+}
+
+/** A reopening is only accepted with a written reason. */
+export function reopenProblem(rationale: string): 'rationale_required' | null {
+  return rationale.trim() ? null : 'rationale_required';
+}
+
 /** The request body for a draft that passed `decisionProblems`. */
 export function toDecisionInput(draft: DecisionDraft): DecisionInput {
   const outcome = draft.outcome ?? 'go';
@@ -103,16 +173,7 @@ export function toDecisionInput(draft: DecisionDraft): DecisionInput {
   return {
     outcome,
     rationale: draft.rationale.trim(),
-    conditions: withConditions
-      ? draft.conditions.map(({ rowId: _rowId, ...c }) => ({
-          ...c,
-          text: c.text.trim(),
-          area_code: c.area_code || null,
-          document_type: c.document_type || null,
-          owner_user_id: c.owner_user_id || null,
-          due_date: c.due_date || null,
-        }))
-      : [],
+    conditions: withConditions ? draft.conditions.map(({ rowId: _rowId, ...c }) => toConditionInput(c)) : [],
     proceed_at_risk_areas: withConditions ? draft.proceedAtRisk : [],
     accepted_not_applicable: draft.acceptedNotApplicable,
     hold_resume_date: outcome === 'hold' ? draft.holdResumeDate : null,

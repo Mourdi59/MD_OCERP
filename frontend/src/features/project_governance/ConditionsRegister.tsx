@@ -3,7 +3,10 @@
 //
 // Every condition the project's gate decisions carry, filterable by state.
 // An owner clears a condition with evidence; a decider waives it, and a
-// waiver is only accepted with a written reason.
+// waiver is only accepted with a written reason. Who may do which is the
+// server's answer on each condition. Overdue is the server's too: it reports
+// a condition past its due date as overdue from the day after, whether or not
+// anybody has escalated it yet.
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,15 +16,14 @@ import clsx from 'clsx';
 
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
-import { getErrorMessage } from '@/shared/lib/api';
 import { fmtDate } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 
-import { clearCondition, waiveCondition, type ConditionStatus, type GovernanceCondition, type GovernanceModel } from './api';
-import { canClearCondition, canWaiveCondition, type Viewer } from './access';
+import { clearCondition, waiveCondition, type ConditionStatus, type GovernanceCondition } from './api';
+import { canClearCondition, canWaiveCondition } from './access';
 import { waiverProblem } from './decisionRules';
 import { CONDITION_TONE, PersonChip, ReasonedButton, ToneBadge } from './GovernanceBits';
-import { CONDITION_STATUS, SEVERITY, catalogueName, errorText, vocab, type LabelContext } from './labels';
+import { CONDITION_STATUS, SEVERITY, catalogueName, errorText, refusalText, vocab, type LabelContext } from './labels';
 
 const FILTERS: Array<ConditionStatus | 'all'> = ['all', 'open', 'overdue', 'cleared', 'waived'];
 
@@ -29,9 +31,6 @@ export interface ConditionsRegisterProps {
   projectId: string;
   conditions: GovernanceCondition[];
   catalogueId: string;
-  viewer: Viewer;
-  /** The model's server flags; waiving follows `can.manage`. */
-  modelCan: GovernanceModel['can'];
   labels: LabelContext;
   personName: (userId: string | null | undefined) => string | null;
   onChanged: () => void;
@@ -43,8 +42,6 @@ export function ConditionsRegister({
   projectId,
   conditions,
   catalogueId,
-  viewer,
-  modelCan,
   labels,
   personName,
   onChanged,
@@ -72,7 +69,7 @@ export function ConditionsRegister({
       setTried(false);
       onChanged();
     },
-    onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+    onError: (err) => addToast({ type: 'error', title: refusalText(t, err) }),
   });
 
   const start = (id: string, kind: 'clear' | 'waive') => {
@@ -128,8 +125,8 @@ export function ConditionsRegister({
       ) : (
         <ul className="space-y-2" data-testid="conditions-list">
           {shown.map((c) => {
-            const clearV = canClearCondition(viewer, c);
-            const waiveV = canWaiveCondition(c, { can: modelCan });
+            const clearV = canClearCondition(c);
+            const waiveV = canWaiveCondition(c);
             const active = action?.id === c.id ? action : null;
             const showWaiverError = active?.kind === 'waive' && tried && !!waiverProblem(text);
             return (

@@ -33,6 +33,11 @@ _DOC_FROZEN_STATES = frozenset({"approved_at_gate", "binding", "superseded"})
 _CHECK_PASSING = frozenset({"ready", "ready_with_risks"})
 _UNDECIDED_GATE_STATES = frozenset({"not_started", "in_preparation", "in_review", "on_hold"})
 
+# The blockers a go with conditions may lift by naming the area as proceeding at
+# risk: gaps in the area's readiness. A stale check is not one of them, because
+# nobody has attested the document as it now stands.
+PROCEED_AT_RISK_LIFTABLE: frozenset[str] = frozenset({"area_not_ready", "evidence_not_met"})
+
 ALL_CODES: tuple[str, ...] = (
     "unknown_outcome",
     "gate_not_in_review",
@@ -61,6 +66,17 @@ ALL_CODES: tuple[str, ...] = (
     "binding_requires_change_request",
     "phase_mapping_missing",
     "phase_mapping_unknown_target",
+    "gate_historic",
+    "gate_not_on_hold",
+    "later_gate_active",
+    "invalid_transition",
+    "gate_out_of_order",
+    "model_unchanged",
+    "condition_not_open",
+    "not_condition_owner",
+    "route_needs_more_approvals",
+    "activity_not_in_project",
+    "target_date_owned_by_schedule",
 )
 
 
@@ -247,8 +263,12 @@ def document_edit_violation(doc: DocumentState, action: str) -> str | None:
 
 
 def documents_to_freeze(docs: Iterable[DocumentState]) -> tuple[str, ...]:
-    """Documents a stop decision makes read-only: everything not yet binding."""
-    return tuple(d.id for d in docs if d.status not in {"binding", "superseded"} and not d.read_only)
+    """Documents a stop decision makes read-only: every one still in the frame.
+
+    Binding documents are frozen too, so no change request can move a stopped
+    project's baseline. A superseded document is already out of the frame.
+    """
+    return tuple(d.id for d in docs if d.status != "superseded" and not d.read_only)
 
 
 def _document_ready(doc: DocumentState) -> bool:
@@ -326,13 +346,89 @@ def not_applicable_violation(rationale: str) -> str | None:
     return None if (rationale or "").strip() else "not_applicable_needs_rationale"
 
 
-def reopen_violation(gate_status: str, rationale: str) -> str | None:
-    """Only a decided gate is reopened, and never without a reason."""
+def condition_clear_violation(status: str, owner_user_id: str | None, *, actor_id: str, is_manager: bool) -> str | None:
+    """Clearing is for the person the condition was given to, or a manager."""
+    if status not in {"open", "overdue"}:
+        return "condition_not_open"
+    if not is_manager and (not owner_user_id or str(owner_user_id) != str(actor_id)):
+        return "not_condition_owner"
+    return None
+
+
+def authority_violation(actor_id: str, *, decided_by: str | None, route_entitled: bool) -> str | None:
+    """Who may revisit a decision: its decider, or a user the gate route entitles.
+
+    Reopening or resuming a gate, waiving a condition and adding one all change
+    what a decision meant, so the permission to decide is not enough on its own.
+    """
+    if decided_by and str(decided_by) == str(actor_id):
+        return None
+    return None if route_entitled else "decider_not_entitled"
+
+
+def condition_waive_violation(
+    status: str,
+    *,
+    actor_id: str,
+    decided_by: str | None,
+    route_entitled: bool,
+    four_eyes: bool,
+    areas: Iterable[AreaState],
+    area_code: str | None,
+) -> str | None:
+    """A waiver needs an open condition, authority, and under four-eyes a second pair of eyes.
+
+    The owner or deputy of the area the condition is on may not waive it; a
+    condition on no area concerns every area.
+    """
+    if status not in {"open", "overdue"}:
+        return "condition_not_open"
+    code = authority_violation(actor_id, decided_by=decided_by, route_entitled=route_entitled)
+    if code:
+        return code
+    if four_eyes:
+        concerned = [a for a in areas if area_code is None or a.code == area_code]
+        if str(actor_id) in area_owner_ids(concerned):
+            return "decider_is_area_owner"
+    return None
+
+
+def preparation_violation(gate_status: str, *, historic: bool, model_stopped: bool) -> str | None:
+    """Preparation starts once, on a gate nobody has touched yet."""
+    if historic:
+        return "gate_historic"
+    if model_stopped:
+        return "project_stopped"
+    return None if gate_status == "not_started" else "invalid_transition"
+
+
+def resume_violation(gate_status: str, *, historic: bool, model_stopped: bool) -> str | None:
+    """Only a held gate is resumed."""
+    if historic:
+        return "gate_historic"
+    if model_stopped:
+        return "project_stopped"
+    return None if gate_status == "on_hold" else "gate_not_on_hold"
+
+
+def reopen_violation(
+    gate_status: str, rationale: str, *, historic: bool = False, later_gate_statuses: Iterable[str] = ()
+) -> str | None:
+    """Only a decided gate of the pinned model is reopened, with a reason, and never behind a later gate."""
+    if historic:
+        return "gate_historic"
     if gate_status != "decided":
         return "gate_not_decided"
     if not (rationale or "").strip():
         return "rationale_required"
+    if any(s != "not_started" for s in later_gate_statuses):
+        return "later_gate_active"
     return None
+
+
+def reopen_rewinds_phase(last_outcome: str) -> bool:
+    """A reopened gate takes the phase back exactly when its decision had advanced it."""
+    return last_outcome in OUTCOMES and decision_effects(last_outcome).advance_phase
 
 
 # ── Entitlement ─────────────────────────────────────────────────────────────
@@ -360,6 +456,18 @@ def area_owner_ids(areas: Iterable[AreaState]) -> frozenset[str]:
             if uid:
                 ids.add(str(uid))
     return frozenset(ids)
+
+
+def four_eyes_violation(ctx: GateContext, decider_id: str) -> bool:
+    """Under four-eyes, an owner or deputy of an applicable area may not decide the gate."""
+    return bool(ctx.four_eyes) and str(decider_id) in area_owner_ids(ctx.areas)
+
+
+def decision_refusal(violations: Sequence[Violation]) -> tuple[str, int]:
+    """The error code and HTTP status a list of decision violations is answered with."""
+    if any(v.code == "decider_is_area_owner" for v in violations):
+        return "decider_is_area_owner", 403
+    return violations[0].code, 422
 
 
 # ── Gate readiness ──────────────────────────────────────────────────────────
@@ -434,7 +542,7 @@ def validate_decision(ctx: GateContext, req: DecisionRequest) -> list[Violation]
         out.append(Violation("gate_not_in_review"))
     if req.outcome != "go" and not (req.rationale or "").strip():
         out.append(Violation("rationale_required"))
-    if ctx.four_eyes and str(req.decider_id) in area_owner_ids(ctx.areas):
+    if four_eyes_violation(ctx, req.decider_id):
         out.append(Violation("decider_is_area_owner"))
 
     area_codes = {a.code for a in ctx.areas}
@@ -462,7 +570,7 @@ def validate_decision(ctx: GateContext, req: DecisionRequest) -> list[Violation]
         not_ready_areas: set[str] = set()
         for blocker in gate_blockers(ctx, accepted_not_applicable=req.accepted_not_applicable):
             # Blocking evidence is a readiness gap of the area, liftable the same way.
-            if blocker.code in {"area_not_ready", "evidence_not_met"}:
+            if blocker.code in PROCEED_AT_RISK_LIFTABLE:
                 not_ready_areas.add(blocker.area_code or "")
                 if conditional and blocker.area_code in at_risk:
                     continue

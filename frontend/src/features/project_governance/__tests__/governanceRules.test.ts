@@ -4,43 +4,79 @@
 // Pure rules behind the governance screens: who may press which button and
 // why not, what a decision draft is missing, and how the matrix is built.
 
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { GateDetail } from '../api';
 import {
+  canAddCondition,
+  canAddDocument,
   canClearCondition,
   canConfirmCheck,
   canDecide,
   canManage,
+  canRaiseChange,
+  canReopen,
+  canResume,
   canSubmitGate,
   canWaiveCondition,
-  roleAllows,
-  roleManage,
+  documentVerdict,
+  outcomeVerdict,
+  reasonOfCode,
   type Viewer,
 } from '../access';
-import { decisionProblems, toDecisionInput, waiverProblem, type DecisionDraft } from '../decisionRules';
+import {
+  AT_RISK_LIFTABLE,
+  areaDocumentTypes,
+  atRiskCandidates,
+  conditionForDocument,
+  coversDocument,
+  decisionProblems,
+  documentBlockers,
+  emptyCondition,
+  reopenProblem,
+  reopenRewind,
+  toConditionInput,
+  toDecisionInput,
+  waiverProblem,
+  type DecisionDraft,
+} from '../decisionRules';
+import { frameContainerCode } from '../documentFiles';
 import { buildMatrix } from '../matrix';
 import { catalogueIdOf, catalogueName, humanizeCode, type LabelContext } from '../labels';
-import { condition, detail, gate, matrixArea, matrixResponse, model } from './fixtures';
+import { blocker, condition, detail, frameDocument, gate, gateDocument, matrixArea, matrixResponse, model } from './fixtures';
 
-const manager: Viewer = { userId: 'u-manager', role: 'manager' };
-const editor: Viewer = { userId: 'u-editor', role: 'editor' };
-const viewer: Viewer = { userId: 'u-viewer', role: 'viewer' };
+const editor: Viewer = { userId: 'u-editor' };
+const viewer: Viewer = { userId: 'u-viewer' };
 
-describe('roleAllows', () => {
+describe('no permission is derived from a role name', () => {
+  const featureDir = join(__dirname, '..');
+  // Screens, rules and their tests; this file is left out because it has to name what it looks for.
+  const files = [
+    ...readdirSync(featureDir).map((f) => join(featureDir, f)),
+    ...readdirSync(__dirname)
+      .filter((f) => f !== 'governanceRules.test.ts')
+      .map((f) => join(__dirname, f)),
+  ].filter((f) => /\.(ts|tsx)$/.test(f));
+  const sources = files.map((f) => [f.slice(featureDir.length + 1), readFileSync(f, 'utf-8')] as const);
+
+  it('reads the feature sources it is meant to check', () => {
+    expect(sources.length).toBeGreaterThan(16);
+    expect(sources.some(([f]) => f === 'access.ts')).toBe(true);
+    expect(sources.some(([f]) => f.endsWith('governanceScreens.test.tsx'))).toBe(true);
+  });
+
   it.each([
-    ['viewer', 'read', true],
-    ['viewer', 'edit', false],
-    ['editor', 'edit', true],
-    ['editor', 'manage', false],
-    ['manager', 'manage', true],
-    ['admin', 'manage', true],
-    ['estimator', 'edit', true],
-    ['site_foreman', 'read', false],
-    ['unknown_role', 'read', false],
-    [null, 'read', false],
-  ] as const)('%s at %s -> %s', (role, level, expected) => {
-    expect(roleAllows(role, level)).toBe(expected);
+    'roleAllows',
+    'roleManage',
+    'userRole',
+    'viewer.role',
+    'ROLE_RANK',
+    'ROLE_ALIASES',
+    'shared/lib/roles',
+  ])('no screen or rule mentions %s', (needle) => {
+    expect(sources.filter(([, text]) => text.includes(needle)).map(([f]) => f)).toEqual([]);
   });
 });
 
@@ -104,21 +140,247 @@ describe('other verdicts', () => {
     expect(canSubmitGate(model(), d('not_started', true))).toBe('gate_not_ready_to_submit');
     expect(canSubmitGate(model(), d('in_preparation', false))).toBe('role_edit');
   });
-  it('manage and waive follow the model flag', () => {
-    expect(canManage(model({ can: { manage: true } }))).toBeNull();
-    expect(canManage(model({ can: { manage: false } }))).toBe('role_manage');
-    expect(canWaiveCondition(condition(), model({ can: { manage: true } }))).toBeNull();
-    expect(canWaiveCondition(condition(), model({ can: { manage: false } }))).toBe('role_decide');
-    expect(canWaiveCondition(condition({ status: 'cleared' }), model())).toBe('condition_closed');
+  it('manage follows the model flag', () => {
+    expect(canManage(model({ can: { manage: true, edit: true } }))).toBeNull();
+    expect(canManage(model({ can: { manage: false, edit: true } }))).toBe('role_manage');
   });
-  it('before a model exists only the role can answer manage', () => {
-    expect(roleManage(manager)).toBeNull();
-    expect(roleManage(editor)).toBe('role_manage');
+  it('adding a document and raising a change follow the model edit flag', () => {
+    expect(canAddDocument(model())).toBeNull();
+    expect(canAddDocument(model({ can: { manage: false, edit: false } }))).toBe('role_edit');
+    expect(canRaiseChange(model({ can: { manage: true, edit: false } }))).toBe('role_edit');
   });
-  it('a condition owner who is an editor may clear; others may not', () => {
-    expect(canClearCondition(editor, condition({ owner_user_id: 'u-editor' }))).toBeNull();
-    expect(canClearCondition(editor, condition({ owner_user_id: 'other' }))).toBe('not_condition_owner');
-    expect(canClearCondition(manager, condition({ owner_user_id: 'other' }))).toBeNull();
+});
+
+describe('conditions follow their own server flags', () => {
+  it('clears when the server allows it, whoever the viewer is', () => {
+    expect(canClearCondition(condition({ owner_user_id: 'somebody-else' }))).toBeNull();
+  });
+  it.each([
+    ['not_condition_owner', 'not_condition_owner'],
+    ['missing_permission', 'role_edit'],
+    ['condition_not_open', 'condition_closed'],
+  ] as const)('a refused clear with %s reads as %s', (code, reason) => {
+    expect(canClearCondition(condition({ can: { clear: false, clear_reason: code, waive: true } }))).toBe(reason);
+  });
+  it('a refused clear never borrows the area sentence', () => {
+    // The old server code for this was not_area_owner, which named the wrong thing.
+    const verdict = canClearCondition(condition({ can: { clear: false, clear_reason: 'not_condition_owner', waive: true } }));
+    expect(verdict).not.toBe('not_area_owner');
+  });
+  it.each([
+    ['missing_permission', 'role_decide'],
+    ['decider_not_entitled', 'role_decide'],
+    ['decider_is_area_owner', 'four_eyes'],
+  ] as const)('a refused waiver with %s reads as %s', (code, reason) => {
+    expect(canWaiveCondition(condition({ can: { clear: true, waive: false, waive_reason: code } }))).toBe(reason);
+  });
+  it('waiving does not follow the manage flag of the model', () => {
+    // A manager the route never named may not waive; the model flag would have let them.
+    expect(canWaiveCondition(condition({ can: { clear: true, waive: false, waive_reason: 'decider_not_entitled' } }))).toBe(
+      'role_decide',
+    );
+    expect(canWaiveCondition(condition({ can: { clear: false, waive: true } }))).toBeNull();
+  });
+  it('a closed condition is closed for both, whatever the flags say', () => {
+    const closed = condition({ status: 'cleared', can: { clear: true, waive: true } });
+    expect(canClearCondition(closed)).toBe('condition_closed');
+    expect(canWaiveCondition(closed)).toBe('condition_closed');
+  });
+  it('an unknown refusal code travels as is', () => {
+    expect(canWaiveCondition(condition({ can: { clear: true, waive: false, waive_reason: 'frozen_by_audit' } }))).toEqual({
+      server: 'frozen_by_audit',
+    });
+  });
+});
+
+describe('gate actions follow the gate flags', () => {
+  const withCan = (can: Partial<GateDetail['can']>) => ({ can: { edit: true, decide: true, ...can } });
+
+  it('resume, reopen and add condition are allowed only by their flag', () => {
+    expect(canResume(withCan({ resume: true }))).toBeNull();
+    expect(canReopen(withCan({ reopen: true }))).toBeNull();
+    expect(canAddCondition(withCan({ add_condition: true }))).toBeNull();
+    // No flag is not a yes: the button stays closed and says the server did not allow it.
+    expect(canResume(withCan({}))).toEqual({ server: '' });
+    expect(canReopen(withCan({}))).toEqual({ server: '' });
+    expect(canAddCondition(withCan({}))).toEqual({ server: '' });
+  });
+  it.each([
+    ['missing_permission', 'role_decide'],
+    ['decider_not_entitled', 'role_decide'],
+    ['project_stopped', 'project_stopped'],
+  ] as const)('a refused resume with %s reads as %s', (code, reason) => {
+    expect(canResume(withCan({ resume: false, resume_reason: code }))).toBe(reason);
+  });
+  it('a refused reopen names the later gate through the server code', () => {
+    expect(canReopen(withCan({ reopen: false, reopen_reason: 'later_gate_active' }))).toEqual({ server: 'later_gate_active' });
+  });
+
+  it('each outcome follows its own flag', () => {
+    const approved = withCan({
+      outcomes: {
+        go: { allowed: true },
+        go_with_conditions: { allowed: true },
+        hold: { allowed: false, reason: 'route_not_pending' },
+        recycle: { allowed: false, reason: 'route_not_pending' },
+        stop: { allowed: false, reason: 'route_not_pending' },
+      },
+    });
+    expect(outcomeVerdict(approved, 'go')).toBeNull();
+    expect(outcomeVerdict(approved, 'go_with_conditions')).toBeNull();
+    expect(outcomeVerdict(approved, 'stop')).toEqual({ server: 'route_not_pending' });
+    expect(outcomeVerdict(approved, 'hold')).toEqual({ server: 'route_not_pending' });
+  });
+  it('an outcome the server did not answer for is left to the request', () => {
+    expect(outcomeVerdict(withCan({}), 'stop')).toBeNull();
+    expect(outcomeVerdict(withCan({ outcomes: { go: { allowed: false, reason: 'decider_is_area_owner' } } }), 'stop')).toBeNull();
+  });
+  it('missing_permission names the permission the action needs', () => {
+    expect(reasonOfCode('missing_permission')).toBe('role_decide');
+    expect(reasonOfCode('missing_permission', 'edit')).toBe('role_edit');
+    expect(reasonOfCode('missing_permission', 'manage')).toBe('role_manage');
+  });
+});
+
+describe('frame document actions', () => {
+  it('a document without a file cannot be submitted by anybody', () => {
+    expect(documentVerdict(frameDocument({ container_id: null }), 'submit')).toBe('document_without_file');
+    expect(documentVerdict(frameDocument({ container_id: 'k1' }), 'submit')).toBeNull();
+  });
+  it.each([
+    ['not_area_owner', 'not_area_owner'],
+    ['missing_permission', 'role_edit'],
+  ] as const)('a refused attach with %s reads as %s', (code, reason) => {
+    const doc = frameDocument({ can: { attach: false, attach_reason: code, submit: true, return: true } });
+    expect(documentVerdict(doc, 'attach')).toBe(reason);
+  });
+  it('each action reads its own flag', () => {
+    const doc = frameDocument({
+      container_id: 'k1',
+      can: { attach: true, submit: false, submit_reason: 'not_area_owner', return: false, return_reason: 'document_read_only' },
+    });
+    expect(documentVerdict(doc, 'attach')).toBeNull();
+    expect(documentVerdict(doc, 'submit')).toBe('not_area_owner');
+    expect(documentVerdict(doc, 'return')).toEqual({ server: 'document_read_only' });
+  });
+  it('the container made for a document is named by area and type, so a second try finds it', () => {
+    expect(frameContainerCode('cost_finance', 'business_case')).toBe('FRAME-COST-FINANCE-BUSINESS-CASE');
+    expect(frameContainerCode('cost_finance', 'business_case')).toBe(frameContainerCode('cost_finance', 'business_case'));
+    expect(frameContainerCode('organisation', 'business_case')).not.toBe(frameContainerCode('cost_finance', 'business_case'));
+  });
+});
+
+describe('proceed at risk', () => {
+  const inReview = gate({ status: 'in_review' });
+
+  it('offers exactly the areas whose blocker a proceed-at-risk lifts', () => {
+    const d = detail({
+      gate: inReview,
+      blockers: [
+        blocker('area_not_ready', 'organisation'),
+        blocker('evidence_not_met', 'cost_finance'),
+        blocker('check_stale', 'schedule'),
+        blocker('required_document_not_approved', 'quality', 'quality_plan'),
+        blocker('area_without_owner', 'risk'),
+        blocker('condition_overdue'),
+      ],
+    });
+    expect(atRiskCandidates(d).sort()).toEqual(['cost_finance', 'organisation']);
+  });
+  it('an area whose only blocker is a stale check is not offered', () => {
+    // The server answers proceed_at_risk_area_not_blocking for it, so offering it is a trap.
+    expect(atRiskCandidates(detail({ gate: inReview, blockers: [blocker('check_stale', 'schedule')] }))).toEqual([]);
+  });
+  it('an area that is stale and also not ready is offered once', () => {
+    const d = detail({ gate: inReview, blockers: [blocker('check_stale', 'schedule'), blocker('area_not_ready', 'schedule')] });
+    expect(atRiskCandidates(d)).toEqual(['schedule']);
+  });
+  it('the liftable set is the one the server enforces', () => {
+    const evaluator = readFileSync(
+      join(__dirname, '../../../../../backend/app/modules/project_governance/evaluator.py'),
+      'utf-8',
+    );
+    const declared = /PROCEED_AT_RISK_LIFTABLE[^=]*=\s*frozenset\(\{([^}]*)\}\)/.exec(evaluator);
+    expect(declared, 'evaluator.py no longer declares PROCEED_AT_RISK_LIFTABLE as a literal set').not.toBeNull();
+    const server = [...declared![1]!.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]!).sort();
+    expect(server.length).toBeGreaterThan(0);
+    expect([...AT_RISK_LIFTABLE].sort()).toEqual(server);
+  });
+});
+
+describe('conditions on a document', () => {
+  const d = detail({
+    gate: gate({ status: 'in_review' }),
+    areas: [
+      { code: 'organisation', documents: [gateDocument({ doc_type: 'business_case' }), gateDocument({ document_id: 'd2', doc_type: 'charter' })] },
+      { area_id: 'a2', code: 'cost_finance', documents: [] },
+    ],
+    blockers: [
+      blocker('required_document_not_approved', 'organisation', 'business_case'),
+      blocker('area_not_ready', 'organisation'),
+      // Without the pair there is nothing a condition could match on.
+      blocker('required_document_not_approved', 'organisation', null),
+    ],
+  });
+
+  it('a condition may name only a document of its own area', () => {
+    expect(areaDocumentTypes(d.areas, 'organisation')).toEqual(['business_case', 'charter']);
+    expect(areaDocumentTypes(d.areas, 'cost_finance')).toEqual([]);
+    expect(areaDocumentTypes(d.areas, '')).toEqual([]);
+  });
+  it('finds the blockers that name a missing document', () => {
+    expect(documentBlockers(d).map((b) => [b.area_code, b.document_type])).toEqual([['organisation', 'business_case']]);
+  });
+  it('the condition made for a missing document covers it by the pair the server matches on', () => {
+    const missing = documentBlockers(d)[0]!;
+    const made = conditionForDocument(missing, 'Hand in the business case');
+    expect(made).toMatchObject({ area_code: 'organisation', document_type: 'business_case', text: 'Hand in the business case' });
+    expect(coversDocument([made], missing)).toBe(true);
+    expect(coversDocument([{ ...made, area_code: 'cost_finance' }], missing)).toBe(false);
+    expect(coversDocument([{ ...made, document_type: '' }], missing)).toBe(false);
+    expect(coversDocument([emptyCondition()], missing)).toBe(false);
+  });
+  it('sends the pair, and never a document without its area', () => {
+    const missing = documentBlockers(d)[0]!;
+    const body = toDecisionInput({
+      outcome: 'go_with_conditions',
+      rationale: 'Open point tracked',
+      conditions: [{ rowId: 'r1', ...conditionForDocument(missing, 'Hand in the business case') }],
+      proceedAtRisk: [],
+      acceptedNotApplicable: [],
+      holdResumeDate: '',
+    });
+    expect(body.conditions).toEqual([
+      {
+        text: 'Hand in the business case',
+        severity: 'essential',
+        area_code: 'organisation',
+        document_type: 'business_case',
+        owner_user_id: null,
+        due_date: null,
+      },
+    ]);
+    expect(toConditionInput({ ...emptyCondition(), text: 'x', area_code: '', document_type: 'business_case' })).toMatchObject({
+      area_code: null,
+      document_type: null,
+    });
+  });
+});
+
+describe('reopening a gate', () => {
+  it.each([
+    ['go', 'forced'],
+    ['go_with_conditions', 'forced'],
+    ['stop', 'none'],
+    ['hold', 'none'],
+    ['recycle', 'none'],
+    ['', 'none'],
+  ] as const)('after %s the phase rewind is %s', (last_outcome, expected) => {
+    expect(reopenRewind({ last_outcome })).toBe(expected);
+  });
+  it('needs a written reason', () => {
+    expect(reopenProblem('  ')).toBe('rationale_required');
+    expect(reopenProblem('Scope changed after the client review')).toBeNull();
   });
 });
 

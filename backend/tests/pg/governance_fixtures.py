@@ -12,6 +12,7 @@ as they do in production.
 from __future__ import annotations
 
 import uuid
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -213,3 +214,61 @@ async def decide(
         )
         await s.commit()
         return d
+
+
+# ── HTTP ──
+
+API = "/api/v1/project-governance"
+
+
+@asynccontextmanager
+async def client_as(w: World, user_id: uuid.UUID, role: str):
+    """The governance router over HTTP as one user; every request commits like the real session dependency."""
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+
+    from app.dependencies import get_current_user_id, get_current_user_payload, get_session
+    from app.modules.project_governance.router import router
+
+    app = FastAPI()
+    app.include_router(router, prefix=API)
+
+    async def _session():
+        async with w.factory() as s:
+            yield s
+            await s.commit()
+
+    app.dependency_overrides[get_session] = _session
+    app.dependency_overrides[get_current_user_id] = lambda: str(user_id)
+    app.dependency_overrides[get_current_user_payload] = lambda: {"sub": str(user_id), "role": role, "permissions": []}
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://gov-test") as c:
+        yield c
+
+
+def project_url(w: World) -> str:
+    return f"{API}/projects/{w.project_id}"
+
+
+async def add_role_route(session: AsyncSession, project_id: uuid.UUID, kind: str, role: str, mode: str) -> uuid.UUID:
+    """A route whose single step is held by a role, not a named user."""
+    from app.modules.approval_routes.models import Route, Step
+
+    route = Route(project_id=project_id, name=f"{kind} by {role}", target_kind=kind, is_active=True)
+    session.add(route)
+    await session.flush()
+    session.add(Step(route_id=route.id, ordinal=1, approver_role=role, mode=mode))
+    await session.flush()
+    return route.id
+
+
+async def add_activity(session: AsyncSession, project_id: uuid.UUID, name: str, day: str) -> uuid.UUID:
+    """A milestone in a schedule of the project, on ``day`` (ISO)."""
+    from app.modules.schedule.models import Activity, Schedule
+
+    schedule = Schedule(project_id=project_id, name=f"Master {uuid.uuid4().hex[:6]}")
+    session.add(schedule)
+    await session.flush()
+    activity = Activity(schedule_id=schedule.id, name=name, start_date=day, end_date=day, activity_type="milestone")
+    session.add(activity)
+    await session.flush()
+    return activity.id

@@ -158,7 +158,7 @@ export function ProjectGovernancePage() {
             defaultValue: 'Choose the phase model this project runs through. Its phases, gates and management areas appear here right after.',
           })}
         />
-        <ModelPicker projectId={projectId} model={null} gates={[]} viewer={viewer} labels={labels} onDone={invalidate} />
+        <ModelPicker projectId={projectId} model={null} gates={[]} labels={labels} onDone={invalidate} />
       </div>
     );
   }
@@ -190,7 +190,7 @@ export function ProjectGovernancePage() {
         model={model}
         documents={docsQ.data ?? []}
         changeRequests={crQ.data ?? []}
-        viewer={viewer}
+        gates={matrixQ.data?.gates ?? []}
         labels={labels}
         personName={personName}
         onBack={() => go({ area: null })}
@@ -202,7 +202,6 @@ export function ProjectGovernancePage() {
         projectId={projectId}
         model={model}
         gates={matrixQ.data?.gates ?? []}
-        viewer={viewer}
         labels={labels}
         onDone={invalidate}
       />
@@ -221,8 +220,6 @@ export function ProjectGovernancePage() {
         projectId={projectId}
         conditions={conditionsQ.data ?? []}
         catalogueId={model.catalogue_id}
-        viewer={viewer}
-        modelCan={model.can}
         labels={labels}
         personName={personName}
         onChanged={invalidate}

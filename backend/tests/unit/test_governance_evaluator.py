@@ -412,12 +412,13 @@ def test_a_gate_not_in_review_cannot_be_decided() -> None:
 # 11 ── stop makes open documents read-only ──────────────────────────────────
 
 
-def test_11_stop_effects_freeze_open_documents() -> None:
+def test_11_stop_effects_freeze_every_document_still_in_the_frame() -> None:
     eff = ev.decision_effects("stop")
     assert eff.next_gate_status == "decided"
     assert eff.stop_project is True
+    # A binding document is frozen as well: a stopped project's baseline does not move.
     docs = (_doc("A", status="draft"), _doc("B", status="binding", bound_revision_id="rev-1"))
-    assert ev.documents_to_freeze(docs) == ("doc-A-pep",)
+    assert ev.documents_to_freeze(docs) == ("doc-A-pep", "doc-B-pep")
 
 
 def test_11_a_read_only_document_refuses_every_edit() -> None:
@@ -565,3 +566,12 @@ def test_14_blocking_evidence_is_not_lifted_on_a_plain_go() -> None:
 def test_14_blocking_evidence_is_not_lifted_when_another_area_is_at_risk() -> None:
     codes = _codes(ev.validate_decision(_evidence_ctx(), _at_risk("B")))
     assert {"evidence_not_met", "proceed_at_risk_area_not_blocking"} <= codes
+
+
+def test_14_a_stale_check_is_not_lifted_by_proceeding_at_risk() -> None:
+    """Nobody attested the document as it now stands, so the area has to confirm again."""
+    ctx = _ctx(checks=(_check("A", stale=True), _check("B", confirmed_revisions={"doc-B-pep": "rev-1"})))
+    cond = ProposedCondition(area_code="A", document_type=None, text="Confirm again", owner_user_id=OWNER_A)
+    req = _req("go_with_conditions", rationale="x", conditions=(cond,), proceed_at_risk_areas=("A",))
+    codes = _codes(ev.validate_decision(ctx, req))
+    assert codes == {"check_stale", "proceed_at_risk_area_not_blocking"}

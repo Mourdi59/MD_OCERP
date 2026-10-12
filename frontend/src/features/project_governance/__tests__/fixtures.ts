@@ -6,7 +6,10 @@
 
 import type {
   CheckStatus,
+  FrameDocument,
   GateArea,
+  GateAreaDocument,
+  GateDecision,
   GateDetail,
   GovernanceArea,
   GovernanceCondition,
@@ -30,7 +33,7 @@ export function model(over: Partial<GovernanceModel> = {}): GovernanceModel {
     change_route_id: null,
     stopped: false,
     stopped_at: null,
-    can: { manage: true },
+    can: { manage: true, edit: true },
     phases: [
       { code: 'strategy', order: 1, name: { key: 'governance.catalogue.neutral.phase.strategy', text: null } },
       { code: 'brief', order: 2, name: { key: 'governance.catalogue.neutral.phase.brief', text: null } },
@@ -105,7 +108,7 @@ export function detail(
   } = {},
 ): GateDetail {
   return {
-    can: over.can ?? { edit: true, decide: true },
+    can: over.can ?? { edit: true, decide: true, resume: true, reopen: true, add_condition: true },
     gate: over.gate ?? gate(),
     blockers: over.blockers ?? [],
     areas: (over.areas ?? [{}]).map(gateArea),
@@ -113,8 +116,45 @@ export function detail(
   };
 }
 
-export function blocker(code: string, area_code: string | null = null): Violation {
-  return { code, message_key: `governance.errors.${code}`, area_code, document_type: null, ref: null };
+export function blocker(
+  code: string,
+  area_code: string | null = null,
+  document_type: string | null = null,
+): Violation {
+  return { code, message_key: `governance.errors.${code}`, area_code, document_type, ref: null };
+}
+
+/** A frame document as a gate lists it under its area. */
+export function gateDocument(over: Partial<GateAreaDocument> = {}): GateAreaDocument {
+  return {
+    document_id: 'd1',
+    doc_type: 'business_case',
+    status: 'draft',
+    required: true,
+    container_id: null,
+    revision_in_force: null,
+    pending_revision: null,
+    read_only: false,
+    ...over,
+  };
+}
+
+/** A frame document as the area page lists it; the caller may do everything unless a test says otherwise. */
+export function frameDocument(over: Partial<FrameDocument> = {}): FrameDocument {
+  return {
+    id: 'd1',
+    area_id: 'a1',
+    doc_type: 'business_case',
+    required_at_gates: ['strategy_to_brief'],
+    status: 'draft',
+    container_id: null,
+    bound_revision_id: null,
+    bound_content_hash: null,
+    approved_gate_id: null,
+    read_only: false,
+    can: { attach: true, submit: true, return: true },
+    ...over,
+  };
 }
 
 export function condition(over: Partial<GovernanceCondition> = {}): GovernanceCondition {
@@ -137,6 +177,7 @@ export function condition(over: Partial<GovernanceCondition> = {}): GovernanceCo
     waived_by: null,
     waived_at: null,
     escalated_at: null,
+    can: { clear: true, waive: true },
     ...over,
   };
 }
@@ -161,4 +202,23 @@ export function matrixResponse(over: {
   areas?: MatrixArea[];
 } = {}): MatrixResponse {
   return { gates: over.gates ?? [], next_gate: over.next ?? null, areas: over.areas ?? [] };
+}
+
+export function decision(over: Partial<GateDecision> = {}): GateDecision {
+  return {
+    id: 'dec1',
+    gate_id: 'g1',
+    gate_code: 'strategy_to_brief',
+    attempt_no: 1,
+    outcome: 'go',
+    rationale: '',
+    decided_by: 'u-owner',
+    decided_at: '2026-10-01T09:00:00Z',
+    snapshot: {},
+    proceed_at_risk_areas: [],
+    accepted_not_applicable: [],
+    hold_resume_date: '',
+    approval_instance_id: null,
+    ...over,
+  };
 }

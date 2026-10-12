@@ -76,7 +76,7 @@ export interface GovernanceModel {
   stopped_at: string | null;
   phases: GovernancePhase[];
   /** What the caller may do on this project, decided by the server. */
-  can: { manage: boolean };
+  can: { manage: boolean; edit: boolean };
 }
 
 export interface GovernanceArea {
@@ -91,6 +91,14 @@ export interface GovernanceArea {
   retired: boolean;
   /** Not sent yet, see the report on API gaps. */
   name?: GovernanceLabel;
+  /** The catalogue's frame document types for this area, tracked or not; the ones a document may be added for. */
+  document_types?: AreaDocumentType[];
+}
+
+export interface AreaDocumentType {
+  code: string;
+  name?: GovernanceLabel | null;
+  required_at_gates: string[];
 }
 
 export interface GovernanceGate {
@@ -209,16 +217,32 @@ export interface GateDetail {
   /**
    * What the caller may do on this gate, decided by the server through the same
    * check that enforces a decision (route entitlement, four-eyes, gate state).
-   * `decide` probes a stop, `go` a plain go, so `go_reason` also names the
-   * first readiness blocker. A `*_reason` is a refusal code when its flag is false.
+   * `decide` says whether any outcome is open to the caller; `outcomes` answers
+   * for each one. `go` probes a plain go, so `go_reason` also names the first
+   * readiness blocker. A `*_reason` is a refusal code when its flag is false.
    */
-  can: {
-    edit: boolean;
-    decide: boolean;
-    decide_reason?: string | null;
-    go?: boolean;
-    go_reason?: string | null;
-  };
+  can: GateCan;
+}
+
+/** Whether one decision outcome is open to the caller, and the refusal code when it is not. */
+export interface OutcomeFlag {
+  allowed: boolean;
+  reason?: string | null;
+}
+
+export interface GateCan {
+  edit: boolean;
+  decide: boolean;
+  decide_reason?: string | null;
+  go?: boolean;
+  go_reason?: string | null;
+  outcomes?: Partial<Record<Outcome, OutcomeFlag>>;
+  resume?: boolean;
+  resume_reason?: string | null;
+  reopen?: boolean;
+  reopen_reason?: string | null;
+  add_condition?: boolean;
+  add_condition_reason?: string | null;
 }
 
 export interface MatrixCellOut {
@@ -276,6 +300,17 @@ export interface FrameDocument {
   approved_gate_id: string | null;
   read_only: boolean;
   name?: GovernanceLabel;
+  /** What the caller may do with this document, decided by the server. */
+  can: DocumentCan;
+}
+
+export interface DocumentCan {
+  attach: boolean;
+  attach_reason?: string | null;
+  submit: boolean;
+  submit_reason?: string | null;
+  return: boolean;
+  return_reason?: string | null;
 }
 
 export interface DocumentRevision {
@@ -329,6 +364,15 @@ export interface GovernanceCondition {
   waived_by: string | null;
   waived_at: string | null;
   escalated_at: string | null;
+  /** What the caller may do with this condition, decided by the server. */
+  can: ConditionCan;
+}
+
+export interface ConditionCan {
+  clear: boolean;
+  clear_reason?: string | null;
+  waive: boolean;
+  waive_reason?: string | null;
 }
 
 /** The error code the backend put in `detail.code`, or null for any other failure. */
@@ -372,6 +416,8 @@ export const governanceKeys = {
     ['project-governance', projectId, 'history', documentId] as const,
   changeRequests: (projectId: string) => ['project-governance', projectId, 'change-requests'] as const,
   conditions: (projectId: string) => ['project-governance', projectId, 'conditions'] as const,
+  containers: (projectId: string) => ['project-governance', projectId, 'containers'] as const,
+  routes: (projectId: string) => ['project-governance', projectId, 'routes'] as const,
   catalogues: ['project-governance', 'catalogues'] as const,
 };
 
@@ -406,7 +452,11 @@ export function changeModel(
   return apiPost<GovernanceModel>(`${p(projectId)}/model/change`, body);
 }
 
-export function updateModelSettings(projectId: string, body: { four_eyes?: boolean }): Promise<GovernanceModel> {
+/** `decision_route_id` pins the approval route gate decisions run on; null goes back to the project default. */
+export function updateModelSettings(
+  projectId: string,
+  body: { four_eyes?: boolean; decision_route_id?: string | null; change_route_id?: string | null },
+): Promise<GovernanceModel> {
   return apiPatch<GovernanceModel>(`${p(projectId)}/model`, body);
 }
 
@@ -445,8 +495,9 @@ export function submitGate(projectId: string, gateId: string): Promise<Governanc
   return apiPost<GovernanceGate>(`${p(projectId)}/gates/${gateId}/submit`, {});
 }
 
+/** A decision is dated by the server. The reader's calendar day goes only on reads, never on a write. */
 export function decideGate(projectId: string, gateId: string, body: DecisionInput): Promise<GateDecision> {
-  return apiPost<GateDecision>(`${p(projectId)}/gates/${gateId}/decide?today=${localToday()}`, body);
+  return apiPost<GateDecision>(`${p(projectId)}/gates/${gateId}/decide`, body);
 }
 
 export function reopenGate(
@@ -489,6 +540,21 @@ export function getDocumentHistory(projectId: string, documentId: string): Promi
   return apiGet<DocumentHistory>(`${p(projectId)}/documents/${documentId}/history`);
 }
 
+export function createDocument(
+  projectId: string,
+  body: { area_id: string; doc_type: string },
+): Promise<FrameDocument> {
+  return apiPost<FrameDocument>(`${p(projectId)}/documents`, body);
+}
+
+export function attachDocument(projectId: string, documentId: string, containerId: string): Promise<FrameDocument> {
+  return apiPost<FrameDocument>(`${p(projectId)}/documents/${documentId}/attach`, { container_id: containerId });
+}
+
+export function returnDocument(projectId: string, documentId: string): Promise<FrameDocument> {
+  return apiPost<FrameDocument>(`${p(projectId)}/documents/${documentId}/return`, {});
+}
+
 export function submitDocument(projectId: string, documentId: string): Promise<FrameDocument> {
   return apiPost<FrameDocument>(`${p(projectId)}/documents/${documentId}/submit`, {});
 }
@@ -509,6 +575,11 @@ export function listChangeRequests(projectId: string): Promise<Page<ChangeReques
 
 export function listConditions(projectId: string): Promise<Page<GovernanceCondition>> {
   return apiGet<Page<GovernanceCondition>>(`${p(projectId)}/conditions?limit=500`);
+}
+
+/** A further condition on a gate already decided as go with conditions. */
+export function addGateCondition(projectId: string, gateId: string, body: ConditionInput): Promise<GovernanceCondition> {
+  return apiPost<GovernanceCondition>(`${p(projectId)}/gates/${gateId}/conditions`, body);
 }
 
 export function clearCondition(projectId: string, conditionId: string, evidence: string): Promise<GovernanceCondition> {

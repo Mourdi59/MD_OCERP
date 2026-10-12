@@ -117,10 +117,10 @@ export function usePeopleNames(projectId: string): (userId: string | null | unde
   }, [roster, userId, fullName]);
 }
 
+/** Who is looking, by id only: it tells an area owner apart, and never stands in for a permission. */
 export function useViewer(): Viewer {
   const userId = useAuthStore((s) => s.userId);
-  const role = useAuthStore((s) => s.userRole);
-  return useMemo(() => ({ userId, role }), [userId, role]);
+  return useMemo(() => ({ userId }), [userId]);
 }
 
 export function useLabelContext(): LabelContext {

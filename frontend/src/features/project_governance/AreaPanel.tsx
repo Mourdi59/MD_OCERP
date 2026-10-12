@@ -3,35 +3,42 @@
 //
 // One management area: who owns it, whether it applies to the project, and
 // its frame documents with the CDE revision in force, the binding badge and
-// the change requests raised against them.
+// the change requests raised against them. A document gets its file here,
+// goes to gate review from here and comes back to draft from here, so a gate
+// that waits for a document can be cleared without leaving the page.
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Lock, GitBranch } from 'lucide-react';
+import { ArrowLeft, FilePlus2, Lock, GitBranch, Paperclip } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 import { getErrorMessage } from '@/shared/lib/api';
-import { fmtDate } from '@/shared/lib/formatters';
+import { fmtDate, fmtList } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 
 import {
   createChangeRequest,
+  createDocument,
   getDocumentHistory,
+  governanceErrorCode,
   governanceKeys,
+  returnDocument,
   submitDocument,
   updateArea,
   type ChangeRequest,
   type ChangeRequestStatus,
   type FrameDocument,
   type GovernanceArea,
+  type GovernanceGate,
   type GovernanceModel,
 } from './api';
-import { canEditArea, roleAllows, type Viewer } from './access';
+import { canAddDocument, canEditArea, canRaiseChange, documentVerdict } from './access';
+import { DocumentAttach } from './DocumentAttach';
 import { DOCUMENT_TONE, PersonChip, ReasonedButton, ToneBadge } from './GovernanceBits';
 import { useInvalidateGovernance } from './hooks';
-import { DOCUMENT_STATUS, catalogueName, vocab, type KeyText, type LabelContext } from './labels';
+import { DOCUMENT_STATUS, catalogueName, refusalText, vocab, type KeyText, type LabelContext } from './labels';
 
 const CR_STATUS: Record<ChangeRequestStatus, KeyText> = {
   submitted: ['governance.project.cr_status.submitted', 'Submitted'],
@@ -48,7 +55,8 @@ export interface AreaPanelProps {
   model: GovernanceModel;
   documents: FrameDocument[];
   changeRequests: ChangeRequest[];
-  viewer: Viewer;
+  /** The project's gates, to name the gates a document type is required at. */
+  gates: GovernanceGate[];
   labels: LabelContext;
   personName: (userId: string | null | undefined) => string | null;
   onBack: () => void;
@@ -57,24 +65,27 @@ export interface AreaPanelProps {
 function DocumentRow({
   projectId,
   doc,
+  areaCode,
+  model,
   catalogueId,
   labels,
   changeRequests,
-  viewer,
   onChanged,
 }: {
   projectId: string;
   doc: FrameDocument;
+  areaCode: string;
+  model: GovernanceModel;
   catalogueId: string;
   labels: LabelContext;
   changeRequests: ChangeRequest[];
-  viewer: Viewer;
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
   const [open, setOpen] = useState(false);
   const [crOpen, setCrOpen] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [impact, setImpact] = useState('');
   const history = useQuery({
@@ -85,7 +96,22 @@ function DocumentRow({
   const submit = useMutation({
     mutationFn: () => submitDocument(projectId, doc.id),
     onSuccess: onChanged,
-    onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+    onError: (err) =>
+      addToast({
+        type: 'error',
+        // The container is attached but holds no file: say what to do, not only what failed.
+        title:
+          governanceErrorCode(err) === 'no_pending_revision'
+            ? t('governance.project.area.submit_needs_revision', {
+                defaultValue: 'This document has no file yet. Add a file, then submit it for gate review.',
+              })
+            : refusalText(t, err),
+      }),
+  });
+  const giveBack = useMutation({
+    mutationFn: () => returnDocument(projectId, doc.id),
+    onSuccess: onChanged,
+    onError: (err) => addToast({ type: 'error', title: refusalText(t, err) }),
   });
   const raise = useMutation({
     mutationFn: () => createChangeRequest(projectId, doc.id, { reason: reason.trim(), impact: impact.trim() }),
@@ -97,7 +123,8 @@ function DocumentRow({
     },
     onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
   });
-  const editVerdict = roleAllows(viewer.role, 'edit') ? null : 'role_edit';
+  const title = catalogueName(labels, { kind: 'doc', code: doc.doc_type, catalogueId, label: doc.name });
+  const editable = !doc.read_only && doc.status === 'draft';
   const inForce = history.data?.revisions.find((r) => r.in_force);
   const crs = changeRequests.filter((c) => c.document_id === doc.id);
 
@@ -105,7 +132,7 @@ function DocumentRow({
     <li className="rounded-lg border border-border-light p-3" data-testid="area-document">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium text-content-primary">
-          {catalogueName(labels, { kind: 'doc', code: doc.doc_type, catalogueId, label: doc.name })}
+          {title}
         </span>
         <ToneBadge tone={DOCUMENT_TONE[doc.status]}>{vocab(t, DOCUMENT_STATUS, doc.status)}</ToneBadge>
         {doc.status === 'binding' && (
@@ -124,9 +151,9 @@ function DocumentRow({
         </Button>
       </div>
       {!doc.container_id && (
-        <p className="mt-1 text-xs text-content-tertiary">
-          {t('governance.project.area.attach_hint', {
-            defaultValue: 'No CDE container attached yet. Attach one in the CDE, then the revisions show here.',
+        <p className="mt-1 text-xs text-content-tertiary" data-testid="document-no-file">
+          {t('governance.project.area.no_file', {
+            defaultValue: 'No file yet. Attach one so this document can go to gate review.',
           })}
         </p>
       )}
@@ -177,18 +204,62 @@ function DocumentRow({
         </ul>
       )}
 
-      <div className="mt-2 flex flex-wrap gap-2">
-        {doc.status === 'draft' && !doc.read_only && (
-          <ReasonedButton size="sm" variant="secondary" verdict={editVerdict} loading={submit.isPending} onClick={() => submit.mutate()}>
+      <div className="mt-2 flex flex-wrap items-start gap-2">
+        {editable && !attachOpen && (
+          <ReasonedButton
+            size="sm"
+            variant={doc.container_id ? 'ghost' : 'primary'}
+            icon={<Paperclip size={13} />}
+            verdict={documentVerdict(doc, 'attach')}
+            onClick={() => setAttachOpen(true)}
+            data-testid="document-attach-open"
+          >
+            {doc.container_id
+              ? t('governance.project.area.add_file', { defaultValue: 'Add a new file' })
+              : t('governance.project.area.attach_file', { defaultValue: 'Attach a file' })}
+          </ReasonedButton>
+        )}
+        {editable && (
+          <ReasonedButton
+            size="sm"
+            variant="secondary"
+            verdict={documentVerdict(doc, 'submit')}
+            loading={submit.isPending}
+            onClick={() => submit.mutate()}
+          >
             {t('governance.project.area.submit_document', { defaultValue: 'Submit for gate review' })}
           </ReasonedButton>
         )}
+        {doc.status === 'in_review' && !doc.read_only && (
+          <ReasonedButton
+            size="sm"
+            variant="secondary"
+            verdict={documentVerdict(doc, 'return')}
+            loading={giveBack.isPending}
+            onClick={() => giveBack.mutate()}
+          >
+            {t('governance.project.area.return_document', { defaultValue: 'Return to draft' })}
+          </ReasonedButton>
+        )}
         {doc.status === 'binding' && !crOpen && (
-          <ReasonedButton size="sm" variant="secondary" verdict={editVerdict} onClick={() => setCrOpen(true)}>
+          <ReasonedButton size="sm" variant="secondary" verdict={canRaiseChange(model)} onClick={() => setCrOpen(true)}>
             {t('governance.project.area.raise_change', { defaultValue: 'Raise change request' })}
           </ReasonedButton>
         )}
       </div>
+      {attachOpen && (
+        <DocumentAttach
+          projectId={projectId}
+          doc={doc}
+          areaCode={areaCode}
+          title={title}
+          onCancel={() => setAttachOpen(false)}
+          onDone={() => {
+            setAttachOpen(false);
+            onChanged();
+          }}
+        />
+      )}
       {crOpen && (
         <div className="mt-2 space-y-2 rounded-md bg-surface-secondary p-2">
           <textarea
@@ -221,13 +292,114 @@ function DocumentRow({
   );
 }
 
+/**
+ * Start tracking a further frame document for the area. The catalogue names
+ * the document types an area may hold; the ones already tracked are left out.
+ */
+function AddDocument({
+  projectId,
+  area,
+  model,
+  tracked,
+  gates,
+  catalogueId,
+  labels,
+  onChanged,
+}: {
+  projectId: string;
+  area: GovernanceArea;
+  model: GovernanceModel;
+  tracked: FrameDocument[];
+  gates: GovernanceGate[];
+  catalogueId: string;
+  labels: LabelContext;
+  onChanged: () => void;
+}) {
+  const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
+  const [docType, setDocType] = useState('');
+  const have = new Set(tracked.map((d) => d.doc_type));
+  const offered = (area.document_types ?? []).filter((d) => !have.has(d.code));
+  const add = useMutation({
+    mutationFn: () => createDocument(projectId, { area_id: area.id, doc_type: docType }),
+    onSuccess: () => {
+      setDocType('');
+      onChanged();
+    },
+    onError: (err) => addToast({ type: 'error', title: refusalText(t, err) }),
+  });
+  const gateName = (code: string) => {
+    const gate = gates.find((g) => g.code === code && !g.historic);
+    return catalogueName(labels, { kind: 'gate', code, catalogueId, label: gate?.name });
+  };
+
+  if (offered.length === 0) {
+    return (
+      <p className="mt-3 text-xs text-content-tertiary" data-testid="add-document-none">
+        {(area.document_types ?? []).length === 0
+          ? t('governance.project.area.no_document_types', {
+              defaultValue: 'The phase model names no frame document type for this area.',
+            })
+          : t('governance.project.area.all_documents_tracked', {
+              defaultValue: 'Every frame document the phase model names for this area is tracked.',
+            })}
+      </p>
+    );
+  }
+  const chosen = offered.find((d) => d.code === docType);
+  return (
+    <div className="mt-3 rounded-lg border border-dashed border-border-light p-3" data-testid="add-document">
+      <p className="mb-2 text-xs font-semibold text-content-secondary">
+        {t('governance.project.area.add_document_title', { defaultValue: 'Track another frame document' })}
+      </p>
+      <div className="flex flex-wrap items-start gap-2">
+        <select
+          aria-label={t('governance.project.area.document_type', { defaultValue: 'Document type' })}
+          className="min-w-[14rem] rounded-md border border-border-light bg-surface-primary px-2.5 py-1.5 text-sm text-content-primary"
+          value={docType}
+          onChange={(e) => setDocType(e.target.value)}
+        >
+          <option value="">{t('governance.project.area.choose_document_type', { defaultValue: 'Choose a document type' })}</option>
+          {offered.map((d) => (
+            <option key={d.code} value={d.code}>
+              {catalogueName(labels, { kind: 'doc', code: d.code, catalogueId, label: d.name })}
+            </option>
+          ))}
+        </select>
+        <ReasonedButton
+          size="sm"
+          variant="secondary"
+          icon={<FilePlus2 size={13} />}
+          verdict={canAddDocument(model)}
+          disabled={!docType}
+          loading={add.isPending}
+          onClick={() => add.mutate()}
+          data-testid="add-document-send"
+        >
+          {t('governance.project.area.add_document', { defaultValue: 'Add document' })}
+        </ReasonedButton>
+      </div>
+      {chosen && (
+        <p className="mt-2 text-xs text-content-tertiary">
+          {chosen.required_at_gates.length > 0
+            ? t('governance.project.area.required_at', {
+                defaultValue: 'Required at: {{gates}}',
+                gates: fmtList(chosen.required_at_gates.map(gateName)),
+              })
+            : t('governance.project.area.not_required', { defaultValue: 'Optional: no gate requires it.' })}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function AreaPanel({
   projectId,
   area,
   model,
   documents,
   changeRequests,
-  viewer,
+  gates,
   labels,
   personName,
   onBack,
@@ -339,9 +511,10 @@ export function AreaPanel({
           {t('governance.project.area.documents_title', { defaultValue: 'Frame documents' })}
         </h3>
         {docs.length === 0 ? (
-          <p className="text-sm text-content-tertiary">
-            {t('governance.project.area.no_documents', {
-              defaultValue: 'No frame document is tracked for this area yet. The phase model adds the required ones per gate.',
+          <p className="text-sm text-content-tertiary" data-testid="area-no-documents">
+            {t('governance.project.area.no_documents_yet', {
+              defaultValue:
+                'No frame document is tracked for this area yet. Add the first one below, then attach its file and submit it for gate review.',
             })}
           </p>
         ) : (
@@ -351,15 +524,26 @@ export function AreaPanel({
                 key={d.id}
                 projectId={projectId}
                 doc={d}
+                areaCode={area.code}
+                model={model}
                 catalogueId={catalogueId}
                 labels={labels}
                 changeRequests={changeRequests}
-                viewer={viewer}
                 onChanged={invalidate}
               />
             ))}
           </ul>
         )}
+        <AddDocument
+          projectId={projectId}
+          area={area}
+          model={model}
+          tracked={docs}
+          gates={gates}
+          catalogueId={catalogueId}
+          labels={labels}
+          onChanged={invalidate}
+        />
       </section>
     </div>
   );

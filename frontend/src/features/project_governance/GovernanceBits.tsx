@@ -15,20 +15,13 @@ import { DISABLED_REASON, type Verdict } from './access';
 import { ERROR_TEXT } from './labels';
 import type { CheckStatus, ConditionStatus, DocumentStatus, GateStatus, Outcome } from './api';
 
-/**
- * A button that, when it may not be pressed, stays visible and says why.
- *
- * Hiding a control silently leaves the reader guessing whether the feature
- * exists; a disabled control with a reason tells them who can act instead.
- */
-export function ReasonedButton({
-  verdict,
-  children,
-  disabled,
-  ...rest
-}: ButtonProps & { verdict: Verdict; children: ReactNode }) {
-  const { t, i18n } = useTranslation();
-  const reasonId = useId();
+/** The sentence for a verdict, and the server code when nobody translated it. */
+function useVerdictReason(verdict: Verdict): {
+  reason: readonly [string, string] | null;
+  server: string | null;
+  serverKnown: boolean;
+} {
+  const { i18n } = useTranslation();
   const server = verdict && typeof verdict === 'object' ? verdict.server : null;
   // A server code resolves through governance.errors.<code>; a code nobody
   // translated reads as neutral, with the code beside it for support.
@@ -43,6 +36,47 @@ export function ReasonedButton({
         : serverKnown && serverKey
           ? [serverKey, ERROR_TEXT[server as string] ?? '']
           : ['governance.project.disabled.unavailable', 'This decision is not available right now.'];
+  return { reason, server, serverKnown };
+}
+
+/** Why a control is refused, as the line under it. Renders nothing for an allowed verdict. */
+export function VerdictReason({ verdict, id }: { verdict: Verdict; id?: string }) {
+  const { t } = useTranslation();
+  const { reason, server, serverKnown } = useVerdictReason(verdict);
+  if (!reason) return null;
+  return (
+    <span
+      id={id}
+      data-testid="disabled-reason"
+      data-reason={typeof verdict === 'string' ? verdict : server ? `server:${server}` : undefined}
+      className="inline-flex max-w-xs items-start gap-1 text-2xs text-content-tertiary"
+    >
+      <Info size={11} className="mt-px shrink-0" aria-hidden />
+      {t(reason[0], { defaultValue: reason[1] })}
+      {server && !serverKnown && (
+        <span className="ml-1 font-mono text-content-quaternary" data-testid="disabled-reason-code">
+          ({server})
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * A button that, when it may not be pressed, stays visible and says why.
+ *
+ * Hiding a control silently leaves the reader guessing whether the feature
+ * exists; a disabled control with a reason tells them who can act instead.
+ */
+export function ReasonedButton({
+  verdict,
+  children,
+  disabled,
+  ...rest
+}: ButtonProps & { verdict: Verdict; children: ReactNode }) {
+  const { t } = useTranslation();
+  const reasonId = useId();
+  const { reason } = useVerdictReason(verdict);
   return (
     <span className="inline-flex flex-col items-start gap-1">
       <Button
@@ -53,22 +87,7 @@ export function ReasonedButton({
       >
         {children}
       </Button>
-      {reason && (
-        <span
-          id={reasonId}
-          data-testid="disabled-reason"
-          data-reason={typeof verdict === 'string' ? verdict : server ? `server:${server}` : undefined}
-          className="inline-flex max-w-xs items-start gap-1 text-2xs text-content-tertiary"
-        >
-          <Info size={11} className="mt-px shrink-0" aria-hidden />
-          {t(reason[0], { defaultValue: reason[1] })}
-          {server && !serverKnown && (
-            <span className="ml-1 font-mono text-content-quaternary" data-testid="disabled-reason-code">
-              ({server})
-            </span>
-          )}
-        </span>
-      )}
+      <VerdictReason verdict={verdict} id={reasonId} />
     </span>
   );
 }
