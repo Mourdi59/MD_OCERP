@@ -186,7 +186,7 @@ class CriticalHasDecisionPaper(_PlantRule):
     description = "A critical item has an approved decision paper before its route is set."
 
     def check(self, loc: str, item: dict[str, Any], context: ValidationContext) -> RuleResult | None:
-        if not item["critical"] or not at_least(item["status"], "enquired"):
+        if not item["critical"] or not at_least(item["status"], "specified"):
             return None
         sev = Severity.ERROR if at_least(item["status"], "route_set") else Severity.WARNING
         return self._result(loc, item["paper_status"] == "approved", item["code"], severity=sev, item=item["code"])

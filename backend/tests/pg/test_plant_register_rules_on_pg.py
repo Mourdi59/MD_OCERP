@@ -1203,7 +1203,7 @@ async def test_the_demo_seed_fills_every_list_by_the_rules_and_is_idempotent(wor
     async with world.factory() as s:
         first = await seed_plant_register_demo(s, [world.project_id])
         await s.commit()
-    assert first == {"projects": 1, "items": 13, "quotes": 11}
+    assert first == {"projects": 1, "items": 13, "quotes": 12}
 
     async with world.factory() as s:
         items = list((await s.execute(select(PlantItem).where(PlantItem.project_id == world.project_id))).scalars())

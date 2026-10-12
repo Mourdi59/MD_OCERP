@@ -458,7 +458,12 @@ async def test_handover_needs_commissioned_spares_closed_and_explicit_confirmati
     code, _ = await _code(
         world,
         lambda svc: svc.handover(
-            world.project_id, iid, confirm=False, service_contract_id=None, actor_id=world.manager
+            world.project_id,
+            iid,
+            confirm=False,
+            service_contract_id=None,
+            actor_id=world.manager,
+            no_asset_reason="Maintained by the operator's own staff",
         ),
     )
     assert code == "handover_needs_confirmation"

@@ -223,7 +223,7 @@ class SitePlantPosition(Base):
         nullable=False,
     )
     kind: Mapped[str] = mapped_column(String(40), nullable=False)
-    name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
     # Site plan coordinates in metres.
     x: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
     y: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
@@ -233,7 +233,7 @@ class SitePlantPosition(Base):
     to_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     equipment_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     laydown_zone_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
-    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
 
     def __repr__(self) -> str:
         return f"<SitePlantPosition {self.kind} {self.name}>"

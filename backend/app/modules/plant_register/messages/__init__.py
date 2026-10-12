@@ -34,6 +34,15 @@ def available_locales() -> list[str]:
     return _bundle.available_locales()
 
 
+def written_locale(locale: str | None) -> str:
+    """The language a document rendered for ``locale`` is actually written in."""
+    have = set(available_locales())
+    for candidate in (locale or "", (locale or "").replace("_", "-").split("-")[0]):
+        if candidate in have:
+            return candidate
+    return DEFAULT_LOCALE
+
+
 def reload_bundle() -> None:
     """Force a cache refresh (test helper)."""
     _bundle.reload()

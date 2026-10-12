@@ -37,7 +37,7 @@ from app.core.tenant_scope import resolve_tenant_id
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
 from app.modules.plant_register import calc
 from app.modules.plant_register.errors import PlantError, forbidden
-from app.modules.plant_register.messages import translate
+from app.modules.plant_register.messages import translate, written_locale
 from app.modules.plant_register.schemas import (
     FindingOut,
     HandoverIn,
@@ -867,5 +867,10 @@ async def export(
     return Response(
         content=ex.render(doc, fmt),
         media_type=_MEDIA[fmt],
-        headers={"Content-Disposition": f'attachment; filename="plant_{kind}.{fmt}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="plant_{kind}.{fmt}"',
+            # The labels come from this module's catalogue, which falls back to
+            # English for a language it does not carry: declare what was written.
+            "Content-Language": written_locale(locale),
+        },
     )

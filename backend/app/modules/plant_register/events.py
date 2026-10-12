@@ -31,7 +31,6 @@ from app.database import async_session_factory
 logger = logging.getLogger(__name__)
 
 TARGET_KIND = "plant_decision_paper"
-_SUBSCRIBED_FLAG = "_plant_register_subscribers_registered"
 # Every procurement event after which a linked order may support a different item state.
 PO_EVENTS = (
     "procurement.po.issued",
@@ -121,11 +120,13 @@ _ROUTE_HANDLERS = {name: _on_route(decision) for name, decision in ROUTE_EVENTS.
 
 
 def register_plant_subscribers() -> None:
-    """Idempotently wire the subscribers of this module."""
-    if getattr(event_bus, _SUBSCRIBED_FLAG, False):
-        return
+    """Wire the subscribers of this module; safe to call again.
+
+    ``subscribe_once`` is what makes a second call harmless. A flag kept beside
+    the bus would outlive the handlers whenever the bus is emptied, and the
+    module would then never hear an approval or a purchase order event again.
+    """
     for name, handler in _ROUTE_HANDLERS.items():
         event_bus.subscribe_once(name, handler)
     for name in PO_EVENTS:
         event_bus.subscribe_once(name, _on_po)
-    setattr(event_bus, _SUBSCRIBED_FLAG, True)
