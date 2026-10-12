@@ -168,6 +168,11 @@ def _uuid(value: Any) -> uuid.UUID | None:
         raise PermitError("id_invalid", 422, detail=str(value)[:80]) from exc
 
 
+def _binding_status(doc: Any) -> str:
+    """Rule 18: the roadmap is ``agreed`` exactly while its governance frame document is binding."""
+    return "agreed" if doc is not None and doc.status == "binding" else "draft"
+
+
 def _uuid_or_none(value: Any) -> uuid.UUID | None:
     """A free-text reference read as an id, where it is one."""
     try:
@@ -281,6 +286,17 @@ class PermitService:
         owner = await self._link_project(kind, rid)
         if owner != project_id:
             raise not_found(f"{kind}_not_found")
+
+    async def _check_member(self, project_id: uuid.UUID, user_id: Any) -> None:
+        """Whoever is named responsible or owner gets the record and its notifications: only a
+        person with access to the project (its owner, a team member, an admin) may be named."""
+        uid = _uuid(user_id)
+        if uid is None:
+            return
+        from app.modules.project_governance.public import user_can_access_project
+
+        if not await user_can_access_project(self.session, project_id, uid):
+            raise PermitError("user_not_on_project", 422)
 
     async def _link_project(self, kind: str, rid: uuid.UUID) -> uuid.UUID | None:
         if kind == "activity":
@@ -407,11 +423,25 @@ class PermitService:
     # ── roadmap ────────────────────────────────────────────────────────────
 
     async def get_roadmap(self, project_id: uuid.UUID) -> PermitRoadmap:
+        """The roadmap row as stored. A read: it writes nothing (see :meth:`roadmap_view`)."""
         roadmap = await self.repo.get_roadmap(project_id)
         if roadmap is None:
             raise not_found("roadmap_missing")
-        await self._mirror_binding(roadmap)
         return roadmap
+
+    async def roadmap_view(self, project_id: uuid.UUID) -> dict[str, Any]:
+        """The roadmap as served: ``state`` and the frame document are derived from governance on read.
+
+        The stored columns are brought in line only by a write (:meth:`_structural_guard`),
+        so a GET never changes a row.
+        """
+        roadmap = await self.get_roadmap(project_id)
+        doc = await self._roadmap_document(project_id)
+        return {
+            **roadmap_out(roadmap),
+            "state": _binding_status(doc),
+            "governance_document_id": str(doc.id) if doc is not None else _s(roadmap.governance_document_id),
+        }
 
     async def _roadmap_document(self, project_id: uuid.UUID) -> Any:
         """The frame document the governance model hosts permits in, as the port lists it; ``None``
@@ -427,7 +457,7 @@ class PermitService:
     async def _mirror_binding(self, roadmap: PermitRoadmap) -> None:
         """Rule 18: ``agreed`` mirrors the governance binding state of the roadmap frame document."""
         doc = await self._roadmap_document(roadmap.project_id)
-        status = "agreed" if doc is not None and doc.status == "binding" else "draft"
+        status = _binding_status(doc)
         if doc is not None and roadmap.governance_document_id != doc.id:
             roadmap.governance_document_id = doc.id
         if roadmap.status != status:
@@ -530,6 +560,14 @@ class PermitService:
             action = "roadmap_updated"
         for key, value in (settings or {}).items():
             if value is None:
+                # An explicit null clears a link; a setting that always has a value cannot be null.
+                if key in ("roadmap_area_code", "conditions_area_code"):
+                    # No override: the area is resolved from the governance model again.
+                    setattr(roadmap, key, "")
+                elif key in ("route_assessment_id", "approval_route_id", "delivery_model_id"):
+                    setattr(roadmap, key, None)
+                else:
+                    raise PermitError("field_not_nullable", 422, detail=key)
                 continue
             if key == "route_assessment_id":
                 await self._check_link("route_assessment", value, project_id)
@@ -732,6 +770,7 @@ class PermitService:
                 raise PermitError("applicant_override_needs_rationale", 422)
             role, source = data["applicant_role"], "override"
         await self._check_requirement_links(project_id, data)
+        await self._check_member(project_id, data.get("responsible_user_id"))
         count = len(await self.repo.list_requirements(project_id))
         req = await self.repo.add(
             PermitRequirement(
@@ -806,6 +845,8 @@ class PermitService:
                 raise conflict("requirement_field_frozen", detail="applicable")
             spent = await self._structural_guard(roadmap, change_request_id)
         await self._check_requirement_links(project_id, data)
+        if "responsible_user_id" in changed:
+            await self._check_member(project_id, data["responsible_user_id"])
         if "applicant_role" in data and data["applicant_role"] and data["applicant_role"] != req.applicant_role:
             if not (data.get("applicant_rationale") or "").strip():
                 raise PermitError("applicant_override_needs_rationale", 422)
@@ -1686,6 +1727,7 @@ class PermitService:
                 original_id=_uuid(carried.original_id),
                 source=src.source if copied else "manual",
                 confirmed=carried.confirmed,
+                named_now=False,
             )
             if src is None:
                 continue
@@ -1893,9 +1935,14 @@ class PermitService:
         source: str = "manual",
         confirmed: bool = True,
         original_id: uuid.UUID | None = None,
+        named_now: bool = True,
     ) -> PermitCondition:
+        """Store one condition. ``named_now`` is False where the owner is carried over from the
+        condition this one replaces (a variation), not named by the caller."""
         _validate_condition_input(c)
         await self._check_link("gate_condition", c.get("gate_condition_id"), permit.project_id)
+        if named_now:
+            await self._check_member(permit.project_id, c.get("owner_user_id"))
         row = PermitCondition(
             project_id=permit.project_id,
             permit_id=permit.id,
@@ -2017,7 +2064,11 @@ class PermitService:
         guards.condition_frozen(c, changed & {*GATE_CONDITION_FIELDS, "owner_user_id"})
         if data.get("gate_condition_id"):
             await self._check_link("gate_condition", data["gate_condition_id"], project_id)
-        merged_input = {**_condition_payload(c), **{k: v for k, v in data.items() if v is not None}}
+        if "owner_user_id" in changed:
+            await self._check_member(project_id, data["owner_user_id"])
+        # C5: the condition is validated as it will be stored, a cleared field included. Clearing
+        # the due date of a ``by_date`` condition is refused like creating one without it.
+        merged_input = {**_condition_payload(c), **data}
         _validate_condition_input(merged_input)
         before = _condition_payload(c)
         for key, value in data.items():
@@ -2157,10 +2208,8 @@ class PermitService:
         # A document can still be attached: only what a document cannot cure is a reason.
         return {
             mode: guards.flag(
-                lambda mode=mode: (
-                    guards.needs_verify(caller),
-                    guards.condition_discharge(c, mode, caller.actor_id, involved, has_document=True),
-                )
+                lambda: guards.needs_verify(caller),
+                lambda mode=mode: guards.condition_discharge(c, mode, caller.actor_id, involved, has_document=True),
             )
             for mode in guards.DISCHARGE_MODES
         }
@@ -2241,6 +2290,9 @@ class PermitService:
             if kind not in BREACH_REF_KINDS:
                 raise PermitError("breach_ref_invalid", 422)
             if kind != "manual":
+                # A breach that points at a record names the record.
+                if _uuid(data.get("ref_id")) is None:
+                    raise PermitError("breach_ref_required", 422)
                 await self._check_link(kind, data.get("ref_id"), project_id)
             c.breach_ref_kind, c.breach_ref_id = kind, _uuid(data.get("ref_id"))
             c.breach_note = data.get("note") or ""
@@ -2271,9 +2323,16 @@ class PermitService:
         for p in proposals:
             if p.get("confidence") is None:
                 raise PermitError("proposal_needs_confidence", 422)
+            # A passage is a quotation checked against the notice, which only the extraction can
+            # do (``extract_conditions``): one that merely arrives in a request is not stored.
             out.append(
                 await self._add_condition(
-                    permit, p, decision_id=permit.decision_id, actor_id=actor_id, source="ai_extracted", confirmed=False
+                    permit,
+                    {**p, "passage": ""},
+                    decision_id=permit.decision_id,
+                    actor_id=actor_id,
+                    source="ai_extracted",
+                    confirmed=False,
                 )
             )
         await self._audit(actor_id, "authority_permit", pid, "conditions_proposed", metadata={"count": len(out)})
@@ -2541,7 +2600,9 @@ class PermitService:
             "add_requirement": {**manage, **binding},
             "accept_proposals": {**manage, **binding},
             "escalate": manage,
-            "publish_frame_document": guards.flag(lambda: (guards.needs_manage(caller), guards.frame_document(doc))),
+            "publish_frame_document": guards.flag(
+                lambda: guards.needs_manage(caller), lambda: guards.frame_document(doc)
+            ),
         }
 
     def requirement_can(
@@ -2552,12 +2613,13 @@ class PermitService:
         edit = guards.flag(lambda: guards.needs_edit(caller))
         return {
             "edit": guards.flag(
-                lambda: (guards.needs_edit(caller), guards.requirement_edit(req, caller.actor_id, caller.manage))
+                lambda: guards.needs_edit(caller),
+                lambda: guards.requirement_edit(req, caller.actor_id, caller.manage),
             ),
             # ``applicable``, ``conflict_accepted`` and the responsible user.
             "manage_fields": manage,
             "delete": {
-                **guards.flag(lambda: (guards.needs_manage(caller), guards.requirement_delete(applications))),
+                **guards.flag(lambda: guards.needs_manage(caller), lambda: guards.requirement_delete(applications)),
                 **cr,
             },
             "set_dependencies": {**manage, **cr},
@@ -2573,25 +2635,22 @@ class PermitService:
         ``deep`` also asks what only a query can answer (unmet dependencies, the internal
         release) for the move to ``submitted``; a list leaves that to the detail read.
         """
-
-        def move(target: str) -> dict[str, Any]:
-            return guards.flag(
-                lambda: (
-                    guards.needs_edit(caller),
-                    guards.application_transition(app, target, roadmap.internal_review),
-                )
+        transition = {
+            t: guards.flag(
+                lambda: guards.needs_edit(caller),
+                lambda t=t: guards.application_transition(app, t, roadmap.internal_review),
             )
-
-        transition = {t: move(t) for t in guards.TARGET_ORDER}
+            for t in guards.TARGET_ORDER
+        }
         if deep and transition["submitted"]["allowed"]:
             try:
                 await self._admit_submit(roadmap, app, caller.manage)
             except PermitError as exc:
                 transition["submitted"] = guards.refused(exc.code)
         return {
-            "edit": guards.flag(lambda: (guards.needs_edit(caller), guards.application_edit(app))),
-            "clock": guards.flag(lambda: (guards.needs_edit(caller), guards.application_clock(app))),
-            "decide": guards.flag(lambda: (guards.needs_manage(caller), guards.application_decide(app))),
+            "edit": guards.flag(lambda: guards.needs_edit(caller), lambda: guards.application_edit(app)),
+            "clock": guards.flag(lambda: guards.needs_edit(caller), lambda: guards.application_clock(app)),
+            "decide": guards.flag(lambda: guards.needs_manage(caller), lambda: guards.application_decide(app)),
             "transition": transition,
         }
 
@@ -2599,9 +2658,11 @@ class PermitService:
         self, decision: PermitDecision, newest: PermitDecision | None, caller: guards.Caller
     ) -> dict[str, Any]:
         return {
-            "correct": guards.flag(lambda: (guards.needs_manage(caller), guards.decision_current(decision, newest))),
+            "correct": guards.flag(
+                lambda: guards.needs_manage(caller), lambda: guards.decision_current(decision, newest)
+            ),
             "complete_register": guards.flag(
-                lambda: (guards.needs_manage(caller), guards.decision_complete_register(decision, newest))
+                lambda: guards.needs_manage(caller), lambda: guards.decision_complete_register(decision, newest)
             ),
         }
 
@@ -2609,15 +2670,21 @@ class PermitService:
         self, permit: Permit, caller: guards.Caller, no_provider: PermitError | None
     ) -> dict[str, Any]:
         """Flags of one permit. ``no_provider`` is the refusal of :meth:`_ai_refusal` for this caller."""
+
+        def edit() -> None:
+            guards.needs_edit(caller)
+
+        def manage() -> None:
+            guards.needs_manage(caller)
+
         return {
-            "start": guards.flag(lambda: (guards.needs_edit(caller), guards.permit_start(permit))),
-            "interrupt": guards.flag(lambda: (guards.needs_edit(caller), guards.permit_interruption(permit, False))),
-            "resume": guards.flag(lambda: (guards.needs_edit(caller), guards.permit_interruption(permit, True))),
+            "start": guards.flag(edit, lambda: guards.permit_start(permit)),
+            "interrupt": guards.flag(edit, lambda: guards.permit_interruption(permit, False)),
+            "resume": guards.flag(edit, lambda: guards.permit_interruption(permit, True)),
             "transition": {
-                t: guards.flag(lambda t=t: (guards.needs_manage(caller), guards.permit_transition(permit, t)))
-                for t in guards.PERMIT_TARGETS
+                t: guards.flag(manage, lambda t=t: guards.permit_transition(permit, t)) for t in guards.PERMIT_TARGETS
             },
-            "add_condition": guards.flag(lambda: guards.needs_manage(caller)),
+            "add_condition": guards.flag(manage),
             "propose_conditions": await self._can_propose(permit, caller, no_provider),
         }
 
@@ -2626,26 +2693,26 @@ class PermitService:
     ) -> dict[str, Any]:
         """Flags of one condition. ``involved``: its owner, who submitted and who added evidence."""
 
-        def owned(guard: Callable[[], Any]) -> dict[str, Any]:
-            return guards.flag(
-                lambda: (
-                    guards.needs_edit(caller),
-                    guards.condition_owned(c, caller.actor_id, caller.manage),
-                    guard(),
-                )
-            )
+        def edit() -> None:
+            guards.needs_edit(caller)
+
+        def manage() -> None:
+            guards.needs_manage(caller)
+
+        def owned() -> None:
+            guards.condition_owned(c, caller.actor_id, caller.manage)
 
         return {
-            "edit": owned(lambda: guards.condition_edit(c)),
+            "edit": guards.flag(edit, owned, lambda: guards.condition_edit(c)),
             # ``kind``, ``trigger``, ``purpose``, ``requires_authority_approval``: what a gate reads.
-            "manage_fields": guards.flag(lambda: (guards.needs_manage(caller), guards.condition_gate_fields(c))),
-            "assign": guards.flag(lambda: (guards.needs_manage(caller), guards.condition_assign(c))),
-            "add_evidence": owned(lambda: guards.condition_add_evidence(c)),
-            "remove_evidence": owned(lambda: guards.condition_remove_evidence(c)),
-            "submit_evidence": owned(lambda: guards.condition_submit_evidence(c, evidence_count)),
-            "breach": guards.flag(lambda: (guards.needs_edit(caller), guards.condition_ongoing(c, "breach"))),
-            "in_compliance": owned(lambda: guards.condition_ongoing(c, "in_compliance")),
-            "confirm": guards.flag(lambda: (guards.needs_edit(caller), guards.condition_confirm(c))),
+            "manage_fields": guards.flag(manage, lambda: guards.condition_gate_fields(c)),
+            "assign": guards.flag(manage, lambda: guards.condition_assign(c)),
+            "add_evidence": guards.flag(edit, owned, lambda: guards.condition_add_evidence(c)),
+            "remove_evidence": guards.flag(edit, owned, lambda: guards.condition_remove_evidence(c)),
+            "submit_evidence": guards.flag(edit, owned, lambda: guards.condition_submit_evidence(c, evidence_count)),
+            "breach": guards.flag(edit, lambda: guards.condition_ongoing(c, "breach")),
+            "in_compliance": guards.flag(edit, owned, lambda: guards.condition_ongoing(c, "in_compliance")),
+            "confirm": guards.flag(edit, lambda: guards.condition_confirm(c)),
             "discharge": self._discharge_can(c, caller, involved),
         }
 
@@ -2693,7 +2760,7 @@ class PermitService:
                 raise no_provider
         except PermitError as exc:
             return guards.refused(exc.code)
-        return guards.flag(lambda: None)
+        return guards.flag()
 
     async def extract_conditions(self, project_id: uuid.UUID, pid: uuid.UUID, *, actor_id: uuid.UUID) -> dict[str, Any]:
         """Read the permit's decision notice and store the conditions the AI finds as UNCONFIRMED proposals.

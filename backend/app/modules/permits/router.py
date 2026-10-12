@@ -276,8 +276,8 @@ async def get_roadmap(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    row = await _run(svc.get_roadmap(project_id))
-    return {**sv.roadmap_out(row), "can": await svc.roadmap_can(project_id, _caller(payload, user_id))}
+    view = await _run(svc.roadmap_view(project_id))
+    return {**view, "can": await svc.roadmap_can(project_id, _caller(payload, user_id))}
 
 
 @router.put("/projects/{project_id}/roadmap", dependencies=[MANAGE])
@@ -286,8 +286,10 @@ async def put_roadmap(
 ) -> dict[str, Any]:
     """Create the roadmap (country default catalogue) or re-pin it / change settings."""
     svc = await _svc(project_id, user_id, session)
-    data = body.model_dump(exclude_none=True)
-    pin = {k: data.pop(k) for k in ("catalogue_source", "catalogue_id", "catalogue_version") if k in data}
+    # Only what the request names: an explicit null reaches the service, which clears a link
+    # with it and refuses it for a setting that cannot be empty.
+    data = body.model_dump(exclude_unset=True)
+    pin = {k: v for k in ("catalogue_source", "catalogue_id", "catalogue_version") if (v := data.pop(k, None))}
     juris = data.pop("jurisdiction", None)
     row = await _run(
         svc.set_roadmap(

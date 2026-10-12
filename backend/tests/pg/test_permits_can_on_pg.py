@@ -115,6 +115,13 @@ async def test_application_flags_follow_the_project_setting_and_the_write_agrees
         assert can["edit"] == YES
         assert can["clock"] == _no("clock_not_running")
         assert can["decide"] == _no("manage_required")
+        # A reader is offered the same moves as an editor, each one refused for the missing right.
+        seen = await svc.application_can(await svc.repo.get_application(p, aid), roadmap, guards.Caller(world.editor))
+        assert {t: f["applies"] for t, f in seen["transition"].items()} == {
+            t: f["applies"] for t, f in can["transition"].items()
+        }
+        assert seen["transition"]["submitted"] == _no("edit_required")
+        assert [t for t in guards.TARGET_ORDER if seen["transition"][t]["applies"]] == ["submitted", "withdrawn"]
         # The write refuses with the very code the flag gave.
         assert await _code(
             svc.transition_application(p, aid, "internal_review", actor_id=world.editor, can_manage=False)

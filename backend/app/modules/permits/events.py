@@ -24,7 +24,6 @@ from app.database import async_session_factory
 logger = logging.getLogger(__name__)
 
 TARGET_KIND = "permit_application"
-_SUBSCRIBED_FLAG = "_permits_subscribers_registered"
 
 
 async def _can_open_isolated_session() -> bool:
@@ -74,9 +73,11 @@ async def _on_cancelled(event: Event) -> None:
 
 
 def register_permit_subscribers() -> None:
-    """Idempotently wire the approval-route subscribers of this module."""
-    if getattr(event_bus, _SUBSCRIBED_FLAG, False):
-        return
+    """Wire the approval-route subscribers of this module; safe to call again.
+
+    ``subscribe_once`` is what makes a second call harmless. A flag kept beside the bus
+    would outlive the handlers whenever the bus is emptied (an app started again in the
+    same process), and the module would then never hear a route verdict.
+    """
     event_bus.subscribe_once("approval_routes.instance.rejected", _on_rejected)
     event_bus.subscribe_once("approval_routes.instance.cancelled", _on_cancelled)
-    setattr(event_bus, _SUBSCRIBED_FLAG, True)

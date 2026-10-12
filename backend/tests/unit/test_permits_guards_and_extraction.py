@@ -74,13 +74,39 @@ def test_a_flag_never_hides_an_error_that_is_not_a_refusal() -> None:
         guards.flag(broken)
 
 
-def test_the_permission_comes_first_in_a_combined_flag() -> None:
+def test_the_permission_comes_first_where_the_action_belongs_to_the_record() -> None:
     viewer = guards.Caller(ME)
-    flag = guards.flag(lambda: (guards.needs_edit(viewer), guards.application_clock(_app("planned"))))
+    flag = guards.flag(lambda: guards.needs_edit(viewer), lambda: guards.application_clock(_app("planned")))
     assert flag == {"allowed": False, "applies": True, "reason": "edit_required"}
     assert _refusal(lambda: guards.needs_manage(viewer)) == (403, "manage_required", True)
     assert _refusal(lambda: guards.needs_verify(viewer)) == (403, "verify_required", True)
     guards.needs_edit(guards.Caller(ME, edit=True))
+    assert guards.flag() == {"allowed": True, "applies": True, "reason": None}
+
+
+def test_whether_an_action_applies_does_not_depend_on_who_asks() -> None:
+    """A reader must see the same set of actions as an editor, only disabled."""
+    viewer, editor = guards.Caller(ME), guards.Caller(ME, edit=True)
+
+    def move(caller: guards.Caller, target: str) -> dict:
+        return guards.flag(
+            lambda: guards.needs_edit(caller),
+            lambda: guards.application_transition(_app("preparing"), target, False),
+        )
+
+    for target in guards.TARGET_ORDER:
+        assert move(viewer, target)["applies"] == move(editor, target)["applies"], target
+    assert move(viewer, "validated") == {"allowed": False, "applies": False, "reason": "invalid_transition"}
+    assert move(viewer, "submitted") == {"allowed": False, "applies": True, "reason": "edit_required"}
+    assert [t for t in guards.TARGET_ORDER if move(viewer, t)["applies"]] == ["submitted", "withdrawn"]
+    # The same for the owner test of a condition: a closed condition is closed for everyone.
+    waived = _cond("waived")
+    stranger = guards.flag(
+        lambda: guards.needs_edit(editor),
+        lambda: guards.condition_owned(waived, ME, False),
+        lambda: guards.condition_edit(waived),
+    )
+    assert stranger == {"allowed": False, "applies": False, "reason": "condition_closed"}
 
 
 # ── applications ───────────────────────────────────────────────────────────

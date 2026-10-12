@@ -48,6 +48,52 @@ def test_decisions_need_manage_and_discharge_needs_verify() -> None:
     assert set(inspect.signature(extract.endpoint).parameters) == {"project_id", "permit_id", "session", "user_id"}
 
 
+def test_a_get_route_never_writes_the_roadmap() -> None:
+    """Round 2, C1: the binding state is derived on read; only a structural write stores it."""
+    from app.modules.permits.service import PermitService
+
+    for name in ("get_roadmap", "roadmap_view", "require_roadmap"):
+        src = inspect.getsource(getattr(PermitService, name))
+        assert "_mirror_binding" not in src and "flush(" not in src, name
+    callers = [
+        name
+        for name, fn in vars(PermitService).items()
+        if callable(fn) and "_mirror_binding(" in inspect.getsource(fn) and name != "_mirror_binding"
+    ]
+    assert callers == ["_structural_guard"]
+
+
+async def test_the_module_subscribes_again_after_the_bus_was_emptied(monkeypatch) -> None:
+    """A flag beside the bus outlives the handlers; ``subscribe_once`` does not."""
+    from app.core.events import event_bus
+    from app.modules.permits import events
+
+    seen: list[tuple[str, str]] = []
+
+    async def record(data: dict, *, verdict: str, session_factory=None) -> None:
+        seen.append((verdict, data["target_id"]))
+
+    monkeypatch.setattr(events, "handle_route_event", record)
+    kept = {name: list(handlers) for name, handlers in event_bus._handlers.items()}
+    wildcard = list(event_bus._wildcard_handlers)
+    try:
+        events.register_permit_subscribers()
+        event_bus.clear()
+        await event_bus.publish("approval_routes.instance.rejected", {"target_id": "lost"})
+        assert seen == []
+        events.register_permit_subscribers()
+        events.register_permit_subscribers()
+        await event_bus.publish("approval_routes.instance.rejected", {"target_id": "a"})
+        await event_bus.publish("approval_routes.instance.cancelled", {"target_id": "b"})
+        # Heard again, and once each: registering twice does not double the handler.
+        assert seen == [("rejected", "a"), ("cancelled", "b")]
+    finally:
+        event_bus.clear()
+        for name, handlers in kept.items():
+            event_bus._handlers[name].extend(handlers)
+        event_bus._wildcard_handlers.extend(wildcard)
+
+
 def test_every_record_read_is_served_with_what_the_caller_may_do() -> None:
     """A button follows the server: each read of a record a user acts on builds its ``can`` from the caller."""
     reads = {
@@ -104,6 +150,17 @@ def test_every_rule_has_messages() -> None:
             assert is_key_present(f"permits.rules.{rule.key}.suggestion", loc), rule.key
 
 
+def _hook_indexes(table_name: str) -> set[str]:
+    """Indexes ``app.core.pg_optimizations`` attaches to a table after any ``create_all`` in the process.
+
+    No revision creates them, and whether they are on ``table.indexes`` depends on what
+    ran earlier in the same test process, so they are not part of the comparison.
+    """
+    from app.core.pg_optimizations import _index_name
+
+    return {_index_name(table_name, ["project_id", second]) for second in ("created_at", "status")}
+
+
 def _model_names() -> dict[str, set[str]]:
     from app.modules.permits import models
 
@@ -138,7 +195,8 @@ def test_migration_matches_models() -> None:
                 names |= {fk.name for fk in c.foreign_keys}
             elif getattr(c, "name", None):
                 names.add(c.name)
-        assert names == models[table], table
+        # A hook index counts only where the migration creates it under that very name.
+        assert names == models[table] - (_hook_indexes(table) - names), table
         assert col_names == models[table + ":columns"], table
 
 

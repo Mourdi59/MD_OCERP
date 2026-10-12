@@ -198,9 +198,9 @@ async def test_whoever_added_or_submitted_the_evidence_cannot_verify(world: Worl
             svc.update_condition(p, cid, {"owner_user_id": world.editor}, actor_id=world.manager, can_manage=True)
         ) == (409, "condition_field_frozen")
         can = await svc.discharge_capability(p, cid, actor_id=world.manager, can_verify=True)
-        assert can["self_certified"] == {"allowed": False, "reason": "verifier_is_involved"}
+        assert can["self_certified"] == {"allowed": False, "applies": True, "reason": "verifier_is_involved"}
         can = await svc.discharge_capability(p, cid, actor_id=world.verifier, can_verify=True)
-        assert can["self_certified"] == {"allowed": True, "reason": None}
+        assert can["self_certified"] == {"allowed": True, "applies": True, "reason": None}
         assert (await svc.discharge_capability(p, cid, actor_id=world.verifier, can_verify=False))["self_certified"][
             "reason"
         ] == "verify_required"

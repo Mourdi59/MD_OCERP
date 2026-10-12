@@ -67,12 +67,24 @@ def not_applicable(code: str, status_code: int = 409, detail: str | None = None)
     return exc
 
 
-def flag(guard: Callable[[], Any]) -> dict[str, Any]:
-    """Run one guard dry: ``{allowed, applies, reason}`` with the code the write would refuse with."""
-    try:
-        guard()
-    except PermitError as exc:
-        return {"allowed": False, "applies": bool(getattr(exc, "applies", True)), "reason": exc.code}
+def flag(*checks: Callable[[], Any]) -> dict[str, Any]:
+    """Run the guards of one write dry: ``{allowed, applies, reason}`` with the code the write would refuse with.
+
+    The checks come in the order the write makes them, the permission first. ``applies`` is
+    a fact about the record and never about who asks, so every check runs: a "not for this
+    record" from any of them wins, and a reader sees the same set of actions as an editor.
+    Where the action does belong to the record the reason is the first refusal in order.
+    """
+    first: PermitError | None = None
+    for check in checks:
+        try:
+            check()
+        except PermitError as exc:
+            if not getattr(exc, "applies", True):
+                return refused(exc.code, applies=False)
+            first = first or exc
+    if first is not None:
+        return refused(first.code)
     return {"allowed": True, "applies": True, "reason": None}
 
 

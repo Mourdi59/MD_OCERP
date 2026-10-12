@@ -181,7 +181,7 @@ async def test_a_correction_is_a_new_revision_and_the_permit_follows_it(world: W
 
 async def test_interrupted_work_puts_the_permit_back_on_a_lapse_clock(world: World) -> None:
     rid = await requirement(world, BUILDING)
-    out = await decide(world, await file(world, rid), "granted", served_date=NOW - timedelta(days=9))
+    out = await decide(world, await file(world, rid), "granted", served_date=TODAY - timedelta(days=9))
     p, pid = world.project_id, out["permit"].id
     async with world.factory() as s:
         svc = PermitService(s)
@@ -416,3 +416,68 @@ async def test_the_ports_answer_for_site_readiness_closeout_and_release(world: W
         (entry,) = await public.closeout_entries(s, p)
         (condition,) = entry["conditions"]
         assert condition["state"] == "discharged" and len(condition["discharges"]) == 1
+
+
+# ── review round 2: who may be named, cleared fields, breach references, clearing links ──
+
+
+async def test_only_a_person_on_the_project_is_named_and_a_cleared_field_is_validated(world: World) -> None:
+    p = world.project_id
+    rid = await requirement(world, BUILDING)
+    due = TODAY + timedelta(days=30)
+    out = await decide(
+        world,
+        await file(world, rid),
+        "granted_with_conditions",
+        conditions=[cond("1", trigger="by_date", due_date=due), cond("2", trigger="ongoing")],
+    )
+    async with world.factory() as s:
+        svc = PermitService(s)
+        by_number = {c.number: c for c in await svc.repo.conditions_of_permit(p, out["permit"].id)}
+        one, two = by_number["1"].id, by_number["2"].id
+        # The outsider is a manager elsewhere but has no access to this project.
+        named = {"responsible_user_id": world.outsider}
+        assert await _code(svc.update_requirement(p, rid, dict(named), actor_id=world.manager, can_manage=True)) == (
+            422,
+            "user_not_on_project",
+        )
+        assert await _code(
+            svc.create_requirement(p, {"permit_type_code": BUILDING, **named}, actor_id=world.manager)
+        ) == (422, "user_not_on_project")
+        assert await _code(
+            svc.create_condition(p, out["permit"].id, cond("7", owner_user_id=world.outsider), actor_id=world.manager)
+        ) == (422, "user_not_on_project")
+        assert await _code(
+            svc.update_condition(p, one, {"owner_user_id": world.outsider}, actor_id=world.manager, can_manage=True)
+        ) == (422, "user_not_on_project")
+        # A team member is accepted.
+        await svc.update_condition(p, one, {"owner_user_id": world.editor}, actor_id=world.manager, can_manage=True)
+        # Clearing the date a ``by_date`` condition runs on is refused like creating one without it.
+        assert await _code(
+            svc.update_condition(p, one, {"due_date": None}, actor_id=world.manager, can_manage=True)
+        ) == (422, "date_trigger_needs_due_date")
+        assert (await svc.repo.get_condition(p, one)).due_date == due
+        # A breach that points at a record names it.
+        assert await _code(
+            svc.ongoing(p, two, "breach", {"ref_kind": "inspection"}, actor_id=world.manager, can_manage=True)
+        ) == (422, "breach_ref_required")
+        assert (await svc.repo.get_condition(p, two)).status == "open"
+
+
+async def test_a_roadmap_link_is_cleared_with_null_and_a_setting_cannot_be(world: World) -> None:
+    p = world.project_id
+
+    async def put(**settings) -> object:
+        async with world.factory() as s:
+            row = await PermitService(s).set_roadmap(p, tenant_id=None, actor_id=world.manager, settings=settings)
+            await s.commit()
+            return row
+
+    assert (await put(route_assessment_id=world.assessment_id)).route_assessment_id == world.assessment_id
+    assert (await put(buffer_days=7)).route_assessment_id == world.assessment_id
+    assert (await put(route_assessment_id=None)).route_assessment_id is None
+    assert (await put(roadmap_area_code=None)).roadmap_area_code == ""
+    async with world.factory() as s:
+        assert await _code(
+            PermitService(s).set_roadmap(p, tenant_id=None, actor_id=world.manager, settings={"buffer_days": None})
+        ) == (422, "field_not_nullable")
