@@ -25,7 +25,6 @@ from app.database import async_session_factory
 
 logger = logging.getLogger(__name__)
 
-_SUBSCRIBED_FLAG = "_design_management_approval_subscribers_registered"
 CHECKER_NAME = "design_management.numbering"
 
 
@@ -83,13 +82,15 @@ async def _on_cancelled(event: Event) -> None:
 
 
 def register_design_subscribers() -> None:
-    """Idempotently wire the approval-route subscribers of this module."""
-    if getattr(event_bus, _SUBSCRIBED_FLAG, False):
-        return
+    """Wire the approval-route subscribers of this module; safe to call on every startup.
+
+    ``subscribe_once`` is the whole idempotency. A flag kept on the bus object
+    would outlive the handlers when the bus is emptied or restored, and the
+    module would then never subscribe again.
+    """
     event_bus.subscribe_once("approval_routes.instance.completed", _on_completed)
     event_bus.subscribe_once("approval_routes.instance.rejected", _on_rejected)
     event_bus.subscribe_once("approval_routes.instance.cancelled", _on_cancelled)
-    setattr(event_bus, _SUBSCRIBED_FLAG, True)
 
 
 async def numbering_checker(session: Any, project_id: uuid.UUID, code: str, parts: dict[str, Any]):

@@ -231,6 +231,36 @@ def test_the_cancelled_event_is_subscribed() -> None:
 
 
 @pytest.mark.asyncio
+async def test_registering_again_after_the_bus_was_emptied_wires_the_handlers_again(monkeypatch) -> None:
+    """A test or a restart may empty the bus; the next startup must subscribe again, exactly once."""
+    from app.core.events import Event, event_bus
+    from app.modules.design_management import events
+
+    seen: list[tuple[dict, str]] = []
+
+    async def record(data, *, decision, session_factory=None):
+        seen.append((data, decision))
+
+    monkeypatch.setattr(events, "handle_route_event", record)
+    names = [f"approval_routes.instance.{n}" for n in ("completed", "rejected", "cancelled")]
+    saved = {n: list(event_bus._handlers.get(n, [])) for n in names}
+    try:
+        events.register_design_subscribers()
+        for n in names:
+            event_bus._handlers[n] = []  # what a bus reset between tests leaves behind
+        events.register_design_subscribers()
+        events.register_design_subscribers()
+        for n in names:
+            ours = [h for h in event_bus._handlers[n] if getattr(h, "__module__", "") == events.__name__]
+            assert len(ours) == 1, n
+            await ours[0](Event(name=n, data={"target_kind": "design_release"}))
+    finally:
+        for n, handlers in saved.items():
+            event_bus._handlers[n] = handlers
+    assert [d for _data, d in seen] == ["approved", "rejected", "cancelled"]
+
+
+@pytest.mark.asyncio
 async def test_a_failed_verdict_is_logged_at_warning(monkeypatch, caplog) -> None:
     from app.modules.design_management import events
 
@@ -336,7 +366,11 @@ def test_no_governance_area_or_phase_code_is_matched_in_module_code() -> None:
     for cid in cat.CATALOGUE_IDS:
         c = cat.get_catalogue(cid)
         codes |= {a.code for a in c.areas} | {p.code for p in c.phases} | {g.code for g in c.gates}
-    codes = {c for c in codes if len(c) > 2}
+    # Only compound identifiers (``scope_quality``, ``lph3``, ``lph2_to_lph3``). A code that is also an
+    # ordinary word (``design``, ``tender``) cannot be told from vocabulary by a literal scan; those are
+    # covered by resolving the host and the phases through the catalogue everywhere they are needed.
+    codes = {c for c in codes if "_" in c or any(ch.isdigit() for ch in c)}
+    assert codes, "the shipped catalogues carry compound codes to look for"
     for path in _MODULE.glob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         literals = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
