@@ -249,12 +249,16 @@ class CommitmentService:
             matrix.schedule_id,
             matrix.schedule_version,
             kind=AUTHORITY_SCHEDULE_KIND,
+            # The matrix row is a pin the server stored after checking it: it keeps resolving for
+            # every member of the project and after the catalogue is retired.
+            from_pin=True,
         )
 
     async def abort_basis(self, source: str, code: str, version: int | None) -> AbortBasis:
+        """The basis a stored abort-terms row names. The row was checked when it was written."""
         from app.modules.project_governance.catalogue_store import resolve_catalogue
 
-        return await resolve_catalogue(self.session, source, code, version, kind=ABORT_BASIS_KIND)
+        return await resolve_catalogue(self.session, source, code, version, kind=ABORT_BASIS_KIND, from_pin=True)
 
     def schedule_currency(self, schedule: AuthoritySchedule, project: Any) -> str:
         return norm(schedule.currency) or norm(getattr(project, "currency", "") or "")
@@ -302,7 +306,7 @@ class CommitmentService:
             matrix.schedule_id,
             matrix.schedule_version,
         ):
-            await self._refuse_incompatible_schedule(project, matrix, source, sid, version)
+            await self._refuse_incompatible_schedule(project, matrix, source, sid, version, tenant_id)
         if matrix is None:
             matrix = await self.repo.add(
                 CommitmentMatrix(
@@ -347,7 +351,7 @@ class CommitmentService:
         return matrix
 
     async def _refuse_incompatible_schedule(
-        self, project: Any, matrix: CommitmentMatrix, source: str, sid: str, version: int
+        self, project: Any, matrix: CommitmentMatrix, source: str, sid: str, version: int, tenant_id: str | None
     ) -> None:
         """Review finding 8: a new schedule must be able to read what the matrix already holds.
 
@@ -357,7 +361,9 @@ class CommitmentService:
         """
         from app.modules.project_governance.catalogue_store import resolve_catalogue
 
-        new = await resolve_catalogue(self.session, source, sid, version, kind=AUTHORITY_SCHEDULE_KIND)
+        new = await resolve_catalogue(
+            self.session, source, sid, version, kind=AUTHORITY_SCHEDULE_KIND, tenant_id=tenant_id
+        )
         new_ccy = self.schedule_currency(new, project)
         held = sorted({r.schedule_currency for r in await self.repo.list_releases(matrix.project_id)} - {new_ccy})
         if held:

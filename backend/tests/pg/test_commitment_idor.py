@@ -226,3 +226,24 @@ async def test_an_editor_cannot_transfer_and_an_abort_without_terms_says_why(wor
         r = await c.post(f"{base}/abort", json={"reason": "Scheme cancelled"})
         assert r.status_code == 422, r.text
         assert r.json()["detail"]["code"] == "abort_exposure_unknown"
+
+
+async def test_another_tenants_schedule_does_not_resolve_from_a_request(world: World) -> None:
+    """A tenant catalogue is private: its id sent by a member of another tenant answers 404, never its tiers."""
+    body = {"schedule_source": "tenant", "commitment_type": "works", "amount": "250000.00"}
+    async with client_as(world, world.manager, "admin") as c:
+        made = await c.post(
+            f"{BASE}/authority-schedules",
+            json={"code": "own_rules", "name": "Own rules", "based_on_source": "shipped", "based_on_id": "neutral"},
+        )
+        assert made.status_code == 201, made.text
+        schedule_id = made.json()["id"]
+        published = await c.post(f"{BASE}/authority-schedules/{schedule_id}/publish")
+        assert published.status_code == 200, published.text
+        own = await c.post(f"{BASE}/authority-schedules/evaluate", json={**body, "schedule_id": schedule_id})
+        assert own.status_code == 200, own.text
+        assert own.json()["required_tier"] == "sponsor"
+    async with client_as(world, world.outsider, "admin") as c:
+        foreign = await c.post(f"{BASE}/authority-schedules/evaluate", json={**body, "schedule_id": schedule_id})
+    assert foreign.status_code == 404
+    assert foreign.json()["detail"]["code"] == "unknown_catalogue"

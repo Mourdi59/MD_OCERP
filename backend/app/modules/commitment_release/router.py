@@ -255,18 +255,18 @@ async def diff_schedule(
 @router.post("/authority-schedules/evaluate", dependencies=[READ])
 async def evaluate_schedule(body: EvaluateIn, session: SessionDep, payload: CurrentUserPayload) -> dict[str, Any]:
     """The test calculator: which tier a type and amount need under one schedule version."""
-    from app.modules.project_governance.catalogue_store import CatalogueStore, resolve_catalogue
+    from app.modules.project_governance.catalogue_store import resolve_catalogue
 
     CommitmentService(session)
-    if body.schedule_source == "tenant":
-        await _run(
-            CatalogueStore(session).assert_pinnable(
-                _tenant(payload), "tenant", body.schedule_id, body.schedule_version, kind=AUTHORITY_SCHEDULE_KIND
-            )
-        )
+    # The id comes from the request: it resolves for the caller's own tenant only (404 otherwise).
     schedule = await _run(
         resolve_catalogue(
-            session, body.schedule_source, body.schedule_id, body.schedule_version, kind=AUTHORITY_SCHEDULE_KIND
+            session,
+            body.schedule_source,
+            body.schedule_id,
+            body.schedule_version,
+            kind=AUTHORITY_SCHEDULE_KIND,
+            tenant_id=_tenant(payload),
         )
     )
     try:
