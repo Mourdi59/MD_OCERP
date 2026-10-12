@@ -128,6 +128,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         from app.modules.pointcloud.seed import seed_pointcloud_demo
         from app.modules.portal.seed import seed_portal_demo
         from app.modules.portfolio.seed import seed_portfolio_demo
+        from app.modules.procurement_concept.seed import seed_procurement_concept_demo
         from app.modules.qms.models import ITPPlan
         from app.modules.qms.seed import seed_qms
         from app.modules.reconciliation.seed import seed_reconciliation_demo
@@ -412,6 +413,8 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             # and scores every pair with the module's own engine, so anything
             # seeded after it would simply not be in the register.
             ("reconciliation", None, lambda s: seed_reconciliation_demo(s, _demo_pids)),
+            # Reads the package plan the delivery-model seeder wrote; skips projects without one.
+            ("procurement_concept", None, lambda s: seed_procurement_concept_demo(s, _demo_pids)),
         ]
         for _name, _marker, _build in _module_seeders:
             try:

@@ -968,6 +968,7 @@ class BidManagementService:
         existing = await self.package_repo.get_by_code(data.code)
         if existing is not None:
             raise HTTPException(status_code=409, detail="Package code already exists")
+        await self._require_tender_package_in_project(data.tender_id, data.project_id)
 
         package = BidPackage(
             project_id=data.project_id,
@@ -986,6 +987,26 @@ class BidManagementService:
             metadata_=data.metadata,
         )
         return await self.package_repo.create(package)
+
+    async def _require_tender_package_in_project(self, tender_id: uuid.UUID | None, project_id: uuid.UUID) -> None:
+        """``tender_id`` names a ``tendering.TenderPackage`` (``oe_tendering_package``) of the same project.
+
+        The column is a plain UUID without a foreign key (the modules stay
+        decoupled), so nothing else stops a dangling or foreign id. The award
+        bridge keys its idempotency on it (``events.py``): an id of another
+        project's tender package would make that project's award skip this
+        project's contract.
+        """
+        if tender_id is None:
+            return
+        from app.modules.tendering.models import TenderPackage  # noqa: PLC0415
+
+        tender = await self.session.get(TenderPackage, tender_id)
+        if tender is None or tender.project_id != project_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "tender_package_not_found", "message": "Tender package not found in this project."},
+            )
 
     async def get_package(self, package_id: uuid.UUID) -> BidPackage:
         package = await self.package_repo.get_by_id(package_id)
@@ -1006,6 +1027,8 @@ class BidManagementService:
     async def update_package(self, package_id: uuid.UUID, data: BidPackageUpdate) -> BidPackage:
         package = await self.get_package(package_id)
         fields: dict[str, Any] = data.model_dump(exclude_unset=True)
+        if fields.get("tender_id") is not None:
+            await self._require_tender_package_in_project(fields["tender_id"], package.project_id)
         if "currency" in fields:
             fields["currency"] = self._require_package_currency(fields["currency"])
         # Lifecycle status is owned by the state machine. A generic PATCH
