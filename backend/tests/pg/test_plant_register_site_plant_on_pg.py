@@ -325,6 +325,9 @@ async def test_the_listing_says_what_the_caller_may_do_and_the_write_agrees(worl
             place = await c.post(_url(world), json={**_CRANE, "name": name})
             move = await c.patch(_url(world, f"/{pid}"), json={"note": name})
         row_can = listed["items"][0]["can"]
+        # The actions exist for everyone; who may not use them sees them refused with a reason.
+        assert [v["applies"] for v in (listed["can"]["place"], row_can["move"], row_can["remove"])] == [True] * 3
+        assert row_can["move"]["reason"] == row_can["remove"]["reason"] == listed["can"]["place"]["reason"]
         verdicts[name] = (
             listed["can"]["place"]["allowed"],
             listed["can"]["place"]["reason"],

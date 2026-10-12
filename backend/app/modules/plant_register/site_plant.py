@@ -323,6 +323,9 @@ class PositionCreate(PositionIn):
 
 
 class Verdict(BaseModel):
+    # Whether the action exists here at all (hide when false); placing, moving and
+    # removing a position exist in every state, so a refusal is shown with its reason.
+    applies: bool
     allowed: bool
     reason: str | None = None
 
