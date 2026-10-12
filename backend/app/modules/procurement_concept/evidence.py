@@ -22,9 +22,8 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import select
-
 from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, register_evidence_provider
+from app.modules.project_governance.public import project_areas
 
 PROVIDER_NAME = "procurement_concept.concept_ready"
 LABEL_KEY = "procurement_concept.evidence.concept_ready"
@@ -32,20 +31,7 @@ LABEL_KEY = "procurement_concept.evidence.concept_ready"
 
 async def _anchor_area_code(session: Any, project_id: uuid.UUID, tagged: str | None) -> str | None:
     """The area the item is reported on: the tagged one, else the project's first area."""
-    from app.modules.project_governance.models import GovernanceArea
-
-    rows = (
-        (
-            await session.execute(
-                select(GovernanceArea)
-                .where(GovernanceArea.project_id == project_id, GovernanceArea.retired.is_(False))
-                .order_by(GovernanceArea.sort_order, GovernanceArea.code)
-            )
-        )
-        .scalars()
-        .all()
-    )
-    live = [a for a in rows if getattr(a, "applicable", True)]
+    live = [a for a in await project_areas(session, project_id) if a.status == "applicable"]
     if tagged is not None and any(a.code == tagged for a in live):
         return tagged
     return live[0].code if live else None

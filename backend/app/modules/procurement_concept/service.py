@@ -74,6 +74,7 @@ from app.modules.procurement_concept.models import (
     ProcurementConcept,
     ProjectReference,
 )
+from app.modules.project_governance.public import project_areas, project_documents, project_gates
 
 logger = logging.getLogger(__name__)
 
@@ -179,24 +180,11 @@ class ProcurementConceptService:
         return self._hosting_cache[project_id]
 
     async def _procurement_area(self, project_id: uuid.UUID) -> Any:
-        from app.modules.project_governance.models import GovernanceArea
-
+        """The live area that hosts procurement (governance's read model), or ``None``."""
         code = (await self.hosting(project_id)).area_code
         if code is None:
             return None
-        return (
-            (
-                await self.session.execute(
-                    select(GovernanceArea).where(
-                        GovernanceArea.project_id == project_id,
-                        GovernanceArea.code == code,
-                        GovernanceArea.retired.is_(False),
-                    )
-                )
-            )
-            .scalars()
-            .first()
-        )
+        return next((a for a in await project_areas(self.session, project_id) if a.code == code), None)
 
     async def can_steer(self, project_id: uuid.UUID, actor_id: uuid.UUID, can_manage: bool) -> bool:
         """The manage permission, or owner / deputy of the governance area that hosts procurement."""
@@ -210,18 +198,16 @@ class ProcurementConceptService:
             raise forbidden("not_procurement_owner")
 
     async def _frame_document(self, project_id: uuid.UUID, concept: ProcurementConcept) -> Any:
-        """The frame document that carries the concept: the one named on it, else the one the catalogue tags."""
-        from app.modules.project_governance.models import GovernanceDocument
+        """The frame document that carries the concept: the one named on it, else the one the catalogue tags.
 
-        q = select(GovernanceDocument).where(GovernanceDocument.project_id == project_id)
+        Governance's read model of it (``id``, ``code``, ``status``). ``None`` when the model hosts procurement
+        nowhere, when the project has no document row for the host, or when the project pinned no model.
+        """
+        documents = await project_documents(self.session, project_id)
         if concept.governance_document_id is not None:
-            q = q.where(GovernanceDocument.id == concept.governance_document_id)
-        else:
-            types = (await self.hosting(project_id)).document_types
-            if not types:
-                return None
-            q = q.where(GovernanceDocument.doc_type.in_(types)).order_by(GovernanceDocument.created_at)
-        return (await self.session.execute(q)).scalars().first()
+            return next((d for d in documents if d.id == concept.governance_document_id), None)
+        types = (await self.hosting(project_id)).document_types
+        return next((d for d in documents if d.code in types), None)
 
     async def _open_change_requests(self, document_id: uuid.UUID) -> int:
         from app.modules.project_governance.models import GovernanceChangeRequest
@@ -254,19 +240,17 @@ class ProcurementConceptService:
         return "binding"
 
     async def _project_gates(self, project_id: uuid.UUID) -> list[Any]:
+        """The gates of the project's current phase model, in order (governance's read model)."""
+        return list(await project_gates(self.session, project_id))
+
+    async def _gate_target_dates(self, project_id: uuid.UUID) -> dict[uuid.UUID, str]:
+        """Target date per gate. The governance read port does not carry it yet, so this reads the row."""
         from app.modules.project_governance.models import GovernanceGate
 
-        return list(
-            (
-                await self.session.execute(
-                    select(GovernanceGate)
-                    .where(GovernanceGate.project_id == project_id, GovernanceGate.historic.is_(False))
-                    .order_by(GovernanceGate.sort_order)
-                )
-            )
-            .scalars()
-            .all()
+        rows = await self.session.execute(
+            select(GovernanceGate.id, GovernanceGate.target_date).where(GovernanceGate.project_id == project_id)
         )
+        return {gate_id: target for gate_id, target in rows.all() if target}
 
     async def release_gate(self, project_id: uuid.UUID, concept: ProcurementConcept) -> Any:
         """The gate whose go releases procurement: the one named on the concept, else the tagged one.
@@ -281,7 +265,7 @@ class ProcurementConceptService:
         tagged = (await self.hosting(project_id)).release_gate_codes
         return next((g for g in gates if g.code in tagged), None)
 
-    async def _release_date(self, gate: Any) -> date | None:
+    async def _release_date(self, project_id: uuid.UUID, gate: Any) -> date | None:
         """Date procurement is released: the go decision of the release gate, else its target date."""
         from app.modules.project_governance.models import GovernanceDecision
 
@@ -296,7 +280,7 @@ class ProcurementConceptService:
         ).scalar()
         if decided is not None:
             return decided.date()
-        return _day(gate.target_date)
+        return _day((await self._gate_target_dates(project_id)).get(gate.id))
 
     async def advance_release_status(self, project_id: uuid.UUID, row: AwardPackage, gate: Any) -> str:
         """``released`` | ``none`` | ``missing`` | ``other_gate`` | ``not_cleared`` (rule 12).
@@ -445,10 +429,7 @@ class ProcurementConceptService:
         return concept
 
     async def _require_document_in_project(self, project_id: uuid.UUID, document_id: uuid.UUID) -> None:
-        from app.modules.project_governance.models import GovernanceDocument
-
-        doc = await self.session.get(GovernanceDocument, document_id)
-        if doc is None or doc.project_id != project_id:
+        if all(d.id != document_id for d in await project_documents(self.session, project_id)):
             raise not_found("document_not_found")
 
     async def transition(
@@ -483,16 +464,22 @@ class ProcurementConceptService:
         The approver is whoever decided in governance: the go decision of the
         gate that bound the document, else the approved change request.
         """
-        from app.modules.project_governance.models import GovernanceChangeRequest, GovernanceDecision
+        from app.modules.project_governance.models import (
+            GovernanceChangeRequest,
+            GovernanceDecision,
+            GovernanceDocument,
+        )
 
         concept = await self.find_concept(project_id, lock=True)
         if concept is None or concept.state != "in_review":
             return False
-        doc = await self._frame_document(project_id, concept)
-        if doc is None or doc.id != document_id or doc.status != "binding":
+        view = await self._frame_document(project_id, concept)
+        if view is None or view.id != document_id or view.status != "binding":
             return False
+        # Who approved: the read port names neither the binding gate nor the decision, so the row is read here.
+        doc = await self.session.get(GovernanceDocument, view.id)
         approver, at = None, None
-        if doc.approved_gate_id is not None:
+        if doc is not None and doc.approved_gate_id is not None:
             decision = (
                 (
                     await self.session.execute(
@@ -510,7 +497,7 @@ class ProcurementConceptService:
             (
                 await self.session.execute(
                     select(GovernanceChangeRequest)
-                    .where(GovernanceChangeRequest.document_id == doc.id, GovernanceChangeRequest.status == "approved")
+                    .where(GovernanceChangeRequest.document_id == view.id, GovernanceChangeRequest.status == "approved")
                     .order_by(GovernanceChangeRequest.decided_at.desc())
                 )
             )
@@ -620,7 +607,7 @@ class ProcurementConceptService:
         if gate is None:
             # Without a release gate rule 11 cannot test "before the releasing gate"; say so, never skip it silently.
             out.append(ev.finding("release_gate_unresolved", ev.WARNING, "project"))
-        release = await self._release_date(gate)
+        release = await self._release_date(project_id, gate)
         for p in pkgs:
             if p.state == "cancelled" or p.package_kind is None:
                 continue
@@ -1498,7 +1485,7 @@ class ProcurementConceptService:
         cps, _rows, pkgs = await self._package_facts(project_id)
         codes = {str(c.id): c for c in cps}
         gate = await self.release_gate(project_id, concept)
-        release = await self._release_date(gate)
+        release = await self._release_date(project_id, gate)
         rows = []
         for p in pkgs:
             if p.state == "cancelled":
@@ -2223,25 +2210,24 @@ class ProcurementConceptService:
         }
 
     async def gate_options(self, project_id: uuid.UUID) -> dict[str, Any]:
-        """The project's gates (read through governance) for the release gate picker."""
-        from app.modules.project_governance.repository import GovernanceRepository
-
+        """The project's gates (governance's read model) for the release gate picker; empty without a model."""
         concept = await self.get_concept(project_id)
         resolved = await self.release_gate(project_id, concept)
         tagged = set((await self.hosting(project_id)).release_gate_codes)
-        gates = await GovernanceRepository(self.session).list_gates(project_id)
+        targets = await self._gate_target_dates(project_id)
         items = [
             {
                 "code": g.code,
+                "label": g.label,
                 "from_phase": g.from_phase,
                 "to_phase": g.to_phase,
                 "status": g.status,
-                "target_date": g.target_date or None,
-                "sort_order": g.sort_order,
+                "target_date": targets.get(g.id),
+                "sort_order": g.order,
                 "tagged_release_gate": g.code in tagged,
                 "selected": resolved is not None and g.id == resolved.id,
             }
-            for g in sorted(gates, key=lambda g: g.sort_order)
+            for g in await self._project_gates(project_id)
         ]
         return {
             "items": items,

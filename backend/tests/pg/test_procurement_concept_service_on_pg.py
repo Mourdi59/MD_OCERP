@@ -22,11 +22,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.procurement_concept import plan_source as plan
 from app.modules.procurement_concept.errors import ProcurementError
 from app.modules.procurement_concept.events import handle_frame_document, handle_read_back
-from app.modules.procurement_concept.hosting import ProcurementHosting
 from app.modules.procurement_concept.models import AwardPackage, ProcurementConcept
 from app.modules.procurement_concept.service import ProcurementConceptService
 from tests._pg import isolated_engine
 from tests.pg.procurement_concept_fixtures import (
+    OTHER_AREA,
+    OTHER_DOC,
     OTHER_GATE,
     RELEASE_GATE,
     World,
@@ -37,8 +38,8 @@ from tests.pg.procurement_concept_fixtures import (
     approve,
     bind_frame_document,
     build_world,
+    drop_frame_document,
     execute,
-    patch_hosting,
     put,
     set_condition,
     set_delivery_form,
@@ -51,8 +52,7 @@ OPEN_WORKS = {"estimated_value": "900000", "currency": "EUR", "procedure_code": 
 
 
 @pytest_asyncio.fixture
-async def world(monkeypatch: pytest.MonkeyPatch):
-    patch_hosting(monkeypatch)
+async def world():
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         yield await build_world(factory)
@@ -152,17 +152,22 @@ async def test_a_binding_document_never_makes_a_draft_concept_binding(world: Wor
 async def test_a_document_of_another_type_does_not_approve_the_concept(world: World) -> None:
     await add_contract_package(world, "W1", "construction")
     await put(world, "W1", OPEN_WORKS)
-    other = await add_frame_document(world, status="binding", doc_type="some_other_plan")
+    other = await add_frame_document(world, status="binding", doc_type=OTHER_DOC)
     await _submit(world)
     payload = {"project_id": str(world.project_id), "document_id": str(other), "status": "binding"}
     assert await handle_frame_document(payload, session_factory=world.factory) is False
     assert (await _concept(world))[1] == "in_review"
 
 
-async def test_without_a_frame_document_a_submitted_concept_stays_in_review(world: World) -> None:
+async def test_without_a_binding_frame_document_a_submitted_concept_stays_in_review(world: World) -> None:
     await add_contract_package(world, "W1", "construction")
     await put(world, "W1", OPEN_WORKS)
     await _submit(world)
+    assert (await _concept(world))[1] == "in_review"
+    with _raises("concept_not_approved", 409):
+        await execute(world, "W1")
+    # The project has no row for the host document at all: still in review, and nothing to approve it.
+    await drop_frame_document(world)
     assert (await _concept(world))[1] == "in_review"
     with _raises("concept_not_approved", 409):
         await execute(world, "W1")
@@ -261,9 +266,21 @@ async def test_an_unknown_or_foreign_catalogue_cannot_be_pinned(world: World) ->
         await _set(world, {"catalogue_source": "shipped", "catalogue_id": "eu", "catalogue_version": 99})
 
 
-async def test_a_project_whose_model_tags_no_release_gate_says_so(world: World, monkeypatch) -> None:
+async def test_a_project_whose_model_tags_no_release_gate_says_so() -> None:
     """Nothing is matched by a familiar code: with no tag and no named gate the release is unknown."""
-    patch_hosting(monkeypatch, ProcurementHosting())
+    async with isolated_engine() as engine:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        await _untagged_model_says_release_unknown(await build_world(factory, tagged=False))
+
+
+async def _untagged_model_says_release_unknown(world: World) -> None:
+    # Same areas, documents and gates as the shipped model, same codes, no procurement tag.
+    assert set(world.gates) >= {RELEASE_GATE, OTHER_GATE} and world.document_id is not None
+    await add_procurement_area(world, world.area_owner)
+    assert await svc_call(world, "can_steer", world.project_id, world.area_owner, False) is False
+    gates = await svc_call(world, "gate_options", world.project_id)
+    assert [g["tagged_release_gate"] for g in gates["items"]] == [False] * len(gates["items"])
+    assert gates["resolved_release_gate_code"] is None
     await add_contract_package(world, "W1", "construction")
     await put(world, "W1", OPEN_WORKS)
     found = await svc_call(world, "findings", world.project_id)
@@ -305,8 +322,8 @@ async def test_an_editor_who_does_not_own_the_procurement_area_cannot_steer(worl
     await add_contract_package(world, "W1", "construction")
     with _raises("not_procurement_owner", 403):
         await put(world, "W1", {"procedure_code": "open"}, actor=world.editor, can_manage=False)
-    # An area with a familiar name but not the tagged code gives nobody rights.
-    await add_procurement_area(world, world.editor, code="m08_procurement")
+    # Owning another area of the project gives no rights here.
+    await add_procurement_area(world, world.editor, code=OTHER_AREA)
     with _raises("not_procurement_owner", 403):
         await put(world, "W1", {"procedure_code": "open"}, actor=world.editor, can_manage=False)
     await add_procurement_area(world, world.area_owner)

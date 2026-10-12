@@ -22,7 +22,6 @@ from tests.pg.procurement_concept_fixtures import (
     World,
     add_contract_package,
     build_world,
-    patch_hosting,
     put,
     svc_call,
 )
@@ -31,8 +30,7 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
 
 
 @pytest_asyncio.fixture
-async def pair(monkeypatch: pytest.MonkeyPatch):
-    patch_hosting(monkeypatch)
+async def pair():
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         a = await build_world(factory)

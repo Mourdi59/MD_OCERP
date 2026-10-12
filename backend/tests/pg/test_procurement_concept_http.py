@@ -24,6 +24,7 @@ from app.modules.procurement_concept.permissions import register_procurement_con
 from app.modules.procurement_concept.router import router
 from tests._pg import isolated_engine
 from tests.pg.procurement_concept_fixtures import (
+    GATE_CODES,
     OTHER_GATE,
     RELEASE_GATE,
     World,
@@ -32,7 +33,6 @@ from tests.pg.procurement_concept_fixtures import (
     add_procurement_area,
     bind_frame_document,
     build_world,
-    patch_hosting,
 )
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
@@ -42,9 +42,8 @@ OPEN_WORKS = {"estimated_value": "900000", "currency": "EUR", "procedure_code": 
 
 
 @pytest_asyncio.fixture
-async def world(monkeypatch: pytest.MonkeyPatch):
+async def world():
     register_procurement_concept_permissions()
-    patch_hosting(monkeypatch)
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         w = await build_world(factory)
@@ -393,8 +392,12 @@ async def test_pickers_for_the_release_gate_the_advance_release_and_the_tender_p
             assert (await c.get(_p(world, tail))).status_code == 404, tail
     async with client_as(world, world.manager, "manager") as c:
         gates = (await c.get(_p(world, "/gates"))).json()
-        assert [g["code"] for g in gates["items"]] == [OTHER_GATE, RELEASE_GATE]
-        assert [(g["tagged_release_gate"], g["selected"]) for g in gates["items"]] == [(False, False), (True, True)]
+        assert [g["code"] for g in gates["items"]] == list(GATE_CODES)
+        assert [g["sort_order"] for g in gates["items"]] == list(range(1, len(GATE_CODES) + 1))
+        assert all(set(g["label"]) == {"key", "text"} and g["label"]["key"] for g in gates["items"])
+        assert {g["code"]: (g["tagged_release_gate"], g["selected"]) for g in gates["items"]} == {
+            code: (code == RELEASE_GATE, code == RELEASE_GATE) for code in GATE_CODES
+        }
         assert (gates["release_gate_code"], gates["resolved_release_gate_code"]) == ("", RELEASE_GATE)
         releases = (await c.get(_p(world, "/advance-releases"))).json()["items"]
         # Only acts of the release gate are offered; the cleared condition of the other gate is not.

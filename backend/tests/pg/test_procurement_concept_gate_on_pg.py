@@ -2,10 +2,11 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """The procurement concept against the real governance module, and the demo seed, on PostgreSQL.
 
-The governance world pins the shipped neutral model. Most tests hand the module
-a hosting with no document and no gate and name both on the concept, which is
-what a manager does in a project whose model tags neither. The last group runs
-on the model's own tags through module 1's port.
+The governance world pins a shipped phase model with its approval routes, and the
+module finds its area, its frame document and its release gate through the
+model's tags (module 1's port). Where a test decides a gate for real it names the
+first gate and a document that gate requires on the concept, which is what a
+manager may do in any project, so the whole chain of earlier gates need not run.
 """
 
 from __future__ import annotations
@@ -25,7 +26,6 @@ import app.modules.project_governance.events as gov_events
 from app.modules.procurement_concept import plan_source as plan
 from app.modules.procurement_concept.catalogue import register_kind
 from app.modules.procurement_concept.evidence import PROVIDER_NAME, concept_ready, register_gate_evidence
-from app.modules.procurement_concept.hosting import ProcurementHosting
 from app.modules.procurement_concept.models import (
     AwardPackage,
     BidderCandidate,
@@ -36,22 +36,29 @@ from app.modules.procurement_concept.seed import seed_procurement_concept_demo
 from app.modules.procurement_concept.service import ProcurementConceptService
 from app.modules.project_governance.errors import GovernanceError
 from app.modules.project_governance.evidence import GateAttempt, unregister_evidence_provider
+from app.modules.project_governance.service import GovernanceService
 from tests._pg import isolated_engine
 from tests.pg.governance_fixtures import World, areas, build_world, decide, documents, gate, prepare_gate
-from tests.pg.procurement_concept_fixtures import ensure_plan_tables, patch_hosting
+from tests.pg.procurement_concept_fixtures import (
+    AREA,
+    DOC_TYPE,
+    GATE_CODES,
+    MODEL,
+    MODEL_ID,
+    OTHER_AREA,
+    RELEASE_GATE,
+    ensure_plan_tables,
+)
 
 pytestmark = pytest.mark.asyncio
 
-G1 = "strategy_to_brief"
-G2 = "brief_to_concept"
-AREA = "contracts_procurement"
-FRAME_DOC = "business_case"
+G1 = GATE_CODES[0]
+FRAME_DOC = next(d.code for d in MODEL.document_types if G1 in d.required_at_gates)
 
 
 @pytest_asyncio.fixture
 async def world(monkeypatch: pytest.MonkeyPatch):
     register_kind()
-    patch_hosting(monkeypatch, ProcurementHosting(AREA, (), ()))
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         monkeypatch.setattr(gov_events, "async_session_factory", factory)
@@ -94,27 +101,44 @@ async def _evidence(w: World, gate_code: str, area_code: str) -> list:
 
 
 async def test_evidence_is_met_not_met_or_unknown_and_never_silently_empty(world: World) -> None:
-    assert await _evidence(world, G1, AREA) == []  # no concept: the module has nothing to say
+    from app.modules.project_governance.models import GovernanceDocument
+
+    assert await _evidence(world, RELEASE_GATE, AREA) == []  # no concept: the module has nothing to say
     await _concept(world)
-    # A concept exists but nothing names or tags the release gate: unknown, with the reason.
-    (item,) = await _evidence(world, G1, AREA)
-    assert (item.state, item.detail) == ("unknown", "release_gate_unresolved")
-    await _concept(world, release_gate_code=G1)
-    (item,) = await _evidence(world, G1, AREA)
+    # The model's tags name the release gate and the area; a draft concept is not ready.
+    (item,) = await _evidence(world, RELEASE_GATE, AREA)
     assert item.state == "not_met"
     # One item per gate, on one area; another gate is not this module's business.
-    assert await _evidence(world, G1, "cost_finance") == []
-    assert await _evidence(world, G2, AREA) == []
-    await _submit(world)
-    # Submitted, but no document could ever approve it: still not "met".
+    assert await _evidence(world, RELEASE_GATE, OTHER_AREA) == []
+    assert await _evidence(world, G1, AREA) == []
+    # A manager names another gate while the concept is a draft: the item moves with it.
+    await _concept(world, release_gate_code=G1)
+    assert await _evidence(world, RELEASE_GATE, AREA) == []
     (item,) = await _evidence(world, G1, AREA)
-    assert (item.state, item.detail) == ("unknown", "frame_document_unresolved")
-    async with world.factory() as s:
-        concept = await ProcurementConceptService(s).get_concept(world.project_id)
-        concept.governance_document_id = (await documents(world))[FRAME_DOC].id
-        await s.commit()
+    assert item.state == "not_met"
+    await _submit(world)
     (item,) = await _evidence(world, G1, AREA)
     assert item.state == "met"
+    # The project has no row for the host document (pinned before the model hosted procurement): nothing
+    # could ever approve the concept, so the answer is unknown and never "met".
+    async with world.factory() as s:
+        await s.execute(
+            sa.delete(GovernanceDocument).where(
+                GovernanceDocument.project_id == world.project_id, GovernanceDocument.doc_type == DOC_TYPE
+            )
+        )
+        await s.commit()
+    (item,) = await _evidence(world, G1, AREA)
+    assert (item.state, item.detail) == ("unknown", "frame_document_unresolved")
+    # The named gate is not a gate of the project any more (the project moved to another model): unknown,
+    # with the reason, at whichever gate asks.
+    async with world.factory() as s:
+        concept = await ProcurementConceptService(s).get_concept(world.project_id)
+        concept.release_gate_code = "gate_of_a_model_the_project_left"
+        await s.commit()
+    for code in (G1, RELEASE_GATE):
+        (item,) = await _evidence(world, code, AREA)
+        assert (item.state, item.detail) == ("unknown", "release_gate_unresolved")
 
 
 async def _prepare_and_decide(w: World) -> None:
@@ -200,6 +224,16 @@ async def _demo_project(w: World, *, currency: str, country: str, public: bool) 
                 owner_capability={"public_client": public},
             )
         )
+        # The governance demo seed runs first and pins the phase model; this module's seed only reads it.
+        await GovernanceService(s).set_model(
+            pid,
+            source="shipped",
+            catalogue_id=MODEL_ID,
+            version=None,
+            four_eyes=True,
+            actor_id=w.manager,
+            tenant_id=str(w.manager),
+        )
         await s.commit()
     return pid
 
@@ -225,11 +259,11 @@ async def _cleared_condition(w: World, project_id: uuid.UUID) -> tuple[uuid.UUID
     from app.modules.project_governance.models import GovernanceCondition, GovernanceDecision, GovernanceGate
 
     async with w.factory() as s:
-        g = GovernanceGate(
-            project_id=project_id, catalogue_id="neutral", code=G1, from_phase="strategy", to_phase="brief"
-        )
-        s.add(g)
-        await s.flush()
+        g = (
+            await s.execute(
+                sa.select(GovernanceGate).where(GovernanceGate.project_id == project_id, GovernanceGate.code == G1)
+            )
+        ).scalar_one()
         d = GovernanceDecision(
             project_id=project_id,
             gate_id=g.id,
@@ -315,17 +349,8 @@ async def test_the_seed_plans_in_the_project_currency_and_never_borrows_a_regime
 # ── The model's own tags, through module 1's port ───────────────────────
 
 
-@pytest_asyncio.fixture
-async def tagged_world():
-    register_kind()
-    async with isolated_engine() as engine:
-        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-        await ensure_plan_tables(factory)
-        yield await build_world(factory)
-
-
-async def test_the_pinned_model_names_the_area_the_document_and_the_release_gate(tagged_world: World) -> None:
-    w = tagged_world
+async def test_the_pinned_model_names_the_area_the_document_and_the_release_gate(world: World) -> None:
+    w = world
     await _concept(w)
     async with w.factory() as s:
         svc = ProcurementConceptService(s)
@@ -337,7 +362,7 @@ async def test_the_pinned_model_names_the_area_the_document_and_the_release_gate
         found = {f["code"] for f in await svc.findings(w.project_id)}
     # Rows of this project, found without this module knowing one code of the model.
     assert area is not None and area.code == hosting.area_code
-    assert doc is not None and (doc.doc_type,) == hosting.document_types and doc.area_id == area.id
+    assert doc is not None and (doc.code,) == hosting.document_types and doc.area_id == area.id
     assert release is not None and release.code in hosting.release_gate_codes
     assert "release_gate_unresolved" not in found
     # The owner of that area steers; another editor of the project does not.
@@ -352,12 +377,12 @@ async def test_the_pinned_model_names_the_area_the_document_and_the_release_gate
         assert await svc.can_steer(w.project_id, w.editor, False) is False
 
 
-async def test_a_catalogue_of_another_company_cannot_be_pinned_or_read(tagged_world: World) -> None:
+async def test_a_catalogue_of_another_company_cannot_be_pinned_or_read(world: World) -> None:
     from app.modules.procurement_concept.catalogue import PROCUREMENT_KIND
     from app.modules.procurement_concept.errors import ProcurementError
     from app.modules.project_governance.catalogue_store import CatalogueStore, resolve_catalogue
 
-    w = tagged_world
+    w = world
     foreign_tenant = str(w.outsider)
     async with w.factory() as s:
         store = CatalogueStore(s)
