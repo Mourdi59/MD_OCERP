@@ -147,7 +147,8 @@
     },
     "evidence": {
       "items_released_by_gate": "Commitments due at this gate are released or deferred",
-      "items_without_area": "Commitment items of this gate name a management area the project no longer has"
+      "items_without_area": "Commitment items of this gate name a management area the project no longer has",
+      "no_items_for_gate": "No commitment item names this gate, so it is not known whether money has to be released by it"
     },
     "export": {
       "as_of": "As of",

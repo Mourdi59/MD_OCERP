@@ -1110,3 +1110,37 @@ async def test_a_new_matrix_pins_what_the_active_pack_names_before_the_modules_o
     assert asked == [(AUTHORITY_SCHEDULE_KIND, None)]
     assert (await new_matrix(schedule_id="neutral"))[1] == "neutral"
     assert len(asked) == 1
+
+
+async def test_the_host_area_never_answers_a_gate_with_nothing(world: World) -> None:
+    """On the area that hosts commitment release an empty list would read as covered."""
+    from app.modules.commitment_release.evidence import items_released_by_gate
+    from app.modules.project_governance.evidence import GateAttempt
+    from app.modules.project_governance.public import host_for, project_areas, project_gates
+    from app.modules.project_governance.service import GovernanceService
+
+    async with world.factory() as s:
+        await GovernanceService(s).set_model(
+            world.project_id,
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            actor_id=world.manager,
+            tenant_id=str(world.manager),
+        )
+        await s.commit()
+    async with world.factory() as s:
+        host = await host_for(s, world.project_id, "commitment_release")
+        gate = (await project_gates(s, world.project_id))[0].code
+        elsewhere = next(a.code for a in await project_areas(s, world.project_id) if a.code != host.area_code)
+        attempt = GateAttempt(gate_id=uuid.uuid4(), gate_code=gate, attempt_no=1)
+        on_host = await items_released_by_gate(s, world.project_id, attempt, SimpleNamespace(code=host.area_code))
+        other = await items_released_by_gate(s, world.project_id, attempt, SimpleNamespace(code=elsewhere))
+    assert [(e.state, e.label_key) for e in on_host] == [("unknown", "commitment.evidence.no_items_for_gate")]
+    assert other == []
+
+    await item(world, code="CR-H", amount="10000", gate_code=gate, governance_area_code=host.area_code)
+    async with world.factory() as s:
+        on_host = await items_released_by_gate(s, world.project_id, attempt, SimpleNamespace(code=host.area_code))
+    assert [(e.state, e.detail) for e in on_host] == [("not_met", "CR-H")]

@@ -28,7 +28,7 @@ async def items_released_by_gate(
     session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any
 ) -> list[EvidenceItem]:
     from app.modules.commitment_release.repository import CommitmentRepository
-    from app.modules.project_governance.public import project_areas
+    from app.modules.project_governance.public import host_for, project_areas
 
     on_gate = [
         i
@@ -40,7 +40,20 @@ async def items_released_by_gate(
         known = {a.code for a in await project_areas(session, project_id)}
         stray = sorted(i.code for i in on_gate if i.governance_area_code not in known)
         if not stray:
-            return []
+            host = await host_for(session, project_id, "commitment_release")
+            if host is None or host.area_code != area.code:
+                # Not this module's area: it has nothing to say here.
+                return []
+            # On the area that hosts commitment release an empty answer would read as covered.
+            # No item names this gate, so whether money has to be released by it is not known.
+            return [
+                EvidenceItem(
+                    code=f"commitments_none:{attempt.gate_code}:{area.code}",
+                    state="unknown",
+                    label_key="commitment.evidence.no_items_for_gate",
+                    link=("commitment_matrix", str(project_id)),
+                )
+            ]
         return [
             EvidenceItem(
                 code=f"commitments_unplaced:{attempt.gate_code}:{area.code}",
