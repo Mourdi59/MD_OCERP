@@ -322,6 +322,68 @@ describe('transports and permits', () => {
   });
 });
 
+describe('site plan drawing', () => {
+  const sheet = () => screen.getByTestId('siteplan-sheet').querySelector('[data-sheet]')!;
+  const click = (x: number, y: number) => fireEvent.click(sheet(), { clientX: x, clientY: y });
+
+  it('an outline is clicked corner by corner, closed, and sent in metres for the server to measure', async () => {
+    mocked.updateItem.mockResolvedValue({});
+    renderPlan('siteplan');
+    fireEvent.change(await screen.findByTestId('siteplan-target'), { target: { value: 'area:a1' } });
+    expect(screen.getByTestId('siteplan-hint')).toHaveTextContent('Click the first corner to close the outline.');
+    expect(screen.getByTestId('siteplan-save')).toBeDisabled();
+    // The empty sheet is 100 by 60 metres and, without layout, one pixel is one metre with y pointing down.
+    click(10, 50);
+    click(40, 50);
+    click(40, 20);
+    click(10, 20);
+    expect(screen.getAllByTestId('siteplan-corner')).toHaveLength(4);
+    fireEvent.click(screen.getByTestId('siteplan-undo'));
+    expect(screen.getAllByTestId('siteplan-corner')).toHaveLength(3);
+    expect(screen.getByTestId('siteplan-save')).toBeDisabled();
+    fireEvent.mouseDown(screen.getAllByTestId('siteplan-corner')[0]!);
+    expect(screen.getByTestId('siteplan-hint')).toHaveTextContent('Drag a corner to move it.');
+    fireEvent.click(screen.getByTestId('siteplan-save'));
+    await waitFor(() =>
+      expect(mocked.updateItem).toHaveBeenCalledWith('p1', 'area', 'a1', {
+        frame: 'local',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [10, 10],
+              [40, 10],
+              [40, 40],
+              [10, 10],
+            ],
+          ],
+        },
+      }),
+    );
+  });
+
+  it('shows the areas of the stage with the measured area and names the overlap the server found', async () => {
+    const square = (x: number) => ({
+      type: 'Polygon',
+      coordinates: [[[x, 0], [x + 20, 0], [x + 20, 20], [x, 20], [x, 0]]],
+    });
+    const second = { ...area, id: 'a2', code: 'yard', name: 'Yard', allocations: [{ ...area.allocations[0]!, id: 'al2', site_area_id: 'a2' }] };
+    mocked.listAreas.mockResolvedValue(
+      page([
+        { ...area, geometry: square(0), area_m2: '400.00' },
+        { ...second, geometry: square(10), area_m2: '400.00' },
+      ]),
+    );
+    mocked.getBalance.mockResolvedValue(page([{ ...openBalance, overlaps: [['a1', 'a2']] }]));
+    renderPlan('siteplan');
+    expect(await screen.findByTestId('siteplan-overlaps')).toHaveTextContent('North store and Yard overlap in this stage.');
+    const shapes = screen.getAllByTestId('siteplan-shape-area');
+    expect(shapes).toHaveLength(2);
+    expect(shapes[0]).toHaveAttribute('data-overlap', 'true');
+    expect(screen.getAllByTestId('siteplan-area-row')[0]).toHaveTextContent('400');
+  });
+});
+
 describe('logistics concept', () => {
   it('a site without a time zone says what is not checked, and the zone is saved with the concept', async () => {
     mocked.putConcept.mockResolvedValue(unsavedConcept);

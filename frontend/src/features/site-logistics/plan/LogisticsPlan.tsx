@@ -15,6 +15,7 @@ import { useCatalogue, useWords } from './hooks';
 import { NeighbourhoodPanel } from './NeighbourhoodPanel';
 import { ReadinessPanel } from './ReadinessPanel';
 import { AreasPanel, BalancePanel, StagesPanel } from './SitePanels';
+import { SitePlanPanel } from './SitePlanPanel';
 import { PermitsPanel, TransportsPanel } from './TransportPanels';
 import { tx } from './texts';
 
@@ -22,6 +23,7 @@ export const PLAN_TABS = [
   'balance',
   'stages',
   'areas',
+  'siteplan',
   'media',
   'concept',
   'transports',
@@ -67,6 +69,7 @@ export function LogisticsPlan({ projectId, initialTab = 'balance' }: { projectId
         {tab === 'balance' && <BalancePanel {...props} onGoTo={setTab} />}
         {tab === 'stages' && <StagesPanel {...props} />}
         {tab === 'areas' && <AreasPanel {...props} />}
+        {tab === 'siteplan' && <SitePlanPanel {...props} />}
         {tab === 'media' && <UtilitiesPanel {...props} />}
         {tab === 'concept' && <ConceptPanel {...props} />}
         {tab === 'transports' && <TransportsPanel {...props} />}

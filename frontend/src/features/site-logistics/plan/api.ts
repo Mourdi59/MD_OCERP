@@ -140,7 +140,10 @@ export interface SiteArea {
   code: string;
   name: string;
   area_kind: string;
+  /** `local` is metres of the site frame, `wgs84` is longitude and latitude. */
   frame: string;
+  /** GeoJSON polygon in the area's frame; the server measures it. */
+  geometry?: unknown;
   /** Measured from the outline, when the area has one. */
   area_m2: string | null;
   area_m2_declared: string | null;
@@ -197,6 +200,8 @@ export interface MediaConnection {
   phase: string;
   provider_name: string;
   connection_point: string;
+  /** GeoJSON point in the local site frame. */
+  connection_point_geometry?: unknown;
   capacity_unit: string;
   available_capacity: string | null;
   contracted_capacity: string | null;
@@ -287,6 +292,8 @@ export interface Transport {
   planned_window_end: string | null;
   customs_case_id: string | null;
   waste_record_ref: string;
+  /** GeoJSON line in the local site frame. */
+  route_geojson?: unknown;
   route_notes: string;
   escort_required: boolean;
   state: string;
@@ -328,6 +335,7 @@ export interface Permit {
   valid_from: string | null;
   valid_to: string | null;
   allowed_windows: PermitWindow[];
+  route_geojson?: unknown;
   conditions: string;
   document_ref: string;
   state: string;
