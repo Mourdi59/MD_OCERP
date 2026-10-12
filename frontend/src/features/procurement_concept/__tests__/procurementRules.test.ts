@@ -46,6 +46,7 @@ import {
   agreementPackage,
   blockingFinding,
   can,
+  closedCan,
   concept,
   packageCan,
   packageView,
@@ -126,6 +127,7 @@ describe('conceptSteps', () => {
   it('a draft and a reopened concept can be submitted', () => {
     expect(conceptSteps(concept()).map((s) => s.action)).toEqual(['submit']);
     expect(conceptSteps(concept({ state: 'reopened' })).map((s) => s.action)).toEqual(['submit']);
+    expect(conceptSteps(concept())[0]!.verdict).toBeNull();
   });
 
   it('a submitted concept can only be returned: approval belongs to the governance gate', () => {
@@ -135,13 +137,18 @@ describe('conceptSteps', () => {
   });
 
   it('the step carries the refusal the server gave for it', () => {
-    expect(conceptSteps(concept({ can: NO_RIGHTS }))[0]!.verdict).toBe('not_procurement_owner');
-    expect(conceptSteps(concept({ state: 'in_review', can: NO_RIGHTS }))[0]!.verdict).toBe('not_procurement_owner');
+    const draft = can({ submit: 'not_procurement_owner', return: 'invalid_transition' });
+    expect(conceptSteps(concept({ can: draft }))).toEqual([{ action: 'submit', verdict: 'not_procurement_owner', primary: true }]);
   });
 
   it('an approved and a binding concept offer no hand move', () => {
-    expect(conceptSteps(concept({ state: 'approved' }))).toEqual([]);
-    expect(conceptSteps(concept({ state: 'binding' }))).toEqual([]);
+    expect(conceptSteps(concept({ state: 'approved', can: closedCan('concept_locked') }))).toEqual([]);
+    expect(conceptSteps(concept({ state: 'binding', can: closedCan('binding_requires_change_request') }))).toEqual([]);
+  });
+
+  it('reads the steps from the flags, never from the state', () => {
+    // A state the client would call closed, and a server that says submit applies.
+    expect(conceptSteps(concept({ state: 'approved', can: can({ return: 'invalid_transition' }) })).map((s) => s.action)).toEqual(['submit']);
   });
 });
 
@@ -273,14 +280,17 @@ describe('package moves follow the flags of the row', () => {
     expect(packageMove(view, 'create_execution').show).toBe(false);
   });
 
-  it('a reader without rights gets no buttons on a row that has nothing to act on', () => {
-    // The server answers every flag with the reader's refusal, also where no award plan exists.
-    const all = packageCan({ all: 'not_procurement_owner' });
-    const unplanned = { ...unplannedPackage, can: all };
-    expect(packageMove(unplanned, 'edit')).toEqual({ show: true, verdict: 'not_procurement_owner' });
-    for (const move of ['hold', 'resume', 'cancel', 'create_execution'] as const) expect(packageMove(unplanned, move).show).toBe(false);
-    const notProcured = { ...agreementPackage, can: all };
-    for (const move of ['edit', 'hold', 'resume', 'cancel', 'create_execution'] as const) expect(packageMove(notProcured, move).show).toBe(false);
+  it('follows the applies bit, not the reason code', () => {
+    const view = packageView();
+    view.can = { ...view.can, hold: { allowed: false, reason: 'some_new_code', applies: false }, cancel: { allowed: false, reason: 'package_closed', applies: true } };
+    expect(packageMove(view, 'hold').show).toBe(false);
+    expect(packageMove(view, 'cancel')).toEqual({ show: true, verdict: 'package_closed' });
+  });
+
+  it('keeps a refused move visible when an older server sends no applies bit', () => {
+    const view = packageView();
+    view.can = { ...view.can, hold: { allowed: false, reason: 'concept_locked' } };
+    expect(packageMove(view, 'hold')).toEqual({ show: true, verdict: 'concept_locked' });
   });
 
   it('a row without flags offers nothing', () => {

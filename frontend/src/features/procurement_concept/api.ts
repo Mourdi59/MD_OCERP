@@ -96,6 +96,12 @@ export interface CatalogueJurisdiction extends Named {
 export interface Capability {
   allowed: boolean;
   reason: string | null;
+  /**
+   * False when the action makes no sense for the object as it is, whoever asks
+   * (nothing to resume, already closed): the control is left out. True with
+   * `allowed` false: the control stays visible, disabled, with the reason.
+   */
+  applies?: boolean;
 }
 
 /** The pinned catalogue body. Only the parts the screens read are typed. */

@@ -35,7 +35,7 @@ import { refusalText, useCandidates, useRefusalToast } from './hooks';
 import { CANDIDATE_LIST, CANDIDATE_SOURCE, catalogueName, vocab, type LabelContext } from './labels';
 import { FIELD_CLASS, FindingList, Money, ReasonedButton, RefusalBox, ToneBadge } from './ProcurementBits';
 import { ProfileDialog } from './ProfileDialog';
-import { capVerdict, steerVerdict } from './rules';
+import { capVerdict, offer, steerVerdict } from './rules';
 import type { BadgeVariant } from '@/shared/ui/Badge';
 
 const LIST_TONE: Record<CandidateList, BadgeVariant> = { long: 'neutral', short: 'success', excluded: 'error' };
@@ -136,7 +136,7 @@ export function PrequalPanel({
   const v = (key: keyof NonNullable<typeof can>) => (can ? capVerdict(can[key], 'permission_denied') : steer);
   const confirmVerdict = v('confirm_shortlist');
   // Offered while the short list can still be confirmed; a list with open findings stays visible with the reason.
-  const canConfirm = !!can && confirmVerdict !== 'invalid_transition';
+  const canConfirm = !!can && offer(can.confirm_shortlist).show;
   const profileVerdict = profileRow ? capVerdict(profileRow.can?.edit, 'permission_denied') : capVerdict(profileCreate, 'permission_denied');
   const close = () => setOpen(null);
 

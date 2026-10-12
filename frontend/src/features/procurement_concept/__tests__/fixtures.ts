@@ -24,8 +24,18 @@ import type {
 export const PID = 'p1';
 
 type Can = Concept['can'];
-const yes = { allowed: true, reason: null };
-const no = (reason: string) => ({ allowed: false, reason });
+const yes = { allowed: true, reason: null, applies: true };
+/** The refusals the API reports with `applies: false`: the action makes no sense for the object as it is. */
+const NOT_APPLICABLE = [
+  'package_not_found',
+  'package_not_on_hold',
+  'package_closed',
+  'package_kind_not_procured',
+  'invalid_transition',
+  'execution_exists',
+  'package_not_ready_for_execution',
+];
+const no = (reason: string) => ({ allowed: false, reason, applies: !NOT_APPLICABLE.includes(reason) });
 
 /** The capability block as the server sends it: everything allowed, or each key refused with its code. */
 export function can(refused: Partial<Record<keyof Can, string>> = {}): Can {
@@ -66,7 +76,11 @@ export const NO_RIGHTS = can({
 });
 
 /** Steering is open, the plan is locked: a concept in review or approved. */
-export const LOCKED = can({ edit_plan: 'concept_locked', submit: 'concept_locked', set_gate_fields: 'gate_fields_frozen' });
+export const LOCKED = can({ edit_plan: 'concept_locked', submit: 'invalid_transition', set_gate_fields: 'gate_fields_frozen' });
+
+/** Approved or binding: no hand move applies, and the plan is locked with the given reason. */
+export const closedCan = (reason: string): Can =>
+  can({ edit_plan: reason, submit: 'invalid_transition', return: 'invalid_transition', set_gate_fields: 'gate_fields_frozen' });
 
 export function concept(patch: Partial<Concept> = {}): Concept {
   return {

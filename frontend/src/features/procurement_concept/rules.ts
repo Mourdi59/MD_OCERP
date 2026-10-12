@@ -67,21 +67,17 @@ export interface ConceptStep {
 }
 
 /**
- * The hand moves the current state offers. There are two: submit for the
+ * The hand moves the server says apply now. There are two: submit for the
  * gate and return to draft. Approval is not one of them: the governance gate
  * approves, when the frame document that carries the concept becomes binding.
  */
 export function conceptSteps(concept: Concept): ConceptStep[] {
-  switch (concept.state) {
-    case 'draft':
-    case 'reopened':
-      return [{ action: 'submit', verdict: capVerdict(concept.can.submit, 'invalid_transition'), primary: true }];
-    case 'in_review':
-      return [{ action: 'return', verdict: capVerdict(concept.can.return, 'invalid_transition'), primary: false }];
-    default:
-      // Approved or binding: it changes through a change request on the frame document.
-      return [];
-  }
+  const steps: ConceptStep[] = [];
+  const submit = offer(concept.can.submit);
+  const back = offer(concept.can.return);
+  if (submit.show) steps.push({ action: 'submit', verdict: submit.verdict, primary: true });
+  if (back.show) steps.push({ action: 'return', verdict: back.verdict, primary: false });
+  return steps;
 }
 
 /** The client types of a law that fall under its thresholds: all but the one it keeps for private clients. */
@@ -268,40 +264,26 @@ export function toPackageInput(d: PackageDraft, original: PackageDraft): Package
 
 export type PackageMove = keyof PackageView['can'];
 
-/**
- * Refusals that mean the move does not apply to the package as it stands
- * (nothing to resume, already closed, a kind that is not procured). Such a
- * button is left out. Every other refusal is about the reader or the concept,
- * and that button stays visible with the reason.
- */
-const NOT_APPLICABLE = new Set([
-  'package_not_found',
-  'package_not_on_hold',
-  'package_closed',
-  'package_kind_not_procured',
-  'invalid_transition',
-  'execution_exists',
-  'package_not_ready_for_execution',
-]);
-
 export interface MoveOffer {
   /** Whether the button belongs on the row at all. */
   show: boolean;
   verdict: Verdict;
 }
 
-/** One move of a package, straight from the flag the server sent with the row. */
-export function packageMove(view: PackageView, move: PackageMove): MoveOffer {
-  const cap = view.can?.[move];
+/**
+ * A capability as a button: left out when the server says the action does not
+ * apply to the object as it is, visible and disabled with the reason when it
+ * applies but is refused. A missing flag offers nothing.
+ */
+export function offer(cap: Capability | undefined): MoveOffer {
   if (!cap) return { show: false, verdict: 'permission_denied' };
   if (cap.allowed) return { show: true, verdict: null };
-  const reason = cap.reason ?? 'permission_denied';
-  // The server names the reader's refusal before the package's, so a reader
-  // without rights gets "not allowed" even where there is nothing to act on.
-  // What the row itself shows settles that: a kind that is not procured has no
-  // moves, and a package without an award plan can only be planned.
-  const nothingToActOn = view.package_kind === null || (move !== 'edit' && !view.award);
-  return { show: !nothingToActOn && !NOT_APPLICABLE.has(reason), verdict: reason };
+  return { show: cap.applies !== false, verdict: cap.reason ?? 'permission_denied' };
+}
+
+/** One move of a package, straight from the flag the server sent with the row. */
+export function packageMove(view: PackageView, move: PackageMove): MoveOffer {
+  return offer(view.can?.[move]);
 }
 
 const SUPPLY_KINDS: PackageKind[] = ['supply', 'supply_and_install'];

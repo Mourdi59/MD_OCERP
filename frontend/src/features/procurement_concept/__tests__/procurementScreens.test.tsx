@@ -55,6 +55,7 @@ import {
   blockingFinding,
   can,
   catalogue,
+  closedCan,
   concept,
   framework,
   ledger,
@@ -75,8 +76,8 @@ const labels: LabelContext = { t: enT as LabelContext['t'], language: 'en', exis
 const refusal = (status: number, code: string, extra: Record<string, unknown> = {}) =>
   new ApiError(status, 'Refused', { detail: { code, message: 'server sentence', ...extra } });
 const readOnly = () => concept({ can: NO_RIGHTS });
-const yes = { allowed: true, reason: null };
-const denied = (reason: string) => ({ allowed: false, reason });
+const yes = { allowed: true, reason: null, applies: true };
+const denied = (reason: string, applies = true) => ({ allowed: false, reason, applies });
 
 function show(ui: ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -305,8 +306,9 @@ describe('ConceptRecord', () => {
   });
 
   it('keeps submit closed with the reason the server gave', () => {
-    record({ concept: readOnly() });
+    record({ concept: concept({ can: can({ submit: 'not_procurement_owner', return: 'invalid_transition' }) }) });
     expect(screen.getByTestId('concept-submit')).toBeDisabled();
+    expect(screen.queryByTestId('concept-return')).toBeNull();
     expect(screen.getAllByTestId('disabled-reason')[0]).toHaveAttribute('data-reason', 'not_procurement_owner');
   });
 
@@ -324,7 +326,7 @@ describe('ConceptRecord', () => {
   });
 
   it('offers no lifecycle step on a binding concept', () => {
-    record({ concept: concept({ state: 'binding', can: can({ edit_plan: 'binding_requires_change_request', submit: 'binding_requires_change_request' }) }) });
+    record({ concept: concept({ state: 'binding', can: closedCan('binding_requires_change_request') }) });
     for (const action of ['submit', 'return']) expect(screen.queryByTestId(`concept-${action}`)).toBeNull();
     expect(screen.getByTestId('concept-edit')).toBeDisabled();
   });
@@ -536,7 +538,7 @@ describe('PrequalPanel', () => {
   });
 
   it('offers no confirmation once the short list is confirmed', async () => {
-    mocked.listCandidates.mockResolvedValue(matrix({ package_state: 'shortlisted', can: { ...matrix().can, confirm_shortlist: denied('invalid_transition') } }));
+    mocked.listCandidates.mockResolvedValue(matrix({ package_state: 'shortlisted', can: { ...matrix().can, confirm_shortlist: denied('invalid_transition', false) } }));
     panel();
     await screen.findByTestId('candidate-matrix');
     expect(screen.queryByTestId('shortlist-confirm')).toBeNull();
