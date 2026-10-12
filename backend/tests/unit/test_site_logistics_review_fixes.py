@@ -771,3 +771,14 @@ def test_a_pinned_catalogue_that_no_longer_loads_is_named_not_a_crash(monkeypatc
         _run(plan_service.LogisticsPlanService(None).catalogue(uuid.uuid4()))
     assert (exc.value.code, exc.value.status_code) == ("catalogue_invalid", 422)
     assert exc.value.detail == "area kind 'x' is declared twice"
+
+
+def test_evidence_items_open_the_plan_of_their_project() -> None:
+    from app.modules.project_governance import evidence as gov
+    from app.modules.site_logistics import evidence
+
+    pid = uuid.uuid4()
+    gov.unregister_evidence_link(evidence.LINK_KIND)
+    assert gov.evidence_link_href(evidence.LINK_KIND, str(pid), pid) is None
+    evidence.register_gate_evidence()
+    assert gov.evidence_link_href(evidence.LINK_KIND, str(pid), pid) == f"/projects/{pid}/site-logistics"

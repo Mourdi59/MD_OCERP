@@ -20,9 +20,20 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from app.modules.project_governance.evidence import ANY_AREA, EvidenceItem, GateAttempt, register_evidence_provider
+from app.modules.project_governance.evidence import (
+    ANY_AREA,
+    EvidenceItem,
+    GateAttempt,
+    register_evidence_link,
+    register_evidence_provider,
+)
 
 PROVIDER = "site_logistics.plan_readiness"
+
+
+# Kind and route of the link every item carries: the logistics plan of the project.
+LINK_KIND = "site_logistics"
+LINK_ROUTE = "/projects/{project_id}/site-logistics"
 
 
 async def logistics_readiness(
@@ -47,7 +58,7 @@ async def logistics_readiness(
                 code=f"site_logistics:{item['code']}",
                 state=item["state"],
                 label_key=f"site_logistics.evidence.{item['code']}",
-                link=("site_logistics", str(project_id)),
+                link=(LINK_KIND, str(project_id)),
                 detail=item["detail"],
             )
             for item in readiness["items"]
@@ -60,12 +71,14 @@ async def logistics_readiness(
             code="site_logistics:unresolved",
             state="unknown",
             label_key="site_logistics.evidence.unresolved",
-            link=("site_logistics", str(project_id)),
+            link=(LINK_KIND, str(project_id)),
             detail=reason,
         )
     ]
 
 
 def register_gate_evidence() -> None:
-    """Register the provider (idempotent, by name)."""
+    """Register the provider and where its links open (idempotent, by name)."""
     register_evidence_provider(ANY_AREA, logistics_readiness, name=PROVIDER, blocking=True)
+    # The items link to the plan of the project; this is the route the web app declares for it.
+    register_evidence_link(LINK_KIND, LINK_ROUTE)
