@@ -44,6 +44,7 @@ import en from '@/app/locales/en';
 import { ApiError } from '@/shared/lib/api';
 import * as api from '../api';
 import { AwardSchedule } from '../AwardSchedule';
+import { REGISTER_MAX_PAGES, REGISTER_PAGE, filterCompanies, readRegister } from '../CompanyPicker';
 import { ConceptRecord } from '../ConceptRecord';
 import { Frameworks } from '../Frameworks';
 import type { LabelContext } from '../labels';
@@ -94,6 +95,46 @@ beforeEach(() => {
   mocked.listCostSections.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 0 });
 });
 afterEach(cleanup);
+
+describe('the company registers behind the picker', () => {
+  const rows = (n: number, from = 0) => Array.from({ length: n }, (_, i) => ({ id: `c${from + i}` }));
+
+  it('reads one page when the register fits in it', async () => {
+    const page = vi.fn(async () => ({ items: rows(3), total: 3 }));
+    expect(await readRegister(page)).toEqual({ items: rows(3), missing: 0 });
+    expect(page).toHaveBeenCalledTimes(1);
+    expect(page).toHaveBeenCalledWith(0, REGISTER_PAGE);
+  });
+
+  it('reads the next pages until it has every company', async () => {
+    const total = REGISTER_PAGE + 5;
+    const page = vi.fn(async (offset: number) => ({ items: rows(offset === 0 ? REGISTER_PAGE : 5, offset), total }));
+    const got = await readRegister(page);
+    expect(got.items).toHaveLength(total);
+    expect(got.missing).toBe(0);
+    expect(page).toHaveBeenLastCalledWith(REGISTER_PAGE, REGISTER_PAGE);
+  });
+
+  it('stops at the page budget and counts what it left out', async () => {
+    const budget = REGISTER_PAGE * REGISTER_MAX_PAGES;
+    const page = vi.fn(async (offset: number) => ({ items: rows(REGISTER_PAGE, offset), total: budget + 40 }));
+    const got = await readRegister(page);
+    expect(page).toHaveBeenCalledTimes(REGISTER_MAX_PAGES);
+    expect(got.items).toHaveLength(budget);
+    expect(got.missing).toBe(40);
+  });
+
+  it('narrows by every word typed, whatever the case', () => {
+    const list = [
+      { value: 'subcontractor:1', name: 'Northern Roofing Works' },
+      { value: 'vendor:2', name: 'Steel supply north' },
+    ];
+    expect(filterCompanies(list, '  ')).toEqual(list);
+    expect(filterCompanies(list, 'NORTH')).toEqual(list);
+    expect(filterCompanies(list, 'north roof')).toEqual([list[0]]);
+    expect(filterCompanies(list, 'glazing')).toEqual([]);
+  });
+});
 
 describe('PackageBoard', () => {
   const packages = [packageView(), unplannedPackage, agreementPackage];
