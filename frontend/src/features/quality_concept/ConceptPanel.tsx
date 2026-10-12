@@ -22,6 +22,7 @@ import {
   type CatalogueChoice,
   type Finding,
 } from './api';
+import { ReasonLines } from './ClosedReasons';
 import { useCatalogues, useQcWrite, useRevisions } from './hooks';
 import {
   CATALOGUE_SOURCE,
@@ -46,7 +47,7 @@ import {
   StateBadge,
   inputCls,
 } from './QualityBits';
-import { CONCEPT_ACTIONS, filledPackages, packageScopeProblem, type PackageDraft } from './rules';
+import { CONCEPT_ACTIONS, conceptEditable, filledPackages, packageScopeProblem, type PackageDraft } from './rules';
 import { StandardsSection } from './StandardsSection';
 
 let rowSeq = 0;
@@ -67,6 +68,8 @@ export function ConceptPanel(props: PanelProps) {
   const [setApplied, setSetApplied] = useState<number | null>(null);
 
   const actions = CONCEPT_ACTIONS[concept.state] ?? [];
+  // Why the plan is closed to this reader: the concept is past its draft, or the reader does not manage it.
+  const planClosed = editable ? [] : [conceptEditable(concept.state) ? 'manage_required' : 'concept_not_editable'];
   const blocking = concept.findings.filter((f) => f.severity === 'error');
   const refName = (f: Finding) =>
     f.code.startsWith('stage_')
@@ -190,9 +193,12 @@ export function ConceptPanel(props: PanelProps) {
             'The work packages this concept covers. Every package needs its proofs and an acceptance, or a reason why it needs none.',
         })}
         action={
-          <Button variant="secondary" size="sm" disabled={!editable} onClick={() => setScopeOpen(true)} data-testid="scope-edit">
-            {t('qualityConcept.packages.edit', { defaultValue: 'Edit packages' })}
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button variant="secondary" size="sm" disabled={!editable} onClick={() => setScopeOpen(true)} data-testid="scope-edit">
+              {t('qualityConcept.packages.edit', { defaultValue: 'Edit packages' })}
+            </Button>
+            <ReasonLines codes={planClosed} testId="scope-closed-reason" />
+          </div>
         }
       >
         {concept.applicable_packages.length === 0 ? (
@@ -259,6 +265,12 @@ export function ConceptPanel(props: PanelProps) {
             >
               {t('qualityConcept.concept.documentation_set_apply', { defaultValue: 'Create the handover documents of this set' })}
             </Button>
+            <ReasonLines codes={planClosed} testId="documentation-set-closed-reason" />
+            {editable && !concept.documentation_set_code && (
+              <span className="text-xs text-content-tertiary" data-testid="documentation-set-needed">
+                {t('qualityConcept.concept.documentation_set_needed', { defaultValue: 'Choose a documentation set first.' })}
+              </span>
+            )}
             {setApplied !== null && (
               <span role="status" className="text-xs text-content-secondary" data-testid="documentation-set-applied">
                 {t('qualityConcept.concept.documentation_set_applied', {

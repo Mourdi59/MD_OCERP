@@ -51,6 +51,19 @@ export function closedReasons(row: Capable | null | undefined, actions: readonly
   return out;
 }
 
+/**
+ * The reasons every row of a list gives for its own buttons. One row is not a
+ * list: its reasons stay on the row.
+ */
+export function sharedReasons<T extends Capable>(rows: readonly T[], actionsOf: (row: T) => readonly string[]): string[] {
+  if (rows.length < 2) return [];
+  const [first, ...rest] = rows.map((row) => closedReasons(row, actionsOf(row)));
+  return (first ?? []).filter((code) => rest.every((codes) => codes.includes(code)));
+}
+
+/** The buttons of a row that is only edited or removed. */
+export const planRowActions = (): readonly string[] => ['edit', 'delete'];
+
 /** The capability flag behind each button, where the two are not named alike. */
 export const CAN_KEY: Record<string, string> = {
   approve_waiver: 'decide_waiver',

@@ -34,7 +34,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useAcceptanceUnits, useCoverage, useProofs, useQcWrite, useStageMatrix } from './hooks';
-import { ClosedReasons } from './ClosedReasons';
+import { ClosedReasons, SharedReasons } from './ClosedReasons';
 import { OptionPicker } from './OptionPicker';
 import { DELIVERER_ROLE, PROOF_ACTION, PROOF_STATE, REQUIRED_BY_KIND, gate, nameIn, vocab, type TFn } from './labels';
 import { packageName, type PanelProps } from './panel';
@@ -51,7 +51,7 @@ import {
   VocabSelect,
   inputCls,
 } from './QualityBits';
-import { percent, pointsString, proofActions, refChange, waiverPending, type ProofAction } from './rules';
+import { percent, pointsString, proofActions, refChange, sharedReasons, waiverPending, type ProofAction } from './rules';
 
 const DELIVERERS = ['designer', 'contractor', 'supplier', 'independent_expert', 'owner', 'authority'] as const;
 const DUE_KINDS = ['stage', 'acceptance_unit', 'activity', 'date'] as const;
@@ -70,6 +70,8 @@ function QuantityRuleText({ rule }: { rule: QuantityRule | null | undefined }) {
     </span>
   );
 }
+
+const proofButtons = (p: Proof): string[] => ['edit', 'delete', ...proofActions(p)];
 
 export function ProofsPanel(props: PanelProps) {
   const { projectId, concept, catalogue, labels, personName, editable, openTab } = props;
@@ -267,6 +269,7 @@ export function ProofsPanel(props: PanelProps) {
           testId="proof-group"
           title={ref ? packageName(concept, ref) : t('qualityConcept.proofs.no_package', { defaultValue: 'Whole project' })}
         >
+          <SharedReasons codes={sharedReasons(list, proofButtons)} />
           <ul className="divide-y divide-border-light">
             {list.map((p) => (
               <li key={p.id} className="py-2" data-testid="proof-entry">
@@ -355,7 +358,7 @@ export function ProofsPanel(props: PanelProps) {
                     aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
                     onClick={() => setRemoving(p)}
                   />
-                  <ClosedReasons row={p} actions={['edit', 'delete', ...proofActions(p)]} />
+                  <ClosedReasons row={p} actions={proofButtons(p)} skip={sharedReasons(list, proofButtons)} />
                 </div>
                 {linksOf === p.id && (
                   <div className="mt-2">

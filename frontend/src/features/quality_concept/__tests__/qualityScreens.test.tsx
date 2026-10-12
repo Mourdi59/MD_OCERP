@@ -727,3 +727,39 @@ describe('the reason of a closed button', () => {
     expect(within(card).queryByTestId('closed-reason')).toBeNull();
   });
 });
+
+describe('a reason every row shares', () => {
+  const closed = { can: { edit: false, delete: false }, can_reason: { edit: 'edit_required', delete: 'edit_required' } };
+
+  it('is written once above the list and left off the rows', async () => {
+    mocked.listUnits.mockResolvedValue(page([unit(closed), unit({ id: 'u2', code: 'AU-2', ...closed })]));
+    renderPage('acceptance');
+    const cards = await screen.findAllByTestId('acceptance-unit');
+    expect(cards).toHaveLength(2);
+    expect(screen.getAllByText('You need the permission to edit quality records for this.')).toHaveLength(1);
+    expect(screen.getByTestId('closed-reason-shared')).toBeInTheDocument();
+    expect(within(cards[0]!).queryByTestId('closed-reason')).toBeNull();
+  });
+
+  it('keeps a reason on its row when the rows differ', async () => {
+    mocked.listUnits.mockResolvedValue(
+      page([
+        unit(closed),
+        unit({ id: 'u2', code: 'AU-2', can: { edit: false, delete: true }, can_reason: { edit: 'manage_required' } }),
+      ]),
+    );
+    renderPage('acceptance');
+    const cards = await screen.findAllByTestId('acceptance-unit');
+    expect(screen.queryByTestId('closed-reason-shared')).toBeNull();
+    expect(within(cards[0]!).getByTestId('closed-reason').textContent).toContain('You need the permission');
+    expect(within(cards[1]!).getByTestId('closed-reason').textContent).toContain('Only a manager');
+  });
+
+  it('says beside the packages button why the plan is closed', async () => {
+    mocked.getConcept.mockResolvedValue(concept({ can: NOT_MANAGER }));
+    renderPage();
+    const note = await screen.findByTestId('scope-closed-reason');
+    expect(note.textContent).toBe('Only a manager or the owner of the quality area can change the plan.');
+    expect(screen.getByTestId('scope-edit')).toBeDisabled();
+  });
+});

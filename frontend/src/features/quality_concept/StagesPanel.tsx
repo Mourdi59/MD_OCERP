@@ -42,7 +42,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useQcWrite, useStageMatrix } from './hooks';
-import { ClosedReasons } from './ClosedReasons';
+import { ClosedReasons, SharedReasons } from './ClosedReasons';
 import {
   PARTY_ROLE,
   PRECONDITION,
@@ -57,7 +57,14 @@ import {
 } from './labels';
 import type { PanelProps } from './panel';
 import { Field, FormDialog, Hint, RefusalNote, STAGE_TONE, Section, StateBadge, VocabSelect, inputCls } from './QualityBits';
-import { PLAN_STAGE_ACTIONS, STAGE_ACTIONS, preconditionNotApplicable, type StageAction } from './rules';
+import {
+  PLAN_STAGE_ACTIONS,
+  STAGE_ACTIONS,
+  planRowActions,
+  preconditionNotApplicable,
+  sharedReasons,
+  type StageAction,
+} from './rules';
 
 const PARTIES = ['qc', 'qa', 'tpi', 'ahj'] as const;
 const SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
@@ -167,6 +174,7 @@ export function StagesPanel(props: PanelProps) {
           </div>
         }
       >
+        <SharedReasons codes={sharedReasons(stages, planRowActions)} />
         <ol className="divide-y divide-border-light" data-testid="stage-list">
           {stages.map((s) => (
             <li key={s.id} className="flex flex-wrap items-center gap-2 py-2 text-sm" data-testid="stage-entry">
@@ -210,7 +218,7 @@ export function StagesPanel(props: PanelProps) {
                   onClick={() => setRemoving(s)}
                 />
               </span>
-              <ClosedReasons row={s} actions={['edit', 'delete']} />
+              <ClosedReasons row={s} actions={planRowActions()} skip={sharedReasons(stages, planRowActions)} />
             </li>
           ))}
         </ol>

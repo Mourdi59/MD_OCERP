@@ -34,7 +34,7 @@ import {
 } from './api';
 import { ExportButtons } from './ExportButtons';
 import { useAcceptanceUnits, useQcWrite } from './hooks';
-import { ClosedReasons } from './ClosedReasons';
+import { ClosedReasons, SharedReasons } from './ClosedReasons';
 import { OptionPicker } from './OptionPicker';
 import {
   ACCEPTANCE_ACTION,
@@ -71,6 +71,7 @@ import {
   lines,
   may,
   refChange,
+  sharedReasons,
   type AcceptanceAction,
 } from './rules';
 
@@ -89,6 +90,8 @@ function effectName(labels: LabelContext, effect: RegimeEffect): string {
   if (effect.detail_key && labels.exists(effect.detail_key)) return labels.t(effect.detail_key);
   return vocab(labels.t, LEGAL_EFFECT, effect.effect);
 }
+
+const unitActions = (u: AcceptanceUnit): string[] => ['edit', 'delete', 'confirm_effect', ...(ACCEPTANCE_ACTIONS[u.state] ?? [])];
 
 export function AcceptancePanel(props: PanelProps) {
   const { projectId, concept, labels, manage } = props;
@@ -181,6 +184,7 @@ export function AcceptancePanel(props: PanelProps) {
       </div>
       <RefusalNote refusal={write.refusal} violations={write.violations} />
 
+      <SharedReasons codes={sharedReasons(rows, unitActions)} />
       {rows.map((u) => {
         const inForce = u.effects_applied.filter(effectInForce);
         const applied = new Set(inForce.map((e) => e.effect));
@@ -382,7 +386,7 @@ export function AcceptancePanel(props: PanelProps) {
                     {vocab(t as TFn, ACCEPTANCE_ACTION, action)}
                   </Button>
                 ))}
-              <ClosedReasons row={u} actions={['edit', 'delete', 'confirm_effect', ...(ACCEPTANCE_ACTIONS[u.state] ?? [])]} />
+              <ClosedReasons row={u} actions={unitActions(u)} skip={sharedReasons(rows, unitActions)} />
             </div>
           </Section>
         );

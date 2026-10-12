@@ -21,7 +21,8 @@ import {
   type Mandate,
 } from './api';
 import { useQcWrite, useRequirements, useStandards } from './hooks';
-import { ClosedReasons } from './ClosedReasons';
+import { ClosedReasons, SharedReasons } from './ClosedReasons';
+import { planRowActions, sharedReasons } from './rules';
 import { MANDATE, VERIFICATION_METHOD, catalogueName, gate, nameIn, vocab, type TFn } from './labels';
 import type { PanelProps } from './panel';
 import { Field, FormDialog, Hint, RefusalNote, Section, VocabSelect, inputCls } from './QualityBits';
@@ -62,6 +63,9 @@ export function StandardsSection(props: PanelProps) {
           </Hint>
         ) : (
           <ul className="divide-y divide-border-light" data-testid="standards-list">
+            <li className="empty:hidden">
+              <SharedReasons codes={sharedReasons(standards.data ?? [], planRowActions)} />
+            </li>
             {(standards.data ?? []).map((s) => (
               <li key={s.id} className="flex flex-wrap items-center gap-2 py-2 text-sm" data-testid="standard-entry">
                 <span className="font-medium text-content-primary">{s.code}</span>
@@ -87,7 +91,7 @@ export function StandardsSection(props: PanelProps) {
                   aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
                   onClick={() => setRemoving(s)}
                 />
-                <ClosedReasons row={s} actions={['edit', 'delete']} />
+                <ClosedReasons row={s} actions={planRowActions()} skip={sharedReasons(standards.data ?? [], planRowActions)} />
               </li>
             ))}
           </ul>

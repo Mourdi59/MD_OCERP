@@ -35,7 +35,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useExpertReports, useQcWrite, useSurveys } from './hooks';
-import { ClosedReasons } from './ClosedReasons';
+import { ClosedReasons, SharedReasons } from './ClosedReasons';
 import { OptionPicker } from './OptionPicker';
 import {
   EXPERT_FREQUENCY,
@@ -67,7 +67,7 @@ import {
   VocabSelect,
   inputCls,
 } from './QualityBits';
-import { SURVEY_ACTIONS, needsRationale, refChange } from './rules';
+import { SURVEY_ACTIONS, needsRationale, planRowActions, refChange, sharedReasons } from './rules';
 
 const PHASES = ['before', 'during', 'after', 'on_complaint'] as const;
 const METHODS = ['photo', 'crack_mapping', 'level_survey', 'vibration_monitoring', 'reality_capture'] as const;
@@ -80,6 +80,8 @@ type Dialog =
   | { kind: 'pair'; survey: Survey }
   | { kind: 'report'; report: ExpertReport | null }
   | null;
+
+const surveyActions = (s: Survey): string[] => ['edit', 'delete', 'pair', ...(SURVEY_ACTIONS[s.state] ?? [])];
 
 export function PreservationPanel(props: PanelProps) {
   const { projectId, catalogue, labels } = props;
@@ -139,6 +141,7 @@ export function PreservationPanel(props: PanelProps) {
           }
         >
           <FindingList findings={surveys.data?.findings ?? []} refName={findingRef} className="mb-3" />
+          <SharedReasons codes={sharedReasons(rows, surveyActions)} />
           <ul className="divide-y divide-border-light">
             {rows.map((s) => (
               <li key={s.id} className="py-2" data-testid="survey-entry">
@@ -224,7 +227,7 @@ export function PreservationPanel(props: PanelProps) {
                       onClick={() => setRemoving({ survey: s })}
                     />
                   )}
-                  <ClosedReasons row={s} actions={['edit', 'delete', 'pair', ...(SURVEY_ACTIONS[s.state] ?? [])]} />
+                  <ClosedReasons row={s} actions={surveyActions(s)} skip={sharedReasons(rows, surveyActions)} />
                 </div>
                 {linksOf === s.id && (
                   <div className="mt-2">
@@ -257,6 +260,9 @@ export function PreservationPanel(props: PanelProps) {
           </Hint>
         ) : (
           <ul className="divide-y divide-border-light" data-testid="report-list">
+            <li className="empty:hidden">
+              <SharedReasons codes={sharedReasons(reports.data ?? [], planRowActions)} />
+            </li>
             {(reports.data ?? []).map((r) => (
               <li key={r.id} className="py-2" data-testid="report-entry">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -295,7 +301,7 @@ export function PreservationPanel(props: PanelProps) {
                 {r.trigger && (
                   <p className="mt-0.5 text-xs text-content-tertiary">{vocabOrRaw(t as TFn, EXPERT_TRIGGER, r.trigger)}</p>
                 )}
-                <ClosedReasons row={r} actions={['edit', 'delete']} />
+                <ClosedReasons row={r} actions={planRowActions()} skip={sharedReasons(reports.data ?? [], planRowActions)} />
                 {linksOf === r.id && (
                   <div className="mt-2">
                     <EvidenceLinks projectId={projectId} ownerKind="expert_report" ownerId={r.id} row={r} />

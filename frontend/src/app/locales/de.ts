@@ -50114,6 +50114,7 @@ const resource = {
     "qualityConcept.concept.documentation_set_applied": "Angelegte Übergabeunterlagen und Datenlieferungen: {{n}}",
     "qualityConcept.concept.documentation_set_apply": "Übergabeunterlagen dieses Satzes anlegen",
     "qualityConcept.concept.documentation_set_hint": "Bestimmt, welche Unterlagen die Übergabe an den Betrieb erwartet.",
+    "qualityConcept.concept.documentation_set_needed": "Wählen Sie zuerst einen Dokumentationssatz.",
     "qualityConcept.concept.frame_document": "Rahmendokument: {{name}}",
     "qualityConcept.concept.holidays": "Arbeitsfreie Tage",
     "qualityConcept.concept.holidays_hint": "Fristen in Werktagen überspringen diese Tage.",

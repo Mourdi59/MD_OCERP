@@ -34,7 +34,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useCertifications, useQcWrite } from './hooks';
-import { ClosedReasons } from './ClosedReasons';
+import { ClosedReasons, SharedReasons } from './ClosedReasons';
 import { OptionPicker } from './OptionPicker';
 import {
   CERTIFICATION_ACTION,
@@ -63,7 +63,7 @@ import {
   VocabSelect,
   inputCls,
 } from './QualityBits';
-import { CERTIFICATION_ACTIONS, CREDIT_ACTIONS, needsAchievedLevel, needsRationale, pointsString, refChange } from './rules';
+import { CERTIFICATION_ACTIONS, CREDIT_ACTIONS, needsAchievedLevel, needsRationale, pointsString, refChange, sharedReasons } from './rules';
 
 const SCOPES = ['building', 'plant', 'operation'] as const;
 
@@ -73,6 +73,14 @@ type Dialog =
   | { kind: 'credit'; target: Certification }
   | { kind: 'achieve'; credit: Credit }
   | null;
+
+const targetActions = (target: Certification): string[] => [
+  'edit',
+  'delete',
+  'add_credits',
+  ...(CERTIFICATION_ACTIONS[target.state] ?? []),
+];
+const creditActions = (c: Credit): string[] => ['delete', ...(CREDIT_ACTIONS[c.state] ?? [])];
 
 export function CertificationPanel(props: PanelProps) {
   const { projectId, catalogue, labels, personName, manage } = props;
@@ -132,6 +140,7 @@ export function CertificationPanel(props: PanelProps) {
             </Button>
           </div>
           <FindingList findings={query.data?.findings ?? []} />
+          <SharedReasons codes={sharedReasons(targets, targetActions)} />
           {targets.map((target) => {
             const scheme = schemes.find((s) => s.code === target.scheme_code);
             return (
@@ -227,7 +236,7 @@ export function CertificationPanel(props: PanelProps) {
                       {vocab(t as TFn, CERTIFICATION_ACTION, action)}
                     </Button>
                   ))}
-                  <ClosedReasons row={target} actions={['edit', 'delete', 'add_credits', ...(CERTIFICATION_ACTIONS[target.state] ?? [])]} />
+                  <ClosedReasons row={target} actions={targetActions(target)} skip={sharedReasons(targets, targetActions)} />
                 </div>
 
                 {target.credits.length === 0 ? (
@@ -238,6 +247,9 @@ export function CertificationPanel(props: PanelProps) {
                   </Hint>
                 ) : (
                   <ul className="divide-y divide-border-light" data-testid="credit-list">
+                    <li className="empty:hidden">
+                      <SharedReasons codes={sharedReasons(target.credits, creditActions)} />
+                    </li>
                     {target.credits.map((c) => (
                       <li key={c.id} className="py-2" data-testid="credit-entry">
                         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -275,7 +287,7 @@ export function CertificationPanel(props: PanelProps) {
                             />
                           </span>
                         </div>
-                        <ClosedReasons row={c} actions={['delete', ...(CREDIT_ACTIONS[c.state] ?? [])]} />
+                        <ClosedReasons row={c} actions={creditActions(c)} skip={sharedReasons(target.credits, creditActions)} />
                         {linksOf === c.id && (
                           <div className="mt-2">
                             <EvidenceLinks projectId={projectId} ownerKind="credit" ownerId={c.id} row={c} />

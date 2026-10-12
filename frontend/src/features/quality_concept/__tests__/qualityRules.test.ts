@@ -43,6 +43,7 @@ import {
   pointsString,
   preconditionNotApplicable,
   refChange,
+  sharedReasons,
   proofActions,
   waiverPending,
   whyNot,
@@ -286,5 +287,19 @@ describe('reasons of closed actions', () => {
     expect(closedReasons({ can: { decide_waiver: false }, can_reason: { decide_waiver: 'approver_is_requester' } }, ['approve_waiver', 'reject_waiver'])).toEqual([
       'approver_is_requester',
     ]);
+  });
+});
+
+describe('reasons a whole list shares', () => {
+  const both = () => ['edit', 'delete'];
+  const a = { can: { edit: false, delete: false }, can_reason: { edit: 'edit_required', delete: 'invalid_transition' } };
+  const b = { can: { edit: false, delete: true }, can_reason: { edit: 'edit_required' } };
+
+  it('keeps only what every row gives, and treats one row as no list', () => {
+    expect(sharedReasons([a, b], both)).toEqual(['edit_required']);
+    expect(sharedReasons([a, a], both)).toEqual(['edit_required', 'invalid_transition']);
+    expect(sharedReasons([a, {}], both)).toEqual([]);
+    expect(sharedReasons([a], both)).toEqual([]);
+    expect(sharedReasons([], both)).toEqual([]);
   });
 });
