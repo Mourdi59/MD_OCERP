@@ -20,10 +20,12 @@ commit. The service flushes; the request's session dependency commits.
 
 from __future__ import annotations
 
+import inspect
 import logging
 import math
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from decimal import Decimal
 from typing import Any
@@ -283,6 +285,53 @@ _JSON_FIELDS = (
 )
 
 
+# The permission an action on a plan record needs, where it is not ``write``. It is the
+# permission its route requires; a test walks the routes and holds the two together.
+_CAN_PERMISSION: dict[tuple[str, str], str] = {
+    ("transport", "transition"): "approve",
+    ("concept", "pin_catalogue"): "approve",
+}
+_UNSET: Any = object()
+
+
+def can_permission(kind: str, action: str) -> str:
+    """The permission the route behind ``action`` on a ``kind`` record requires."""
+    return f"site_logistics.{_CAN_PERMISSION.get((kind, action), 'write')}"
+
+
+@dataclass(frozen=True)
+class PlanPerms:
+    """What the caller may do on the plan, read the way the routes read it."""
+
+    write: bool = False
+    approve: bool = False
+    customs: bool = False
+
+    def has(self, kind: str, action: str) -> bool:
+        return bool(getattr(self, _CAN_PERMISSION.get((kind, action), "write")))
+
+
+def _flag(permitted: bool, reason: str | None = None, *, applies: bool = True) -> dict[str, Any]:
+    """One allowed move: whether the action exists for the record now, whether it would pass, and why not."""
+    if not permitted:
+        # What the route answers first, whatever the record would say.
+        return {"allowed": False, "applies": applies, "reason": "permission_denied"}
+    if not applies:
+        return {"allowed": False, "applies": False, "reason": reason}
+    return {"allowed": reason is None, "applies": True, "reason": reason}
+
+
+async def _why_not(guard: Callable[[], Any]) -> str | None:
+    """The code the guard refuses with, ``None`` when it lets the write through."""
+    try:
+        out = guard()
+        if inspect.isawaitable(out):
+            await out
+    except LogisticsError as exc:
+        return exc.code
+    return None
+
+
 class LogisticsPlanService:
     """Orchestrates the logistics plan of one project."""
 
@@ -490,6 +539,78 @@ class LogisticsPlanService:
             "delivery": DeliveryBooking,
         }[kind]
         return (await self.session.execute(select(local.project_id).where(local.id == rid))).scalar_one_or_none()
+
+    async def link_options(
+        self, project_id: uuid.UUID, kind: str, *, search: str | None = None, limit: int = 200
+    ) -> list[dict[str, Any]]:
+        """The rows of this project a link field of the plan can point at, as ``{id, label, detail}``.
+
+        The project filter is the join :meth:`_owner_of` checks a stored link
+        with, so the list never offers what a write would refuse.
+        """
+        if kind == "activity":
+            from app.modules.schedule.models import Activity, Schedule
+
+            label, detail = Activity.name, Activity.wbs_code
+            stmt = (
+                select(Activity.id, label, detail, Activity.start_date, Activity.end_date)
+                .join(Schedule, Activity.schedule_id == Schedule.id)
+                .where(Schedule.project_id == project_id)
+                .order_by(Activity.sort_order, Activity.name)
+            )
+        elif kind in ("takt_schedule", "takt_location"):
+            from app.modules.schedule_advanced.models import Location, MasterSchedule, TaktSchedule
+
+            base = select(TaktSchedule.id, TaktSchedule.name, MasterSchedule.name).select_from(TaktSchedule)
+            label, detail = TaktSchedule.name, MasterSchedule.name
+            if kind == "takt_location":
+                label, detail = Location.name, TaktSchedule.name
+                base = (
+                    select(Location.id, label, detail, TaktSchedule.id)
+                    .select_from(Location)
+                    .join(TaktSchedule, Location.takt_schedule_id == TaktSchedule.id)
+                )
+            stmt = (
+                base.join(MasterSchedule, TaktSchedule.master_schedule_id == MasterSchedule.id)
+                .where(MasterSchedule.project_id == project_id)
+                .order_by(TaktSchedule.name, *((Location.sequence_order,) if kind == "takt_location" else ()))
+            )
+        elif kind == "purchase_order":
+            from app.modules.procurement.models import PurchaseOrder
+
+            label, detail = PurchaseOrder.po_number, PurchaseOrder.status
+            stmt = (
+                select(PurchaseOrder.id, label, detail, PurchaseOrder.delivery_date)
+                .where(PurchaseOrder.project_id == project_id)
+                .order_by(PurchaseOrder.po_number)
+            )
+        elif kind == "document":
+            from app.modules.documents.models import Document
+
+            label, detail = Document.name, Document.drawing_number
+            stmt = (
+                select(Document.id, label, detail, Document.mime_type)
+                .where(Document.project_id == project_id)
+                .order_by(Document.name)
+            )
+        else:
+            raise LogisticsError("unknown_link_kind", 422, detail=kind)
+        if search and search.strip():
+            # The caller's text is matched literally: its wildcards are not ours to run.
+            needle = search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            stmt = stmt.where(label.ilike(f"%{needle}%", escape="\\"))
+        extra = {
+            "activity": ("start_date", "end_date"),
+            "takt_location": ("takt_schedule_id",),
+            "purchase_order": ("delivery_date",),
+            "document": ("mime_type",),
+        }.get(kind, ())
+        out = []
+        for row in (await self.session.execute(stmt.limit(limit))).all():
+            item = {"id": str(row[0]), "label": row[1] or "", "detail": row[2] or ""}
+            item.update({name: _iso(value) for name, value in zip(extra, row[3:], strict=True)})
+            out.append(item)
+        return out
 
     async def _project(self, project_id: uuid.UUID) -> Any:
         from app.modules.projects.models import Project
@@ -731,12 +852,7 @@ class LogisticsPlanService:
 
     async def delete_stage(self, project_id: uuid.UUID, stage_id: Any, actor_id: Any) -> None:
         row = await self._get(ExpansionStage, project_id, stage_id, "stage_not_found", lock=True)
-        if row.state == "active":
-            # Its allocations and demands are what the site runs on today; they are
-            # not removed by a delete that cascades.
-            raise conflict("stage_active")
-        if len(await self._list(ExpansionStage, project_id)) <= 1:
-            raise conflict("last_stage")
+        await self._guard_stage_delete(project_id, row)
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_stage", row.id, "stage_deleted")
@@ -813,12 +929,321 @@ class LogisticsPlanService:
                 end = day
         return start, end
 
+    @staticmethod
+    def _guard_move(fsm: dict[str, tuple[str, ...]], row: Any, target: str) -> None:
+        if not pl.can_move(fsm, row.state, target):
+            raise conflict("invalid_transition", detail=f"{row.state}->{target}")
+
     def _move(self, fsm: dict[str, tuple[str, ...]], row: Any, target: str) -> str:
         current = row.state
-        if not pl.can_move(fsm, current, target):
-            raise conflict("invalid_transition", detail=f"{current}->{target}")
+        self._guard_move(fsm, row, target)
         row.state = target
         return current
+
+    # ── guards: what a write refuses, without changing anything ────────────
+    #
+    # Each write calls its guard before it touches the row, and ``can`` calls the
+    # same guard to say what the write would answer. Nothing here mutates.
+
+    async def _guard_stage_delete(self, project_id: uuid.UUID, row: Any, count: int | None = None) -> None:
+        if row.state == "active":
+            # Its allocations and demands are what the site runs on today; they are
+            # not removed by a delete that cascades.
+            raise conflict("stage_active")
+        if count is None:
+            count = len(await self._list(ExpansionStage, project_id))
+        if count <= 1:
+            raise conflict("last_stage")
+
+    @classmethod
+    def _guard_media_transition(cls, row: Any, target: str) -> None:
+        if target == "contracted" and row.contracted_capacity is None:
+            raise LogisticsError("contracted_capacity_required", 422)
+        cls._guard_move(pl.MEDIA_FSM, row, target)
+
+    @staticmethod
+    def _demand_frozen(row: Any) -> tuple[str, ...]:
+        """Rule 9: the plant position is the one number; it is changed there."""
+        return ("peak_demand",) if row.site_plant_position_id is not None else ()
+
+    @staticmethod
+    def _transport_frozen(row: Any) -> tuple[str, ...]:
+        """The fields an edit may no longer change; refuses the edit once the transport is over."""
+        if row.state in ("closed", "cancelled"):
+            raise conflict("transport_closed")
+        if row.state in _ONWARD:
+            # Under way, what the rules were checked against no longer moves.
+            return tuple(k for k in _TRANSPORT_FIELDS if k not in _TRANSPORT_FREE_FIELDS)
+        return ()
+
+    @staticmethod
+    def _guard_transport_delete(row: Any) -> None:
+        if row.state in _ONWARD:
+            raise conflict("transport_under_way")
+
+    async def _guard_transport_transition(
+        self,
+        project_id: uuid.UUID,
+        cat: SiteLogisticsCatalogue,
+        row: Any,
+        target: str,
+        *,
+        view: dict[str, Any] | None = None,
+        quiet: Any = _UNSET,
+    ) -> date | None:
+        """Refuse a move the rules do not allow. Returns the goods receipt date an arrival is read from."""
+        if target not in pl.TRANSPORT_STATES:
+            raise LogisticsError("invalid_transition", 422)
+        self._guard_move(pl.TRANSPORT_FSM, row, target)
+        if target == "scheduled":
+            await self._assert_schedulable(project_id, cat, row, view=view, quiet=quiet)
+        if target == "arrived" and row.direction == "inbound" and row.po_id is not None:
+            # Rule 19: arrival of PO goods is read from the goods receipt, never recorded twice.
+            received = await self._goods_receipt_date(row.po_id, row.in_transit_on)
+            if received is None:
+                raise conflict("goods_receipt_missing")
+            return received
+        return None
+
+    @staticmethod
+    def _permit_frozen(row: Any) -> tuple[str, ...]:
+        """What a permit's coverage is made of, frozen once the authority has decided."""
+        return () if row.state in _PERMIT_OPEN_STATES else (*_PERMIT_FROZEN_FIELDS, "covers_transport_ids")
+
+    @classmethod
+    def _guard_permit_transition(cls, row: Any, target: str) -> None:
+        cls._guard_move(pl.PERMIT_FSM, row, target)
+        if target == "granted" and (row.valid_from is None or row.valid_to is None):
+            raise LogisticsError("validity_required", 422)
+
+    @staticmethod
+    def _guard_permit_delete(row: Any) -> None:
+        if row.state == "granted":
+            # Deleting it would silently withdraw what its transports were scheduled on.
+            raise conflict("permit_frozen")
+
+    @staticmethod
+    def _customs_frozen(row: Any) -> tuple[str, ...]:
+        """The checklist fields a declared case no longer changes; refuses the edit once it is cleared."""
+        if row.state in ("cleared", "closed"):
+            raise conflict("customs_closed")
+        return () if row.state in _CUSTOMS_OPEN_STATES else _CUSTOMS_CHECKLIST_FIELDS
+
+    @staticmethod
+    def _guard_customs_delete(row: Any) -> None:
+        if row.state not in _CUSTOMS_OPEN_STATES:
+            raise conflict("customs_declared")
+
+    @staticmethod
+    def _guard_case_open(case: Any, also: tuple[str, ...] = ()) -> None:
+        """A change to a case's lines or documents: 409 once it is declared."""
+        if case.state in ("cleared", "closed"):
+            raise conflict("customs_closed")
+        if case.state not in (*_CUSTOMS_OPEN_STATES, *also):
+            raise conflict("customs_declared")
+
+    async def _guard_customs_transition(
+        self,
+        project_id: uuid.UUID,
+        cat: SiteLogisticsCatalogue,
+        row: Any,
+        target: str,
+        *,
+        docs: list[dict[str, Any]] | None = None,
+        line_count: int | None = None,
+    ) -> None:
+        self._guard_move(pl.CUSTOMS_FSM, row, target)
+        if target in ("documents_complete", "declared"):
+            if docs is None:
+                docs = [document_out(d) for d in await self._list(CustomsDocument, project_id, customs_case_id=row.id)]
+            missing = pl.missing_required(docs)
+            if missing:
+                raise LogisticsError("required_document_missing", 422, violations=[{"code": k} for k in missing])
+            if line_count is None:
+                line_count = len(await self._list(CustomsLine, project_id, customs_case_id=row.id))
+            if not line_count:
+                raise LogisticsError("customs_without_lines", 422)
+        if target == "declared" and self.incoterm_of(cat, row) is None:
+            raise LogisticsError("incoterm_unknown", 422)
+
+    @classmethod
+    def _guard_document_move(cls, case: Any, row: Any, target: str) -> None:
+        if not pl.can_move(pl.CUSTOMS_DOCUMENT_FSM, row.state, target):
+            raise conflict("invalid_transition")
+        if case.state == "held" and target == "missing" and row.required:
+            raise conflict("customs_declared")
+
+    @staticmethod
+    def _guard_complaint_edit(row: Any) -> None:
+        if row.state == "closed":
+            raise conflict("complaint_closed")
+
+    @classmethod
+    def _guard_complaint_transition(cls, row: Any, target: str) -> None:
+        cls._guard_move(pl.COMPLAINT_FSM, row, target)
+        if target in ("action_taken", "closed") and not row.response.strip():
+            raise LogisticsError("response_required", 422)
+
+    # ── allowed moves ──────────────────────────────────────────────────────
+
+    @staticmethod
+    async def _transitions(
+        fsm: dict[str, tuple[str, ...]], row: Any, permitted: bool, guard: Callable[[str], Any]
+    ) -> dict[str, dict[str, Any]]:
+        """One flag per other state: a state the record cannot reach from here does not apply."""
+        out: dict[str, dict[str, Any]] = {}
+        for target in fsm:
+            if target == row.state:
+                continue
+            if not pl.can_move(fsm, row.state, target):
+                out[target] = _flag(permitted, "invalid_transition", applies=False)
+            else:
+                out[target] = _flag(permitted, await _why_not(lambda t=target: guard(t)))
+        return out
+
+    @staticmethod
+    def _edit(permitted: bool, frozen_of: Callable[[], tuple[str, ...]]) -> tuple[dict[str, Any], list[str]]:
+        try:
+            frozen = frozen_of()
+        except LogisticsError as exc:
+            return _flag(permitted, exc.code), []
+        return _flag(permitted), sorted(frozen)
+
+    def can_create(self, kind: str, perms: PlanPerms) -> dict[str, Any]:
+        """The ``can`` of a list: whether the caller may add a record of this kind."""
+        return {"create": _flag(perms.has(kind, "create"))}
+
+    async def can_in_case(self, project_id: uuid.UUID, case_id: Any, perms: PlanPerms) -> dict[str, dict[str, Any]]:
+        """Whether a line or a document can be added to a customs case in its present state."""
+        case = await self._get(CustomsCase, project_id, case_id, "customs_not_found")
+        return {
+            "line": _flag(perms.has("line", "create"), await _why_not(lambda: self._guard_case_open(case))),
+            "document": _flag(
+                perms.has("document", "create"), await _why_not(lambda: self._guard_case_open(case, ("held",)))
+            ),
+        }
+
+    async def can(
+        self,
+        project_id: uuid.UUID,
+        kind: str,
+        row: Any,
+        perms: PlanPerms,
+        *,
+        count: int | None = None,
+        cat: SiteLogisticsCatalogue | None = None,
+        view: dict[str, Any] | None = None,
+        quiet: Any = _UNSET,
+        case: Any = None,
+        docs: list[dict[str, Any]] | None = None,
+        line_count: int | None = None,
+    ) -> dict[str, Any]:
+        """What the caller may do with one plan record right now.
+
+        Every flag is ``{"allowed", "applies", "reason"}``. ``reason`` is the error
+        code the write would answer with, or ``permission_denied``; the guards asked
+        are the ones the writes call, so a flag cannot disagree with its write. The
+        keyword arguments are what a list already loaded, so a page of records does
+        not query once per row.
+        """
+        edit, delete, move = perms.has(kind, "edit"), perms.has(kind, "delete"), perms.has(kind, "transition")
+        if kind == "concept":
+            return {"edit": _flag(edit), "pin_catalogue": _flag(perms.has(kind, "pin_catalogue"))}
+        if kind == "neighbourhood":
+            return {"edit": _flag(edit)}
+        if kind in ("area", "coordination"):
+            return {"edit": _flag(edit), "delete": _flag(delete)}
+        if kind == "stage":
+            return {
+                "edit": _flag(edit),
+                "delete": _flag(delete, await _why_not(lambda: self._guard_stage_delete(project_id, row, count))),
+                "transitions": await self._transitions(
+                    pl.STAGE_FSM, row, move, lambda t: self._guard_move(pl.STAGE_FSM, row, t)
+                ),
+            }
+        if kind == "media":
+            return {
+                "edit": _flag(edit),
+                "delete": _flag(delete),
+                "transitions": await self._transitions(
+                    pl.MEDIA_FSM, row, move, lambda t: self._guard_media_transition(row, t)
+                ),
+            }
+        if kind == "demand":
+            return {"edit": _flag(edit), "frozen_fields": list(self._demand_frozen(row)), "delete": _flag(delete)}
+        if kind == "transport":
+            if cat is None:
+                cat = await self.catalogue(project_id)
+            flag, frozen = self._edit(edit, lambda: self._transport_frozen(row))
+            return {
+                "edit": flag,
+                "frozen_fields": frozen,
+                "delete": _flag(delete, await _why_not(lambda: self._guard_transport_delete(row))),
+                "transitions": await self._transitions(
+                    pl.TRANSPORT_FSM,
+                    row,
+                    move,
+                    lambda t: self._guard_transport_transition(project_id, cat, row, t, view=view, quiet=quiet),
+                ),
+            }
+        if kind == "permit":
+            return {
+                "edit": _flag(edit),
+                "frozen_fields": sorted(self._permit_frozen(row)),
+                "delete": _flag(delete, await _why_not(lambda: self._guard_permit_delete(row))),
+                "transitions": await self._transitions(
+                    pl.PERMIT_FSM, row, move, lambda t: self._guard_permit_transition(row, t)
+                ),
+            }
+        if kind == "customs":
+            if cat is None:
+                cat = await self.catalogue(project_id)
+            if docs is None:
+                docs = [document_out(d) for d in await self._list(CustomsDocument, project_id, customs_case_id=row.id)]
+            if line_count is None:
+                line_count = len(await self._list(CustomsLine, project_id, customs_case_id=row.id))
+            flag, frozen = self._edit(edit, lambda: self._customs_frozen(row))
+            return {
+                "edit": flag,
+                "frozen_fields": frozen,
+                "delete": _flag(delete, await _why_not(lambda: self._guard_customs_delete(row))),
+                "transitions": await self._transitions(
+                    pl.CUSTOMS_FSM,
+                    row,
+                    move,
+                    lambda t: self._guard_customs_transition(project_id, cat, row, t, docs=docs, line_count=line_count),
+                ),
+                "add_line": _flag(perms.has("line", "create"), await _why_not(lambda: self._guard_case_open(row))),
+                "add_document": _flag(
+                    perms.has("document", "create"), await _why_not(lambda: self._guard_case_open(row, ("held",)))
+                ),
+            }
+        if kind in ("line", "document"):
+            if case is None:
+                case = await self._get(CustomsCase, project_id, row.customs_case_id, "customs_not_found")
+            if kind == "line":
+                why = await _why_not(lambda: self._guard_case_open(case))
+                return {"edit": _flag(edit, why), "delete": _flag(delete, why)}
+            # A held case may still receive what customs asked for.
+            why = await _why_not(lambda: self._guard_case_open(case, ("held",)))
+            if why is not None:
+                closed = {t: _flag(edit, why) for t in pl.CUSTOMS_DOCUMENT_FSM if t != row.state}
+                return {"edit": _flag(edit, why), "transitions": closed}
+            return {
+                "edit": _flag(edit),
+                "transitions": await self._transitions(
+                    pl.CUSTOMS_DOCUMENT_FSM, row, edit, lambda t: self._guard_document_move(case, row, t)
+                ),
+            }
+        if kind == "complaint":
+            return {
+                "edit": _flag(edit, await _why_not(lambda: self._guard_complaint_edit(row))),
+                "delete": _flag(delete),
+                "transitions": await self._transitions(
+                    pl.COMPLAINT_FSM, row, move, lambda t: self._guard_complaint_transition(row, t)
+                ),
+            }
+        raise KeyError(kind)
 
     # ── areas and allocations (rules 1 to 4) ───────────────────────────────
 
@@ -988,8 +1413,7 @@ class LogisticsPlanService:
 
     async def transition_media(self, project_id: uuid.UUID, media_id: Any, target: str, actor_id: Any) -> Any:
         row = await self._get(MediaConnection, project_id, media_id, "media_not_found", lock=True)
-        if target == "contracted" and row.contracted_capacity is None:
-            raise LogisticsError("contracted_capacity_required", 422)
+        self._guard_media_transition(row, target)
         before = self._move(pl.MEDIA_FSM, row, target)
         if target == "connected" and row.connected_on is None:
             row.connected_on = await self.site_today(project_id)
@@ -1032,8 +1456,7 @@ class LogisticsPlanService:
         self, project_id: uuid.UUID, demand_id: Any, data: dict[str, Any], actor_id: Any
     ) -> MediaDemand:
         row = await self._get(MediaDemand, project_id, demand_id, "demand_not_found", lock=True)
-        if row.site_plant_position_id is not None and "peak_demand" in data:
-            # Rule 9: the plant position is the one number; it is changed there.
+        if any(k in data for k in self._demand_frozen(row)):
             raise conflict("demand_owned_by_plant_position")
         if "stage_id" in data:
             self._require(data, "stage_id")
@@ -1539,19 +1962,12 @@ class LogisticsPlanService:
     ) -> Transport:
         cat = await self.catalogue(project_id)
         row = await self._get(Transport, project_id, transport_id, "transport_not_found", lock=True)
-        if row.state in ("closed", "cancelled"):
-            raise conflict("transport_closed")
+        locked = self._transport_frozen(row)
         data = dict(data)
         await self._transport_checks(project_id, cat, data, row)
-        if row.state in _ONWARD:
-            # Under way, what the rules were checked against no longer moves.
-            frozen = sorted(
-                k
-                for k in _TRANSPORT_FIELDS
-                if k in data and k not in _TRANSPORT_FREE_FIELDS and not _same(getattr(row, k), data[k])
-            )
-            if frozen:
-                raise conflict("transport_under_way", detail=",".join(frozen))
+        frozen = sorted(k for k in locked if k in data and not _same(getattr(row, k), data[k]))
+        if frozen:
+            raise conflict("transport_under_way", detail=",".join(frozen))
         changed = self._apply(row, data, _TRANSPORT_FIELDS)
         self._window_order(row)
         if row.state == "scheduled" and changed:
@@ -1569,16 +1985,28 @@ class LogisticsPlanService:
 
     async def delete_transport(self, project_id: uuid.UUID, transport_id: Any, actor_id: Any) -> None:
         row = await self._get(Transport, project_id, transport_id, "transport_not_found", lock=True)
-        if row.state in _ONWARD:
-            raise conflict("transport_under_way")
+        self._guard_transport_delete(row)
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_transport", row.id, "transport_deleted")
 
-    async def _assert_schedulable(self, project_id: uuid.UUID, cat: SiteLogisticsCatalogue, t: Transport) -> None:
-        """Rules 5, 6 and 13 at the moment a transport takes its slot."""
+    async def _assert_schedulable(
+        self,
+        project_id: uuid.UUID,
+        cat: SiteLogisticsCatalogue,
+        t: Transport,
+        *,
+        view: dict[str, Any] | None = None,
+        quiet: Any = _UNSET,
+    ) -> None:
+        """Rules 5, 6 and 13 at the moment a transport takes its slot.
+
+        ``view`` and ``quiet`` are the transport's view and the neighbourhood plan
+        when the caller has just read them; they are read here otherwise.
+        """
         tz = await self.site_tz(project_id)
-        view = await self.transport_view(t, cat, tz)
+        if view is None:
+            view = await self.transport_view(t, cat, tz)
         codes: list[str] = []
         violations: list[dict[str, Any]] = []
 
@@ -1594,7 +2022,7 @@ class LogisticsPlanService:
         if view["permit_finding"]:
             add(view["permit_finding"])
         start, end = _aware(t.planned_window_start), _aware(t.planned_window_end)
-        plan = await self.neighbourhood(project_id)
+        plan = await self.neighbourhood(project_id) if quiet is _UNSET else quiet
         if plan is not None and plan.quiet_hours and start and end:
             if tz is None:
                 add("site_timezone_missing")
@@ -1610,23 +2038,12 @@ class LogisticsPlanService:
     ) -> Transport:
         cat = await self.catalogue(project_id)
         row = await self._get(Transport, project_id, transport_id, "transport_not_found", lock=True)
-        if target not in pl.TRANSPORT_STATES:
-            raise LogisticsError("invalid_transition", 422)
-        if not pl.can_move(pl.TRANSPORT_FSM, row.state, target):
-            raise conflict("invalid_transition", detail=f"{row.state}->{target}")
+        received = await self._guard_transport_transition(project_id, cat, row, target)
         today = await self.site_today(project_id)
-        if target == "scheduled":
-            await self._assert_schedulable(project_id, cat, row)
         if target == "in_transit":
             row.in_transit_on = today
-        if target == "arrived" and row.direction == "inbound" and row.po_id is not None:
-            # Rule 19: arrival of PO goods is read from the goods receipt, never recorded twice.
-            received = await self._goods_receipt_date(row.po_id, row.in_transit_on)
-            if received is None:
-                raise conflict("goods_receipt_missing")
-            row.arrived_on = received
-        elif target == "arrived":
-            row.arrived_on = today
+        if target == "arrived":
+            row.arrived_on = received if received is not None else today
         before = self._move(pl.TRANSPORT_FSM, row, target)
         await self.session.flush()
         await self._audit(
@@ -1744,7 +2161,7 @@ class LogisticsPlanService:
         row = await self._get(TransportPermit, project_id, permit_id, "permit_not_found", lock=True)
         data = dict(data)
         await self._permit_checks(project_id, cat, data, row)
-        if row.state not in _PERMIT_OPEN_STATES:
+        if self._permit_frozen(row):
             frozen = [k for k in _PERMIT_FROZEN_FIELDS if k in data and not _same(getattr(row, k), data[k])]
             if "covers_transport_ids" in data:
                 wanted = {str(_uuid(x)) for x in (data["covers_transport_ids"] or [])}
@@ -1786,12 +2203,9 @@ class LogisticsPlanService:
         self, project_id: uuid.UUID, permit_id: Any, target: str, actor_id: Any
     ) -> TransportPermit:
         row = await self._get(TransportPermit, project_id, permit_id, "permit_not_found", lock=True)
-        if not pl.can_move(pl.PERMIT_FSM, row.state, target):
-            raise conflict("invalid_transition", detail=f"{row.state}->{target}")
+        self._guard_permit_transition(row, target)
         if target == "applied" and row.applied_on is None:
             row.applied_on = await self.site_today(project_id)
-        if target == "granted" and (row.valid_from is None or row.valid_to is None):
-            raise LogisticsError("validity_required", 422)
         before = self._move(pl.PERMIT_FSM, row, target)
         await self.session.flush()
         await self._audit(
@@ -1801,9 +2215,7 @@ class LogisticsPlanService:
 
     async def delete_permit(self, project_id: uuid.UUID, permit_id: Any, actor_id: Any) -> None:
         row = await self._get(TransportPermit, project_id, permit_id, "permit_not_found", lock=True)
-        if row.state == "granted":
-            # Deleting it would silently withdraw what its transports were scheduled on.
-            raise conflict("permit_frozen")
+        self._guard_permit_delete(row)
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_permit", row.id, "permit_deleted")
@@ -1911,17 +2323,15 @@ class LogisticsPlanService:
     ) -> CustomsCase:
         cat = await self.catalogue(project_id)
         row = await self._get(CustomsCase, project_id, case_id, "customs_not_found", lock=True)
-        if row.state in ("cleared", "closed"):
-            raise conflict("customs_closed")
+        locked = self._customs_frozen(row)
         data = dict(data)
         if not can_see_values:
             data = {k: v for k, v in data.items() if k not in _CUSTOMS_VALUE_FIELDS}
         await self._customs_checks(project_id, cat, data)
-        if row.state not in _CUSTOMS_OPEN_STATES:
-            # Declared: the checklist it was declared on no longer changes under it.
-            frozen = sorted(k for k in _CUSTOMS_CHECKLIST_FIELDS if k in data and not _same(getattr(row, k), data[k]))
-            if frozen:
-                raise conflict("customs_declared", detail=",".join(frozen))
+        # Declared: the checklist it was declared on no longer changes under it.
+        frozen = sorted(k for k in locked if k in data and not _same(getattr(row, k), data[k]))
+        if frozen:
+            raise conflict("customs_declared", detail=",".join(frozen))
         changed = self._apply(row, data, _CUSTOMS_FIELDS)
         self._amount_has_currency(row.customs_value, row.currency)
         if "incoterm" in changed:
@@ -1942,8 +2352,7 @@ class LogisticsPlanService:
 
     async def delete_customs(self, project_id: uuid.UUID, case_id: Any, actor_id: Any) -> None:
         row = await self._get(CustomsCase, project_id, case_id, "customs_not_found", lock=True)
-        if row.state not in _CUSTOMS_OPEN_STATES:
-            raise conflict("customs_declared")
+        self._guard_customs_delete(row)
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_customs", row.id, "customs_deleted")
@@ -1968,10 +2377,7 @@ class LogisticsPlanService:
     async def _open_case(self, project_id: uuid.UUID, case_id: Any, *, also: tuple[str, ...] = ()) -> CustomsCase:
         """The case, locked, for a change to its lines or documents; 409 once it is declared."""
         case = await self._get(CustomsCase, project_id, case_id, "customs_not_found", lock=True)
-        if case.state in ("cleared", "closed"):
-            raise conflict("customs_closed")
-        if case.state not in (*_CUSTOMS_OPEN_STATES, *also):
-            raise conflict("customs_declared")
+        self._guard_case_open(case, also)
         return case
 
     async def _reopen_if_incomplete(self, project_id: uuid.UUID, case: CustomsCase, actor_id: Any) -> None:
@@ -2124,10 +2530,7 @@ class LogisticsPlanService:
         if "document_ref" in data:
             row.document_ref = data["document_ref"]
         if data.get("state") and data["state"] != row.state:
-            if not pl.can_move(pl.CUSTOMS_DOCUMENT_FSM, row.state, data["state"]):
-                raise conflict("invalid_transition")
-            if case.state == "held" and data["state"] == "missing" and row.required:
-                raise conflict("customs_declared")
+            self._guard_document_move(case, row, data["state"])
             row.state = data["state"]
         if row.state in ("received", "verified") and not row.document_ref:
             raise LogisticsError("document_ref_required", 422)
@@ -2159,18 +2562,7 @@ class LogisticsPlanService:
     async def transition_customs(self, project_id: uuid.UUID, case_id: Any, target: str, actor_id: Any) -> CustomsCase:
         cat = await self.catalogue(project_id)
         row = await self._get(CustomsCase, project_id, case_id, "customs_not_found", lock=True)
-        if not pl.can_move(pl.CUSTOMS_FSM, row.state, target):
-            raise conflict("invalid_transition", detail=f"{row.state}->{target}")
-        docs = [document_out(d) for d in await self._list(CustomsDocument, project_id, customs_case_id=row.id)]
-        missing = pl.missing_required(docs)
-        if target in ("documents_complete", "declared") and missing:
-            raise LogisticsError("required_document_missing", 422, violations=[{"code": k} for k in missing])
-        if target in ("documents_complete", "declared"):
-            lines = await self._list(CustomsLine, project_id, customs_case_id=row.id)
-            if not lines:
-                raise LogisticsError("customs_without_lines", 422)
-        if target == "declared" and self.incoterm_of(cat, row) is None:
-            raise LogisticsError("incoterm_unknown", 422)
+        await self._guard_customs_transition(project_id, cat, row, target)
         if target == "cleared":
             row.cleared_on = row.cleared_on or await self.site_today(project_id)
         before = self._move(pl.CUSTOMS_FSM, row, target)
@@ -2279,8 +2671,7 @@ class LogisticsPlanService:
         self, project_id: uuid.UUID, complaint_id: Any, data: dict[str, Any], actor_id: Any
     ) -> NeighbourIssue:
         row = await self._get(NeighbourIssue, project_id, complaint_id, "complaint_not_found", lock=True)
-        if row.state == "closed":
-            raise conflict("complaint_closed")
+        self._guard_complaint_edit(row)
         if "kind" in data:
             self._need(await self.catalogue(project_id), "neighbour_issue_kinds", data["kind"], "unknown_issue_kind")
         await self._soft("transport", data.get("transport_id"), project_id)
@@ -2295,10 +2686,7 @@ class LogisticsPlanService:
         self, project_id: uuid.UUID, complaint_id: Any, target: str, actor_id: Any
     ) -> NeighbourIssue:
         row = await self._get(NeighbourIssue, project_id, complaint_id, "complaint_not_found", lock=True)
-        if not pl.can_move(pl.COMPLAINT_FSM, row.state, target):
-            raise conflict("invalid_transition", detail=f"{row.state}->{target}")
-        if target in ("action_taken", "closed") and not row.response.strip():
-            raise LogisticsError("response_required", 422)
+        self._guard_complaint_transition(row, target)
         before = self._move(pl.COMPLAINT_FSM, row, target)
         await self.session.flush()
         await self._audit(

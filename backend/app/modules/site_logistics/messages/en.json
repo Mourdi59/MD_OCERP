@@ -170,6 +170,7 @@
       "unknown_catalogue": "Unknown catalogue.",
       "unknown_document_kind": "Unknown document kind.",
       "unknown_issue_kind": "Unknown complaint kind.",
+      "unknown_link_kind": "There is no list for this kind of link.",
       "unknown_load_class": "Unknown load class.",
       "unknown_media_kind": "Unknown utility.",
       "unknown_noise_limit": "Unknown noise limit entry.",
