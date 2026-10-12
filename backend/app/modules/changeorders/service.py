@@ -1456,6 +1456,32 @@ class ChangeOrderService:
         # already posted to the same contract.
         variation_order_id_s = str(_md.get("variation_order_id")) if _md.get("variation_order_id") else None
 
+        # Commitment release gate, before the first write below. A change order
+        # linked to its own commitment item is checked as its own document; one
+        # that is not is checked as an addition to its contract's item. A mirror
+        # of a variation order is not checked here: the variation is the guard
+        # point for that money, and checking twice would count it twice.
+        # ``ok`` when no matrix is installed or nothing is linked; ``block``
+        # raises 409; ``warn`` proceeds and is on the audit trail.
+        if variation_order_id_s is None:
+            from app.core import commitment_guard
+
+            try:
+                parent_contract = uuid.UUID(contract_id_s) if contract_id_s else None
+            except ValueError:
+                parent_contract = None
+            await commitment_guard.enforce(
+                self.session,
+                project_id=project_id_uuid,
+                kind="change_order",
+                document_id=order.id,
+                new_amount=Decimal(str(cost_impact_s or 0)),
+                currency=(currency_s or "").strip().upper(),
+                actor_id=user_id,
+                parent_kind="contract" if parent_contract else None,
+                parent_id=parent_contract,
+            )
+
         now = datetime.now(UTC).isoformat()[:19]
         from_status_snapshot = order.status
         written: dict[str, Any] = {

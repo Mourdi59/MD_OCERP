@@ -40,8 +40,13 @@ LINK_KINDS: tuple[str, ...] = (
     "change_order",
     "variation_order",
     "tender_package",
+    "bid_package",
+    "rfq",
     "contingency_drawdown",
 )
+# The award a commitment was born from, in each of the three tendering modules:
+# provenance, never an amount (the contract and PO the award drafts carry it).
+AWARD_KINDS: tuple[str, ...] = ("tender_package", "bid_package", "rfq")
 _CO_COUNTING = ("approved", "executed")
 _VO_NOT_COUNTING = ("voided", "cancelled", "draft")
 _CONTRACT_CLOSED = ("completed", "closed", "terminated")
@@ -98,9 +103,11 @@ def _uuid(value: object) -> uuid.UUID | None:
 
 async def document_in_project(session: AsyncSession, project_id: uuid.UUID, kind: str, document_id: uuid.UUID) -> bool:
     """Whether ``document_id`` of ``kind`` belongs to ``project_id`` (rule 21: anything else is 404)."""
+    from app.modules.bid_management.models import BidPackage
     from app.modules.changeorders.models import ChangeOrder
     from app.modules.contracts.models import Contract, ContractLine
     from app.modules.procurement.models import PurchaseOrder
+    from app.modules.rfq_bidding.models import RFQ
     from app.modules.tendering.models import TenderPackage
     from app.modules.variations.models import VariationOrder
 
@@ -117,6 +124,8 @@ async def document_in_project(session: AsyncSession, project_id: uuid.UUID, kind
         "change_order": ChangeOrder,
         "variation_order": VariationOrder,
         "tender_package": TenderPackage,
+        "bid_package": BidPackage,
+        "rfq": RFQ,
     }.get(kind)
     if model is None:
         return False
@@ -226,9 +235,9 @@ async def link_figures(
             f.contract_id = v.affected_contract_id
             f.closed = f.status.lower() == "completed"
 
-    for f in by_kind.get("tender_package", []) + by_kind.get("contingency_drawdown", []):
+    for f in [*(f for k in AWARD_KINDS for f in by_kind.get(k, [])), *by_kind.get("contingency_drawdown", [])]:
         f.counts = False
-        f.notes.append("provenance_only" if f.kind == "tender_package" else "drawdown_not_wired")
+        f.notes.append("provenance_only" if f.kind in AWARD_KINDS else "drawdown_not_wired")
 
     for f in figs:
         f.amount = f.raw if f.counts else ZERO

@@ -118,6 +118,27 @@ def required_tier(
     return TierResult(tier, False, amount, match.code, tuple(sorted(raised)))
 
 
+def lowest_tier_ceiling(schedule: AuthoritySchedule, commitment_type: str) -> Decimal:
+    """The largest amount of ``commitment_type`` the schedule's lowest tier may still approve (SPEC rule 20).
+
+    This is what replaces a module's own fixed "high value" constant for a project
+    with a schedule: an amount above it needs more than the lowest tier. ``0`` when
+    a novelty flag on the type lifts even the smallest amount above the lowest tier;
+    ``Decimal("Infinity")`` when the lowest tier's band is open.
+
+    Raises:
+        ValueError: The type is not in the schedule.
+    """
+    lowest = schedule.tiers[0].code if schedule.tiers else None
+    if required_tier(schedule, commitment_type, Decimal("0")).tier_code != lowest:
+        return Decimal("0")
+    order = schedule.tier_order()
+    for b in sorted(_bands_for(schedule, commitment_type), key=lambda b: order[b.tier]):
+        if b.tier == lowest:
+            return Decimal("Infinity") if b.max_amount is None else parse_amount(b.max_amount)
+    return Decimal("0")
+
+
 def tolerance_ceiling(released: Decimal, absolute: Decimal, percent: Decimal) -> Decimal:
     """What a linked amount may reach before the release must be renewed: the larger allowance wins."""
     return released + max(absolute, released * percent)

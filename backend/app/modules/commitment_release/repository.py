@@ -75,14 +75,14 @@ class CommitmentRepository:
         stmt = select(CommitmentLink).where(
             CommitmentLink.project_id == project_id,
             CommitmentLink.kind == kind,
-            CommitmentLink.document_id == document_id,
+            CommitmentLink.target_id == document_id,
         )
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
     async def links_for_documents(self, kind: str, document_ids: list[uuid.UUID]) -> list[CommitmentLink]:
         if not document_ids:
             return []
-        stmt = select(CommitmentLink).where(CommitmentLink.kind == kind, CommitmentLink.document_id.in_(document_ids))
+        stmt = select(CommitmentLink).where(CommitmentLink.kind == kind, CommitmentLink.target_id.in_(document_ids))
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def list_preconditions(

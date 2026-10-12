@@ -223,3 +223,77 @@ async def test_a_deleted_tier_route_refuses_the_request_with_a_code(world: World
     with pytest.raises(CommitmentError) as exc:
         await request(world, iid, "10000")
     assert exc.value.code == "no_route_for_tier"
+
+
+async def _contingency_line(w: World, amount: str) -> uuid.UUID:
+    from app.modules.finance.models import ProjectBudget
+
+    async with w.factory() as s:
+        line = ProjectBudget(
+            project_id=w.project_id,
+            category="contingency",
+            currency_code="EUR",
+            original_budget=Decimal(amount),
+            revised_budget=Decimal(amount),
+            metadata_={},
+        )
+        s.add(line)
+        await s.commit()
+        return line.id
+
+
+async def _drawdowns(w: World, line_id: uuid.UUID) -> dict:
+    from app.modules.finance.models import ProjectBudget
+
+    async with w.factory() as s:
+        meta = (await s.get(ProjectBudget, line_id)).metadata_ or {}
+    return {k: v for k, v in meta.items() if k.startswith("contingency_drawdown:")}
+
+
+async def test_an_approved_drawdown_is_written_to_the_contingency_line_once(world: World) -> None:
+    line = await _contingency_line(world, "100000")
+    iid = await item(world, code="CD-1", amount="60000", ctype="contingency_drawdown")
+    d1 = await request(world, iid, "30000")
+    await decide(world, d1, world.pm)
+    assert {k: v["amount"] for k, v in (await _drawdowns(world, line)).items()} == {
+        f"contingency_drawdown:commitment:{iid}": "30000.00"
+    }
+    # The second tranche replaces the record with the cumulative amount, never adds a second one.
+    d2 = await request(world, iid, "20000")
+    await decide(world, d2, world.pm)  # cumulative 50,000 is still the project manager tier
+    assert {k: v["amount"] for k, v in (await _drawdowns(world, line)).items()} == {
+        f"contingency_drawdown:commitment:{iid}": "50000.00"
+    }
+
+
+async def test_a_drawdown_above_the_lines_balance_is_refused(world: World) -> None:
+    await _contingency_line(world, "100000")
+    first = await item(world, code="CD-1", amount="70000", ctype="contingency_drawdown")
+    d = await request(world, first, "70000")
+    await decide(world, d, world.sponsor)
+    second = await item(world, code="CD-2", amount="40000", ctype="contingency_drawdown")
+    with pytest.raises(CommitmentError) as exc:
+        await request(world, second, "40000")
+    assert exc.value.code == "contingency_insufficient"
+
+
+async def test_a_drawdown_taken_while_the_request_waited_turns_the_approval_into_a_rejection(world: World) -> None:
+    line = await _contingency_line(world, "100000")
+    a = await item(world, code="CD-A", amount="60000", ctype="contingency_drawdown")
+    b = await item(world, code="CD-B", amount="60000", ctype="contingency_drawdown")
+    da = await request(world, a, "60000")
+    db = await request(world, b, "60000")
+    await decide(world, da, world.sponsor)
+    await decide(world, db, world.sponsor)
+    async with world.factory() as s:
+        from app.modules.commitment_release.models import ReleaseDecision
+
+        late = await s.get(ReleaseDecision, db.id)
+    assert (late.outcome, late.rationale) == ("rejected", "contingency_insufficient")
+    assert list(await _drawdowns(world, line)) == [f"contingency_drawdown:commitment:{a}"]
+
+
+async def test_an_item_on_a_gate_names_its_management_area(world: World) -> None:
+    with pytest.raises(CommitmentError) as exc:
+        await item(world, code="G-1", amount="1000", gate_code="strategy_to_brief")
+    assert exc.value.code == "governance_area_required"

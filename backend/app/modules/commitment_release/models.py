@@ -145,7 +145,7 @@ class CommitmentLink(Base):
 
     __tablename__ = "oe_commitment_link"
     __table_args__ = (
-        UniqueConstraint("project_id", "kind", "document_id", name="uq_oe_cmt_link_document"),
+        UniqueConstraint("project_id", "kind", "target_id", name="uq_oe_cmt_link_document"),
         Index("ix_oe_cmt_link_item", "item_id"),
     )
 
@@ -155,10 +155,18 @@ class CommitmentLink(Base):
     item_id: Mapped[uuid.UUID] = mapped_column(
         GUID(), ForeignKey(_ITEM_FK, ondelete="CASCADE", name="fk_oe_cmt_link_item"), nullable=False
     )
-    # contract | contract_line | purchase_order | change_order | variation_order | tender_package | contingency_drawdown
+    # contract | contract_line | purchase_order | change_order | variation_order | tender_package | bid_package | rfq
+    # | contingency_drawdown
     kind: Mapped[str] = mapped_column(String(30), nullable=False)
-    document_id: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False)
+    # The id of the contract, PO, change, award ... that ``kind`` names; never a CDE
+    # document (so not one of the document references the delete prompt asks about).
+    target_id: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False)
     created_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+
+    @property
+    def document_id(self) -> uuid.UUID:
+        """The API's name for :attr:`target_id`."""
+        return self.target_id
 
 
 class CommitmentPrecondition(Base):

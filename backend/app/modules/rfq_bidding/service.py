@@ -1242,6 +1242,22 @@ class RFQService:
         bid_currency_local = bid.currency_code
         project_id_local = rfq.project_id
 
+        # The award is the owner's earliest legal commitment: the release check
+        # of the commitment matrix runs here, before any write (``ok`` when no
+        # matrix is installed or the RFQ is not linked to an item; ``block``
+        # raises 409; ``warn`` proceeds and is on the audit trail).
+        from app.core import commitment_guard
+
+        await commitment_guard.enforce(
+            self.session,
+            project_id=project_id_local,
+            kind="rfq",
+            document_id=rfq_id_local,
+            new_amount=Decimal(str(bid_amount_local or 0)),
+            currency=(bid_currency_local or "").strip().upper(),
+            actor_id=actor_id,
+        )
+
         # Mark the bid as awarded
         await self.bids_repo.update(bid_id, is_awarded=True)
 

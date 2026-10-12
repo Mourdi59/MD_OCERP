@@ -18,21 +18,23 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core import commitment_guard
+from app.modules.commitment_release import guard
 from app.modules.commitment_release.guard import check_document
 from app.modules.commitment_release.models import CommitmentItem
 from app.modules.commitment_release.service import CommitmentService
 from tests._pg import isolated_engine
-from tests.pg.commitment_fixtures import World, build_world, decide, item, link, request
+from tests.pg.commitment_fixtures import World, build_world, decide, guard_rows, item, link, request
 
 pytestmark = pytest.mark.asyncio
 
 
 @pytest_asyncio.fixture
-async def world():
+async def world(monkeypatch: pytest.MonkeyPatch):
     commitment_guard.register_commitment_guard(check_document)
     try:
         async with isolated_engine() as engine:
             factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+            monkeypatch.setattr(guard, "session_factory", factory)
             yield await build_world(factory)
     finally:
         commitment_guard.unregister_commitment_guard()
@@ -86,6 +88,29 @@ async def _package_status(w: World, pkg: uuid.UUID) -> str:
         return (await s.get(TenderPackage, pkg)).status
 
 
+async def _bid_status(w: World, bid: uuid.UUID) -> str:
+    from app.modules.tendering.models import TenderBid
+
+    async with w.factory() as s:
+        return (await s.get(TenderBid, bid)).status
+
+
+async def test_preview_check_records_nothing(world: World) -> None:
+    from decimal import Decimal
+
+    iid = await _released_item(world, "40000")
+    pkg, _bid = await _package(world, "60000")
+    await link(world, iid, "tender_package", pkg)
+    await _enforcement(world, "block")
+    async with world.factory() as s:
+        out = await CommitmentService(s).check_document(
+            world.project_id, kind="tender_package", document_id=pkg, new_amount=Decimal("60000"), currency="EUR"
+        )
+        await s.commit()
+    assert out["result"] == "block"
+    assert await guard_rows(world, pkg) == []
+
+
 async def test_award_over_release_is_warned_and_proceeds_under_warn(world: World) -> None:
     iid = await _released_item(world, "40000")
     pkg, bid = await _package(world, "60000")
@@ -96,6 +121,30 @@ async def test_award_over_release_is_warned_and_proceeds_under_warn(world: World
     assert out["commitment_guard"]["reasons"][0]["code"] == "commitment_not_released"
     assert out["commitment_guard"]["item_id"] == str(iid)
     assert await _package_status(world, pkg) == "awarded"
+    assert await guard_rows(world, pkg) == ["guard_warn"]
+
+
+async def _bid_status(w: World, bid: uuid.UUID) -> str:
+    from app.modules.tendering.models import TenderBid
+
+    async with w.factory() as s:
+        return (await s.get(TenderBid, bid)).status
+
+
+async def test_preview_check_records_nothing(world: World) -> None:
+    from decimal import Decimal
+
+    iid = await _released_item(world, "40000")
+    pkg, _bid = await _package(world, "60000")
+    await link(world, iid, "tender_package", pkg)
+    await _enforcement(world, "block")
+    async with world.factory() as s:
+        out = await CommitmentService(s).check_document(
+            world.project_id, kind="tender_package", document_id=pkg, new_amount=Decimal("60000"), currency="EUR"
+        )
+        await s.commit()
+    assert out["result"] == "block"
+    assert await guard_rows(world, pkg) == []
 
 
 async def test_award_over_release_is_refused_under_block_and_nothing_moves(world: World) -> None:
@@ -107,7 +156,10 @@ async def test_award_over_release_is_refused_under_block_and_nothing_moves(world
         await _award(world, pkg, bid)
     assert exc.value.status_code == 409
     assert exc.value.detail["code"] == "commitment_not_released"
+    # The refused award left nothing behind, but the refusal itself is on record.
     assert await _package_status(world, pkg) == "evaluating"
+    assert await _bid_status(world, bid) != "accepted"
+    assert await guard_rows(world, pkg) == ["guard_block"]
 
 
 async def test_award_within_release_and_tolerance_is_ok_under_block(world: World) -> None:
@@ -119,6 +171,7 @@ async def test_award_within_release_and_tolerance_is_ok_under_block(world: World
     out = await _award(world, pkg, bid)
     assert "commitment_guard" not in out
     assert await _package_status(world, pkg) == "awarded"
+    assert await guard_rows(world, pkg) == []
 
 
 async def test_unreleased_item_blocks_the_award(world: World) -> None:

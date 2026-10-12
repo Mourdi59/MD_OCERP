@@ -14,11 +14,11 @@ stopping now would still cost.
 
 async def on_startup() -> None:
     """Register catalogue kinds, permissions, rules, subscribers, the gate evidence provider and the guard."""
-    from app.core.commitment_guard import register_commitment_guard
+    from app.core.commitment_guard import register_change_threshold, register_commitment_guard
     from app.modules.commitment_release.catalogue import register_kinds
     from app.modules.commitment_release.events import register_commitment_subscribers
     from app.modules.commitment_release.evidence import register_gate_evidence
-    from app.modules.commitment_release.guard import check_document
+    from app.modules.commitment_release.guard import change_threshold, check_document
     from app.modules.commitment_release.permissions import register_commitment_permissions
     from app.modules.commitment_release.validators import register_commitment_rules
 
@@ -28,3 +28,4 @@ async def on_startup() -> None:
     register_commitment_subscribers()
     register_gate_evidence()
     register_commitment_guard(check_document)
+    register_change_threshold(change_threshold)

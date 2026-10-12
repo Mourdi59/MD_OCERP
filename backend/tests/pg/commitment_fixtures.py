@@ -255,3 +255,34 @@ async def link(w: World, item_id: uuid.UUID, kind: str, document_id: uuid.UUID) 
     async with w.factory() as s:
         await CommitmentService(s).add_link(w.project_id, item_id, kind, document_id, actor_id=w.requester)
         await s.commit()
+
+
+async def guard_rows(w: World, document_id: uuid.UUID) -> list[str]:
+    """Actions of the guard's audit rows for one document, oldest first."""
+    from sqlalchemy import select
+
+    from app.core.audit_log import ActivityLog
+
+    async with w.factory() as s:
+        rows = await s.execute(
+            select(ActivityLog.action)
+            .where(ActivityLog.entity_type == "commitment_guard", ActivityLog.entity_id == str(document_id))
+            .order_by(ActivityLog.created_at)
+        )
+        return list(rows.scalars().all())
+
+
+async def set_enforcement(w: World, mode: str) -> None:
+    async with w.factory() as s:
+        await CommitmentService(s).set_matrix(
+            w.project_id, actor_id=w.manager, tenant_id=str(w.manager), enforcement=mode
+        )
+        await s.commit()
+
+
+async def released_item(w: World, amount: str, *, code: str = "CR-G", ctype: str = "works") -> uuid.UUID:
+    """An item released in full by the project manager tier (amounts up to 50,000)."""
+    iid = await item(w, code=code, amount=amount, ctype=ctype)
+    d = await request(w, iid, amount)
+    await decide(w, d, w.pm)
+    return iid

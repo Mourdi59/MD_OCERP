@@ -36,8 +36,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit_log import log_activity
 from app.core.events import publish_after_commit
 from app.core.fsm import FSMError
+from app.modules.commitment_release import drawdown, figures
 from app.modules.commitment_release import evaluator as ev
-from app.modules.commitment_release import figures
 from app.modules.commitment_release.catalogue import (
     ABORT_BASIS_KIND,
     AUTHORITY_SCHEDULE_KIND,
@@ -531,6 +531,26 @@ class CommitmentService:
         for flag in data.get("flags") or []:
             if flag not in {f.code for f in schedule.novelty_flags}:
                 raise CommitmentError("flag_unknown", 422)
+        await self._check_gate_fields(project_id, data)
+
+    async def _check_gate_fields(self, project_id: uuid.UUID, data: dict[str, Any]) -> None:
+        """Rule 22: gate evidence is asked per gate and management area, so an item that names a gate names
+        its area too; otherwise no evidence call would ever see it. Both must exist in the project's
+        governance model when it has one."""
+        gate, area = data.get("gate_code"), data.get("governance_area_code")
+        if not gate and not area:
+            return
+        if gate and not area:
+            raise CommitmentError("governance_area_required", 422)
+        from app.modules.project_governance.repository import GovernanceRepository
+
+        repo = GovernanceRepository(self.session)
+        if await repo.get_model(project_id) is None:
+            return
+        if area and area not in {a.code for a in await repo.list_areas(project_id)}:
+            raise CommitmentError("governance_area_unknown", 422)
+        if gate and gate not in {g.code for g in await repo.list_gates(project_id)}:
+            raise CommitmentError("gate_unknown", 422)
 
     async def create_item(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID) -> CommitmentItem:
         matrix = await self.require_matrix(project_id)
@@ -607,6 +627,9 @@ class CommitmentService:
             merged.setdefault("planned_manual_amount", item.planned_manual_amount)
             merged.setdefault("currency", item.currency)
             merged.setdefault("planned_source_id", item.planned_source_id)
+        if "gate_code" in changes or "governance_area_code" in changes:
+            merged.setdefault("gate_code", item.gate_code)
+            merged.setdefault("governance_area_code", item.governance_area_code)
         matrix = await self.require_matrix(project_id)
         await self._check_item_fields(project_id, merged, await self.schedule_for(matrix))
         if changes.get("deferred") and not str(changes.get("deferred_reason") or item.deferred_reason).strip():
@@ -670,7 +693,7 @@ class CommitmentService:
         if kind in ("change_order", "variation_order") and item.commitment_type != "change":
             await self._refuse_change_double_count(project_id, item, kind, document_id)
         link = CommitmentLink(
-            project_id=project_id, item_id=item.id, kind=kind, document_id=document_id, created_by=actor_id
+            project_id=project_id, item_id=item.id, kind=kind, target_id=document_id, created_by=actor_id
         )
         try:
             async with self.session.begin_nested():
@@ -690,7 +713,7 @@ class CommitmentService:
         figs = await figures.link_figures(
             self.session,
             project_id,
-            [CommitmentLink(id=uuid.uuid4(), item_id=item.id, kind=kind, document_id=document_id)],
+            [CommitmentLink(id=uuid.uuid4(), item_id=item.id, kind=kind, target_id=document_id)],
             basis="net",
         )
         contract_id = figs[0].contract_id if figs else None
@@ -1335,6 +1358,10 @@ class CommitmentService:
         route_tier = schedule.tier(e["route_tier"])
         if route_tier.four_eyes and str(actor_id) in set(e["approvers"]):
             raise forbidden("four_eyes_requester_is_approver")
+        if item.commitment_type == drawdown.ITEM_TYPE:
+            await self._drawdown_cover(
+                item, matrix, e["released_before"] + e["converted"], e["schedule_currency"], today
+            )
         links = await self.repo.list_links(project_id, [item.id])
         snapshot = {
             "evaluation": self.evaluation_out(e),
@@ -1431,6 +1458,23 @@ class CommitmentService:
     ) -> None:
         if decision.outcome != "pending":
             raise conflict("release_decided")
+        balance: drawdown.LineBalance | None = None
+        if outcome == "released" and item.commitment_type == drawdown.ITEM_TYPE:
+            # Rule 17, checked again at approval: money another drawdown took while this request
+            # waited is never overdrawn. The shortfall turns the approval into a coded rejection
+            # (the safe direction); the item can be requested again.
+            try:
+                balance = await self._drawdown_cover(
+                    item,
+                    await self.require_matrix(item.project_id),
+                    decision.cumulative_after,
+                    decision.schedule_currency,
+                    datetime.now(UTC).date(),
+                )
+            except CommitmentError as exc:
+                if exc.code != "contingency_insufficient":
+                    raise
+                outcome, rationale = "rejected", "contingency_insufficient"
         decision.outcome = outcome
         decision.decided_by = decided_by
         decision.on_behalf_of = on_behalf_of
@@ -1440,7 +1484,9 @@ class CommitmentService:
             target = await self._released_state(item, decision)
         else:
             target = item.status_before or "planned"
-            item.attempt_no += 1
+        # Every closed decision frees the next attempt number: a second tranche after a release is a new
+        # attempt too, and reusing the number would collide on ``uq_oe_cmt_release_attempt``.
+        item.attempt_no += 1
         item.status_before = None
         await self._fsm(item, target, decided_by, rationale or None, release_id=str(decision.id), outcome=outcome)
         await self._audit(
@@ -1462,7 +1508,47 @@ class CommitmentService:
                 {"project_id": str(item.project_id), "code": item.code},
             )
         if outcome == "released":
+            if balance is not None:
+                await self._write_drawdown(item, decision, decided_by, balance)
             await self.recompute_item(item.project_id, item.id, actor_id=decided_by, locked=item)
+
+    async def _drawdown_cover(
+        self, item: CommitmentItem, matrix: CommitmentMatrix, cumulative: Decimal, sched_ccy: str, today: date
+    ) -> drawdown.LineBalance:
+        """Rule 17: the line must still hold the cumulative drawdown, in its own currency."""
+        project = await self._project(item.project_id)
+        balance = await drawdown.line_for(self.session, project, item)
+        quote = await self.quote(matrix, project, sched_ccy, balance.currency, today)
+        drawdown.require_cover(balance, quote.apply(cumulative))
+        return balance
+
+    async def _write_drawdown(
+        self, item: CommitmentItem, decision: ReleaseDecision, decided_by: Any, balance: drawdown.LineBalance
+    ) -> None:
+        """Rule 17: an approved release writes the item's cumulative drawdown onto its contingency line."""
+        matrix = await self.require_matrix(item.project_id)
+        today = datetime.now(UTC).date()
+        project = await self._project(item.project_id)
+        amount = (await self.quote(matrix, project, decision.schedule_currency, balance.currency, today)).apply(
+            decision.cumulative_after
+        )
+        await drawdown.write(
+            self.session,
+            project_id=item.project_id,
+            item=item,
+            balance=balance,
+            amount=amount,
+            release_id=decision.id,
+            decided_by=decided_by,
+            decided_at=(decision.decided_at or datetime.now(UTC)).isoformat(),
+        )
+        await self._audit(
+            decided_by,
+            "commitment_item",
+            item.id,
+            "contingency_drawdown_written",
+            metadata={"budget_id": str(balance.budget_id), "amount": str(amount), "currency": balance.currency},
+        )
 
     async def _released_state(self, item: CommitmentItem, decision: ReleaseDecision) -> str:
         """``released`` when the cumulative release covers the planned amount, else ``partially_released`` (rule 5)."""
@@ -1625,19 +1711,30 @@ class CommitmentService:
         new_amount: Any,
         currency: str,
         actor_id: Any = None,
+        parent_kind: str | None = None,
+        parent_id: uuid.UUID | None = None,
+        gross_amount: Any = None,
     ) -> dict[str, Any]:
-        """Would binding ``new_amount`` on this document stay within its item's release (plus tolerance)?"""
+        """Would binding ``new_amount`` on this document stay within its item's release (plus tolerance)?
+
+        A linked document replaces its own figure (``new_amount`` is its new total). An unlinked change
+        whose ``parent`` is linked adds to the parent's item (``new_amount`` is the change's own amount).
+
+        Pure: writes nothing. The guard (:mod:`.guard`) records a ``warn`` or ``block``; the
+        ``/check`` preview records nothing.
+        """
         matrix = await self.repo.get_matrix(project_id)
         if matrix is None or matrix.enforcement == "off":
             return {"result": "ok", "reasons": [], "item_id": None}
         severity = "block" if matrix.enforcement == "block" else "warn"
         link = await self.repo.find_link(project_id, kind, document_id) if document_id else None
+        additive = False
+        if link is None and parent_kind and parent_id:
+            link = await self.repo.find_link(project_id, parent_kind, parent_id)
+            additive = link is not None
         if link is None:
             if matrix.require_link:
                 out = {"result": severity, "reasons": [{"code": "commitment_not_in_matrix"}], "item_id": None}
-                await self._audit(
-                    actor_id, "commitment_guard", document_id, f"guard_{severity}", metadata={"kind": kind, **out}
-                )
                 return out
             return {"result": "ok", "reasons": [], "item_id": None}
         project = await self._project(project_id)
@@ -1645,20 +1742,19 @@ class CommitmentService:
         today = datetime.now(UTC).date()
         sched_ccy = self.schedule_currency(schedule, project)
         reasons: list[dict[str, Any]] = []
+        if schedule.basis == "gross" and gross_amount is not None:
+            new_amount = gross_amount
         try:
             new_sched = (await self.quote(matrix, project, currency, sched_ccy, today)).apply(_amount(new_amount))
             per_item, _committed, _r = await self.committed_for_items(matrix, project, schedule, on_date=today)
             others = ZERO
             for f in per_item.get(link.item_id, []):
-                if f.link_id == link.id or not f.amount:
+                if (f.link_id == link.id and not additive) or not f.amount:
                     continue
                 others += (await self.quote(matrix, project, f.currency, sched_ccy, today)).apply(f.amount)
         except FxRateMissing:
             reasons.append({"code": "fx_rate_missing"})
             out = {"result": severity, "reasons": reasons, "item_id": str(link.item_id)}
-            await self._audit(
-                actor_id, "commitment_guard", document_id, f"guard_{severity}", metadata={"kind": kind, **out}
-            )
             return out
         released = self.released_in_schedule_currency(await self.repo.list_releases(project_id, [link.item_id]))
         tol = schedule.variation_tolerance
@@ -1676,9 +1772,6 @@ class CommitmentService:
         if not reasons:
             return {"result": "ok", "reasons": [], "item_id": str(link.item_id)}
         out = {"result": severity, "reasons": reasons, "item_id": str(link.item_id)}
-        await self._audit(
-            actor_id, "commitment_guard", document_id, f"guard_{severity}", metadata={"kind": kind, **out}
-        )
         return out
 
     # ── gate evidence, validation payload, export rows ─────────────────────

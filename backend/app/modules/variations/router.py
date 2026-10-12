@@ -74,6 +74,7 @@ from app.modules.variations.service import (
     VariationsService,
     ensure_high_value_authorised,
     is_nec4_overdue,
+    project_high_value_threshold,
     supported_contract_standards,
 )
 
@@ -391,6 +392,7 @@ async def approve_variation_request(
         if body.decided_amount is not None
         else existing.estimated_cost_impact,
         payload=payload,
+        threshold=await project_high_value_threshold(session, existing.project_id, existing.currency),
     )
     vr = await service.transition_variation_request(
         vr_id,
@@ -440,7 +442,11 @@ async def convert_vr_to_vo(
     # high-value conversions behind variations.approve_high_value too. Use the
     # effective committed amount (body override else the source VR estimate).
     effective_amount = body.final_cost_impact if body.final_cost_impact is not None else vr.estimated_cost_impact
-    ensure_high_value_authorised(effective_amount, payload=user_payload)
+    ensure_high_value_authorised(
+        effective_amount,
+        payload=user_payload,
+        threshold=await project_high_value_threshold(session, vr.project_id, vr.currency),
+    )
     payload = VariationOrderCreate(
         project_id=vr.project_id,
         variation_request_id=vr_id,
@@ -683,7 +689,11 @@ async def update_variation_order(
     # only variations.update could inflate an issued VO's cost past the threshold
     # with no authorisation.
     if data.final_cost_impact is not None:
-        ensure_high_value_authorised(data.final_cost_impact, payload=user_payload)
+        ensure_high_value_authorised(
+            data.final_cost_impact,
+            payload=user_payload,
+            threshold=await project_high_value_threshold(session, existing.project_id, existing.currency),
+        )
     vo = await service.update_order(vo_id, data, user_id=str(user_id) if user_id else None)
     return VariationOrderResponse.model_validate(vo)
 

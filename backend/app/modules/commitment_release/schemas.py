@@ -22,7 +22,16 @@ T = TypeVar("T")
 Enforcement = Literal["off", "warn", "block"]
 FxPolicy = Literal["fx_service_rate_set", "project_rates"]
 PlannedSource = Literal["budget_line", "cost_line", "boq_position", "manual"]
-LinkKind = Literal["contract", "contract_line", "purchase_order", "change_order", "variation_order", "tender_package"]
+LinkKind = Literal[
+    "contract",
+    "contract_line",
+    "purchase_order",
+    "change_order",
+    "variation_order",
+    "tender_package",
+    "bid_package",
+    "rfq",
+]
 PreconditionKind = Literal[
     "manual",
     "gate_decided",
