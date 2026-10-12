@@ -26,6 +26,7 @@ import { projectVerdict } from './access';
 import { Amount, FIELD_CLASS, ITEM_STATUS_TONE, ReasonedButton, RefusalBox, ToneBadge, refusalText } from './CommitmentBits';
 import { useExposure, useScenarios } from './hooks';
 import { EXPOSURE_REASON, ITEM_STATUS, vocab } from './labels';
+import { nothingCommitted } from './rules';
 
 /**
  * How many rows have a residual loss and how many read "unknown". A row with

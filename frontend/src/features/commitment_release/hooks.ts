@@ -18,6 +18,7 @@ import {
   getCapabilities,
   getExposure,
   getMatrix,
+  getReferences,
   listAbortBases,
   listAbortTerms,
   listAssignments,
@@ -54,6 +55,16 @@ export function useCapabilities(projectId: string) {
     queryKey: commitmentKeys.capabilities(projectId),
     queryFn: () => getCapabilities(projectId),
     enabled: !!projectId,
+  });
+}
+
+/** Gates, areas, frame documents and funding applications a form may pick from. */
+export function useReferences(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: commitmentKeys.references(projectId),
+    queryFn: () => getReferences(projectId),
+    enabled: !!projectId && enabled,
+    staleTime: 60_000,
   });
 }
 

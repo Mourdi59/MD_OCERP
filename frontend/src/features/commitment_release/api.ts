@@ -173,6 +173,8 @@ export interface ItemLink {
   link_id: string;
   kind: LinkKind;
   document_id: string;
+  /** The contract a contract line belongs to; null for every other kind. */
+  contract_id?: string | null;
   currency: string;
   document_amount: string;
   counted_amount: string;
@@ -329,6 +331,8 @@ export interface ItemInput {
   latest_decision_date_fixed?: string | null;
   flags?: string[];
   split_group?: string | null;
+  governance_area_code?: string | null;
+  gate_code?: string | null;
   deferred?: boolean;
   deferred_reason?: string | null;
 }
@@ -343,7 +347,78 @@ export interface DecisionInput {
 
 export interface TransferInput {
   target_item_id: string;
+  /** Only for an item of another project; left out inside the project. */
+  target_project_id?: string;
   reason: string;
+}
+
+/* ── Pick lists read through the modules that own the records ──────────── */
+
+export interface ReferenceGate {
+  code: string;
+  name: CommitmentLabel;
+  status: string;
+  last_outcome: string | null;
+}
+
+export interface ReferenceArea {
+  code: string;
+  name: CommitmentLabel;
+}
+
+export interface ReferenceFrameDocument {
+  id: string;
+  doc_type: string;
+  name: CommitmentLabel;
+  area_code: string | null;
+  status: string;
+}
+
+export interface ReferenceFunding {
+  id: string;
+  code: string;
+  title: string;
+  status: string;
+}
+
+/** What the item and precondition forms let a person pick. Every list is empty without a governance model. */
+export interface References {
+  has_model: boolean;
+  gates: ReferenceGate[];
+  areas: ReferenceArea[];
+  frame_documents: ReferenceFrameDocument[];
+  funding_applications: ReferenceFunding[];
+}
+
+/** A project an item may be handed over to, with the open items that can take it. */
+export interface TransferTarget {
+  project_id: string;
+  project_name: string;
+  same_project: boolean;
+  can: CanFlag;
+  items: Array<{ id: string; code: string; title: string }>;
+}
+
+export interface CheckInput {
+  kind: LinkKind;
+  document_id: string;
+  new_amount: string;
+  currency: string;
+}
+
+export interface CheckReason {
+  code: string;
+  released?: string;
+  ceiling?: string;
+  would_commit?: string;
+  currency?: string;
+}
+
+/** What the guard would say to a new amount on a document. `item_id` is null when no item counts the document. */
+export interface CheckResult {
+  result: 'ok' | 'warn' | 'block';
+  reasons: CheckReason[];
+  item_id: string | null;
 }
 
 export interface ReleaseInput {
@@ -574,6 +649,11 @@ export const commitmentKeys = {
   scenarios: (projectId: string) => ['commitment-release', projectId, 'scenarios'] as const,
   findings: (projectId: string) => ['commitment-release', projectId, 'findings'] as const,
   documents: (projectId: string, kind: string) => ['commitment-release', projectId, 'documents', kind] as const,
+  contractLines: (projectId: string, contractId: string) =>
+    ['commitment-release', projectId, 'contract-lines', contractId] as const,
+  references: (projectId: string) => ['commitment-release', projectId, 'references'] as const,
+  transferTargets: (projectId: string, itemId: string) =>
+    ['commitment-release', projectId, 'transfer-targets', itemId] as const,
   schedules: ['commitment-release', 'schedules'] as const,
   abortBases: ['commitment-release', 'abort-bases'] as const,
 };
@@ -702,9 +782,21 @@ export function requestAbort(projectId: string, itemId: string, reason: string):
   return apiPost<Release>(`${p(projectId)}/items/${itemId}/abort`, { reason });
 }
 
-/** End the item as transferred: its linked documents move to the target item of the same project. */
+/**
+ * End the item as transferred. Its linked documents move to the target item;
+ * they belong to this project, so an item with links stays inside it.
+ */
 export function transferItem(projectId: string, itemId: string, body: TransferInput): Promise<CommitmentItem> {
   return apiPost<CommitmentItem>(`${p(projectId)}/items/${itemId}/transfer`, body);
+}
+
+/** Where the item may go: this project first, then the caller's other projects, each with the server's verdict. */
+export function listTransferTargets(projectId: string, itemId: string): Promise<TransferTarget[]> {
+  return apiGet<TransferTarget[]>(`${p(projectId)}/items/${itemId}/transfer-targets`);
+}
+
+export function getReferences(projectId: string): Promise<References> {
+  return apiGet<References>(`${p(projectId)}/references`);
 }
 
 export function listReleases(projectId: string, itemId: string): Promise<Page<Release>> {
@@ -734,6 +826,11 @@ export function saveScenario(projectId: string, body: { as_of: string; label: st
 }
 
 /* ── Checks and export ────────────────────────────────────────────────── */
+
+/** Ask what the guard would say to a new amount on a document. Nothing is written or recorded. */
+export function checkDocument(projectId: string, body: CheckInput): Promise<CheckResult> {
+  return apiPost<CheckResult>(`${p(projectId)}/check`, body);
+}
 
 export function listFindings(projectId: string): Promise<Page<Finding>> {
   return apiGet<Page<Finding>>(`${p(projectId)}/validation?today=${localToday()}`);

@@ -15,9 +15,12 @@ import { Button } from '@/shared/ui/Button';
 import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 import { WideModal } from '@/shared/ui/WideModal';
 
+import { itemVerdict } from './access';
 import { createItem, updateItem, type CommitmentItem, type CommitmentMatrix } from './api';
-import { FIELD_CLASS, Field, RefusalBox, refusalText } from './CommitmentBits';
+import { FIELD_CLASS, Field, RefusalBox, reasonText, refusalText } from './CommitmentBits';
+import { useReferences } from './hooks';
 import { PLANNED_SOURCE, codeName, vocab, type LabelContext } from './labels';
+import { areaOptions, gateOptions, withCurrent } from './references';
 import { ITEM_PROBLEM, changedItemInput, draftOfItem, itemProblems, toItemInput, type ItemDraft } from './rules';
 
 export interface ItemDialogProps {
@@ -43,6 +46,15 @@ export function ItemDialog({ open, onClose, projectId, matrix, item, labels, per
   // set where that record lives; this dialog only types an estimate.
   const amountEditable = draft.plannedSource === 'manual';
   const set = (patch: Partial<ItemDraft>) => setDraft((d) => ({ ...d, ...patch }));
+
+  // The gate and the area are the project's own governance rows. What a
+  // readiness gate reads may only change while the item is planned, and by a
+  // manager: the server says so with the same flag that guards deferring.
+  const refsQ = useReferences(projectId, open);
+  const gateVerdict = item ? itemVerdict(item, 'defer') : null;
+  const gates = withCurrent(gateOptions(refsQ.data, labels), draft.gateCode, labels);
+  const areas = withCurrent(areaOptions(refsQ.data, labels), draft.areaCode, labels);
+  const tiedToGate = !!draft.gateCode || !!draft.areaCode;
 
   const save = useMutation({
     mutationFn: () => {
@@ -264,6 +276,75 @@ export function ItemDialog({ open, onClose, projectId, matrix, item, labels, per
             ))}
           </fieldset>
         )}
+
+        <fieldset className="rounded-lg border border-border-light p-3" data-testid="item-gate-fields">
+          <legend className="px-1 text-xs font-semibold text-content-secondary">
+            {t('commitment.item_form.gate_title', { defaultValue: 'Readiness gate' })}
+          </legend>
+          {refsQ.isLoading ? (
+            <p className="text-sm text-content-tertiary">
+              {t('commitment.item_form.gate_loading', { defaultValue: 'Loading the gates of the project' })}
+            </p>
+          ) : refsQ.isError && !tiedToGate ? (
+            <p className="text-sm text-content-secondary" data-testid="item-gate-error">
+              {t('commitment.item_form.gate_error', {
+                defaultValue: 'The gates of the project could not be read. The item can be saved without a gate and tied to one later.',
+              })}
+            </p>
+          ) : !refsQ.isError && !refsQ.data?.has_model && !tiedToGate ? (
+            <p className="text-sm text-content-secondary" data-testid="item-gate-no-model">
+              {t('commitment.item_form.gate_no_model', {
+                defaultValue:
+                  'This project has no phases and gates yet, so there is no gate to tie the item to. Set them up under Project governance first.',
+              })}
+            </p>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field id="item-gate" label={t('commitment.item_form.gate', { defaultValue: 'Gate' })}>
+                  <select
+                    id="item-gate"
+                    className={FIELD_CLASS}
+                    value={draft.gateCode}
+                    disabled={!!gateVerdict}
+                    onChange={(e) => set({ gateCode: e.target.value })}
+                  >
+                    <option value="">{t('commitment.item_form.gate_none', { defaultValue: 'No gate' })}</option>
+                    {gates.map((g) => (
+                      <option key={g.value} value={g.value}>
+                        {g.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field id="item-area" label={t('commitment.item_form.area', { defaultValue: 'Management area' })}>
+                  <select
+                    id="item-area"
+                    className={FIELD_CLASS}
+                    value={draft.areaCode}
+                    disabled={!!gateVerdict}
+                    onChange={(e) => set({ areaCode: e.target.value })}
+                  >
+                    <option value="">{t('commitment.item_form.area_none', { defaultValue: 'No area' })}</option>
+                    {areas.map((a) => (
+                      <option key={a.value} value={a.value}>
+                        {a.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <p className="mt-2 text-xs text-content-tertiary" data-testid={gateVerdict ? 'item-gate-locked' : 'item-gate-hint'}>
+                {gateVerdict
+                  ? reasonText(t, gateVerdict)
+                  : t('commitment.item_form.gate_hint', {
+                      defaultValue:
+                        'The gate whose readiness check counts this item. A gate asks each management area for its own evidence, so an item with a gate needs its area.',
+                    })}
+              </p>
+            </>
+          )}
+        </fieldset>
 
         <Field
           id="item-split"

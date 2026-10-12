@@ -19,7 +19,7 @@ import {
 } from '../access';
 import { reasonText } from '../CommitmentBits';
 import { commitmentErrorCode, commitmentErrorMessage, commitmentViolations } from '../api';
-import { documentLabel, toDocumentOptions } from '../documents';
+
 import { exposureCounts } from '../ExposurePanel';
 import {
   ERROR_TEXT,
@@ -467,23 +467,7 @@ describe('server refusals', () => {
   });
 });
 
-describe('document picker', () => {
-  it('reads a page and a bare list alike, and labels a row by number and title', () => {
-    expect(toDocumentOptions({ items: [{ id: 'c1', code: 'SC-014', title: 'Structural works' }], total: 1 })).toEqual([
-      { id: 'c1', label: 'SC-014 Structural works' },
-    ]);
-    expect(toDocumentOptions([{ id: 'po1', po_number: 'PO-7' }, { id: 't1', name: 'Facade package' }])).toEqual([
-      { id: 'po1', label: 'PO-7' },
-      { id: 't1', label: 'Facade package' },
-    ]);
-  });
 
-  it('skips rows without an id and falls back to the id when a row has no words', () => {
-    expect(toDocumentOptions([{ title: 'No id' }, null, { id: 'x9' }])).toEqual([{ id: 'x9', label: 'x9' }]);
-    expect(toDocumentOptions({ detail: 'nope' })).toEqual([]);
-    expect(documentLabel({ rfq_number: 'RFQ-3', title: 'Lifts' })).toBe('RFQ-3 Lifts');
-  });
-});
 
 describe('approver assignments', () => {
   it('sends back the assignments the form does not show', () => {

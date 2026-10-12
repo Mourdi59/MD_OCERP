@@ -32,6 +32,8 @@ vi.mock('../api', async (importOriginal) => {
     decideRelease: vi.fn(),
     requestAbort: vi.fn(),
     transferItem: vi.fn(),
+    listTransferTargets: vi.fn(),
+    getReferences: vi.fn(),
   };
 });
 
@@ -72,6 +74,14 @@ beforeEach(() => {
   mocked.listReleases.mockResolvedValue(page([]));
   mocked.listAbortTerms.mockResolvedValue(page([]));
   mocked.listAbortBases.mockResolvedValue(page([]));
+  mocked.listTransferTargets.mockResolvedValue([]);
+  mocked.getReferences.mockResolvedValue({
+    has_model: false,
+    gates: [],
+    areas: [],
+    frame_documents: [],
+    funding_applications: [],
+  });
 });
 afterEach(cleanup);
 
@@ -558,12 +568,18 @@ describe('ItemPanel', () => {
     expect(alert.textContent).toContain('Complete the abort terms first');
   });
 
+  const here = (items: Array<{ id: string; code: string; title: string }>) => [
+    { project_id: 'p1', project_name: 'Riverside offices', same_project: true, can: { allowed: true, reason: null }, items },
+  ];
+
   it('a hand-over needs a target item and a reason', async () => {
+    mocked.listTransferTargets.mockResolvedValue(here([{ id: 'i2', code: 'CR-002', title: 'Lift order' }]));
     mocked.transferItem.mockResolvedValue(item({ status: 'transferred' }));
     const { onChanged } = panel();
     fireEvent.click(screen.getByTestId('item-transfer'));
     fireEvent.change(document.getElementById('end-reason')!, { target: { value: 'Merged into the lift order' } });
     expect(screen.getByTestId('end-send')).toBeDisabled();
+    await waitFor(() => expect(document.getElementById('end-target')).not.toBeNull());
     fireEvent.change(document.getElementById('end-target')!, { target: { value: 'i2' } });
     fireEvent.click(screen.getByTestId('end-send'));
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
@@ -573,10 +589,12 @@ describe('ItemPanel', () => {
     });
   });
 
-  it('a hand-over with no other open item says what to do first', () => {
+  it('a hand-over with no other open item says what to do first', async () => {
+    // The server lists the open items; an ended one in the grid is not a target.
+    mocked.listTransferTargets.mockResolvedValue(here([]));
     panel({}, [item({ id: 'i3', code: 'CR-003', status: 'aborted' })]);
     fireEvent.click(screen.getByTestId('item-transfer'));
-    expect(screen.getByTestId('transfer-no-target')).toBeInTheDocument();
+    expect(await screen.findByTestId('transfer-no-target')).toBeInTheDocument();
     expect(document.getElementById('end-target')).toBeNull();
   });
 

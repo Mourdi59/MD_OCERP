@@ -193,6 +193,22 @@ export const EXPOSURE_LINE: Record<string, KeyText> = {
   profit_on_performed: ['commitment.exposure.line.profit_on_performed', 'Profit on the work done'],
 };
 
+/** Why the guard would warn about or refuse a new amount on a document, in the words of the check panel. */
+export const CHECK_REASON: Record<string, KeyText> = {
+  commitment_not_released: [
+    'commitment.check.reason.commitment_not_released',
+    'With this amount the item would bind more than was released for it.',
+  ],
+  fx_rate_missing: [
+    'commitment.check.reason.fx_rate_missing',
+    'There is no exchange rate from this currency to the currency of the matrix, so the amount cannot be judged.',
+  ],
+  commitment_not_in_matrix: [
+    'commitment.check.reason.commitment_not_in_matrix',
+    'No item of the matrix counts this document, and this project wants every document on an item.',
+  ],
+};
+
 /** What a linked document's row says about how it was counted. The code is the part before the first colon. */
 export const LINK_NOTE: Record<string, KeyText> = {
   provenance_only: ['commitment.link_note.provenance_only', 'Shows where the award came from. Not counted as committed.'],
@@ -235,6 +251,7 @@ export const ALL_KEY_MAPS: Record<string, Record<string, KeyText>> = {
   EXPOSURE_REASON,
   EXPOSURE_LINE,
   LINK_NOTE,
+  CHECK_REASON,
 };
 
 /**
@@ -294,6 +311,11 @@ export function catalogueName(ctx: LabelContext, id: string, label?: CommitmentL
   const key = ['commitment', 'catalogue', id, 'name'].join('.');
   if (ctx.exists(key)) return ctx.t(key);
   return humanizeCode(id);
+}
+
+/** The name of a record another module owns: the label the server sent, then its code made readable. */
+export function codeLabel(ctx: LabelContext, code: string, label?: CommitmentLabel | null): string {
+  return fromLabel(label, ctx) || humanizeCode(code);
 }
 
 /**

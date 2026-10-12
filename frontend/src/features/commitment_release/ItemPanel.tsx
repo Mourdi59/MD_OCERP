@@ -45,7 +45,8 @@ import {
 import { useAbortBases, useAbortTerms, useReleaseHistory } from './hooks';
 import { AbortOutcome, EndItem, PendingRequest } from './ItemDecisions';
 import { ItemDialog } from './ItemDialog';
-import { LinkList, PreconditionList } from './ItemParts';
+import { LinkList } from './ItemLinks';
+import { PreconditionList } from './ItemParts';
 import {
   DATE_BASIS,
   EXPOSURE_LINE,
@@ -282,13 +283,13 @@ export function ItemPanel({
   const successor = item.transferred_to_item_id
     ? otherItems.find((x) => x.id === item.transferred_to_item_id) ?? null
     : null;
-  const targets = otherItems.filter((x) => x.status !== 'aborted' && x.status !== 'transferred');
+
   const remaining = remainingToRelease(item);
   const over = overRelease(item);
   const onHold = item.status === 'on_hold';
 
   const run = useMutation({
-    mutationFn: (kind: NonNullable<InlineAction>) => {
+    mutationFn: (kind: NonNullable<InlineAction>): Promise<unknown> => {
       const text = reason.trim();
       if (kind === 'withdraw') return withdrawRelease(projectId, item.id, text);
       if (kind === 'defer') return updateItem(projectId, item.id, { deferred: true, deferred_reason: text });
@@ -600,7 +601,7 @@ export function ItemPanel({
         )}
       </section>
 
-      {!ended && <EndItem projectId={projectId} item={item} targets={targets} onChanged={onChanged} />}
+      {!ended && <EndItem projectId={projectId} item={item} onChanged={onChanged} />}
 
       {releaseOpen && (
         <ReleaseDialog

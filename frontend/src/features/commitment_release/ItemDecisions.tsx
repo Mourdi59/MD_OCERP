@@ -8,15 +8,17 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Ban, Check, Clock, X } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { fmtDate } from '@/shared/lib/formatters';
 
-import { itemVerdict } from './access';
+import { UNAVAILABLE, itemVerdict } from './access';
 import {
+  commitmentKeys,
   decideRelease,
+  listTransferTargets,
   requestAbort,
   transferItem,
   type AbortRecord,
@@ -24,7 +26,7 @@ import {
   type CommitmentMatrix,
   type Release,
 } from './api';
-import { Amount, FIELD_CLASS, Field, ReasonedButton, RefusalBox, refusalText } from './CommitmentBits';
+import { Amount, FIELD_CLASS, Field, ReasonedButton, RefusalBox, reasonText, refusalText } from './CommitmentBits';
 import { ABORT_FOLLOW_UP, LINK_KIND, PRECONDITION_KIND, codeName, vocab, type LabelContext } from './labels';
 
 type PersonName = (userId: string | null | undefined) => string | null;
@@ -320,8 +322,6 @@ export function AbortOutcome({ abort, item, personName }: { abort: AbortRecord; 
 export interface EndItemProps {
   projectId: string;
   item: CommitmentItem;
-  /** The other items of the project that can take this one over. */
-  targets: ReadonlyArray<Pick<CommitmentItem, 'id' | 'code' | 'title'>>;
   onChanged: () => void;
 }
 
@@ -330,24 +330,47 @@ type Ending = 'abort' | 'transfer' | null;
 /**
  * Stopping the item or handing it over. Neither is the usual path, so both
  * sit at the end of the panel as secondary actions that explain themselves.
+ *
+ * Where an item may go is the server's answer: this project, and the
+ * caller's other projects when it lists them. A project it lists but
+ * refuses stays visible with the reason.
  */
-export function EndItem({ projectId, item, targets, onChanged }: EndItemProps) {
+export function EndItem({ projectId, item, onChanged }: EndItemProps) {
   const { t } = useTranslation();
   const [ending, setEnding] = useState<Ending>(null);
   const [reason, setReason] = useState('');
+  const [targetProject, setTargetProject] = useState('');
   const [target, setTarget] = useState('');
   const abortV = itemVerdict(item, 'request_abort');
   const transferV = itemVerdict(item, 'transfer');
+
+  // Asked only once the form is open, and only by somebody the server lets
+  // hand over: the list is closed to everybody else.
+  const targetsQ = useQuery({
+    queryKey: commitmentKeys.transferTargets(projectId, item.id),
+    queryFn: () => listTransferTargets(projectId, item.id),
+    enabled: ending === 'transfer' && !transferV,
+  });
+  const projects = targetsQ.data ?? [];
+  const chosen =
+    projects.find((p) => p.project_id === targetProject) ?? projects.find((p) => p.same_project) ?? projects[0];
+  const refused = projects.find((p) => !p.can.allowed);
+  const candidates = chosen?.can.allowed ? chosen.items : [];
 
   const run = useMutation({
     mutationFn: (): Promise<unknown> =>
       ending === 'abort'
         ? requestAbort(projectId, item.id, reason.trim())
-        : transferItem(projectId, item.id, { target_item_id: target, reason: reason.trim() }),
+        : transferItem(projectId, item.id, {
+            target_item_id: target,
+            reason: reason.trim(),
+            ...(chosen && !chosen.same_project ? { target_project_id: chosen.project_id } : {}),
+          }),
     onSuccess: () => {
       setEnding(null);
       setReason('');
       setTarget('');
+      setTargetProject('');
       onChanged();
     },
   });
@@ -382,25 +405,64 @@ export function EndItem({ projectId, item, targets, onChanged }: EndItemProps) {
       {ending && (
         <div className="space-y-3 rounded-lg bg-surface-secondary p-3" data-testid="end-form">
           {run.isError && <RefusalBox message={refusalText(t, run.error)} />}
-          {ending === 'transfer' &&
-            (targets.length === 0 ? (
-              <p className="text-sm text-content-secondary" data-testid="transfer-no-target">
-                {t('commitment.end.no_target', {
-                  defaultValue: 'There is no other open item in this project. Add the item that takes over first.',
-                })}
-              </p>
-            ) : (
-              <Field id="end-target" label={t('commitment.end.target', { defaultValue: 'Item that takes over' })} required>
-                <select id="end-target" className={FIELD_CLASS} value={target} onChange={(e) => setTarget(e.target.value)}>
-                  <option value="">{t('commitment.end.target_choose', { defaultValue: 'Choose an item' })}</option>
-                  {targets.map((x) => (
-                    <option key={x.id} value={x.id}>
-                      {t('commitment.end.target_option', { defaultValue: '{{code}} {{title}}', code: x.code, title: x.title })}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            ))}
+          {ending === 'transfer' && targetsQ.isLoading && (
+            <p className="text-sm text-content-tertiary" data-testid="transfer-loading">
+              {t('commitment.end.targets_loading', { defaultValue: 'Looking up where this item can go' })}
+            </p>
+          )}
+          {ending === 'transfer' && targetsQ.isError && <RefusalBox message={refusalText(t, targetsQ.error)} />}
+          {ending === 'transfer' && targetsQ.isSuccess && (
+            <>
+              {projects.length > 1 && (
+                <Field id="end-project" label={t('commitment.end.project', { defaultValue: 'Project that takes over' })}>
+                  <select
+                    id="end-project"
+                    className={FIELD_CLASS}
+                    value={chosen?.project_id ?? ''}
+                    onChange={(e) => {
+                      setTargetProject(e.target.value);
+                      setTarget('');
+                    }}
+                  >
+                    {projects.map((p) => (
+                      <option key={p.project_id} value={p.project_id} disabled={!p.can.allowed}>
+                        {p.same_project
+                          ? t('commitment.end.this_project', { defaultValue: '{{name}} (this project)', name: p.project_name })
+                          : p.project_name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+              {refused && (
+                <p className="text-xs text-content-secondary" data-testid="transfer-project-refused" data-reason={refused.can.reason ?? UNAVAILABLE}>
+                  {reasonText(t, refused.can.reason ?? UNAVAILABLE)}
+                </p>
+              )}
+              {candidates.length === 0 ? (
+                <p className="text-sm text-content-secondary" data-testid="transfer-no-target">
+                  {!chosen || chosen.same_project
+                    ? t('commitment.end.no_target', {
+                        defaultValue: 'There is no other open item in this project. Add the item that takes over first.',
+                      })
+                    : t('commitment.end.no_target_there', {
+                        defaultValue: 'That project has no open item. Add the item that takes over there first.',
+                      })}
+                </p>
+              ) : (
+                <Field id="end-target" label={t('commitment.end.target', { defaultValue: 'Item that takes over' })} required>
+                  <select id="end-target" className={FIELD_CLASS} value={target} onChange={(e) => setTarget(e.target.value)}>
+                    <option value="">{t('commitment.end.target_choose', { defaultValue: 'Choose an item' })}</option>
+                    {candidates.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {t('commitment.end.target_option', { defaultValue: '{{code}} {{title}}', code: x.code, title: x.title })}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+            </>
+          )}
           <Field
             id="end-reason"
             label={

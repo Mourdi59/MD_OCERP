@@ -13,6 +13,7 @@ import { isDecimalString, subtractDecimalStrings } from '@/shared/lib/exactDecim
 
 import type {
   AbortTermsInput,
+  CheckResult,
   CommitmentItem,
   Exposure,
   ExposureLine,
@@ -130,9 +131,13 @@ export interface ItemDraft {
   decisionBufferDays: string;
   flags: string[];
   splitGroup: string;
+  /** The readiness gate that reads this item, and the management area its evidence is asked from. */
+  gateCode: string;
+  areaCode: string;
 }
 
 export type ItemProblem =
+  | 'gate_needs_area'
   | 'code_missing'
   | 'title_missing'
   | 'type_missing'
@@ -153,6 +158,10 @@ export const ITEM_PROBLEM: Record<ItemProblem, KeyText> = {
     'An estimate needs an amount above zero and a three-letter currency.',
   ],
   days_invalid: ['commitment.item_form.problem.days_invalid', 'Lead time and buffer are whole days, zero or more.'],
+  gate_needs_area: [
+    'commitment.item_form.problem.gate_needs_area',
+    'Choose the management area as well. A gate asks each area for its own evidence.',
+  ],
 };
 
 function wholeDays(raw: string): number | null | 'bad' {
@@ -178,6 +187,7 @@ export function itemProblems(draft: ItemDraft, mode: 'create' | 'edit'): ItemPro
   if (wholeDays(draft.leadTimeDays) === 'bad' || wholeDays(draft.decisionBufferDays) === 'bad') {
     problems.push('days_invalid');
   }
+  if (draft.gateCode && !draft.areaCode) problems.push('gate_needs_area');
   return problems;
 }
 
@@ -196,6 +206,8 @@ export function toItemInput(draft: ItemDraft, mode: 'create' | 'edit'): ItemInpu
     decision_buffer_days: days(draft.decisionBufferDays),
     flags: draft.flags,
     split_group: draft.splitGroup.trim() || null,
+    gate_code: draft.gateCode || null,
+    governance_area_code: draft.areaCode || null,
   };
   if (mode === 'create') input.code = draft.code.trim();
   if (draft.plannedSource === 'manual') {
@@ -259,6 +271,8 @@ export function draftOfItem(item: CommitmentItem | null, defaultCurrency: string
     decisionBufferDays: item?.decision_buffer_days == null ? '' : String(item.decision_buffer_days),
     flags: item?.flags ?? [],
     splitGroup: item?.split_group ?? '',
+    gateCode: item?.gate_code ?? '',
+    areaCode: item?.governance_area_code ?? '',
   };
 }
 
@@ -422,6 +436,26 @@ export function matrixCounts(items: readonly CommitmentItem[]): MatrixCounts {
 
 /** Precondition kinds a person ticks by hand; every other kind is read from its own module. */
 export const TICKABLE_PRECONDITIONS: readonly PreconditionKind[] = ['manual', 'permit', 'public_commitment_appropriation'];
+
+export type CheckOutcome = 'fits' | 'warn' | 'block' | 'unchecked';
+
+/**
+ * What a dry run says. The server answers `ok` both when the amount fits a
+ * release and when nothing is checked at all (enforcement is off, or no item
+ * counts the document); only the first is a statement about the release, and
+ * it is the one that names the item it was judged on.
+ */
+export function checkOutcome(result: Pick<CheckResult, 'result' | 'item_id'>): CheckOutcome {
+  if (result.result !== 'ok') return result.result;
+  return result.item_id ? 'fits' : 'unchecked';
+}
+
+/** Kinds that name a record of another module. They are added by picking that record, never by typing its id. */
+export const REF_PRECONDITIONS: readonly PreconditionKind[] = [
+  'gate_decided',
+  'frame_document_binding',
+  'funding_approved',
+];
 
 /** Kinds that can be added here without picking a record of another module. */
 export const ADDABLE_PRECONDITIONS: readonly PreconditionKind[] = [

@@ -81,6 +81,7 @@ export function link(over: Partial<ItemLink> = {}): ItemLink {
     link_id: 'l1',
     kind: 'contract',
     document_id: 'doc1',
+    contract_id: null,
     currency: 'EUR',
     document_amount: '1700000.00',
     counted_amount: '1700000.00',
