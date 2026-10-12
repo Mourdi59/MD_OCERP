@@ -47,6 +47,7 @@ ALL_CODES: tuple[str, ...] = (
     "area_without_owner",
     "area_not_ready",
     "evidence_not_met",
+    "unknown_evidence_not_acknowledged",
     "check_stale",
     "condition_overdue",
     "conditions_required",
@@ -195,6 +196,8 @@ class DecisionRequest:
     proceed_at_risk_areas: Sequence[str] = ()
     accepted_not_applicable: Sequence[str] = ()
     hold_resume_date: date | None = None
+    # (area_code, evidence code) of every unknown item the decider has seen.
+    acknowledged_evidence: Sequence[tuple[str, str]] = ()
 
 
 @dataclass(frozen=True)
@@ -538,6 +541,18 @@ def gate_blockers(ctx: GateContext, *, accepted_not_applicable: Iterable[str] = 
     return out
 
 
+def evidence_to_acknowledge(ctx: GateContext) -> list[EvidenceState]:
+    """The unknown items of blocking providers a go on this gate has to name.
+
+    Unknown never blocks: a provider that failed, or said nothing about the
+    area it is registered for, has not said the area is unready. It is not a
+    yes either, so the decider names each item and the record keeps the list.
+    An item is one code in one area; the same code in two areas is two items.
+    """
+    applicable = {a.code for a in ctx.areas if a.applicable}
+    return [e for e in ctx.evidence if e.blocking and e.state == "unknown" and e.area_code in applicable]
+
+
 # ── Decisions ───────────────────────────────────────────────────────────────
 
 
@@ -604,6 +619,11 @@ def validate_decision(ctx: GateContext, req: DecisionRequest) -> list[Violation]
             out.append(blocker)
         for code in sorted(at_risk - not_ready_areas):
             out.append(Violation("proceed_at_risk_area_not_blocking", area_code=code))
+        # Proceeding at risk answers a known gap. It says nothing about an answer nobody got.
+        named = {(area, code) for area, code in req.acknowledged_evidence}
+        for item in evidence_to_acknowledge(ctx):
+            if (item.area_code, item.code) not in named:
+                out.append(Violation("unknown_evidence_not_acknowledged", area_code=item.area_code, ref=item.code))
     return out
 
 
@@ -689,6 +709,17 @@ def build_snapshot(ctx: GateContext, req: DecisionRequest) -> dict[str, Any]:
         "blockers": [b.as_dict() for b in gate_blockers(ctx, accepted_not_applicable=req.accepted_not_applicable)],
         "accepted_not_applicable": list(req.accepted_not_applicable),
         "proceed_at_risk_areas": list(req.proceed_at_risk_areas),
+        "evidence": [
+            {"area_code": e.area_code, "code": e.code, "state": e.state, "blocking": e.blocking, "provider": e.provider}
+            for e in ctx.evidence
+        ],
+        # Only what was unknown when the decision was taken: a name the request carried for an
+        # item that had been answered meanwhile is not part of the record.
+        "acknowledged_evidence": [
+            {"area_code": e.area_code, "code": e.code, "provider": e.provider}
+            for e in evidence_to_acknowledge(ctx)
+            if (e.area_code, e.code) in {(area, code) for area, code in req.acknowledged_evidence}
+        ],
     }
 
 

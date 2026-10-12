@@ -182,6 +182,13 @@ class ConditionIn(BaseModel):
     severity: Severity = "essential"
 
 
+class EvidenceRef(BaseModel):
+    """One evidence item of a gate: a provider's code in one area."""
+
+    area_code: str = Field(max_length=64)
+    code: str = Field(max_length=400)
+
+
 class DecisionIn(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -191,6 +198,8 @@ class DecisionIn(BaseModel):
     proceed_at_risk_areas: list[str] = []
     accepted_not_applicable: list[str] = []
     hold_resume_date: date | None = None
+    # A go names every item of ``can.acknowledge``; anything else in the list is ignored.
+    acknowledged_evidence: list[EvidenceRef] = Field(default=[], max_length=500)
 
 
 class GatePlan(BaseModel):
@@ -230,7 +239,8 @@ class GateDetailOut(BaseModel):
     # What the caller may do. Reasons are error codes and are present only when the flag is false:
     # {edit, decide, decide_reason?, go, go_reason?,
     #  outcomes: {<outcome>: {allowed, reason}}, resume, resume_reason?, reopen, reopen_reason?,
-    #  add_condition, add_condition_reason?}
+    #  add_condition, add_condition_reason?,
+    #  acknowledge: [{area_code, code, provider}] the unknown evidence a go has to name}
     can: dict[str, Any] = {}
 
 

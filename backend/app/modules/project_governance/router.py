@@ -534,6 +534,7 @@ async def get_gate(
         can |= {"outcomes": {o: {"allowed": False, "reason": missing} for o in ev.OUTCOMES}}
         for key in ("decide", "go", "resume", "reopen", "add_condition"):
             can |= {key: False, f"{key}_reason": missing}
+        can["acknowledge"] = []
     return GateDetailOut(
         gate=(await _gates_out(svc, [detail["gate"]], cat))[0],
         blockers=detail["blockers"],
@@ -592,6 +593,7 @@ async def decide_gate(
         proceed_at_risk_areas=tuple(body.proceed_at_risk_areas),
         accepted_not_applicable=tuple(body.accepted_not_applicable),
         hold_resume_date=body.hold_resume_date,
+        acknowledged_evidence=tuple((e.area_code, e.code) for e in body.acknowledged_evidence),
     )
     decision = await _run(
         GovernanceService(session).decide(
