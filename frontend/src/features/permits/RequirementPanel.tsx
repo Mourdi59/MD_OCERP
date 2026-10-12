@@ -37,6 +37,7 @@ import {
   PersonChip,
   REQUIREMENT_TONE,
   Refusal,
+  RefusedActions,
   ToneBadge,
   dateText,
 } from './PermitBits';
@@ -141,6 +142,19 @@ export function RequirementPanel({
         }
       />
       {milestone.error && <Refusal testId="milestone-refusal">{milestone.error}</Refusal>}
+      <RefusedActions
+        items={[
+          [t('permits.ui.edit', { defaultValue: 'Edit' }), gate(r.can?.edit, true)],
+          [t('permits.ui.requirement.dependencies', { defaultValue: 'What comes first' }), gate(r.can?.set_dependencies, true)],
+          [t('permits.ui.requirement.milestone', { defaultValue: 'Put in the schedule' }), gate(r.can?.push_milestone, true)],
+          [t('permits.ui.remove', { defaultValue: 'Remove' }), gate(r.can?.delete, true)],
+          r.applicable &&
+            (canOpenNew || ownPermits.length > 0) && [
+              t('permits.ui.application.submit_new', { defaultValue: 'Open application' }),
+              gate(r.can?.create_application, true),
+            ],
+        ]}
+      />
       {isBinding(roadmap) && (
         <p role="status" className="rounded-md border border-border-light bg-surface-secondary px-3 py-2 text-sm text-content-secondary" data-testid="requirement-binding">
           {t('permits.ui.roadmap.binding', {

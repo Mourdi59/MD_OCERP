@@ -57,8 +57,6 @@ export const REQUIREMENT_STATE: Record<RequirementState, KeyText> = {
   blocked: ['permits.enum.state.blocked', 'Blocked'],
   not_applicable: ['permits.enum.state.not_applicable', 'Not applicable'],
   not_in_force: ['permits.enum.state.not_in_force', 'Permit no longer in force'],
-  expired: ['permits.enum.state.expired', 'Expired'],
-  lapsed: ['permits.enum.state.lapsed', 'Lapsed'],
 };
 
 export const PERMIT_STATE: Record<PermitState, KeyText> = {

@@ -45,7 +45,7 @@ import {
   useViewerId,
 } from './hooks';
 import { READINESS_STATUS, typeName, vocab, type TFn } from './labels';
-import { FormDialog, GatedButton, READINESS_TONE, ToneBadge } from './PermitBits';
+import { FormDialog, GatedButton, READINESS_TONE, RefusedActions, ToneBadge } from './PermitBits';
 import { PermitsRegister } from './PermitsRegister';
 import { RequirementPanel } from './RequirementPanel';
 import { ProposeDialog, RequirementDialog, RoadmapSetupDialog } from './RoadmapDialogs';
@@ -403,6 +403,15 @@ export function PermitsPage() {
               </span>
             )}
           </div>
+          <RefusedActions
+            testId="file-refused"
+            items={[
+              !!exportTarget && [
+                t('permits.ui.file.open', { defaultValue: 'Store in project documents' }),
+                gate(roadmap?.can?.publish_frame_document, true),
+              ],
+            ]}
+          />
           <TabBar<Tab>
             ariaLabel={t('permits.ui.tabs', { defaultValue: 'Permit sections' })}
             activeId={tab}

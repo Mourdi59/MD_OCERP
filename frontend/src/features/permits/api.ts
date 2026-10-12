@@ -45,9 +45,7 @@ export type RequirementState =
   | 'refused'
   | 'blocked'
   | 'not_applicable'
-  | 'not_in_force'
-  | 'expired'
-  | 'lapsed';
+  | 'not_in_force';
 export type ApplicationState =
   | 'planned'
   | 'preparing'

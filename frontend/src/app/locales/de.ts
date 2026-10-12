@@ -50675,6 +50675,7 @@ const resource = {
     "permits.ui.readiness_item.schedule_conflict": "{{detail}}: die Entscheidung wird nach dem Bedarfstermin erwartet",
     "permits.ui.readiness_item.start_at_risk_early_start": "{{detail}}: Baubeginn aufgrund einer Zulassung des vorzeitigen Beginns, auf eigenes Risiko",
     "permits.ui.readiness_item.suspensive_condition_open": "Bedingung {{detail}} muss erfüllt sein, bevor die Genehmigung wirkt",
+    "permits.ui.refused_line": "{{action}}: {{reason}}",
     "permits.ui.remove": "Entfernen",
     "permits.ui.required": "erforderlich",
     "permits.ui.requirement.applicant_default": "Wie im Katalog",

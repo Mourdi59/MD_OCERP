@@ -11,7 +11,7 @@ import clsx from 'clsx';
 import { EmptyState } from '@/shared/ui/EmptyState';
 
 import { APPLICANT_ROLE, APPLICATION_STATE, REQUIREMENT_STATE, typeName, vocab, type LabelContext } from './labels';
-import { GatedButton, REQUIREMENT_TONE, ToneBadge, dateText } from './PermitBits';
+import { GatedButton, REQUIREMENT_TONE, RefusedActions, ToneBadge, dateText } from './PermitBits';
 import { gate, summariseRoadmap, type RoadmapRow } from './rules';
 
 export interface RoadmapTableProps {
@@ -45,6 +45,17 @@ export function RoadmapTable({ rows, binding, can, labels, onOpen, onAdd, onProp
     </div>
   );
 
+  const reasons = (
+    <RefusedActions
+      testId="roadmap-refused"
+      items={[
+        [t('permits.ui.roadmap.add', { defaultValue: 'Add permit' }), gate(can?.add_requirement, true)],
+        [t('permits.ui.roadmap.propose', { defaultValue: 'Take from the permit route' }), gate(can?.accept_proposals, true)],
+        [t('permits.ui.roadmap.settings', { defaultValue: 'Settings' }), gate(can?.edit, true)],
+      ]}
+    />
+  );
+
   if (rows.length === 0) {
     return (
       <div className="space-y-3">
@@ -65,6 +76,7 @@ export function RoadmapTable({ rows, binding, can, labels, onOpen, onAdd, onProp
             {t('permits.ui.roadmap.settings', { defaultValue: 'Settings' })}
           </GatedButton>
         </div>
+        {reasons}
       </div>
     );
   }
@@ -82,6 +94,7 @@ export function RoadmapTable({ rows, binding, can, labels, onOpen, onAdd, onProp
         </p>
         {toolbar}
       </div>
+      {reasons}
       {binding && (
         <p role="status" className="rounded-md border border-border-light bg-surface-secondary px-3 py-2 text-sm text-content-secondary" data-testid="roadmap-binding">
           {t('permits.ui.roadmap.binding', {

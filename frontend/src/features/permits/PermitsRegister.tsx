@@ -27,7 +27,7 @@ import { ConditionDialog } from './ConditionDialogs';
 import { ConditionProposals, ExtractConditions } from './ConditionProposals';
 import { usePermitAction } from './hooks';
 import { PERMIT_STATE, PERMIT_STEP, SCOPE, errorText, typeName, vocab, type LabelContext, type TFn } from './labels';
-import { Fact, Field, FormDialog, GatedButton, PERMIT_TONE, ToneBadge, dateText, fieldClass } from './PermitBits';
+import { Fact, Field, FormDialog, GatedButton, PERMIT_TONE, RefusedActions, ToneBadge, dateText, fieldClass } from './PermitBits';
 import { canNotifyStart, gate, permitTargets, workStep } from './rules';
 
 /* ── Notice of the start of works ─────────────────────────────────────── */
@@ -298,6 +298,15 @@ export function PermitsRegister({
                   )}
                 </div>
               </div>
+              <RefusedActions
+                testId="permit-refused"
+                items={[
+                  [t('permits.ui.permit.start_submit', { defaultValue: 'Record start' }), gate(p.can?.start, canNotifyStart(p))],
+                  [t('permits.ui.permit.interruption_submit', { defaultValue: 'Record interruption' }), gate(p.can?.interrupt, step === 'interruption')],
+                  [t('permits.ui.permit.resumption_submit', { defaultValue: 'Record resumption' }), gate(p.can?.resume, step === 'resumption')],
+                  p.state === 'in_force' && [t('permits.ui.condition.submit_new', { defaultValue: 'Add condition' }), gate(p.can?.add_condition, true)],
+                ]}
+              />
               {warn && (
                 <p
                   role="status"

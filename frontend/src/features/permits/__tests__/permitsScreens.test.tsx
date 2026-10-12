@@ -303,6 +303,9 @@ describe('PermitsRegister', () => {
       renderIn(<PermitsRegister {...base} permits={[permit({ can: { start: off, interrupt: gone, resume: gone } })]} conditions={[]} />);
       expect(screen.getByTestId('permit-start')).toBeDisabled();
       expect(screen.getByTestId('permit-start')).toHaveAttribute('title', 'You need the right to edit permits for this.');
+      // The same sentence is written out, since a tooltip shows neither on a tablet nor on a recording.
+      expect(screen.getByTestId('permit-refused')).toHaveTextContent('Record start: You need the right to edit permits for this.');
+      expect(screen.getByTestId('permit-refused')).not.toHaveTextContent('Record interruption');
       expect(screen.queryByTestId('permit-interruption')).toBeNull();
       expect(screen.queryByTestId('permit-resumption')).toBeNull();
     });
@@ -462,6 +465,7 @@ describe('ApplicationPanel', () => {
     const step = await screen.findByTestId('application-step-submitted');
     expect(step).toBeDisabled();
     expect(step).toHaveAttribute('title', 'You need the right to edit permits for this.');
+    expect(screen.getByTestId('refused-actions')).toHaveTextContent('Record submission: You need the right to edit permits for this.');
     fireEvent.click(screen.getByTestId('application-more'));
     expect(screen.getByTestId('application-edit')).toBeDisabled();
     expect(screen.getByTestId('application-edit')).toHaveTextContent('You need the right to edit permits for this.');

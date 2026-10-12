@@ -19,7 +19,7 @@ import { escalateConditions, type ConditionRow, type ConditionView, type Roadmap
 import { AssignDialog } from './ConditionDialogs';
 import { usePermitAction } from './hooks';
 import { CONDITION_KIND, CONDITION_STATE, CONDITION_VIEW, TOPIC, TRIGGER, vocab } from './labels';
-import { CONDITION_TONE, GatedButton, PersonChip, Refusal, ToneBadge, dateText } from './PermitBits';
+import { CONDITION_TONE, GatedButton, PersonChip, Refusal, RefusedActions, ToneBadge, dateText } from './PermitBits';
 import { gate, inConditionView } from './rules';
 
 type View = ConditionView | 'all' | 'proposals';
@@ -140,6 +140,7 @@ export function ConditionsRegister({ projectId, can, conditions, viewerId, perso
           </GatedButton>
         </div>
       </div>
+      <RefusedActions items={[[t('permits.ui.conditions.escalate', { defaultValue: 'Send overdue reminders' }), gate(can?.escalate, true)]]} />
       {escalate.error && <Refusal>{escalate.error}</Refusal>}
 
       {shown.length === 0 ? (

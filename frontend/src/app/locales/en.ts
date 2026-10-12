@@ -42754,6 +42754,7 @@ const resource = {
     "permits.ui.readiness_item.schedule_conflict": "{{detail}}: the decision is forecast after the date it is needed",
     "permits.ui.readiness_item.start_at_risk_early_start": "{{detail}}: work starts on an early start approval, at own risk",
     "permits.ui.readiness_item.suspensive_condition_open": "Condition {{detail}} must be met before the permit takes effect",
+    "permits.ui.refused_line": "{{action}}: {{reason}}",
     "permits.ui.remove": "Remove",
     "permits.ui.required": "required",
     "permits.ui.requirement.applicant_default": "As the catalogue says",

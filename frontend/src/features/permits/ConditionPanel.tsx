@@ -18,7 +18,7 @@ import { confirmProposal, removeEvidence, submitEvidence, type ConditionRow } fr
 import { ConditionDialog, DischargeDialog, EvidenceDialog, LinkRequirementDialog, OngoingDialog } from './ConditionDialogs';
 import { refusalText, useConditionDetail, useDocumentNames, usePermitAction } from './hooks';
 import { CONDITION_KIND, CONDITION_STATE, DISCHARGE_MODE, EVIDENCE_KIND, TOPIC, TRIGGER, errorText, vocab, type TFn } from './labels';
-import { CONDITION_TONE, Fact, GatedButton, PanelHeader, PersonChip, Refusal, ToneBadge, dateText } from './PermitBits';
+import { CONDITION_TONE, Fact, GatedButton, PanelHeader, PersonChip, Refusal, RefusedActions, ToneBadge, dateText } from './PermitBits';
 import { conditionActions, dischargeModes, gate, type ConditionAction } from './rules';
 
 export interface ConditionPanelProps {
@@ -156,6 +156,19 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
             )}
           </>
         }
+      />
+      <RefusedActions
+        items={[
+          can('confirm') && [t('permits.ui.condition.confirm', { defaultValue: 'Confirm as a condition' }), gate(c.can?.confirm, true)],
+          can('submit_evidence') && [
+            t('permits.ui.condition.submit_evidence', { defaultValue: 'Submit the evidence for checking' }),
+            gate(c.can?.submit_evidence, true),
+          ],
+          can('in_compliance') && [t('permits.ui.ongoing.submit_compliance', { defaultValue: 'Record compliance' }), gate(c.can?.in_compliance, true)],
+          can('breach') && [t('permits.ui.ongoing.submit_breach', { defaultValue: 'Raise breach' }), gate(c.can?.breach, true)],
+          can('edit') && [t('permits.ui.edit', { defaultValue: 'Edit' }), gate(c.can?.edit, true)],
+          can('add_evidence') && [t('permits.ui.evidence.submit', { defaultValue: 'Add evidence' }), gate(c.can?.add_evidence, true)],
+        ]}
       />
       {refusal && <Refusal testId="condition-refusal">{refusal}</Refusal>}
       {can('discharge') && dischargeRefusal && (

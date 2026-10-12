@@ -29,8 +29,6 @@ export const REQUIREMENT_TONE: Record<RequirementState, BadgeVariant> = {
   blocked: 'warning',
   not_applicable: 'neutral',
   not_in_force: 'error',
-  expired: 'error',
-  lapsed: 'error',
 };
 
 export const APPLICATION_TONE: Record<ApplicationState, BadgeVariant> = {
@@ -181,6 +179,35 @@ export function GatedButton({ gate, children, ...rest }: { gate: Gate } & Compon
     <Button {...rest} disabled={!gate.enabled || rest.disabled} title={why ?? rest.title}>
       {children}
     </Button>
+  );
+}
+
+/**
+ * The reason of every refused action, written out. The disabled button carries the same
+ * sentence as a tooltip, which shows neither on a tablet nor on a recording.
+ */
+export function RefusedActions({
+  items,
+  testId = 'refused-actions',
+}: {
+  items: Array<readonly [action: string, gate: Gate] | false | null>;
+  testId?: string;
+}) {
+  const { t } = useTranslation();
+  const refused = items.filter((x): x is readonly [string, Gate] => !!x && x[1].show && !x[1].enabled && !!x[1].reason);
+  if (refused.length === 0) return null;
+  return (
+    <ul className="space-y-0.5 text-xs text-content-secondary" data-testid={testId}>
+      {refused.map(([action, g]) => (
+        <li key={action}>
+          {t('permits.ui.refused_line', {
+            defaultValue: '{{action}}: {{reason}}',
+            action,
+            reason: errorText(t as TFn, g.reason ?? '', null),
+          })}
+        </li>
+      ))}
+    </ul>
   );
 }
 

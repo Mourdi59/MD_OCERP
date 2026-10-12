@@ -31,7 +31,7 @@ import {
   type LabelContext,
   type TFn,
 } from './labels';
-import { APPLICATION_TONE, Fact, GatedButton, MoreActions, OUTCOME_TONE, PanelHeader, Refusal, ToneBadge, dateText } from './PermitBits';
+import { APPLICATION_TONE, Fact, GatedButton, MoreActions, OUTCOME_TONE, PanelHeader, Refusal, RefusedActions, ToneBadge, dateText } from './PermitBits';
 import { applicationSteps, clockEventKinds, gate, isDecidable, isOpenApplication } from './rules';
 
 export interface ApplicationPanelProps {
@@ -168,6 +168,13 @@ export function ApplicationPanel({
         }
       />
 
+      <RefusedActions
+        items={[
+          decidable && [t('permits.ui.decision.submit', { defaultValue: 'Record decision' }), gate(a.can?.decide, true)],
+          !!primaryStep && [stepLabel(primaryStep), gate(a.can?.transition?.[primaryStep], true)],
+          clockKinds.length > 0 && [t('permits.ui.clock.title', { defaultValue: 'Decision period' }), gate(a.can?.clock, true)],
+        ]}
+      />
       {clock.deemed_proposal && (
         <p
           role="status"
@@ -300,6 +307,16 @@ export function ApplicationPanel({
                     {t('permits.ui.correct.open', { defaultValue: 'Correct a date or reference' })}
                   </GatedButton>
                 )}
+                <RefusedActions
+                  testId="decision-refused"
+                  items={[
+                    !replaced && [t('permits.ui.correct.open', { defaultValue: 'Correct a date or reference' }), gate(d.can?.correct, true)],
+                    d.conditions_pending && [
+                      t('permits.ui.decision.complete_register', { defaultValue: 'All conditions are entered' }),
+                      gate(d.can?.complete_register, true),
+                    ],
+                  ]}
+                />
                 {d.conditions_pending && (
                   <div className="flex flex-wrap items-center gap-3 rounded-md bg-semantic-warning-bg px-3 py-2" data-testid="conditions-pending">
                     <span className="text-content-primary">
