@@ -25,6 +25,7 @@ import {
   type Labelled,
   type LawfulBasis,
   type LeaveStatus,
+  type Can,
   type Phase,
   type PlanStatus,
   type Position,
@@ -81,6 +82,7 @@ export const FILE_STATUS: Record<FileStatus, KeyText> = {
   anonymised: ['staffing.file.status.anonymised', 'Anonymised'],
 };
 
+/** Names for the phases the shipped catalogues use. Any other phase code shows humanised. */
 export const PHASE: Record<Phase, KeyText> = {
   development: ['staffing.phase.development', 'Development'],
   execution: ['staffing.phase.execution', 'Execution'],
@@ -145,7 +147,7 @@ export const CELL_STATE: Record<CellState, KeyText> = {
   not_required: ['staffing.cell.not_required', 'Not required'],
 };
 
-/** The state a linked credential is in, as the credentials module derives it. */
+/** The validity state of a recorded document, as the server reports it. */
 export const DOCUMENT_STATUS: Record<string, KeyText> = {
   active: ['staffing.document.status.active', 'Valid'],
   expiring_soon: ['staffing.document.status.expiring_soon', 'Expiring soon'],
@@ -296,6 +298,11 @@ export function findingText(ctx: LabelContext, catalogue: StaffingCatalogue | nu
   const entry = FINDING_TEXT[finding.code];
   if (entry) return ctx.t(entry[0], { defaultValue: entry[1], ref });
   return errorText(ctx.t, finding.code);
+}
+
+/** Why the server does not allow a capability, in the reader's language; empty when it is allowed. */
+export function whyNot(t: TFn, can: Can | null | undefined): string {
+  return can && !can.allowed && can.reason ? errorText(t, can.reason) : '';
 }
 
 /** The sentence for a refusal code, translated when the locale has it. */

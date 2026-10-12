@@ -5,7 +5,7 @@
 // roles require and where each stands, travel, leave, the booked
 // accommodation, and the retention controls (end, hold, erase).
 //
-// The server decides who may open the file and who may change it (`can_edit`).
+// The server decides who may open the file and who may change it (the `can` flags of the file).
 // Opening is logged, so the file is fetched once and the access log is loaded
 // only when the reader asks for it.
 
@@ -30,6 +30,7 @@ import {
   setLeaveStatus,
   setTravelStatus,
   staffingErrorCode,
+  staffingForbidden,
   verifyDocument,
   waiveDocument,
   type FileDocument,
@@ -56,6 +57,7 @@ import {
   humanizeCode,
   refusalText,
   vocab,
+  whyNot,
   type LabelContext,
 } from './labels';
 import { FindingList } from './PlanPanel';
@@ -92,10 +94,10 @@ type Dialog =
   | { kind: 'leave'; leave: LeaveRecord | null }
   | null;
 
-/** A document's state in one word: waived, missing, or what the linked credential says. */
+/** A document's state in one word: waived, missing, or the validity the server reports for it. */
 function documentState(doc: FileDocument): { tone: 'success' | 'warning' | 'error' | 'purple' | 'neutral'; key: 'waived' | 'missing' | 'not_required' | 'status' } {
   if (doc.waived) return { tone: 'purple', key: 'waived' };
-  if (!doc.credential_id || !doc.status) return doc.required ? { tone: 'error', key: 'missing' } : { tone: 'neutral', key: 'not_required' };
+  if (!doc.status) return doc.required ? { tone: 'error', key: 'missing' } : { tone: 'neutral', key: 'not_required' };
   if (doc.status === 'active') return { tone: 'success', key: 'status' };
   if (doc.status === 'expiring_soon') return { tone: 'warning', key: 'status' };
   return { tone: 'error', key: 'status' };
@@ -158,7 +160,7 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
     );
   }
   if (fileQ.isError || !fileQ.data) {
-    const denied = staffingErrorCode(fileQ.error) === 'personnel_access_denied';
+    const denied = staffingForbidden(fileQ.error);
     return (
       <div className="space-y-4" data-testid={denied ? 'file-denied' : 'file-error'}>
         {back}
@@ -170,9 +172,11 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
           }
           hint={
             denied
-              ? t('staffing.file.no_access_hint', {
-                  defaultValue: 'A personnel file opens for the owner of the personnel area, the line manager of the position and the person concerned.',
-                })
+              ? staffingErrorCode(fileQ.error)
+                ? refusalText(labels.t, fileQ.error)
+                : t('staffing.file.no_access_hint', {
+                    defaultValue: 'A personnel file opens for the owner of the personnel area, the line manager of the position and the person concerned.',
+                  })
               : refusalText(labels.t, fileQ.error)
           }
           onRetry={denied ? undefined : () => fileQ.refetch()}
@@ -183,7 +187,8 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
 
   const file = fileQ.data;
   const anonymised = file.status === 'anonymised';
-  const editable = file.can_edit && !anonymised;
+  // Every button below follows a flag the server computed with the function that enforces it.
+  const editable = file.can.edit.allowed;
   const fieldRow = (label: string, value: ReactNode) => (
     <div className="flex gap-1.5">
       <dt className="text-content-tertiary">{label}</dt>
@@ -236,9 +241,10 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
                 })}
               </p>
             )}
-            {!file.can_edit && !anonymised && (
+            {!editable && !anonymised && (
               <p className="text-xs text-content-tertiary" role="status" data-testid="file-read-only">
-                {t('staffing.file.read_only', { defaultValue: 'You can read this file but not change it.' })}
+                {whyNot(labels.t, file.can.edit) ||
+                  t('staffing.file.read_only', { defaultValue: 'You can read this file but not change it.' })}
               </p>
             )}
           </div>
@@ -248,17 +254,17 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
                 {t('common.edit', { defaultValue: 'Edit' })}
               </Button>
             )}
-            {editable && file.status === 'active' && (
+            {file.can.end.allowed && (
               <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'end' })} data-testid="file-end">
                 {t('staffing.file.end', { defaultValue: 'End assignment' })}
               </Button>
             )}
-            {editable && (file.status === 'active' || file.status === 'ended') && (
+            {file.can.hold.allowed && (
               <Button variant="ghost" size="sm" onClick={() => setDialog({ kind: 'hold' })} data-testid="file-hold">
                 {t('staffing.file.hold', { defaultValue: 'Place hold' })}
               </Button>
             )}
-            {editable && file.status === 'retention_hold' && (
+            {file.can.release.allowed && (
               <Button variant="secondary" size="sm" loading={release.isPending} onClick={() => release.mutate()} data-testid="file-release">
                 {t('staffing.file.release', { defaultValue: 'Release hold' })}
               </Button>
@@ -336,7 +342,7 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
                           <td className="px-3 py-2 text-content-secondary">
                             {d.valid_until
                               ? fmtDate(d.valid_until)
-                              : d.credential_id
+                              : d.status
                                 ? t('staffing.document.no_end', { defaultValue: 'No end date' })
                                 : ''}
                           </td>
@@ -348,19 +354,24 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
                               : t('staffing.document.not_checked', { defaultValue: 'Not checked' })}
                           </td>
                           <td className="px-3 py-2">
+                            {editable && d.status && !d.verified_at && !d.can.verify.allowed && (
+                              <p className="mb-1 text-right text-xs text-content-tertiary" data-testid="document-verify-refused">
+                                {whyNot(labels.t, d.can.verify)}
+                              </p>
+                            )}
                             {editable && (
                               <div className="flex flex-wrap justify-end gap-1">
                                 <Button variant="ghost" size="sm" onClick={() => setDialog({ kind: 'document', document: d })} data-testid="document-link">
-                                  {d.credential_id
-                                    ? t('staffing.document.change_link', { defaultValue: 'Change credential' })
-                                    : t('staffing.document.link', { defaultValue: 'Link credential' })}
+                                  {d.status
+                                    ? t('staffing.document.update', { defaultValue: 'Update document' })
+                                    : t('staffing.document.record', { defaultValue: 'Record document' })}
                                 </Button>
-                                {d.id && d.credential_id && !d.verified_at && (
+                                {d.id && d.can.verify.allowed && (
                                   <Button variant="ghost" size="sm" onClick={() => verify.mutate(d.id as string)} data-testid="document-verify">
                                     {t('staffing.document.verify', { defaultValue: 'Mark as checked' })}
                                   </Button>
                                 )}
-                                {d.required && !d.waived && !d.credential_id && (
+                                {d.required && !d.waived && !d.status && (
                                   <Button variant="ghost" size="sm" onClick={() => setDialog({ kind: 'waive', document: d })} data-testid="document-waive">
                                     {t('staffing.document.waive', { defaultValue: 'Waive' })}
                                   </Button>
@@ -547,8 +558,8 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
               defaultValue: 'The person concerned can download their own file. An administrator can erase the personal data on request, unless a legal retention duty or a hold still applies.',
             })}
           </p>
-          {!anonymised && (
-            <span className="inline-flex items-center gap-1">
+          {file.can.export.allowed && (
+            <span className="inline-flex items-center gap-1" data-testid="file-export-own">
               <span className="text-xs text-content-tertiary">{t('staffing.file.export_own', { defaultValue: 'Download my file' })}</span>
               <ExportButtons download={(format) => downloadOwnFile(projectId, fileId, format)} />
             </span>
@@ -556,12 +567,17 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
           <Button variant="ghost" size="sm" onClick={() => setShowLog((v) => !v)} aria-expanded={showLog} data-testid="file-log-toggle">
             {t('staffing.file.access_log', { defaultValue: 'Who opened this file' })}
           </Button>
-          {!anonymised && (
+          {file.can.erase.allowed && (
             <Button variant="danger" size="sm" icon={<ShieldAlert size={14} />} onClick={() => setDialog({ kind: 'erase' })} data-testid="file-erase">
               {t('staffing.file.erase', { defaultValue: 'Erase personal data' })}
             </Button>
           )}
         </div>
+        {editable && !file.can.erase.allowed && (
+          <p className="text-xs text-content-tertiary" role="status" data-testid="file-erase-refused">
+            {whyNot(labels.t, file.can.erase)}
+          </p>
+        )}
         {showLog &&
           (logQ.isLoading ? (
             <SkeletonTable rows={3} columns={3} />

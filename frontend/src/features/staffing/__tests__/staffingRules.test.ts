@@ -36,8 +36,10 @@ import {
   nextLeaveStatuses,
   nextPositionStatuses,
   nextTravelStatuses,
+  phasesOf,
   planCanBeSubmitted,
   planIsLocked,
+  requirementTags,
   rolesNotPlanned,
 } from '../rules';
 import { enT } from './i18nMock';
@@ -154,8 +156,23 @@ describe('mappers', () => {
     position({ id: 'c', phase: 'execution', role_code: 'site_manager', status: 'cancelled', stored_status: 'cancelled' }),
   ];
 
-  it('groups positions by phase in the platform order and drops empty phases', () => {
-    expect(groupByPhase(positions).map((g) => [g.phase, g.positions.map((p) => p.id)])).toEqual([
+  it('takes the phases from the pinned catalogue, in its order, and holds no list of its own', () => {
+    expect(phasesOf(catalogue())).toEqual(['development', 'execution', 'operation']);
+    const other = catalogue({ roles: [{ ...catalogue().roles[0]!, phases: ['tender', 'build'] }] });
+    expect(phasesOf(other)).toEqual(['tender', 'build']);
+    // A phase only an old position still carries is kept, after the catalogue's own.
+    expect(phasesOf(other, [position({ phase: 'execution' })])).toEqual(['tender', 'build', 'execution']);
+    expect(phasesOf(null)).toEqual([]);
+  });
+
+  it('offers what a key role can be required before from the catalogue, never from a gate code', () => {
+    expect(requirementTags(catalogue())).toEqual(['construction_start']);
+    expect(requirementTags(catalogue(), 'handover')).toEqual(['construction_start', 'handover']);
+    expect(requirementTags(catalogue({ roles: [] }))).toEqual([]);
+  });
+
+  it('groups positions by phase in the catalogue order and drops empty phases', () => {
+    expect(groupByPhase(positions, phasesOf(catalogue(), positions)).map((g) => [g.phase, g.positions.map((p) => p.id)])).toEqual([
       ['execution', ['b', 'c']],
       ['operation', ['a']],
     ]);

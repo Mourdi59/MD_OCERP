@@ -2,28 +2,26 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
 // The dialogs of a personnel file: open a file for a person, change its
-// header, link a document to a credential, add a trip, add leave, and end
-// the assignment.
+// header, record a document, add a trip, add leave, and end the assignment.
 //
-// A personnel file holds no document content. A document here is a link to a
-// credential in the credentials register plus, where the catalogue allows
-// it, the last four characters of its number. The full number is never typed.
+// A personnel file holds no document content. A document here is the dates it
+// is valid between plus, where the catalogue allows it, the last four
+// characters of its number. The full number is never typed. The dialog reads
+// nothing from the credentials register: what a reader may see of a person's
+// documents is only what the file itself returned.
 
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 
-import { fetchCredentials } from '@/features/credentials/api';
 import { Button } from '@/shared/ui/Button';
 import { WideModal, WideModalField, WideModalSection } from '@/shared/ui/WideModal';
-import { fmtDate } from '@/shared/lib/formatters';
 
 import {
   createFile,
   createLeave,
   createTravel,
   endFile,
-  linkDocument,
+  recordDocument,
   updateFile,
   updateLeave,
   updateTravel,
@@ -53,9 +51,6 @@ import {
 import { costProblem, datesProblem, decimalString, last4Problem } from './rules';
 import { FIELD_CLASS, FormError, personLabel } from './StaffingBits';
 import { useSubmit } from './useSubmit';
-
-/** The one document kind that carries a fit-for-role answer. The certificate itself stays with the physician. */
-export const HEALTH_KIND = 'occupational_health_certificate';
 
 const BASES = Object.keys(EMPLOYMENT_BASIS) as EmploymentBasis[];
 const LAWFUL = Object.keys(LAWFUL_BASIS) as LawfulBasis[];
@@ -327,7 +322,7 @@ export function FileHeaderDialog({ open, projectId, file, onClose, onDone }: Omi
   );
 }
 
-/** Link a required document to a credential of the credentials register. */
+/** Record a document of the file: when it was issued and how long it is valid. */
 export function DocumentDialog({
   open,
   projectId,
@@ -340,12 +335,8 @@ export function DocumentDialog({
 }: DialogBase & { fileId: string; catalogue: StaffingCatalogue | null; document: FileDocument | null }) {
   const { t } = useTranslation();
   const kind = catalogue?.document_kinds.find((k) => k.code === document?.document_kind);
-  const credentialsQ = useQuery({
-    queryKey: ['credentials', projectId, 'for-staffing', kind?.credential_type ?? ''],
-    queryFn: () => fetchCredentials({ project_id: projectId, credential_type: kind?.credential_type }),
-    enabled: open && !!projectId,
-  });
-  const [credential, setCredential] = useState('');
+  const [issued, setIssued] = useState('');
+  const [until, setUntil] = useState('');
   const [last4, setLast4] = useState('');
   const [fit, setFit] = useState<FitForRole | ''>('');
   const [tried, setTried] = useState(false);
@@ -355,7 +346,8 @@ export function DocumentDialog({
   });
   useEffect(() => {
     if (open) {
-      setCredential(document?.credential_id ?? '');
+      setIssued(document?.issued_at ?? '');
+      setUntil(document?.valid_until ?? '');
       setLast4(document?.number_last4 ?? '');
       setFit(document?.fit_for_role ?? '');
       setTried(false);
@@ -364,8 +356,9 @@ export function DocumentDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, document?.document_kind]);
 
-  const problem = last4Problem(last4);
-  const isHealth = document?.document_kind === HEALTH_KIND;
+  const problem = last4Problem(last4) ?? (issued && until && until < issued ? 'validity_dates_invalid' : null);
+  // The fit answer belongs to the health document. The server marks that kind; the client knows no kind by name.
+  const takesFit = !!document?.special_category;
 
   return (
     <WideModal
@@ -374,24 +367,29 @@ export function DocumentDialog({
       busy={busy}
       size="md"
       testId="document-dialog"
-      title={t('staffing.document.link', { defaultValue: 'Link credential' })}
+      title={
+        document?.status
+          ? t('staffing.document.update', { defaultValue: 'Update document' })
+          : t('staffing.document.record', { defaultValue: 'Record document' })
+      }
       subtitle={document ? catalogueName(labels, catalogue, 'document_kind', document.document_kind) : undefined}
       footer={
         <Footer
           busy={busy}
-          error={error ?? (problem ? errorText(labels.t, problem) : tried && !credential ? t('staffing.document.credential_required', { defaultValue: 'Choose the credential that proves this document.' }) : null)}
+          error={error ?? (tried && problem ? errorText(labels.t, problem) : null)}
           onClose={onClose}
           onSave={() => {
-            if (problem || !credential || !document) {
+            if (problem || !document) {
               setTried(true);
               return;
             }
             void run(() =>
-              linkDocument(projectId, fileId, {
+              recordDocument(projectId, fileId, {
                 document_kind: document.document_kind,
-                credential_id: credential,
+                issued_at: issued || null,
+                valid_until: until || null,
                 number_last4: kind?.store_number && last4.trim() ? last4.trim() : null,
-                fit_for_role: isHealth && fit ? fit : null,
+                fit_for_role: takesFit && fit ? fit : null,
               }),
             );
           }}
@@ -400,35 +398,37 @@ export function DocumentDialog({
         />
       }
     >
-      <WideModalSection columns={1}>
-        <WideModalField
-          label={t('staffing.document.credential', { defaultValue: 'Credential' })}
-          required
-          hint={t('staffing.document.credential_hint', {
-            defaultValue: 'The document itself and its dates live in the credentials register. Add it there first if it is missing.',
-          })}
-          htmlFor="document-credential"
-        >
-          <select
-            id="document-credential"
+      <WideModalSection columns={2}>
+        <WideModalField span={2}>
+          <p className="text-sm text-content-secondary" data-testid="document-record-hint">
+            {t('staffing.document.record_hint', {
+              defaultValue: 'Only the dates are kept here. The document itself is not stored, and nobody outside this file sees them.',
+            })}
+          </p>
+        </WideModalField>
+        <WideModalField label={t('staffing.document.issued_at', { defaultValue: 'Issued on' })} htmlFor="document-issued">
+          <input
+            id="document-issued"
+            type="date"
             className={FIELD_CLASS}
-            value={credential}
-            onChange={(e) => setCredential(e.target.value)}
-            data-testid="document-credential"
-          >
-            <option value="">{t('staffing.choose', { defaultValue: 'Choose' })}</option>
-            {(credentialsQ.data ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.valid_until
-                  ? t('staffing.document.credential_option', {
-                      defaultValue: '{{holder}}, valid until {{date}}',
-                      holder: c.holder_name,
-                      date: fmtDate(c.valid_until),
-                    })
-                  : t('staffing.document.credential_option_open', { defaultValue: '{{holder}}, no end date', holder: c.holder_name })}
-              </option>
-            ))}
-          </select>
+            value={issued}
+            onChange={(e) => setIssued(e.target.value)}
+            data-testid="document-issued"
+          />
+        </WideModalField>
+        <WideModalField
+          label={t('staffing.document.valid_until', { defaultValue: 'Valid until' })}
+          hint={t('staffing.document.valid_until_hint', { defaultValue: 'Leave empty when the document has no end date.' })}
+          htmlFor="document-until"
+        >
+          <input
+            id="document-until"
+            type="date"
+            className={FIELD_CLASS}
+            value={until}
+            onChange={(e) => setUntil(e.target.value)}
+            data-testid="document-until"
+          />
         </WideModalField>
         {kind?.store_number && (
           <WideModalField
@@ -446,13 +446,19 @@ export function DocumentDialog({
             />
           </WideModalField>
         )}
-        {isHealth && (
+        {takesFit && (
           <WideModalField
             label={t('staffing.document.fit_for_role', { defaultValue: 'Fit for role' })}
             hint={t('staffing.document.fit_hint', { defaultValue: 'Only the result is recorded. Medical findings stay with the physician.' })}
             htmlFor="document-fit"
           >
-            <select id="document-fit" className={FIELD_CLASS} value={fit} onChange={(e) => setFit(e.target.value as FitForRole | '')}>
+            <select
+              id="document-fit"
+              className={FIELD_CLASS}
+              value={fit}
+              onChange={(e) => setFit(e.target.value as FitForRole | '')}
+              data-testid="document-fit"
+            >
               <option value="">{t('staffing.not_set', { defaultValue: 'Not set' })}</option>
               {FITS.map((f) => (
                 <option key={f} value={f}>
@@ -695,19 +701,15 @@ export function LeaveDialog({
   );
 }
 
-/** End the assignment. From that day the retention period of the file runs. */
+/** End the assignment today. From that day the retention period of the file runs. The day is the server's. */
 export function EndFileDialog({ open, projectId, fileId, onClose, onDone }: Omit<DialogBase, 'labels'> & { fileId: string }) {
   const { t } = useTranslation();
-  const [day, setDay] = useState('');
   const { busy, error, run, reset } = useSubmit(() => {
     onDone();
     onClose();
   });
   useEffect(() => {
-    if (open) {
-      setDay('');
-      reset();
-    }
+    if (open) reset();
   }, [open, reset]);
 
   return (
@@ -718,27 +720,27 @@ export function EndFileDialog({ open, projectId, fileId, onClose, onDone }: Omit
       size="sm"
       testId="end-file-dialog"
       title={t('staffing.file.end', { defaultValue: 'End assignment' })}
-      subtitle={t('staffing.file.end_hint', {
-        defaultValue: 'The file is closed and its personal data is deleted when the retention period of the catalogue has passed.',
-      })}
       footer={
         <Footer
           busy={busy}
           error={error}
           onClose={onClose}
-          onSave={() => void run(() => endFile(projectId, fileId, day || null))}
+          onSave={() => void run(() => endFile(projectId, fileId))}
           saveLabel={t('staffing.file.end', { defaultValue: 'End assignment' })}
           testId="end-file-save"
         />
       }
     >
       <WideModalSection columns={1}>
-        <WideModalField
-          label={t('staffing.file.ended_on', { defaultValue: 'Last day' })}
-          hint={t('staffing.file.ended_on_hint', { defaultValue: 'Leave empty for today.' })}
-          htmlFor="file-ended-on"
-        >
-          <input id="file-ended-on" type="date" className={FIELD_CLASS} value={day} onChange={(e) => setDay(e.target.value)} />
+        <WideModalField>
+          <p className="text-sm text-content-primary" data-testid="end-file-today">
+            {t('staffing.file.end_today', { defaultValue: 'The assignment ends today.' })}
+          </p>
+          <p className="mt-1 text-sm text-content-secondary">
+            {t('staffing.file.end_hint', {
+              defaultValue: 'The file is closed and its personal data is deleted when the retention period of the catalogue has passed.',
+            })}
+          </p>
         </WideModalField>
       </WideModalSection>
     </WideModal>

@@ -29,7 +29,8 @@ export interface StaffingLabel {
   text: Record<string, string> | null;
 }
 
-export type Phase = 'development' | 'execution' | 'operation';
+/** A phase code as the pinned catalogue and the server name it. The client keeps no list of them. */
+export type Phase = string;
 export type PlanStatus = 'draft' | 'in_review' | 'approved' | 'binding' | 'revising';
 export type PositionStatus = 'open' | 'recruiting' | 'filled' | 'on_hold' | 'cancelled';
 export type SettablePositionStatus = Exclude<PositionStatus, 'filled'>;
@@ -47,7 +48,11 @@ export type CellState = 'valid' | 'expiring' | 'expired' | 'missing' | 'waived' 
 export type ExportFormat = 'pdf' | 'xlsx';
 export type ExportWhat = 'plan' | 'org_chart' | 'compliance';
 
-export const PHASES: Phase[] = ['development', 'execution', 'operation'];
+/** One capability as the server decided it, with the code of the refusal when it is not allowed. */
+export interface Can {
+  allowed: boolean;
+  reason: string | null;
+}
 
 export interface CatalogueSummary {
   kind: string;
@@ -74,7 +79,8 @@ export interface CatalogueRole extends Labelled {
   phases: Phase[];
   default_fte: string;
   key_role: boolean;
-  required_by_gate: string | null;
+  /** A tag of the governance phase model: what the project must not start before this role is filled. */
+  required_before: string | null;
   required_document_kinds: string[];
   handover_role: boolean;
 }
@@ -114,6 +120,7 @@ export interface StaffingPlan {
   approved_at: string | null;
   approval_source: string | null;
   has_bound_snapshot: boolean;
+  can: { manage: Can; assign_owner: Can };
 }
 
 export interface Fill {
@@ -141,7 +148,7 @@ export interface Position {
   headcount: number;
   entry_date: string | null;
   exit_date: string | null;
-  required_by_gate: string | null;
+  required_before: string | null;
   key_role: boolean;
   handover_role: boolean;
   /** Derived by the server: `filled` follows the people assigned. */
@@ -149,9 +156,12 @@ export interface Position {
   stored_status: SettablePositionStatus;
   recruiting_channel: RecruitingChannel | null;
   owner_user_id: string | null;
+  resource_request_id: string | null;
   notes: string | null;
   covered_fte: string;
   fills: Fill[];
+  /** `gate_fields`: whether key role, handover and the requirement may be changed by this caller now. */
+  can: { gate_fields: Can };
 }
 
 export interface PositionInput {
@@ -164,7 +174,7 @@ export interface PositionInput {
   headcount?: number | null;
   entry_date?: string | null;
   exit_date?: string | null;
-  required_by_gate?: string | null;
+  required_before?: string | null;
   key_role?: boolean | null;
   handover_role?: boolean | null;
   recruiting_channel?: RecruitingChannel | null;
@@ -242,24 +252,26 @@ export interface PersonnelFileRow {
   cleared_to_work: boolean | null;
   status: FileStatus;
   /** Decided by the server: whether this caller may open the file. */
-  can_open: boolean;
+  can: { open: Can };
 }
 
 export interface FileDocument {
   id: string | null;
   document_kind: string;
   required: boolean;
-  credential_id: string | null;
+  /** Validity state of the recorded document; null while nothing is recorded. */
   status: string | null;
   issued_at: string | null;
   valid_until: string | null;
   number_last4: string | null;
+  recorded_by: string | null;
   verified_by: string | null;
   verified_at: string | null;
   waived: boolean;
   waiver_rationale: string;
   fit_for_role: FitForRole | null;
   special_category: boolean;
+  can: { verify: Can };
 }
 
 export interface TravelRecord {
@@ -330,8 +342,8 @@ export interface PersonnelFile {
   travel: TravelRecord[];
   leave: LeaveRecord[];
   warnings: Finding[];
-  /** Decided by the server: whether this caller may change the file. */
-  can_edit: boolean;
+  /** Decided by the server, one flag per action of the file. */
+  can: { edit: Can; end: Can; hold: Can; release: Can; erase: Can; export: Can };
 }
 
 export interface FileHeaderInput {
@@ -375,6 +387,11 @@ function detailOf(err: unknown): ErrorDetail | null {
   const body = err.body as { detail?: unknown } | null;
   const detail = body && typeof body === 'object' ? body.detail : null;
   return detail && typeof detail === 'object' && !Array.isArray(detail) ? (detail as ErrorDetail) : null;
+}
+
+/** True when the server refused the caller (403), as opposed to a failure worth retrying. */
+export function staffingForbidden(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 403;
 }
 
 /** The stable error code of a refusal, or null when the failure was not a staffing refusal. */
@@ -520,8 +537,9 @@ export function confirmFill(projectId: string, fillId: string): Promise<{ fill: 
   return apiPost<{ fill: Fill; warnings: Finding[] }>(`${p(projectId)}/fills/${fillId}/confirm`, {});
 }
 
-export function endFill(projectId: string, fillId: string, toDate: string | null): Promise<Fill> {
-  return apiPost<Fill>(`${p(projectId)}/fills/${fillId}/end`, toDate ? { to_date: toDate } : {});
+/** Ends the assignment today. The day is the server's; the request carries none. */
+export function endFill(projectId: string, fillId: string): Promise<Fill> {
+  return apiPost<Fill>(`${p(projectId)}/fills/${fillId}/end`);
 }
 
 export function deleteFill(projectId: string, fillId: string): Promise<void> {
@@ -596,8 +614,9 @@ export function updateFile(projectId: string, fileId: string, body: FileHeaderIn
   return apiPatch(f(projectId, fileId), body);
 }
 
-export function endFile(projectId: string, fileId: string, endedOn: string | null): Promise<unknown> {
-  return apiPost(`${f(projectId, fileId)}/end`, endedOn ? { ended_on: endedOn } : {});
+/** Ends the file today and starts its retention. The day is the server's; the request carries none. */
+export function endFile(projectId: string, fileId: string): Promise<unknown> {
+  return apiPost(`${f(projectId, fileId)}/end`);
 }
 
 export function holdFile(projectId: string, fileId: string, rationale: string): Promise<unknown> {
@@ -621,12 +640,17 @@ export function downloadOwnFile(projectId: string, fileId: string, format: Expor
   return downloadWithAuth(`/api${f(projectId, fileId)}/export?format=${format}`, `personnel_file.${format}`);
 }
 
-export function linkDocument(
+/**
+ * Record a document of the file: its validity window and at most the last four characters of its number.
+ * The server keeps the validity record for this person itself; a request cannot point at anybody's credential.
+ */
+export function recordDocument(
   projectId: string,
   fileId: string,
   body: {
     document_kind: string;
-    credential_id?: string | null;
+    issued_at?: string | null;
+    valid_until?: string | null;
     number_last4?: string | null;
     fit_for_role?: FitForRole | null;
   },

@@ -5,6 +5,7 @@
 // shape with neutral defaults, so a test states only what it is about.
 
 import type {
+  Can,
   Compliance,
   FileDocument,
   Fill,
@@ -16,6 +17,14 @@ import type {
   StaffingPlan,
   Upcoming,
 } from '../api';
+
+/** A capability the server allows. */
+export const yes: Can = { allowed: true, reason: null };
+
+/** A capability the server refuses, with its reason code. */
+export function no(reason: string): Can {
+  return { allowed: false, reason };
+}
 
 export function catalogue(over: Partial<StaffingCatalogue> = {}): StaffingCatalogue {
   return {
@@ -37,7 +46,7 @@ export function catalogue(over: Partial<StaffingCatalogue> = {}): StaffingCatalo
         phases: ['development', 'execution'],
         default_fte: '1',
         key_role: true,
-        required_by_gate: null,
+        required_before: 'construction_start',
         required_document_kinds: ['employment_contract'],
         handover_role: true,
       },
@@ -49,7 +58,7 @@ export function catalogue(over: Partial<StaffingCatalogue> = {}): StaffingCatalo
         phases: ['execution'],
         default_fte: '1',
         key_role: true,
-        required_by_gate: null,
+        required_before: null,
         required_document_kinds: ['employment_contract', 'safety_training'],
         handover_role: false,
       },
@@ -61,7 +70,7 @@ export function catalogue(over: Partial<StaffingCatalogue> = {}): StaffingCatalo
         phases: ['operation'],
         default_fte: '1',
         key_role: true,
-        required_by_gate: null,
+        required_before: null,
         required_document_kinds: [],
         handover_role: false,
       },
@@ -94,6 +103,15 @@ export function catalogue(over: Partial<StaffingCatalogue> = {}): StaffingCatalo
         store_number: false,
         retention_rule: 'neutral_assignment_24m',
       },
+      {
+        code: 'health_certificate',
+        name_key: 'staffing.document_kind.health_certificate',
+        labels: { en: 'Health certificate' },
+        credential_type: 'occupational_health',
+        special_category: true,
+        store_number: false,
+        retention_rule: 'neutral_assignment_24m',
+      },
     ],
     leave_types: [{ code: 'annual', name_key: 'staffing.leave_type.annual', labels: null }],
     ...over,
@@ -117,6 +135,7 @@ export function plan(over: Partial<StaffingPlan> = {}): StaffingPlan {
     approved_at: null,
     approval_source: null,
     has_bound_snapshot: false,
+    can: { manage: yes, assign_owner: yes },
     ...over,
   };
 }
@@ -148,16 +167,18 @@ export function position(over: Partial<Position> = {}): Position {
     headcount: 1,
     entry_date: '2026-09-01',
     exit_date: null,
-    required_by_gate: null,
+    required_before: null,
     key_role: true,
     handover_role: true,
     status: 'open',
     stored_status: 'open',
     recruiting_channel: null,
     owner_user_id: null,
+    resource_request_id: null,
     notes: null,
     covered_fte: '0',
     fills: [],
+    can: { gate_fields: yes },
     ...over,
   };
 }
@@ -184,7 +205,7 @@ export function fileRow(over: Partial<PersonnelFileRow> = {}): PersonnelFileRow 
     end: null,
     cleared_to_work: true,
     status: 'active',
-    can_open: true,
+    can: { open: yes },
     ...over,
   };
 }
@@ -194,19 +215,39 @@ export function fileDocument(over: Partial<FileDocument> = {}): FileDocument {
     id: 'doc-1',
     document_kind: 'employment_contract',
     required: true,
-    credential_id: 'cred-1',
     status: 'active',
     issued_at: '2026-08-01',
     valid_until: null,
     number_last4: null,
+    recorded_by: null,
     verified_by: null,
     verified_at: null,
     waived: false,
     waiver_rationale: '',
     fit_for_role: null,
     special_category: false,
+    can: { verify: yes },
     ...over,
   };
+}
+
+/** The flags of an active file as its line manager gets them. */
+export function fileCan(over: Partial<PersonnelFile['can']> = {}): PersonnelFile['can'] {
+  return {
+    edit: yes,
+    end: yes,
+    hold: no('file_not_ended'),
+    release: no('file_not_held'),
+    erase: yes,
+    export: no('own_file_only'),
+    ...over,
+  };
+}
+
+/** The flags of a file the caller may read and nothing else. */
+export function fileCanNothing(reason: string): PersonnelFile['can'] {
+  const refused = no(reason);
+  return { edit: refused, end: refused, hold: refused, release: refused, erase: refused, export: no('own_file_only') };
 }
 
 export function personnelFile(over: Partial<PersonnelFile> = {}): PersonnelFile {
@@ -234,7 +275,7 @@ export function personnelFile(over: Partial<PersonnelFile> = {}): PersonnelFile 
     travel: [],
     leave: [],
     warnings: [],
-    can_edit: true,
+    can: fileCan(),
     ...over,
   };
 }

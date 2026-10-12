@@ -17,7 +17,6 @@ vi.mock('@/shared/ui/ProjectPeopleSelect', () => ({
   ProjectPeopleSelect: ({ placeholder }: { placeholder?: string }) => <input aria-label={placeholder} readOnly />,
 }));
 vi.mock('@/features/teams/api', () => ({ listRoster: vi.fn(async () => ({ items: [], total: 0 })) }));
-vi.mock('@/features/credentials/api', () => ({ fetchCredentials: vi.fn(async () => []) }));
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
   return {
@@ -42,7 +41,7 @@ import { ApiError } from '@/shared/lib/api';
 import * as api from '../api';
 import { ProjectStaffingPage } from '../ProjectStaffingPage';
 import { ALL_KEY_MAPS } from '../labels';
-import { catalogue, fileDocument, fileRow, personnelFile, plan, position } from './fixtures';
+import { catalogue, fileCan, fileCanNothing, fileDocument, fileRow, no, personnelFile, plan, position, yes } from './fixtures';
 
 const mocked = vi.mocked(api);
 const page = <T,>(items: T[]) => ({ items, total: items.length, offset: 0, limit: items.length });
@@ -144,7 +143,7 @@ describe('personnel file', () => {
         documents: [
           fileDocument(),
           fileDocument({ id: 'doc-2', document_kind: 'work_permit', status: 'expiring_soon', valid_until: '2026-11-01', number_last4: '4821' }),
-          fileDocument({ id: null, document_kind: 'safety_training', credential_id: null, status: null }),
+          fileDocument({ id: null, document_kind: 'safety_training', status: null }),
         ],
         warnings: [{ code: 'no_accommodation', ref: 'rm-1', severity: 'warning', detail: '' }],
       }),
@@ -179,27 +178,69 @@ describe('personnel file', () => {
   });
 
   it('offers no write on a file the server marks read-only', async () => {
-    mocked.getFile.mockResolvedValue(personnelFile({ can_edit: false }));
+    mocked.getFile.mockResolvedValue(
+      personnelFile({
+        can: fileCanNothing('own_file_read_only'),
+        documents: [fileDocument({ can: { verify: no('personnel_permission_missing') } })],
+      }),
+    );
     renderAt('/projects/p1/staffing/files/file-1');
     const file = await screen.findByTestId('personnel-file');
-    expect(within(file).getByTestId('file-read-only')).toBeInTheDocument();
-    for (const id of ['file-edit', 'file-end', 'file-hold', 'add-travel', 'add-leave', 'document-link']) {
+    expect(within(file).getByTestId('file-read-only')).toHaveTextContent(en.translation['staffing.errors.own_file_read_only']!);
+    const writes = ['file-edit', 'file-end', 'file-hold', 'file-release', 'file-erase', 'add-travel', 'add-leave'];
+    for (const id of [...writes, 'document-link', 'document-verify', 'document-waive', 'file-export-own']) {
       expect(within(file).queryByTestId(id)).toBeNull();
     }
   });
 
+  it('offers each action of the file by its own server flag, not by a rule of the client', async () => {
+    // An ended file on hold: only the release is allowed. The person concerned may download it.
+    mocked.getFile.mockResolvedValue(
+      personnelFile({
+        status: 'retention_hold',
+        hold_rationale: 'Open dispute',
+        can: fileCan({ end: no('file_not_active'), hold: no('already_in_state'), release: yes, erase: no('retention_hold_active'), export: yes }),
+      }),
+    );
+    renderAt('/projects/p1/staffing/files/file-1');
+    const file = await screen.findByTestId('personnel-file');
+    expect(within(file).getByTestId('file-release')).toBeInTheDocument();
+    expect(within(file).getByTestId('file-export-own')).toBeInTheDocument();
+    for (const id of ['file-end', 'file-hold', 'file-erase']) expect(within(file).queryByTestId(id)).toBeNull();
+    expect(within(file).getByTestId('file-erase-refused')).toHaveTextContent('A retention hold is active. Release it first.');
+  });
+
+  it('does not offer the check to the person who recorded the document, and says why', async () => {
+    mocked.getFile.mockResolvedValue(
+      personnelFile({
+        documents: [
+          fileDocument({ recorded_by: 'u-me', can: { verify: no('verifier_is_recorder') } }),
+          fileDocument({ id: 'doc-2', document_kind: 'work_permit', recorded_by: 'u-other' }),
+        ],
+      }),
+    );
+    renderAt('/projects/p1/staffing/files/file-1');
+    const file = await screen.findByTestId('personnel-file');
+    const docs = within(file).getAllByTestId('document-row');
+    expect(within(docs[0]!).queryByTestId('document-verify')).toBeNull();
+    expect(within(docs[0]!).getByTestId('document-verify-refused')).toHaveTextContent(en.translation['staffing.errors.verifier_is_recorder']!);
+    expect(within(docs[1]!).getByTestId('document-verify')).toBeInTheDocument();
+    expect(within(docs[1]!).queryByTestId('document-verify-refused')).toBeNull();
+  });
+
   it('a refused file says who may open it instead of offering a retry', async () => {
     mocked.getFile.mockRejectedValue(
-      new ApiError(403, 'Forbidden', { detail: { code: 'personnel_access_denied', message: 'You may not open this personnel file.' } }),
+      new ApiError(403, 'Forbidden', { detail: { code: 'no_relationship_to_person', message: 'x' } }),
     );
     renderAt('/projects/p1/staffing/files/file-1');
     const denied = await screen.findByTestId('file-denied');
     expect(within(denied).getByText('You cannot open this file.')).toBeInTheDocument();
+    expect(within(denied).getByText(en.translation['staffing.errors.no_relationship_to_person']!)).toBeInTheDocument();
     expect(within(denied).queryByRole('button', { name: /retry|try again/i })).toBeNull();
   });
 
   it('an erased file shows that it was erased and no personal sections', async () => {
-    mocked.getFile.mockResolvedValue(personnelFile({ status: 'anonymised', name: null, documents: [] }));
+    mocked.getFile.mockResolvedValue(personnelFile({ status: 'anonymised', name: null, documents: [], can: fileCanNothing('file_anonymised') }));
     renderAt('/projects/p1/staffing/files/file-1');
     const file = await screen.findByTestId('personnel-file');
     expect(within(file).getByTestId('file-anonymised')).toBeInTheDocument();
@@ -226,6 +267,17 @@ describe('staffing i18n keys', () => {
   for (const k of dynamic) used.add(k);
 
   const resolves = (table: Record<string, string>, k: string) => k in table || (`${k}_other` in table && `${k}_one` in table);
+
+  it('reads no credentials register and holds no gate code or phase list', () => {
+    // Personal documents reach the screen only through the personnel file the server returned.
+    expect(sources).not.toMatch(/features\/credentials/);
+    expect(sources).not.toMatch(/\/credentials\b/);
+    expect(sources).not.toMatch(/credential_id/);
+    expect(sources).not.toMatch(/required_by_gate|gate_code/);
+    expect(sources).not.toMatch(/PHASES\b/);
+    // A write that ends something carries no day of the client's.
+    expect(sources).not.toMatch(/\/end`,/);
+  });
 
   it('finds the keys it is meant to check', () => {
     // A broken extraction would make the tests below pass on nothing.

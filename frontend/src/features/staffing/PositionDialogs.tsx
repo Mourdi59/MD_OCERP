@@ -13,7 +13,6 @@ import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 import { WideModal, WideModalField, WideModalSection } from '@/shared/ui/WideModal';
 
 import {
-  PHASES,
   createFill,
   createHandover,
   createPosition,
@@ -26,6 +25,7 @@ import {
   type PositionInput,
   type RecruitingChannel,
   type StaffingCatalogue,
+  type StaffingPlan,
 } from './api';
 import { useRoster } from './hooks';
 import {
@@ -33,14 +33,17 @@ import {
   RECRUITING_CHANNEL,
   catalogueName,
   errorText,
+  humanizeCode,
   positionName,
   vocab,
+  whyNot,
   type LabelContext,
 } from './labels';
-import { datesProblem, decimalString, fteProblem, headcountProblem, liveFills, rolesNotPlanned } from './rules';
+import { datesProblem, decimalString, fteProblem, headcountProblem, liveFills, requirementTags, rolesNotPlanned } from './rules';
 import { FIELD_CLASS, FormError, personLabel } from './StaffingBits';
 import { useSubmit } from './useSubmit';
 
+/** The role code the API takes for a role the catalogue does not list; such a position carries its own label. */
 const CUSTOM_ROLE = 'custom';
 const CHANNELS = Object.keys(RECRUITING_CHANNEL) as RecruitingChannel[];
 
@@ -95,6 +98,7 @@ interface PositionDraft {
   exit_date: string;
   key_role: boolean;
   handover_role: boolean;
+  required_before: string;
   recruiting_channel: RecruitingChannel | '';
   owner_user_id: string;
   notes: string;
@@ -114,6 +118,7 @@ function draftOf(position: Position | null, catalogue: StaffingCatalogue, phase:
       exit_date: position.exit_date ?? '',
       key_role: position.key_role,
       handover_role: position.handover_role,
+      required_before: position.required_before ?? '',
       recruiting_channel: position.recruiting_channel ?? '',
       owner_user_id: position.owner_user_id ?? '',
       notes: position.notes ?? '',
@@ -132,6 +137,7 @@ function draftOf(position: Position | null, catalogue: StaffingCatalogue, phase:
     exit_date: '',
     key_role: role?.key_role ?? false,
     handover_role: role?.handover_role ?? false,
+    required_before: role?.required_before ?? '',
     recruiting_channel: '',
     owner_user_id: '',
     notes: '',
@@ -150,11 +156,23 @@ export function PositionDialog({
   labels,
   catalogue,
   position,
+  plan,
+  phases,
   defaultPhase,
   onClose,
   onDone,
-}: DialogBase & { catalogue: StaffingCatalogue; position: Position | null; defaultPhase: Phase }) {
+}: DialogBase & {
+  catalogue: StaffingCatalogue;
+  position: Position | null;
+  plan: StaffingPlan;
+  phases: Phase[];
+  defaultPhase: Phase;
+}) {
   const { t } = useTranslation();
+  // What a gate reads of a position, and who its line manager is, follow the server's flags: on an existing
+  // position its own flag, on a new one the caller's manage flag of the plan.
+  const gate = position ? position.can.gate_fields : plan.can.manage;
+  const mayOwner = plan.can.assign_owner;
   const [draft, setDraft] = useState<PositionDraft>(() => draftOf(position, catalogue, defaultPhase));
   const [tried, setTried] = useState(false);
   const { busy, error, run, reset } = useSubmit(() => {
@@ -181,6 +199,7 @@ export function PositionDialog({
       fte: role?.default_fte ?? d.fte,
       key_role: role?.key_role ?? false,
       handover_role: role?.handover_role ?? false,
+      required_before: role?.required_before ?? '',
     }));
   };
 
@@ -200,16 +219,21 @@ export function PositionDialog({
       headcount: Number(draft.headcount),
       entry_date: draft.entry_date || null,
       exit_date: draft.exit_date || null,
-      key_role: draft.key_role,
-      handover_role: draft.handover_role,
       recruiting_channel: draft.recruiting_channel || null,
-      owner_user_id: draft.owner_user_id || null,
       notes: draft.notes.trim() || null,
     };
+    // Sent only by a caller the server lets change them; otherwise the server keeps what the catalogue says.
+    if (gate.allowed) {
+      body.key_role = draft.key_role;
+      body.handover_role = draft.handover_role;
+      if (position || draft.required_before) body.required_before = draft.required_before || null;
+    }
+    if (mayOwner.allowed && (position || draft.owner_user_id)) body.owner_user_id = draft.owner_user_id || null;
     void run(() => (position ? updatePosition(projectId, position.id, body) : createPosition(projectId, body)));
   };
 
   const roles = catalogue.roles.filter((r) => r.phases.includes(draft.phase) || r.code === draft.role_code);
+  const tags = requirementTags(catalogue, draft.required_before);
 
   return (
     <WideModal
@@ -237,7 +261,7 @@ export function PositionDialog({
       <WideModalSection columns={2}>
         <WideModalField label={t('staffing.position.phase', { defaultValue: 'Phase' })} htmlFor="position-phase">
           <select id="position-phase" className={FIELD_CLASS} value={draft.phase} onChange={(e) => set('phase', e.target.value as Phase)}>
-            {PHASES.map((ph) => (
+            {phases.map((ph) => (
               <option key={ph} value={ph}>
                 {vocab(t, PHASE, ph)}
               </option>
@@ -340,25 +364,73 @@ export function PositionDialog({
           label={t('staffing.position.owner', { defaultValue: 'Line manager' })}
           hint={t('staffing.position.owner_hint', { defaultValue: 'May open the personnel files of the people on this position.' })}
         >
-          <ProjectPeopleSelect
-            projectId={projectId}
-            value={draft.owner_user_id}
-            onChange={(userId) => set('owner_user_id', userId)}
-            placeholder={t('staffing.position.owner', { defaultValue: 'Line manager' })}
-          />
+          {mayOwner.allowed ? (
+            <ProjectPeopleSelect
+              projectId={projectId}
+              value={draft.owner_user_id}
+              onChange={(userId) => set('owner_user_id', userId)}
+              placeholder={t('staffing.position.owner', { defaultValue: 'Line manager' })}
+            />
+          ) : (
+            <p className="text-sm text-content-secondary" data-testid="owner-locked">
+              {whyNot(labels.t, mayOwner)}
+            </p>
+          )}
         </WideModalField>
         <WideModalField span={2}>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-content-primary">
             <label className="flex items-center gap-2">
-              <input type="checkbox" checked={draft.key_role} onChange={(e) => set('key_role', e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={draft.key_role}
+                disabled={!gate.allowed}
+                onChange={(e) => set('key_role', e.target.checked)}
+                data-testid="position-key-role"
+              />
               {t('staffing.position.key_role', { defaultValue: 'Key role' })}
             </label>
             <label className="flex items-center gap-2">
-              <input type="checkbox" checked={draft.handover_role} onChange={(e) => set('handover_role', e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={draft.handover_role}
+                disabled={!gate.allowed}
+                onChange={(e) => set('handover_role', e.target.checked)}
+              />
               {t('staffing.position.handover_role', { defaultValue: 'Needs handover' })}
             </label>
           </div>
+          {!gate.allowed && (
+            <p className="mt-1 text-xs text-content-tertiary" data-testid="gate-fields-locked">
+              {whyNot(labels.t, gate)}
+            </p>
+          )}
         </WideModalField>
+        {tags.length > 0 && (draft.key_role || draft.required_before) && (
+          <WideModalField
+            label={t('staffing.position.required_before', { defaultValue: 'Needed before' })}
+            hint={t('staffing.position.required_before_hint', {
+              defaultValue: 'The project step that must not start while this key role is vacant.',
+            })}
+            span={2}
+            htmlFor="position-required-before"
+          >
+            <select
+              id="position-required-before"
+              className={FIELD_CLASS}
+              value={draft.required_before}
+              disabled={!gate.allowed}
+              onChange={(e) => set('required_before', e.target.value)}
+              data-testid="position-required-before"
+            >
+              <option value="">{t('staffing.not_set', { defaultValue: 'Not set' })}</option>
+              {tags.map((tag) => (
+                <option key={tag} value={tag}>
+                  {humanizeCode(tag)}
+                </option>
+              ))}
+            </select>
+          </WideModalField>
+        )}
         <WideModalField label={t('staffing.position.notes', { defaultValue: 'Notes' })} span={2} htmlFor="position-notes">
           <textarea id="position-notes" rows={2} className={FIELD_CLASS} value={draft.notes} onChange={(e) => set('notes', e.target.value)} />
         </WideModalField>
@@ -374,10 +446,11 @@ export function FromCatalogueDialog({
   labels,
   catalogue,
   positions,
+  phases,
   defaultPhase,
   onClose,
   onDone,
-}: DialogBase & { catalogue: StaffingCatalogue; positions: Position[]; defaultPhase: Phase }) {
+}: DialogBase & { catalogue: StaffingCatalogue; positions: Position[]; phases: Phase[]; defaultPhase: Phase }) {
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>(defaultPhase);
   const [entry, setEntry] = useState('');
@@ -437,7 +510,7 @@ export function FromCatalogueDialog({
       <WideModalSection columns={2}>
         <WideModalField label={t('staffing.position.phase', { defaultValue: 'Phase' })} htmlFor="from-catalogue-phase">
           <select id="from-catalogue-phase" className={FIELD_CLASS} value={phase} onChange={(e) => setPhase(e.target.value as Phase)}>
-            {PHASES.map((ph) => (
+            {phases.map((ph) => (
               <option key={ph} value={ph}>
                 {vocab(t, PHASE, ph)}
               </option>

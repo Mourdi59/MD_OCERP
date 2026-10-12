@@ -54,7 +54,7 @@ import {
 } from './labels';
 import { ChangeCatalogueDialog, PlanSettingsDialog } from './PlanDialogs';
 import { FillDialog, FromCatalogueDialog, HandoverDialog, PositionDialog } from './PositionDialogs';
-import { fteDecimals, groupByPhase, nextPositionStatuses, planCanBeSubmitted, planIsLocked } from './rules';
+import { fteDecimals, groupByPhase, phasesOf, nextPositionStatuses, planCanBeSubmitted, planIsLocked } from './rules';
 import {
   ClearedBadge,
   ExportButtons,
@@ -157,7 +157,7 @@ export function PlanPanel({
       onChanged();
     },
   );
-  const end = useStaffingAction((fillId: string) => endFill(projectId, fillId, null), () => onChanged());
+  const end = useStaffingAction((fillId: string) => endFill(projectId, fillId), () => onChanged());
   const dropFill = useStaffingAction((fillId: string) => deleteFill(projectId, fillId), () => onChanged());
   const moveStatus = useStaffingAction(
     (a: { id: string; status: SettablePositionStatus }) => setPositionStatus(projectId, a.id, a.status),
@@ -173,8 +173,10 @@ export function PlanPanel({
   const handoverDone = useStaffingAction((id: string) => updateHandover(projectId, id, { status: 'done' }), () => onChanged());
   const handoverRemove = useStaffingAction((id: string) => deleteHandover(projectId, id), () => onChanged());
 
-  const groups = groupByPhase(positions);
-  const defaultPhase: Phase = groups[groups.length - 1]?.phase ?? 'execution';
+  const phases = phasesOf(catalogue, positions);
+  const groups = groupByPhase(positions, phases);
+  // A new position starts in the phase the plan is already furthest into, else in the catalogue's first one.
+  const defaultPhase: Phase = groups[groups.length - 1]?.phase ?? phases[0] ?? '';
   const blockers = refused.length > 0 ? refused : findings.filter((f) => f.severity === 'error');
   const fillById = new Map<string, { fill: Fill; position: Position }>();
   for (const p of positions) for (const f of p.fills) fillById.set(f.id, { fill: f, position: p });
@@ -575,6 +577,8 @@ export function PlanPanel({
         labels={labels}
         catalogue={catalogue}
         position={dialog?.kind === 'position' ? dialog.position : null}
+        plan={plan}
+        phases={phases}
         defaultPhase={defaultPhase}
         onClose={() => setDialog(null)}
         onDone={onChanged}
@@ -585,6 +589,7 @@ export function PlanPanel({
         labels={labels}
         catalogue={catalogue}
         positions={positions}
+        phases={phases}
         defaultPhase={defaultPhase}
         onClose={() => setDialog(null)}
         onDone={onChanged}

@@ -3,7 +3,7 @@
 //
 // The people on the project who have a personnel file: name, roles, period
 // and whether they are cleared to work. Nothing of a file's content is shown
-// here, and a file opens only for a reader the server lets in (`can_open`).
+// here, and a file opens only for a reader the server lets in (`can.open`).
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,7 @@ import { fmtDate, fmtList } from '@/shared/lib/formatters';
 
 import type { PersonnelFileRow, StaffingCatalogue } from './api';
 import { CreateFileDialog } from './FileDialogs';
-import { FILE_STATUS, catalogueName, vocab, type LabelContext } from './labels';
+import { FILE_STATUS, catalogueName, vocab, whyNot, type LabelContext } from './labels';
 import { ClearedBadge, FILE_TONE, ToneBadge, personLabel } from './StaffingBits';
 
 export interface PeoplePanelProps {
@@ -111,14 +111,14 @@ export function PeoplePanel({ projectId, files, catalogue, labels, onOpen, onCha
                   <ToneBadge tone={FILE_TONE[f.status]}>{vocab(t, FILE_STATUS, f.status)}</ToneBadge>
                 </td>
                 <td className="px-3 py-2 text-right">
-                  {f.can_open ? (
+                  {f.can.open.allowed ? (
                     <Button variant="secondary" size="sm" onClick={() => onOpen(f.id)} data-testid="open-file">
                       {t('staffing.people.open', { defaultValue: 'Open file' })}
                     </Button>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-xs text-content-tertiary" data-testid="file-closed">
                       <Lock size={12} aria-hidden />
-                      {t('staffing.file.no_access', { defaultValue: 'You cannot open this file.' })}
+                      {whyNot(labels.t, f.can.open) || t('staffing.file.no_access', { defaultValue: 'You cannot open this file.' })}
                     </span>
                   )}
                 </td>

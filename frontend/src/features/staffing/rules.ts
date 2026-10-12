@@ -15,7 +15,6 @@ import type {
   StaffingCatalogue,
   TravelStatus,
 } from './api';
-import { PHASES } from './api';
 
 /** A plan in review is locked for everybody until it is returned or decided. */
 export function planIsLocked(status: PlanStatus): boolean {
@@ -96,11 +95,30 @@ export function costProblem(cost: string, currency: string): 'cost_invalid' | 'c
   return currency.trim().length === 3 ? null : 'currency_required';
 }
 
-/** Positions per phase in the platform's phase order, phases without positions left out. */
-export function groupByPhase(positions: Position[]): Array<{ phase: Phase; positions: Position[] }> {
-  return PHASES.map((phase) => ({ phase, positions: positions.filter((p) => p.phase === phase) })).filter(
-    (g) => g.positions.length > 0,
-  );
+/**
+ * The phases a plan can have positions in, in the order the pinned catalogue first names them. A phase only
+ * an existing position carries (after a catalogue change) comes last. The client holds no list of its own.
+ */
+export function phasesOf(catalogue: StaffingCatalogue | null | undefined, positions: Position[] = []): Phase[] {
+  const seen = new Set<Phase>();
+  for (const role of catalogue?.roles ?? []) for (const phase of role.phases) seen.add(phase);
+  for (const position of positions) seen.add(position.phase);
+  return [...seen];
+}
+
+/** What a key role can be required before: the tags the roles of the pinned catalogue use, plus the one already set. */
+export function requirementTags(catalogue: StaffingCatalogue, current?: string | null): string[] {
+  const seen = new Set<string>();
+  for (const role of catalogue.roles) if (role.required_before) seen.add(role.required_before);
+  if (current) seen.add(current);
+  return [...seen];
+}
+
+/** Positions per phase in the given phase order, phases without positions left out. */
+export function groupByPhase(positions: Position[], phases: Phase[]): Array<{ phase: Phase; positions: Position[] }> {
+  return phases
+    .map((phase) => ({ phase, positions: positions.filter((p) => p.phase === phase) }))
+    .filter((g) => g.positions.length > 0);
 }
 
 /** The roles of the catalogue that are used in a phase and not planned there yet. */

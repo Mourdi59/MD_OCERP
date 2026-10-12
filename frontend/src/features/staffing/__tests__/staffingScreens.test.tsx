@@ -6,7 +6,10 @@
 // a refused submission lists every blocker; a file opens only where the
 // server allows it; the compliance matrix shows states and nothing else; a
 // reason dialog will not send an empty reason; a full document number is
-// refused before it leaves the browser.
+// refused before it leaves the browser; a document is recorded in the file
+// itself and never picked from the credentials register; what a gate reads
+// of a position and who its line manager is follow the server's flags;
+// ending a file sends no date.
 
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -19,25 +22,31 @@ vi.mock('@/shared/ui/ProjectPeopleSelect', () => ({
   ProjectPeopleSelect: ({ placeholder }: { placeholder?: string }) => <input aria-label={placeholder} readOnly />,
 }));
 vi.mock('@/features/teams/api', () => ({ listRoster: vi.fn(async () => ({ items: [], total: 0 })) }));
-vi.mock('@/features/credentials/api', () => ({
-  fetchCredentials: vi.fn(async () => [{ id: 'cred-9', holder_name: 'Ilya Novak', valid_until: '2026-11-01' }]),
-}));
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
-  return { ...actual, submitPlan: vi.fn(), linkDocument: vi.fn(), holdFile: vi.fn() };
+  return {
+    ...actual,
+    submitPlan: vi.fn(),
+    recordDocument: vi.fn(),
+    holdFile: vi.fn(),
+    endFile: vi.fn(),
+    createPosition: vi.fn(),
+    updatePosition: vi.fn(),
+  };
 });
 
 import en from '@/app/locales/en';
 import { ApiError } from '@/shared/lib/api';
 import * as api from '../api';
-import { DocumentDialog } from '../FileDialogs';
+import { DocumentDialog, EndFileDialog } from '../FileDialogs';
 import type { LabelContext } from '../labels';
 import { PeoplePanel } from '../PeoplePanel';
 import { PlanPanel } from '../PlanPanel';
+import { PositionDialog } from '../PositionDialogs';
 import { ComplianceView, OrgChartView, PlannedVsActualView, UpcomingView } from '../ReadViews';
 import { ClearedBadge, ReasonDialog } from '../StaffingBits';
 import { enT } from './i18nMock';
-import { catalogue, compliance, fileDocument, fileRow, fill, handover, plan, position, upcoming } from './fixtures';
+import { catalogue, compliance, fileDocument, fileRow, fill, handover, no, plan, position, upcoming } from './fixtures';
 
 const mocked = vi.mocked(api);
 const labels: LabelContext = { t: enT, language: 'en', exists: (k) => k in en.translation };
@@ -182,7 +191,7 @@ describe('PeoplePanel', () => {
     wrap(
       <PeoplePanel
         projectId="p1"
-        files={[fileRow(), fileRow({ id: 'file-2', name: 'Ilya Novak', roles: ['site_manager'], cleared_to_work: false, can_open: false })]}
+        files={[fileRow(), fileRow({ id: 'file-2', name: 'Ilya Novak', roles: ['site_manager'], cleared_to_work: false, can: { open: no('no_relationship_to_person') } })]}
         catalogue={catalogue()}
         labels={labels}
         onOpen={onOpen}
@@ -194,7 +203,8 @@ describe('PeoplePanel', () => {
     fireEvent.click(within(rows[0]!).getByTestId('open-file'));
     expect(onOpen).toHaveBeenCalledWith('file-1');
     expect(within(rows[1]!).queryByTestId('open-file')).toBeNull();
-    expect(within(rows[1]!).getByTestId('file-closed')).toHaveTextContent('You cannot open this file.');
+    // The reason is the server's, not a sentence the client made up.
+    expect(within(rows[1]!).getByTestId('file-closed')).toHaveTextContent(en.translation['staffing.errors.no_relationship_to_person']!);
     expect(within(rows[1]!).getByTestId('cleared-no')).toHaveTextContent('Not cleared');
   });
 
@@ -323,7 +333,7 @@ describe('ReasonDialog', () => {
 });
 
 describe('DocumentDialog', () => {
-  it('refuses a full document number before anything is sent', async () => {
+  const open = (document = fileDocument({ id: null, document_kind: 'work_permit', status: null, issued_at: null })) =>
     wrap(
       <DocumentDialog
         open
@@ -331,29 +341,135 @@ describe('DocumentDialog', () => {
         labels={labels}
         fileId="file-2"
         catalogue={catalogue()}
-        document={fileDocument({ id: null, document_kind: 'work_permit', credential_id: null, status: null })}
+        document={document}
         onClose={() => undefined}
         onDone={() => undefined}
       />,
     );
+
+  it('refuses a full document number before anything is sent', async () => {
+    open();
     expect(screen.getByText('Never enter the full number.')).toBeInTheDocument();
-    await screen.findByRole('option', { name: /Ilya Novak, valid until/ });
-    fireEvent.change(screen.getByTestId('document-credential'), { target: { value: 'cred-9' } });
     fireEvent.change(screen.getByTestId('document-last4'), { target: { value: 'C01X4821' } });
     fireEvent.click(screen.getByTestId('document-save'));
     expect(screen.getByTestId('form-error')).toHaveTextContent('Enter only the last 4 characters of the number.');
-    expect(mocked.linkDocument).not.toHaveBeenCalled();
+    expect(mocked.recordDocument).not.toHaveBeenCalled();
+  });
 
-    mocked.linkDocument.mockResolvedValue({});
+  it('records the dates in the file itself and offers nobody else documents to pick from', async () => {
+    mocked.recordDocument.mockResolvedValue({});
+    open();
+    // No list of credentials of the project is shown: there is nothing to choose, only dates to enter.
+    expect(screen.queryByTestId('document-credential')).toBeNull();
+    expect(screen.queryByRole('option')).toBeNull();
+    expect(screen.getByTestId('document-record-hint')).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('document-issued'), { target: { value: '2026-05-01' } });
+    fireEvent.change(screen.getByTestId('document-until'), { target: { value: '2026-11-01' } });
     fireEvent.change(screen.getByTestId('document-last4'), { target: { value: '4821' } });
     fireEvent.click(screen.getByTestId('document-save'));
     await waitFor(() =>
-      expect(mocked.linkDocument).toHaveBeenCalledWith('p1', 'file-2', {
+      expect(mocked.recordDocument).toHaveBeenCalledWith('p1', 'file-2', {
         document_kind: 'work_permit',
-        credential_id: 'cred-9',
+        issued_at: '2026-05-01',
+        valid_until: '2026-11-01',
         number_last4: '4821',
         fit_for_role: null,
       }),
     );
+  });
+
+  it('does not send a document that expires before it was issued', () => {
+    open();
+    fireEvent.change(screen.getByTestId('document-issued'), { target: { value: '2026-05-01' } });
+    fireEvent.change(screen.getByTestId('document-until'), { target: { value: '2026-04-01' } });
+    fireEvent.click(screen.getByTestId('document-save'));
+    expect(screen.getByTestId('form-error')).toHaveTextContent(en.translation['staffing.errors.validity_dates_invalid']!);
+    expect(mocked.recordDocument).not.toHaveBeenCalled();
+  });
+
+  it('asks for the fit answer only on the kind the server marks, and for no number there', () => {
+    open(fileDocument({ id: null, document_kind: 'health_certificate', status: null, special_category: true }));
+    expect(screen.getByTestId('document-fit')).toBeInTheDocument();
+    expect(screen.queryByTestId('document-last4')).toBeNull();
+    cleanup();
+    open();
+    expect(screen.queryByTestId('document-fit')).toBeNull();
+  });
+});
+
+describe('EndFileDialog', () => {
+  it('ends the file today: no date is asked for and none is sent', async () => {
+    mocked.endFile.mockResolvedValue({});
+    const onDone = vi.fn();
+    wrap(<EndFileDialog open projectId="p1" fileId="file-1" onClose={() => undefined} onDone={onDone} />);
+    const dialog = screen.getByTestId('end-file-dialog');
+    expect(within(dialog).getByTestId('end-file-today')).toHaveTextContent('The assignment ends today.');
+    expect(dialog.querySelector('input')).toBeNull();
+    fireEvent.click(screen.getByTestId('end-file-save'));
+    await waitFor(() => expect(mocked.endFile).toHaveBeenCalledTimes(1));
+    expect(mocked.endFile.mock.calls[0]).toEqual(['p1', 'file-1']);
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+  });
+});
+
+describe('PositionDialog', () => {
+  const open = (over: { plan?: ReturnType<typeof plan>; position?: ReturnType<typeof position> | null } = {}) =>
+    wrap(
+      <PositionDialog
+        open
+        projectId="p1"
+        labels={labels}
+        catalogue={catalogue()}
+        position={over.position ?? null}
+        plan={over.plan ?? plan()}
+        phases={['development', 'execution', 'operation']}
+        defaultPhase="execution"
+        onClose={() => undefined}
+        onDone={() => undefined}
+      />,
+    );
+
+  it('lets a manager set what the gate reads and the line manager, and sends them', async () => {
+    mocked.createPosition.mockResolvedValue(position());
+    open();
+    expect(screen.getByTestId('position-key-role')).not.toBeDisabled();
+    expect(screen.queryByTestId('gate-fields-locked')).toBeNull();
+    expect(screen.queryByTestId('owner-locked')).toBeNull();
+    // The requirement comes from the catalogue role, as a tag of the phase model.
+    expect(screen.getByTestId('position-required-before')).toHaveValue('construction_start');
+    fireEvent.click(screen.getByTestId('position-save'));
+    await waitFor(() => expect(mocked.createPosition).toHaveBeenCalledTimes(1));
+    expect(mocked.createPosition.mock.calls[0]![1]).toMatchObject({
+      role_code: 'project_manager',
+      phase: 'execution',
+      key_role: true,
+      handover_role: true,
+      required_before: 'construction_start',
+    });
+  });
+
+  it('follows the server when it refuses: the fields are locked with its reason and left out of the request', async () => {
+    mocked.createPosition.mockResolvedValue(position());
+    open({ plan: plan({ can: { manage: no('manage_permission_required'), assign_owner: no('owner_assignment_forbidden') } }) });
+    expect(screen.getByTestId('position-key-role')).toBeDisabled();
+    expect(screen.getByTestId('position-required-before')).toBeDisabled();
+    expect(screen.getByTestId('gate-fields-locked')).toHaveTextContent(en.translation['staffing.errors.manage_permission_required']!);
+    expect(screen.getByTestId('owner-locked')).toHaveTextContent(en.translation['staffing.errors.owner_assignment_forbidden']!);
+    fireEvent.click(screen.getByTestId('position-save'));
+    await waitFor(() => expect(mocked.createPosition).toHaveBeenCalledTimes(1));
+    const body = mocked.createPosition.mock.calls[0]![1];
+    for (const field of ['key_role', 'handover_role', 'required_before', 'owner_user_id']) expect(body).not.toHaveProperty(field);
+  });
+
+  it('freezes what the gate reads on a position that has left its first state, for a manager too', async () => {
+    mocked.updatePosition.mockResolvedValue(position());
+    open({ position: position({ stored_status: 'recruiting', status: 'recruiting', can: { gate_fields: no('gate_fields_frozen') } }) });
+    expect(screen.getByTestId('position-key-role')).toBeDisabled();
+    expect(screen.getByTestId('gate-fields-locked')).toHaveTextContent(en.translation['staffing.errors.gate_fields_frozen']!);
+    fireEvent.click(screen.getByTestId('position-save'));
+    await waitFor(() => expect(mocked.updatePosition).toHaveBeenCalledTimes(1));
+    const body = mocked.updatePosition.mock.calls[0]![2];
+    expect(body).not.toHaveProperty('key_role');
+    expect(body).toHaveProperty('owner_user_id', null);
   });
 });
