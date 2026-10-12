@@ -30,6 +30,7 @@ vi.mock('../api', async (importOriginal) => {
     recordDocument: vi.fn(),
     holdFile: vi.fn(),
     endFile: vi.fn(),
+    requestResource: vi.fn(),
     createPosition: vi.fn(),
     updatePosition: vi.fn(),
   };
@@ -177,6 +178,31 @@ describe('PlanPanel', () => {
     expect(onChanged).not.toHaveBeenCalled();
   });
 
+  it('offers the resource request only where the server allows it and shows a request that exists', async () => {
+    mocked.requestResource.mockResolvedValue(position());
+    const recruiting = position({
+      id: 'pos-r',
+      status: 'recruiting',
+      stored_status: 'recruiting',
+      can: { gate_fields: no('gate_fields_frozen'), request_resource: { allowed: true, reason: null } },
+    });
+    const asked = position({
+      id: 'pos-a',
+      role_code: 'site_manager',
+      resource_request_id: 'rr-1',
+      can: { gate_fields: no('gate_fields_frozen'), request_resource: no('resource_request_exists') },
+    });
+    const { onChanged } = renderPlan({ positions: [recruiting, asked, position({ id: 'pos-o', role_code: 'operator_plant_manager', phase: 'operation' })] });
+    const rows = screen.getAllByTestId('position-row');
+    expect(within(rows[1]!).queryByTestId('request-resource')).toBeNull();
+    expect(within(rows[1]!).getByTestId('resource-requested')).toBeInTheDocument();
+    // A position view without the flag offers nothing: the client does not guess from the status.
+    expect(within(rows[2]!).queryByTestId('request-resource')).toBeNull();
+    fireEvent.click(within(rows[0]!).getByTestId('request-resource'));
+    await waitFor(() => expect(mocked.requestResource).toHaveBeenCalledWith('p1', 'pos-r'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  });
+
   it('explains an empty plan and offers the catalogue roles as the first step', () => {
     renderPlan({ positions: [], handovers: [] });
     expect(screen.getByText('No positions yet')).toBeInTheDocument();
@@ -286,7 +312,7 @@ describe('read views', () => {
         labels={labels}
         positions={[position({ id: 'pos-9', role_code: 'custom', custom_label: 'Interface manager' })]}
         rows={[
-          { position_id: 'pos-9', role_code: 'custom', planned_fte_days: '30.00', actual_hours: '0', actual_fte_days: '0.00', variance_fte_days: '-30.00', linked_resources: 0 },
+          { position_id: 'pos-9', role_code: 'custom', working_days: 30, hours_per_day: '7.5', planned_fte_days: '30.00', actual_hours: '0', actual_fte_days: '0.00', variance_fte_days: '-30.00', linked_resources: 0 },
         ]}
       />,
     );
@@ -295,6 +321,9 @@ describe('read views', () => {
     expect(within(row).getByTestId('pva-unlinked')).toBeInTheDocument();
     expect(within(row).getByText('30.0')).toBeInTheDocument();
     expect(within(row).queryByText('-30.0')).toBeNull();
+    expect(within(row).getByTestId('pva-working-days')).toHaveTextContent('30');
+    // The length of a day is the server's, from the project work calendar; the screen assumes none.
+    expect(screen.getByTestId('planned-vs-actual')).toHaveTextContent('with 7.5 hours counted as one day');
   });
 });
 

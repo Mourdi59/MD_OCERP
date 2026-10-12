@@ -279,6 +279,14 @@ describe('staffing i18n keys', () => {
     expect(sources).not.toMatch(/\/end`,/);
   });
 
+  it('writes every API path in full, in the call that sends it', () => {
+    const client = readFileSync(join(featureDir, 'api.ts'), 'utf-8');
+    expect(client).not.toMatch(/const (BASE|p|f) =/);
+    const calls = [...client.matchAll(/\bapi(Get|Post|Patch|Put|Delete)(<[^(]*>)?\(\s*(\S+)/g)];
+    expect(calls.length).toBeGreaterThan(40);
+    expect(calls.filter((m) => !m[3]!.startsWith('`/v1/staffing/'))).toEqual([]);
+  });
+
   it('finds the keys it is meant to check', () => {
     // A broken extraction would make the tests below pass on nothing.
     expect(used.size).toBeGreaterThan(350);

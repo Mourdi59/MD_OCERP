@@ -309,6 +309,13 @@ export function ChangeCatalogueDialog({
     >
       {cataloguesQ.isLoading ? (
         <SkeletonTable rows={2} columns={1} />
+      ) : cataloguesQ.isError ? (
+        <ErrorState
+          compact
+          title={t('staffing.plan.catalogues_failed', { defaultValue: 'The staffing catalogues could not be loaded' })}
+          hint={getErrorMessage(cataloguesQ.error)}
+          onRetry={() => cataloguesQ.refetch()}
+        />
       ) : others.length === 0 ? (
         <p className="text-sm text-content-secondary" data-testid="no-other-catalogue">
           {t('staffing.plan.no_other_catalogue', { defaultValue: 'There is no other staffing catalogue to change to.' })}

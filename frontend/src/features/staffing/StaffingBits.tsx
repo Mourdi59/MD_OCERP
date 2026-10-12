@@ -250,6 +250,27 @@ export function ExportButtons({ download }: { download: (format: ExportFormat) =
   );
 }
 
+/** What a person picker says when it has nobody to offer: the team could not be loaded, or nobody is left. */
+export function PeoplePickerNote({ failed, empty, onRetry }: { failed: boolean; empty: boolean; onRetry: () => void }) {
+  const { t } = useTranslation();
+  if (failed) {
+    return (
+      <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-semantic-error" role="alert" data-testid="people-failed">
+        {t('staffing.people_failed', { defaultValue: 'The project team could not be loaded.' })}
+        <button type="button" className="underline" onClick={onRetry}>
+          {t('common.retry', { defaultValue: 'Retry' })}
+        </button>
+      </p>
+    );
+  }
+  if (!empty) return null;
+  return (
+    <p className="mt-1 text-xs text-content-tertiary" data-testid="people-none">
+      {t('staffing.people_none', { defaultValue: 'There is nobody to choose. People come from the project team.' })}
+    </p>
+  );
+}
+
 /** A form's refusal line, shown inside the dialog that caused it. */
 export function FormError({ message }: { message: string | null }) {
   if (!message) return null;

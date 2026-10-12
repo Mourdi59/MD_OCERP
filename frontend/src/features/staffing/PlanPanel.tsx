@@ -25,6 +25,7 @@ import {
   deletePosition,
   downloadExport,
   endFill,
+  requestResource,
   returnPlan,
   setPositionStatus,
   staffingViolations,
@@ -163,6 +164,7 @@ export function PlanPanel({
     (a: { id: string; status: SettablePositionStatus }) => setPositionStatus(projectId, a.id, a.status),
     () => onChanged(),
   );
+  const askResource = useStaffingAction((id: string) => requestResource(projectId, id), () => onChanged());
   const removePosition = useStaffingAction(
     (id: string) => deletePosition(projectId, id),
     () => {
@@ -442,7 +444,23 @@ export function PlanPanel({
                           )}
                         </td>
                         <td className="px-3 py-2">
-                          <div className="flex justify-end gap-1">
+                          <div className="flex flex-wrap items-center justify-end gap-1">
+                            {p.resource_request_id && (
+                              <span className="text-xs text-content-tertiary" data-testid="resource-requested">
+                                {t('staffing.position.resource_requested', { defaultValue: 'Resource requested' })}
+                              </span>
+                            )}
+                            {p.can.request_resource?.allowed && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                loading={askResource.isPending}
+                                onClick={() => askResource.mutate(p.id)}
+                                data-testid="request-resource"
+                              >
+                                {t('staffing.position.request_resource', { defaultValue: 'Request resource' })}
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"

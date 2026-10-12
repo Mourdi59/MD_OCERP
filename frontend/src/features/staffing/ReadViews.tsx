@@ -291,6 +291,8 @@ export function UpcomingView({
 }
 
 const days = (value: string) => fmtNumber(value, fteDecimals(value));
+/** A decimal the server sent, with the decimals it needs and no padding zeros: 8.00 reads 8, 7.50 reads 7.5. */
+const plainNumber = (value: string) => fmtNumber(value, (value.split('.')[1] ?? '').replace(/0+$/, '').length);
 
 export function PlannedVsActualView({
   catalogue,
@@ -320,14 +322,18 @@ export function PlannedVsActualView({
     <div className="space-y-3" data-testid="planned-vs-actual">
       <p className="text-sm text-content-secondary">
         {t('staffing.pva.intro', {
-          defaultValue: 'Planned FTE days up to today against the days booked on site timesheets, with 8 hours counted as one day. Read only.',
+          defaultValue:
+            'Planned FTE days up to today against the days booked on site timesheets, with {{hours}} hours counted as one day. Read only.',
+          // The length of a day is the project work calendar's, as the server sends it with every row.
+          hours: plainNumber(rows[0]?.hours_per_day ?? ''),
         })}
       </p>
       <div className="overflow-x-auto rounded-lg border border-border-light">
-        <table className="w-full min-w-[560px] text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-border-light text-left text-xs text-content-tertiary">
               <th scope="col" className="px-3 py-2 font-medium">{t('staffing.position.role', { defaultValue: 'Role' })}</th>
+              <th scope="col" className="px-3 py-2 text-right font-medium">{t('staffing.pva.working_days', { defaultValue: 'Working days' })}</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">{t('staffing.pva.planned_days', { defaultValue: 'Planned FTE days' })}</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">{t('staffing.pva.actual_days', { defaultValue: 'Booked days' })}</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">{t('staffing.pva.variance', { defaultValue: 'Variance' })}</th>
@@ -344,6 +350,7 @@ export function PlannedVsActualView({
                     </div>
                   )}
                 </td>
+                <td className="px-3 py-2 text-right tabular-nums" data-testid="pva-working-days">{fmtNumber(r.working_days, 0)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{days(r.planned_fte_days)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.linked_resources === 0 ? '' : days(r.actual_fte_days)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.linked_resources === 0 ? '' : days(r.variance_fte_days)}</td>

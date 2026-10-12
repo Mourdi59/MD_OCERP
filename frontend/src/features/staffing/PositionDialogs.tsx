@@ -40,7 +40,7 @@ import {
   type LabelContext,
 } from './labels';
 import { datesProblem, decimalString, fteProblem, headcountProblem, liveFills, requirementTags, rolesNotPlanned } from './rules';
-import { FIELD_CLASS, FormError, personLabel } from './StaffingBits';
+import { FIELD_CLASS, FormError, PeoplePickerNote, personLabel } from './StaffingBits';
 import { useSubmit } from './useSubmit';
 
 /** The role code the API takes for a role the catalogue does not list; such a position carries its own label. */
@@ -636,6 +636,7 @@ export function FillDialog({
               </option>
             ))}
           </select>
+          <PeoplePickerNote failed={rosterQ.isError} empty={rosterQ.isSuccess && roster.length === 0} onRetry={() => void rosterQ.refetch()} />
         </WideModalField>
         <WideModalField label={t('staffing.fill.share', { defaultValue: 'FTE share' })} htmlFor="fill-share">
           <input id="fill-share" inputMode="decimal" className={FIELD_CLASS} value={share} onChange={(e) => setShare(e.target.value)} />

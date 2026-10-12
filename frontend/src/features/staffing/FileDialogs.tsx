@@ -49,7 +49,7 @@ import {
   type LabelContext,
 } from './labels';
 import { costProblem, datesProblem, decimalString, last4Problem } from './rules';
-import { FIELD_CLASS, FormError, personLabel } from './StaffingBits';
+import { FIELD_CLASS, FormError, PeoplePickerNote, personLabel } from './StaffingBits';
 import { useSubmit } from './useSubmit';
 
 const BASES = Object.keys(EMPLOYMENT_BASIS) as EmploymentBasis[];
@@ -241,6 +241,7 @@ export function CreateFileDialog({ open, projectId, labels, existing, onClose, o
               </option>
             ))}
           </select>
+          <PeoplePickerNote failed={rosterQ.isError} empty={rosterQ.isSuccess && people.length === 0} onRetry={() => void rosterQ.refetch()} />
         </WideModalField>
         <HeaderFields
           employer={employer}

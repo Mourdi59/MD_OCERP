@@ -103,7 +103,7 @@ export function ProjectStaffingPage() {
           <ol className="ml-4 list-decimal space-y-1 text-sm text-content-secondary">
             <li>{t('staffing.how_step_1', { defaultValue: 'Pick a staffing catalogue. It brings the usual roles per phase and the documents each role needs.' })}</li>
             <li>{t('staffing.how_step_2', { defaultValue: 'Add the positions the project needs and put people from the project team on them.' })}</li>
-            <li>{t('staffing.how_step_3', { defaultValue: 'Open a personnel file per person and link the required documents. A person with nothing missing or expired is cleared to work.' })}</li>
+            <li>{t('staffing.how_step_3', { defaultValue: 'Open a personnel file per person and record the required documents. A person with nothing missing or expired is cleared to work.' })}</li>
             <li>{t('staffing.how_step_4', { defaultValue: 'Submit the plan for review. It is approved at the governance gate of the personnel area.' })}</li>
           </ol>
         </CollapsibleSection>
@@ -195,8 +195,9 @@ export function ProjectStaffingPage() {
     );
   } else if (positionsQ.isLoading || handoversQ.isLoading) {
     body = loading;
-  } else if (positionsQ.isError) {
-    body = failed(positionsQ.error, invalidate);
+  } else if (positionsQ.isError || handoversQ.isError || findingsQ.isError) {
+    // A list that failed to load must not read as an empty one: no handovers, nothing blocking.
+    body = failed(positionsQ.error ?? handoversQ.error ?? findingsQ.error, invalidate);
   } else {
     body = (
       <PlanPanel

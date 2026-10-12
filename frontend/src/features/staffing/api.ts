@@ -6,6 +6,8 @@
 //
 // Backend module: backend/app/modules/staffing/router.py, mounted at
 // /api/v1/staffing/. Every project route lives under /projects/{project_id}/.
+// Each call writes its full path as a literal, so the route check of the repo
+// can compare it with the router, method included.
 // The shapes below follow what the service returns, which is the contract.
 //
 // Errors arrive as `detail = {code, message_key, message, violations?, info?}`.
@@ -13,8 +15,6 @@
 // violation of a refused submission.
 
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
-
-const BASE = '/v1/staffing';
 
 export interface Page<T> {
   items: T[];
@@ -161,7 +161,8 @@ export interface Position {
   covered_fte: string;
   fills: Fill[];
   /** `gate_fields`: whether key role, handover and the requirement may be changed by this caller now. */
-  can: { gate_fields: Can };
+  /** `request_resource`: whether a request in the resources module may be opened for this position now. */
+  can: { gate_fields: Can; request_resource?: Can };
 }
 
 export interface PositionInput {
@@ -235,6 +236,10 @@ export interface Compliance {
 export interface PlannedVsActualRow {
   position_id: string;
   role_code: string;
+  /** Working days of the position's period up to today, by the project's work calendar. */
+  working_days: number;
+  /** Hours the work calendar counts as one day. */
+  hours_per_day: string;
   planned_fte_days: string;
   actual_hours: string;
   actual_fte_days: string;
@@ -437,21 +442,18 @@ export const staffingKeys = {
   accessLog: (projectId: string, fileId: string) => ['staffing-file', projectId, fileId, 'access-log'] as const,
 };
 
-const p = (projectId: string) => `${BASE}/projects/${projectId}`;
-const f = (projectId: string, fileId: string) => `${p(projectId)}/personnel-files/${fileId}`;
-
 /* ── Catalogues and plan ──────────────────────────────────────────────── */
 
 export function listCatalogues(): Promise<Page<CatalogueSummary>> {
-  return apiGet<Page<CatalogueSummary>>(`${BASE}/catalogues`);
+  return apiGet<Page<CatalogueSummary>>(`/v1/staffing/catalogues`);
 }
 
 export function getPinnedCatalogue(projectId: string): Promise<StaffingCatalogue> {
-  return apiGet<StaffingCatalogue>(`${p(projectId)}/catalogue`);
+  return apiGet<StaffingCatalogue>(`/v1/staffing/projects/${projectId}/catalogue`);
 }
 
 export function getPlan(projectId: string): Promise<StaffingPlan> {
-  return apiGet<StaffingPlan>(`${p(projectId)}/plan`);
+  return apiGet<StaffingPlan>(`/v1/staffing/projects/${projectId}/plan`);
 }
 
 export function createPlan(
@@ -463,54 +465,54 @@ export function createPlan(
     commissioning_date: string | null;
   },
 ): Promise<StaffingPlan> {
-  return apiPut<StaffingPlan>(`${p(projectId)}/plan`, body);
+  return apiPut<StaffingPlan>(`/v1/staffing/projects/${projectId}/plan`, body);
 }
 
 export function patchPlan(
   projectId: string,
   body: { requires_accommodation?: boolean; commissioning_date?: string | null },
 ): Promise<StaffingPlan> {
-  return apiPatch<StaffingPlan>(`${p(projectId)}/plan`, body);
+  return apiPatch<StaffingPlan>(`/v1/staffing/projects/${projectId}/plan`, body);
 }
 
 export function changeCatalogue(
   projectId: string,
   body: { catalogue_source: 'shipped' | 'tenant'; catalogue_id: string; role_mapping: Record<string, string> },
 ): Promise<StaffingPlan> {
-  return apiPost<StaffingPlan>(`${p(projectId)}/plan/catalogue`, body);
+  return apiPost<StaffingPlan>(`/v1/staffing/projects/${projectId}/plan/catalogue`, body);
 }
 
 export function submitPlan(projectId: string): Promise<StaffingPlan> {
-  return apiPost<StaffingPlan>(`${p(projectId)}/plan/submit`, {});
+  return apiPost<StaffingPlan>(`/v1/staffing/projects/${projectId}/plan/submit`, {});
 }
 
 export function returnPlan(projectId: string): Promise<StaffingPlan> {
-  return apiPost<StaffingPlan>(`${p(projectId)}/plan/return`, {});
+  return apiPost<StaffingPlan>(`/v1/staffing/projects/${projectId}/plan/return`, {});
 }
 
 export function listPlanFindings(projectId: string): Promise<Page<Finding>> {
-  return apiGet<Page<Finding>>(`${p(projectId)}/plan/findings`);
+  return apiGet<Page<Finding>>(`/v1/staffing/projects/${projectId}/plan/findings`);
 }
 
 /* ── Positions, fills, handovers ──────────────────────────────────────── */
 
 export function listPositions(projectId: string): Promise<Page<Position>> {
-  return apiGet<Page<Position>>(`${p(projectId)}/positions`);
+  return apiGet<Page<Position>>(`/v1/staffing/projects/${projectId}/positions`);
 }
 
 export function createPosition(projectId: string, body: PositionInput): Promise<Position> {
-  return apiPost<Position>(`${p(projectId)}/positions`, body);
+  return apiPost<Position>(`/v1/staffing/projects/${projectId}/positions`, body);
 }
 
 export function createPositionsFromCatalogue(
   projectId: string,
   body: { phase: Phase; role_codes?: string[]; entry_date?: string | null },
 ): Promise<Page<Position>> {
-  return apiPost<Page<Position>>(`${p(projectId)}/positions/from-catalogue`, body);
+  return apiPost<Page<Position>>(`/v1/staffing/projects/${projectId}/positions/from-catalogue`, body);
 }
 
 export function updatePosition(projectId: string, positionId: string, body: PositionInput): Promise<Position> {
-  return apiPatch<Position>(`${p(projectId)}/positions/${positionId}`, body);
+  return apiPatch<Position>(`/v1/staffing/projects/${projectId}/positions/${positionId}`, body);
 }
 
 export function setPositionStatus(
@@ -518,11 +520,16 @@ export function setPositionStatus(
   positionId: string,
   status: SettablePositionStatus,
 ): Promise<Position> {
-  return apiPost<Position>(`${p(projectId)}/positions/${positionId}/status`, { status });
+  return apiPost<Position>(`/v1/staffing/projects/${projectId}/positions/${positionId}/status`, { status });
+}
+
+/** Opens one request in the resources module for a recruiting position. The server keeps its id on the position. */
+export function requestResource(projectId: string, positionId: string): Promise<Position> {
+  return apiPost<Position>(`/v1/staffing/projects/${projectId}/positions/${positionId}/resource-request`);
 }
 
 export function deletePosition(projectId: string, positionId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/positions/${positionId}`);
+  return apiDelete(`/v1/staffing/projects/${projectId}/positions/${positionId}`);
 }
 
 export function createFill(
@@ -530,31 +537,31 @@ export function createFill(
   positionId: string,
   body: { roster_member_id: string; fte_share: string; from_date: string; to_date?: string | null },
 ): Promise<Fill> {
-  return apiPost<Fill>(`${p(projectId)}/positions/${positionId}/fills`, body);
+  return apiPost<Fill>(`/v1/staffing/projects/${projectId}/positions/${positionId}/fills`, body);
 }
 
 export function confirmFill(projectId: string, fillId: string): Promise<{ fill: Fill; warnings: Finding[] }> {
-  return apiPost<{ fill: Fill; warnings: Finding[] }>(`${p(projectId)}/fills/${fillId}/confirm`, {});
+  return apiPost<{ fill: Fill; warnings: Finding[] }>(`/v1/staffing/projects/${projectId}/fills/${fillId}/confirm`, {});
 }
 
 /** Ends the assignment today. The day is the server's; the request carries none. */
 export function endFill(projectId: string, fillId: string): Promise<Fill> {
-  return apiPost<Fill>(`${p(projectId)}/fills/${fillId}/end`);
+  return apiPost<Fill>(`/v1/staffing/projects/${projectId}/fills/${fillId}/end`);
 }
 
 export function deleteFill(projectId: string, fillId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/fills/${fillId}`);
+  return apiDelete(`/v1/staffing/projects/${projectId}/fills/${fillId}`);
 }
 
 export function listHandovers(projectId: string): Promise<Page<Handover>> {
-  return apiGet<Page<Handover>>(`${p(projectId)}/handovers`);
+  return apiGet<Page<Handover>>(`/v1/staffing/projects/${projectId}/handovers`);
 }
 
 export function createHandover(
   projectId: string,
   body: { from_fill_id: string; to_position_id: string; overlap_days: number; scope: string },
 ): Promise<Handover> {
-  return apiPost<Handover>(`${p(projectId)}/handovers`, body);
+  return apiPost<Handover>(`/v1/staffing/projects/${projectId}/handovers`, body);
 }
 
 export function updateHandover(
@@ -562,82 +569,82 @@ export function updateHandover(
   handoverId: string,
   body: { overlap_days?: number; scope?: string; status?: HandoverStatus },
 ): Promise<Handover> {
-  return apiPatch<Handover>(`${p(projectId)}/handovers/${handoverId}`, body);
+  return apiPatch<Handover>(`/v1/staffing/projects/${projectId}/handovers/${handoverId}`, body);
 }
 
 export function deleteHandover(projectId: string, handoverId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/handovers/${handoverId}`);
+  return apiDelete(`/v1/staffing/projects/${projectId}/handovers/${handoverId}`);
 }
 
 /* ── Views ────────────────────────────────────────────────────────────── */
 
 export function getOrgChart(projectId: string): Promise<OrgChart> {
-  return apiGet<OrgChart>(`${p(projectId)}/org-chart`);
+  return apiGet<OrgChart>(`/v1/staffing/projects/${projectId}/org-chart`);
 }
 
 export function getCompliance(projectId: string): Promise<Compliance> {
-  return apiGet<Compliance>(`${p(projectId)}/compliance`);
+  return apiGet<Compliance>(`/v1/staffing/projects/${projectId}/compliance`);
 }
 
 export function getPlannedVsActual(projectId: string): Promise<Page<PlannedVsActualRow>> {
-  return apiGet<Page<PlannedVsActualRow>>(`${p(projectId)}/planned-vs-actual`);
+  return apiGet<Page<PlannedVsActualRow>>(`/v1/staffing/projects/${projectId}/planned-vs-actual`);
 }
 
 export function getUpcoming(projectId: string): Promise<Upcoming> {
-  return apiGet<Upcoming>(`${p(projectId)}/upcoming`);
+  return apiGet<Upcoming>(`/v1/staffing/projects/${projectId}/upcoming`);
 }
 
 /** Download the plan, the organisation chart or the compliance matrix. The server names the file. */
 export function downloadExport(projectId: string, what: ExportWhat, format: ExportFormat): Promise<void> {
-  return downloadWithAuth(`/api${p(projectId)}/export?what=${what}&format=${format}`, `staffing_${what}.${format}`);
+  return downloadWithAuth(`/api/v1/staffing/projects/${projectId}/export?what=${what}&format=${format}`, `staffing_${what}.${format}`);
 }
 
 /* ── Personnel files ──────────────────────────────────────────────────── */
 
 export function listFiles(projectId: string): Promise<Page<PersonnelFileRow>> {
-  return apiGet<Page<PersonnelFileRow>>(`${p(projectId)}/personnel-files`);
+  return apiGet<Page<PersonnelFileRow>>(`/v1/staffing/projects/${projectId}/personnel-files`);
 }
 
 export function createFile(
   projectId: string,
   body: { roster_member_id: string } & FileHeaderInput,
 ): Promise<{ id: string }> {
-  return apiPost<{ id: string }>(`${p(projectId)}/personnel-files`, body);
+  return apiPost<{ id: string }>(`/v1/staffing/projects/${projectId}/personnel-files`, body);
 }
 
 /** Opens the file. The server records every call in the file's access log. */
 export function getFile(projectId: string, fileId: string): Promise<PersonnelFile> {
-  return apiGet<PersonnelFile>(f(projectId, fileId));
+  return apiGet<PersonnelFile>(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}`);
 }
 
 export function updateFile(projectId: string, fileId: string, body: FileHeaderInput): Promise<unknown> {
-  return apiPatch(f(projectId, fileId), body);
+  return apiPatch(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}`, body);
 }
 
 /** Ends the file today and starts its retention. The day is the server's; the request carries none. */
 export function endFile(projectId: string, fileId: string): Promise<unknown> {
-  return apiPost(`${f(projectId, fileId)}/end`);
+  return apiPost(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/end`);
 }
 
 export function holdFile(projectId: string, fileId: string, rationale: string): Promise<unknown> {
-  return apiPost(`${f(projectId, fileId)}/hold`, { rationale });
+  return apiPost(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/hold`, { rationale });
 }
 
 export function releaseFile(projectId: string, fileId: string): Promise<unknown> {
-  return apiPost(`${f(projectId, fileId)}/release`, {});
+  return apiPost(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/release`, {});
 }
 
 export function eraseFile(projectId: string, fileId: string, rationale: string): Promise<unknown> {
-  return apiPost(`${f(projectId, fileId)}/erase`, { rationale });
+  return apiPost(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/erase`, { rationale });
 }
 
 export function getAccessLog(projectId: string, fileId: string): Promise<Page<AccessLogEntry>> {
-  return apiGet<Page<AccessLogEntry>>(`${f(projectId, fileId)}/access-log`);
+  return apiGet<Page<AccessLogEntry>>(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/access-log`);
 }
 
 /** The person's own file. The server refuses anybody else with `own_file_only`. */
 export function downloadOwnFile(projectId: string, fileId: string, format: ExportFormat): Promise<void> {
-  return downloadWithAuth(`/api${f(projectId, fileId)}/export?format=${format}`, `personnel_file.${format}`);
+  return downloadWithAuth(`/api/v1/staffing/projects/${projectId}/personnel-files/${fileId}/export?format=${format}`, `personnel_file.${format}`);
 }
 
 /**
@@ -655,11 +662,11 @@ export function recordDocument(
     fit_for_role?: FitForRole | null;
   },
 ): Promise<unknown> {
-  return apiPost(`${f(projectId, fileId)}/documents`, body);
+  return apiPost(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/documents`, body);
 }
 
 export function verifyDocument(projectId: string, fileId: string, documentId: string): Promise<unknown> {
-  return apiPost(`${f(projectId, fileId)}/documents/${documentId}/verify`, {});
+  return apiPost(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/documents/${documentId}/verify`, {});
 }
 
 export function waiveDocument(
@@ -668,11 +675,11 @@ export function waiveDocument(
   documentKind: string,
   rationale: string,
 ): Promise<unknown> {
-  return apiPost(`${f(projectId, fileId)}/documents/${documentKind}/waive`, { rationale });
+  return apiPost(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/documents/${documentKind}/waive`, { rationale });
 }
 
 export function createTravel(projectId: string, fileId: string, body: TravelInput): Promise<unknown> {
-  return apiPost(`${f(projectId, fileId)}/travel`, body);
+  return apiPost(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/travel`, body);
 }
 
 export function updateTravel(
@@ -681,7 +688,7 @@ export function updateTravel(
   travelId: string,
   body: Partial<TravelInput>,
 ): Promise<unknown> {
-  return apiPatch(`${f(projectId, fileId)}/travel/${travelId}`, body);
+  return apiPatch(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/travel/${travelId}`, body);
 }
 
 export function setTravelStatus(
@@ -690,11 +697,11 @@ export function setTravelStatus(
   travelId: string,
   status: TravelStatus,
 ): Promise<unknown> {
-  return apiPost(`${f(projectId, fileId)}/travel/${travelId}/status`, { status });
+  return apiPost(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/travel/${travelId}/status`, { status });
 }
 
 export function deleteTravel(projectId: string, fileId: string, travelId: string): Promise<void> {
-  return apiDelete(`${f(projectId, fileId)}/travel/${travelId}`);
+  return apiDelete(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/travel/${travelId}`);
 }
 
 export function createLeave(
@@ -702,7 +709,7 @@ export function createLeave(
   fileId: string,
   body: { leave_type: string; from_date: string; to_date: string },
 ): Promise<{ warnings?: Finding[] }> {
-  return apiPost<{ warnings?: Finding[] }>(`${f(projectId, fileId)}/leave`, body);
+  return apiPost<{ warnings?: Finding[] }>(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/leave`, body);
 }
 
 export function updateLeave(
@@ -711,7 +718,7 @@ export function updateLeave(
   leaveId: string,
   body: { leave_type?: string; from_date?: string; to_date?: string },
 ): Promise<unknown> {
-  return apiPatch(`${f(projectId, fileId)}/leave/${leaveId}`, body);
+  return apiPatch(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/leave/${leaveId}`, body);
 }
 
 export function setLeaveStatus(
@@ -720,9 +727,9 @@ export function setLeaveStatus(
   leaveId: string,
   status: Exclude<LeaveStatus, 'requested'>,
 ): Promise<unknown> {
-  return apiPost(`${f(projectId, fileId)}/leave/${leaveId}/status`, { status });
+  return apiPost(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/leave/${leaveId}/status`, { status });
 }
 
 export function deleteLeave(projectId: string, fileId: string, leaveId: string): Promise<void> {
-  return apiDelete(`${f(projectId, fileId)}/leave/${leaveId}`);
+  return apiDelete(`/v1/staffing/projects/${projectId}/personnel-files/${fileId}/leave/${leaveId}`);
 }
