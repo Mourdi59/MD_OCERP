@@ -1378,3 +1378,51 @@ async def test_a_release_past_its_date_keeps_what_is_bound_and_authorises_nothin
         D("10000"),
     )
     assert (await check("contract", cid, "40000"))["result"] == "ok"
+
+
+# ── outstanding, not blocking: a decision date that has passed ─────────────────────────────
+
+
+async def test_an_item_past_its_decision_date_is_its_own_warning_evidence_item(world: World) -> None:
+    from app.modules.commitment_release import evidence
+    from app.modules.project_governance.evidence import EVIDENCE_STATES, GateAttempt, evidence_link_href
+
+    late = await item(
+        world,
+        code="CR-L",
+        amount="10000",
+        gate_code="G1",
+        governance_area_code="ghost",
+        latest_decision_date_fixed="2020-01-15",
+    )
+    await item(
+        world,
+        code="CR-F",
+        amount="10000",
+        gate_code="G1",
+        governance_area_code="ghost",
+        latest_decision_date_fixed="2999-01-15",
+    )
+    attempt = GateAttempt(gate_id=uuid.uuid4(), gate_code="G1", attempt_no=1)
+
+    async def read() -> list[tuple[str, str, str | None]]:
+        async with world.factory() as s:
+            got = await evidence.items_released_by_gate(s, world.project_id, attempt, SimpleNamespace(code="ghost"))
+        return [(e.code, e.state, e.detail) for e in got]
+
+    # The warning names one item by its id, so the code is the same on every read and after a rename.
+    assert evidence.WARNING_STATE in EVIDENCE_STATES
+    assert await read() == [
+        (f"commitment_decision_overdue:G1:{late}", evidence.WARNING_STATE, "CR-L 2020-01-15"),
+        ("commitments_released:G1:ghost", "not_met", "CR-F, CR-L"),
+    ]
+    # Released, the item is no longer outstanding and the warning is gone.
+    d = await request(world, late, "10000")
+    await decide(world, d, world.pm)
+    assert await read() == [("commitments_released:G1:ghost", "not_met", "CR-F")]
+
+    # Every evidence item of this module opens the matrix of the project.
+    evidence.register_gate_evidence()
+    assert evidence_link_href("commitment_matrix", str(world.project_id), world.project_id) == (
+        f"/projects/{world.project_id}/commitments"
+    )

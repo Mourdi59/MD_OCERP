@@ -148,6 +148,7 @@
       "unknown_catalogue": "Katalog nicht gefunden"
     },
     "evidence": {
+      "decision_overdue": "Der späteste Entscheidungstermin dieser Position ist verstrichen und nichts ist freigegeben: entscheiden, mit Begründung zurückstellen oder die Kosten der Verzögerung festhalten",
       "items_released_by_gate": "Zu diesem Meilenstein fällige Verpflichtungen sind freigegeben oder zurückgestellt",
       "items_without_area": "Positionen dieses Gates nennen einen Bereich, den das Projekt nicht mehr hat",
       "no_items_for_gate": "Keine Verpflichtungsposition nennt dieses Gate; ob bis dahin Mittel freizugeben sind, ist nicht bekannt"
