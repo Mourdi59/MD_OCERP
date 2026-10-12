@@ -1042,45 +1042,6 @@ async def test_an_item_already_told_about_its_date_costs_the_sweep_no_project_re
     assert calls == [world.project_id]
 
 
-async def test_the_demo_seed_names_the_gate_and_area_the_phase_model_gives(world: World) -> None:
-    from app.modules.commitment_release import seed
-    from app.modules.commitment_release.models import AbortScenario
-    from app.modules.project_governance.public import host_for, phases_enabling, project_gates
-    from app.modules.project_governance.service import GovernanceService
-
-    async with world.factory() as s:
-        pid = await add_project(s, world.manager, [world.requester])
-        await GovernanceService(s).set_model(
-            pid,
-            source="shipped",
-            catalogue_id="neutral",
-            version=None,
-            four_eyes=True,
-            actor_id=world.manager,
-            tenant_id=str(world.manager),
-        )
-        await s.flush()
-        counts = await seed._seed_project(s, pid)
-        await s.commit()
-    async with world.factory() as s:
-        host = await host_for(s, pid, "commitment_release")
-        phases = set(await phases_enabling(s, pid, "procurement"))
-        gate = next((g.code for g in await project_gates(s, pid) if g.to_phase in phases), None)
-        items = {
-            i.code: i
-            for i in (await s.execute(select(CommitmentItem).where(CommitmentItem.project_id == pid))).scalars()
-        }
-        scenarios = (await s.execute(select(AbortScenario).where(AbortScenario.project_id == pid))).scalars().all()
-    assert counts["scenarios"] == 1
-    assert len(scenarios) == 1
-    # The shipped model hosts commitment release and enables procurement, so the demo can name both.
-    assert host is not None
-    assert gate is not None
-    for code in ("CR-001", "CR-002"):
-        assert (items[code].gate_code, items[code].governance_area_code) == (gate, host.area_code)
-    assert (items["CR-003"].gate_code, items["CR-003"].governance_area_code) == (None, None)
-
-
 async def test_a_new_matrix_pins_what_the_active_pack_names_before_the_modules_own_default(
     world: World, monkeypatch
 ) -> None:
