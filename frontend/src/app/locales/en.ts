@@ -29739,6 +29739,7 @@ const resource = {
     "governance.project.gate.no_container": "No CDE container attached",
     "governance.project.gate.no_route": "This gate cannot go to review yet: no approval route is chosen for the gate decisions of this project.",
     "governance.project.gate.no_route_ask": "A governance manager chooses it in the phase model settings.",
+    "governance.project.gate.open_approval": "Open the approval",
     "governance.project.gate.prepare": "Start preparation",
     "governance.project.gate.readiness_title": "Readiness per area",
     "governance.project.gate.refresh_failed": "The gate could not be refreshed, so what is shown may be out of date.",

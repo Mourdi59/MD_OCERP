@@ -32515,6 +32515,7 @@ const resource = {
     "governance.project.gate.no_container": "Kein CDE-Container verknüpft",
     "governance.project.gate.no_route": "Dieses Gate kann noch nicht in die Prüfung gehen: Für die Gate-Entscheidungen dieses Projekts ist kein Freigabeweg ausgewählt.",
     "governance.project.gate.no_route_ask": "Ein Governance-Verantwortlicher wählt ihn in den Einstellungen des Phasenmodells aus.",
+    "governance.project.gate.open_approval": "Freigabe öffnen",
     "governance.project.gate.prepare": "Vorbereitung starten",
     "governance.project.gate.readiness_title": "Bereitschaft je Handlungsbereich",
     "governance.project.gate.refresh_failed": "Das Gate konnte nicht aktualisiert werden, die Anzeige ist möglicherweise nicht aktuell.",

@@ -22,6 +22,7 @@ import {
   XCircle,
 } from 'lucide-react';
 
+import { ApprovalInstanceDetailDrawer } from '@/features/approval-routes/ApprovalInstanceDetailDrawer';
 import { Button } from '@/shared/ui/Button';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
@@ -433,6 +434,7 @@ export function GatePanel({
   const [reopenError, setReopenError] = useState<string | null>(null);
   const [conditionOpen, setConditionOpen] = useState(false);
   const [routeMissing, setRouteMissing] = useState(false);
+  const [approvalOpen, setApprovalOpen] = useState(false);
   const today = localToday();
 
   const onFail = (err: unknown) => addToast({ type: 'error', title: refusalText(t, err) });
@@ -574,6 +576,11 @@ export function GatePanel({
           <ReasonedButton variant="secondary" verdict={submitVerdict} loading={submit.isPending} onClick={() => submit.mutate()}>
             {t('governance.project.gate.submit', { defaultValue: 'Submit for review' })}
           </ReasonedButton>
+        )}
+        {gate.status === 'in_review' && gate.approval_instance_id && (
+          <Button variant="secondary" onClick={() => setApprovalOpen(true)} data-testid="open-approval">
+            {t('governance.project.gate.open_approval', { defaultValue: 'Open the approval' })}
+          </Button>
         )}
         {gate.status === 'on_hold' && (
           <ReasonedButton
@@ -764,8 +771,24 @@ export function GatePanel({
           serverViolations={serverViolations}
           serverError={serverError}
           onSubmit={(input) => decide.mutate(input)}
+          onOpenApproval={
+            gate.approval_instance_id
+              ? () => {
+                  closeDecision();
+                  setApprovalOpen(true);
+                }
+              : undefined
+          }
         />
       )}
+      <ApprovalInstanceDetailDrawer
+        instanceId={approvalOpen ? gate.approval_instance_id : null}
+        onClose={() => {
+          // A step approved in the drawer changes what this gate allows.
+          setApprovalOpen(false);
+          invalidate();
+        }}
+      />
       {reopenOpen && (
         <ReopenDialog
           open={reopenOpen}
