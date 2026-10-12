@@ -14,6 +14,7 @@ PERIODIC = [
     "approval_sla_monitor",
     "deadline_sweeper",
     "risk_escalation",
+    "governance_escalation",
     "phonelog_retention",
     "file_trash_purge",
 ]

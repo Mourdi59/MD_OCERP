@@ -418,6 +418,25 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             # seeded after it would simply not be in the register.
             ("reconciliation", None, lambda s: seed_reconciliation_demo(s, _demo_pids)),
         ]
+        # Project governance runs first and is the only seeder that pins a phase
+        # model: phase model, area owners, a decided first gate, frame documents
+        # and a change request, all through the service so the audit trail and
+        # events are real. Seeders further down read the pinned model (which
+        # area hosts their subject, which phase enables construction) and must
+        # never pin one themselves: this seed skips a project that already has
+        # a model, so a model pinned earlier would leave the project without
+        # owners, gates and decisions. The same skip makes a re-run a no-op.
+        try:
+            from app.modules.project_governance.seed import seed_project_governance_demo
+
+            async with async_session_factory() as _gs:
+                _gov = await seed_project_governance_demo(_gs, _demo_pids)
+                await _gs.commit()
+                if _gov.get("projects"):
+                    logger.info("project_governance demo seed: %s", _gov)
+        except Exception:
+            logger.warning("project_governance demo seed skipped (non-fatal)", exc_info=True)
+
         for _name, _marker, _build in _module_seeders:
             try:
                 if _marker is not None:

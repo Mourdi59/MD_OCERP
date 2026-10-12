@@ -107,10 +107,6 @@ BROKEN = [
     ("criterion_unknown_ref", _set("readiness_criteria.0.gate", "zz")),
     ("i18n_key_outside_namespace", _set("phases.0.name_key", "boq.title")),
     ("verified_without_source", _set("source_title", None)),
-    ("area_hosts_invalid", _set("areas.0.hosts", ["Design area"])),
-    ("area_hosts_ambiguous", lambda d: [a.__setitem__("hosts", ["design"]) for a in d["areas"]]),
-    ("document_hosts_invalid", _set("document_types.0.hosts", ["Frame doc"])),
-    ("document_hosts_outside_area", _set("document_types.0.hosts", ["design"])),
     ("schema", _set("phases.0.spine_keys", [])),
     ("schema", _set("phases.0.surprise", 1)),
 ]
@@ -123,30 +119,6 @@ def test_each_rule_rejects_its_broken_case(tmp_path: Path, rule: str, edit) -> N
     with pytest.raises(cat.InvalidCatalogueError) as info:
         cat.load_catalogue_file(_write(tmp_path, data))
     assert any(e.startswith(rule) for e in info.value.errors), info.value.errors
-
-
-def test_an_area_hosts_tag_loads_and_is_optional(tmp_path: Path) -> None:
-    data = _minimal()
-    data["areas"][1]["hosts"] = ["design"]
-    c = cat.load_catalogue_file(_write(tmp_path, data))
-    assert [a.hosts for a in c.areas] == [(), ("design",)]
-
-
-@pytest.mark.parametrize("cid", cat.CATALOGUE_IDS)
-def test_every_shipped_catalogue_has_one_area_hosting_design(cid: str) -> None:
-    """Design management resolves its area by this tag, so every governance model must carry it once."""
-    hosts = [a.code for a in cat.get_catalogue(cid).areas if "design" in a.hosts]
-    assert len(hosts) == 1, (cid, hosts)
-    c = cat.get_catalogue(cid)
-    # ...and exactly one frame document type in that area, or design has nowhere to write its registers.
-    frames = [doc for doc in c.document_types if "design" in doc.hosts]
-    assert [doc.area for doc in frames] == hosts, (cid, [doc.code for doc in frames])
-    assert all(not doc.required_at_gates for doc in frames if cid != "elf_module_framework"), cid
-
-
-def test_the_module_framework_tags_its_design_frame_document() -> None:
-    c = cat.get_catalogue("elf_module_framework")
-    assert [d.code for d in c.document_types if "design" in d.hosts] == ["m07_design_management_frame"]
 
 
 def test_areas_from_resolves_and_conflicts(tmp_path: Path) -> None:
@@ -207,6 +179,36 @@ def test_statutory_phase_counts() -> None:
 
 def test_neutral_follows_the_spine_one_to_one() -> None:
     assert tuple(p.spine_key for p in cat.get_catalogue("neutral").phases) == PHASE_SPINE
+
+
+_NEUTRAL_AREAS = [
+    "integration",
+    "scope",
+    "schedule",
+    "cost_finance",
+    "quality",
+    "resources",
+    "stakeholders",
+    "risk",
+    "procurement",
+    "hse",
+]
+
+
+def test_neutral_has_ten_management_areas_each_with_gate_documents() -> None:
+    c = cat.get_catalogue("neutral")
+    assert [a.code for a in c.areas] == _NEUTRAL_AREAS
+    assert c.review_status is cat.ReviewStatus.unconfirmed and c.source_url
+    for area in c.areas:
+        assert any(d.required_at_gates for d in c.documents_for_area(area.code)), area.code
+    # every gate asks for at least one frame document, so no gate passes on readiness alone
+    for gate in c.gates:
+        assert c.documents_required_at(gate.code), gate.code
+
+
+@pytest.mark.parametrize("cid", ["hoai_lph", "riba_2020", "aia_b101"])
+def test_catalogues_borrowing_neutral_areas_get_all_ten(cid: str) -> None:
+    assert [a.code for a in cat.get_catalogue(cid).areas] == _NEUTRAL_AREAS
 
 
 def _locale_keys(name: str) -> set[str]:
