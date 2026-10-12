@@ -134,6 +134,7 @@
       "decision_paper_needs_two_options": "Eine Entscheidungsvorlage braucht mindestens zwei Optionen, außer bei einem Alleinanbieter.",
       "decision_route_refused": "Der Genehmigungsweg hat diesen Schritt abgelehnt.",
       "delivery_limit_gap": "Nicht jeder Lieferschritt hat eine verantwortliche Partei.",
+      "edit_permission_required": "Sie haben keine Berechtigung, das Anlagenregister zu ändern.",
       "enquiry_date_in_future": "Das Anfragedatum darf nicht in der Zukunft liegen.",
       "fee_needs_currency": "Eine Reservierungsgebühr braucht ihre Währung.",
       "fee_negative": "Die Reservierungsgebühr darf nicht negativ sein.",

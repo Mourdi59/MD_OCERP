@@ -134,6 +134,7 @@
       "decision_paper_needs_two_options": "A decision paper needs at least two options unless the item is sole source.",
       "decision_route_refused": "The approval route refused this step.",
       "delivery_limit_gap": "Not every delivery step has a responsible party.",
+      "edit_permission_required": "You do not have permission to change the plant register.",
       "enquiry_date_in_future": "The enquiry date cannot be in the future.",
       "fee_needs_currency": "A reservation fee needs its currency.",
       "fee_negative": "The reservation fee cannot be negative.",

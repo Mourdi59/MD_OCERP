@@ -267,3 +267,71 @@ async def test_exports_render_and_refuse_with_a_code(world: World) -> None:
     assert register.content[:2] == b"PK" and limits.content[:4] == b"%PDF" and frame.content[:4] == b"%PDF"
     assert (no_item.status_code, no_item.json()["detail"]["code"]) == (422, "item_required")
     assert (no_paper.status_code, no_paper.json()["detail"]["code"]) == (404, "paper_not_found")
+
+
+async def test_the_server_says_what_the_caller_may_do_and_why_not(world: World) -> None:
+    p = f"{BASE}/projects/{world.project_id}/settings"
+    seen = {}
+    for name, user, role in (
+        ("manager", world.manager, "manager"),
+        ("area_owner", world.area_owner, "editor"),
+        ("editor", world.editor, "editor"),
+        ("viewer", world.editor, "viewer"),
+    ):
+        async with client_as(world, user, role) as c:
+            can = (await c.get(p)).json()["can"]
+        seen[name] = (can["edit"]["allowed"], can["edit"]["reason"], can["manage"]["allowed"], can["manage"]["reason"])
+    assert seen == {
+        "manager": (True, None, True, None),
+        "area_owner": (True, None, False, "manage_required"),
+        "editor": (False, "not_equipment_owner", False, "manage_required"),
+        "viewer": (False, "edit_permission_required", False, "manage_required"),
+    }
+
+
+async def test_a_submittal_linked_to_a_plant_item_shows_the_items_lead_time(world: World) -> None:
+    from app.modules.submittals.models import Submittal
+
+    async with world.factory() as s:
+        submittal = Submittal(
+            project_id=world.project_id,
+            submittal_number="SUB-001",
+            title="Switchgear shop drawings",
+            submittal_type="shop_drawing",
+            lead_time_weeks=12,
+        )
+        s.add(submittal)
+        await s.commit()
+        sid = submittal.id
+    p = f"{BASE}/projects/{world.project_id}"
+    async with client_as(world, world.manager, "manager") as c:
+        free = await c.get(f"{p}/submittals/{sid}/lead-time")
+        iid = (
+            await c.post(
+                f"{p}/items",
+                json={
+                    "code": "PL-7",
+                    "title": "Switchgear",
+                    "component_class_code": "mv_switchgear",
+                    "submittal_id": str(sid),
+                },
+            )
+        ).json()["id"]
+        await quote(world, uuid.UUID(iid))
+        owned = await c.get(f"{p}/submittals/{sid}/lead-time")
+    async with client_as(world, world.outsider, "manager") as c:
+        stranger = await c.get(f"{p}/submittals/{sid}/lead-time")
+    assert free.json() == {
+        "owned_by_plant_item": False,
+        "reason": None,
+        "plant_item_id": None,
+        "plant_item_code": None,
+        "effective_lead_weeks": None,
+        "long_lead": None,
+        "latest_order_date": None,
+    }
+    body = owned.json()
+    assert (body["owned_by_plant_item"], body["reason"]) == (True, "lead_time_owned_by_plant_item")
+    # The item's 44 weeks, not the 12 the submittal carries.
+    assert (body["plant_item_id"], body["plant_item_code"], body["effective_lead_weeks"]) == (iid, "PL-7", 44)
+    assert stranger.status_code in (403, 404)

@@ -62,11 +62,32 @@ class SettingsIn(_In):
     catalogue_version: int | None = Field(default=None, ge=1)
 
 
+class Capability(BaseModel):
+    """Whether the caller may do something, and the error code that says why not."""
+
+    allowed: bool
+    reason: str | None = None
+
+
 class SettingsOut(BaseModel):
     catalogue_source: str
     catalogue_id: str
     catalogue_version: int | None
     pinned: bool
+    # What the caller may do on this project, decided by the server (the UI never infers it from a role).
+    can: dict[str, Capability] = Field(default_factory=dict)
+
+
+class SubmittalLeadOut(BaseModel):
+    """What a submittal shows for lead time once a plant item owns it (SPEC rule 1)."""
+
+    owned_by_plant_item: bool
+    reason: str | None = None
+    plant_item_id: uuid.UUID | None = None
+    plant_item_code: str | None = None
+    effective_lead_weeks: int | None = None
+    long_lead: bool | None = None
+    latest_order_date: date | None = None
 
 
 # ── items ──────────────────────────────────────────────────────────────────

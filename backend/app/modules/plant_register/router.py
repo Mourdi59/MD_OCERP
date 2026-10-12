@@ -61,6 +61,7 @@ from app.modules.plant_register.schemas import (
     SpareIn,
     SpareOut,
     SpareTransitionIn,
+    SubmittalLeadOut,
     TransitionIn,
 )
 from app.modules.plant_register.service import PlantService
@@ -70,6 +71,7 @@ router = APIRouter(tags=["plant_register"])
 READ = Depends(RequirePermission("plant.read"))
 EDIT = Depends(RequirePermission("plant.edit"))
 _MANAGE = RequirePermission("plant.manage")
+_EDIT_CHECK = RequirePermission("plant.edit")
 P = "/projects/{project_id}"
 
 
@@ -104,13 +106,17 @@ async def _read(project_id: uuid.UUID, user_id: str, session: Any) -> PlantServi
     return PlantService(session)
 
 
-async def _can_manage(payload: dict[str, Any]) -> bool:
-    """Whether the caller holds ``plant.manage``, by the same check every permission gate uses."""
+async def _holds(check: Any, payload: dict[str, Any]) -> bool:
     try:
-        await _MANAGE(payload)
+        await check(payload)
     except HTTPException:
         return False
     return True
+
+
+async def _can_manage(payload: dict[str, Any]) -> bool:
+    """Whether the caller holds ``plant.manage``, by the same check every permission gate uses."""
+    return await _holds(_MANAGE, payload)
 
 
 async def _edit(project_id: uuid.UUID, user_id: str, payload: dict[str, Any], session: Any) -> PlantService:
@@ -150,16 +156,50 @@ async def get_catalogue(project_id: uuid.UUID, session: SessionDep, user_id: Cur
 
 
 @router.get(P + "/settings", response_model=SettingsOut, dependencies=[READ])
-async def get_settings(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> SettingsOut:
+async def get_settings(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> SettingsOut:
+    """The pinned catalogue and what the caller may do here (``can.edit``, ``can.manage``, each with a reason)."""
     svc = await _read(project_id, user_id, session)
+    can = await svc.capabilities(
+        project_id,
+        _uid(user_id),
+        can_edit=await _holds(_EDIT_CHECK, payload),
+        can_manage=await _can_manage(payload),
+    )
     row = await svc.settings(project_id)
     if row is None:
-        return SettingsOut(catalogue_source="shipped", catalogue_id="neutral", catalogue_version=None, pinned=False)
+        return SettingsOut(
+            catalogue_source="shipped", catalogue_id="neutral", catalogue_version=None, pinned=False, can=can
+        )
     return SettingsOut(
         catalogue_source=row.catalogue_source,
         catalogue_id=row.catalogue_id,
         catalogue_version=row.catalogue_version,
         pinned=True,
+        can=can,
+    )
+
+
+@router.get(P + "/submittals/{submittal_id}/lead-time", response_model=SubmittalLeadOut, dependencies=[READ])
+async def submittal_lead_time(
+    project_id: uuid.UUID, submittal_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> SubmittalLeadOut:
+    """Whether a plant item owns the lead time of this submittal; if so its own lead fields are read-only."""
+    from app.modules.plant_register.reads import plant_item_for_submittal
+
+    await _read(project_id, user_id, session)
+    dates = await _run(plant_item_for_submittal(session, project_id, submittal_id))
+    if dates is None:
+        return SubmittalLeadOut(owned_by_plant_item=False)
+    return SubmittalLeadOut(
+        owned_by_plant_item=True,
+        reason="lead_time_owned_by_plant_item",
+        plant_item_id=dates.plant_item_id,
+        plant_item_code=dates.code,
+        effective_lead_weeks=dates.effective_lead_weeks,
+        long_lead=dates.long_lead,
+        latest_order_date=dates.latest_order_date,
     )
 
 

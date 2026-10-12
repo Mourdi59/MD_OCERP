@@ -30,6 +30,31 @@ class PlantItemDates:
     long_lead: bool
 
 
+async def plant_item_for_submittal(
+    session: Any, project_id: uuid.UUID, submittal_id: uuid.UUID, *, today: date | None = None
+) -> PlantItemDates | None:
+    """The plant item that owns the lead time of this submittal, or ``None`` when none is linked.
+
+    A submittal linked to a plant item shows the item's effective lead time;
+    its own ``long_lead`` and ``lead_time_weeks`` are then read-only
+    (``lead_time_owned_by_plant_item``). The submittals module and the UI ask
+    here instead of comparing columns.
+    """
+    from sqlalchemy import select
+
+    from app.modules.plant_register.models import PlantItem
+
+    stmt = (
+        select(PlantItem.id)
+        .where(PlantItem.project_id == project_id, PlantItem.submittal_id == submittal_id)
+        .where(PlantItem.status != "cancelled")
+        .order_by(PlantItem.code)
+        .limit(1)
+    )
+    item_id = (await session.execute(stmt)).scalar_one_or_none()
+    return None if item_id is None else await plant_item_dates(session, project_id, item_id, today=today)
+
+
 async def plant_item_dates(
     session: Any, project_id: uuid.UUID, plant_item_id: uuid.UUID, *, today: date | None = None
 ) -> PlantItemDates | None:
