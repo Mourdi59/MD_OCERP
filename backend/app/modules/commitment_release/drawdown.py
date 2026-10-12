@@ -7,9 +7,12 @@ Its released amount IS the drawdown: on each approved release the module
 writes one record through finance's own writer
 (``FinanceService.set_contingency_drawdown``), in the record format the risk
 contingency card reads (``risk/contingency.py`` ``parse_drawdown_record``),
-under the source ``commitment:<item id>``. One source holds one record, so a
-second tranche replaces the record with the new cumulative amount instead of
-adding to it, and the risk card counts the money once.
+under the source of the risk the item names (``risk:<risk id>``, the very key
+the risk's own confirmation writes) or, for an item that names no risk,
+``commitment:<item id>``. One source holds one record, so a second tranche
+replaces the record with the new cumulative amount instead of adding to it, and
+a confirmation on the risk replaces the same record instead of drawing the
+money a second time: the risk card counts it once.
 
 The line is the item's planned source when that is a contingency budget line,
 otherwise the project's only (or only base-currency) contingency line; anything
@@ -32,8 +35,10 @@ ITEM_TYPE = "contingency_drawdown"
 REFUSALS = ("contingency_insufficient", "contingency_line_required", "fx_rate_missing")
 
 
-def source_of(item_id: uuid.UUID) -> str:
-    return f"commitment:{item_id}"
+def source_of(item: Any) -> str:
+    """The key of the one drawdown record this item's money lives under."""
+    risk_id = getattr(item, "risk_id", None)
+    return f"risk:{risk_id}" if risk_id else f"commitment:{item.id}"
 
 
 @dataclass(frozen=True)
@@ -77,7 +82,7 @@ async def line_for(session: Any, project: Any, item: Any) -> LineBalance:
             raise CommitmentError("contingency_line_required", 422)
         chosen = next(b for b in budgets if str(b.id) == picked.budget_id)
     currency = norm_code(chosen.currency_code) or base
-    own = source_of(item.id)
+    own = source_of(item)
     others = sum(
         (d.amount for d in _line_drawdowns(chosen, currency) if d.source != own),
         Decimal("0"),
@@ -125,5 +130,5 @@ async def write(
         "note": f"commitment release {release_id}",
     }
     await FinanceService(session).set_contingency_drawdown(
-        project_id=project_id, source=source_of(item.id), budget_id=balance.budget_id, record=record
+        project_id=project_id, source=source_of(item), budget_id=balance.budget_id, record=record
     )

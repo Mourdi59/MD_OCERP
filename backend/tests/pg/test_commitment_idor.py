@@ -21,11 +21,18 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.commitment_release.permissions import register_commitment_permissions
 from app.modules.commitment_release.router import router
 from tests._pg import isolated_engine
-from tests.pg.commitment_fixtures import World, add_contract, build_world, item, request, state
+from tests.pg.commitment_fixtures import World, add_contract, build_world, item, link, request, state
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
 
 BASE = "/api/v1/commitment-release"
+
+
+async def state_of_release(w: World, release_id: uuid.UUID):
+    from app.modules.commitment_release.models import ReleaseDecision
+
+    async with w.factory() as s:
+        return await s.get(ReleaseDecision, release_id)
 
 
 @pytest_asyncio.fixture
@@ -168,6 +175,9 @@ async def test_a_release_request_ignores_a_date_in_the_query(world: World) -> No
     assert r.status_code == 201, r.text
     assert r.json()["fx_rate_date"] != "2020-01-01"
     assert r.json()["fx_rate_date"] in (None, datetime.now(UTC).date().isoformat())
+    # The day the request was frozen is the server's, whatever the rate's own date says.
+    stored = (await state_of_release(world, uuid.UUID(r.json()["id"]))).snapshot
+    assert stored["requested_at"][:10] == datetime.now(UTC).date().isoformat()
 
 
 async def test_the_item_says_what_the_caller_may_do_and_why_not(world: World) -> None:
@@ -219,6 +229,8 @@ async def test_a_tier_holder_decides_over_http_and_a_null_title_is_a_422(world: 
 async def test_an_editor_cannot_transfer_and_an_abort_without_terms_says_why(world: World) -> None:
     iid = await item(world, amount="10000")
     other = await item(world, code="CR-9", amount="10000")
+    # Money is bound, and nothing says what stopping it costs: the loss is unknown, not zero.
+    await link(world, iid, "contract", await add_contract(world, "10000"))
     base = f"{BASE}/projects/{world.project_id}/items/{iid}"
     async with client_as(world, world.requester, "editor") as c:
         r = await c.post(f"{base}/transfer", json={"target_item_id": str(other), "reason": "merge"})
@@ -297,7 +309,7 @@ async def test_references_are_empty_lists_without_a_governance_model_and_targets
     world: World,
 ) -> None:
     from app.modules.commitment_release.service import CommitmentService
-    from tests.pg.commitment_fixtures import add_project, link
+    from tests.pg.commitment_fixtures import add_project
 
     url = f"{BASE}/projects/{world.project_id}"
     async with client_as(world, world.requester, "editor") as c:

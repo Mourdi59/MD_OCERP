@@ -68,6 +68,13 @@ from app.modules.commitment_release.repository import CommitmentRepository
 logger = logging.getLogger(__name__)
 
 MODULE = "commitment_release"
+# How a request ended -> the event that says so. Full names, so the wiring test can read them.
+_OUTCOME_EVENT = {
+    "released": "commitment_release.release.released",
+    "rejected": "commitment_release.release.rejected",
+    "withdrawn": "commitment_release.release.withdrawn",
+    "aborted": "commitment_release.item.aborted",
+}
 TARGET_KIND = "commitment_release"
 ZERO = Decimal("0")
 ENFORCEMENT = ("off", "warn", "block")
@@ -159,7 +166,8 @@ class CommitmentService:
         )
 
     def _publish(self, name: str, data: dict[str, Any]) -> None:
-        publish_after_commit(self.session, f"{MODULE}.{name}", data, source_module=MODULE)
+        """``name`` is the full event name, written out at the call: the wiring test reads the source."""
+        publish_after_commit(self.session, name, data, source_module=MODULE)
 
     async def _fsm(self, item: CommitmentItem, target: str, actor_id: Any, reason: str | None = None, **meta: Any):
         try:
@@ -347,7 +355,7 @@ class CommitmentService:
             "fx_policy": matrix.fx_policy,
         }
         await self._audit(actor_id, "commitment_matrix", matrix.id, action, before_state=before or None, metadata=after)
-        self._publish("matrix.set", {"project_id": str(project_id), **after})
+        self._publish("commitment_release.matrix.set", {"project_id": str(project_id), **after})
         return matrix
 
     async def _refuse_incompatible_schedule(
@@ -727,7 +735,7 @@ class CommitmentService:
         await self._audit(
             actor_id, "commitment_item", item.id, "created", to_status="planned", metadata={"code": item.code}
         )
-        self._publish("item.created", {"project_id": str(project_id), "item_id": str(item.id)})
+        self._publish("commitment_release.item.created", {"project_id": str(project_id), "item_id": str(item.id)})
         return item
 
     _PATCHABLE = (
@@ -833,7 +841,7 @@ class CommitmentService:
         hold: bool,
         actor_id: uuid.UUID,
         reason: str,
-        manage: bool = True,
+        manage: bool,
     ) -> CommitmentItem:
         item = await self.get_item(project_id, item_id, lock=True)
         self._refuse(self.hold_refusal(item, manage, hold=hold))
@@ -950,7 +958,9 @@ class CommitmentService:
             if v["decision_overdue"] and v["latest_decision_date"]
         ]
 
-    async def escalate_overdue(self, project_id: uuid.UUID, item_id: uuid.UUID, *, today: date) -> bool:
+    async def escalate_overdue(
+        self, project_id: uuid.UUID, item_id: uuid.UUID, *, today: date, due: str | None = None
+    ) -> bool:
         """SPEC rule 8: tell the owner and the holders of the tier that the decision date has passed.
 
         Once per item and decision date: the audit row of the escalation is the record, and a
@@ -959,9 +969,6 @@ class CommitmentService:
         from app.core.audit_log import ActivityLog
 
         item = await self.get_item(project_id, item_id, lock=True)
-        due = dict(await self.overdue_items(project_id, today=today)).get(item.id)
-        if due is None:
-            return False
         sent = await self.session.execute(
             select(ActivityLog.metadata_).where(
                 ActivityLog.entity_type == "commitment_item",
@@ -969,7 +976,13 @@ class CommitmentService:
                 ActivityLog.action == "decision_overdue_escalated",
             )
         )
-        if any(isinstance(m, dict) and m.get("latest_decision_date") == due for m in sent.scalars().all()):
+        told = {m.get("latest_decision_date") for m in sent.scalars().all() if isinstance(m, dict)}
+        if due is not None and due in told:
+            # The pass that found the item overdue hands its date in: an item already told about
+            # that date costs one read, not the whole project's figures again.
+            return False
+        due = dict(await self.overdue_items(project_id, today=today)).get(item.id)
+        if due is None or due in told:
             return False
         project = await self._project(project_id)
         people: list[uuid.UUID] = [item.owner_user_id] if item.owner_user_id else []
@@ -993,7 +1006,10 @@ class CommitmentService:
             "decision_overdue_escalated",
             metadata={"latest_decision_date": due, "notified": [str(u) for u in people]},
         )
-        self._publish("item.decision_overdue", {"project_id": str(project_id), "item_id": str(item.id), "due": due})
+        self._publish(
+            "commitment_release.item.decision_overdue",
+            {"project_id": str(project_id), "item_id": str(item.id), "due": due},
+        )
         return True
 
     async def _refuse_change_double_count(
@@ -1999,7 +2015,7 @@ class CommitmentService:
             metadata={"item_id": str(item.id), "tier": decision.required_tier, **meta},
         )
         self._publish(
-            "release.requested",
+            "commitment_release.release.requested",
             {
                 "project_id": str(item.project_id),
                 "item_id": str(item.id),
@@ -2045,12 +2061,7 @@ class CommitmentService:
             raise conflict("release_pending")
         e = await self._evaluate(item, _amount(amount), currency, today=today)
         matrix, tier = e["matrix"], e["tier"]
-        if tier.escalate_outside and not external_approval_ref.strip():
-            raise CommitmentError("external_approval_required", 422)
-        if external_approval_ref.strip() and not tier.escalate_outside:
-            # A reference is evidence that somebody outside the schedule agreed. Kept on a request a
-            # tier decides, it would say an outside approval was part of a decision it was not.
-            raise CommitmentError("external_approval_not_required", 422)
+        self._check_external_reference(tier, external_approval_ref)
         if e["open_preconditions"] and matrix.enforcement == "block":
             raise conflict(
                 "preconditions_open",
@@ -2097,6 +2108,19 @@ class CommitmentService:
             warnings=[p["kind"] for p in e["open_preconditions"]],
         )
 
+    @staticmethod
+    def _check_external_reference(tier: Any, external_approval_ref: str) -> None:
+        """An amount above every tier needs the outside approval's reference; any other must not carry one.
+
+        A reference is evidence that somebody outside the schedule agreed. Kept on a request a tier
+        decides, it would say an outside approval was part of a decision it was not. The same rule
+        for a release and for an abort.
+        """
+        if tier.escalate_outside and not external_approval_ref.strip():
+            raise CommitmentError("external_approval_required", 422)
+        if external_approval_ref.strip() and not tier.escalate_outside:
+            raise CommitmentError("external_approval_not_required", 422)
+
     async def request_abort(
         self,
         project_id: uuid.UUID,
@@ -2106,6 +2130,7 @@ class CommitmentService:
         actor_id: uuid.UUID,
         today: date,
         manage: bool = False,
+        external_approval_ref: str = "",
     ) -> ReleaseDecision:
         """SPEC rule 15: stopping an item is decided on the tier its residual loss calls for.
 
@@ -2142,6 +2167,7 @@ class CommitmentService:
         # the lowest band and so the lowest tier that may settle a termination.
         judged = loss_sched
         tier = ev.required_tier(schedule, ABORT_TYPE, judged, item.flags or [])
+        self._check_external_reference(tier, external_approval_ref)
         e: dict[str, Any] = {
             "matrix": matrix,
             "schedule": schedule,
@@ -2177,7 +2203,7 @@ class CommitmentService:
             cumulative_after=e["released_before"],
             required_tier=tier.tier_code,
             escalate_outside=tier.escalate_outside,
-            external_approval_ref="",
+            external_approval_ref=external_approval_ref.strip(),
             schedule_source=matrix.schedule_source,
             schedule_id=matrix.schedule_id,
             schedule_version=matrix.schedule_version,
@@ -2270,7 +2296,7 @@ class CommitmentService:
             metadata={"item_id": str(item.id), "on_behalf_of": _s(on_behalf_of), "purpose": decision.purpose},
         )
         self._publish(
-            "item.aborted" if outcome == "aborted" else f"release.{outcome}",
+            _OUTCOME_EVENT[outcome],
             {"project_id": str(item.project_id), "item_id": str(item.id), "release_id": str(decision.id)},
         )
         if outcome in ("released", "rejected", "aborted"):
@@ -2470,10 +2496,20 @@ class CommitmentService:
         return sorted(pinned, key=str)[0] if len(pinned) == 1 else None
 
     async def _decide_check(
-        self, item: CommitmentItem, decision: ReleaseDecision | None, actor_id: uuid.UUID | None, today: date
+        self,
+        item: CommitmentItem,
+        decision: ReleaseDecision | None,
+        actor_id: uuid.UUID | None,
+        today: date,
+        caller_role: str | None = None,
     ) -> tuple[str | None, bool, Any, Any]:
-        """``(refusal code or None, takes the step over, instance, current step)`` for one person and one request."""
-        from app.modules.approval_routes.service import ApprovalRouteService
+        """``(refusal code or None, takes the step over, instance, current step)`` for one person and one request.
+
+        ``caller_role`` is the role of the request; a read that has none (a list of items) uses the
+        role stored for the person.
+        """
+        from app.modules.approval_routes.service import ApprovalRouteService, _caller_role_satisfies
+        from app.modules.users.models import User
 
         if decision is None or decision.approval_instance_id is None:
             return "no_pending_release", False, None, None
@@ -2490,8 +2526,17 @@ class CommitmentService:
         ):
             return "four_eyes_violation", False, instance, step
         entitled = await routes.entitled_deciders(instance, step, now=datetime.now(UTC))
-        if entitled is None or actor_id in entitled:
-            # A role step is checked by approval_routes against the caller's own role.
+        if entitled is None:
+            # A role step: approval_routes will check the caller's role, so the flag and the
+            # refusal say the same thing it will say.
+            role = caller_role
+            if role is None:
+                person = await self.session.get(User, actor_id)
+                role = person.role if person is not None else None
+            if step.approver_role and not _caller_role_satisfies(role, step.approver_role):
+                return "not_entitled_decider", False, instance, step
+            return None, False, instance, step
+        if actor_id in entitled:
             return None, False, instance, step
         matrix = await self.require_matrix(item.project_id)
         schedule = await self.schedule_for(matrix)
@@ -2534,7 +2579,7 @@ class CommitmentService:
         item = await self.get_item(project_id, item_id, lock=True)
         pending = [r for r in await self.repo.list_releases(project_id, [item.id]) if r.outcome == "pending"]
         row = pending[0] if pending else None
-        code, takeover, instance, step = await self._decide_check(item, row, actor_id, today)
+        code, takeover, instance, step = await self._decide_check(item, row, actor_id, today, caller_role)
         self._refuse(code)
         assert row is not None
         if decision not in ("approved", "rejected"):
@@ -2548,8 +2593,16 @@ class CommitmentService:
                 instance.id, to_user_id=actor_id, actor_id=actor_id, reason="commitment tier holder", manage=True
             )
         if decision == "approved":
-            row.conditions = conditions or ""
-            row.valid_until = _iso_day(valid_until)
+            # A tier with several steps has several approvers. Each one's conditions are kept, and
+            # the release is valid until the earliest date any of them gave.
+            said = (conditions or "").strip()
+            kept = [line for line in (row.conditions or "").split("\n") if line.strip()]
+            if said and said not in kept:
+                kept.append(said)
+            row.conditions = "\n".join(kept)
+            until = _iso_day(valid_until)
+            if until and (not row.valid_until or until < row.valid_until):
+                row.valid_until = until
         await routes.submit_decision(
             instance.id,
             DecisionSubmit(step_id=step.id, decision=decision, comment=comment or None),
@@ -2610,7 +2663,9 @@ class CommitmentService:
         meta = {"from_item_id": str(item.id), "to_item_id": str(target.id), "links": len(links)}
         await self._audit(actor_id, "commitment_item", item.id, "transferred", metadata={**meta, "reason": reason})
         await self._audit(actor_id, "commitment_item", target.id, "transfer_received", metadata=meta)
-        self._publish("item.transferred", {"project_id": str(project_id), "item_id": str(item.id), **meta})
+        self._publish(
+            "commitment_release.item.transferred", {"project_id": str(project_id), "item_id": str(item.id), **meta}
+        )
         if links:
             await self.recompute_item(target.project_id, target.id, actor_id=actor_id, locked=target)
         return item
@@ -2755,7 +2810,10 @@ class CommitmentService:
                         "released": str(released),
                     },
                 )
-                self._publish("item.re_release_required", {"project_id": str(project_id), "item_id": str(item.id)})
+                self._publish(
+                    "commitment_release.item.re_release_required",
+                    {"project_id": str(project_id), "item_id": str(item.id)},
+                )
         return item
 
     async def _released_state_from_amount(self, item, released, matrix, project, schedule, today) -> str:

@@ -629,7 +629,7 @@ async def test_the_demo_seed_shows_a_released_item_a_decided_tranche_and_a_pendi
         await s.flush()
         counts = await seed._seed_project(s, pid)
         await s.commit()
-    assert counts == {"items": 4, "links": 1, "releases": 3}
+    assert counts == {"items": 4, "links": 1, "releases": 3, "scenarios": 1}
     async with world.factory() as s:
         items = {
             i.code: i
@@ -855,3 +855,226 @@ async def test_a_deputy_or_a_period_without_an_approver_is_refused_by_name(world
         )
     # Nothing was replaced by the refused writes.
     assert {r.project_role for r in rows} == {"owner_pm", "owner_sponsor", "owner_board_member"}
+
+
+# ── second review, round 2 ──────────────────────────────────────────────────────────────────
+
+
+async def test_an_abort_above_every_tier_needs_the_outside_reference_like_a_release(world: World) -> None:
+    iid = await item(world, amount="9000000")
+    cid = await add_contract(world, "9000000")
+    async with world.factory() as s:
+        await CommitmentService(s).add_link(world.project_id, iid, "contract", cid, actor_id=world.manager, manage=True)
+        await s.commit()
+    await _terms(world, iid, "8000000")
+
+    async def abort(ref: str):
+        async with world.factory() as s:
+            d = await CommitmentService(s).request_abort(
+                world.project_id,
+                iid,
+                reason="Scheme cancelled",
+                actor_id=world.requester,
+                today=TODAY,
+                external_approval_ref=ref,
+            )
+            await s.commit()
+            return d
+
+    with pytest.raises(CommitmentError) as exc:
+        await abort("")
+    assert exc.value.code == "external_approval_required"
+    d = await abort("Board minute 12")
+    assert (d.purpose, d.escalate_outside, d.external_approval_ref) == ("abort", True, "Board minute 12")
+
+    small = await item(world, code="CR-SM", amount="10000")
+    await _terms(world, small, "1000")
+    async with world.factory() as s:
+        with pytest.raises(CommitmentError) as exc:
+            await CommitmentService(s).request_abort(
+                world.project_id,
+                small,
+                reason="Scheme cancelled",
+                actor_id=world.requester,
+                today=TODAY,
+                external_approval_ref="Board minute 12",
+            )
+    assert exc.value.code == "external_approval_not_required"
+
+
+async def test_a_role_step_is_offered_only_to_somebody_who_has_the_role(world: World) -> None:
+    from app.modules.approval_routes.models import Step
+    from tests.pg.governance_fixtures import add_user
+
+    iid = await item(world, amount="10000")
+    d = await request(world, iid, "10000")
+    async with world.factory() as s:
+        viewer = await add_user(s, "viewer")
+        instance_route = (
+            (await s.execute(select(CommitmentMatrix).where(CommitmentMatrix.project_id == world.project_id)))
+            .scalar_one()
+            .tier_routes["project_manager"]
+        )
+        step = (await s.execute(select(Step).where(Step.route_id == uuid.UUID(str(instance_route))))).scalar_one()
+        step.approver_user_id = None
+        step.approver_role = "manager"
+        await s.commit()
+
+    async def check(actor: uuid.UUID, role: str | None) -> str | None:
+        async with world.factory() as s:
+            svc = CommitmentService(s)
+            row = await s.get(ReleaseDecision, d.id)
+            return (await svc._decide_check(await s.get(CommitmentItem, iid), row, actor, TODAY, role))[0]
+
+    # The stored role answers a read that carries none; the role of the request wins when given.
+    assert await check(viewer, None) == "not_entitled_decider"
+    assert await check(viewer, "viewer") == "not_entitled_decider"
+    assert await check(world.pm, None) is None
+    assert await check(world.pm, "manager") is None
+
+
+async def test_every_approver_of_a_tier_adds_conditions_and_the_earliest_date_stands(world: World) -> None:
+    from app.modules.approval_routes.models import Step
+
+    iid = await item(world, amount="10000")
+    d = await request(world, iid, "10000")
+    async with world.factory() as s:
+        route_id = uuid.UUID(
+            str(
+                (await s.execute(select(CommitmentMatrix).where(CommitmentMatrix.project_id == world.project_id)))
+                .scalar_one()
+                .tier_routes["project_manager"]
+            )
+        )
+        s.add(Step(route_id=route_id, ordinal=2, approver_user_id=world.sponsor, mode="all"))
+        await s.commit()
+
+    async def approve(actor: uuid.UUID, conditions: str, until: str | None):
+        async with world.factory() as s:
+            row = await CommitmentService(s).decide_release(
+                world.project_id,
+                iid,
+                decision="approved",
+                comment="",
+                conditions=conditions,
+                valid_until=until,
+                actor_id=actor,
+                caller_role="manager",
+                today=TODAY,
+            )
+            await s.commit()
+            return row
+
+    first = await approve(world.pm, "Report first", "2027-06-30")
+    assert (first.outcome, first.conditions, first.valid_until) == ("pending", "Report first", "2027-06-30")
+    second = await approve(world.sponsor, "Cap the fee", "2027-03-31")
+    assert second.conditions == "Report first\nCap the fee"
+    assert second.valid_until == "2027-03-31"
+    # The last step closed the request; what it closed as is the tier holder rule's business, not this test's.
+    assert second.outcome != "pending"
+
+
+async def test_an_abort_basis_of_another_tenant_is_unknown_to_this_one(world: World) -> None:
+    from app.modules.commitment_release.catalogue import ABORT_BASIS_KIND
+    from app.modules.project_governance.catalogue_store import CatalogueStore
+
+    theirs = str(world.outsider)
+    async with world.factory() as s:
+        store = CatalogueStore(s)
+        row = await store.create(
+            theirs,
+            code="own_terms",
+            name="Own terms",
+            based_on_source="shipped",
+            based_on_id="custom",
+            based_on_version=None,
+            actor_id=world.outsider,
+            kind=ABORT_BASIS_KIND,
+        )
+        await store.publish(theirs, row.id, actor_id=world.outsider)
+        await s.commit()
+        basis_id = str(row.id)
+    iid = await item(world, amount="10000")
+    data = {"basis_code": basis_id, "basis_source": "tenant", "other_charge_estimate": "100"}
+
+    async def put(tenant_id: str | None):
+        async with world.factory() as s:
+            row = await CommitmentService(s).put_abort_terms(
+                world.project_id, iid, dict(data), actor_id=world.manager, manage=True, tenant_id=tenant_id
+            )
+            await s.commit()
+            return row
+
+    for tenant in (str(world.manager), None):
+        with pytest.raises(CommitmentError) as exc:
+            await put(tenant)
+        assert (exc.value.code, exc.value.status_code) == ("abort_basis_unknown", 422)
+    assert (await put(theirs)).basis_code == basis_id
+
+
+async def test_an_item_already_told_about_its_date_costs_the_sweep_no_project_rebuild(
+    world: World, monkeypatch
+) -> None:
+    iid = await item(world, code="CR-LATE", amount="10000", latest_decision_date_fixed="2026-10-01")
+    async with world.factory() as s:
+        svc = CommitmentService(s)
+        due = dict(await svc.overdue_items(world.project_id, today=TODAY))[iid]
+        assert await svc.escalate_overdue(world.project_id, iid, today=TODAY, due=due) is True
+        await s.commit()
+
+    calls = []
+    real = CommitmentService.overdue_items
+
+    async def counting(self, project_id, *, today):
+        calls.append(project_id)
+        return await real(self, project_id, today=today)
+
+    monkeypatch.setattr(CommitmentService, "overdue_items", counting)
+    async with world.factory() as s:
+        assert await CommitmentService(s).escalate_overdue(world.project_id, iid, today=TODAY, due=due) is False
+    assert calls == []
+    # A date handed in that is not the item's is not believed: the item is read again.
+    async with world.factory() as s:
+        assert (
+            await CommitmentService(s).escalate_overdue(world.project_id, iid, today=TODAY, due="1999-01-01") is False
+        )
+    assert calls == [world.project_id]
+
+
+async def test_the_demo_seed_names_the_gate_and_area_the_phase_model_gives(world: World) -> None:
+    from app.modules.commitment_release import seed
+    from app.modules.commitment_release.models import AbortScenario
+    from app.modules.project_governance.public import host_for, phases_enabling, project_gates
+    from app.modules.project_governance.service import GovernanceService
+
+    async with world.factory() as s:
+        pid = await add_project(s, world.manager, [world.requester])
+        await GovernanceService(s).set_model(
+            pid,
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            actor_id=world.manager,
+            tenant_id=str(world.manager),
+        )
+        await s.flush()
+        counts = await seed._seed_project(s, pid)
+        await s.commit()
+    async with world.factory() as s:
+        host = await host_for(s, pid, "commitment_release")
+        phases = set(await phases_enabling(s, pid, "procurement"))
+        gate = next((g.code for g in await project_gates(s, pid) if g.to_phase in phases), None)
+        items = {
+            i.code: i
+            for i in (await s.execute(select(CommitmentItem).where(CommitmentItem.project_id == pid))).scalars()
+        }
+        scenarios = (await s.execute(select(AbortScenario).where(AbortScenario.project_id == pid))).scalars().all()
+    assert counts["scenarios"] == 1
+    assert len(scenarios) == 1
+    # The shipped model hosts commitment release and enables procurement, so the demo can name both.
+    assert host is not None
+    assert gate is not None
+    for code in ("CR-001", "CR-002"):
+        assert (items[code].gate_code, items[code].governance_area_code) == (gate, host.area_code)
+    assert (items["CR-003"].gate_code, items["CR-003"].governance_area_code) == (None, None)

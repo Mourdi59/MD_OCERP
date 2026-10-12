@@ -155,12 +155,30 @@ async def _release(
     return True
 
 
+async def _readiness_fields(session: AsyncSession, project_id: uuid.UUID) -> dict[str, str]:
+    """The gate and the management area a demo item is read at, from the project's own phase model.
+
+    The gate is the one that opens the phase which enables procurement; the area is the one that
+    hosts commitment release. Nothing is named when the project has no model or the model says
+    neither, so no code of any catalogue is written here.
+    """
+    from app.modules.project_governance.public import host_for, phases_enabling, project_areas, project_gates
+
+    host = await host_for(session, project_id, "commitment_release")
+    phases = set(await phases_enabling(session, project_id, "procurement"))
+    gate = next((g.code for g in await project_gates(session, project_id) if g.to_phase in phases), None)
+    areas = {a.code for a in await project_areas(session, project_id)}
+    if host is None or gate is None or host.area_code not in areas:
+        return {}
+    return {"gate_code": gate, "governance_area_code": host.area_code}
+
+
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
     from app.modules.commitment_release.service import CommitmentService
     from app.modules.contracts.models import Contract
     from app.modules.projects.models import Project
 
-    counts = {"items": 0, "links": 0, "releases": 0}
+    counts = {"items": 0, "links": 0, "releases": 0, "scenarios": 0}
     project = await session.get(Project, project_id)
     owner = project.owner_id
     ccy = (project.currency or "").strip().upper()
@@ -169,7 +187,14 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         logger.warning("commitment_release demo: project %s has no owner or no currency, skipped", project_id)
         return counts
     planner = await _second_person(session, project_id, owner)
+    if planner is None:
+        # Four eyes: the owner holds the tiers and cannot approve a request of their own.
+        logger.warning(
+            "commitment_release demo: project %s has nobody but its owner, items are seeded without a release",
+            project_id,
+        )
     author = planner or owner
+    readiness = await _readiness_fields(session, project_id)
     today = datetime.now(UTC).date()
     svc = CommitmentService(session)
     matrix = await svc.set_matrix(project_id, actor_id=owner, tenant_id=None)
@@ -205,6 +230,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             "lead_time_days": 45,
             "decision_buffer_days": 10,
             "latest_decision_date_fixed": (today - timedelta(days=14)).isoformat(),
+            **readiness,
         },
         actor_id=author,
     )
@@ -245,6 +271,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             "lead_time_days": 120,
             "decision_buffer_days": 14,
             "latest_decision_date_fixed": (today - timedelta(days=5)).isoformat(),
+            **readiness,
         },
         actor_id=author,
     )
@@ -331,4 +358,6 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         actor_id=author,
     )
     counts["items"] += 1
+    await svc.save_scenario(project_id, as_of=today, label="Stop today", actor_id=owner)
+    counts["scenarios"] += 1
     return counts

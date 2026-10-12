@@ -237,6 +237,7 @@ class AbortIn(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     reason: str = Field(min_length=1, max_length=4000)
+    external_approval_ref: str = Field(default="", max_length=255)
 
 
 class TransferIn(BaseModel):

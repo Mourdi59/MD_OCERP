@@ -104,13 +104,18 @@ def _may_manage(payload: dict[str, Any]) -> bool:
 
     The service takes this as a boolean and never sees a role.
     """
+    return _holds(payload, "commitment.manage")
+
+
+def _holds(payload: dict[str, Any], permission: str) -> bool:
+    """Whether the caller holds ``permission``: an admin, a grant on the token, or the role's own."""
     from app.core.permissions import permission_registry
 
     role = str(payload.get("role") or "")
     return (
         role == "admin"
-        or "commitment.manage" in (payload.get("permissions") or [])
-        or permission_registry.role_has_permission(role, "commitment.manage")
+        or permission in (payload.get("permissions") or [])
+        or permission_registry.role_has_permission(role, permission)
     )
 
 
@@ -350,11 +355,8 @@ async def project_capabilities(
     ``can.manage`` covers starting the matrix and every setting of it; ``add_item`` and
     ``save_scenario`` need a matrix. Each flag is ``{allowed, reason}`` with an error code.
     """
-    from app.core.permissions import permission_registry
-
     await verify_project_access(project_id, user_id, session)
-    role = str(payload.get("role") or "")
-    edit = role == "admin" or permission_registry.role_has_permission(role, "commitment.edit")
+    edit = _holds(payload, "commitment.edit")
     exists = await CommitmentService(session).get_matrix(project_id) is not None
 
     def flag(code: str | None) -> dict[str, Any]:
@@ -603,7 +605,16 @@ async def hold_item(
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = CommitmentService(session)
-    await _run(svc.set_hold(project_id, item_id, hold=body.hold, actor_id=_uid(user_id), reason=body.reason))
+    await _run(
+        svc.set_hold(
+            project_id,
+            item_id,
+            hold=body.hold,
+            actor_id=_uid(user_id),
+            reason=body.reason,
+            manage=_may_manage(payload),
+        )
+    )
     return await _view(svc, project_id, item_id, _today(None), user_id, payload)
 
 
@@ -824,6 +835,7 @@ async def request_abort(
             actor_id=_uid(user_id),
             today=_today(None),
             manage=_may_manage(payload),
+            external_approval_ref=body.external_approval_ref,
         )
     )
     return ReleaseOut.model_validate(decision)

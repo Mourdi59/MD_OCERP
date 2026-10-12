@@ -512,7 +512,8 @@ async def test_a_risk_drawdown_above_the_release_is_refused_under_block(world: W
         await _confirm(world, risk_id, "30000")
     assert exc.value.status_code == 409
     assert exc.value.detail["code"] == "commitment_not_released"
-    assert await _risk_draw(world, line_id, risk_id) is None
+    # The approved release already drew its 10,000 for this risk; the refused 30,000 changed nothing.
+    assert Decimal(await _risk_draw(world, line_id, risk_id)) == Decimal("10000")
     assert await guard_rows(world, risk_id) == ["guard_block"]
 
 
@@ -522,6 +523,19 @@ async def test_a_risk_drawdown_within_the_release_is_written(world: World) -> No
     await _confirm(world, risk_id, "10000")
     assert Decimal(await _risk_draw(world, line_id, risk_id)) == Decimal("10000")
     assert await guard_rows(world, risk_id) == []
+    # The release and the risk's own confirmation are the same money: one record, drawn once.
+    assert await _drawn(world, line_id) == {f"contingency_drawdown:risk:{risk_id}": Decimal("10000")}
+    await _confirm(world, risk_id, "4000")
+    assert await _drawn(world, line_id) == {f"contingency_drawdown:risk:{risk_id}": Decimal("4000")}
+
+
+async def _drawn(w: World, line_id: uuid.UUID) -> dict[str, Decimal]:
+    """Every drawdown record on one contingency line, by its key."""
+    from app.modules.finance.models import ProjectBudget
+
+    async with w.factory() as s:
+        meta = (await s.get(ProjectBudget, line_id)).metadata_ or {}
+    return {k: Decimal(v["amount"]) for k, v in meta.items() if k.startswith("contingency_drawdown:")}
 
 
 async def test_a_checker_that_breaks_refuses_the_write_on_a_blocking_project(world: World, monkeypatch) -> None:

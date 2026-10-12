@@ -45,14 +45,14 @@ async def sweep_once(session_factory: Any = None, *, today: date | None = None) 
                 svc = CommitmentService(session)
                 done["links"] += await svc.adopt_award_drafts(project_id)
                 await session.commit()
-                overdue = [item_id for item_id, _due in await svc.overdue_items(project_id, today=day)]
+                overdue = await svc.overdue_items(project_id, today=day)
         except Exception:
             done["failures"] += 1
             logger.warning("commitment sweep: project %s failed", project_id, exc_info=True)
-        for item_id in overdue:
+        for item_id, due in overdue:
             try:
                 async with session_factory() as session:
-                    if await CommitmentService(session).escalate_overdue(project_id, item_id, today=day):
+                    if await CommitmentService(session).escalate_overdue(project_id, item_id, today=day, due=due):
                         done["escalations"] += 1
                     await session.commit()
             except Exception:
