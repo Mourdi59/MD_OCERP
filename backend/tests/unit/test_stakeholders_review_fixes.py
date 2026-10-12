@@ -443,3 +443,36 @@ def test_the_seed_finds_the_undecided_gate_into_construction_by_capability() -> 
     # No phase model, or a model that names no construction start: the seed tells its usual story.
     assert gate_before_construction((), ("build",)) is None
     assert gate_before_construction(gates, ()) is None
+
+
+# ── an overdue promise warns, a silent breach fails ──────────────────────
+
+
+def test_an_overdue_promise_fails_the_check_only_while_it_cannot_warn() -> None:
+    from app.modules.stakeholders.evidence import commitments_tracked
+
+    old = commitments_tracked([], ["C-003"], warnings=False)
+    assert (old["status"], old["refs"]) == ("not_met", ["C-003"])
+    new = commitments_tracked([], ["C-003"], warnings=True)
+    assert (new["status"], new["refs"], new["overdue_refs"]) == ("met", [], ["C-003"])
+    # A breach nobody explained fails it either way.
+    assert commitments_tracked(["C-001"], ["C-003"], warnings=True)["status"] == "not_met"
+    assert commitments_tracked([], [], warnings=False)["status"] == "met"
+
+
+def test_each_overdue_promise_is_a_warning_with_a_stable_code_and_a_sentence(monkeypatch) -> None:
+    from app.modules.project_governance import evidence as governance_evidence
+    from app.modules.stakeholders.evidence import overdue_items
+
+    # The state arrives with a later governance version; the item must be valid there.
+    monkeypatch.setattr(
+        governance_evidence, "EVIDENCE_STATES", (*governance_evidence.EVIDENCE_STATES, "warning"), raising=True
+    )
+    overdue = [{"code": "C-003", "due_date": "2026-10-09"}]
+    (item,) = overdue_items(overdue, ("stakeholders", "p"))
+    assert (item.code, item.state) == ("stakeholders:commitment_overdue:C-003", "warning")
+    assert overdue_items(overdue, ("stakeholders", "p"))[0].code == item.code
+    assert "C-003" in item.labels["en"] and "2026-10-09" in item.labels["en"]
+    assert "before you decide" in item.labels["en"]
+    assert "C-003" in item.labels["de"] and "bevor Sie entscheiden" in item.labels["de"]
+    assert overdue_items([], ("stakeholders", "p")) == []

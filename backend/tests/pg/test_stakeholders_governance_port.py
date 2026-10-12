@@ -302,3 +302,44 @@ async def test_the_demo_seed_keeps_site_promises_agreed_until_the_gate_into_cons
     held = [e for e in events if e.status == "held"]
     assert held and all(e.held_on < today for e in held)
     assert min(e.held_on for e in held if e.attendance_count == 64) == today - timedelta(days=40)
+
+
+async def test_the_seeded_overdue_promise_is_one_warning_on_the_stakeholders_area(monkeypatch) -> None:
+    from app.modules.project_governance import evidence as governance_evidence
+    from app.modules.stakeholders import evidence as own
+    from app.modules.stakeholders.seed import _seed_project
+
+    async def read(w: gov.World) -> tuple[str, dict[str, list]]:
+        hosts = await _hosts(w)
+        return hosts["stakeholders"].area_code, await _evidence(w)
+
+    async with isolated_engine() as engine:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        w = await gov.build_world(factory)
+        async with factory() as s:
+            await _seed_project(s, w.project_id)
+            await s.commit()
+        async with factory() as s:
+            (late,) = await StakeholderService(s).overdue_commitments(
+                w.project_id, today=own.datetime.now(own.UTC).date()
+            )
+
+        # Without the state the promise can only fail the check it belongs to.
+        monkeypatch.setattr(own, "EVIDENCE_STATES", ("met", "not_met", "unknown"))
+        area, before = await read(w)
+        tracked = [i for i in before[area] if i.code == "stakeholders:commitments_tracked"]
+        assert [i.state for i in tracked] == ["not_met"]
+        assert not [i for items in before.values() for i in items if i.code.startswith(own.OVERDUE_CODE)]
+
+        # With it the check is met and the promise is an item of its own.
+        served = ("met", "not_met", "unknown", "warning")
+        monkeypatch.setattr(own, "EVIDENCE_STATES", served)
+        monkeypatch.setattr(governance_evidence, "EVIDENCE_STATES", served)
+        area, after = await read(w)
+    tracked = [i for i in after[area] if i.code == "stakeholders:commitments_tracked"]
+    assert [i.state for i in tracked] == ["met"]
+    warnings = [(code, i) for code, items in after.items() for i in items if i.state == "warning"]
+    assert [(code, i.code) for code, i in warnings] == [(area, f"{own.OVERDUE_CODE}:{late['code']}")]
+    item = warnings[0][1]
+    assert item.link == (own.LINK_KIND, str(w.project_id))
+    assert late["code"] in item.labels["en"] and late["due_date"] in item.labels["de"]

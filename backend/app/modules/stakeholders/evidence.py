@@ -27,6 +27,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.modules.project_governance.evidence import (
+    EVIDENCE_STATES,
     EvidenceItem,
     GateAttempt,
     register_evidence_link,
@@ -46,6 +47,54 @@ CHECK_SUBJECT: dict[str, str] = {
     "commitments_tracked": STAKEHOLDERS_TAG,
 }
 CHECKS: tuple[str, ...] = tuple(CHECK_SUBJECT)
+# An overdue promise is outstanding but does not block: the state ``warning``, acknowledged by the decider
+# at a go. On a governance version without that state the promise stays what it was, a reason why
+# ``commitments_tracked`` is not met.
+OVERDUE_CODE = "stakeholders:commitment_overdue"
+
+
+def warning_state_served() -> bool:
+    """Whether the governance module in this installation knows the evidence state ``warning``."""
+    return "warning" in EVIDENCE_STATES
+
+
+def commitments_tracked(breached: list[str], overdue: list[str], *, warnings: bool) -> dict[str, Any]:
+    """The ``commitments_tracked`` check.
+
+    A breach without a rationale always fails it. An overdue promise fails it
+    only while it cannot be reported as a warning of its own.
+    """
+    failing = breached if warnings else [*breached, *overdue]
+    return {
+        "status": "not_met" if failing else "met",
+        "breached": len(failing),
+        "refs": failing,
+        "overdue": len(overdue),
+        "overdue_refs": overdue,
+    }
+
+
+def overdue_items(overdue: list[dict[str, str]], link: tuple[str, str]) -> list[EvidenceItem]:
+    """One ``warning`` item per overdue promise, with a code that stays the same between reads."""
+    from app.modules.stakeholders.messages import available_locales, translate
+
+    key = "stakeholders.evidence.commitment_overdue"
+    return [
+        EvidenceItem(
+            code=f"{OVERDUE_CODE}:{c['code']}",
+            state="warning",
+            label_key=key,
+            labels={
+                locale: translate(key, locale=locale, code=c["code"], due=c["due_date"])
+                for locale in available_locales()
+            },
+            link=link,
+            detail=f"{c['code']} due {c['due_date']}",
+        )
+        for c in overdue
+    ]
+
+
 # Which export's frame document proves that a subject has a place in the project.
 _EXPORT_OF: dict[str, str] = {STAKEHOLDERS_TAG: "register", ORGANISATION_TAG: "organisation"}
 NO_HOST_REASON = "no_document_type_hosts_subject"
@@ -104,6 +153,7 @@ async def governance_readiness(
     catalogue = await hosting.project_catalogue(session, project_id)
     first = hosting.first_area_code(catalogue) if catalogue is not None else None
     link = (LINK_KIND, str(project_id))
+    today = datetime.now(UTC).date()
     checks: dict[str, dict[str, Any]] | None = None
     out: list[EvidenceItem] = []
     for subject in SUBJECTS:
@@ -119,7 +169,7 @@ async def governance_readiness(
             out.append(unknown_item(subject, reason, link))
             continue
         if checks is None:
-            checks = await svc.readiness(project_id, today=datetime.now(UTC).date())
+            checks = await svc.readiness(project_id, today=today)
         out.extend(
             EvidenceItem(
                 code=f"stakeholders:{code}",
@@ -131,6 +181,8 @@ async def governance_readiness(
             for code in CHECKS
             if CHECK_SUBJECT[code] == subject
         )
+        if subject == STAKEHOLDERS_TAG and warning_state_served():
+            out.extend(overdue_items(await svc.overdue_commitments(project_id, today=today), link))
     return out
 
 

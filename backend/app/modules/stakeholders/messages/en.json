@@ -263,6 +263,7 @@
       "verification_needs_loop_closed": "Verification needs the date the stakeholder was told, or a reason why that is not required"
     },
     "evidence": {
+      "commitment_overdue": "Promise {code} to stakeholders was due on {due} and is not kept yet. Follow it up or agree a new date with them before you decide.",
       "commitments_tracked": "No commitment is breached without a rationale",
       "document_organisation": "This project has no frame document for the project organisation yet, so its readiness cannot be shown here. Check roles and mandates on the stakeholders page before you decide.",
       "document_stakeholders": "This project has no frame document for the stakeholder register yet, so its readiness cannot be shown here. Check the register on the stakeholders page before you decide.",

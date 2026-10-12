@@ -2646,11 +2646,10 @@ class StakeholderService:
         _roles, holders, _roster = await self._holders(project_id)
         vacant = md.vacant_roles(fw, holders, today, required_only=True)
         commitments = await self.repo.commitments(project_id)
-        unexplained = [
-            c.code
-            for c in commitments
-            if (c.status == "breached" and not c.breach_rationale.strip()) or self.commitment_overdue(c, today)
-        ]
+        from app.modules.stakeholders import evidence
+
+        unexplained = [c.code for c in commitments if c.status == "breached" and not c.breach_rationale.strip()]
+        overdue = [c.code for c in commitments if self.commitment_overdue(c, today)]
 
         def check(ok: bool, **counts: Any) -> dict[str, Any]:
             return {"status": "met" if ok else "not_met", **counts}
@@ -2660,8 +2659,15 @@ class StakeholderService:
             "key_stakeholders_planned": check(not gaps, without_plan=len(gaps), refs=gaps),
             "mandates_complete": check(not missing, missing=len(missing), refs=missing),
             "roles_filled": check(not vacant, vacant=len(vacant), refs=vacant),
-            "commitments_tracked": check(not unexplained, breached=len(unexplained), refs=unexplained),
+            "commitments_tracked": evidence.commitments_tracked(
+                unexplained, overdue, warnings=evidence.warning_state_served()
+            ),
         }
+
+    async def overdue_commitments(self, project_id: uuid.UUID, *, today: date) -> list[dict[str, str]]:
+        """Open promises past their due date, oldest first: ``{code, due_date}``."""
+        rows = [c for c in await self.repo.commitments(project_id) if self.commitment_overdue(c, today)]
+        return [{"code": c.code, "due_date": c.due_date.isoformat()} for c in sorted(rows, key=lambda c: c.due_date)]
 
     async def key_stakeholders_without_plan(
         self, project_id: uuid.UUID, settings: StakeholderSettings, fw: StakeholderFramework
