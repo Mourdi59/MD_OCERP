@@ -37,6 +37,7 @@ import {
   usePackages,
   usePinnedCatalogue,
   useProfiles,
+  useProjectFrameworks,
   useSchedule,
   useSoundings,
 } from './hooks';
@@ -69,7 +70,9 @@ export function ProcurementConceptPage() {
   const findingsQ = useFindings(projectId, has);
   const catalogueQ = usePinnedCatalogue(projectId, has);
   const profilesQ = useProfiles(projectId, has);
-  const frameworksQ = useFrameworks(has);
+  // The company's agreements for the Frameworks tab; the ones this project may call off for the package plan.
+  const frameworksQ = useFrameworks(has && tab === 'frameworks');
+  const callOffQ = useProjectFrameworks(projectId, has);
   const soundingsQ = useSoundings(projectId, has && tab === 'market');
   const scheduleQ = useSchedule(projectId, has && tab === 'schedule');
   const cataloguesQ = useCatalogues(conceptDialog);
@@ -114,7 +117,7 @@ export function ProcurementConceptPage() {
           <li>{t('procurement_concept.ui.page.how_step_1', { defaultValue: 'Say which procurement law applies and what kind of client the project has. That fixes the thresholds and the procedures.' })}</li>
           <li>{t('procurement_concept.ui.page.how_step_2', { defaultValue: 'Give every contract package an estimated value, a procedure and the date it is needed on site. The value is tested against the thresholds as you go.' })}</li>
           <li>{t('procurement_concept.ui.page.how_step_3', { defaultValue: 'Sound out the market, collect candidates per package and confirm the short list once it meets the rules.' })}</li>
-          <li>{t('procurement_concept.ui.page.how_step_4', { defaultValue: 'Confirm the award milestones, then submit the concept. It is approved once nothing blocks it, and each package continues in tendering.' })}</li>
+          <li>{t('procurement_concept.ui.page.how_step_4', { defaultValue: 'Confirm the award milestones, then submit the concept for the gate. The governance gate approves it, and each package then continues in tendering.' })}</li>
         </ol>
       </CollapsibleSection>
     </>
@@ -144,6 +147,8 @@ export function ProcurementConceptPage() {
   const concept = conceptQ.data ?? null;
   const conceptDialogNode = conceptDialog && (
     <ConceptDialog
+      // A newly pinned catalogue brings other laws, so the form starts over from what the server sent.
+      key={concept ? `${concept.catalogue_source}:${concept.catalogue_id}:${concept.catalogue_version}` : 'new'}
       open
       onClose={() => setConceptDialog(false)}
       projectId={projectId}
@@ -163,7 +168,7 @@ export function ProcurementConceptPage() {
           title={t('procurement_concept.empty.no_concept', { defaultValue: 'No procurement concept yet.' })}
           description={t('procurement_concept.ui.page.empty_body', {
             defaultValue:
-              'Start by saying which procurement law applies and whether the client is a public body. The contract packages of the delivery model then appear here, ready to get a value, a procedure and a date.',
+              'Start by choosing the rule catalogue, then say which procurement law applies and whether the client is a public body. The contract packages of the delivery model then appear here, ready to get a value, a procedure and a date.',
           })}
           action={
             <Button onClick={() => setConceptDialog(true)} data-testid="concept-start">
@@ -305,7 +310,7 @@ export function ProcurementConceptPage() {
           projectId={projectId}
           view={planningView}
           catalogue={catalogueQ.data ?? null}
-          frameworks={frameworksQ.data ?? []}
+          frameworks={callOffQ.data ?? []}
           profiles={profilesQ.data ?? []}
           labels={labels}
           onSaved={(first) => {

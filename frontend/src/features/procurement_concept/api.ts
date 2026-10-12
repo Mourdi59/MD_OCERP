@@ -37,9 +37,7 @@ export type PackageState =
   | 'on_hold';
 export type FrameworkState = 'draft' | 'active' | 'expired' | 'exhausted' | 'terminated';
 export type FrameworkTarget = Exclude<FrameworkState, 'draft'>;
-export type ThresholdStatus = 'above' | 'below' | 'unconfirmed' | 'unresolved' | 'not_applicable';
-export type Jurisdiction = 'eu' | 'uk' | 'us_federal' | 'de_national' | 'none';
-export type ClientType = 'central' | 'sub_central' | 'utility' | 'private';
+export type ThresholdStatus = 'above' | 'below' | 'unconfirmed' | 'unresolved' | 'unavailable' | 'not_applicable';
 export type PackageKind = 'design' | 'works' | 'supply' | 'supply_and_install' | 'services';
 export type TenderBasis = 'detailed' | 'functional' | 'mixed';
 export type SplitBasis = 'trade' | 'section' | 'system' | 'whole';
@@ -50,7 +48,7 @@ export type PriceSignal = 'below_estimate' | 'in_line' | 'above_estimate' | 'unk
 export type SoundingMethod = 'survey' | 'meeting' | 'rfi' | 'notice';
 export type CallOffMode = 'direct' | 'mini_competition';
 export type PackageAction = 'hold' | 'resume' | 'cancel';
-export type ConceptAction = 'submit' | 'return' | 'approve' | 'reopen';
+export type ConceptAction = 'submit' | 'return';
 export type ExportPart = 'concept' | 'packages' | 'shortlist' | 'schedule';
 export type ExportFormat = 'pdf' | 'xlsx';
 
@@ -86,9 +84,17 @@ export interface CatalogueCriterion extends Named {
   default_weight: string;
 }
 
+/** A procurement law of the pinned catalogue. Its codes are the catalogue's own, never a fixed list. */
 export interface CatalogueJurisdiction extends Named {
-  code: Jurisdiction;
-  client_types: ClientType[];
+  client_types: string[];
+  /** The client type of a client outside the public rules; a public client picks another one. */
+  private_client_type?: string;
+}
+
+/** One thing the caller may do, with the refusal code when they may not. */
+export interface Capability {
+  allowed: boolean;
+  reason: string | null;
 }
 
 /** The pinned catalogue body. Only the parts the screens read are typed. */
@@ -120,29 +126,42 @@ export interface Concept {
   catalogue_source: 'shipped' | 'tenant';
   catalogue_id: string;
   catalogue_version: number;
-  jurisdiction: Jurisdiction;
-  client_type: ClientType;
+  jurisdiction: string;
+  client_type: string;
   public_client: boolean;
   vat_rate_pct: string;
   /** The state that counts: `binding` is read from the frame document, never stored here. */
   state: ConceptState;
   stored_state: ConceptState;
   governance_document_id: string | null;
+  /** The gate named by hand; empty means the one the governance catalogue tags. */
   release_gate_code: string | null;
+  /** The gate actually used. Null when none is named or tagged. */
+  resolved_release_gate_code: string | null;
+  governance_area_code: string | null;
   default_profile_id: string | null;
+  submitted_by: string | null;
   approved_by: string | null;
   approved_at: string | null;
-  jurisdictions: Array<{ code: Jurisdiction; name_key: string; client_types: ClientType[] }>;
+  /** The person who submitted the concept also approved it. */
+  four_eyes_violated: boolean;
+  jurisdictions: CatalogueJurisdiction[];
   review_status: string;
-  /** What the caller may do on this concept, decided by the server. */
-  can: { edit: boolean; approve: boolean; steer: boolean };
+  /** What the caller may do on this concept, decided by the server from the checks the writes enforce. */
+  can: {
+    steer: Capability;
+    edit_plan: Capability;
+    submit: Capability;
+    return: Capability;
+    set_gate_fields: Capability;
+  };
 }
 
 export interface ConceptInput {
   catalogue_source?: 'shipped' | 'tenant';
   catalogue_id?: string;
-  jurisdiction?: Jurisdiction;
-  client_type?: ClientType;
+  jurisdiction?: string;
+  client_type?: string;
   public_client?: boolean;
   vat_rate_pct?: string;
   release_gate_code?: string;
@@ -152,7 +171,9 @@ export interface ConceptInput {
 export interface Readiness {
   state: ConceptState | null;
   approved: boolean;
+  submitted: boolean;
   blocking: number;
+  ready_for_gate: boolean;
 }
 
 export interface ContractPackage {
@@ -474,7 +495,11 @@ export interface FrameworkLedger {
   max_value: string;
   currency: string;
   call_off_value: string;
-  remaining_value: string;
+  /** Null when it cannot be determined (see `remaining_known`). */
+  remaining_value: string | null;
+  remaining_known: boolean;
+  /** False when a source of call-offs could not be read, so the list may miss entries. */
+  complete: boolean;
   /** Entries in another currency: they are listed but not added to the call-off value. */
   unconverted_entries: number;
   items: LedgerEntry[];
@@ -529,6 +554,7 @@ export const procurementKeys = {
     ['procurement-concept', projectId, 'candidates', packageId] as const,
   soundings: (projectId: string) => ['procurement-concept', projectId, 'soundings'] as const,
   schedule: (projectId: string) => ['procurement-concept', projectId, 'schedule'] as const,
+  projectFrameworks: (projectId: string) => ['procurement-concept', projectId, 'frameworks'] as const,
   catalogues: ['procurement-concept-company', 'catalogues'] as const,
   frameworks: ['procurement-concept-company', 'frameworks'] as const,
   ledger: (frameworkId: string) => ['procurement-concept-company', 'ledger', frameworkId] as const,
@@ -554,8 +580,9 @@ export function setConcept(projectId: string, body: ConceptInput): Promise<Conce
   return apiPut<Concept>(`${p(projectId)}/concept`, body);
 }
 
-export function conceptAction(projectId: string, action: ConceptAction, rationale = ''): Promise<Concept> {
-  return apiPost<Concept>(`${p(projectId)}/concept/${action}`, { rationale });
+/** Submit for the gate, or return to draft. Approval is the governance gate's, so there is no route for it here. */
+export function conceptAction(projectId: string, action: ConceptAction): Promise<Concept> {
+  return apiPost<Concept>(`${p(projectId)}/concept/${action}`, {});
 }
 
 export function getReadiness(projectId: string): Promise<Readiness> {
@@ -706,6 +733,11 @@ export function downloadExport(
 }
 
 /* ── Framework agreements (company level) ─────────────────────────────── */
+
+/** The agreements a package of this project may call off. */
+export function listProjectFrameworks(projectId: string): Promise<Page<Framework>> {
+  return apiGet<Page<Framework>>(`${p(projectId)}/frameworks`);
+}
 
 export function listFrameworks(): Promise<Page<Framework>> {
   return apiGet<Page<Framework>>(`${BASE}/frameworks`);

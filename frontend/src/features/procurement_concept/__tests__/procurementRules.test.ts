@@ -10,8 +10,10 @@ import { catalogueName, errorText, findingText, humanizeCode, vocab, PACKAGE_STA
 import {
   calledOffShare,
   candidateProblems,
+  catalogueStepInput,
   conceptSteps,
   editVerdict,
+  gateVerdict,
   frameworkProblems,
   frameworkTargets,
   hasProposal,
@@ -21,6 +23,8 @@ import {
   packageProblems,
   parseAmount,
   profileProblems,
+  publicClientTypes,
+  rulesStepInput,
   scoresValid,
   soundingReady,
   soundingUnmitigated,
@@ -38,8 +42,11 @@ import {
 } from '../rules';
 import { enT } from './i18nMock';
 import {
+  LOCKED,
+  NO_RIGHTS,
   agreementPackage,
   blockingFinding,
+  can,
   concept,
   packageView,
   schedule,
@@ -81,20 +88,37 @@ describe('verdicts follow the server flags', () => {
   });
 
   it('names the procurement owner when the reader may not steer', () => {
-    const c = concept({ can: { edit: false, approve: false, steer: false } });
+    const c = concept({ can: NO_RIGHTS });
     expect(editVerdict(c)).toBe('not_procurement_owner');
     expect(steerVerdict(c)).toBe('not_procurement_owner');
   });
 
   it('says the plan is locked while it is reviewed or approved', () => {
-    const c = concept({ state: 'in_review', can: { edit: false, approve: true, steer: true } });
+    const c = concept({ state: 'in_review', can: LOCKED });
     expect(editVerdict(c)).toBe('concept_locked');
     expect(steerVerdict(c)).toBeNull();
   });
 
   it('points a binding concept to the change request', () => {
-    const c = concept({ state: 'binding', can: { edit: false, approve: false, steer: true } });
+    const c = concept({ state: 'binding', can: can({ edit_plan: 'binding_requires_change_request' }) });
     expect(editVerdict(c)).toBe('binding_requires_change_request');
+  });
+
+  it('takes the reason from the server and never from the state', () => {
+    // A draft the server refuses stays refused; an approved one it allows stays allowed.
+    expect(editVerdict(concept({ state: 'draft', can: can({ edit_plan: 'concept_locked' }) }))).toBe('concept_locked');
+    expect(editVerdict(concept({ state: 'approved', can: can() }))).toBeNull();
+  });
+
+  it('falls back to a sentence when the server refuses without a code', () => {
+    const c = concept({ can: { ...can(), steer: { allowed: false, reason: null } } });
+    expect(steerVerdict(c)).toBe('not_procurement_owner');
+  });
+
+  it('keeps the release gate closed for who may not name it', () => {
+    expect(gateVerdict(concept())).toBeNull();
+    expect(gateVerdict(concept({ can: can({ set_gate_fields: 'manage_required' }) }))).toBe('manage_required');
+    expect(gateVerdict(concept({ can: LOCKED }))).toBe('gate_fields_frozen');
   });
 });
 
@@ -104,16 +128,61 @@ describe('conceptSteps', () => {
     expect(conceptSteps(concept({ state: 'reopened' })).map((s) => s.action)).toEqual(['submit']);
   });
 
-  it('a concept in review is approved by who the server entitles, or returned', () => {
-    const steps = conceptSteps(concept({ state: 'in_review', can: { edit: false, approve: false, steer: true } }));
-    expect(steps.map((s) => s.action)).toEqual(['approve', 'return']);
-    expect(steps[0]!.verdict).toBe('not_procurement_owner');
-    expect(steps[1]!.verdict).toBeNull();
+  it('a submitted concept can only be returned: approval belongs to the governance gate', () => {
+    const steps = conceptSteps(concept({ state: 'in_review', can: LOCKED }));
+    expect(steps.map((s) => s.action)).toEqual(['return']);
+    expect(steps[0]!.verdict).toBeNull();
   });
 
-  it('an approved concept can only be reopened, and a binding one offers nothing', () => {
-    expect(conceptSteps(concept({ state: 'approved' })).map((s) => s.action)).toEqual(['reopen']);
+  it('the step carries the refusal the server gave for it', () => {
+    expect(conceptSteps(concept({ can: NO_RIGHTS }))[0]!.verdict).toBe('not_procurement_owner');
+    expect(conceptSteps(concept({ state: 'in_review', can: NO_RIGHTS }))[0]!.verdict).toBe('not_procurement_owner');
+  });
+
+  it('an approved and a binding concept offer no hand move', () => {
+    expect(conceptSteps(concept({ state: 'approved' }))).toEqual([]);
     expect(conceptSteps(concept({ state: 'binding' }))).toEqual([]);
+  });
+});
+
+describe('the concept form', () => {
+  const eu = concept().jurisdictions[1];
+
+  it('offers a public client every client type but the one the law keeps for private clients', () => {
+    expect(publicClientTypes(eu)).toEqual(['central', 'sub_central', 'utility']);
+    expect(publicClientTypes(concept().jurisdictions[0])).toEqual([]);
+    expect(publicClientTypes(undefined)).toEqual([]);
+    expect(publicClientTypes({ code: 'x', client_types: ['a', 'own'], private_client_type: 'own' })).toEqual(['a']);
+  });
+
+  it('starts a concept with the catalogue alone, as a private client', () => {
+    expect(catalogueStepInput('shipped:eu', null)).toEqual({ catalogue_source: 'shipped', catalogue_id: 'eu', public_client: false });
+    expect(catalogueStepInput('tenant:9f2c:1', null).catalogue_id).toBe('9f2c:1');
+    expect(catalogueStepInput('tenant:9f2c', null).catalogue_source).toBe('tenant');
+  });
+
+  it('resets the law when the catalogue of an existing concept changes', () => {
+    expect(catalogueStepInput('shipped:uk', concept())).toEqual({
+      catalogue_source: 'shipped',
+      catalogue_id: 'uk',
+      public_client: false,
+      jurisdiction: 'none',
+    });
+  });
+
+  it('sends the client type only for a public client, the rate as a string', () => {
+    const draft = { jurisdiction: 'eu', public_client: true, client_type: 'central', vat_rate_pct: '19', release_gate_code: '' };
+    expect(rulesStepInput(concept(), draft)).toEqual({ jurisdiction: 'eu', public_client: true, client_type: 'central', vat_rate_pct: '19' });
+    expect(rulesStepInput(concept(), { ...draft, public_client: false })).toEqual({ jurisdiction: 'eu', public_client: false, vat_rate_pct: '19' });
+  });
+
+  it('sends the release gate only when it changed and the reader may set it', () => {
+    const draft = { jurisdiction: 'eu', public_client: false, client_type: '', vat_rate_pct: '0', release_gate_code: 'g2' as string | null };
+    expect(rulesStepInput(concept(), draft).release_gate_code).toBe('g2');
+    expect('release_gate_code' in rulesStepInput(concept({ release_gate_code: 'g2' }), draft)).toBe(false);
+    expect('release_gate_code' in rulesStepInput(concept(), { ...draft, release_gate_code: null })).toBe(false);
+    // Clearing it goes back to the gate the governance catalogue names.
+    expect(rulesStepInput(concept({ release_gate_code: 'g2' }), { ...draft, release_gate_code: '' }).release_gate_code).toBe('');
   });
 });
 

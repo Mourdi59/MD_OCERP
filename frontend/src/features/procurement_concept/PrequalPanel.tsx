@@ -361,14 +361,18 @@ export function PrequalPanel({
                             <Button size="sm" variant="ghost" onClick={() => setOpen({ kind: 'reference', candidate: c })} data-testid="candidate-reference">
                               {t('procurement_concept.ui.prequal.add_reference', { defaultValue: 'Add reference' })}
                             </Button>
-                            <Button
+                            <ReasonedButton
+                              quiet
                               size="sm"
                               variant="ghost"
+                              verdict={steer}
                               icon={<Trash2 size={14} />}
                               aria-label={t('procurement_concept.ui.prequal.remove_candidate', { defaultValue: 'Remove {{name}}', name: c.name })}
                               onClick={() => setRemoving(c.id)}
                               data-testid="candidate-remove"
-                            />
+                            >
+                              {null}
+                            </ReasonedButton>
                           </div>
                         )}
                       </td>
@@ -405,7 +409,7 @@ export function PrequalPanel({
       )}
 
       {open?.kind === 'candidate' && (
-        <CandidateDialog open onClose={close} projectId={projectId} packageId={currentId} candidate={open.candidate} labels={labels} onSaved={onChanged} />
+        <CandidateDialog open onClose={close} projectId={projectId} packageId={currentId} candidate={open.candidate} listVerdict={steer} labels={labels} onSaved={onChanged} />
       )}
       {open?.kind === 'scores' && (
         <ScoresDialog open onClose={close} projectId={projectId} candidate={open.candidate} criteria={criteria} labels={labels} onSaved={onChanged} />

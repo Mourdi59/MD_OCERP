@@ -3,13 +3,12 @@
 //
 // The concept record: the rules the project procures under, where the concept
 // stands (draft, in review, approved, binding), what still blocks approval,
-// and the printable record. Approval is refused while a blocking finding is
-// open, and the refusal lists every one of them.
+// and the printable record. The concept is submitted here and approved by
+// the governance gate; a refused submit lists every finding that blocks it.
 
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
-import { CheckCircle2, Download, Pencil } from 'lucide-react';
+import { CheckCircle2, Download, Info, Pencil } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { fmtDate } from '@/shared/lib/formatters';
@@ -17,28 +16,26 @@ import { fmtDate } from '@/shared/lib/formatters';
 import { conceptAction, downloadExport, type Concept, type ConceptAction, type ExportFormat, type ExportPart, type Finding } from './api';
 import { useRefusalToast } from './hooks';
 import { CLIENT_TYPE, CONCEPT_STATE, JURISDICTION, catalogueName, vocab, type KeyText, type LabelContext } from './labels';
-import { CONCEPT_TONE, FIELD_CLASS, FindingList, ReasonedButton, RefusalBox, ToneBadge } from './ProcurementBits';
+import { CONCEPT_TONE, FindingList, ReasonedButton, RefusalBox, ToneBadge } from './ProcurementBits';
 import { conceptSteps, editVerdict, splitFindings } from './rules';
 
 export const CONCEPT_ACTION: Record<ConceptAction, KeyText> = {
-  submit: ['procurement_concept.actions.submit', 'Submit for review'],
+  submit: ['procurement_concept.actions.submit', 'Submit for the gate'],
   return: ['procurement_concept.actions.return', 'Return to draft'],
-  approve: ['procurement_concept.actions.approve', 'Approve'],
-  reopen: ['procurement_concept.actions.reopen', 'Reopen'],
 };
 
 export const CONCEPT_STATE_HINT: Record<Concept['state'], KeyText> = {
   draft: [
     'procurement_concept.ui.record.hint_draft',
-    'The plan is open. Set a procedure for every package, then submit the concept for review.',
+    'The plan is open. Set a procedure for every package, then submit the concept for the gate.',
   ],
   in_review: [
     'procurement_concept.ui.record.hint_in_review',
-    'The plan is locked while it is reviewed. Approve it, or return it to draft to change it.',
+    'The concept is submitted and the plan is locked. Return it to draft to change it.',
   ],
   approved: [
     'procurement_concept.ui.record.hint_approved',
-    'The concept is approved and the plan is locked. Reopen it with a reason to change it.',
+    'The gate approved the concept and the plan is locked. It changes through a change request on its frame document.',
   ],
   binding: [
     'procurement_concept.ui.record.hint_binding',
@@ -46,7 +43,7 @@ export const CONCEPT_STATE_HINT: Record<Concept['state'], KeyText> = {
   ],
   reopened: [
     'procurement_concept.ui.record.hint_reopened',
-    'The concept was reopened. Change the plan, then submit it for review again.',
+    'A change request is open on the frame document. Change the plan, then submit the concept for the gate again.',
   ],
 };
 
@@ -81,31 +78,17 @@ export function ConceptRecord({
 }: ConceptRecordProps) {
   const { t } = useTranslation();
   const toastRefusal = useRefusalToast();
-  const [reopening, setReopening] = useState(false);
-  const [rationale, setRationale] = useState('');
   const { blocking, warnings } = splitFindings(findings);
 
   const step = useMutation({
-    mutationFn: (action: ConceptAction) => conceptAction(projectId, action, action === 'reopen' ? rationale.trim() : ''),
-    onSuccess: () => {
-      setReopening(false);
-      setRationale('');
-      onChanged();
-    },
+    mutationFn: (action: ConceptAction) => conceptAction(projectId, action),
+    onSuccess: onChanged,
   });
   const exportFile = useMutation({
     mutationFn: (e: { part: ExportPart; format: ExportFormat }) => downloadExport(projectId, e.part, e.format),
     onError: toastRefusal,
   });
-
-  const run = (action: ConceptAction) => {
-    if (action === 'reopen' && !reopening) {
-      step.reset();
-      setReopening(true);
-      return;
-    }
-    step.mutate(action);
-  };
+  const privateType = concept.jurisdictions.find((j) => j.code === concept.jurisdiction)?.private_client_type ?? 'private';
 
   const facts: Array<[string, string]> = [
     [
@@ -125,7 +108,14 @@ export function ConceptRecord({
     ],
     [
       t('procurement_concept.ui.record.client', { defaultValue: 'Client' }),
-      vocab(labels.t, CLIENT_TYPE, concept.public_client ? concept.client_type : 'private'),
+      concept.public_client && concept.client_type !== privateType
+        ? vocab(labels.t, CLIENT_TYPE, concept.client_type)
+        : t('procurement_concept.client_type.private', { defaultValue: 'Private client' }),
+    ],
+    [
+      t('procurement_concept.ui.record.release_gate', { defaultValue: 'Gate that releases procurement' }),
+      concept.resolved_release_gate_code ??
+        t('procurement_concept.ui.record.release_gate_unresolved', { defaultValue: 'Not known yet' }),
     ],
   ];
   if (concept.approved_at) {
@@ -157,7 +147,7 @@ export function ConceptRecord({
                 verdict={s.verdict}
                 variant={s.primary ? 'primary' : 'secondary'}
                 loading={step.isPending && step.variables === s.action}
-                onClick={() => run(s.action)}
+                onClick={() => step.mutate(s.action)}
                 data-testid={`concept-${s.action}`}
               >
                 {vocab(labels.t, CONCEPT_ACTION, s.action)}
@@ -166,33 +156,18 @@ export function ConceptRecord({
           </div>
         </div>
 
-        {reopening && (
-          <div className="mt-3 space-y-2 rounded-md bg-surface-secondary p-3">
-            <label htmlFor="pc-reopen-reason" className="block text-xs font-medium text-content-secondary">
-              {t('procurement_concept.ui.record.reopen_reason', { defaultValue: 'Why the concept is reopened (required)' })}
-            </label>
-            <textarea
-              id="pc-reopen-reason"
-              rows={2}
-              className={FIELD_CLASS}
-              value={rationale}
-              onChange={(e) => setRationale(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                loading={step.isPending}
-                disabled={!rationale.trim()}
-                onClick={() => step.mutate('reopen')}
-                data-testid="concept-reopen-confirm"
-              >
-                {t('procurement_concept.ui.record.reopen_confirm', { defaultValue: 'Reopen concept' })}
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setReopening(false)}>
-                {t('procurement_concept.ui.cancel', { defaultValue: 'Cancel' })}
-              </Button>
-            </div>
-          </div>
+        <p className="mt-3 flex items-start gap-2 rounded-md bg-surface-secondary px-3 py-2 text-sm text-content-secondary" data-testid="approval-by-gate">
+          <Info size={15} className="mt-0.5 shrink-0" aria-hidden />
+          {t('procurement_concept.approval.by_gate', {
+            defaultValue: 'The governance gate approves the concept. Submit it, then decide the gate.',
+          })}
+        </p>
+        {concept.four_eyes_violated && (
+          <p className="mt-2 rounded-md border border-semantic-warning/40 bg-semantic-warning-bg px-3 py-2 text-xs text-content-primary" role="note" data-testid="four-eyes">
+            {t('procurement_concept.ui.record.four_eyes', {
+              defaultValue: 'The person who submitted the concept also approved it. A second person should have decided.',
+            })}
+          </p>
         )}
         {step.error ? (
           <div className="mt-3">

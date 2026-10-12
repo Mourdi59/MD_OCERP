@@ -25,6 +25,7 @@ vi.mock('../api', async (importOriginal) => {
     listPackages: vi.fn(),
     listProfiles: vi.fn(),
     listFrameworks: vi.fn(),
+    listProjectFrameworks: vi.fn(),
     listSoundings: vi.fn(),
     getSchedule: vi.fn(),
     listCandidates: vi.fn(),
@@ -44,6 +45,7 @@ import { FRAMEWORK_MOVE } from '../Frameworks';
 import {
   agreementPackage,
   blockingFinding,
+  can,
   catalogue,
   concept,
   framework,
@@ -79,6 +81,7 @@ function loaded() {
   mocked.getPinnedCatalogue.mockResolvedValue(catalogue);
   mocked.listProfiles.mockResolvedValue(page([profile]));
   mocked.listFrameworks.mockResolvedValue(page([framework]));
+  mocked.listProjectFrameworks.mockResolvedValue(page([framework]));
   mocked.listSoundings.mockResolvedValue(page([soundingTight]));
   mocked.getSchedule.mockResolvedValue(schedule);
   mocked.listCandidates.mockResolvedValue(matrix());
@@ -116,29 +119,49 @@ describe('ProcurementConceptPage states', () => {
     expect(mocked.listFindings).not.toHaveBeenCalled();
   });
 
-  it('starting the concept sends the rules, the VAT rate as a string', async () => {
-    mocked.getConcept.mockRejectedValue(new ApiError(404, 'Not Found', { detail: { code: 'concept_missing', message: 'none' } }));
+  it('starts the concept with the catalogue, then asks for the law and the client it brings', async () => {
+    mocked.getConcept.mockRejectedValueOnce(new ApiError(404, 'Not Found', { detail: { code: 'concept_missing', message: 'none' } }));
+    loaded();
+    mocked.getConcept.mockResolvedValue(concept({ jurisdiction: 'none', client_type: 'private', public_client: false }));
     mocked.setConcept.mockResolvedValue(concept());
     renderPage();
     fireEvent.click(await screen.findByTestId('concept-start'));
     const select = (await screen.findByLabelText('Rule catalogue')) as HTMLSelectElement;
     await waitFor(() => expect(select.options.length).toBe(1));
-    fireEvent.change(select, { target: { value: 'shipped:eu' } });
-    fireEvent.click(screen.getByTestId('concept-public-client'));
-    fireEvent.change(screen.getByLabelText('VAT rate in percent'), { target: { value: '19' } });
+    // The laws are the catalogue's own, so they are not offered before it is pinned.
+    expect(screen.getByTestId('concept-rules-next')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Procurement law')).toBeNull();
     fireEvent.click(screen.getByTestId('concept-save'));
     await waitFor(() => expect(mocked.setConcept).toHaveBeenCalledTimes(1));
-    expect(mocked.setConcept.mock.calls[0]).toEqual([
+    expect(mocked.setConcept.mock.calls[0]).toEqual(['p1', { catalogue_source: 'shipped', catalogue_id: 'eu', public_client: false }]);
+
+    // The dialog stays and now offers what the pinned catalogue knows.
+    const law = (await screen.findByLabelText('Procurement law')) as HTMLSelectElement;
+    expect([...law.options].map((o) => o.value)).toEqual(['none', 'eu']);
+    expect(screen.getByTestId('concept-public-client')).toBeDisabled();
+    fireEvent.change(law, { target: { value: 'eu' } });
+    fireEvent.click(screen.getByTestId('concept-public-client'));
+    const kind = screen.getByLabelText('Kind of public client') as HTMLSelectElement;
+    expect([...kind.options].map((o) => o.value)).toEqual(['central', 'sub_central', 'utility']);
+    fireEvent.change(kind, { target: { value: 'utility' } });
+    fireEvent.change(screen.getByLabelText('VAT rate in percent'), { target: { value: '19' } });
+    fireEvent.click(screen.getByTestId('concept-save'));
+    await waitFor(() => expect(mocked.setConcept).toHaveBeenCalledTimes(2));
+    expect(mocked.setConcept.mock.calls[1]).toEqual([
       'p1',
-      {
-        catalogue_source: 'shipped',
-        catalogue_id: 'eu',
-        jurisdiction: 'eu',
-        public_client: true,
-        client_type: 'sub_central',
-        vat_rate_pct: '19',
-      },
+      { jurisdiction: 'eu', public_client: true, client_type: 'utility', vat_rate_pct: '19' },
     ]);
+    await waitFor(() => expect(screen.queryByTestId('concept-dialog')).toBeNull());
+  });
+
+  it('keeps the release gate closed, with the reason, for who may not name it', async () => {
+    loaded();
+    mocked.getConcept.mockResolvedValue(concept({ can: can({ set_gate_fields: 'manage_required' }) }));
+    renderPage('/projects/p1/procurement-concept?tab=record');
+    fireEvent.click(await screen.findByTestId('concept-edit'));
+    const gate = await screen.findByLabelText('Gate that releases procurement');
+    expect(gate).toBeDisabled();
+    expect(screen.getByTestId('concept-dialog')).toHaveTextContent(en.translation['procurement_concept.errors.manage_required']!);
   });
 
   it('a refusal to start the concept shows the reason the server gave', async () => {
@@ -148,7 +171,8 @@ describe('ProcurementConceptPage states', () => {
     );
     renderPage();
     fireEvent.click(await screen.findByTestId('concept-start'));
-    fireEvent.click(await screen.findByTestId('concept-save'));
+    await waitFor(() => expect(screen.getByTestId('concept-save')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('concept-save'));
     const box = await screen.findByTestId('refusal-box');
     expect(box).toHaveAttribute('data-code', 'not_procurement_owner');
     expect(box).toHaveTextContent('Only a project manager or the owner of the procurement area can do this.');
@@ -247,6 +271,9 @@ describe('procurement concept i18n keys', () => {
     expect(used.size).toBeGreaterThan(300);
     expect(used.has('procurement_concept.ui.package.threshold_after_save')).toBe(true);
     expect(used.has('procurement_concept.errors.advance_without_reason')).toBe(true);
+    expect(used.has('procurement_concept.approval.by_gate')).toBe(true);
+    // The routes for these are gone, so their words must be gone too.
+    expect(enKeys.filter((k) => /actions\.(approve|reopen)$|errors\.rationale_required$/.test(k))).toEqual([]);
     expect(enKeys.length).toBeGreaterThan(450);
   });
 

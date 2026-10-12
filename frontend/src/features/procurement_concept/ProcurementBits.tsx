@@ -107,6 +107,7 @@ export const THRESHOLD_TONE: Record<ThresholdStatus, BadgeVariant> = {
   below: 'success',
   unconfirmed: 'warning',
   unresolved: 'error',
+  unavailable: 'error',
   not_applicable: 'neutral',
 };
 

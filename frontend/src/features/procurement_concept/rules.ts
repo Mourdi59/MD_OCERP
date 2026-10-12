@@ -10,7 +10,10 @@
 // turns a `false` into the sentence that explains it.
 
 import type {
+  Capability,
   CandidateInput,
+  CatalogueJurisdiction,
+  ConceptInput,
   CandidateList,
   CandidateSource,
   Concept,
@@ -37,16 +40,25 @@ import type { KeyText } from './labels';
 /** Null when the action is allowed, else the server error code whose sentence explains the refusal. */
 export type Verdict = string | null;
 
-/** Changing the plan (packages, concept settings): the server's `can.edit`. */
+/** A capability as a verdict: null when allowed, else the refusal code the server gave. */
+export function capVerdict(cap: Capability | undefined, fallback: string): Verdict {
+  if (!cap) return fallback;
+  return cap.allowed ? null : (cap.reason ?? fallback);
+}
+
+/** Changing the plan (packages, concept settings): the server's `can.edit_plan`. */
 export function editVerdict(concept: Concept): Verdict {
-  if (concept.can.edit) return null;
-  if (!concept.can.steer) return 'not_procurement_owner';
-  return concept.state === 'binding' ? 'binding_requires_change_request' : 'concept_locked';
+  return capVerdict(concept.can.edit_plan, 'concept_locked');
+}
+
+/** Naming the release gate by hand: the server's `can.set_gate_fields`. */
+export function gateVerdict(concept: Concept): Verdict {
+  return capVerdict(concept.can.set_gate_fields, 'manage_required');
 }
 
 /** Steering moves that stay open while the plan is locked (hold, short list, milestones): `can.steer`. */
 export function steerVerdict(concept: Concept): Verdict {
-  return concept.can.steer ? null : 'not_procurement_owner';
+  return capVerdict(concept.can.steer, 'not_procurement_owner');
 }
 
 export interface ConceptStep {
@@ -55,24 +67,66 @@ export interface ConceptStep {
   primary: boolean;
 }
 
-/** The lifecycle steps the current state offers, in the order they are shown. */
+/**
+ * The hand moves the current state offers. There are two: submit for the
+ * gate and return to draft. Approval is not one of them: the governance gate
+ * approves, when the frame document that carries the concept becomes binding.
+ */
 export function conceptSteps(concept: Concept): ConceptStep[] {
-  const steer = steerVerdict(concept);
   switch (concept.state) {
     case 'draft':
     case 'reopened':
-      return [{ action: 'submit', verdict: steer, primary: true }];
+      return [{ action: 'submit', verdict: capVerdict(concept.can.submit, 'invalid_transition'), primary: true }];
     case 'in_review':
-      return [
-        { action: 'approve', verdict: concept.can.approve ? null : 'not_procurement_owner', primary: true },
-        { action: 'return', verdict: steer, primary: false },
-      ];
-    case 'approved':
-      return [{ action: 'reopen', verdict: steer, primary: false }];
+      return [{ action: 'return', verdict: capVerdict(concept.can.return, 'invalid_transition'), primary: false }];
     default:
-      // Binding: the frame document rules, and it changes through a change request.
+      // Approved or binding: it changes through a change request on the frame document.
       return [];
   }
+}
+
+/** The client types of a law that fall under its thresholds: all but the one it keeps for private clients. */
+export function publicClientTypes(law: CatalogueJurisdiction | undefined): string[] {
+  if (!law) return [];
+  return law.client_types.filter((c) => c !== (law.private_client_type ?? 'private'));
+}
+
+/**
+ * Step one of the concept form: pin a catalogue (`source:id`).
+ *
+ * The laws of a catalogue are not known before it is pinned, so the project
+ * starts as a private client. Changing the catalogue of an existing concept
+ * also resets the law to `none`, the code every shipped catalogue carries,
+ * because the law chosen before may not exist in the new one.
+ */
+export function catalogueStepInput(catalogue: string, concept: Concept | null): ConceptInput {
+  const cut = catalogue.indexOf(':');
+  const body: ConceptInput = {
+    catalogue_source: catalogue.slice(0, cut) === 'tenant' ? 'tenant' : 'shipped',
+    catalogue_id: catalogue.slice(cut + 1),
+    public_client: false,
+  };
+  if (concept) body.jurisdiction = 'none';
+  return body;
+}
+
+export interface RulesDraft {
+  jurisdiction: string;
+  public_client: boolean;
+  client_type: string;
+  vat_rate_pct: string;
+  /** Null when the reader may not set the gate, so the field is never sent. */
+  release_gate_code: string | null;
+}
+
+/** Step two: the law, the client and the gate. A private client sends no client type; the server sets the law's own. */
+export function rulesStepInput(concept: Concept, d: RulesDraft): ConceptInput {
+  const body: ConceptInput = { jurisdiction: d.jurisdiction, public_client: d.public_client, vat_rate_pct: d.vat_rate_pct };
+  if (d.public_client) body.client_type = d.client_type;
+  if (d.release_gate_code !== null && d.release_gate_code !== (concept.release_gate_code ?? '')) {
+    body.release_gate_code = d.release_gate_code;
+  }
+  return body;
 }
 
 export function splitFindings(findings: Finding[]): { blocking: Finding[]; warnings: Finding[] } {

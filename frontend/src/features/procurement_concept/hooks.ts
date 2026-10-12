@@ -22,6 +22,7 @@ import {
   listCatalogues,
   listFindings,
   listFrameworks,
+  listProjectFrameworks,
   listPackages,
   listProfiles,
   listSoundings,
@@ -128,6 +129,15 @@ export function useFrameworks(enabled = true) {
     queryKey: procurementKeys.frameworks,
     queryFn: () => listFrameworks().then((p) => p.items),
     enabled,
+  });
+}
+
+/** The agreements a package of this project may call off. */
+export function useProjectFrameworks(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: procurementKeys.projectFrameworks(projectId),
+    queryFn: () => listProjectFrameworks(projectId).then((p) => p.items),
+    enabled: !!projectId && enabled,
   });
 }
 

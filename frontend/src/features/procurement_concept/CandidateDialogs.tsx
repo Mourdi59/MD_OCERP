@@ -23,7 +23,7 @@ import {
   type CandidateSource,
   type ProfileCriterion,
 } from './api';
-import { CANDIDATE_LIST, CANDIDATE_SOURCE, catalogueName, vocab, type LabelContext } from './labels';
+import { CANDIDATE_LIST, CANDIDATE_SOURCE, catalogueName, errorText, vocab, type LabelContext } from './labels';
 import { FIELD_CLASS, Field, ProblemList, RefusalBox } from './ProcurementBits';
 import {
   CANDIDATE_PROBLEM,
@@ -34,6 +34,7 @@ import {
   toScoreInputs,
   type CandidateDraft,
   type ScoreDraft,
+  type Verdict,
 } from './rules';
 
 const LISTS: CandidateList[] = ['long', 'short', 'excluded'];
@@ -55,9 +56,15 @@ export function CandidateDialog({
   projectId,
   packageId,
   candidate,
+  listVerdict,
   labels,
   onSaved,
-}: DialogBase & { packageId: string; candidate: Candidate | null }) {
+}: DialogBase & {
+  packageId: string;
+  candidate: Candidate | null;
+  /** Why the reader may not move a company between the lists, or null when they may. */
+  listVerdict: Verdict;
+}) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<CandidateDraft>({
     subcontractor_id: candidate?.subcontractor_id ?? '',
@@ -155,8 +162,12 @@ export function CandidateDialog({
           </div>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('procurement_concept.ui.candidate.list', { defaultValue: 'List' })} htmlFor="cd-list">
-            <select id="cd-list" className={FIELD_CLASS} value={draft.list} onChange={(e) => set('list', e.target.value as CandidateList)}>
+          <Field
+            label={t('procurement_concept.ui.candidate.list', { defaultValue: 'List' })}
+            htmlFor="cd-list"
+            hint={listVerdict ? errorText(labels.t, listVerdict) : undefined}
+          >
+            <select id="cd-list" className={FIELD_CLASS} disabled={!!listVerdict} value={draft.list} onChange={(e) => set('list', e.target.value as CandidateList)}>
               {LISTS.map((l) => (
                 <option key={l} value={l}>
                   {vocab(labels.t, CANDIDATE_LIST, l)}

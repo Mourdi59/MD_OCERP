@@ -247,7 +247,11 @@ function Ledger({ frameworkId, labels }: { frameworkId: string; labels: LabelCon
         <span>
           <span className="text-xs text-content-tertiary">{t('procurement_concept.ui.ledger.remaining', { defaultValue: 'Remaining' })}</span>{' '}
           <span className="font-medium text-content-primary" data-testid="ledger-remaining">
-            <Money value={ledger.remaining_value} currency={ledger.currency} />
+            {ledger.remaining_known && ledger.remaining_value !== null ? (
+              <Money value={ledger.remaining_value} currency={ledger.currency} />
+            ) : (
+              t('procurement_concept.ui.ledger.remaining_unknown', { defaultValue: 'cannot be determined' })
+            )}
           </span>
         </span>
         <span className="text-xs text-content-tertiary">{fmtPercent(share * 100, 0)}</span>
@@ -260,6 +264,13 @@ function Ledger({ frameworkId, labels }: { frameworkId: string; labels: LabelCon
           {t('procurement_concept.ui.ledger.unconverted', {
             defaultValue: 'Entries in another currency are listed but not added up: {{n}}.',
             n: ledger.unconverted_entries,
+          })}
+        </p>
+      )}
+      {!ledger.complete && (
+        <p className="mt-2 text-xs text-semantic-warning" data-testid="ledger-incomplete">
+          {t('procurement_concept.ui.ledger.incomplete', {
+            defaultValue: 'Some call-offs could not be read, so this list may miss entries.',
           })}
         </p>
       )}

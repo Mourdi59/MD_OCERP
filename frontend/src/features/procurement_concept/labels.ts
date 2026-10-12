@@ -12,11 +12,9 @@ import type {
   CandidateList,
   CandidateSource,
   CapacitySignal,
-  ClientType,
   ConceptState,
   Finding,
   FrameworkState,
-  Jurisdiction,
   Named,
   PackageKind,
   PackageState,
@@ -69,10 +67,12 @@ export const THRESHOLD_STATUS: Record<ThresholdStatus, KeyText> = {
   below: ['procurement_concept.threshold_status.below', 'Below threshold'],
   unconfirmed: ['procurement_concept.threshold_status.unconfirmed', 'Threshold unconfirmed'],
   unresolved: ['procurement_concept.threshold_status.unresolved', 'Currency unresolved'],
+  unavailable: ['procurement_concept.threshold_status.unavailable', 'No threshold for this date'],
   not_applicable: ['procurement_concept.threshold_status.not_applicable', 'No threshold'],
 };
 
-export const JURISDICTION: Record<Jurisdiction, KeyText> = {
+/** Names of the codes the shipped catalogues use. A company catalogue may bring its own, with its own texts. */
+export const JURISDICTION: Record<string, KeyText> = {
   eu: ['procurement_concept.jurisdiction.eu', 'European Union'],
   uk: ['procurement_concept.jurisdiction.uk', 'United Kingdom'],
   us_federal: ['procurement_concept.jurisdiction.us_federal', 'United States federal'],
@@ -80,7 +80,7 @@ export const JURISDICTION: Record<Jurisdiction, KeyText> = {
   none: ['procurement_concept.jurisdiction.none', 'No public procurement law'],
 };
 
-export const CLIENT_TYPE: Record<ClientType, KeyText> = {
+export const CLIENT_TYPE: Record<string, KeyText> = {
   central: ['procurement_concept.client_type.central', 'Central government'],
   sub_central: ['procurement_concept.client_type.sub_central', 'Sub-central authority'],
   utility: ['procurement_concept.client_type.utility', 'Utility'],

@@ -22,6 +22,28 @@ import type {
 
 export const PID = 'p1';
 
+type Can = Concept['can'];
+const yes = { allowed: true, reason: null };
+const no = (reason: string) => ({ allowed: false, reason });
+
+/** The capability block as the server sends it: everything allowed, or each key refused with its code. */
+export function can(refused: Partial<Record<keyof Can, string>> = {}): Can {
+  const of = (k: keyof Can) => (refused[k] ? no(refused[k] as string) : yes);
+  return { steer: of('steer'), edit_plan: of('edit_plan'), submit: of('submit'), return: of('return'), set_gate_fields: of('set_gate_fields') };
+}
+
+/** A reader without steering: every write is refused with the same code. */
+export const NO_RIGHTS = can({
+  steer: 'not_procurement_owner',
+  edit_plan: 'not_procurement_owner',
+  submit: 'not_procurement_owner',
+  return: 'not_procurement_owner',
+  set_gate_fields: 'not_procurement_owner',
+});
+
+/** Steering is open, the plan is locked: a concept in review or approved. */
+export const LOCKED = can({ edit_plan: 'concept_locked', submit: 'concept_locked', set_gate_fields: 'gate_fields_frozen' });
+
 export function concept(patch: Partial<Concept> = {}): Concept {
   return {
     id: 'c1',
@@ -36,15 +58,25 @@ export function concept(patch: Partial<Concept> = {}): Concept {
     state: 'draft',
     stored_state: 'draft',
     governance_document_id: null,
-    release_gate_code: null,
+    release_gate_code: '',
+    resolved_release_gate_code: 'g3',
+    governance_area_code: 'procurement',
     default_profile_id: 'pf1',
+    submitted_by: null,
     approved_by: null,
     approved_at: null,
+    four_eyes_violated: false,
     jurisdictions: [
-      { code: 'eu', name_key: 'procurement_concept.catalogue.jurisdiction.eu', client_types: ['central', 'sub_central', 'utility'] },
+      { code: 'none', name_key: 'procurement_concept.catalogue.jurisdiction.none', client_types: ['private'], private_client_type: 'private' },
+      {
+        code: 'eu',
+        name_key: 'procurement_concept.catalogue.jurisdiction.eu',
+        client_types: ['central', 'sub_central', 'utility', 'private'],
+        private_client_type: 'private',
+      },
     ],
     review_status: 'unconfirmed',
-    can: { edit: true, approve: false, steer: true },
+    can: can({ return: 'invalid_transition' }),
     ...patch,
   };
 }
@@ -182,7 +214,9 @@ export const catalogue: PinnedCatalogue = {
     { code: 'open', name_key: 'procurement_concept.catalogue.procedure.open', sector: 'public', stages: 1, has_prequalification: false, negotiation_allowed: false, tender_basis_allowed: ['detailed', 'functional'], min_bidders: null },
     { code: 'direct_award', name_key: 'procurement_concept.catalogue.procedure.direct_award', sector: 'both', stages: 1, has_prequalification: false, negotiation_allowed: true, tender_basis_allowed: ['detailed'], min_bidders: 1 },
   ],
-  jurisdictions: [{ code: 'eu', name_key: 'procurement_concept.catalogue.jurisdiction.eu', client_types: ['central', 'sub_central'] }],
+  jurisdictions: [
+    { code: 'eu', name_key: 'procurement_concept.catalogue.jurisdiction.eu', client_types: ['central', 'sub_central', 'private'], private_client_type: 'private' },
+  ],
   prequal_criteria: [
     { code: 'exclusion_grounds', name_key: 'procurement_concept.catalogue.criterion.exclusion_grounds', group: 'legal', kind: 'pass_fail', default_weight: '0' },
     { code: 'similar_projects', name_key: 'procurement_concept.catalogue.criterion.similar_projects', group: 'experience', kind: 'scored', default_weight: '60' },
@@ -373,6 +407,8 @@ export const ledger: FrameworkLedger = {
   currency: 'EUR',
   call_off_value: '310000.00',
   remaining_value: '2190000.00',
+  remaining_known: true,
+  complete: true,
   unconverted_entries: 0,
   total: 1,
   items: [{ kind: 'award_package', id: 'k2', project_id: PID, amount: '310000.00', currency: 'EUR', state: 'procedure_set' }],

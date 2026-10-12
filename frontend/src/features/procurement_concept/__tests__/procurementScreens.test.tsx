@@ -46,8 +46,11 @@ import { PackageBoard } from '../PackageBoard';
 import { PackageDialog } from '../PackageDialog';
 import { PrequalPanel } from '../PrequalPanel';
 import {
+  LOCKED,
+  NO_RIGHTS,
   agreementPackage,
   blockingFinding,
+  can,
   catalogue,
   concept,
   framework,
@@ -67,7 +70,7 @@ const mocked = vi.mocked(api);
 const labels: LabelContext = { t: enT as LabelContext['t'], language: 'en', exists: (k) => k in en.translation };
 const refusal = (status: number, code: string, extra: Record<string, unknown> = {}) =>
   new ApiError(status, 'Refused', { detail: { code, message: 'server sentence', ...extra } });
-const readOnly = () => concept({ can: { edit: false, approve: false, steer: false } });
+const readOnly = () => concept({ can: NO_RIGHTS });
 
 function show(ui: ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -179,7 +182,7 @@ describe('PackageBoard', () => {
   });
 
   it('locks the plan but leaves steering open once the concept is approved', () => {
-    board({ concept: concept({ state: 'approved', can: { edit: false, approve: false, steer: true } }) });
+    board({ concept: concept({ state: 'approved', can: LOCKED }) });
     const row = rowOf('package-row', 'data-package', 'CP-01');
     expect(within(row).getByTestId('package-plan')).toBeDisabled();
     expect(within(row).getByTestId('package-hold')).toBeEnabled();
@@ -221,38 +224,55 @@ describe('ConceptRecord', () => {
     const props = record();
     fireEvent.click(screen.getByTestId('concept-submit'));
     await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
-    expect(mocked.conceptAction.mock.calls[0]!.slice(0, 2)).toEqual(['p1', 'submit']);
+    expect(mocked.conceptAction).toHaveBeenCalledWith('p1', 'submit');
   });
 
-  it('a refused approval lists every finding the server named', async () => {
-    mocked.conceptAction.mockRejectedValue(refusal(409, 'blocking_findings', { violations: [blockingFinding] }));
-    record({ concept: concept({ state: 'in_review', can: { edit: false, approve: true, steer: true } }) });
-    fireEvent.click(screen.getByTestId('concept-approve'));
+  it('a refused submit lists every finding the server named', async () => {
+    mocked.conceptAction.mockRejectedValue(refusal(422, 'package_without_procedure_plan', { violations: [blockingFinding] }));
+    record();
+    fireEvent.click(screen.getByTestId('concept-submit'));
     const box = await screen.findByTestId('refusal-box');
-    expect(box).toHaveAttribute('data-code', 'blocking_findings');
+    expect(box).toHaveAttribute('data-code', 'package_without_procedure_plan');
     expect(within(box).getByTestId('refusal-violations').querySelector('[data-finding="package_without_procedure_plan"]')).not.toBeNull();
   });
 
-  it('keeps approve closed for a reviewer the server did not allow', () => {
-    record({ concept: concept({ state: 'in_review', can: { edit: false, approve: false, steer: true } }) });
-    expect(screen.getByTestId('concept-approve')).toBeDisabled();
+  it('offers no approve button: the governance gate approves, and the screen says so', () => {
+    record({ concept: concept({ state: 'in_review', can: LOCKED }) });
+    expect(screen.queryByTestId('concept-approve')).toBeNull();
+    expect(screen.queryByTestId('concept-reopen')).toBeNull();
+    expect(screen.getByTestId('approval-by-gate')).toHaveTextContent('The governance gate approves the concept.');
     expect(screen.getByTestId('concept-return')).toBeEnabled();
   });
 
-  it('reopens only with a reason', async () => {
-    mocked.conceptAction.mockResolvedValue(concept({ state: 'reopened' }) as never);
-    record({ concept: concept({ state: 'approved', can: { edit: false, approve: false, steer: true } }) });
-    fireEvent.click(screen.getByTestId('concept-reopen'));
-    expect(mocked.conceptAction).not.toHaveBeenCalled();
-    expect(screen.getByTestId('concept-reopen-confirm')).toBeDisabled();
-    fireEvent.change(screen.getByLabelText('Why the concept is reopened (required)'), { target: { value: ' Scope of the facade changed ' } });
-    fireEvent.click(screen.getByTestId('concept-reopen-confirm'));
-    await waitFor(() => expect(mocked.conceptAction).toHaveBeenCalledWith('p1', 'reopen', 'Scope of the facade changed'));
+  it('returns a submitted concept to draft', async () => {
+    mocked.conceptAction.mockResolvedValue(concept() as never);
+    record({ concept: concept({ state: 'in_review', can: LOCKED }) });
+    fireEvent.click(screen.getByTestId('concept-return'));
+    await waitFor(() => expect(mocked.conceptAction).toHaveBeenCalledWith('p1', 'return'));
+  });
+
+  it('keeps submit closed with the reason the server gave', () => {
+    record({ concept: readOnly() });
+    expect(screen.getByTestId('concept-submit')).toBeDisabled();
+    expect(screen.getAllByTestId('disabled-reason')[0]).toHaveAttribute('data-reason', 'not_procurement_owner');
+  });
+
+  it('names the gate that releases procurement, or says it is not known', () => {
+    record();
+    expect(screen.getByTestId('concept-record')).toHaveTextContent('g3');
+    cleanup();
+    record({ concept: concept({ resolved_release_gate_code: null }) });
+    expect(screen.getByTestId('concept-record')).toHaveTextContent('Not known yet');
+  });
+
+  it('says so when the person who submitted also approved', () => {
+    record({ concept: concept({ state: 'approved', can: LOCKED, four_eyes_violated: true }) });
+    expect(screen.getByTestId('four-eyes')).toBeInTheDocument();
   });
 
   it('offers no lifecycle step on a binding concept', () => {
-    record({ concept: concept({ state: 'binding', can: { edit: false, approve: false, steer: true } }) });
-    for (const action of ['submit', 'approve', 'return', 'reopen']) expect(screen.queryByTestId(`concept-${action}`)).toBeNull();
+    record({ concept: concept({ state: 'binding', can: can({ edit_plan: 'binding_requires_change_request', submit: 'binding_requires_change_request' }) }) });
+    for (const action of ['submit', 'return']) expect(screen.queryByTestId(`concept-${action}`)).toBeNull();
     expect(screen.getByTestId('concept-edit')).toBeDisabled();
   });
 
@@ -395,10 +415,22 @@ describe('PrequalPanel', () => {
     await waitFor(() => expect(mocked.deleteCandidate).toHaveBeenCalledWith('p1', 'cand2'));
   });
 
-  it('keeps the confirmation closed for a reader the server gave no rights', async () => {
+  it('keeps the confirmation and the removal closed for a reader the server gave no rights', async () => {
     mocked.listCandidates.mockResolvedValue(matrix());
     panel({ concept: readOnly() });
     expect(await screen.findByTestId('shortlist-confirm')).toBeDisabled();
+    for (const b of screen.getAllByTestId('candidate-remove')) expect(b).toBeDisabled();
+    // Adding a company to the long list stays open to an editor.
+    expect(screen.getByTestId('candidate-add')).toBeEnabled();
+  });
+
+  it('does not let a reader without steering move a company between the lists', async () => {
+    mocked.listCandidates.mockResolvedValue(matrix());
+    panel({ concept: readOnly() });
+    await screen.findByTestId('candidate-matrix');
+    fireEvent.click(screen.getByTestId('candidate-add'));
+    expect(document.getElementById('cd-list')).toBeDisabled();
+    expect((document.getElementById('cd-list') as HTMLSelectElement).value).toBe('long');
   });
 });
 
@@ -486,6 +518,22 @@ describe('Frameworks', () => {
     expect(screen.getByTestId('ledger-called-off')).toHaveTextContent('310,000');
     expect(screen.getAllByTestId('ledger-entry')).toHaveLength(1);
     expect(mocked.getLedger.mock.calls[0]![0]).toBe('fw1');
+  });
+
+  it('says the remaining value cannot be determined instead of showing a number', async () => {
+    mocked.getLedger.mockResolvedValue({ ...ledger, remaining_value: null, remaining_known: false, unconverted_entries: 1 });
+    view();
+    fireEvent.click(screen.getByTestId('framework-ledger-toggle'));
+    expect(await screen.findByTestId('ledger-remaining')).toHaveTextContent('cannot be determined');
+    expect(screen.getByTestId('ledger-unconverted')).toBeInTheDocument();
+    expect(screen.queryByTestId('ledger-incomplete')).toBeNull();
+  });
+
+  it('warns when a source of call-offs could not be read', async () => {
+    mocked.getLedger.mockResolvedValue({ ...ledger, remaining_value: null, remaining_known: false, complete: false });
+    view();
+    fireEvent.click(screen.getByTestId('framework-ledger-toggle'));
+    expect(await screen.findByTestId('ledger-incomplete')).toBeInTheDocument();
   });
 
   it('asks before closing an agreement for good', async () => {
