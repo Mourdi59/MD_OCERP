@@ -144,14 +144,18 @@ def test_the_delivery_form_is_not_hosted_by_the_bill_of_quantities() -> None:
 
 
 @pytest.mark.parametrize("cid", ["hoai_lph", "riba_2020", "aia_b101", "aho_heft9"])
-def test_document_types_added_for_hosting_ask_nothing_of_a_gate(cid: str) -> None:
-    """A host added where the source model names none must not change what a gate reads."""
+def test_document_types_added_for_hosting_are_required_only_where_the_wiring_says(cid: str) -> None:
+    """A host added where the source model names none is required at one gate, the one written down below.
+
+    It used to ask nothing of any gate, which left the hosted module waiting
+    for a document that could never become binding.
+    """
     catalogue = cat.get_catalogue(cid)
     for doc in catalogue.document_types:
         if doc.hosts and doc.source_ref is None and doc.name_key.startswith("governance.catalogue.neutral."):
-            assert doc.required_at_gates == (), doc.code
+            assert doc.required_at_gates == (WIRED_GATES[(cid, doc.code)],), doc.code
     if cid == "aho_heft9":
-        assert catalogue.host_of("design").required_at_gates == ()
+        assert catalogue.host_of("design").required_at_gates == (WIRED_GATES[(cid, "planungsvorgaben")],)
 
 
 def test_an_untagged_catalogue_answers_none_and_empty() -> None:
