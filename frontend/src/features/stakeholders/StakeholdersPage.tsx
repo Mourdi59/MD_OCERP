@@ -195,7 +195,14 @@ export function StakeholdersPage() {
       ) : error ? (
         failure(t('stakeholders.ui.plan.load_failed', { defaultValue: 'The communication plan could not be loaded' }), error)
       ) : (
-        <PlanPanel screen={screen} items={planQ.data ?? []} due={dueQ.data ?? []} events={eventsQ.data ?? []} stakeholders={stakeholders} />
+        <PlanPanel
+          screen={screen}
+          items={planQ.data ?? []}
+          due={dueQ.data ?? []}
+          events={eventsQ.data ?? []}
+          stakeholders={stakeholders}
+          focusItemId={params.get('item')}
+        />
       );
   } else if (tab === 'commitments') {
     body = commitmentsQ.isLoading ? (
@@ -203,7 +210,13 @@ export function StakeholdersPage() {
     ) : commitmentsQ.isError ? (
       failure(t('stakeholders.ui.commitment.load_failed', { defaultValue: 'The commitments could not be loaded' }), commitmentsQ.error)
     ) : (
-      <CommitmentsPanel screen={screen} commitments={commitmentsQ.data ?? []} stakeholders={stakeholders} events={eventsQ.data ?? []} />
+      <CommitmentsPanel
+        screen={screen}
+        commitments={commitmentsQ.data ?? []}
+        stakeholders={stakeholders}
+        events={eventsQ.data ?? []}
+        focusId={params.get('commitment')}
+      />
     );
   } else {
     body = (

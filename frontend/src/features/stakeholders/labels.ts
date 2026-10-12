@@ -122,6 +122,15 @@ export const DECIDER_FLAG: Record<string, KeyText> = {
   ],
 };
 
+/** Where a commitment was made. */
+export const COMMITMENT_SOURCE: Record<string, KeyText> = {
+  manual: ['stakeholders.ui.source.manual', 'Nowhere on record'],
+  event: ['stakeholders.ui.source.event', 'At a recorded stakeholder event'],
+  meeting: ['stakeholders.ui.source.meeting', 'In a project meeting'],
+  correspondence: ['stakeholders.ui.source.correspondence', 'In a letter'],
+  permit_condition: ['stakeholders.ui.source.permit_condition', 'As a condition of a permit'],
+};
+
 /** Why the server will not let the reader make a move on a commitment. */
 export const COMMITMENT_BLOCK: Record<string, KeyText> = {
   no_permission: ['stakeholders.ui.block.no_permission', 'Your role can view commitments but not change them.'],
@@ -171,6 +180,7 @@ export const ALL_KEY_MAPS: Record<string, Record<string, KeyText>> = {
   LETTER,
   QUORUM,
   DECIDER_FLAG,
+  COMMITMENT_SOURCE,
   COMMITMENT_BLOCK,
   WRITE_NOTE,
 };

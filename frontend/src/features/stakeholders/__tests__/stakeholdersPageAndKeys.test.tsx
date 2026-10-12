@@ -206,6 +206,14 @@ describe('the wording', () => {
       const text = enTable[k] ?? '';
       if (text !== deTable[k]) return false;
       const words = text.replace(/\{\{\w+\}\}/g, '');
+      return /[A-Za-z]/.test(words) && !SAME_IN_GERMAN.has(text);
+    });
+    expect(copied).toEqual([]);
+  });
+
+  it('writes no long dash and leaves no placeholder syntax broken', () => {
+    const bad = keys.filter((k) => {
+      const both = `${enTable[k] ?? ''}${deTable[k] ?? ''}`;
       return LONG_DASH.test(both) || /[{}]/.test(both.replace(/\{\{\w+\}\}/g, ''));
     });
     expect(bad).toEqual([]);

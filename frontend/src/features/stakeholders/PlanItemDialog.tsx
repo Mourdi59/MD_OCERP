@@ -15,7 +15,17 @@ import { WideModal, WideModalField, WideModalSection } from '@/shared/ui/WideMod
 import { createPlanItem, updatePlanItem, type PlanItem, type PlanItemInput, type PlanStatus, type Stakeholder } from './api';
 import { FIELD_CLASS, RefusalBox, TickList, useWrite } from './StakeholderBits';
 import { PLAN_STATUS, itemName, vocab } from './labels';
-import { FREQUENCY, FREQUENCY_RULE, planStatusOptions, presetOfFrequency, type FrequencyPreset } from './rules';
+import {
+  FREQUENCY,
+  FREQUENCY_RULE,
+  PLAN_START,
+  planStartOf,
+  planStatusOptions,
+  presetOfFrequency,
+  triggerOf,
+  type FrequencyPreset,
+  type PlanStart,
+} from './rules';
 import { stakeholderName, type Screen } from './screen';
 
 export interface PlanItemDialogProps {
@@ -32,6 +42,8 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
   const fw = settings.framework;
   const levels = [...fw.participation_levels].sort((a, b) => a.order - b.order);
   const storedPreset = presetOfFrequency(item?.frequency);
+  // Null for a trigger this screen does not offer: it is shown as kept and not sent.
+  const storedStart = planStartOf(item);
   const [draft, setDraft] = useState({
     title: item?.title ?? '',
     purpose: item?.purpose ?? '',
@@ -43,6 +55,7 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
     format: item?.format_code ?? '',
     // A rule written some other way is kept as it is unless the reader picks a preset.
     frequency: (storedPreset ?? 'custom') as FrequencyPreset | 'custom',
+    start: (storedStart ?? 'kept') as PlanStart | 'kept',
     starts_on: item?.starts_on ?? '',
     ends_on: item?.ends_on ?? '',
     owner: item?.owner_user_id ?? '',
@@ -55,7 +68,7 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
     onSaved,
   );
 
-  const triggered = !!item?.trigger_kind;
+  const triggered = draft.start !== 'schedule';
   const audienceMissing = draft.audience.length === 0 && draft.categories.length === 0 && !item?.audience_body_id;
   const ready = !!draft.title.trim() && !audienceMissing && (triggered || !!draft.starts_on);
 
@@ -72,7 +85,10 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
       owner_user_id: draft.owner || null,
       status: draft.status,
     };
-    if (draft.frequency !== 'custom') body.frequency = FREQUENCY_RULE[draft.frequency];
+    if (!triggered && draft.frequency !== 'custom') body.frequency = FREQUENCY_RULE[draft.frequency];
+    if (draft.start !== 'kept' && draft.start !== storedStart) {
+      Object.assign(body, triggerOf(draft.start, item?.trigger_kind === 'gate' ? (item.trigger_ref ?? '') : ''));
+    }
     if (!triggered || draft.starts_on) body.starts_on = draft.starts_on || null;
     body.ends_on = draft.ends_on || null;
     write.run(body);
@@ -208,6 +224,34 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
               ))}
             </select>
           </WideModalField>
+          <WideModalField
+            label={t('stakeholders.ui.plan.start', { defaultValue: 'What sets it off' })}
+            hint={
+              triggered
+                ? t('stakeholders.ui.plan.triggered_hint', {
+                    defaultValue: 'This item is started by a project event, so it needs no first date.',
+                  })
+                : undefined
+            }
+            htmlFor="plan-start"
+          >
+            <select
+              id="plan-start"
+              className={FIELD_CLASS}
+              value={draft.start}
+              onChange={(e) => set('start', e.target.value as PlanStart)}
+            >
+              {storedStart === null && (
+                <option value="kept">{t('stakeholders.ui.start.kept', { defaultValue: 'Another project event (kept as it is)' })}</option>
+              )}
+              {(Object.keys(PLAN_START) as PlanStart[]).map((s) => (
+                <option key={s} value={s}>
+                  {vocab(t, PLAN_START, s)}
+                </option>
+              ))}
+            </select>
+          </WideModalField>
+          {!triggered && (
           <WideModalField label={t('stakeholders.ui.plan.frequency', { defaultValue: 'How often' })} htmlFor="plan-frequency">
             <select
               id="plan-frequency"
@@ -225,18 +269,9 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
               ))}
             </select>
           </WideModalField>
-          <WideModalField
-            label={t('stakeholders.ui.plan.starts_on', { defaultValue: 'First date' })}
-            required={!triggered}
-            hint={
-              triggered
-                ? t('stakeholders.ui.plan.triggered_hint', {
-                    defaultValue: 'This item is started by a project event, so it needs no first date.',
-                  })
-                : undefined
-            }
-            htmlFor="plan-starts"
-          >
+          )}
+          {!triggered && (
+          <WideModalField label={t('stakeholders.ui.plan.starts_on', { defaultValue: 'First date' })} required htmlFor="plan-starts">
             <input
               id="plan-starts"
               type="date"
@@ -245,6 +280,7 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
               onChange={(e) => set('starts_on', e.target.value)}
             />
           </WideModalField>
+          )}
           <WideModalField label={t('stakeholders.ui.plan.ends_on', { defaultValue: 'Last date' })} htmlFor="plan-ends">
             <input
               id="plan-ends"

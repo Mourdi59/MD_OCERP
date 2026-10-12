@@ -22,13 +22,16 @@ import {
   type Letter,
   type MandateConflict,
   type MandateMatrix as Matrix,
+  type MandateRow,
   type OrganisationWriteNotes,
   type RolesView,
   type WhoDecides,
 } from './api';
+import { ConflictAcknowledge } from './ConflictAcknowledge';
+import { ScopedMandates } from './ScopedMandates';
 import { FIELD_CLASS, GatedButton, RefusalBox, SectionHead, useWrite } from './StakeholderBits';
 import { DECIDER_FLAG, LETTER, humanizeCode, itemName, nameOf, vocab, type LabelContext } from './labels';
-import { LETTERS, cellKey, doubleDeciders, joinMatrix, splitMatrix, type MatrixColumn } from './rules';
+import { LETTERS, cellKey, doubleDeciders, doubleScopedDeciders, joinMatrix, splitMatrix, type MatrixColumn } from './rules';
 import type { Screen } from './screen';
 
 /** The name of a matrix column: the framework's role name, a project's own role label, or the body's name. */
@@ -57,6 +60,7 @@ export function MandateMatrix({ screen, matrix, roles, bodies, onSaved }: Mandat
   const { projectId, settings, labels, personName } = screen;
   const stored = useMemo(() => splitMatrix(matrix.rows), [matrix.rows]);
   const [draft, setDraft] = useState<Record<string, Letter | ''> | null>(null);
+  const [scopedDraft, setScopedDraft] = useState<MandateRow[]>([]);
   const cells = draft ?? stored.cells;
   const editing = draft !== null;
 
@@ -66,9 +70,11 @@ export function MandateMatrix({ screen, matrix, roles, bodies, onSaved }: Mandat
   ];
   const nameCtx = { screen, roles, bodies };
   const doubles = editing ? doubleDeciders(cells) : [];
+  const scopedDoubles = editing ? doubleScopedDeciders(scopedDraft) : [];
+  const scopeMissing = editing && scopedDraft.some((r) => !r.scope.trim());
 
   const write = useWrite(
-    () => putMandates(projectId, joinMatrix(cells, stored.scoped, matrix.rows)),
+    () => putMandates(projectId, joinMatrix(cells, editing ? scopedDraft : stored.scoped, matrix.rows)),
     (result) => {
       setDraft(null);
       onSaved(result);
@@ -98,7 +104,7 @@ export function MandateMatrix({ screen, matrix, roles, bodies, onSaved }: Mandat
               <Button variant="ghost" size="sm" onClick={() => { setDraft(null); write.clear(); }} disabled={write.busy}>
                 {t('stakeholders.ui.cancel', { defaultValue: 'Cancel' })}
               </Button>
-              <Button size="sm" loading={write.busy} disabled={doubles.length > 0} onClick={() => write.run(undefined)} data-testid="mandate-save">
+              <Button size="sm" loading={write.busy} disabled={doubles.length > 0 || scopedDoubles.length > 0 || scopeMissing} onClick={() => write.run(undefined)} data-testid="mandate-save">
                 {t('stakeholders.ui.mandate.save', { defaultValue: 'Save mandates' })}
               </Button>
             </span>
@@ -109,7 +115,10 @@ export function MandateMatrix({ screen, matrix, roles, bodies, onSaved }: Mandat
               variant="secondary"
               size="sm"
               icon={<Pencil size={13} />}
-              onClick={() => setDraft({ ...stored.cells })}
+              onClick={() => {
+                setDraft({ ...stored.cells });
+                setScopedDraft(stored.scoped.map((r) => ({ ...r })));
+              }}
               data-testid="mandate-edit"
             >
               {t('stakeholders.ui.mandate.edit', { defaultValue: 'Edit mandates' })}
@@ -118,7 +127,11 @@ export function MandateMatrix({ screen, matrix, roles, bodies, onSaved }: Mandat
         }
       />
 
-      <RefusalBox refusal={write.refusal} />
+      {write.refusal?.code === 'conflict_not_acknowledged' ? (
+        <ConflictAcknowledge screen={screen} refusal={write.refusal} onAcknowledged={() => write.run(undefined)} />
+      ) : (
+        <RefusalBox refusal={write.refusal} />
+      )}
       {doubles.length > 0 && (
         <p role="alert" className="text-xs text-semantic-error" data-testid="mandate-two-deciders">
           {t('stakeholders.ui.mandate.two_deciders', {
@@ -212,6 +225,32 @@ export function MandateMatrix({ screen, matrix, roles, bodies, onSaved }: Mandat
           </tbody>
         </table>
       </div>
+
+      {scopedDoubles.length > 0 && (
+        <p role="alert" className="text-xs text-semantic-error" data-testid="scoped-two-deciders">
+          {t('stakeholders.ui.mandate.two_deciders', {
+            defaultValue: 'Only one role or body can decide: {{decisions}}',
+            decisions: fmtList(
+              scopedDoubles.map(([type, scope]) =>
+                t('stakeholders.ui.scoped.name', { defaultValue: '{{decision}} for {{scope}}', decision: typeName(type), scope }),
+              ),
+            ),
+          })}
+        </p>
+      )}
+      {scopeMissing && (
+        <p className="text-xs text-semantic-error" data-testid="scoped-scope-missing">
+          {t('stakeholders.ui.scoped.scope_missing', { defaultValue: 'Name the part of the project each exception applies to.' })}
+        </p>
+      )}
+      <ScopedMandates
+        labels={labels}
+        rows={editing ? scopedDraft : stored.scoped}
+        decisionTypes={matrix.decision_types}
+        columns={columns}
+        columnName={(c) => columnName(labels, c, nameCtx)}
+        onChange={editing ? setScopedDraft : undefined}
+      />
 
       {matrix.conflicts.length > 0 && (
         <div className="rounded-lg border border-semantic-warning/40 p-3" data-testid="mandate-conflicts">

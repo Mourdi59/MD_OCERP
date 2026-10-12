@@ -19,8 +19,9 @@ import { useToastStore } from '@/stores/useToastStore';
 
 import type { Commitment, CommitmentStatus, CommitmentTarget, EngagementEvent, Stakeholder } from './api';
 import { CommitmentDialog, TransitionDialog } from './CommitmentDialog';
-import { COMMITMENT_TONE, GatedButton, ToneBadge } from './StakeholderBits';
-import { COMMITMENT_ACTION, COMMITMENT_BLOCK, COMMITMENT_CATEGORY, COMMITMENT_STATUS, WRITE_NOTE, vocab } from './labels';
+import { COMMITMENT_TONE, FOCUS_CLASS, GatedButton, ToneBadge, useFocusRow } from './StakeholderBits';
+import { COMMITMENT_ACTION, COMMITMENT_BLOCK, COMMITMENT_CATEGORY, COMMITMENT_STATUS, WRITE_NOTE, vocab, type TFn } from './labels';
+import { datedName } from './links';
 import { COMMITMENT_MOVES } from './rules';
 import { namesOf, type Screen } from './screen';
 
@@ -33,6 +34,8 @@ export interface CommitmentsPanelProps {
   commitments: Commitment[];
   stakeholders: Stakeholder[];
   events: EngagementEvent[];
+  /** The commitment a link pointed at: shown whatever its state, marked and scrolled to. */
+  focusId?: string | null;
 }
 
 type Dialog =
@@ -40,12 +43,15 @@ type Dialog =
   | { kind: 'move'; commitment: Commitment; target: CommitmentTarget }
   | null;
 
-export function CommitmentsPanel({ screen, commitments, stakeholders, events }: CommitmentsPanelProps) {
+export function CommitmentsPanel({ screen, commitments, stakeholders, events, focusId = null }: CommitmentsPanelProps) {
   const { t } = useTranslation();
   const { settings, personName, onChanged } = screen;
   const can = settings.can.edit;
   const addToast = useToastStore((s) => s.addToast);
-  const [filter, setFilter] = useState<Filter>('open');
+  const focused = focusId ? commitments.find((c) => c.id === focusId) : undefined;
+  // A link to a closed commitment opens the list that holds it.
+  const [filter, setFilter] = useState<Filter>(focused && !OPEN.includes(focused.status) ? 'all' : 'open');
+  const focusRef = useFocusRow<HTMLLIElement>(focusId, !!focused);
   const [dialog, setDialog] = useState<Dialog>(null);
 
   const counts = useMemo(
@@ -180,7 +186,14 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events }: 
             const moves = COMMITMENT_MOVES[c.status].filter((m) => c.can[m].allowed || c.can[m].reason !== 'invalid_transition');
             const blocked = moves.filter((m) => !c.can[m].allowed && c.can[m].reason);
             return (
-            <li key={c.id} className="rounded-lg border border-border-light p-3" data-testid="commitment-entry" data-status={c.status}>
+            <li
+              key={c.id}
+              ref={c.id === focusId ? focusRef : undefined}
+              className={clsx('rounded-lg border border-border-light p-3', c.id === focusId && FOCUS_CLASS)}
+              data-testid="commitment-entry"
+              data-status={c.status}
+              data-focused={c.id === focusId || undefined}
+            >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-content-tertiary">{c.code}</span>
                 <ToneBadge tone={COMMITMENT_TONE[c.status]} testId="commitment-status">
@@ -210,8 +223,11 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events }: 
                 })}
               </p>
               {c.source_snapshot.title && (
-                <p className="text-xs text-content-tertiary">
-                  {t('stakeholders.ui.commitment.source_line', { defaultValue: 'Promised at: {{title}}', title: c.source_snapshot.title })}
+                <p className="text-xs text-content-tertiary" data-testid="commitment-source-line">
+                  {t('stakeholders.ui.commitment.source_line', {
+                    defaultValue: 'Promised at: {{title}}',
+                    title: datedName(t as TFn, c.source_snapshot.title, c.source_snapshot.date),
+                  })}
                 </p>
               )}
               {c.cost_estimate && (

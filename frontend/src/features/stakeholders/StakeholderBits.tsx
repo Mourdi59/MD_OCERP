@@ -5,7 +5,7 @@
 // capability flag and says why it is off, the box a refused write is shown
 // in, a tick list, and the colour of each state.
 
-import { useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import { Info } from 'lucide-react';
@@ -228,6 +228,24 @@ export function ToneBadge({ tone, children, testId }: { tone: BadgeVariant; chil
       </Badge>
     </span>
   );
+}
+
+/** The look of the one row a link pointed at. */
+export const FOCUS_CLASS = 'ring-2 ring-oe-blue ring-offset-1';
+
+/**
+ * The row a notification linked to: the ref goes on that row, which is
+ * scrolled into view once it is on screen.
+ */
+export function useFocusRow<T extends HTMLElement>(id: string | null | undefined, present: boolean) {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const node = ref.current;
+    if (id && present && node && typeof node.scrollIntoView === 'function') {
+      node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, [id, present]);
+  return ref;
 }
 
 /** A section heading with the one action that belongs to it on the right. */

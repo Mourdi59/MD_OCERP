@@ -284,6 +284,8 @@ export interface PlanItemInput {
   channel?: string;
   format_code?: string | null;
   frequency?: string;
+  trigger_kind?: 'gate' | 'event' | null;
+  trigger_ref?: string;
   owner_user_id?: string | null;
   starts_on?: string | null;
   ends_on?: string | null;
@@ -316,6 +318,11 @@ export interface EngagementEvent {
   attendance_count: number | null;
   outcome: string;
   feedback_summary: string;
+  /** The project meeting this event was, when it was held as one. */
+  meeting_id: string | null;
+  /** Letters sent or received around the event. */
+  correspondence_ids: string[];
+  cde_container_ids: string[];
   status: EventStatus;
   feedback_not_reported: boolean;
   feedback_due_on: string | null;
@@ -331,6 +338,8 @@ export interface EventInput {
   attendance_count?: number | null;
   outcome?: string;
   feedback_summary?: string;
+  meeting_id?: string | null;
+  correspondence_ids?: string[];
   status?: EventStatus;
 }
 
@@ -355,11 +364,14 @@ export interface CommitmentPermission {
 
 export type CommitmentCan = Record<CommitmentTarget | 'edit', CommitmentPermission>;
 
+/** Where a commitment was made. The server freezes the title and day of the source when it is recorded. */
+export type CommitmentSource = 'event' | 'meeting' | 'correspondence' | 'permit_condition' | 'manual';
+
 export interface Commitment {
   id: string;
   code: string;
   stakeholder_ids: string[];
-  source_kind: 'event' | 'meeting' | 'correspondence' | 'permit_condition' | 'manual';
+  source_kind: CommitmentSource;
   source_ref: string;
   source_snapshot: { title?: string; date?: string | null };
   text: string;
@@ -386,7 +398,7 @@ export interface Commitment {
 
 export interface CommitmentInput {
   stakeholder_ids?: string[];
-  source_kind?: 'event' | 'manual';
+  source_kind?: CommitmentSource;
   source_ref?: string;
   text?: string;
   category?: string;
@@ -501,6 +513,7 @@ export interface BodyInput {
   chair_role_code?: string | null;
   quorum_kind?: QuorumKind;
   quorum_min?: number | null;
+  decision_level?: number;
 }
 
 export interface MemberInput {
@@ -757,8 +770,12 @@ export function putRoleHolders(
   projectId: string,
   roleCode: string,
   holders: HolderInput[],
+  customLabel = '',
 ): Promise<RolesView & OrganisationWriteNotes> {
-  return apiPut<RolesView & OrganisationWriteNotes>(`${org(projectId)}/roles/${roleCode}`, { holders });
+  return apiPut<RolesView & OrganisationWriteNotes>(`${org(projectId)}/roles/${roleCode}`, {
+    holders,
+    custom_label: customLabel,
+  });
 }
 
 export function listBodies(projectId: string): Promise<Page<GovernanceBody>> {

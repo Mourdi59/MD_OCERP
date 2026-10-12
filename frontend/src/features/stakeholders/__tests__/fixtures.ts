@@ -13,12 +13,15 @@ import type {
   Framework,
   FrameworkItem,
   GovernanceBody,
+  GridItem,
+  GridResponse,
   MandateMatrix,
   PlanItem,
   Readiness,
   RolesView,
   Stakeholder,
   StakeholderSettings,
+  WhoDecides,
 } from '../api';
 import type { Screen } from '../screen';
 import { enExists, enT } from './i18nMock';
@@ -288,6 +291,9 @@ export function event(over: Partial<EngagementEvent> = {}): EngagementEvent {
     attendance_count: 40,
     outcome: 'Residents asked for quiet hours',
     feedback_summary: '',
+    meeting_id: null,
+    correspondence_ids: [],
+    cde_container_ids: [],
     status: 'held',
     feedback_not_reported: true,
     feedback_due_on: '2026-09-19',
@@ -360,6 +366,49 @@ export function matrix(over: Partial<MandateMatrix> = {}): MandateMatrix {
     ],
     missing: ['stakeholder_commitment'],
     conflicts: [],
+    ...over,
+  };
+}
+
+export function gridItem(over: Partial<GridItem> = {}): GridItem {
+  return {
+    stakeholder_id: 's1',
+    code: 'STK-001',
+    name: 'Building authority',
+    masked: false,
+    anonymised: false,
+    category: 'permitting_authority',
+    classification: 'manage_closely',
+    position: { x: 5, y: 4, x_dim: 'interest', y_dim: 'power' },
+    scores: { power: 4, interest: 5 },
+    assessment_id: 'a1',
+    ...over,
+  };
+}
+
+export function grid(over: Partial<GridResponse> = {}): GridResponse {
+  return {
+    method_code: 'power_interest',
+    method_version: 1,
+    dimensions: powerInterest.dimensions,
+    classes: powerInterest.classes,
+    items: [gridItem()],
+    ...over,
+  };
+}
+
+export function decider(over: Partial<WhoDecides> = {}): WhoDecides {
+  return {
+    decision_type: 'order_award',
+    scope: '',
+    holder_kind: 'body',
+    holder_code: 'steering',
+    user_ids: ['u-owner'],
+    parties: [{ user_id: 'u-owner', contact_id: null, roster_member_id: 'r1', role_code: 'project_manager', voting: true }],
+    quorum_needed: 2,
+    quorum_present: 1,
+    flags: ['body_inquorate'],
+    authority: null,
     ...over,
   };
 }

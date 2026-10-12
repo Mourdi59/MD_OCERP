@@ -14,19 +14,24 @@ import { stakeholderErrorCode, stakeholderErrorMessage, stakeholderViolations, t
 import { errorText, humanizeCode, itemName, nameOf, vocab, COMMITMENT_STATUS, type LabelContext } from '../labels';
 import {
   COMMITMENT_MOVES,
+  EVENT_TRIGGERS,
   FREQUENCY_RULE,
   PLAN_MOVES,
+  PLAN_START,
   cellKey,
   defaultScores,
   doubleDeciders,
+  doubleScopedDeciders,
   gridAxes,
   joinMatrix,
+  planStartOf,
   planStatusOptions,
   presetOfFrequency,
   previewClassification,
   splitMatrix,
   toTransitionInput,
   transitionProblems,
+  triggerOf,
   type TransitionDraft,
 } from '../rules';
 import { namesOf, stakeholderName } from '../screen';
@@ -171,6 +176,35 @@ describe('frequency presets', () => {
   });
 });
 
+describe('what sets a plan line off', () => {
+  it('reads a stored line', () => {
+    expect(planStartOf(null)).toBe('schedule');
+    expect(planStartOf({ trigger_kind: null, trigger_ref: null })).toBe('schedule');
+    expect(planStartOf({ trigger_kind: 'gate', trigger_ref: 'gate_3' })).toBe('gate');
+    expect(planStartOf({ trigger_kind: 'event', trigger_ref: 'project_governance.phase.changed' })).toBe(
+      'project_governance.phase.changed',
+    );
+  });
+
+  it('does not force a trigger it does not know onto one it offers', () => {
+    expect(planStartOf({ trigger_kind: 'event', trigger_ref: 'something.else' })).toBeNull();
+  });
+
+  it('turns a choice into the fields the server takes, keeping the gate a line already names', () => {
+    expect(triggerOf('schedule')).toEqual({ trigger_kind: null, trigger_ref: '' });
+    expect(triggerOf('gate')).toEqual({ trigger_kind: 'gate', trigger_ref: '' });
+    expect(triggerOf('gate', 'gate_3')).toEqual({ trigger_kind: 'gate', trigger_ref: 'gate_3' });
+    expect(triggerOf('stakeholders.commitment.fulfilled')).toEqual({
+      trigger_kind: 'event',
+      trigger_ref: 'stakeholders.commitment.fulfilled',
+    });
+  });
+
+  it('has a name for everything the server accepts as an event trigger', () => {
+    for (const name of EVENT_TRIGGERS) expect(PLAN_START[name][1]).not.toBe('');
+  });
+});
+
 describe('mandate matrix', () => {
   const rows: MandateRow[] = [
     { decision_type: 'order_award', scope: '', holder_kind: 'role', holder_code: 'project_manager', letter: 'P', scope_note: '' },
@@ -206,6 +240,31 @@ describe('mandate matrix', () => {
 
   it('a role and a body with the same code are different columns', () => {
     expect(cellKey('x', { kind: 'role', code: 'board' })).not.toBe(cellKey('x', { kind: 'body', code: 'board' }));
+  });
+
+  it('sends a scoped row with only the fields the server takes, and drops one without a part', () => {
+    const scoped: MandateRow[] = [
+      { id: 'm9', decision_type: 'order_award', scope: ' Lot 2 ', holder_kind: 'role', holder_code: 'client', letter: 'D', scope_note: ' facade ' },
+      { decision_type: 'order_award', scope: '  ', holder_kind: 'role', holder_code: 'client', letter: 'D', scope_note: '' },
+    ];
+    expect(joinMatrix({}, scoped)).toEqual([
+      { decision_type: 'order_award', scope: 'Lot 2', holder_kind: 'role', holder_code: 'client', letter: 'D', scope_note: 'facade' },
+    ]);
+  });
+
+  it('finds two deciders for the same part, and treats different parts as separate', () => {
+    const row = (scope: string, letter: MandateRow['letter'], holder: string): MandateRow => ({
+      decision_type: 'order_award',
+      scope,
+      holder_kind: 'role',
+      holder_code: holder,
+      letter,
+      scope_note: '',
+    });
+    expect(doubleScopedDeciders([row('Lot 2', 'D', 'client'), row(' Lot 2', 'D', 'project_manager')])).toEqual([['order_award', 'Lot 2']]);
+    expect(doubleScopedDeciders([row('Lot 2', 'D', 'client'), row('Lot 3', 'D', 'project_manager')])).toEqual([]);
+    expect(doubleScopedDeciders([row('Lot 2', 'D', 'client'), row('Lot 2', 'C', 'project_manager')])).toEqual([]);
+    expect(doubleScopedDeciders([row('a|b', 'D', 'client'), row('a|b', 'D', 'project_manager')])).toEqual([['order_award', 'a|b']]);
   });
 
   it('names the decision types with two deciders, and only those', () => {

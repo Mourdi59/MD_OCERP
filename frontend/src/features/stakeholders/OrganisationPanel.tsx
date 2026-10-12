@@ -224,6 +224,9 @@ export function OrganisationPanel({ screen }: { screen: Screen }) {
                     needed: b.quorum_needed,
                   })}
                 </p>
+                <p className="text-xs text-content-tertiary" data-testid="body-level">
+                  {t('stakeholders.ui.body.level_line', { defaultValue: 'Escalation level {{level}}', level: b.decision_level })}
+                </p>
               </li>
             ))}
           </ul>

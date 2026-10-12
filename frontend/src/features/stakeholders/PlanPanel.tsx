@@ -25,9 +25,9 @@ import {
 } from './api';
 import { EventDialog, type EventTarget } from './EventDialog';
 import { PlanItemDialog } from './PlanItemDialog';
-import { EVENT_TONE, GatedButton, PLAN_TONE, SectionHead, ToneBadge, useWrite } from './StakeholderBits';
+import { EVENT_TONE, FOCUS_CLASS, GatedButton, PLAN_TONE, SectionHead, ToneBadge, useFocusRow, useWrite } from './StakeholderBits';
 import { EVENT_STATUS, PLAN_STATUS, nameOf, vocab, type TFn } from './labels';
-import { FREQUENCY, presetOfFrequency } from './rules';
+import { FREQUENCY, PLAN_START, planStartOf, presetOfFrequency } from './rules';
 import { namesOf, type Screen } from './screen';
 
 export interface PlanPanelProps {
@@ -36,6 +36,8 @@ export interface PlanPanelProps {
   due: DueOccurrence[];
   events: EngagementEvent[];
   stakeholders: Stakeholder[];
+  /** The plan line a link pointed at: marked and scrolled to. */
+  focusItemId?: string | null;
 }
 
 type Dialog =
@@ -46,22 +48,24 @@ type Dialog =
   | null;
 
 /** How often a plan item recurs, in words; a rule no preset matches is shown as stored. */
-export function frequencyText(t: TFn, item: Pick<PlanItem, 'frequency' | 'trigger_kind'>): string {
+export function frequencyText(t: TFn, item: Pick<PlanItem, 'frequency' | 'trigger_kind' | 'trigger_ref'>): string {
   if (item.trigger_kind) {
-    return item.trigger_kind === 'gate'
-      ? t('stakeholders.ui.plan.trigger_gate', { defaultValue: 'When a gate is submitted' })
+    const start = planStartOf(item);
+    return start
+      ? vocab(t, PLAN_START, start)
       : t('stakeholders.ui.plan.trigger_event', { defaultValue: 'When a project event happens' });
   }
   const preset = presetOfFrequency(item.frequency);
   return preset ? vocab(t, FREQUENCY, preset) : item.frequency;
 }
 
-export function PlanPanel({ screen, items, due, events, stakeholders }: PlanPanelProps) {
+export function PlanPanel({ screen, items, due, events, stakeholders, focusItemId = null }: PlanPanelProps) {
   const { t } = useTranslation();
   const { projectId, settings, labels, personName, onChanged } = screen;
   const fw = settings.framework;
   const can = settings.can.edit;
   const [dialog, setDialog] = useState<Dialog>(null);
+  const focusRef = useFocusRow<HTMLLIElement>(focusItemId, items.some((i) => i.id === focusItemId));
   const done = () => {
     setDialog(null);
     onChanged();
@@ -216,7 +220,13 @@ export function PlanPanel({ screen, items, due, events, stakeholders }: PlanPane
         ) : (
           <ul className="space-y-2" data-testid="plan-list">
             {items.map((item) => (
-              <li key={item.id} className="rounded-lg border border-border-light p-3" data-testid="plan-entry">
+              <li
+                key={item.id}
+                ref={item.id === focusItemId ? focusRef : undefined}
+                className={clsx('rounded-lg border border-border-light p-3', item.id === focusItemId && FOCUS_CLASS)}
+                data-testid="plan-entry"
+                data-focused={item.id === focusItemId || undefined}
+              >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-content-primary">{item.title}</span>
                   <ToneBadge tone={PLAN_TONE[item.status]}>{vocab(t, PLAN_STATUS, item.status)}</ToneBadge>

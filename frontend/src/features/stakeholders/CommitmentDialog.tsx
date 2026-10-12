@@ -19,12 +19,14 @@ import {
   updateCommitment,
   type Commitment,
   type CommitmentInput,
+  type CommitmentSource,
   type CommitmentTarget,
   type EngagementEvent,
   type Stakeholder,
 } from './api';
-import { FIELD_CLASS, RefusalBox, TickList, useWrite } from './StakeholderBits';
-import { COMMITMENT_ACTION, COMMITMENT_CATEGORY, vocab, type KeyText } from './labels';
+import { FIELD_CLASS, RefusalBox, TickList, useWrite, type TickOption } from './StakeholderBits';
+import { COMMITMENT_ACTION, COMMITMENT_CATEGORY, COMMITMENT_SOURCE, vocab, type KeyText, type TFn } from './labels';
+import { datedName, useCorrespondenceOptions, useMeetingOptions } from './links';
 import { TRANSITION_PROBLEM, toTransitionInput, transitionProblems, type TransitionDraft } from './rules';
 import { stakeholderName, type Screen } from './screen';
 
@@ -49,8 +51,20 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
     verification: commitment?.verification ?? '',
     cost: commitment?.cost_estimate ?? '',
     currency: commitment?.currency ?? '',
-    event: commitment?.source_kind === 'event' ? commitment.source_ref : '',
+    source: 'manual' as CommitmentSource,
+    sourceRef: '',
   });
+  const adding = !commitment;
+  const meetings = useMeetingOptions(projectId, t as TFn, adding).options;
+  const letters = useCorrespondenceOptions(projectId, t as TFn, adding).options;
+  const sourceChoices: TickOption[] =
+    draft.source === 'event'
+      ? events.map((e) => ({ id: e.id, label: datedName(t as TFn, e.title, e.held_on ?? e.occurrence_date) }))
+      : draft.source === 'meeting'
+        ? meetings
+        : draft.source === 'correspondence'
+          ? letters
+          : [];
   const set = <K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
   const write = useWrite(
@@ -59,7 +73,8 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
     onSaved,
   );
 
-  const ready = !!draft.text.trim() && draft.stakeholders.length > 0;
+  const sourceMissing = adding && draft.source !== 'manual' && !draft.sourceRef.trim();
+  const ready = !!draft.text.trim() && draft.stakeholders.length > 0 && !sourceMissing;
   // Once a commitment left its first state the server keeps what was promised,
   // its cost and its currency as they were agreed. Those fields are shown and
   // not sent, and the owner is sent only when it changed, because changing it
@@ -81,8 +96,8 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
     if (!frozen || (draft.owner || null) !== (commitment?.owner_user_id ?? null)) body.owner_user_id = draft.owner || null;
     // The source is fixed once the commitment exists; the server ignores it on an edit.
     if (!commitment) {
-      body.source_kind = draft.event ? 'event' : 'manual';
-      if (draft.event) body.source_ref = draft.event;
+      body.source_kind = draft.source;
+      if (draft.source !== 'manual') body.source_ref = draft.sourceRef.trim();
     }
     write.run(body);
   };
@@ -223,13 +238,55 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
               <select
                 id="commitment-source"
                 className={FIELD_CLASS}
-                value={draft.event}
-                onChange={(e) => set('event', e.target.value)}
+                value={draft.source}
+                onChange={(e) => setDraft((d) => ({ ...d, source: e.target.value as CommitmentSource, sourceRef: '' }))}
               >
-                <option value="">{t('stakeholders.ui.commitment.source_manual', { defaultValue: 'Not at a recorded event' })}</option>
-                {events.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.title}
+                {(Object.keys(COMMITMENT_SOURCE) as CommitmentSource[]).map((s) => (
+                  <option key={s} value={s}>
+                    {vocab(t, COMMITMENT_SOURCE, s)}
+                  </option>
+                ))}
+              </select>
+            </WideModalField>
+          )}
+          {!commitment && draft.source === 'permit_condition' && (
+            <WideModalField
+              label={t('stakeholders.ui.commitment.source_permit', { defaultValue: 'Permit and condition' })}
+              required
+              span={2}
+              htmlFor="commitment-source-ref"
+            >
+              <input
+                id="commitment-source-ref"
+                className={FIELD_CLASS}
+                value={draft.sourceRef}
+                maxLength={255}
+                onChange={(e) => set('sourceRef', e.target.value)}
+              />
+            </WideModalField>
+          )}
+          {!commitment && draft.source !== 'manual' && draft.source !== 'permit_condition' && (
+            <WideModalField
+              label={t('stakeholders.ui.commitment.source_record', { defaultValue: 'Which one' })}
+              required
+              span={2}
+              hint={
+                sourceChoices.length === 0
+                  ? t('stakeholders.ui.commitment.source_none', { defaultValue: 'The project has none on record yet.' })
+                  : undefined
+              }
+              htmlFor="commitment-source-ref"
+            >
+              <select
+                id="commitment-source-ref"
+                className={FIELD_CLASS}
+                value={draft.sourceRef}
+                onChange={(e) => set('sourceRef', e.target.value)}
+              >
+                <option value="">{t('stakeholders.ui.choose', { defaultValue: 'Choose' })}</option>
+                {sourceChoices.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
                   </option>
                 ))}
               </select>

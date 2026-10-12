@@ -22,7 +22,8 @@ import {
   type Stakeholder,
 } from './api';
 import { FIELD_CLASS, RefusalBox, TickList, useWrite } from './StakeholderBits';
-import { itemName } from './labels';
+import { itemName, type TFn } from './labels';
+import { useCorrespondenceOptions, useMeetingOptions, withStored } from './links';
 import { stakeholderName, type Screen } from './screen';
 
 /** What the dialog writes: an occurrence of a plan item, a one-off event, or a change to a recorded one. */
@@ -55,7 +56,17 @@ export function EventDialog({ screen, target, stakeholders, onClose, onSaved }: 
     attendance: event?.attendance_count != null ? String(event.attendance_count) : '',
     outcome: event?.outcome ?? '',
     feedback: event?.feedback_summary ?? '',
+    meeting: event?.meeting_id ?? '',
+    letters: event?.correspondence_ids ?? [],
   });
+  const kept = t('stakeholders.ui.link.kept', { defaultValue: 'Linked record (kept as it is)' });
+  const meetings = withStored(useMeetingOptions(projectId, t as TFn).options, draft.meeting, kept);
+  const letterOptions = useCorrespondenceOptions(projectId, t as TFn).options;
+  // A letter that is linked but no longer listed stays ticked, so a save does not drop it.
+  const letters = [
+    ...(event?.correspondence_ids ?? []).filter((id) => !letterOptions.some((o) => o.id === id)).map((id) => ({ id, label: kept })),
+    ...letterOptions,
+  ];
   const set = <K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
   const write = useWrite((body: EventInput) => {
@@ -74,6 +85,8 @@ export function EventDialog({ screen, target, stakeholders, onClose, onSaved }: 
       attendance_count: draft.attendance ? Number(draft.attendance) : null,
       outcome: draft.outcome.trim(),
       feedback_summary: draft.feedback.trim(),
+      meeting_id: draft.meeting || null,
+      correspondence_ids: draft.letters,
     };
     if (draft.held_on) body.held_on = draft.held_on;
     if (target.kind === 'record' && target.date) body.occurrence_date = target.date;
@@ -185,6 +198,29 @@ export function EventDialog({ screen, target, stakeholders, onClose, onSaved }: 
             onChange={(next) => set('attendees', next)}
           />
         </WideModalField>
+
+        <WideModalSection title={t('stakeholders.ui.link.title', { defaultValue: 'On record elsewhere in the project' })} columns={2}>
+          <WideModalField label={t('stakeholders.ui.link.meeting', { defaultValue: 'The meeting it was' })} htmlFor="event-meeting">
+            <select id="event-meeting" className={FIELD_CLASS} value={draft.meeting} onChange={(e) => set('meeting', e.target.value)}>
+              <option value="">{t('stakeholders.ui.link.no_meeting', { defaultValue: 'Not a recorded meeting' })}</option>
+              {meetings.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </WideModalField>
+          <WideModalField label={t('stakeholders.ui.link.letters', { defaultValue: 'Letters that belong to it' })}>
+            <TickList
+              testId="event-letters"
+              label={t('stakeholders.ui.link.letters', { defaultValue: 'Letters that belong to it' })}
+              emptyText={t('stakeholders.ui.link.no_letters', { defaultValue: 'The project has no letters on record.' })}
+              options={letters}
+              value={draft.letters}
+              onChange={(next) => set('letters', next)}
+            />
+          </WideModalField>
+        </WideModalSection>
 
         <WideModalSection columns={1}>
           <WideModalField label={t('stakeholders.ui.event.outcome', { defaultValue: 'What came out of it' })} htmlFor="event-outcome">

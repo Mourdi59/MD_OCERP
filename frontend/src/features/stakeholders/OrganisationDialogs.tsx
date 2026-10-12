@@ -29,6 +29,7 @@ import {
   type QuorumKind,
   type RoleHolder,
 } from './api';
+import { ConflictAcknowledge } from './ConflictAcknowledge';
 import { FIELD_CLASS, RefusalBox, useWrite } from './StakeholderBits';
 import { QUORUM, itemName, vocab } from './labels';
 import type { Screen } from './screen';
@@ -90,6 +91,7 @@ export function RoleHoldersDialog({ screen, role, holders, roster, onClose, onSa
         projectId,
         role.code,
         rows.map(({ rowId: _rowId, contactName: _contactName, ...holder }) => holder),
+        holders[0]?.custom_label ?? '',
       ),
     onSaved,
   );
@@ -261,6 +263,7 @@ export function BodyDialog({ screen, body, roles, onClose, onSaved }: BodyDialog
     chair: body?.chair_role_code ?? '',
     quorum_kind: (body?.quorum_kind ?? 'majority') as QuorumKind,
     quorum_min: body?.quorum_min != null ? String(body.quorum_min) : '',
+    level: String(body?.decision_level ?? fw.body_types[0]?.default_decision_level ?? 1),
   });
   const [members, setMembers] = useState<MemberDraft[]>(() =>
     (body?.members ?? []).map((m) => ({
@@ -284,6 +287,7 @@ export function BodyDialog({ screen, body, roles, onClose, onSaved }: BodyDialog
       chair_role_code: draft.chair || null,
       quorum_kind: draft.quorum_kind,
       quorum_min: draft.quorum_kind === 'min_members' && draft.quorum_min ? Number(draft.quorum_min) : null,
+      decision_level: Number(draft.level),
     };
     let id = savedId;
     if (id) await updateBody(projectId, id, fields);
@@ -301,7 +305,8 @@ export function BodyDialog({ screen, body, roles, onClose, onSaved }: BodyDialog
   const codeOk = !!savedId || /^[a-z0-9][a-z0-9_]*$/.test(draft.code.trim());
   const membersOk = members.every((m) => [m.role_code, m.user_id, m.contact_id].filter(Boolean).length === 1);
   const quorumOk = draft.quorum_kind !== 'min_members' || Number(draft.quorum_min) >= 1;
-  const ready = !!draft.name.trim() && !!draft.body_type && codeOk && membersOk && quorumOk;
+  const levelOk = Number.isInteger(Number(draft.level)) && Number(draft.level) >= 1 && Number(draft.level) <= 20;
+  const ready = !!draft.name.trim() && !!draft.body_type && codeOk && membersOk && quorumOk && levelOk;
 
   return (
     <WideModal
@@ -330,7 +335,11 @@ export function BodyDialog({ screen, body, roles, onClose, onSaved }: BodyDialog
       }
     >
       <div className="space-y-4">
-        <RefusalBox refusal={write.refusal} />
+        {write.refusal?.code === 'conflict_not_acknowledged' ? (
+          <ConflictAcknowledge screen={screen} refusal={write.refusal} onAcknowledged={() => write.run(undefined)} />
+        ) : (
+          <RefusalBox refusal={write.refusal} />
+        )}
         <WideModalSection columns={3}>
           <WideModalField label={t('stakeholders.ui.body.name', { defaultValue: 'Name' })} required span={2} htmlFor="body-name">
             <input id="body-name" className={FIELD_CLASS} value={draft.name} maxLength={255} onChange={(e) => set('name', e.target.value)} />
@@ -354,7 +363,20 @@ export function BodyDialog({ screen, body, roles, onClose, onSaved }: BodyDialog
             />
           </WideModalField>
           <WideModalField label={t('stakeholders.ui.body.type', { defaultValue: 'Kind of body' })} htmlFor="body-type">
-            <select id="body-type" className={FIELD_CLASS} value={draft.body_type} onChange={(e) => set('body_type', e.target.value)}>
+            <select
+              id="body-type"
+              className={FIELD_CLASS}
+              value={draft.body_type}
+              onChange={(e) => {
+                const type = fw.body_types.find((b) => b.code === e.target.value);
+                // A new body takes the level its kind usually sits on; an existing one keeps its own.
+                setDraft((d) => ({
+                  ...d,
+                  body_type: e.target.value,
+                  level: body || !type ? d.level : String(type.default_decision_level),
+                }));
+              }}
+            >
               {fw.body_types.map((b) => (
                 <option key={b.code} value={b.code}>
                   {itemName(labels, b)}
@@ -385,6 +407,23 @@ export function BodyDialog({ screen, body, roles, onClose, onSaved }: BodyDialog
                 </option>
               ))}
             </select>
+          </WideModalField>
+          <WideModalField
+            label={t('stakeholders.ui.body.level', { defaultValue: 'Escalation level' })}
+            hint={t('stakeholders.ui.body.level_hint', {
+              defaultValue: '1 is the first level. A body with a higher number takes what the level below could not settle.',
+            })}
+            htmlFor="body-level"
+          >
+            <input
+              id="body-level"
+              type="number"
+              min={1}
+              max={20}
+              className={FIELD_CLASS}
+              value={draft.level}
+              onChange={(e) => set('level', e.target.value)}
+            />
           </WideModalField>
           {draft.quorum_kind === 'min_members' && (
             <WideModalField label={t('stakeholders.ui.body.quorum_min', { defaultValue: 'How many members at least' })} required htmlFor="body-quorum-min">

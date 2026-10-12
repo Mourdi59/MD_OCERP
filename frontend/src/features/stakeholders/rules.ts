@@ -185,6 +185,43 @@ export function presetOfFrequency(frequency: string | null | undefined): Frequen
   return null;
 }
 
+/* ── What starts a plan item ──────────────────────────────────────────── */
+
+/** The project events a plan item may wait for. The server accepts exactly these names. */
+export const EVENT_TRIGGERS = [
+  'project_governance.gate.decided',
+  'project_governance.phase.changed',
+  'stakeholders.commitment.fulfilled',
+] as const;
+
+export type PlanStart = 'schedule' | 'gate' | (typeof EVENT_TRIGGERS)[number];
+
+export const PLAN_START: Record<PlanStart, KeyText> = {
+  schedule: ['stakeholders.ui.start.schedule', 'On fixed dates'],
+  gate: ['stakeholders.ui.start.gate', 'Each time a gate is submitted for review'],
+  'project_governance.gate.decided': ['stakeholders.ui.start.gate_decided', 'Each time a gate is decided'],
+  'project_governance.phase.changed': ['stakeholders.ui.start.phase_changed', 'Each time the project enters a new phase'],
+  'stakeholders.commitment.fulfilled': ['stakeholders.ui.start.commitment_fulfilled', 'Each time a commitment is fulfilled'],
+};
+
+/** What starts a stored item, or null for a trigger this screen does not offer (it is then kept as it is). */
+export function planStartOf(item: { trigger_kind: string | null; trigger_ref: string | null } | null | undefined): PlanStart | null {
+  if (!item || !item.trigger_kind) return 'schedule';
+  if (item.trigger_kind === 'gate') return 'gate';
+  const known = EVENT_TRIGGERS.find((name) => name === item.trigger_ref);
+  return known ?? null;
+}
+
+/**
+ * The trigger fields a start stands for. A gate trigger keeps the gate it
+ * already names; a new one listens to every gate.
+ */
+export function triggerOf(start: PlanStart, storedGateRef = ''): { trigger_kind: 'gate' | 'event' | null; trigger_ref: string } {
+  if (start === 'schedule') return { trigger_kind: null, trigger_ref: '' };
+  if (start === 'gate') return { trigger_kind: 'gate', trigger_ref: storedGateRef };
+  return { trigger_kind: 'event', trigger_ref: start };
+}
+
 /* ── Mandate matrix ───────────────────────────────────────────────────── */
 
 export const LETTERS: Letter[] = ['P', 'D', 'A', 'C', 'I'];
@@ -214,7 +251,7 @@ export function splitMatrix(rows: readonly MandateRow[]): { cells: Record<string
   return { cells, scoped };
 }
 
-/** The rows a save sends: every lettered cell, then the scoped rows as they were. */
+/** The rows a save sends: every lettered cell, then the scoped rows, each with only the fields the server takes. */
 export function joinMatrix(
   cells: Record<string, Letter | ''>,
   scoped: readonly MandateRow[],
@@ -227,7 +264,33 @@ export function joinMatrix(
     const [decision_type, holder_kind, holder_code] = key.split('|') as [string, 'role' | 'body', string];
     out.push({ decision_type, scope: '', holder_kind, holder_code, letter, scope_note: noteOf.get(key) ?? '' });
   }
-  return [...out, ...scoped];
+  for (const r of scoped) {
+    const scope = r.scope.trim();
+    if (!scope) continue;
+    out.push({
+      decision_type: r.decision_type,
+      scope,
+      holder_kind: r.holder_kind,
+      holder_code: r.holder_code,
+      letter: r.letter,
+      scope_note: r.scope_note.trim(),
+    });
+  }
+  return out;
+}
+
+/** The parts of the project a draft gives more than one decider for one decision, as `[decision type, part]`. */
+export function doubleScopedDeciders(scoped: readonly MandateRow[]): Array<[string, string]> {
+  const count = new Map<string, number>();
+  for (const r of scoped) {
+    if (r.letter !== 'D' || !r.scope.trim()) continue;
+    const key = [r.decision_type, r.scope.trim()].join('|');
+    count.set(key, (count.get(key) ?? 0) + 1);
+  }
+  return [...count].filter(([, n]) => n > 1).map(([key]) => {
+    const at = key.indexOf('|');
+    return [key.slice(0, at), key.slice(at + 1)];
+  });
 }
 
 /** Decision types that have more than one decider in the draft, which the server refuses. */
