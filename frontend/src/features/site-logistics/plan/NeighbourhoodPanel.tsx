@@ -30,8 +30,9 @@ import { tx } from './texts';
 const ZONES = ['residential', 'mixed', 'industrial'] as const;
 const BODIES = ['municipality', 'utility', 'police', 'neighbours', 'authority', 'other'] as const;
 
-function planIsEmpty(plan: Neighbourhood | null): boolean {
-  return !plan || (!plan.zone_type && !plan.noise_limit_source && plan.quiet_hours.length === 0);
+/** The server answers the defaults with `id` null until the plan was saved once. */
+function planIsEmpty(plan: Neighbourhood): boolean {
+  return plan.id === null;
 }
 
 export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
@@ -115,7 +116,7 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
                   </Button>
                 )}
               </PanelHead>
-              {planIsEmpty(p) || !p ? (
+              {planIsEmpty(p) ? (
                 <PlanEmpty
                   icon={<Home size={28} />}
                   title="empty.neighbourhood_title"
@@ -148,7 +149,8 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
                 <FormDialog
                   title="edit_title.neighbourhood"
                   fields={planFields}
-                  record={p ? { ...p, quiet_from: p.quiet_hours[0] ?? '', quiet_to: p.quiet_hours[1] ?? '' } : null}
+                  record={planIsEmpty(p) ? null : { ...p, quiet_from: p.quiet_hours[0] ?? '', quiet_to: p.quiet_hours[1] ?? '' }}
+                  defaults={p}
                   projectId={projectId}
                   catalogue={catalogue}
                   // The form holds the quiet hours as two times; the plan stores them as one pair.

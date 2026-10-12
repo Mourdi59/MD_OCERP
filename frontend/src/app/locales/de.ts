@@ -49756,6 +49756,19 @@ const resource = {
     "site_logistics.plan.code.access_kinds.rail_siding": "Gleisanschluss",
     "site_logistics.plan.code.access_kinds.waterside_quay": "Kaianlage",
     "site_logistics.plan.code.access_kinds.crane_oversail": "Kranüberschwenkung",
+    "site_logistics.plan.concept.timezone": "Zeitzone der Baustelle",
+    "site_logistics.plan.concept.timezone_missing": "Die Baustelle hat noch keine Zeitzone. Ruhezeiten, Zeitfenster der Genehmigungen und Anlieferzeiten werden erst geprüft, wenn sie festgelegt ist.",
+    "site_logistics.plan.concept.set_timezone": "Zeitzone festlegen",
+    "site_logistics.plan.transport.gate_passed": "Über dem Grenzwert der Zufahrt, zugelassen durch Genehmigung {{reference}}",
+    "site_logistics.plan.transport.needs_timezone": "Nicht gegen die Genehmigung geprüft: Die Baustelle hat noch keine Zeitzone.",
+    "site_logistics.plan.evidence.gate_loads_admitted": "Jede Ladung von ihrer Zufahrt zugelassen oder durch eine Schwertransportgenehmigung gedeckt",
+    "site_logistics.plan.evidence.unresolved": "Der Logistikplan ließ sich im Governance-Modell nicht einordnen",
+    "site_logistics.plan.finding.delivery_rate_exceeded": "{{count}} freigegebene Anlieferungen beginnen in der Stunde ab {{hour}}, das Konzept erlaubt {{limit}}.",
+    "site_logistics.plan.finding.jit_without_location": "{{title}}: Eine Just-in-time-Lieferung des Materialflusses {{flow}} nennt keinen Taktbereich.",
+    "site_logistics.plan.finding.site_timezone_missing": "Die Baustelle hat keine Zeitzone, daher wurden die Uhrzeitregeln nicht geprüft.",
+    "site_logistics.plan.f.site_timezone": "Zeitzone der Baustelle",
+    "site_logistics.plan.f.site_timezone_hint": "Der Name der Zone, in der die Baustelle liegt, zum Beispiel Europe/Berlin.",
+    "site_logistics.plan.f.load_class": "Lastklasse",
   }
 } as { translation: Record<string, string> };
 

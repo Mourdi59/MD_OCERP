@@ -154,6 +154,10 @@ export const EN = {
   'concept.flows': 'Material flows',
   'concept.buffer': 'Buffer of {{n}} days',
   'concept.rules': 'Site rules for deliveries',
+  'concept.timezone': 'Site time zone',
+  'concept.timezone_missing':
+    'The site has no time zone yet. Quiet hours, permit windows and delivery hours are not checked until it is set.',
+  'concept.set_timezone': 'Set the time zone',
   'concept.max_per_hour': 'Deliveries per hour, at most',
   'concept.filed_as': 'Filed as',
   'concept.not_filed': 'Not filed yet',
@@ -161,6 +165,8 @@ export const EN = {
   'transport.window': 'Time window',
   'transport.gate_exceeded': 'Exceeds the site entrance limit',
   'transport.escort': 'Escort required',
+  'transport.gate_passed': 'Above the entrance limit, let through by permit {{reference}}',
+  'transport.needs_timezone': 'Not checked against the permit: the site has no time zone yet.',
   'transport.permits': 'Permits',
   'transport.no_permit': 'No permit linked',
   'transport.route': 'Route',
@@ -227,6 +233,8 @@ export const EN = {
   'evidence.concept_saved_and_exported': 'Logistics concept saved and filed',
   'evidence.heavy_transports_applied': 'Permits applied for every heavy transport',
   'evidence.neighbourhood_limit_source': 'Noise limit source set',
+  'evidence.gate_loads_admitted': 'Every load admitted by its entrance or covered by an oversize permit',
+  'evidence.unresolved': 'The logistics plan could not be placed in the governance model',
 
   'finding.allocation_exceeds_area': 'Stage {{stage}}: an allocation is larger than its area.',
   'finding.area_balance_not_closed':
@@ -253,6 +261,10 @@ export const EN = {
   'finding.stage_without_storage': 'Stage {{stage}} has no storage or laydown area.',
   'finding.window_outside_permit': '{{title}}: the time window is outside the permit.',
   'finding.zone_not_mapped': 'Laydown zone {{zone}} is not linked to a site area.',
+  'finding.delivery_rate_exceeded':
+    '{{count}} approved deliveries start in the hour from {{hour}}, the concept allows {{limit}}.',
+  'finding.jit_without_location': '{{title}}: a just-in-time delivery of flow {{flow}} names no takt area.',
+  'finding.site_timezone_missing': 'The site has no time zone, so the time-of-day rules were not checked.',
 
   'state.planned': 'Planned',
   'state.active': 'Active',
@@ -387,6 +399,9 @@ export const EN = {
   'f.delivery_close': 'Deliveries until',
   'f.max_deliveries_per_hour': 'Deliveries per hour, at most',
   'f.rules_text': 'Site rules for deliveries',
+  'f.site_timezone': 'Site time zone',
+  'f.site_timezone_hint': 'The name of the zone the site is in, for example Europe/Berlin.',
+  'f.load_class': 'Load class',
   'f.strategy': 'Material flows',
   'f.flow_code': 'Flow',
   'f.description': 'Description',

@@ -70,6 +70,8 @@ import {
   page,
   permit,
   stage,
+  unsavedConcept,
+  unsavedNeighbourhood,
 } from './fixtures';
 
 const mocked = vi.mocked(api);
@@ -103,23 +105,11 @@ beforeEach(() => {
   mocked.listCustoms.mockResolvedValue(page([hiddenCase]));
   mocked.listLines.mockResolvedValue(page([]));
   mocked.listDocuments.mockResolvedValue(page([]));
-  mocked.getNeighbourhood.mockResolvedValue(null);
+  mocked.getNeighbourhood.mockResolvedValue(unsavedNeighbourhood);
   mocked.listComplaints.mockResolvedValue(page([overdueComplaint]));
   mocked.listCoordination.mockResolvedValue(page([]));
   mocked.getReadiness.mockResolvedValue(notReady);
-  mocked.getConcept.mockResolvedValue({
-    id: 'k1',
-    catalogue_source: 'shipped',
-    catalogue_id: 'neutral',
-    catalogue_version: 1,
-    strategy: [],
-    delivery_open: null,
-    delivery_close: null,
-    max_deliveries_per_hour: null,
-    rules_text: '',
-    document_ref: '',
-    updated_at: null,
-  });
+  mocked.getConcept.mockResolvedValue(unsavedConcept);
 });
 afterEach(cleanup);
 
@@ -275,6 +265,33 @@ describe('transports and permits', () => {
     expect(screen.getByTestId('plan-form-save')).toBeInTheDocument();
   });
 
+  it('a load above the entrance limit that a permit covers is explained, not flagged', async () => {
+    mocked.listTransports.mockResolvedValue(
+      page([
+        {
+          ...heavyTransport,
+          gate_exceeded: ['max_gross_t'],
+          permit_finding: null,
+          gate_passed_by_permit: { id: 'p1', permit_kind: 'oversize_permit', reference: 'OS-2026-044' },
+        },
+      ]),
+    );
+    renderPlan('transports');
+    const card = await screen.findByTestId('plan-transport');
+    expect(within(card).getByTestId('plan-transport-gate-passed')).toHaveTextContent(
+      'Above the entrance limit, let through by permit OS-2026-044',
+    );
+    expect(within(card).queryByTestId('plan-transport-blockers')).toBeNull();
+  });
+
+  it('a load above the entrance limit that nothing covers is a blocker', async () => {
+    mocked.listTransports.mockResolvedValue(
+      page([{ ...heavyTransport, gate_exceeded: ['max_gross_t'], gate_blocked: true, permit_finding: null }]),
+    );
+    renderPlan('transports');
+    expect(await screen.findByTestId('plan-transport-blockers')).toHaveTextContent('Exceeds the site entrance limit');
+  });
+
   it('a permit lists its time windows by weekday', async () => {
     renderPlan('permits');
     const card = await screen.findByTestId('plan-permit');
@@ -283,6 +300,35 @@ describe('transports and permits', () => {
     expect(card).toHaveTextContent('22:00 to 05:00');
     expect(card).toHaveTextContent('Mon');
     expect(within(card).getByRole('button', { name: 'Mark as granted' })).toBeInTheDocument();
+  });
+});
+
+describe('logistics concept', () => {
+  it('a site without a time zone says what is not checked, and the zone is saved with the concept', async () => {
+    mocked.putConcept.mockResolvedValue(unsavedConcept);
+    renderPlan('concept');
+    expect(await screen.findByTestId('plan-timezone-missing')).toHaveTextContent('The site has no time zone yet.');
+    expect(screen.getByText('No logistics concept yet')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Set the time zone' }));
+    fireEvent.change(screen.getByLabelText('Site time zone'), { target: { value: 'Europe/Berlin' } });
+    fireEvent.change(screen.getByLabelText('Deliveries from'), { target: { value: '07:00' } });
+    fireEvent.click(screen.getByTestId('plan-form-save'));
+    await waitFor(() => expect(mocked.putConcept).toHaveBeenCalled());
+    expect(mocked.putConcept.mock.calls[0]?.[1]).toMatchObject({ site_timezone: 'Europe/Berlin', delivery_open: '07:00' });
+  });
+
+  it('a saved concept shows its zone and hours without the warning', async () => {
+    mocked.getConcept.mockResolvedValue({
+      ...unsavedConcept,
+      id: 'k1',
+      site_timezone: 'Europe/Berlin',
+      delivery_open: '07:00',
+      delivery_close: '17:00',
+    });
+    renderPlan('concept');
+    expect(await screen.findByText('Europe/Berlin')).toBeInTheDocument();
+    expect(screen.queryByTestId('plan-timezone-missing')).toBeNull();
+    expect(screen.queryByText('No logistics concept yet')).toBeNull();
   });
 });
 

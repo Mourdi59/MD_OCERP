@@ -252,7 +252,8 @@ export interface Flow {
 }
 
 export interface Concept {
-  id: string;
+  /** Null until the concept was saved once; reading never creates it. */
+  id: string | null;
   catalogue_source: 'shipped' | 'tenant';
   catalogue_id: string;
   catalogue_version: number | null;
@@ -261,7 +262,9 @@ export interface Concept {
   delivery_close: string | null;
   max_deliveries_per_hour: number | null;
   rules_text: string;
-  document_ref: string;
+  document_ref: string | null;
+  /** IANA zone of the site. Every time-of-day rule runs on this clock and is not checked without it. */
+  site_timezone: string | null;
   updated_at: string | null;
 }
 
@@ -300,9 +303,16 @@ export interface Transport {
   width_m: string | null;
   length_m: string | null;
   turning_radius_m: string | null;
+  /** The load class the vehicle is measured against; without one the most permissive class of the catalogue. */
+  load_class: string | null;
   /** Derived by the server from the load and the limits; never stored. */
   is_heavy: boolean;
   gate_exceeded: string[];
+  /** The entrance limit is exceeded and nothing covers it. */
+  gate_blocked: boolean;
+  gate_needs_timezone: boolean;
+  /** The permit that lets the load through an entrance whose limit it exceeds. */
+  gate_passed_by_permit: { id: string; permit_kind: string; reference: string } | null;
   permit_finding: string | null;
   permits: TransportPermitRef[];
 }
@@ -386,7 +396,8 @@ export const listDocuments = (projectId: string, caseId: string) =>
 /* ── Neighbourhood ────────────────────────────────────────────────────── */
 
 export interface Neighbourhood {
-  id: string;
+  /** Null until the plan was saved once; the other fields are then the defaults. */
+  id: string | null;
   zone_type: string | null;
   noise_limit_source: string | null;
   day_dba: string | null;
@@ -421,9 +432,8 @@ export interface CoordinationEntry {
   next_action_due: string | null;
 }
 
-/** `plan` is null until somebody has saved the neighbourhood plan once. */
 export const getNeighbourhood = (projectId: string) =>
-  apiGet<{ plan: Neighbourhood | null }>(`${p(projectId)}/neighbourhood`).then((r) => r.plan);
+  apiGet<{ plan: Neighbourhood }>(`${p(projectId)}/neighbourhood`).then((r) => r.plan);
 export const putNeighbourhood = (projectId: string, body: Body) =>
   apiPut<Neighbourhood>(`${p(projectId)}/neighbourhood`, body);
 export const listComplaints = (projectId: string) =>

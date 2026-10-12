@@ -5,6 +5,8 @@
 
 import type {
   Complaint,
+  Concept,
+  Neighbourhood,
   CustomsCase,
   MediaConnection,
   MediaDemand,
@@ -166,8 +168,12 @@ export const heavyTransport: Transport = {
   width_m: '3.5',
   length_m: '24',
   turning_radius_m: null,
+  load_class: null,
   is_heavy: true,
   gate_exceeded: [],
+  gate_blocked: false,
+  gate_needs_timezone: false,
+  gate_passed_by_permit: null,
   permit_finding: 'heavy_without_permit',
   permits: [],
 };
@@ -232,4 +238,31 @@ export const notReady: Readiness = {
     { rule: 'heavy_transport_permitted', code: 'heavy_without_permit', severity: 'error', ref: 't1', params: { title: 'Roof girder' } },
     { rule: 'zone_mapped', code: 'zone_not_mapped', severity: 'warning', ref: 'z1', params: { zone: 'Zone B' } },
   ],
+};
+
+/** What the server answers before anything was saved: defaults, and no id. */
+export const unsavedConcept: Concept = {
+  id: null,
+  catalogue_source: 'shipped',
+  catalogue_id: 'neutral',
+  catalogue_version: 1,
+  strategy: [],
+  delivery_open: null,
+  delivery_close: null,
+  max_deliveries_per_hour: null,
+  rules_text: '',
+  document_ref: null,
+  site_timezone: null,
+  updated_at: null,
+};
+
+export const unsavedNeighbourhood: Neighbourhood = {
+  id: null,
+  zone_type: 'mixed',
+  noise_limit_source: '',
+  day_dba: null,
+  night_dba: null,
+  quiet_hours: [],
+  parking_note: '',
+  municipality_contact: '',
 };

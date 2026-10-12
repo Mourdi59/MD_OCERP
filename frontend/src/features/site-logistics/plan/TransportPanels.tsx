@@ -66,6 +66,7 @@ export function TransportsPanel({ projectId, catalogue }: PanelProps) {
     { name: 'origin', label: 'f.origin', kind: 'text' },
     { name: 'destination', label: 'f.destination', kind: 'text' },
     ...LOAD_FIELDS.map((name): Field => ({ name, label: `f.${name}`, kind: 'decimal' })),
+    { name: 'load_class', label: 'f.load_class', kind: 'select', options: codeOptions(words, 'load_classes', catalogue) },
     { name: 'escort_required', label: 'f.escort_required', kind: 'checkbox' },
     { name: 'customs_case_id', label: 'f.customs_case', kind: 'select', options: caseOptions },
     { name: 'waste_record_ref', label: 'f.waste_record_ref', kind: 'text' },
@@ -88,7 +89,8 @@ export function TransportsPanel({ projectId, catalogue }: PanelProps) {
           ) : (
             <ul className="space-y-2">
               {rows.map((x) => {
-                const blocked = x.gate_exceeded.length > 0 || !!x.permit_finding;
+                // Above the limit is only a blocker when no permit lets the load through; the server says which.
+                const blocked = x.gate_blocked || !!x.permit_finding || x.gate_needs_timezone;
                 return (
                   <Card key={x.id} testId="plan-transport" alert={blocked}>
                     <div className="flex flex-wrap items-center gap-2">
@@ -121,14 +123,23 @@ export function TransportsPanel({ projectId, catalogue }: PanelProps) {
                           {num(x[name])}
                         </Fact>
                       ))}
+                      <Fact label="f.load_class">
+                        {x.load_class ? codeLabel(words, 'load_classes', x.load_class, catalogue) : null}
+                      </Fact>
                       <Fact label="transport.escort">{x.escort_required ? tx(t, 'yes') : null}</Fact>
                     </dl>
                     {blocked && (
                       <div className="mt-2 space-y-1" data-testid="plan-transport-blockers">
-                        {x.gate_exceeded.length > 0 && (
+                        {x.gate_blocked && (
                           <p className="flex items-start gap-1.5 text-sm text-semantic-error">
                             <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden />
                             {tx(t, 'transport.gate_exceeded')}
+                          </p>
+                        )}
+                        {x.gate_needs_timezone && !x.permit_finding && (
+                          <p className="flex items-start gap-1.5 text-sm text-semantic-error">
+                            <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden />
+                            {tx(t, 'transport.needs_timezone')}
                           </p>
                         )}
                         {x.permit_finding && (
@@ -138,6 +149,11 @@ export function TransportsPanel({ projectId, catalogue }: PanelProps) {
                           </p>
                         )}
                       </div>
+                    )}
+                    {x.gate_passed_by_permit && (
+                      <p className="mt-2 text-sm text-content-secondary" data-testid="plan-transport-gate-passed">
+                        {tx(t, 'transport.gate_passed', { reference: x.gate_passed_by_permit.reference })}
+                      </p>
                     )}
                     {(x.permits.length > 0 || x.is_heavy) && (
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-content-secondary">

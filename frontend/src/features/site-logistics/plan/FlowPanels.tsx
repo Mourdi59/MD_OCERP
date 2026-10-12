@@ -6,7 +6,7 @@
 // material flows.
 
 import { useMemo, useState } from 'react';
-import { ClipboardList, Plug } from 'lucide-react';
+import { AlertTriangle, ClipboardList, Plug } from 'lucide-react';
 
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
@@ -203,7 +203,7 @@ export function UtilitiesPanel({ projectId, catalogue }: PanelProps) {
 const FLOW_MODES = ['stock', 'just_in_time', 'kanban', 'direct_install'] as const;
 
 function conceptIsEmpty(c: Concept): boolean {
-  return c.strategy.length === 0 && !c.rules_text.trim() && !c.delivery_open && !c.delivery_close;
+  return c.strategy.length === 0 && !c.rules_text.trim() && !c.delivery_open && !c.delivery_close && !c.site_timezone;
 }
 
 export function ConceptPanel({ projectId, catalogue }: PanelProps) {
@@ -217,6 +217,7 @@ export function ConceptPanel({ projectId, catalogue }: PanelProps) {
     [areas.data],
   );
   const fields: Field[] = [
+    { name: 'site_timezone', label: 'f.site_timezone', hint: 'f.site_timezone_hint', kind: 'text', wide: true },
     { name: 'delivery_open', label: 'f.delivery_open', kind: 'time' },
     { name: 'delivery_close', label: 'f.delivery_close', kind: 'time' },
     { name: 'max_deliveries_per_hour', label: 'f.max_deliveries_per_hour', kind: 'int' },
@@ -247,6 +248,19 @@ export function ConceptPanel({ projectId, catalogue }: PanelProps) {
                 </Button>
               )}
             </PanelHead>
+            {!c.site_timezone && (
+              <div
+                role="status"
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-semantic-warning/40 bg-semantic-warning/5 p-3 text-sm text-content-primary"
+                data-testid="plan-timezone-missing"
+              >
+                <AlertTriangle size={15} className="shrink-0 text-semantic-warning" aria-hidden />
+                <span className="flex-1">{tx(t, 'concept.timezone_missing')}</span>
+                <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+                  {tx(t, 'concept.set_timezone')}
+                </Button>
+              </div>
+            )}
             {conceptIsEmpty(c) ? (
               <PlanEmpty
                 icon={<ClipboardList size={28} />}
@@ -259,6 +273,7 @@ export function ConceptPanel({ projectId, catalogue }: PanelProps) {
               <ul className="space-y-2">
                 <Card testId="plan-concept-card">
                   <dl className="grid gap-3 sm:grid-cols-3">
+                    <Fact label="concept.timezone">{c.site_timezone}</Fact>
                     <Fact label="concept.hours">{span(t, c.delivery_open, c.delivery_close)}</Fact>
                     <Fact label="concept.max_per_hour">{num(c.max_deliveries_per_hour)}</Fact>
                     <Fact label="concept.filed_as">{c.document_ref || tx(t, 'concept.not_filed')}</Fact>
@@ -304,7 +319,8 @@ export function ConceptPanel({ projectId, catalogue }: PanelProps) {
               <FormDialog
                 title="edit_title.concept"
                 fields={fields}
-                record={c}
+                record={c.id ? c : null}
+                defaults={c}
                 projectId={projectId}
                 catalogue={catalogue}
                 onSubmit={(body) => putConcept(projectId, body)}
