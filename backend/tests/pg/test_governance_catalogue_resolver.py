@@ -11,6 +11,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import app.modules.project_governance.events as gov_events
+from app.modules.project_governance import catalogue as cat
 from app.modules.project_governance import public
 from app.modules.project_governance.catalogue_store import CatalogueStore, resolve_catalogue
 from app.modules.project_governance.errors import GovernanceError
@@ -99,3 +100,32 @@ async def test_a_project_without_a_model_hosts_nothing(world: World) -> None:
         assert await public.project_catalogue(s, pid) is None
         assert await public.host_for(s, pid, "design") is None
         assert await public.phases_enabling(s, pid, "handover") == ()
+
+
+async def test_the_port_lists_gates_areas_and_documents_of_a_project(world: World) -> None:
+    async with world.factory() as s:
+        empty = await add_project(s, world.manager, [])
+        assert await public.project_gates(s, empty) == ()
+        assert await public.project_areas(s, empty) == ()
+        assert await public.project_documents(s, empty) == ()
+
+        gates = await public.project_gates(s, world.project_id)
+        areas = await public.project_areas(s, world.project_id)
+        documents = await public.project_documents(s, world.project_id)
+    assert [g.order for g in gates] == list(range(1, 11))
+    assert (gates[0].code, gates[0].from_phase, gates[0].to_phase, gates[0].status) == (
+        "strategy_to_brief",
+        "strategy",
+        "brief",
+        "not_started",
+    )
+    assert [a.code for a in areas][:2] == ["integration", "scope"] and len(areas) == 10
+    assert {a.status for a in areas} == {"applicable"}
+    by_code = {d.code: d for d in documents}
+    assert by_code["business_case"].area_code == "cost_finance"
+    assert by_code["business_case"].required_at_gates == ("strategy_to_brief",)
+    assert by_code["business_case"].area_id == next(a.id for a in areas if a.code == "cost_finance")
+    assert [d.order for d in documents] == list(range(1, len(documents) + 1))
+    # The host of a subject is one of the listed documents, in one of the listed areas.
+    host = public.host_in(cat.get_catalogue("neutral"), "design")
+    assert by_code[host.doc_type].area_code == host.area_code
