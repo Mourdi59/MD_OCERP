@@ -447,7 +447,7 @@ describe('ItemPanel', () => {
     expect((await screen.findByTestId('pending-tier')).textContent).toBe(enT('commitment.tier.project_manager'));
     expect(screen.getByTestId('pending-open-preconditions').textContent).toContain('Client brief signed off');
     expect(screen.getByTestId('pending-four-eyes')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('decide-approve'));
+    fireEvent.click(await screen.findByTestId('decide-approve'));
     // An approval needs no comment.
     expect(screen.getByTestId('decide-send')).not.toBeDisabled();
     fireEvent.change(document.getElementById('decide-conditions')!, { target: { value: ' Only after the survey ' } });
@@ -465,7 +465,7 @@ describe('ItemPanel', () => {
   it('a rejection is not sent without a written reason', async () => {
     mocked.decideRelease.mockResolvedValue(release({ outcome: 'rejected' }));
     const { onChanged } = panel({ ...waiting, can: pendingCan });
-    fireEvent.click(screen.getByTestId('decide-reject'));
+    fireEvent.click(await screen.findByTestId('decide-reject'));
     expect(screen.getByTestId('decide-send')).toBeDisabled();
     expect(document.getElementById('decide-conditions')).toBeNull();
     fireEvent.change(document.getElementById('decide-comment')!, { target: { value: 'The tender is not evaluated yet' } });
@@ -481,9 +481,9 @@ describe('ItemPanel', () => {
 
   it.each(['four_eyes_violation', 'not_entitled_decider'])(
     'whoever may not decide sees why (%s) and gets no reject button',
-    (reason) => {
+    async (reason) => {
       panel({ ...waiting, can: { ...pendingCan, decide: { allowed: false, reason } } });
-      expect(screen.getByTestId('decide-approve')).toBeDisabled();
+      expect(await screen.findByTestId('decide-approve')).toBeDisabled();
       expect(reasonOf('decide-approve')).toBe(reason);
       expect(screen.queryByTestId('decide-reject')).toBeNull();
     },
@@ -494,7 +494,7 @@ describe('ItemPanel', () => {
       new ApiError(403, 'Forbidden', { detail: { code: 'four_eyes_violation', message: 'Four eyes' } }),
     );
     const { onChanged } = panel({ ...waiting, can: pendingCan });
-    fireEvent.click(screen.getByTestId('decide-approve'));
+    fireEvent.click(await screen.findByTestId('decide-approve'));
     fireEvent.click(screen.getByTestId('decide-send'));
     const alert = await within(screen.getByTestId('decide-form')).findByRole('alert');
     expect(alert.textContent).toContain(enT('commitment.errors.four_eyes_violation'));
@@ -508,7 +508,7 @@ describe('ItemPanel', () => {
     expect(box.textContent).toContain('A request to stop this item is waiting for a decision.');
     expect((await screen.findByTestId('pending-summary')).textContent).toContain('Residual loss');
     expect(screen.getByTestId('pending-summary').textContent).toContain('Client cancelled the wing');
-    fireEvent.click(screen.getByTestId('decide-approve'));
+    fireEvent.click(await screen.findByTestId('decide-approve'));
     expect(screen.getByTestId('decide-send').textContent).toBe('Approve the abort');
     expect(document.getElementById('decide-conditions')).toBeNull();
   });

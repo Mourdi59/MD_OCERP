@@ -246,7 +246,11 @@ export function ReleaseDialog({
               })}
             </p>
           ) : previewQ.isError ? (
-            <RefusalBox message={refusalText(t, previewQ.error)} />
+            <RefusalBox message={refusalText(t, previewQ.error)}>
+              <Button size="sm" variant="ghost" onClick={() => previewQ.refetch()} data-testid="preview-retry">
+                {t('common.retry', { defaultValue: 'Retry' })}
+              </Button>
+            </RefusalBox>
           ) : !preview ? (
             <p className="text-content-tertiary">
               {t('commitment.release.preview_loading', { defaultValue: 'Working out the required tier' })}

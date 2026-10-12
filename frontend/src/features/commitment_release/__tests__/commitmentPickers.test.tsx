@@ -227,7 +227,7 @@ describe('gate and area of an item', () => {
     });
   });
 
-  const dialog = (over: Parameters<typeof item>[0] | null = null) =>
+  const dialog = (over: Parameters<typeof item>[0] | null = null, ownerVerdict: string | null = null) =>
     wrap(
       <ItemDialog
         open
@@ -235,6 +235,7 @@ describe('gate and area of an item', () => {
         projectId="p1"
         matrix={matrix()}
         item={over ? item(over) : null}
+        ownerVerdict={ownerVerdict}
         labels={labels}
         personName={names}
         onSaved={() => undefined}
@@ -299,6 +300,25 @@ describe('gate and area of an item', () => {
     fireEvent.click(screen.getByTestId('item-save'));
     await waitFor(() => expect(mocked.updateItem).toHaveBeenCalledTimes(1));
     expect(mocked.updateItem.mock.calls[0]![2]).toEqual({ title: 'Structural works, phase 1' });
+  });
+
+  it('the owner cannot be picked where the server would refuse it, and the reason is said', async () => {
+    mocked.createItem.mockResolvedValue(item());
+    dialog(null, 'manage_required');
+    const owner = screen.getByTestId('item-owner-locked');
+    expect(owner).toBeDisabled();
+    expect(owner).toHaveAttribute('data-reason', 'manage_required');
+    expect(screen.getByText(enT('commitment.disabled.manage_required'))).toBeInTheDocument();
+    // The item is still added; the server makes the person adding it the owner.
+    fillNewItem();
+    fireEvent.click(screen.getByTestId('item-save'));
+    await waitFor(() => expect(mocked.createItem).toHaveBeenCalledTimes(1));
+    expect(mocked.createItem.mock.calls[0]![1]).toMatchObject({ owner_user_id: null });
+  });
+
+  it('an owner that may not change is shown by name, not as an open picker', () => {
+    dialog({ owner_user_id: 'u-owner' }, 'field_frozen');
+    expect(screen.getByTestId<HTMLInputElement>('item-owner-locked').value).toBe(enT('commitment.unknown_person'));
   });
 
   it('a manager may move a planned item to another gate', async () => {

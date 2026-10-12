@@ -15,7 +15,7 @@ import { Button } from '@/shared/ui/Button';
 import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 import { WideModal } from '@/shared/ui/WideModal';
 
-import { itemVerdict } from './access';
+import { itemVerdict, type Verdict } from './access';
 import { createItem, updateItem, type CommitmentItem, type CommitmentMatrix } from './api';
 import { FIELD_CLASS, Field, RefusalBox, reasonText, refusalText } from './CommitmentBits';
 import { useReferences } from './hooks';
@@ -30,12 +30,27 @@ export interface ItemDialogProps {
   matrix: CommitmentMatrix;
   /** The item to edit, or null to add one. */
   item: CommitmentItem | null;
+  /**
+   * Whether the viewer may name the owner: the project's manage flag for a
+   * new item, the item's own field flag for an existing one. Null means yes.
+   */
+  ownerVerdict: Verdict;
   labels: LabelContext;
   personName: (userId: string | null | undefined) => string | null;
   onSaved: (item: CommitmentItem) => void;
 }
 
-export function ItemDialog({ open, onClose, projectId, matrix, item, labels, personName, onSaved }: ItemDialogProps) {
+export function ItemDialog({
+  open,
+  onClose,
+  projectId,
+  matrix,
+  item,
+  ownerVerdict,
+  labels,
+  personName,
+  onSaved,
+}: ItemDialogProps) {
   const { t } = useTranslation();
   const mode = item ? 'edit' : 'create';
   const [draft, setDraft] = useState<ItemDraft>(() => draftOfItem(item, matrix.base_currency));
@@ -166,19 +181,40 @@ export function ItemDialog({ open, onClose, projectId, matrix, item, labels, per
           <Field
             id="item-owner"
             label={t('commitment.item_form.owner', { defaultValue: 'Owner' })}
-            hint={t('commitment.item_form.owner_hint', {
-              defaultValue:
-                'The owner cannot approve releases of this item. Naming somebody else, or changing the owner later, needs a project manager.',
-            })}
+            hint={
+              ownerVerdict
+                ? reasonText(t, ownerVerdict)
+                : t('commitment.item_form.owner_hint', {
+                    defaultValue:
+                      'The owner cannot approve releases of this item. Naming somebody else, or changing the owner later, needs a project manager.',
+                  })
+            }
           >
-            <ProjectPeopleSelect
-              id="item-owner"
-              projectId={projectId}
-              value={draft.ownerUserId}
-              displayValue={personName(draft.ownerUserId) ?? undefined}
-              onChange={(userId) => set({ ownerUserId: userId })}
-              placeholder={t('commitment.item_form.owner_placeholder', { defaultValue: 'Who looks after this item' })}
-            />
+            {ownerVerdict ? (
+              // The picker is not offered where the server would refuse the choice.
+              <input
+                id="item-owner"
+                className={FIELD_CLASS}
+                disabled
+                data-testid="item-owner-locked"
+                data-reason={ownerVerdict}
+                value={
+                  item
+                    ? personName(item.owner_user_id) ?? t('commitment.unknown_person', { defaultValue: 'Project member' })
+                    : t('commitment.item_form.owner_self', { defaultValue: 'You, as the person adding the item' })
+                }
+                readOnly
+              />
+            ) : (
+              <ProjectPeopleSelect
+                id="item-owner"
+                projectId={projectId}
+                value={draft.ownerUserId}
+                displayValue={personName(draft.ownerUserId) ?? undefined}
+                onChange={(userId) => set({ ownerUserId: userId })}
+                placeholder={t('commitment.item_form.owner_placeholder', { defaultValue: 'Who looks after this item' })}
+              />
+            )}
           </Field>
         </div>
 

@@ -60,7 +60,7 @@ export interface MatrixSettingsProps {
   projectId: string;
   /** The current matrix, or null when the project has none yet. */
   matrix: CommitmentMatrix | null;
-  can: ProjectCan | undefined;
+  can: ProjectCan | null | undefined;
   labels: LabelContext;
   onSaved: () => void;
 }
@@ -126,7 +126,12 @@ export function MatrixSettings({ projectId, matrix, can, labels, onSaved }: Matr
             disabled={schedulesQ.isLoading}
             onChange={(e) => setPicked(e.target.value)}
           >
-            {!matrix && (
+            {schedulesQ.isLoading && (
+              <option value={picked}>
+                {t('commitment.setup.schedules_loading', { defaultValue: 'Loading the authority schedules' })}
+              </option>
+            )}
+            {!matrix && !schedulesQ.isLoading && (
               <option value="">
                 {t('commitment.setup.schedule_default', { defaultValue: "The schedule for the project's country" })}
               </option>
@@ -271,7 +276,7 @@ export function untouchedAssignments(assignments: readonly Assignment[]): Assign
 export interface ApproverSetupProps {
   projectId: string;
   matrix: CommitmentMatrix;
-  can: ProjectCan | undefined;
+  can: ProjectCan | null | undefined;
   labels: LabelContext;
   personName: (userId: string | null | undefined) => string | null;
   onSaved: () => void;
@@ -357,6 +362,11 @@ export function ApproverSetup({ projectId, matrix, can, labels, personName, onSa
           hint={getErrorMessage(assignmentsQ.error)}
           onRetry={() => assignmentsQ.refetch()}
         />
+      ) : rows === null ? (
+        // The pickers appear once the stored approvers are known: a choice made over an unloaded list would drop them.
+        <p className="text-sm text-content-tertiary" data-testid="approvers-loading">
+          {t('commitment.setup.assignments_loading', { defaultValue: 'Loading the approvers' })}
+        </p>
       ) : (
         <ul className="space-y-2">
           {matrix.tiers.map((tier) => {
@@ -462,7 +472,9 @@ export function ApproverSetup({ projectId, matrix, can, labels, personName, onSa
                       disabled={pin.isPending || unpin.isPending}
                       onChange={(e) => e.target.value && pin.mutate({ tier: tier.code, routeId: e.target.value })}
                     >
-                      <option value="">{t('commitment.setup.route_none', { defaultValue: 'None yet' })}</option>
+                      <option value="" disabled={!!tier.route_id}>
+                        {t('commitment.setup.route_none', { defaultValue: 'None yet' })}
+                      </option>
                       {routes.map((r) => (
                         <option key={r.id} value={r.id}>
                           {r.name}
@@ -513,6 +525,22 @@ export function ApproverSetup({ projectId, matrix, can, labels, personName, onSa
             );
           })}
         </ul>
+      )}
+
+      {!manageV && routesQ.isLoading && (
+        <p className="text-sm text-content-tertiary">
+          {t('commitment.setup.routes_loading', { defaultValue: 'Loading the approval routes' })}
+        </p>
+      )}
+      {!manageV && routesQ.isError && (
+        <ErrorState
+          compact
+          title={t('commitment.setup.routes_failed', {
+            defaultValue: 'The approval routes could not be loaded, so a route cannot be chosen or confirmed here',
+          })}
+          hint={getErrorMessage(routesQ.error)}
+          onRetry={() => routesQ.refetch()}
+        />
       )}
 
       <div className="flex flex-wrap items-start gap-3">
@@ -573,7 +601,15 @@ export function TierCalculator({ matrix, labels }: { matrix: CommitmentMatrix; l
       </div>
       <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <Field id="calc-type" label={t('commitment.grid.type', { defaultValue: 'Type' })}>
-          <select id="calc-type" className={FIELD_CLASS} value={type} onChange={(e) => setType(e.target.value)}>
+          <select
+            id="calc-type"
+            className={FIELD_CLASS}
+            value={type}
+            onChange={(e) => {
+              setType(e.target.value);
+              setResult(null);
+            }}
+          >
             {matrix.commitment_types.map((ct) => (
               <option key={ct.code} value={ct.code}>
                 {codeName(labels, 'type', ct.code, ct.name)}
@@ -594,7 +630,10 @@ export function TierCalculator({ matrix, labels }: { matrix: CommitmentMatrix; l
             autoComplete="off"
             className={FIELD_CLASS}
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setResult(null);
+            }}
           />
         </Field>
         <Button variant="secondary" loading={ask.isPending} disabled={!ready} onClick={() => ask.mutate()} data-testid="calc-ask">
@@ -608,7 +647,10 @@ export function TierCalculator({ matrix, labels }: { matrix: CommitmentMatrix; l
               <input
                 type="checkbox"
                 checked={flags.includes(flag.code)}
-                onChange={() => setFlags((f) => (f.includes(flag.code) ? f.filter((x) => x !== flag.code) : [...f, flag.code]))}
+                onChange={() => {
+                  setFlags((f) => (f.includes(flag.code) ? f.filter((x) => x !== flag.code) : [...f, flag.code]));
+                  setResult(null);
+                }}
               />
               {codeName(labels, 'flag', flag.code, flag.name)}
             </label>

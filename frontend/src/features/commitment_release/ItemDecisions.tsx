@@ -36,6 +36,8 @@ export interface PendingRequestProps {
   item: CommitmentItem;
   /** The request that is waiting, once the history has loaded. */
   pending: Release | null;
+  /** Where the history stands. Nobody decides a request they cannot see yet. */
+  history: 'loading' | 'failed' | 'ready';
   matrix: CommitmentMatrix;
   labels: LabelContext;
   personName: PersonName;
@@ -46,7 +48,16 @@ export interface PendingRequestProps {
  * The request that waits for a decision, with what the decider was shown when
  * it was made, and the two answers. Whoever may not decide sees why.
  */
-export function PendingRequest({ projectId, item, pending, matrix, labels, personName, onChanged }: PendingRequestProps) {
+export function PendingRequest({
+  projectId,
+  item,
+  pending,
+  history,
+  matrix,
+  labels,
+  personName,
+  onChanged,
+}: PendingRequestProps) {
   const { t } = useTranslation();
   const [answer, setAnswer] = useState<'approved' | 'rejected' | null>(null);
   const [comment, setComment] = useState('');
@@ -96,6 +107,19 @@ export function PendingRequest({ projectId, item, pending, matrix, labels, perso
             : t('commitment.decide.pending_release', { defaultValue: 'A release request is waiting for a decision.' })}
         </span>
       </div>
+
+      {history === 'loading' && (
+        <p className="text-sm text-content-tertiary" data-testid="pending-loading">
+          {t('commitment.decide.loading', { defaultValue: 'Loading what was asked' })}
+        </p>
+      )}
+      {history === 'failed' && (
+        <p className="text-sm text-content-secondary" data-testid="pending-failed">
+          {t('commitment.decide.failed', {
+            defaultValue: 'What was asked could not be loaded. Try again in the release history below, then decide.',
+          })}
+        </p>
+      )}
 
       {pending && (
         <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2" data-testid="pending-summary">
@@ -162,7 +186,7 @@ export function PendingRequest({ projectId, item, pending, matrix, labels, perso
         </p>
       )}
 
-      {!answer && (
+      {!answer && history === 'ready' && (
         <div className="flex flex-wrap items-start gap-3">
           <ReasonedButton
             size="sm"

@@ -232,6 +232,14 @@ export function ReleaseHistory({
                 {r.tranche_note && <p>{r.tranche_note}</p>}
                 {r.rationale && <p className="text-xs text-content-tertiary">{rationaleText(t, r.rationale)}</p>}
                 {r.conditions && <p className="text-xs text-content-tertiary">{r.conditions}</p>}
+                {r.valid_until && (
+                  <p className="text-xs text-content-tertiary" data-testid="history-valid-until">
+                    {t('commitment.history.valid_until', {
+                      defaultValue: 'Valid until {{date}}',
+                      date: fmtDate(r.valid_until),
+                    })}
+                  </p>
+                )}
                 {r.external_approval_ref && (
                   <p className="text-xs text-content-tertiary">
                     {t('commitment.history.external_ref', {
@@ -330,12 +338,12 @@ export function ItemPanel({
     },
     hold: {
       label: t('commitment.item.hold_reason', { defaultValue: 'Why the item is put on hold' }),
-      placeholder: t('commitment.item.reason_optional', { defaultValue: 'Optional, shown in the history' }),
+      placeholder: t('commitment.item.reason_on_record', { defaultValue: 'Optional, kept on the record' }),
       send: t('commitment.item.hold', { defaultValue: 'Put on hold' }),
     },
     resume: {
       label: t('commitment.item.resume_reason', { defaultValue: 'Why the item is resumed' }),
-      placeholder: t('commitment.item.reason_optional', { defaultValue: 'Optional, shown in the history' }),
+      placeholder: t('commitment.item.reason_on_record', { defaultValue: 'Optional, kept on the record' }),
       send: t('commitment.item.resume', { defaultValue: 'Resume item' }),
     },
     defer: {
@@ -408,6 +416,7 @@ export function ItemPanel({
           projectId={projectId}
           item={item}
           pending={pending}
+          history={historyQ.isLoading ? 'loading' : historyQ.isError ? 'failed' : 'ready'}
           matrix={matrix}
           labels={labels}
           personName={personName}
@@ -612,12 +621,45 @@ export function ItemPanel({
           <h3 className="text-sm font-semibold text-content-primary">
             {t('commitment.drawer.exposure', { defaultValue: 'Abort exposure' })}
           </h3>
-          <ReasonedButton size="sm" variant="secondary" verdict={editV} onClick={() => setTermsOpen(true)} data-testid="item-abort-terms">
-            {itemTerms
-              ? t('commitment.item.edit_abort_terms', { defaultValue: 'Edit abort terms' })
-              : t('commitment.item.add_abort_terms', { defaultValue: 'Enter abort terms' })}
-          </ReasonedButton>
+          {/* Offered only once the stored terms are known: a form opened blank would overwrite them. */}
+          {termsQ.isSuccess && (
+            <ReasonedButton
+              size="sm"
+              variant="secondary"
+              verdict={editV}
+              loading={termsOpen && basesQ.isLoading}
+              onClick={() => setTermsOpen(true)}
+              data-testid="item-abort-terms"
+            >
+              {itemTerms
+                ? t('commitment.item.edit_abort_terms', { defaultValue: 'Edit abort terms' })
+                : t('commitment.item.add_abort_terms', { defaultValue: 'Enter abort terms' })}
+            </ReasonedButton>
+          )}
         </div>
+        {termsQ.isLoading && (
+          <p className="mb-2 text-sm text-content-tertiary" data-testid="abort-terms-loading">
+            {t('commitment.item.abort_terms_loading', { defaultValue: 'Loading the abort terms' })}
+          </p>
+        )}
+        {termsQ.isError && (
+          <ErrorState
+            compact
+            title={t('commitment.item.abort_terms_failed', { defaultValue: 'The abort terms could not be loaded' })}
+            hint={getErrorMessage(termsQ.error)}
+            onRetry={() => termsQ.refetch()}
+          />
+        )}
+        {termsOpen && basesQ.isError && (
+          <ErrorState
+            compact
+            title={t('commitment.item.abort_bases_failed', {
+              defaultValue: 'The list of abort bases could not be loaded, so the terms cannot be edited yet',
+            })}
+            hint={getErrorMessage(basesQ.error)}
+            onRetry={() => basesQ.refetch()}
+          />
+        )}
         {item.exposure ? (
           <ExposureBlock exposure={item.exposure} labels={labels} />
         ) : (
@@ -653,12 +695,13 @@ export function ItemPanel({
           projectId={projectId}
           matrix={matrix}
           item={item}
+          ownerVerdict={itemVerdict(item, 'edit_gate_fields')}
           labels={labels}
           personName={personName}
           onSaved={onChanged}
         />
       )}
-      {termsOpen && (
+      {termsOpen && termsQ.isSuccess && basesQ.isSuccess && (
         <AbortTermsDialog
           open
           onClose={() => setTermsOpen(false)}

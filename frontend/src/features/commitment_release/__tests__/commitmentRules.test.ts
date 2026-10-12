@@ -11,6 +11,7 @@ import { ApiError } from '@/shared/lib/api';
 
 import {
   CAN_REASONS,
+  CHECKING,
   UNAVAILABLE,
   holdVerdict,
   itemVerdict,
@@ -344,7 +345,9 @@ describe('access', () => {
     expect(verdictOf(undefined)).toBe(UNAVAILABLE);
     expect(verdictOf({ allowed: false, reason: null })).toBe(UNAVAILABLE);
     expect(itemVerdict(item({ can: {} }), 'edit')).toBe(UNAVAILABLE);
-    expect(projectVerdict(undefined, 'manage')).toBe(UNAVAILABLE);
+    // Still asking is told apart from a request that failed.
+    expect(projectVerdict(undefined, 'manage')).toBe(CHECKING);
+    expect(projectVerdict(null, 'manage')).toBe(UNAVAILABLE);
     expect(projectVerdict({}, 'add_item')).toBe(UNAVAILABLE);
   });
 

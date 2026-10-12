@@ -70,7 +70,8 @@ export function CommitmentReleasePage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const [params, setParams] = useSearchParams();
   const capsQ = useCapabilities(projectId);
-  const can = capsQ.data?.can;
+  // Still loading reads as "checking"; a failed request reads as no answer, with a retry below.
+  const can = capsQ.isError ? null : capsQ.data?.can;
   const labels = useLabelContext();
   const personName = usePeopleNames(projectId);
   const invalidate = useInvalidateCommitments(projectId);
@@ -181,6 +182,12 @@ export function CommitmentReleasePage() {
   if (itemId) {
     body = itemsQ.isLoading ? (
       <SkeletonTable rows={4} columns={5} />
+    ) : itemsQ.isError ? (
+      <ErrorState
+        title={t('commitment.page.load_failed', { defaultValue: 'The commitments could not be loaded' })}
+        hint={getErrorMessage(itemsQ.error)}
+        onRetry={() => itemsQ.refetch()}
+      />
     ) : selected ? (
       <ItemPanel
         key={selected.id}
@@ -238,11 +245,24 @@ export function CommitmentReleasePage() {
         description={t('commitment.page.empty_items_body', {
           defaultValue: 'Add the first thing the project will commit money to, for example the main works package. You then request its release from here.',
         })}
+        action={
+          addV
+            ? undefined
+            : { label: t('commitment.item_form.add', { defaultValue: 'Add item' }), onClick: () => setAdding(true) }
+        }
       />
     );
   } else {
     body = (
       <>
+        {findingsQ.isError && (
+          <ErrorState
+            compact
+            title={t('commitment.findings.load_failed', { defaultValue: 'The checks of the matrix could not be loaded' })}
+            hint={getErrorMessage(findingsQ.error)}
+            onRetry={() => findingsQ.refetch()}
+          />
+        )}
         <FindingsList findings={findingsQ.data ?? []} />
         <CommitmentGrid
           items={items}
@@ -321,6 +341,16 @@ export function CommitmentReleasePage() {
           )}
         </div>
       )}
+      {capsQ.isError && (
+        <ErrorState
+          compact
+          title={t('commitment.page.capabilities_failed', {
+            defaultValue: 'What you may do here could not be loaded, so every action is off',
+          })}
+          hint={getErrorMessage(capsQ.error)}
+          onRetry={() => capsQ.refetch()}
+        />
+      )}
       {body}
       {adding && (
         <ItemDialog
@@ -329,6 +359,7 @@ export function CommitmentReleasePage() {
           projectId={projectId}
           matrix={matrix}
           item={null}
+          ownerVerdict={projectVerdict(can, 'manage')}
           labels={labels}
           personName={personName}
           onSaved={(saved) => {

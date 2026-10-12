@@ -118,6 +118,24 @@ describe('CommitmentReleasePage states', () => {
     expect(screen.getByTestId('item-add')).toBeDisabled();
   });
 
+  it('a failed capability request says so with a retry, and reads as no answer rather than a refusal', async () => {
+    mocked.getCapabilities.mockRejectedValue(new ApiError(500, 'Server Error', { detail: 'down' }));
+    mocked.getMatrix.mockResolvedValue(matrix());
+    mocked.listItems.mockResolvedValue({ ...page([item()]), totals: totals() });
+    renderPage();
+    expect(await screen.findByText(enText('commitment.page.capabilities_failed'))).toBeInTheDocument();
+    expect(screen.getByTestId('item-add')).toBeDisabled();
+    expect(screen.getByTestId('disabled-reason').getAttribute('data-reason')).toBe('unavailable');
+  });
+
+  it('a failing item list is an error also when a link names an item', async () => {
+    mocked.getMatrix.mockResolvedValue(matrix());
+    mocked.listItems.mockRejectedValue(new ApiError(500, 'Server Error', { detail: 'database unavailable' }));
+    renderPage('?item=i1');
+    expect(await screen.findByText(LOAD_FAILED)).toBeInTheDocument();
+    expect(screen.queryByText(enText('commitment.page.item_missing_title'))).toBeNull();
+  });
+
   it('the setup tab marks a tier whose route was changed and offers to confirm it', async () => {
     const m = matrix();
     m.tiers[0] = { ...m.tiers[0]!, route_state: 'changed' };

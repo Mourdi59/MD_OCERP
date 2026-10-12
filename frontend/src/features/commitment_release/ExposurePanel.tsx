@@ -50,7 +50,7 @@ export interface ExposurePanelProps {
   /** The matrix items, for the title behind each code. */
   items: CommitmentItem[];
   /** The project capabilities the server sent; undefined while they load. */
-  can: ProjectCan | undefined;
+  can: ProjectCan | null | undefined;
   onOpenItem: (itemId: string) => void;
 }
 
@@ -101,7 +101,10 @@ export function ExposurePanel({ projectId, items, can, onOpenItem }: ExposurePan
             icon={<Save size={14} />}
             verdict={saveV}
             disabled={!data || data.items.length === 0}
-            onClick={() => setSaving(true)}
+            onClick={() => {
+              save.reset();
+              setSaving(true);
+            }}
             data-testid="scenario-start"
           >
             {t('commitment.exposure.save_scenario', { defaultValue: 'Save this view' })}
@@ -234,15 +237,30 @@ export function ExposurePanel({ projectId, items, can, onOpenItem }: ExposurePan
 
       <p className="text-xs text-content-tertiary">
         {t('commitment.exposure.delay_note', {
-          defaultValue: 'Cost of the delay: enter it as a note, no figure is assumed',
+          defaultValue: 'The cost of the delay itself is not in these figures. No figure is assumed for it.',
         })}
       </p>
 
-      {scenarios.length > 0 && (
-        <section data-testid="scenarios">
-          <h3 className="mb-2 text-sm font-semibold text-content-primary">
-            {t('commitment.exposure.scenarios', { defaultValue: 'Saved views' })}
-          </h3>
+      <section data-testid="scenarios">
+        <h3 className="mb-2 text-sm font-semibold text-content-primary">
+          {t('commitment.exposure.scenarios', { defaultValue: 'Saved views' })}
+        </h3>
+        {scenariosQ.isLoading ? (
+          <p className="text-sm text-content-tertiary">{t('commitment.loading', { defaultValue: 'Loading' })}</p>
+        ) : scenariosQ.isError ? (
+          <ErrorState
+            compact
+            title={t('commitment.exposure.scenarios_failed', { defaultValue: 'The saved views could not be loaded' })}
+            hint={getErrorMessage(scenariosQ.error)}
+            onRetry={() => scenariosQ.refetch()}
+          />
+        ) : scenarios.length === 0 ? (
+          <p className="text-sm text-content-tertiary" data-testid="scenarios-empty">
+            {t('commitment.exposure.scenarios_empty', {
+              defaultValue: 'No view is saved yet. Pick a date above and save the view to compare it later.',
+            })}
+          </p>
+        ) : (
           <ul className="space-y-1.5">
             {scenarios.map((s) => {
               const counts = exposureCounts(s.payload?.items ?? []);
@@ -276,8 +294,8 @@ export function ExposurePanel({ projectId, items, can, onOpenItem }: ExposurePan
               );
             })}
           </ul>
-        </section>
-      )}
+        )}
+      </section>
     </div>
   );
 }

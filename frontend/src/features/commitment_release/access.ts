@@ -22,6 +22,9 @@ export type Verdict = string | null;
 /** The server did not send the flag. The action stays off: an absent answer is not a yes. */
 export const UNAVAILABLE = 'unavailable';
 
+/** The answer is on its way. The action stays off, and the reason says to wait rather than that it is refused. */
+export const CHECKING = 'checking';
+
 /**
  * Why a button is off, where a sentence written for the button reads better
  * than the refusal sentence of the same code. A code that is not here is shown
@@ -56,6 +59,7 @@ export const DISABLED_REASON: Record<string, KeyText> = {
   ],
   field_frozen: ['commitment.disabled.field_frozen', 'This can change only while the item is still planned.'],
   [UNAVAILABLE]: ['commitment.disabled.unavailable', 'The server did not say whether this is allowed.'],
+  [CHECKING]: ['commitment.disabled.checking', 'Checking what you may do here.'],
 };
 
 /** Every refusal code the server puts into a flag. A test holds each of them to a sentence in both locales. */
@@ -92,5 +96,7 @@ export function holdVerdict(item: Pick<CommitmentItem, 'can' | 'status'>): Verdi
 
 /** What is not about one item: the matrix and its setup, a new item, a saved scenario. */
 export function projectVerdict(can: ProjectCan | null | undefined, action: ProjectAction): Verdict {
+  // `undefined` is a request still running; `null` is a request that failed.
+  if (can === undefined) return CHECKING;
   return verdictOf(can?.[action]);
 }
