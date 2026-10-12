@@ -11,6 +11,7 @@ made through that port, the way a module seeder would ask.
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -28,6 +29,7 @@ from app.modules.project_governance import catalogue_packs, public, seed
 from app.modules.project_governance import evidence as evd
 from app.modules.project_governance.models import (
     GovernanceCheck,
+    GovernanceCondition,
     GovernanceDecision,
     GovernanceDocument,
     GovernanceModel,
@@ -97,11 +99,18 @@ async def _estate(factory, *demo_ids: str, locale: str = "en") -> dict[str, uuid
     return projects | {"manager": users[MANAGER]}
 
 
-async def _seed(factory, estate: dict[str, uuid.UUID]) -> dict[str, int]:
+async def _seed(factory, estate: dict[str, uuid.UUID]) -> dict[str, Any]:
     async with factory() as s:
         counts = await seed_project_governance_demo(s, [v for k, v in estate.items() if k != "manager"])
         await s.commit()
     return counts
+
+
+def _told(result: dict[str, Any], estate: dict[str, uuid.UUID]) -> dict[str, tuple[str, str | None, str | None]]:
+    """Per demo id what the seed result says: planned moment, reached moment, fallback reason."""
+    names = {str(pid): demo_id for demo_id, pid in estate.items() if demo_id != "manager"}
+    assert len(result["placements"]) == len(names), result["placements"]
+    return {names[r["project_id"]]: (r["planned"], r["reached"], r["fallback_reason"]) for r in result["placements"]}
 
 
 async def _asked_through_the_port(factory, pid: uuid.UUID, capability: str = "construction_start") -> dict[str, Any]:
@@ -129,7 +138,16 @@ async def test_the_demo_estate_has_a_project_before_the_construction_gate_one_in
     factory,
 ) -> None:
     estate = await _estate(factory, "office-london", "residential-berlin", "medical-us")
-    assert (await _seed(factory, estate))["projects"] == 3
+    result = await _seed(factory, estate)
+    assert result["projects"] == 3
+    # A named demo project that fell back to the first-gate story fails here, with its reason.
+    assert result["fallbacks"] == []
+    assert result["ok"] is True
+    assert _told(result, estate) == {
+        "office-london": ("first_gate", "first_gate", None),
+        "residential-berlin": ("execution", "execution", None),
+        "medical-us": ("near_handover", "near_handover", None),
+    }
     today = datetime.now(UTC).date()
 
     before = await _asked_through_the_port(factory, estate["office-london"])
@@ -193,7 +211,9 @@ async def test_a_module_that_has_no_rows_yet_does_not_stop_the_walk(factory) -> 
 
     evd.register_evidence_provider("*", _nothing_yet, name="probe_empty_module", blocking=True)
     estate = await _estate(factory, "residential-berlin")
-    assert (await _seed(factory, estate))["projects"] == 1
+    result = await _seed(factory, estate)
+    assert result["projects"] == 1
+    assert result["fallbacks"] == []
 
     running = await _asked_through_the_port(factory, estate["residential-berlin"])
     assert running["phase"] == "construction"
@@ -203,8 +223,8 @@ async def test_a_module_that_has_no_rows_yet_does_not_stop_the_walk(factory) -> 
     assert all(d.proceed_at_risk_areas == ["procurement"] for d in decisions)
 
 
-async def test_a_placement_that_cannot_be_completed_leaves_the_first_gate_story(
-    factory, monkeypatch: pytest.MonkeyPatch
+async def test_a_placement_that_cannot_be_completed_leaves_the_first_gate_story_and_says_so(
+    factory, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     async def _breaks(stage, *, near_handover: bool) -> None:
         await stage.open(
@@ -214,11 +234,20 @@ async def test_a_placement_that_cannot_be_completed_leaves_the_first_gate_story(
             four_eyes=True,
             owner_of=lambda code: stage.cast.owner,
         )
-        raise seed.SeedStop("a gate on the way is blocked")
+        raise seed.SeedStop("gate_blocked", "a gate on the way is blocked")
 
     monkeypatch.setattr(seed, "_execution_story", _breaks)
     estate = await _estate(factory, "residential-berlin")
-    assert (await _seed(factory, estate))["projects"] == 1
+    with caplog.at_level(logging.ERROR, logger="app.modules.project_governance.seed"):
+        result = await _seed(factory, estate)
+    assert result["projects"] == 1
+    # The project has a model, and the result says it is not the one that was planned.
+    assert _told(result, estate) == {"residential-berlin": ("execution", "first_gate", "gate_blocked")}
+    assert [r["demo_id"] for r in result["fallbacks"]] == ["residential-berlin"]
+    assert result["ok"] is False
+    said = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR and "was planned at" in r.getMessage()]
+    assert len(said) == 1
+    assert "residential-berlin" in said[0] and "gate_blocked" in said[0]
 
     state = await _asked_through_the_port(factory, estate["residential-berlin"])
     assert state["phase"] == "brief"
@@ -304,7 +333,14 @@ def active_pack(monkeypatch: pytest.MonkeyPatch) -> dict[tuple[str, str], bytes]
 
 async def test_the_project_of_the_pack_stops_where_its_demo_file_says(factory, active_pack) -> None:
     estate = await _estate(factory, "office-frankfurt", "office-london", locale="de")
-    assert (await _seed(factory, estate))["projects"] == 2
+    result = await _seed(factory, estate)
+    assert result["projects"] == 2
+    assert result["fallbacks"] == []
+    assert (result["pack_demo_file"], result["ok"]) == ("read", True)
+    assert _told(result, estate) == {
+        "office-frankfurt": ("pack", "pack", None),
+        "office-london": ("first_gate", "first_gate", None),
+    }
     pid = estate["office-frankfurt"]
     body = _pack_body()
 
@@ -360,7 +396,11 @@ async def test_a_demo_file_that_breaks_a_rule_leaves_the_built_in_story(factory,
     broken["governance"]["frame_documents"][0]["state"] = "binding"
     active_pack[("demo-pack", DEMO_PATH)] = json.dumps(broken).encode("utf-8")
     estate = await _estate(factory, "office-frankfurt")
-    assert (await _seed(factory, estate))["projects"] == 1
+    result = await _seed(factory, estate)
+    assert result["projects"] == 1
+    # The built-in story was written without an error of its own; the plan was the pack story.
+    assert _told(result, estate) == {"office-frankfurt": ("pack", "first_gate", "demo_file_invalid")}
+    assert result["ok"] is False
 
     async with factory() as s:
         model = (
@@ -368,3 +408,154 @@ async def test_a_demo_file_that_breaks_a_rule_leaves_the_built_in_story(factory,
         ).scalar_one()
     assert (model.catalogue_source, model.catalogue_id) == ("shipped", "neutral")
     assert [d.outcome for d in await _decisions(factory, estate["office-frankfurt"])] == ["go_with_conditions"]
+
+
+async def test_a_demo_file_nobody_can_read_fails_the_result_although_every_project_has_a_story(
+    factory, active_pack
+) -> None:
+    active_pack[("demo-pack", DEMO_PATH)] = b"{not json"
+    estate = await _estate(factory, "office-frankfurt")
+    result = await _seed(factory, estate)
+    # The file that names the project did not load, so no row can carry the miss.
+    assert _told(result, estate) == {"office-frankfurt": ("first_gate", "first_gate", None)}
+    assert (result["pack_demo_file"], result["ok"]) == ("unreadable", False)
+
+
+async def test_a_seed_that_writes_nothing_names_every_project_and_why(factory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(seed, "_DECIDER_EMAIL", "nobody@openconstructionerp.com")
+    estate = await _estate(factory, "office-london", "medical-us")
+    asked = estate | {"gone": uuid.uuid4()}
+    result = await _seed(factory, asked)
+    assert result["projects"] == 0
+    assert _told(result, asked) == {
+        "office-london": ("first_gate", None, "no_decider"),
+        "medical-us": ("near_handover", None, "no_decider"),
+        "gone": ("first_gate", None, "project_not_found"),
+    }
+    assert len(result["fallbacks"]) == 3
+    assert result["ok"] is False
+
+
+async def test_a_second_run_skips_what_the_first_one_seeded_and_reports_no_fallback(factory) -> None:
+    estate = await _estate(factory, "medical-us")
+    assert (await _seed(factory, estate))["ok"] is True
+    again = await _seed(factory, estate)
+    assert again["projects"] == 0
+    assert [(r["planned"], r["reached"], r["skipped"]) for r in again["placements"]] == [("near_handover", None, True)]
+    assert (again["fallbacks"], again["ok"]) == ([], True)
+
+
+# ── after the module seeders ──
+
+
+async def test_conditions_of_the_walk_are_cleared_once_the_module_answers_met(factory) -> None:
+    answer = {"state": "not_met"}
+
+    async def _module(session, project_id, attempt, area):
+        if area.code != "procurement":
+            return []
+        return [evd.EvidenceItem(code="packages_planned", state=answer["state"])]
+
+    evd.register_evidence_provider("*", _module, name="probe_module", blocking=True)
+    estate = await _estate(factory, "residential-berlin", "office-london")
+    await _seed(factory, estate)
+    pid = estate["residential-berlin"]
+
+    async def _conditions(project: uuid.UUID) -> list[GovernanceCondition]:
+        async with factory() as s:
+            rows = await s.execute(select(GovernanceCondition).where(GovernanceCondition.project_id == project))
+            return list(rows.scalars())
+
+    async def _settle() -> dict[str, int]:
+        async with factory() as s:
+            out = await seed.settle_demo_conditions(s)
+            await s.commit()
+        return out
+
+    at_risk = [c for c in await _conditions(pid) if c.text == seed.AT_RISK_CONDITION]
+    assert len(at_risk) == 8 and {c.status for c in at_risk} == {"open"}
+    # The first-gate story of the other project passed its gate at risk too, next to its own two conditions.
+    london = await _conditions(estate["office-london"])
+    own = sorted((c.text, c.status) for c in london if c.text != seed.AT_RISK_CONDITION)
+    assert len(own) == 2 and len(london) == 3
+
+    # The module has no rows yet: nothing is cleared.
+    assert await _settle() == {"cleared": 0, "left_open": 9}
+    assert {c.status for c in await _conditions(pid)} == {"open"}
+
+    answer["state"] = "met"
+    assert await _settle() == {"cleared": 9, "left_open": 0}
+    after = [c for c in await _conditions(pid) if c.text == seed.AT_RISK_CONDITION]
+    assert {c.status for c in after} == {"cleared"}
+    # Cleared by the owner of the condition, who is the owner of the area, with a reason.
+    assert all(c.cleared_by == c.owner_user_id and c.evidence.strip() for c in after)
+    assert estate["manager"] not in {c.cleared_by for c in after}
+    # Conditions the walk did not create are not this step's to touch.
+    london = await _conditions(estate["office-london"])
+    assert sorted((c.text, c.status) for c in london if c.text != seed.AT_RISK_CONDITION) == own
+    assert await _settle() == {"cleared": 0, "left_open": 0}
+
+
+# ── events and savepoints ──
+
+
+async def test_pin_of_current_core_behaviour_a_rolled_back_savepoint_still_fires_its_deferred_events(
+    factory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A pin of what ``app.core.events.publish_after_commit`` does today. It is a defect, not a contract.
+
+    An event deferred inside a savepoint fires on the outer commit although the
+    savepoint was rolled back and its rows are gone. Governance works around it
+    for its own events (the outbox in ``seed._attempt``); events of the other
+    services a story calls are still exposed.
+
+    Whoever fixes the core: this test fails on your change, as it should. Flip
+    the last assertion to ``not in`` and remove the outbox from the seed.
+    """
+    from sqlalchemy import text
+
+    from app.core.events import event_bus, publish_after_commit
+
+    fired: list[str] = []
+    monkeypatch.setattr(event_bus, "publish_detached", lambda name, data=None, **kw: fired.append(name))
+    async with factory() as s:
+        await s.execute(text("SELECT 1"))
+        try:
+            async with s.begin_nested():
+                publish_after_commit(s, "project_governance.probe.rolled_back", {})
+                raise RuntimeError("the story failed")
+        except RuntimeError:
+            pass
+        publish_after_commit(s, "project_governance.probe.kept", {})
+        assert fired == []
+        await s.commit()
+    assert "project_governance.probe.kept" in fired
+    assert "project_governance.probe.rolled_back" in fired
+
+
+async def test_a_story_that_was_rolled_back_publishes_none_of_its_governance_events(
+    factory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.core.events import event_bus
+
+    fired: list[tuple[str, dict]] = []
+    monkeypatch.setattr(event_bus, "publish_detached", lambda name, data=None, **kw: fired.append((name, data or {})))
+
+    async def _breaks(stage, *, near_handover: bool) -> None:
+        await stage.open(
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            owner_of=lambda code: stage.cast.owner,
+        )
+        raise seed.SeedStop("gate_blocked", "a gate on the way is blocked")
+
+    monkeypatch.setattr(seed, "_execution_story", _breaks)
+    estate = await _estate(factory, "residential-berlin")
+    assert (await _seed(factory, estate))["projects"] == 1
+
+    pinned = [data for name, data in fired if name == "project_governance.model.set"]
+    # Two stories pinned a model, one of them was rolled back. One event.
+    assert len(pinned) == 1
+    assert pinned[0]["project_id"] == str(estate["residential-berlin"])

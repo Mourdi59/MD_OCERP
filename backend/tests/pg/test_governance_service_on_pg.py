@@ -7,7 +7,6 @@ approval-route subscribers.
 
 from __future__ import annotations
 
-import uuid
 from datetime import date
 
 import pytest
@@ -369,7 +368,9 @@ async def test_validation_payload_runs_through_every_rule(world: World) -> None:
     async with world.factory() as s:
         payload = await GovernanceService(s).validation_payload(world.project_id, today=TODAY)
     ctx = ValidationContext(data=payload, metadata={"locale": "en"})
-    owner_rule = next(r() for r in GOVERNANCE_RULES if r.rule_id.endswith("area_has_owner"))
-    results = await owner_rule.validate(ctx)
-    assert results and not any(r.passed for r in results)  # nobody owns an area yet
-    assert uuid.UUID(str(world.project_id))
+    by_rule = {rule.rule_id: await rule().validate(ctx) for rule in GOVERNANCE_RULES}
+    assert len(by_rule) == len(GOVERNANCE_RULES) >= 7
+    # Every rule read the payload the service built without raising and answered with results.
+    assert all(isinstance(results, list) for results in by_rule.values())
+    owners = by_rule["project_governance.area_has_owner"]
+    assert owners and not any(r.passed for r in owners)  # nobody owns an area yet
