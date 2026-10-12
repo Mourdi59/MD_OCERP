@@ -199,6 +199,10 @@ export const CHECK_REASON: Record<string, KeyText> = {
     'commitment.check.reason.commitment_not_released',
     'With this amount the item would bind more than was released for it.',
   ],
+  release_expired: [
+    'commitment.check.reason.release_expired',
+    'The amount would fit what was released, but that release has passed its validity date. Request a new release first.',
+  ],
   fx_rate_missing: [
     'commitment.check.reason.fx_rate_missing',
     'There is no exchange rate from this currency to the currency of the matrix, so the amount cannot be judged.',
@@ -412,6 +416,10 @@ export const ERROR_TEXT: Record<string, string> = {
   assignment_needs_approver: 'Name the approver of this tier before a deputy or a validity period',
   external_approval_not_required:
     'This amount is decided by a tier of the schedule: remove the external approval reference',
+  drawdown_released_by_commitment:
+    'This drawdown is a released commitment item. Abort that item to take the money back.',
+  release_expired:
+    'The release of this item is past its validity date: request a renewed release before binding more',
 };
 
 /** The sentence for a refusal code, translated when the locale has it. */

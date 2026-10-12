@@ -20,6 +20,7 @@ import {
   commitmentKeys,
   decideRelease,
   listTransferTargets,
+  previewAbort,
   requestAbort,
   transferItem,
   type AbortRecord,
@@ -28,6 +29,7 @@ import {
   type Release,
 } from './api';
 import { Amount, FIELD_CLASS, Field, ReasonedButton, RefusalBox, reasonText, refusalText } from './CommitmentBits';
+import { approverNames } from './ReleaseDialog';
 import { ABORT_FOLLOW_UP, LINK_KIND, PRECONDITION_KIND, codeName, vocab, type LabelContext } from './labels';
 
 type PersonName = (userId: string | null | undefined) => string | null;
@@ -347,6 +349,9 @@ export function AbortOutcome({ abort, item, personName }: { abort: AbortRecord; 
 export interface EndItemProps {
   projectId: string;
   item: CommitmentItem;
+  matrix: CommitmentMatrix;
+  labels: LabelContext;
+  personName: PersonName;
   onChanged: () => void;
 }
 
@@ -360,15 +365,14 @@ type Ending = 'abort' | 'transfer' | null;
  * caller's other projects when it lists them. A project it lists but
  * refuses stays visible with the reason.
  */
-export function EndItem({ projectId, item, onChanged }: EndItemProps) {
+export function EndItem({ projectId, item, matrix, labels, personName, onChanged }: EndItemProps) {
   const { t } = useTranslation();
   const [ending, setEnding] = useState<Ending>(null);
   const [reason, setReason] = useState('');
   const [targetProject, setTargetProject] = useState('');
   const [target, setTarget] = useState('');
-  // Whether the loss is above every tier is the server's answer to the
-  // request itself: an abort has no preview. The reference is asked for once
-  // the server said so, and is not sent before.
+  // Whether the loss is above every tier is what the preview says. A refusal
+  // of the request itself can say it too, when the figures moved in between.
   const [outside, setOutside] = useState(false);
   const [externalRef, setExternalRef] = useState('');
   const abortV = itemVerdict(item, 'request_abort');
@@ -387,10 +391,24 @@ export function EndItem({ projectId, item, onChanged }: EndItemProps) {
   const refused = projects.find((p) => !p.can.allowed);
   const candidates = chosen?.can.allowed ? chosen.items : [];
 
+  // What the abort would be decided on today: the loss, the tier and who
+  // holds it. Asked when the form opens, never kept from an earlier look.
+  const previewQ = useQuery({
+    queryKey: commitmentKeys.abortPreview(projectId, item.id),
+    queryFn: () => previewAbort(projectId, item.id),
+    enabled: ending === 'abort' && !abortV,
+    retry: false,
+    staleTime: 0,
+    gcTime: 0,
+  });
+  const preview = ending === 'abort' && previewQ.isSuccess ? previewQ.data : null;
+  const needsRef = ending === 'abort' && (outside || !!preview?.external_approval_required);
+  const unknownPerson = t('commitment.unknown_person', { defaultValue: 'Project member' });
+
   const run = useMutation({
     mutationFn: (): Promise<unknown> =>
       ending === 'abort'
-        ? requestAbort(projectId, item.id, reason.trim(), outside ? externalRef.trim() : '')
+        ? requestAbort(projectId, item.id, reason.trim(), needsRef ? externalRef.trim() : '')
         : transferItem(projectId, item.id, {
             target_item_id: target,
             reason: reason.trim(),
@@ -418,8 +436,11 @@ export function EndItem({ projectId, item, onChanged }: EndItemProps) {
     setExternalRef('');
     setEnding(next);
   };
-  const needsRef = ending === 'abort' && outside;
-  const ready = !!reason.trim() && (ending !== 'transfer' || !!target) && (!needsRef || !!externalRef.trim());
+  const ready =
+    !!reason.trim() &&
+    (ending !== 'transfer' || !!target) &&
+    (ending !== 'abort' || !!preview) &&
+    (!needsRef || !!externalRef.trim());
 
   return (
     <section data-testid="end-item">
@@ -445,6 +466,60 @@ export function EndItem({ projectId, item, onChanged }: EndItemProps) {
       {ending && (
         <div className="space-y-3 rounded-lg bg-surface-secondary p-3" data-testid="end-form">
           {run.isError && <RefusalBox message={refusalText(t, run.error)} />}
+          {ending === 'abort' && previewQ.isLoading && (
+            <p className="text-sm text-content-tertiary" data-testid="abort-preview-loading">
+              {t('commitment.end.preview_loading', { defaultValue: 'Working out who decides the abort' })}
+            </p>
+          )}
+          {ending === 'abort' && previewQ.isError && (
+            <RefusalBox message={refusalText(t, previewQ.error)}>
+              <Button size="sm" variant="ghost" onClick={() => previewQ.refetch()} data-testid="abort-preview-retry">
+                {t('common.retry', { defaultValue: 'Retry' })}
+              </Button>
+            </RefusalBox>
+          )}
+          {preview && (
+            <dl className="space-y-1 text-sm" data-testid="abort-preview">
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <dt className="text-content-secondary">
+                  {t('commitment.end.residual_loss', { defaultValue: 'Residual loss if stopped today' })}
+                </dt>
+                <dd className="font-medium tabular-nums text-content-primary" data-testid="abort-preview-loss">
+                  <Amount value={preview.residual_loss} currency={preview.schedule_currency} />
+                </dd>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <dt className="text-content-secondary">
+                  {t('commitment.release.required_tier', { defaultValue: 'Required tier' })}
+                </dt>
+                <dd className="font-medium text-content-primary" data-testid="abort-preview-tier">
+                  {preview.escalate_outside
+                    ? t('commitment.release.escalate_outside', {
+                        defaultValue: 'Above every tier: consent outside the schedule is required',
+                      })
+                    : codeName(
+                        labels,
+                        'tier',
+                        preview.required_tier,
+                        matrix.tiers.find((x) => x.code === preview.required_tier)?.name,
+                      )}
+                </dd>
+              </div>
+              {!preview.escalate_outside && (
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <dt className="text-content-secondary">{t('commitment.release.approvers', { defaultValue: 'Decided by' })}</dt>
+                  <dd className="font-medium text-content-primary" data-testid="abort-preview-approvers">
+                    {preview.approvers.length > 0
+                      ? approverNames(preview.approvers, personName, unknownPerson)
+                      : t('commitment.release.no_route', {
+                          defaultValue:
+                            'Nobody is assigned to this tier yet. A manager assigns the approvers on the Approval setup tab.',
+                        })}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          )}
           {ending === 'transfer' && targetsQ.isLoading && (
             <p className="text-sm text-content-tertiary" data-testid="transfer-loading">
               {t('commitment.end.targets_loading', { defaultValue: 'Looking up where this item can go' })}

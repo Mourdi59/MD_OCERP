@@ -304,6 +304,12 @@ export interface CommitmentItem {
   committed_reason: string | null;
   release_ceiling_with_tolerance: string | null;
   over_release: boolean;
+  /** Released less the expired part nothing is bound under; null when the bound sum has no exchange rate. */
+  released_in_force?: string | null;
+  /** A release passed its validity date and took something away from what is in force. */
+  release_expired?: boolean;
+  /** The passed validity dates, earliest first. */
+  expired_release_dates?: string[];
   /** A tier code, or `escalate_outside` when the amount is above every tier. */
   required_tier_for_planned: string | null;
   latest_decision_date: string | null;
@@ -490,6 +496,13 @@ export interface ReleasePreview {
   approvers: string[];
   schedule: string;
   open_preconditions: Precondition[];
+}
+
+/** What an abort request would be judged on today. The tier follows the residual loss, not an amount typed here. */
+export interface AbortPreview extends Omit<ReleasePreview, 'released_before' | 'group_released'> {
+  residual_loss: string;
+  external_approval_required: boolean;
+  exposure: Exposure;
 }
 
 /** What the decider is shown, frozen when the request was made. */
@@ -685,6 +698,8 @@ export const commitmentKeys = {
   contractLines: (projectId: string, contractId: string) =>
     ['commitment-release', projectId, 'contract-lines', contractId] as const,
   references: (projectId: string) => ['commitment-release', projectId, 'references'] as const,
+  abortPreview: (projectId: string, itemId: string) =>
+    ['commitment-release', projectId, 'abort-preview', itemId] as const,
   transferTargets: (projectId: string, itemId: string) =>
     ['commitment-release', projectId, 'transfer-targets', itemId] as const,
   schedules: ['commitment-release', 'schedules'] as const,
@@ -809,9 +824,13 @@ export function decideRelease(projectId: string, itemId: string, body: DecisionI
 }
 
 /** Ask to stop the item. It is decided like a release, on the tier its residual loss calls for. */
+export function previewAbort(projectId: string, itemId: string): Promise<AbortPreview> {
+  return apiGet<AbortPreview>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/abort/preview`);
+}
+
 /**
- * Ask to stop the item. The external reference travels only after the server
- * said the loss is above every tier; on any other loss it refuses one.
+ * Ask to stop the item. The external reference travels only when the loss is
+ * above every tier, as the preview says; on any other loss the server refuses one.
  */
 export function requestAbort(projectId: string, itemId: string, reason: string, externalRef = ''): Promise<Release> {
   return apiPost<Release>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/abort`, {

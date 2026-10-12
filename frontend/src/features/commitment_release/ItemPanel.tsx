@@ -293,6 +293,8 @@ export function ItemPanel({
   const withdrawV = itemVerdict(item, 'withdraw');
   const pending = (historyQ.data ?? []).find((r) => r.outcome === 'pending') ?? null;
   const ended = item.status === 'aborted' || item.status === 'transferred';
+  // The latest validity date that has passed, when the server names one.
+  const expiredOn = item.expired_release_dates?.[item.expired_release_dates.length - 1] ?? null;
   // The server names the item that took over. Inside this project it opens
   // here; in another project it is a link, and only when the reader may open
   // that project. Without the names nothing is linked.
@@ -487,6 +489,23 @@ export function ItemPanel({
           </span>
         </div>
       )}
+      {item.release_expired && (
+        <div role="status" className="flex items-start gap-2 rounded-lg border border-semantic-warning/40 bg-semantic-warning-bg px-4 py-2 text-sm" data-testid="item-release-expired">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0 text-semantic-warning" aria-hidden />
+          <span className="text-content-primary">
+            {expiredOn
+              ? t('commitment.item.release_expired_notice', {
+                  defaultValue:
+                    'A release of this item was valid until {{date}}. What is bound under it stays bound, but nothing new can be bound until a new release is requested.',
+                  date: fmtDate(expiredOn),
+                })
+              : t('commitment.item.release_expired_notice_undated', {
+                  defaultValue:
+                    'A release of this item has passed its validity date. What is bound under it stays bound, but nothing new can be bound until a new release is requested.',
+                })}
+          </span>
+        </div>
+      )}
       {item.deferred && item.deferred_reason && (
         <p className="text-sm text-content-secondary" data-testid="item-deferred-reason">
           {t('commitment.item.deferred_because', { defaultValue: 'Deferred because: {{reason}}', reason: item.deferred_reason })}
@@ -514,6 +533,13 @@ export function ItemPanel({
         <Figure label={t('commitment.grid.released', { defaultValue: 'Released' })}>
           <Amount value={item.released} currency={item.schedule_currency} />
         </Figure>
+        {item.release_expired && (
+          <Figure label={t('commitment.item.released_in_force', { defaultValue: 'Of that still in force' })}>
+            <span data-testid="item-released-in-force">
+              <Amount value={item.released_in_force} currency={item.schedule_currency} />
+            </span>
+          </Figure>
+        )}
         <Figure
           label={t('commitment.grid.committed', { defaultValue: 'Committed' })}
           hint={
@@ -679,7 +705,9 @@ export function ItemPanel({
         )}
       </section>
 
-      {!ended && <EndItem projectId={projectId} item={item} onChanged={onChanged} />}
+      {!ended && (
+        <EndItem projectId={projectId} item={item} matrix={matrix} labels={labels} personName={personName} onChanged={onChanged} />
+      )}
 
       {releaseOpen && (
         <ReleaseDialog

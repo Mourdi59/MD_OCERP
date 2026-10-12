@@ -466,6 +466,11 @@ describe('what would happen', () => {
     fireEvent.click(screen.getByTestId('check-send'));
   };
 
+  it('a release past its date has its own sentence, not the one for an amount that does not fit', () => {
+    expect(enT('commitment.check.reason.release_expired')).not.toBe(enT('commitment.check.reason.commitment_not_released'));
+    expect(enT('commitment.check.reason.release_expired')).toContain('validity date');
+  });
+
   it('tells the three kinds of "ok" and the two refusals apart', () => {
     expect(checkOutcome({ result: 'ok', item_id: 'i1' })).toBe('fits');
     expect(checkOutcome({ result: 'ok', item_id: null })).toBe('unchecked');
@@ -579,7 +584,9 @@ describe('what would happen', () => {
 describe('hand-over targets', () => {
   const end = (over: Parameters<typeof item>[0] = {}) => {
     const onChanged = vi.fn();
-    wrap(<EndItem projectId="p1" item={item(over)} onChanged={onChanged} />);
+    wrap(
+      <EndItem projectId="p1" item={item(over)} matrix={matrix()} labels={labels} personName={names} onChanged={onChanged} />,
+    );
     return onChanged;
   };
   const openTransfer = () => fireEvent.click(screen.getByTestId('item-transfer'));

@@ -31,6 +31,7 @@ vi.mock('../api', async (importOriginal) => {
     withdrawRelease: vi.fn(),
     decideRelease: vi.fn(),
     requestAbort: vi.fn(),
+    previewAbort: vi.fn(),
     transferItem: vi.fn(),
     listTransferTargets: vi.fn(),
     getReferences: vi.fn(),
@@ -47,6 +48,7 @@ import type { LabelContext } from '../labels';
 import { enT } from './i18nMock';
 import {
   READER_CAN,
+  abortPreview,
   can,
   exposure,
   item,
@@ -75,6 +77,7 @@ beforeEach(() => {
   mocked.listAbortTerms.mockResolvedValue(page([]));
   mocked.listAbortBases.mockResolvedValue(page([]));
   mocked.listTransferTargets.mockResolvedValue([]);
+  mocked.previewAbort.mockResolvedValue(abortPreview());
   mocked.getReferences.mockResolvedValue({
     has_model: false,
     gates: [],
@@ -549,6 +552,13 @@ describe('ItemPanel', () => {
     mocked.requestAbort.mockResolvedValue(release({ purpose: 'abort' }));
     const { onChanged } = panel();
     fireEvent.click(screen.getByTestId('item-abort'));
+    // Who decides is shown before anything is sent: the loss, the tier and the person.
+    await screen.findByTestId('abort-preview');
+    expect(mocked.previewAbort).toHaveBeenCalledWith('p1', 'i1');
+    expect(screen.getByTestId('abort-preview-loss').textContent).toMatch(/240[,.\s]?000/);
+    expect(screen.getByTestId('abort-preview-tier').textContent).toBe(enT('commitment.tier.project_manager'));
+    expect(screen.getByTestId('abort-preview-approvers').textContent).toBe('Dana Weber');
+    expect(document.getElementById('end-external-ref')).toBeNull();
     expect(screen.getByTestId('end-send')).toBeDisabled();
     fireEvent.change(document.getElementById('end-reason')!, { target: { value: ' Client cancelled the wing ' } });
     fireEvent.click(screen.getByTestId('end-send'));
@@ -556,7 +566,39 @@ describe('ItemPanel', () => {
     expect(mocked.requestAbort).toHaveBeenCalledWith('p1', 'i1', 'Client cancelled the wing', '');
   });
 
-  it('an abort above every tier asks for the external reference once the server says so, and sends it', async () => {
+  it('an abort cannot be sent while who decides it is not known', async () => {
+    let answer: (value: ReturnType<typeof abortPreview>) => void = () => undefined;
+    mocked.previewAbort.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    panel();
+    fireEvent.click(screen.getByTestId('item-abort'));
+    fireEvent.change(document.getElementById('end-reason')!, { target: { value: 'Stop' } });
+    expect(screen.getByTestId('abort-preview-loading')).toBeInTheDocument();
+    expect(screen.getByTestId('end-send')).toBeDisabled();
+    answer(abortPreview());
+    await screen.findByTestId('abort-preview');
+    expect(screen.getByTestId('end-send')).not.toBeDisabled();
+  });
+
+  it('an abort above every tier asks for the external reference before the click, and sends it', async () => {
+    mocked.previewAbort.mockResolvedValue(
+      abortPreview({ escalate_outside: true, external_approval_required: true, required_tier: null, approvers: [] }),
+    );
+    mocked.requestAbort.mockResolvedValue(release({ purpose: 'abort' }));
+    const { onChanged } = panel();
+    fireEvent.click(screen.getByTestId('item-abort'));
+    await screen.findByTestId('abort-preview');
+    expect(screen.getByTestId('abort-preview-tier').textContent).toBe(enT('commitment.release.escalate_outside'));
+    expect(screen.queryByTestId('abort-preview-approvers')).toBeNull();
+    fireEvent.change(document.getElementById('end-reason')!, { target: { value: 'Client cancelled the wing' } });
+    expect(screen.getByTestId('end-send')).toBeDisabled();
+    fireEvent.change(document.getElementById('end-external-ref')!, { target: { value: ' Board 2026-14 ' } });
+    fireEvent.click(screen.getByTestId('end-send'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(mocked.requestAbort).toHaveBeenCalledTimes(1);
+    expect(mocked.requestAbort).toHaveBeenCalledWith('p1', 'i1', 'Client cancelled the wing', 'Board 2026-14');
+  });
+
+  it('a refusal of the request can still ask for the reference, when the loss moved after the preview', async () => {
     mocked.requestAbort.mockRejectedValueOnce(
       new ApiError(422, 'Unprocessable', {
         detail: { code: 'external_approval_required', message: 'The amount is above every tier' },
@@ -565,6 +607,7 @@ describe('ItemPanel', () => {
     mocked.requestAbort.mockResolvedValueOnce(release({ purpose: 'abort' }));
     const { onChanged } = panel();
     fireEvent.click(screen.getByTestId('item-abort'));
+    await screen.findByTestId('abort-preview');
     expect(document.getElementById('end-external-ref')).toBeNull();
     fireEvent.change(document.getElementById('end-reason')!, { target: { value: 'Client cancelled the wing' } });
     fireEvent.click(screen.getByTestId('end-send'));
@@ -579,15 +622,18 @@ describe('ItemPanel', () => {
   });
 
   it('an abort the server cannot size is refused in words that say what to do', async () => {
-    mocked.requestAbort.mockRejectedValue(
+    mocked.previewAbort.mockRejectedValue(
       new ApiError(422, 'Unprocessable', { detail: { code: 'abort_exposure_unknown', message: 'unknown' } }),
     );
     panel();
     fireEvent.click(screen.getByTestId('item-abort'));
     fireEvent.change(document.getElementById('end-reason')!, { target: { value: 'Stop' } });
-    fireEvent.click(screen.getByTestId('end-send'));
+    // It is said when the form opens, not after a click that could only be refused.
     const alert = await within(screen.getByTestId('end-form')).findByRole('alert');
     expect(alert.textContent).toContain('Complete the abort terms first');
+    expect(screen.getByTestId('abort-preview-retry')).toBeInTheDocument();
+    expect(screen.getByTestId('end-send')).toBeDisabled();
+    expect(mocked.requestAbort).not.toHaveBeenCalled();
   });
 
   const here = (items: Array<{ id: string; code: string; title: string }>) => [
@@ -699,6 +745,26 @@ describe('ItemPanel', () => {
     );
     fireEvent.click(screen.getByTestId('item-successor'));
     expect(onOpenItem).toHaveBeenCalledWith('i9');
+  });
+
+  it('a release past its validity date is said on the item, with the date and what is still in force', () => {
+    panel({
+      status: 'released',
+      released: '500000.00',
+      released_in_force: '200000.00',
+      release_expired: true,
+      expired_release_dates: ['2026-08-31', '2026-09-30'],
+    });
+    const notice = screen.getByTestId('item-release-expired');
+    expect(notice.textContent).toContain('nothing new can be bound');
+    expect(notice.textContent).not.toContain('{{date}}');
+    expect(screen.getByTestId('item-released-in-force').textContent).toMatch(/200[,.\s]?000/);
+  });
+
+  it('an item whose releases are all in date shows neither the notice nor a second released figure', () => {
+    panel({ status: 'released', released: '500000.00', released_in_force: '500000.00', release_expired: false });
+    expect(screen.queryByTestId('item-release-expired')).toBeNull();
+    expect(screen.queryByTestId('item-released-in-force')).toBeNull();
   });
 
   it('warns when more is bound than released, with the difference', () => {

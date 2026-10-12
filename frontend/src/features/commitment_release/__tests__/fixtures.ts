@@ -5,6 +5,7 @@
 // object so a test names only the fields its case is about.
 
 import type {
+  AbortPreview,
   CanFlag,
   CommitmentItem,
   CommitmentMatrix,
@@ -262,6 +263,21 @@ export function preview(over: Partial<ReleasePreview> = {}): ReleasePreview {
     approvers: ['u-owner'],
     schedule: 'shipped:neutral@1',
     open_preconditions: [],
+    ...over,
+  };
+}
+
+/** What an abort would be decided on: a loss the project manager decides, unless a case says otherwise. */
+export function abortPreview(over: Partial<AbortPreview> = {}): AbortPreview {
+  const { released_before: _before, group_released: _group, ...evaluation } = preview();
+  return {
+    ...evaluation,
+    amount: '240000.00',
+    amount_in_schedule_currency: '240000.00',
+    evaluated_amount: '240000.00',
+    residual_loss: '240000.00',
+    external_approval_required: false,
+    exposure: nothingBound(),
     ...over,
   };
 }

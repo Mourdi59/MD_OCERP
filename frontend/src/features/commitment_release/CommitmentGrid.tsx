@@ -181,6 +181,11 @@ export function CommitmentGrid({ items, totals, matrix, labels, onOpenItem }: Co
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       <Amount value={item.released} currency={item.schedule_currency} />
+                      {item.release_expired && (
+                        <p className="text-xs font-normal text-semantic-warning" data-testid="grid-release-expired">
+                          {t('commitment.grid.release_expired', { defaultValue: 'Release expired' })}
+                        </p>
+                      )}
                     </td>
                     <td className={clsx('px-3 py-2 text-right tabular-nums', item.over_release && 'font-semibold text-semantic-error')}>
                       <Amount value={item.committed} currency={item.schedule_currency} />
