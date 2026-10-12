@@ -26,15 +26,16 @@ The tag vocabulary lives in :mod:`catalogue_kinds` (``register_host_subject``,
 
 from __future__ import annotations
 
+import logging
 import uuid
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.project_governance.catalogue import Catalogue, label_of
+from app.modules.project_governance.catalogue import Catalogue, InvalidCatalogueError, label_of
 from app.modules.project_governance.catalogue_kinds import (
     host_subjects,
     phase_capabilities,
@@ -43,11 +44,20 @@ from app.modules.project_governance.catalogue_kinds import (
 )
 from app.modules.project_governance.catalogue_packs import CataloguePin
 from app.modules.project_governance.catalogue_store import default_catalogue_pin, resolve_catalogue
+from app.modules.project_governance.errors import GovernanceError
 from app.modules.project_governance.repository import GovernanceRepository
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "AreaView",
+    "area_views",
     "CataloguePin",
+    "change_request_views",
+    "condition_views",
+    "decision_views",
+    "document_views",
+    "gate_views",
     "ChangeRequestView",
     "ConditionView",
     "DecisionView",
@@ -107,9 +117,23 @@ async def project_catalogue(session: AsyncSession, project_id: uuid.UUID) -> Cat
     model = await GovernanceRepository(session).get_model(project_id)
     if model is None:
         return None
-    return await resolve_catalogue(
-        session, model.catalogue_source, model.catalogue_id, model.catalogue_version, from_pin=True
-    )
+    try:
+        return await resolve_catalogue(
+            session, model.catalogue_source, model.catalogue_id, model.catalogue_version, from_pin=True
+        )
+    except (GovernanceError, InvalidCatalogueError) as exc:
+        # A pack that was removed, a pack file that no longer loads, a stored version the rules
+        # refuse today. Every reader of this port treats None as "no model", which is what the
+        # project has until somebody repairs the pin; raising would be a 500 in each of them.
+        logger.warning(
+            "project %s pins %s:%s@%s, which does not resolve: %s",
+            project_id,
+            model.catalogue_source,
+            model.catalogue_id,
+            model.catalogue_version,
+            exc,
+        )
+        return None
 
 
 async def host_for(session: AsyncSession, project_id: uuid.UUID, subject: str) -> Host | None:
@@ -340,7 +364,8 @@ def gate_views(catalogue: Any, rows: Any, target_dates: Mapping[uuid.UUID, Any] 
             from_phase=g.from_phase,
             to_phase=g.to_phase,
             last_outcome=g.last_outcome or "",
-            target_date=_day(planned[g.id] if g.id in planned else getattr(g, "target_date", None)),
+            # The linked activity's day; the gate's own when it is not linked or the activity has none.
+            target_date=_day(planned.get(g.id) or getattr(g, "target_date", None)),
         )
         for index, g in enumerate(ordered, start=1)
     )
@@ -482,6 +507,22 @@ def change_request_views(rows: Any) -> tuple[ChangeRequestView, ...]:
     )
 
 
+def rows_of_gates(rows: Iterable[Any], current: Any, *, asked: uuid.UUID | None = None) -> list[Any]:
+    """Rows of the gates of the current phase model, or of the one gate that was asked for.
+
+    Without ``asked``, rows of a gate the project left with its earlier model
+    are dropped, as :func:`project_gates` drops the gate itself. A caller that
+    names a gate gets that gate's rows, historic or not.
+    """
+    if asked is not None:
+        return [r for r in rows if r.gate_id == asked]
+    return [r for r in rows if r.gate_id in current]
+
+
+async def _current_gate_ids(repo: GovernanceRepository, project_id: uuid.UUID) -> frozenset[uuid.UUID]:
+    return frozenset(g.id for g in await repo.list_gates(project_id))
+
+
 async def project_gate_decisions(
     session: AsyncSession, project_id: uuid.UUID, gate_id: uuid.UUID | None = None
 ) -> tuple[DecisionView, ...]:
@@ -489,7 +530,9 @@ async def project_gate_decisions(
 
     A gate id of another project lists nothing: the project filter always applies.
     """
-    return decision_views(await GovernanceRepository(session).list_decisions(project_id, gate_id))
+    repo = GovernanceRepository(session)
+    rows = await repo.list_decisions(project_id, gate_id)
+    return decision_views(rows_of_gates(rows, await _current_gate_ids(repo, project_id), asked=gate_id))
 
 
 async def project_conditions(
@@ -498,9 +541,9 @@ async def project_conditions(
     """Conditions of one gate, or of the whole project, with their status as of the server's today."""
     from app.modules.project_governance.service import server_today
 
-    rows, _ = await GovernanceRepository(session).list_conditions(project_id)
-    if gate_id is not None:
-        rows = [c for c in rows if c.gate_id == gate_id]
+    repo = GovernanceRepository(session)
+    rows, _ = await repo.list_conditions(project_id)
+    rows = rows_of_gates(rows, await _current_gate_ids(repo, project_id), asked=gate_id)
     return condition_views(rows, server_today())
 
 

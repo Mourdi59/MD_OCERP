@@ -271,8 +271,10 @@ class CatalogueStore:
         for ref in catalogue_packs.active_pack_catalogues(kind):
             try:
                 c = catalogue_packs.load_pack_catalogue(spec, ref)
-            except InvalidCatalogueError:
-                # A broken pack file is not offered; pinning it by hand names the fault.
+            except (InvalidCatalogueError, GovernanceError, OSError) as exc:
+                # A pack file that does not load is not offered, and never takes the rest of the
+                # list down with it; pinning it by hand names the fault.
+                logger.warning("pack catalogue %s:%s is not offered: %s", ref.slug, ref.id, exc)
                 continue
             items.append(
                 {

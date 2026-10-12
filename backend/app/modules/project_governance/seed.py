@@ -329,5 +329,6 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
                 )
             seeded += 1
         except Exception:
-            logger.warning("governance demo seed skipped for %s", pid, exc_info=True)
+            # Kept from stopping the other projects, but loud: a silent skip reads as "0 projects".
+            logger.exception("governance demo seed failed for %s", pid)
     return {"projects": seeded}

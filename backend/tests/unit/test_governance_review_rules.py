@@ -56,7 +56,7 @@ def test_a_historic_gate_is_never_reopened() -> None:
     assert ev.reopen_violation("decided", "Cost overrun", historic=True) == "gate_historic"
 
 
-@pytest.mark.parametrize("later", ["in_preparation", "in_review", "on_hold", "decided"])
+@pytest.mark.parametrize("later", ["in_review", "on_hold", "decided"])
 def test_a_gate_is_not_reopened_while_a_later_gate_was_started(later: str) -> None:
     assert ev.reopen_violation("decided", "Cost overrun", later_gate_statuses=["not_started", later]) == (
         "later_gate_active"

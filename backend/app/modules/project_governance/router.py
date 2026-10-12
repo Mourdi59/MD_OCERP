@@ -474,9 +474,6 @@ async def update_area(
 ) -> AreaOut:
     await verify_project_access(project_id, user_id, session)
     changes = {k: getattr(body, k) for k in body.model_fields_set}
-    for k in ("applicable", "na_rationale", "name_override"):
-        if k in changes and changes[k] is None:
-            changes.pop(k)
     area = await _run(
         GovernanceService(session).update_area(project_id, area_id, changes=changes, actor_id=_uid(user_id))
     )
