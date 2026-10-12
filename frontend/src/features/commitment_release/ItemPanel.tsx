@@ -6,12 +6,13 @@
 // that was asked for, and what an abort would cost today.
 //
 // The one primary action is "Request release". Everything else (withdraw,
-// hold, defer, edit) is secondary and says why when it is not available.
+// hold, defer, edit, abort, hand over) is secondary. Every button reads the
+// server's flag for it and says why when it is not available.
 
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
-import { AlertTriangle, ArrowLeft, Clock, Pencil } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Pencil } from 'lucide-react';
 import clsx from 'clsx';
 
 import { Badge } from '@/shared/ui/Badge';
@@ -30,7 +31,7 @@ import {
   type Exposure,
   type Release,
 } from './api';
-import { canEditItem, canHold, canRequestRelease, canWithdraw, type Viewer } from './access';
+import { deferVerdict, holdVerdict, itemVerdict } from './access';
 import {
   Amount,
   FIELD_CLASS,
@@ -42,6 +43,7 @@ import {
   refusalText,
 } from './CommitmentBits';
 import { useAbortBases, useAbortTerms, useReleaseHistory } from './hooks';
+import { AbortOutcome, EndItem, PendingRequest } from './ItemDecisions';
 import { ItemDialog } from './ItemDialog';
 import { LinkList, PreconditionList } from './ItemParts';
 import {
@@ -50,9 +52,11 @@ import {
   EXPOSURE_REASON,
   ITEM_STATUS,
   RELEASE_OUTCOME,
+  RELEASE_PURPOSE,
   TRANSFERABLE,
   catalogueName,
   codeName,
+  rationaleText,
   vocab,
   type LabelContext,
 } from './labels';
@@ -63,10 +67,12 @@ export interface ItemPanelProps {
   projectId: string;
   item: CommitmentItem;
   matrix: CommitmentMatrix;
-  viewer: Viewer;
+  /** The other items of the project, for a hand-over and to name the item this one went to. */
+  otherItems: ReadonlyArray<Pick<CommitmentItem, 'id' | 'code' | 'title' | 'status'>>;
   labels: LabelContext;
   personName: (userId: string | null | undefined) => string | null;
   onBack: () => void;
+  onOpenItem: (itemId: string) => void;
   onChanged: () => void;
 }
 
@@ -89,7 +95,7 @@ export function ExposureBlock({ exposure, labels }: { exposure: Exposure; labels
   if (exposure.note === 'nothing_committed') {
     return (
       <p className="text-sm text-content-secondary" data-testid="exposure-nothing">
-        {t('commitment.exposure.nothing_committed', {
+        {t('commitment.exposure.nothing_committed_item', {
           defaultValue: 'Nothing is committed yet, so an abort today costs nothing on this item.',
         })}
       </p>
@@ -183,6 +189,7 @@ export function ReleaseHistory({
         <thead>
           <tr className="border-b border-border-light text-left text-xs text-content-tertiary">
             <th className="py-1.5 pr-3 font-medium">{t('commitment.history.requested', { defaultValue: 'Requested' })}</th>
+            <th className="py-1.5 pr-3 font-medium">{t('commitment.history.purpose', { defaultValue: 'Asked for' })}</th>
             <th className="py-1.5 pr-3 text-right font-medium">{t('commitment.release.amount', { defaultValue: 'Amount' })}</th>
             <th className="py-1.5 pr-3 font-medium">{t('commitment.grid.required_tier', { defaultValue: 'Required tier' })}</th>
             <th className="py-1.5 pr-3 font-medium">{t('commitment.history.outcome', { defaultValue: 'Decision' })}</th>
@@ -195,6 +202,9 @@ export function ReleaseHistory({
               <td className="py-2 pr-3 text-content-secondary">
                 <p>{fmtDate(r.created_at)}</p>
                 <p className="text-xs text-content-tertiary">{personName(r.requested_by) ?? unknownPerson}</p>
+              </td>
+              <td className="py-2 pr-3 text-content-secondary" data-testid="history-purpose">
+                {vocab(t, RELEASE_PURPOSE, r.purpose ?? 'release')}
               </td>
               <td className="py-2 pr-3 text-right tabular-nums text-content-primary">
                 <Amount value={r.requested_amount} currency={r.currency} />
@@ -218,7 +228,7 @@ export function ReleaseHistory({
               </td>
               <td className="py-2 text-content-secondary">
                 {r.tranche_note && <p>{r.tranche_note}</p>}
-                {r.rationale && <p className="text-xs text-content-tertiary">{r.rationale}</p>}
+                {r.rationale && <p className="text-xs text-content-tertiary">{rationaleText(t, r.rationale)}</p>}
                 {r.conditions && <p className="text-xs text-content-tertiary">{r.conditions}</p>}
                 {r.external_approval_ref && (
                   <p className="text-xs text-content-tertiary">
@@ -237,7 +247,17 @@ export function ReleaseHistory({
   );
 }
 
-export function ItemPanel({ projectId, item, matrix, viewer, labels, personName, onBack, onChanged }: ItemPanelProps) {
+export function ItemPanel({
+  projectId,
+  item,
+  matrix,
+  otherItems,
+  labels,
+  personName,
+  onBack,
+  onOpenItem,
+  onChanged,
+}: ItemPanelProps) {
   const { t } = useTranslation();
   const [releaseOpen, setReleaseOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -250,10 +270,18 @@ export function ItemPanel({ projectId, item, matrix, viewer, labels, personName,
   const basesQ = useAbortBases(termsOpen);
   const itemTerms = (termsQ.data ?? []).find((x) => x.scope === 'item') ?? null;
 
-  const releaseV = canRequestRelease(viewer, item);
-  const editV = canEditItem(viewer, item);
-  const holdV = canHold(viewer, item);
-  const withdrawV = canWithdraw(viewer, item);
+  const releaseV = itemVerdict(item, 'request_release');
+  const editV = itemVerdict(item, 'edit');
+  const linkV = itemVerdict(item, 'link');
+  const holdV = holdVerdict(item);
+  const deferV = deferVerdict(item);
+  const withdrawV = itemVerdict(item, 'withdraw');
+  const pending = (historyQ.data ?? []).find((r) => r.outcome === 'pending') ?? null;
+  const ended = item.status === 'aborted' || item.status === 'transferred';
+  const successor = item.transferred_to_item_id
+    ? otherItems.find((x) => x.id === item.transferred_to_item_id) ?? null
+    : null;
+  const targets = otherItems.filter((x) => x.status !== 'aborted' && x.status !== 'transferred');
   const remaining = remainingToRelease(item);
   const over = overRelease(item);
   const onHold = item.status === 'on_hold';
@@ -365,13 +393,30 @@ export function ItemPanel({ projectId, item, matrix, viewer, labels, personName,
       </div>
 
       {item.pending_release_id && (
-        <div role="status" className="flex items-start gap-2 rounded-lg border border-border-light bg-surface-secondary px-4 py-2 text-sm" data-testid="item-pending">
-          <Clock size={16} className="mt-0.5 shrink-0 text-content-secondary" aria-hidden />
+        <PendingRequest
+          projectId={projectId}
+          item={item}
+          pending={pending}
+          matrix={matrix}
+          labels={labels}
+          personName={personName}
+          onChanged={onChanged}
+        />
+      )}
+      {item.abort && <AbortOutcome abort={item.abort} item={item} personName={personName} />}
+      {item.status === 'transferred' && (
+        <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-surface-secondary px-4 py-2 text-sm" data-testid="item-transferred">
+          <ArrowRight size={16} className="shrink-0 text-content-secondary" aria-hidden />
           <span className="text-content-primary">
-            {t('commitment.item.pending_notice', {
-              defaultValue: 'A release request is waiting for a decision. The approvers named on the request decide it in their approvals inbox.',
+            {t('commitment.item.transferred_notice', {
+              defaultValue: 'This item was handed over. Its linked documents now count in the item that took over.',
             })}
           </span>
+          {successor && (
+            <Button size="sm" variant="ghost" onClick={() => onOpenItem(successor.id)} data-testid="item-successor">
+              {t('commitment.end.target_option', { defaultValue: '{{code}} {{title}}', code: successor.code, title: successor.title })}
+            </Button>
+          )}
         </div>
       )}
       {item.decision_overdue && (
@@ -454,11 +499,11 @@ export function ItemPanel({ projectId, item, matrix, viewer, labels, personName,
           </ReasonedButton>
         )}
         {item.deferred ? (
-          <ReasonedButton size="sm" variant="ghost" verdict={editV} loading={undefer.isPending} onClick={() => undefer.mutate()}>
+          <ReasonedButton size="sm" variant="ghost" verdict={deferV} loading={undefer.isPending} onClick={() => undefer.mutate()}>
             {t('commitment.item.undefer', { defaultValue: 'End deferral' })}
           </ReasonedButton>
         ) : (
-          <ReasonedButton size="sm" variant="ghost" verdict={editV} onClick={() => start('defer')} data-testid="item-defer">
+          <ReasonedButton size="sm" variant="ghost" verdict={deferV} onClick={() => start('defer')} data-testid="item-defer">
             {t('commitment.item.defer', { defaultValue: 'Defer decision' })}
           </ReasonedButton>
         )}
@@ -509,7 +554,7 @@ export function ItemPanel({ projectId, item, matrix, viewer, labels, personName,
 
       <div className="grid gap-6 lg:grid-cols-2">
         <PreconditionList projectId={projectId} item={item} editVerdict={editV} personName={personName} onChanged={onChanged} />
-        <LinkList projectId={projectId} item={item} editVerdict={editV} onChanged={onChanged} />
+        <LinkList projectId={projectId} item={item} editVerdict={linkV} onChanged={onChanged} />
       </div>
 
       <section data-testid="history">
@@ -553,6 +598,8 @@ export function ItemPanel({ projectId, item, matrix, viewer, labels, personName,
           </p>
         )}
       </section>
+
+      {!ended && <EndItem projectId={projectId} item={item} targets={targets} onChanged={onChanged} />}
 
       {releaseOpen && (
         <ReleaseDialog

@@ -19,6 +19,15 @@ import { commitmentErrorCode, commitmentErrorMessage, type ItemStatus, type Rele
 import { errorText, type TFn } from './labels';
 
 /**
+ * Why an action is off, in words. A code with a sentence written for the
+ * button uses it; any other code reads as the refusal the server would send.
+ */
+export function reasonText(t: TFn, verdict: string): string {
+  const own = DISABLED_REASON[verdict];
+  return own ? t(own[0], { defaultValue: own[1] }) : errorText(t, verdict);
+}
+
+/**
  * A button that, when it may not be pressed, stays visible and says why.
  *
  * Hiding a control silently leaves the reader guessing whether the feature
@@ -32,14 +41,14 @@ export function ReasonedButton({
 }: ButtonProps & { verdict: Verdict; children: ReactNode }) {
   const { t } = useTranslation();
   const reasonId = useId();
-  const reason = verdict ? DISABLED_REASON[verdict] : null;
+  const reason = verdict ? reasonText(t, verdict) : null;
   return (
     <span className="inline-flex flex-col items-start gap-1">
       <Button
         {...rest}
         disabled={disabled || !!verdict}
         aria-describedby={reason ? reasonId : undefined}
-        title={reason ? t(reason[0], { defaultValue: reason[1] }) : rest.title}
+        title={reason ?? rest.title}
       >
         {children}
       </Button>
@@ -51,7 +60,7 @@ export function ReasonedButton({
           className="inline-flex max-w-xs items-start gap-1 text-2xs text-content-tertiary"
         >
           <Info size={11} className="mt-px shrink-0" aria-hidden />
-          {t(reason[0], { defaultValue: reason[1] })}
+          {reason}
         </span>
       )}
     </span>
@@ -102,6 +111,7 @@ export const OUTCOME_TONE: Record<ReleaseOutcome, BadgeVariant> = {
   released: 'success',
   rejected: 'error',
   withdrawn: 'neutral',
+  aborted: 'error',
 };
 
 export function ToneBadge({ tone, children, testId }: { tone: BadgeVariant; children: ReactNode; testId?: string }) {

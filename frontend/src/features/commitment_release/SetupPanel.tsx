@@ -24,6 +24,7 @@ import {
   evaluateSchedule,
   generateRoutes,
   pinTierRoute,
+  unpinTierRoute,
   putAssignments,
   setMatrix,
   type Assignment,
@@ -319,6 +320,13 @@ export function ApproverSetup({ projectId, matrix, viewer, labels, personName, o
     mutationFn: (v: { tier: string; routeId: string }) => pinTierRoute(projectId, v.tier, v.routeId),
     onSuccess: onSaved,
   });
+  const unpin = useMutation({
+    mutationFn: (tier: string) => unpinTierRoute(projectId, tier),
+    onSuccess: () => {
+      routesQ.refetch();
+      onSaved();
+    },
+  });
 
   const setRow = (role: string, patch: Partial<TierRow>) =>
     setRows((r) => ({ ...(r ?? {}), [role]: { userId: '', deputyUserId: '', validTo: '', ...(r ?? {})[role], ...patch } }));
@@ -339,6 +347,7 @@ export function ApproverSetup({ projectId, matrix, viewer, labels, personName, o
 
       {save.isError && <RefusalBox message={refusalText(t, save.error)} />}
       {pin.isError && <RefusalBox message={refusalText(t, pin.error)} />}
+      {unpin.isError && <RefusalBox message={refusalText(t, unpin.error)} />}
 
       {assignmentsQ.isError ? (
         <ErrorState
@@ -437,7 +446,7 @@ export function ApproverSetup({ projectId, matrix, viewer, labels, personName, o
                       id={`tier-route-${tier.code}`}
                       className={FIELD_CLASS}
                       value={tier.route_id ?? ''}
-                      disabled={pin.isPending}
+                      disabled={pin.isPending || unpin.isPending}
                       onChange={(e) => e.target.value && pin.mutate({ tier: tier.code, routeId: e.target.value })}
                     >
                       <option value="">{t('commitment.setup.route_none', { defaultValue: 'None yet' })}</option>
@@ -447,6 +456,34 @@ export function ApproverSetup({ projectId, matrix, viewer, labels, personName, o
                         </option>
                       ))}
                     </select>
+                    <p className="mt-1 text-xs text-content-tertiary">
+                      {t('commitment.setup.route_hint', {
+                        defaultValue:
+                          'Choosing a route here confirms its steps as they are now. If somebody changes the steps later, requests of this tier are refused until a manager confirms the route again.',
+                      })}
+                    </p>
+                    {tier.route_id && (
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          loading={pin.isPending && pin.variables?.tier === tier.code}
+                          onClick={() => pin.mutate({ tier: tier.code, routeId: tier.route_id as string })}
+                          data-testid="tier-route-confirm"
+                        >
+                          {t('commitment.setup.route_confirm', { defaultValue: 'Confirm the route as it is now' })}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          loading={unpin.isPending && unpin.variables === tier.code}
+                          onClick={() => unpin.mutate(tier.code)}
+                          data-testid="tier-route-reset"
+                        >
+                          {t('commitment.setup.route_reset', { defaultValue: 'Use the generated route again' })}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </li>

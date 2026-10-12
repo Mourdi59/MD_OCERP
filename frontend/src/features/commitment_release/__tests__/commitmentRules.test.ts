@@ -9,13 +9,35 @@ import { describe, expect, it } from 'vitest';
 
 import { ApiError } from '@/shared/lib/api';
 
-import { canAddItem, canEditItem, canHold, canManage, canRequestRelease, canWithdraw, roleAllows } from '../access';
+import {
+  CAN_REASONS,
+  UNAVAILABLE,
+  canAddItem,
+  canManage,
+  deferVerdict,
+  holdVerdict,
+  itemVerdict,
+  roleAllows,
+  verdictOf,
+} from '../access';
+import { reasonText } from '../CommitmentBits';
 import { commitmentErrorCode, commitmentErrorMessage, commitmentViolations } from '../api';
 import { documentLabel, toDocumentOptions } from '../documents';
 import { exposureCounts } from '../ExposurePanel';
-import { catalogueName, codeName, errorText, humanizeCode, vocab, ITEM_STATUS, type LabelContext } from '../labels';
+import {
+  ERROR_TEXT,
+  ITEM_STATUS,
+  catalogueName,
+  codeName,
+  errorText,
+  humanizeCode,
+  rationaleText,
+  vocab,
+  type LabelContext,
+} from '../labels';
 import {
   abortTermsProblems,
+  changedItemInput,
   compareAmounts,
   draftOfItem,
   fractionToPercent,
@@ -36,7 +58,7 @@ import {
   type ReleaseDraft,
 } from '../rules';
 import { untouchedAssignments } from '../SetupPanel';
-import { exposure, item } from './fixtures';
+import { READER_CAN, can, exposure, item } from './fixtures';
 
 const noKeys: LabelContext = { t: (k) => k, language: 'en', exists: () => false };
 
@@ -290,7 +312,52 @@ describe('access', () => {
   const editor = { userId: 'u1', role: 'editor' };
   const manager = { userId: 'u2', role: 'manager' };
   const viewer = { userId: 'u3', role: 'viewer' };
-  const planned = { status: 'planned' as const, pending_release_id: null };
+
+  it('reads the server flag and passes its refusal code through unchanged', () => {
+    expect(verdictOf({ allowed: true, reason: null })).toBeNull();
+    expect(verdictOf({ allowed: false, reason: 'four_eyes_violation' })).toBe('four_eyes_violation');
+    expect(itemVerdict(item({ can: READER_CAN }), 'request_release')).toBe('not_item_owner');
+    expect(itemVerdict(item(), 'request_release')).toBeNull();
+  });
+
+  it('a missing flag denies: an absent answer is not a yes', () => {
+    expect(verdictOf(undefined)).toBe(UNAVAILABLE);
+    expect(verdictOf({ allowed: false, reason: null })).toBe(UNAVAILABLE);
+    expect(itemVerdict(item({ can: {} }), 'edit')).toBe(UNAVAILABLE);
+    expect(deferVerdict(item({ can: {} }))).toBe(UNAVAILABLE);
+  });
+
+  it('never allows what the server refused, whatever the role or state suggests', () => {
+    // A planned item with nothing pending looks requestable; only the flag decides.
+    const refused = item({ status: 'planned', can: can({ request_release: 'invalid_transition' }) });
+    expect(itemVerdict(refused, 'request_release')).toBe('invalid_transition');
+  });
+
+  it('the hold button reads the resume flag while the item is on hold', () => {
+    const flags = can({ hold: 'invalid_transition' });
+    expect(holdVerdict(item({ status: 'on_hold', can: flags }))).toBeNull();
+    expect(holdVerdict(item({ status: 'planned', can: flags }))).toBe('invalid_transition');
+    expect(holdVerdict(item({ can: READER_CAN }))).toBe('manage_required');
+  });
+
+  it('deferring needs a manager and an item that is still planned', () => {
+    expect(deferVerdict(item())).toBeNull();
+    expect(deferVerdict(item({ can: READER_CAN }))).toBe('manage_required');
+    expect(deferVerdict(item({ status: 'released' }))).toBe('field_frozen');
+    // A manager whose transfer is refused for another reason still manages.
+    expect(deferVerdict(item({ can: can({ transfer: 'release_pending' }) }))).toBeNull();
+  });
+
+  it('every refusal code a flag can carry has a sentence for the button', () => {
+    const english = (k: string, o?: Record<string, unknown>) => String(o?.defaultValue ?? k);
+    for (const code of [...CAN_REASONS, UNAVAILABLE, 'field_frozen']) {
+      const text = reasonText(english, code);
+      expect(text, code).toMatch(/ /);
+      expect(text, code).not.toBe(humanizeCode(code));
+    }
+    // A code nobody wrote a button sentence for still reads as its refusal sentence.
+    expect(reasonText(english, 'fx_rate_missing')).toBe(ERROR_TEXT.fx_rate_missing);
+  });
 
   it('ranks roles by the backend hierarchy and denies an unknown or absent role', () => {
     expect(roleAllows('estimator', 'edit')).toBe(true);
@@ -300,46 +367,39 @@ describe('access', () => {
     expect(roleAllows(null, 'read')).toBe(false);
   });
 
-  it('an editor may add items and request a release, a viewer is told who can', () => {
+  it('adding an item and the approval setup have no flag and are predicted from the role', () => {
     expect(canAddItem(editor)).toBeNull();
     expect(canAddItem(viewer)).toBe('role_edit');
-    expect(canRequestRelease(editor, planned)).toBeNull();
-    expect(canRequestRelease(viewer, planned)).toBe('role_edit');
-  });
-
-  it('the item state explains before the role does', () => {
-    expect(canRequestRelease(viewer, { status: 'release_requested', pending_release_id: 'r1' })).toBe('release_pending');
-    expect(canRequestRelease(manager, { status: 'on_hold', pending_release_id: null })).toBe('item_on_hold');
-    expect(canRequestRelease(manager, { status: 'closed', pending_release_id: null })).toBe('item_closed');
-    expect(canRequestRelease(manager, { status: 'aborted', pending_release_id: null })).toBe('item_ended');
-  });
-
-  it.each(['planned', 'partially_released', 'released', 'committed', 're_release_required'] as const)(
-    'a release can be requested from %s',
-    (status) => {
-      expect(canRequestRelease(editor, { status, pending_release_id: null })).toBeNull();
-    },
-  );
-
-  it('withdrawing needs a pending request', () => {
-    expect(canWithdraw(editor, planned)).toBe('no_pending_release');
-    expect(canWithdraw(editor, { status: 'release_requested', pending_release_id: 'r1' })).toBeNull();
-    expect(canWithdraw(viewer, { status: 'release_requested', pending_release_id: 'r1' })).toBe('role_edit');
-  });
-
-  it('holding and the approval setup are for a manager', () => {
-    expect(canHold(editor, planned)).toBe('role_manage');
-    expect(canHold(manager, planned)).toBeNull();
-    expect(canHold(manager, { status: 'on_hold', pending_release_id: null })).toBeNull();
-    expect(canHold(manager, { status: 'release_requested', pending_release_id: 'r1' })).toBe('hold_not_possible');
     expect(canManage(editor)).toBe('role_manage');
     expect(canManage(manager)).toBeNull();
   });
+});
 
-  it('an ended item cannot be edited by anyone', () => {
-    expect(canEditItem(manager, { status: 'transferred', pending_release_id: null })).toBe('item_ended');
-    expect(canEditItem(editor, planned)).toBeNull();
-    expect(canEditItem(viewer, planned)).toBe('role_edit');
+describe('item edit', () => {
+  const original = item({ status: 'released', flags: ['novel_contentious'], split_group: 'facade' });
+  const draft = () => draftOfItem(original, 'EUR');
+
+  it('sends nothing when nothing changed', () => {
+    expect(changedItemInput(draft(), original)).toEqual({});
+  });
+
+  it('sends only the field that changed, so a fixed type or a manager field does not travel', () => {
+    expect(changedItemInput({ ...draft(), title: 'Structural works, phase 1' }, original)).toEqual({
+      title: 'Structural works, phase 1',
+    });
+    expect(changedItemInput({ ...draft(), leadTimeDays: '60' }, original)).toEqual({ lead_time_days: 60 });
+    expect(changedItemInput({ ...draft(), ownerUserId: 'u-new' }, original)).toEqual({ owner_user_id: 'u-new' });
+  });
+
+  it('an amount and its currency travel together', () => {
+    expect(changedItemInput({ ...draft(), plannedAmount: '1900000' }, original)).toEqual({
+      planned_manual_amount: '1900000',
+      currency: 'EUR',
+    });
+  });
+
+  it('clearing a field sends null, not nothing', () => {
+    expect(changedItemInput({ ...draft(), splitGroup: '' }, original)).toEqual({ split_group: null });
   });
 });
 
@@ -361,6 +421,12 @@ describe('labels', () => {
     expect(errorText(english, 'brand_new_code', 'Server said so')).toBe('Server said so');
     expect(errorText(english, 'brand_new_code')).toBe('Brand new code');
     expect(humanizeCode('re_release-required')).toBe('Re release required');
+  });
+
+  it('a rationale the server wrote as a code reads as words, and a written one stays as written', () => {
+    const english = (k: string, o?: Record<string, unknown>) => String(o?.defaultValue ?? k);
+    expect(rationaleText(english, 'four_eyes_violation')).toContain('four eyes');
+    expect(rationaleText(english, 'Too early, the survey is not back')).toBe('Too early, the survey is not back');
   });
 });
 

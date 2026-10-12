@@ -18,7 +18,7 @@ import { WideModal } from '@/shared/ui/WideModal';
 import { createItem, updateItem, type CommitmentItem, type CommitmentMatrix } from './api';
 import { FIELD_CLASS, Field, RefusalBox, refusalText } from './CommitmentBits';
 import { PLANNED_SOURCE, codeName, vocab, type LabelContext } from './labels';
-import { ITEM_PROBLEM, draftOfItem, itemProblems, toItemInput, type ItemDraft } from './rules';
+import { ITEM_PROBLEM, changedItemInput, draftOfItem, itemProblems, toItemInput, type ItemDraft } from './rules';
 
 export interface ItemDialogProps {
   open: boolean;
@@ -46,9 +46,9 @@ export function ItemDialog({ open, onClose, projectId, matrix, item, labels, per
 
   const save = useMutation({
     mutationFn: () => {
-      const input = toItemInput(draft, mode);
-      if (typeFixed) delete input.commitment_type;
-      return item ? updateItem(projectId, item.id, input) : createItem(projectId, input);
+      return item
+        ? updateItem(projectId, item.id, changedItemInput(draft, item))
+        : createItem(projectId, toItemInput(draft, mode));
     },
     onSuccess: (saved) => {
       onSaved(saved);
@@ -151,7 +151,14 @@ export function ItemDialog({ open, onClose, projectId, matrix, item, labels, per
               ))}
             </select>
           </Field>
-          <Field id="item-owner" label={t('commitment.item_form.owner', { defaultValue: 'Owner' })}>
+          <Field
+            id="item-owner"
+            label={t('commitment.item_form.owner', { defaultValue: 'Owner' })}
+            hint={t('commitment.item_form.owner_hint', {
+              defaultValue:
+                'The owner cannot approve releases of this item. Naming somebody else, or changing the owner later, needs a project manager.',
+            })}
+          >
             <ProjectPeopleSelect
               id="item-owner"
               projectId={projectId}
@@ -262,7 +269,7 @@ export function ItemDialog({ open, onClose, projectId, matrix, item, labels, per
           id="item-split"
           label={t('commitment.item_form.split_group', { defaultValue: 'Split group' })}
           hint={t('commitment.item_form.split_group_hint', {
-            defaultValue: 'Give the same name to items that are parts of one purchase. Their amounts are added up when the tier is worked out.',
+            defaultValue: 'Give the same name to items that are parts of one purchase. Their amounts are added up when the tier is worked out. It cannot change once a release was requested.',
           })}
         >
           <input

@@ -5,9 +5,11 @@
 // object so a test names only the fields its case is about.
 
 import type {
+  CanFlag,
   CommitmentItem,
   CommitmentMatrix,
   Exposure,
+  ItemAction,
   ItemLink,
   ItemTotals,
   Precondition,
@@ -108,6 +110,37 @@ export function exposure(over: Partial<Exposure> = {}): Exposure {
   };
 }
 
+const ACTIONS: ItemAction[] = ['edit', 'link', 'request_release', 'request_abort', 'withdraw', 'decide', 'hold', 'resume', 'transfer'];
+
+/**
+ * The `can` block as the server sends it: every action allowed unless a
+ * refusal code is named for it.
+ */
+export function can(refused: Partial<Record<ItemAction, string>> = {}): Record<ItemAction, CanFlag> {
+  const out = {} as Record<ItemAction, CanFlag>;
+  for (const action of ACTIONS) {
+    const reason = refused[action] ?? null;
+    out[action] = { allowed: reason === null, reason };
+  }
+  return out;
+}
+
+/** What an owner sees on a planned item with nothing pending. */
+export const OWNER_CAN = can({ withdraw: 'no_pending_release', decide: 'no_pending_release', resume: 'invalid_transition' });
+
+/** What somebody with read access only sees on the same item. */
+export const READER_CAN = can({
+  edit: 'not_item_owner',
+  link: 'not_item_owner',
+  request_release: 'not_item_owner',
+  request_abort: 'not_item_owner',
+  withdraw: 'no_pending_release',
+  decide: 'no_pending_release',
+  hold: 'manage_required',
+  resume: 'manage_required',
+  transfer: 'manage_required',
+});
+
 export function item(over: Partial<CommitmentItem> = {}): CommitmentItem {
   return {
     id: 'i1',
@@ -143,6 +176,10 @@ export function item(over: Partial<CommitmentItem> = {}): CommitmentItem {
     open_preconditions: 0,
     links: [],
     pending_release_id: null,
+    pending_purpose: null,
+    transferred_to_item_id: null,
+    abort: null,
+    can: OWNER_CAN,
     exposure: exposure({ residual_loss: null, reason: 'abort_terms_missing', note: 'nothing_committed' }),
     ...over,
   };
@@ -188,6 +225,7 @@ export function release(over: Partial<Release> = {}): Release {
     id: 'rel1',
     item_id: 'i1',
     attempt: 1,
+    purpose: 'release',
     requested_amount: '40000.00',
     currency: 'EUR',
     schedule_currency: 'EUR',

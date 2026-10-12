@@ -18,6 +18,7 @@ import type {
   PlannedSource,
   PreconditionKind,
   ReleaseOutcome,
+  ReleasePurpose,
   RouteReport,
   Transferable,
 } from './api';
@@ -101,6 +102,38 @@ export const RELEASE_OUTCOME: Record<ReleaseOutcome, KeyText> = {
   released: ['commitment.release.outcome.released', 'Released'],
   rejected: ['commitment.release.outcome.rejected', 'Rejected'],
   withdrawn: ['commitment.release.outcome.withdrawn', 'Withdrawn'],
+  aborted: ['commitment.release.outcome.aborted', 'Abort decided'],
+};
+
+/** What a request in the history asked for. */
+export const RELEASE_PURPOSE: Record<ReleasePurpose, KeyText> = {
+  release: ['commitment.release.purpose.release', 'Release'],
+  abort: ['commitment.release.purpose.abort', 'Abort'],
+};
+
+/** A rationale the server wrote itself when it closed a request, stored as a code. */
+export const CODED_RATIONALE: Record<string, KeyText> = {
+  four_eyes_violation: [
+    'commitment.history.rationale.four_eyes_violation',
+    'Closed by the system: the approval came from somebody four eyes bars from deciding',
+  ],
+  decider_not_tier_holder: [
+    'commitment.history.rationale.decider_not_tier_holder',
+    'Closed by the system: the approval did not come from a holder of the required tier',
+  ],
+  cancelled: ['commitment.history.rationale.cancelled', 'The approval was cancelled'],
+};
+
+/** The rationale of a decision: the words of a coded one, otherwise what the decider wrote. */
+export function rationaleText(t: TFn, rationale: string): string {
+  const coded = CODED_RATIONALE[rationale];
+  return coded ? t(coded[0], { defaultValue: coded[1] }) : rationale;
+}
+
+/** What is left to do by hand with a linked document once an abort was decided. */
+export const ABORT_FOLLOW_UP: Record<string, KeyText> = {
+  terminate: ['commitment.abort.follow_up.terminate', 'Terminate this contract in the contracts module'],
+  cancel: ['commitment.abort.follow_up.cancel', 'Cancel this order in procurement'],
 };
 
 export const DATE_BASIS: Record<DateBasis, KeyText> = {
@@ -179,6 +212,9 @@ export const ALL_KEY_MAPS: Record<string, Record<string, KeyText>> = {
   LINK_KIND,
   PRECONDITION_KIND,
   RELEASE_OUTCOME,
+  RELEASE_PURPOSE,
+  ABORT_FOLLOW_UP,
+  CODED_RATIONALE,
   DATE_BASIS,
   TRANSFERABLE,
   FX_SOURCE,
@@ -255,6 +291,8 @@ export function catalogueName(ctx: LabelContext, id: string, label?: CommitmentL
  */
 export const ERROR_TEXT: Record<string, string> = {
   abort_basis_unknown: 'Unknown abort basis',
+  abort_exposure_unknown: 'The residual loss is unknown. Complete the abort terms first.',
+  abort_type_not_in_schedule: 'The schedule has no tier for a termination settlement',
   activity_not_found: 'The schedule activity was not found in this project',
   amount_invalid: 'The amount is not a valid number',
   amount_not_positive: 'The amount must be greater than zero',
@@ -265,6 +303,8 @@ export const ERROR_TEXT: Record<string, string> = {
   change_belongs_to_contract_item: 'Link this change on the item of its contract, or make it an item of type change',
   commitment_not_in_matrix: 'This document is not in the commitment matrix',
   commitment_not_released: 'This commitment is not released for this amount',
+  date_invalid: 'This is not a date',
+  decision_invalid: 'Choose approve or reject',
   commitment_type_unknown: 'This commitment type is not in the authority schedule',
   contingency_insufficient: 'The contingency balance does not cover this drawdown',
   contingency_line_required: 'A contingency drawdown needs the budget line that holds the contingency',
@@ -273,7 +313,10 @@ export const ERROR_TEXT: Record<string, string> = {
   document_not_found: 'Document not found in this project',
   enforcement_invalid: 'Enforcement must be off, warn or block',
   external_approval_required: 'The amount is above every tier: attach the external approval reference',
+  field_frozen: 'This field can no longer be changed for this item',
+  field_required: 'This field cannot be empty',
   flag_unknown: 'This flag is not in the authority schedule',
+  four_eyes_violation: 'Whoever requested, owns or confirmed for this item cannot decide it',
   four_eyes_requester_is_approver: 'Four-eyes: you cannot request a release you would approve yourself',
   fx_policy_invalid: 'Unknown exchange rate policy',
   fx_rate_missing: 'No exchange rate for this date: the release cannot be evaluated',
@@ -281,16 +324,19 @@ export const ERROR_TEXT: Record<string, string> = {
   governance_area_required: 'An item tied to a gate needs a management area',
   governance_area_unknown: "This management area is not in the project's governance model",
   invalid_transition: 'This step is not possible in the current state',
+  item_changed: 'The item changed in the meantime. Try again.',
   item_closed: 'The item is closed',
   item_code_taken: 'Another item already uses this code',
   item_not_found: 'Commitment item not found',
   link_kind_invalid: 'Unknown document kind',
   link_kind_not_supported: 'This document kind cannot be linked yet',
   link_not_found: 'Link not found',
+  manage_required: 'Only someone who manages the matrix can do this',
   manual_amount_needs_currency: 'A manual estimate needs an amount and a currency',
   matrix_missing: 'This project has no commitment matrix yet',
   no_pending_release: 'There is no pending release request',
   no_route_for_tier: 'Nobody is assigned to the required tier yet',
+  not_entitled_decider: 'You do not hold the tier this request is decided on',
   not_item_owner: 'Only the item owner or a manager can change this item',
   not_requester: 'Only the requester or a manager can withdraw this request',
   planned_source_invalid: 'Unknown source for the planned amount',
@@ -302,14 +348,30 @@ export const ERROR_TEXT: Record<string, string> = {
   precondition_not_found: 'Precondition not found',
   preconditions_open: 'Open preconditions block this release',
   project_not_found: 'Project not found',
+  rationale_required: 'Give a reason',
   release_decided: 'This release request is already decided',
   release_pending: 'A release request for this item is already running',
   requisition_not_found: 'The requisition was not found in this project',
+  route_changed_since_accepted: 'The approval route of this tier was edited. A manager must pin it again.',
+  route_must_belong_to_project: 'Only an approval route of this project can be pinned',
   route_not_found: 'Approval route not found',
+  schedule_currency_mismatch: 'This schedule uses another currency than the releases already recorded',
+  schedule_not_in_force: 'The pinned schedule is not in force today. Pin the version that is.',
+  schedule_type_mismatch: 'This schedule does not know the commitment type of an existing item',
   tier_unknown: 'This tier is not in the authority schedule',
+  transfer_links_stay_in_project:
+    'Linked documents belong to this project. Unlink them before transferring to another project.',
+  transfer_target_invalid: 'An item cannot be transferred to itself',
+  transfer_target_not_open: 'The target item is closed or waiting for a decision',
   transferable_invalid: 'Unknown transfer option',
   type_fixed_after_release: 'The type cannot change once a release was requested',
   unknown_catalogue: 'Catalogue not found',
+  catalogue_code_taken: 'Another catalogue already uses this code',
+  catalogue_invalid: 'The catalogue is not valid',
+  catalogue_retired: 'This catalogue is retired',
+  commitment_guard_unavailable: 'The release check could not be made, so this was not allowed',
+  decider_not_tier_holder: 'Approved by someone who does not hold the tier',
+  four_eyes_no_approver: 'Nobody on this tier may decide this request under the four-eyes rule',
 };
 
 /** The sentence for a refusal code, translated when the locale has it. */

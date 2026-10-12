@@ -63,7 +63,9 @@ export type PreconditionKind =
   | 'permit'
   | 'budget_available'
   | 'public_commitment_appropriation';
-export type ReleaseOutcome = 'pending' | 'released' | 'rejected' | 'withdrawn';
+export type ReleaseOutcome = 'pending' | 'released' | 'rejected' | 'withdrawn' | 'aborted';
+/** What a request asks for: money to commit, or stopping the item. */
+export type ReleasePurpose = 'release' | 'abort';
 export type DateBasis = 'fixed' | 'late_start' | 'start_date' | 'none';
 export type Transferable = 'no' | 'to_project' | 'resale';
 
@@ -203,6 +205,45 @@ export interface Exposure {
   note?: string;
 }
 
+/**
+ * Whether the caller may do one thing to an item now. `reason` is the refusal
+ * code the write itself would answer with, so a disabled button and a refused
+ * click say the same sentence.
+ */
+export interface CanFlag {
+  allowed: boolean;
+  reason: string | null;
+}
+
+export type ItemAction =
+  | 'edit'
+  | 'link'
+  | 'request_release'
+  | 'request_abort'
+  | 'withdraw'
+  | 'decide'
+  | 'hold'
+  | 'resume'
+  | 'transfer';
+
+/** What is left to do by hand after an abort was decided: the module ends no contract or order itself. */
+export interface AbortFollowUp {
+  kind: LinkKind;
+  document_id: string;
+  action: 'terminate' | 'cancel';
+  status: string | null;
+}
+
+export interface AbortRecord {
+  release_id: string;
+  decided_at: string | null;
+  decided_by: string | null;
+  reason: string;
+  residual_loss: string;
+  currency: string;
+  follow_up: AbortFollowUp[];
+}
+
 export interface CommitmentItem {
   id: string;
   code: string;
@@ -239,6 +280,11 @@ export interface CommitmentItem {
   open_preconditions: number;
   links: ItemLink[];
   pending_release_id: string | null;
+  pending_purpose: ReleasePurpose | null;
+  transferred_to_item_id: string | null;
+  /** Set once an abort was decided. */
+  abort: AbortRecord | null;
+  can: Partial<Record<ItemAction, CanFlag>>;
   exposure?: Exposure;
 }
 
@@ -271,6 +317,19 @@ export interface ItemInput {
   split_group?: string | null;
   deferred?: boolean;
   deferred_reason?: string | null;
+}
+
+export interface DecisionInput {
+  decision: 'approved' | 'rejected';
+  /** The rationale. A rejection is refused without it. */
+  comment: string;
+  conditions: string;
+  valid_until: string | null;
+}
+
+export interface TransferInput {
+  target_item_id: string;
+  reason: string;
 }
 
 export interface ReleaseInput {
@@ -311,10 +370,19 @@ export interface ReleasePreview {
   open_preconditions: Precondition[];
 }
 
+/** What the decider is shown, frozen when the request was made. */
+export interface ReleaseSnapshot {
+  preconditions?: Precondition[];
+  links?: ItemLink[];
+  committed?: string | null;
+  four_eyes?: boolean;
+}
+
 export interface Release {
   id: string;
   item_id: string;
   attempt: number;
+  purpose: ReleasePurpose;
   requested_amount: string;
   currency: string;
   schedule_currency: string;
@@ -337,6 +405,7 @@ export interface Release {
   conditions: string;
   rationale: string;
   valid_until: string | null;
+  snapshot?: ReleaseSnapshot;
   created_at: string;
 }
 
@@ -525,17 +594,22 @@ export function listAssignments(projectId: string): Promise<Page<Assignment>> {
 }
 
 export function putAssignments(projectId: string, assignments: AssignmentInput[]): Promise<Page<Assignment>> {
-  return apiPut<Page<Assignment>>(`${p(projectId)}/assignments?today=${localToday()}`, { assignments });
+  return apiPut<Page<Assignment>>(`${p(projectId)}/assignments`, { assignments });
 }
 
 export function generateRoutes(projectId: string, force: boolean): Promise<{ tiers: Record<string, RouteReport> }> {
-  return apiPost<{ tiers: Record<string, RouteReport> }>(`${p(projectId)}/routes/generate?today=${localToday()}`, {
+  return apiPost<{ tiers: Record<string, RouteReport> }>(`${p(projectId)}/routes/generate`, {
     force,
   });
 }
 
 export function pinTierRoute(projectId: string, tierCode: string, routeId: string): Promise<CommitmentMatrix> {
   return apiPut<CommitmentMatrix>(`${p(projectId)}/routes/${encodeURIComponent(tierCode)}`, { route_id: routeId });
+}
+
+/** Give a tier back to its generated route. */
+export function unpinTierRoute(projectId: string, tierCode: string): Promise<CommitmentMatrix> {
+  return apiDelete<CommitmentMatrix>(`${p(projectId)}/routes/${encodeURIComponent(tierCode)}`);
 }
 
 /* ── Items ────────────────────────────────────────────────────────────── */
@@ -588,15 +662,30 @@ export function confirmPrecondition(
 /* ── Releases ─────────────────────────────────────────────────────────── */
 
 export function previewRelease(projectId: string, itemId: string, body: ReleaseInput): Promise<ReleasePreview> {
-  return apiPost<ReleasePreview>(`${p(projectId)}/items/${itemId}/releases/preview?today=${localToday()}`, body);
+  return apiPost<ReleasePreview>(`${p(projectId)}/items/${itemId}/releases/preview`, body);
 }
 
 export function requestRelease(projectId: string, itemId: string, body: ReleaseInput): Promise<Release> {
-  return apiPost<Release>(`${p(projectId)}/items/${itemId}/releases?today=${localToday()}`, body);
+  return apiPost<Release>(`${p(projectId)}/items/${itemId}/releases`, body);
 }
 
 export function withdrawRelease(projectId: string, itemId: string, reason: string): Promise<Release> {
   return apiPost<Release>(`${p(projectId)}/items/${itemId}/releases/withdraw`, { reason });
+}
+
+/** Approve or reject the pending request as a holder of its tier. */
+export function decideRelease(projectId: string, itemId: string, body: DecisionInput): Promise<Release> {
+  return apiPost<Release>(`${p(projectId)}/items/${itemId}/releases/decide`, body);
+}
+
+/** Ask to stop the item. It is decided like a release, on the tier its residual loss calls for. */
+export function requestAbort(projectId: string, itemId: string, reason: string): Promise<Release> {
+  return apiPost<Release>(`${p(projectId)}/items/${itemId}/abort`, { reason });
+}
+
+/** End the item as transferred: its linked documents move to the target item of the same project. */
+export function transferItem(projectId: string, itemId: string, body: TransferInput): Promise<CommitmentItem> {
+  return apiPost<CommitmentItem>(`${p(projectId)}/items/${itemId}/transfer`, body);
 }
 
 export function listReleases(projectId: string, itemId: string): Promise<Page<Release>> {

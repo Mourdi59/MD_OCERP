@@ -203,6 +203,27 @@ export function toItemInput(draft: ItemDraft, mode: 'create' | 'edit'): ItemInpu
   return input;
 }
 
+/**
+ * What an edit sends: only the fields the reader changed. The server judges a
+ * field by its presence in places (a type that is sent again after a release
+ * is refused, a field only a manager may set is refused for an editor), so an
+ * untouched field must not travel.
+ */
+export function changedItemInput(draft: ItemDraft, item: CommitmentItem): ItemInput {
+  const before = toItemInput(draftOfItem(item, item.planned.currency), 'edit') as unknown as Record<string, unknown>;
+  const after = toItemInput(draft, 'edit') as unknown as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(after)) {
+    if (JSON.stringify(value) !== JSON.stringify(before[key])) out[key] = value;
+  }
+  // An amount and its currency are one statement: the server wants both or neither.
+  if (('planned_manual_amount' in out || 'currency' in out) && draft.plannedSource === 'manual') {
+    out.planned_manual_amount = after.planned_manual_amount;
+    out.currency = after.currency;
+  }
+  return out as unknown as ItemInput;
+}
+
 export function draftOfItem(item: CommitmentItem | null, defaultCurrency: string): ItemDraft {
   return {
     code: item?.code ?? '',

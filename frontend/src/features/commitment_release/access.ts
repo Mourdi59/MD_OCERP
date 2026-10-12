@@ -3,15 +3,16 @@
 //
 // Who may press which commitment button, and in words why not.
 //
-// The server decides; this only predicts, so a button is disabled with a
-// reason instead of answering with a 403 after the click. The commitment API
-// sends no capability flags yet, so the prediction reads what the client has:
-// the role (backend `commitment.*` permissions are viewer / editor / manager,
-// see commitment_release/permissions.py) and the item state.
-// Who may DECIDE a release is not predicted at all: that is whoever the
-// approval route of the tier names, and they decide in the approvals inbox.
+// For everything done to an item the server decides and says so: each item
+// carries `can`, computed by the same function that enforces the write, with
+// the refusal code when the answer is no. The screens read that flag and never
+// work the answer out again from a role, an owner or a state.
+//
+// Two things have no flag yet because they are not about an item: adding an
+// item and changing the approval setup. For those the role is read as a
+// prediction only, and a refusal still comes back as the server's sentence.
 
-import type { CommitmentItem, ItemStatus } from './api';
+import type { CanFlag, CommitmentItem, ItemAction } from './api';
 import type { KeyText } from './labels';
 import { ROLE_ALIASES, ROLE_RANK } from '@/shared/lib/roles';
 
@@ -32,49 +33,100 @@ export function roleAllows(role: string | null | undefined, level: CommitmentLev
   return rank >= LEVEL_RANK[level];
 }
 
-export type DisabledReason =
-  | 'role_edit'
-  | 'role_manage'
-  | 'release_pending'
-  | 'item_ended'
-  | 'item_on_hold'
-  | 'item_closed'
-  | 'no_pending_release'
-  | 'hold_not_possible';
+/**
+ * null means allowed; otherwise the code of the reason that stops the action.
+ * For an item action that is the server's refusal code.
+ */
+export type Verdict = string | null;
 
-export const DISABLED_REASON: Record<DisabledReason, KeyText> = {
+/** The server did not send the flag. The action stays off: an absent answer is not a yes. */
+export const UNAVAILABLE = 'unavailable';
+
+/**
+ * Why a button is off, where a sentence written for the button reads better
+ * than the refusal sentence of the same code. A code that is not here is shown
+ * with its refusal sentence (`commitment.errors.<code>`).
+ */
+export const DISABLED_REASON: Record<string, KeyText> = {
   role_edit: [
     'commitment.disabled.role_edit',
     'Your role can view the commitments but not change them. An editor or manager can.',
   ],
   role_manage: ['commitment.disabled.role_manage', 'Only a project manager can change this.'],
+  manage_required: ['commitment.disabled.manage_required', 'Only a project manager can do this.'],
+  not_item_owner: ['commitment.disabled.not_item_owner', 'Only the owner of this item or a project manager can do this.'],
+  not_requester: [
+    'commitment.disabled.not_requester',
+    'Only the person who made the request or a project manager can withdraw it.',
+  ],
   release_pending: [
     'commitment.disabled.release_pending',
-    'A release request for this item is waiting for a decision. Wait for it or withdraw it first.',
+    'A request for this item is waiting for a decision. Wait for it or withdraw it first.',
   ],
-  item_ended: ['commitment.disabled.item_ended', 'This item was aborted or transferred and can no longer change.'],
-  item_on_hold: ['commitment.disabled.item_on_hold', 'This item is on hold. A manager resumes it first.'],
-  item_closed: ['commitment.disabled.item_closed', 'All linked documents are completed, so the item is closed.'],
-  no_pending_release: ['commitment.disabled.no_pending_release', 'There is no release request to withdraw.'],
-  hold_not_possible: [
-    'commitment.disabled.hold_not_possible',
-    'An item can be put on hold only while no release request is running.',
+  no_pending_release: ['commitment.disabled.no_pending_release', 'There is no request waiting for a decision.'],
+  invalid_transition: ['commitment.disabled.invalid_transition', 'This is not possible in the current state of the item.'],
+  item_closed: ['commitment.disabled.item_closed', 'This item was aborted or transferred and can no longer change.'],
+  not_entitled_decider: [
+    'commitment.disabled.not_entitled_decider',
+    'You are not an approver of the tier this request needs.',
   ],
+  four_eyes_violation: [
+    'commitment.disabled.four_eyes_violation',
+    'Four eyes: whoever made the request, owns the item or confirmed one of its preconditions cannot decide it.',
+  ],
+  field_frozen: ['commitment.disabled.field_frozen', 'This can change only while the item is still planned.'],
+  [UNAVAILABLE]: ['commitment.disabled.unavailable', 'The server did not say whether this is allowed.'],
 };
 
-/** null means allowed; otherwise the first reason that stops the action. */
-export type Verdict = DisabledReason | null;
+/** Every refusal code the server puts into a `can` flag. A test holds each of them to a sentence in both locales. */
+export const CAN_REASONS = [
+  'not_item_owner',
+  'item_closed',
+  'release_pending',
+  'invalid_transition',
+  'no_pending_release',
+  'not_requester',
+  'manage_required',
+  'not_entitled_decider',
+  'four_eyes_violation',
+] as const;
 
 export interface Viewer {
   userId: string | null;
   role: string | null;
 }
 
-const ENDED: readonly ItemStatus[] = ['aborted', 'transferred'];
-const REQUESTABLE: readonly ItemStatus[] = ['planned', 'partially_released', 'released', 'committed', 're_release_required'];
-const HOLDABLE: readonly ItemStatus[] = ['planned', 'released', 'partially_released', 'committed', 're_release_required'];
+/** Read one capability flag. A missing flag or a refusal without a code both deny. */
+export function verdictOf(flag: CanFlag | null | undefined): Verdict {
+  if (!flag) return UNAVAILABLE;
+  if (flag.allowed) return null;
+  return flag.reason || UNAVAILABLE;
+}
 
-type ItemFacts = Pick<CommitmentItem, 'status' | 'pending_release_id'>;
+export function itemVerdict(item: Pick<CommitmentItem, 'can'>, action: ItemAction): Verdict {
+  return verdictOf(item.can?.[action]);
+}
+
+/** Put on hold or resume: one button, two server flags. */
+export function holdVerdict(item: Pick<CommitmentItem, 'can' | 'status'>): Verdict {
+  return itemVerdict(item, item.status === 'on_hold' ? 'resume' : 'hold');
+}
+
+/**
+ * Deferring the decision. The server has no flag for it: it asks for the
+ * manage permission and for an item that is still planned, and answers
+ * `manage_required` or `field_frozen` otherwise. Whether the caller manages is
+ * read from the transfer flag, which the server refuses with `manage_required`
+ * before it looks at anything else.
+ */
+export function deferVerdict(item: Pick<CommitmentItem, 'can' | 'status'>): Verdict {
+  const transfer = item.can?.transfer;
+  if (!transfer) return UNAVAILABLE;
+  if (transfer.reason === 'manage_required') return 'manage_required';
+  return item.status === 'planned' ? null : 'field_frozen';
+}
+
+/* ── No server flag yet: predicted from the role ──────────────────────── */
 
 export function canManage(viewer: Viewer): Verdict {
   return roleAllows(viewer.role, 'manage') ? null : 'role_manage';
@@ -82,41 +134,4 @@ export function canManage(viewer: Viewer): Verdict {
 
 export function canAddItem(viewer: Viewer): Verdict {
   return roleAllows(viewer.role, 'edit') ? null : 'role_edit';
-}
-
-/**
- * Whether the viewer may ask for a release on this item. The item state
- * explains first, because it holds for everyone.
- */
-export function canRequestRelease(viewer: Viewer, item: ItemFacts): Verdict {
-  if (ENDED.includes(item.status)) return 'item_ended';
-  if (item.status === 'release_requested' || item.pending_release_id) return 'release_pending';
-  if (item.status === 'on_hold') return 'item_on_hold';
-  if (item.status === 'closed') return 'item_closed';
-  if (!REQUESTABLE.includes(item.status)) return 'item_closed';
-  return roleAllows(viewer.role, 'edit') ? null : 'role_edit';
-}
-
-/** Only the server knows who requested; an editor is offered the button and the server names a refusal. */
-export function canWithdraw(viewer: Viewer, item: ItemFacts): Verdict {
-  if (!item.pending_release_id) return 'no_pending_release';
-  return roleAllows(viewer.role, 'edit') ? null : 'role_edit';
-}
-
-/**
- * Editing the item, its links, preconditions and abort terms. The server
- * also asks for the owner, the creator or a manager, and the client cannot
- * see who created the item, so an editor is offered the button and a refusal
- * comes back as the server's own sentence (`not_item_owner`).
- */
-export function canEditItem(viewer: Viewer, item: ItemFacts): Verdict {
-  if (ENDED.includes(item.status)) return 'item_ended';
-  return roleAllows(viewer.role, 'edit') ? null : 'role_edit';
-}
-
-export function canHold(viewer: Viewer, item: ItemFacts): Verdict {
-  if (ENDED.includes(item.status)) return 'item_ended';
-  if (!roleAllows(viewer.role, 'manage')) return 'role_manage';
-  if (item.status === 'on_hold') return null;
-  return HOLDABLE.includes(item.status) ? null : 'hold_not_possible';
 }

@@ -127,7 +127,7 @@ export function CommitmentReleasePage() {
         <ol className="ml-4 list-decimal space-y-1 text-sm text-content-secondary">
           <li>{t('commitment.page.how_step_1', { defaultValue: 'Add an item for each thing the project will commit money to: a works package, a long-lead order, a design appointment.' })}</li>
           <li>{t('commitment.page.how_step_2', { defaultValue: 'Request a release for the whole amount or for a first tranche. The amount and the type decide which tier has to approve.' })}</li>
-          <li>{t('commitment.page.how_step_3', { defaultValue: 'The approver of that tier decides in the approvals inbox. The item then shows the released amount.' })}</li>
+          <li>{t('commitment.page.how_step_3', { defaultValue: 'The approver of that tier opens the item and approves or rejects the request. The item then shows the released amount.' })}</li>
           <li>{t('commitment.page.how_step_4', { defaultValue: 'Link the contract or order once it exists. An award or signing above the released amount is warned about or blocked, as set on the Approval setup tab.' })}</li>
         </ol>
       </CollapsibleSection>
@@ -186,10 +186,11 @@ export function CommitmentReleasePage() {
         projectId={projectId}
         item={selected}
         matrix={matrix}
-        viewer={viewer}
+        otherItems={items.filter((i) => i.id !== selected.id)}
         labels={labels}
         personName={personName}
         onBack={() => go({ item: null })}
+        onOpenItem={(id) => go({ item: id })}
         onChanged={invalidate}
       />
     ) : (

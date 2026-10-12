@@ -4,7 +4,8 @@
 // The commitment screens as a reader meets them: the grid says "unknown"
 // where a figure is not known, the release dialog shows who decides before
 // anything is sent and shows the server's own words when it refuses, a
-// disabled button says why, and a deferral is not sent without a reason.
+// disabled button says the reason the server gave, a tier holder approves or
+// rejects on the item, and stopping or handing over an item needs a reason.
 
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -28,6 +29,9 @@ vi.mock('../api', async (importOriginal) => {
     updateItem: vi.fn(),
     holdItem: vi.fn(),
     withdrawRelease: vi.fn(),
+    decideRelease: vi.fn(),
+    requestAbort: vi.fn(),
+    transferItem: vi.fn(),
   };
 });
 
@@ -39,13 +43,12 @@ import { ExposureBlock, ItemPanel, ReleaseHistory } from '../ItemPanel';
 import { ReleaseDialog, approverNames } from '../ReleaseDialog';
 import type { LabelContext } from '../labels';
 import { enT } from './i18nMock';
-import { exposure, item, matrix, precondition, preview, release, totals } from './fixtures';
+import { READER_CAN, can, exposure, item, link, matrix, precondition, preview, release, totals } from './fixtures';
 
 const mocked = vi.mocked(api);
 const labels: LabelContext = { t: enT, language: 'en', exists: () => false };
 const names = (id: string | null | undefined) => (id === 'u-owner' ? 'Dana Weber' : null);
-const editor = { userId: 'u1', role: 'editor' };
-const viewer = { userId: 'u3', role: 'viewer' };
+const page = <T,>(items: T[]) => ({ items, total: items.length, offset: 0, limit: 100 });
 
 function wrap(node: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -54,9 +57,9 @@ function wrap(node: ReactNode) {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mocked.listReleases.mockResolvedValue([]);
-  mocked.listAbortTerms.mockResolvedValue([]);
-  mocked.listAbortBases.mockResolvedValue([]);
+  mocked.listReleases.mockResolvedValue(page([]));
+  mocked.listAbortTerms.mockResolvedValue(page([]));
+  mocked.listAbortBases.mockResolvedValue(page([]));
 });
 afterEach(cleanup);
 
@@ -224,6 +227,25 @@ describe('ReleaseDialog', () => {
 });
 
 describe('ReasonedButton', () => {
+  it('says the server reason in the words written for the button', () => {
+    wrap(
+      <ReasonedButton verdict="four_eyes_violation" data-testid="btn">
+        Approve
+      </ReasonedButton>,
+    );
+    expect(screen.getByTestId('btn')).toBeDisabled();
+    expect(screen.getByTestId('disabled-reason').textContent).toBe(enT('commitment.disabled.four_eyes_violation'));
+  });
+
+  it('a code without a button sentence reads as its refusal sentence, never as a raw code', () => {
+    wrap(
+      <ReasonedButton verdict="fx_rate_missing" data-testid="btn">
+        Request release
+      </ReasonedButton>,
+    );
+    expect(screen.getByTestId('disabled-reason').textContent).toBe(enT('commitment.errors.fx_rate_missing'));
+  });
+
   it('stays visible, disabled, and says who can act', () => {
     wrap(
       <ReasonedButton verdict="role_manage" data-testid="btn">
@@ -291,40 +313,81 @@ describe('ExposureBlock and ReleaseHistory', () => {
     expect(row.textContent).toContain(enT('commitment.tier.project_manager'));
     expect(row.textContent).toContain('First tranche: concept design');
     expect(row.textContent).toContain('Dana Weber');
+    expect(screen.getByTestId('history-purpose').textContent).toBe(enT('commitment.release.purpose.release'));
+  });
+
+  it('an abort row is told apart from a release row, and a coded rationale reads as words', () => {
+    wrap(
+      <ReleaseHistory
+        releases={[release({ purpose: 'abort', outcome: 'rejected', rationale: 'decider_not_tier_holder' })]}
+        matrix={matrix()}
+        labels={labels}
+        personName={names}
+      />,
+    );
+    const row = screen.getByTestId('history-row');
+    expect(screen.getByTestId('history-purpose').textContent).toBe(enT('commitment.release.purpose.abort'));
+    expect(row.textContent).not.toContain('decider_not_tier_holder');
+    expect(row.textContent).toContain('holder of the required tier');
   });
 });
 
 describe('ItemPanel', () => {
-  const panel = (over: Parameters<typeof item>[0], who = editor) => {
+  const pendingCan = can({
+    request_release: 'release_pending',
+    request_abort: 'release_pending',
+    hold: 'invalid_transition',
+    resume: 'invalid_transition',
+    transfer: 'release_pending',
+  });
+  const waiting = { status: 'release_requested', pending_release_id: 'rel1', pending_purpose: 'release' } as const;
+  const other = item({ id: 'i2', code: 'CR-002', title: 'Lift order' });
+
+  const panel = (over: Parameters<typeof item>[0] = {}, others = [other]) => {
     const onChanged = vi.fn();
+    const onOpenItem = vi.fn();
     wrap(
       <ItemPanel
         projectId="p1"
         item={item(over)}
         matrix={matrix()}
-        viewer={who}
+        otherItems={others}
         labels={labels}
         personName={names}
         onBack={() => undefined}
+        onOpenItem={onOpenItem}
         onChanged={onChanged}
       />,
     );
-    return onChanged;
+    return { onChanged, onOpenItem };
   };
+  const reasonOf = (testId: string) =>
+    screen.getByTestId(testId).parentElement!.querySelector('[data-testid="disabled-reason"]')?.getAttribute('data-reason') ?? null;
 
-  it('a viewer sees the buttons disabled with the reason', () => {
-    panel({}, viewer);
+  it('a button the server refuses is disabled and carries the server reason', () => {
+    panel({ can: READER_CAN });
     expect(screen.getByTestId('item-request-release')).toBeDisabled();
+    expect(reasonOf('item-request-release')).toBe('not_item_owner');
     expect(screen.getByTestId('item-edit')).toBeDisabled();
-    const reasons = screen.getAllByTestId('disabled-reason').map((n) => n.getAttribute('data-reason'));
-    expect(reasons).toContain('role_edit');
+    expect(reasonOf('item-hold')).toBe('manage_required');
+    expect(reasonOf('item-transfer')).toBe('manage_required');
+    expect(reasonOf('item-abort')).toBe('not_item_owner');
+  });
+
+  it('an owner of a planned item may request, edit, hold, stop and hand over', () => {
+    panel();
+    for (const id of ['item-request-release', 'item-edit', 'item-hold', 'item-defer', 'item-abort', 'item-transfer']) {
+      expect(screen.getByTestId(id), id).not.toBeDisabled();
+    }
+    expect(screen.queryByTestId('item-pending')).toBeNull();
   });
 
   it('a pending request blocks a second one and can be withdrawn', async () => {
     mocked.withdrawRelease.mockResolvedValue(release({ outcome: 'withdrawn' }));
-    const onChanged = panel({ status: 'release_requested', pending_release_id: 'rel1' });
+    const { onChanged } = panel({ ...waiting, can: pendingCan });
     expect(screen.getByTestId('item-pending')).toBeInTheDocument();
     expect(screen.getByTestId('item-request-release')).toBeDisabled();
+    expect(reasonOf('item-request-release')).toBe('release_pending');
     fireEvent.click(screen.getByTestId('item-withdraw'));
     // A withdrawal may carry a reason but does not need one.
     expect(screen.getByTestId('item-action-send')).not.toBeDisabled();
@@ -333,9 +396,84 @@ describe('ItemPanel', () => {
     expect(mocked.withdrawRelease).toHaveBeenCalledWith('p1', 'i1', '');
   });
 
+  it('shows the decider what was asked and sends an approval with its conditions', async () => {
+    mocked.listReleases.mockResolvedValue(
+      page([release({ snapshot: { four_eyes: true, preconditions: [precondition()] } })]),
+    );
+    mocked.decideRelease.mockResolvedValue(release({ outcome: 'released' }));
+    const { onChanged } = panel({ ...waiting, can: pendingCan });
+    expect((await screen.findByTestId('pending-tier')).textContent).toBe(enT('commitment.tier.project_manager'));
+    expect(screen.getByTestId('pending-open-preconditions').textContent).toContain('Client brief signed off');
+    expect(screen.getByTestId('pending-four-eyes')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('decide-approve'));
+    // An approval needs no comment.
+    expect(screen.getByTestId('decide-send')).not.toBeDisabled();
+    fireEvent.change(document.getElementById('decide-conditions')!, { target: { value: ' Only after the survey ' } });
+    fireEvent.change(document.getElementById('decide-valid-until')!, { target: { value: '2026-12-31' } });
+    fireEvent.click(screen.getByTestId('decide-send'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(mocked.decideRelease).toHaveBeenCalledWith('p1', 'i1', {
+      decision: 'approved',
+      comment: '',
+      conditions: 'Only after the survey',
+      valid_until: '2026-12-31',
+    });
+  });
+
+  it('a rejection is not sent without a written reason', async () => {
+    mocked.decideRelease.mockResolvedValue(release({ outcome: 'rejected' }));
+    const { onChanged } = panel({ ...waiting, can: pendingCan });
+    fireEvent.click(screen.getByTestId('decide-reject'));
+    expect(screen.getByTestId('decide-send')).toBeDisabled();
+    expect(document.getElementById('decide-conditions')).toBeNull();
+    fireEvent.change(document.getElementById('decide-comment')!, { target: { value: 'The tender is not evaluated yet' } });
+    fireEvent.click(screen.getByTestId('decide-send'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(mocked.decideRelease).toHaveBeenCalledWith('p1', 'i1', {
+      decision: 'rejected',
+      comment: 'The tender is not evaluated yet',
+      conditions: '',
+      valid_until: null,
+    });
+  });
+
+  it.each(['four_eyes_violation', 'not_entitled_decider'])(
+    'whoever may not decide sees why (%s) and gets no reject button',
+    (reason) => {
+      panel({ ...waiting, can: { ...pendingCan, decide: { allowed: false, reason } } });
+      expect(screen.getByTestId('decide-approve')).toBeDisabled();
+      expect(reasonOf('decide-approve')).toBe(reason);
+      expect(screen.queryByTestId('decide-reject')).toBeNull();
+    },
+  );
+
+  it('a refused decision shows the server sentence and keeps the form', async () => {
+    mocked.decideRelease.mockRejectedValue(
+      new ApiError(403, 'Forbidden', { detail: { code: 'four_eyes_violation', message: 'Four eyes' } }),
+    );
+    const { onChanged } = panel({ ...waiting, can: pendingCan });
+    fireEvent.click(screen.getByTestId('decide-approve'));
+    fireEvent.click(screen.getByTestId('decide-send'));
+    const alert = await within(screen.getByTestId('decide-form')).findByRole('alert');
+    expect(alert.textContent).toContain(enT('commitment.errors.four_eyes_violation'));
+    expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it('a request to stop the item reads as one, down to the amount label', async () => {
+    mocked.listReleases.mockResolvedValue(page([release({ purpose: 'abort', tranche_note: 'Client cancelled the wing' })]));
+    panel({ ...waiting, pending_purpose: 'abort', can: pendingCan });
+    const box = screen.getByTestId('item-pending');
+    expect(box.textContent).toContain('A request to stop this item is waiting for a decision.');
+    expect((await screen.findByTestId('pending-summary')).textContent).toContain('Residual loss');
+    expect(screen.getByTestId('pending-summary').textContent).toContain('Client cancelled the wing');
+    fireEvent.click(screen.getByTestId('decide-approve'));
+    expect(screen.getByTestId('decide-send').textContent).toBe('Approve the abort');
+    expect(document.getElementById('decide-conditions')).toBeNull();
+  });
+
   it('a deferral is not sent without a reason', async () => {
     mocked.updateItem.mockResolvedValue(item({ deferred: true }));
-    const onChanged = panel({});
+    const { onChanged } = panel();
     fireEvent.click(screen.getByTestId('item-defer'));
     expect(screen.getByTestId('item-action-send')).toBeDisabled();
     fireEvent.change(document.getElementById('item-action-reason')!, { target: { value: ' Waiting for the survey ' } });
@@ -344,21 +482,101 @@ describe('ItemPanel', () => {
     expect(mocked.updateItem).toHaveBeenCalledWith('p1', 'i1', { deferred: true, deferred_reason: 'Waiting for the survey' });
   });
 
+  it('deferring is off for an item that left the planned state', () => {
+    panel({ status: 'released' });
+    expect(screen.getByTestId('item-defer')).toBeDisabled();
+    expect(reasonOf('item-defer')).toBe('field_frozen');
+  });
+
   it('shows the server reason when an action is refused and keeps the form open', async () => {
     mocked.updateItem.mockRejectedValue(
       new ApiError(403, 'Forbidden', {
-        detail: { code: 'not_item_owner', message_key: 'commitment.errors.not_item_owner', message: 'Only the item owner may do this' },
+        detail: { code: 'manage_required', message_key: 'commitment.errors.manage_required', message: 'Manage required' },
       }),
     );
-    const onChanged = panel({});
+    const { onChanged } = panel();
     fireEvent.click(screen.getByTestId('item-defer'));
     fireEvent.change(document.getElementById('item-action-reason')!, { target: { value: 'Later' } });
     fireEvent.click(screen.getByTestId('item-action-send'));
-    const alert = await screen.findByRole('alert');
-    expect(alert.textContent?.trim().length).toBeGreaterThan(10);
-    expect(alert.textContent).not.toContain('commitment.errors.');
-    expect(screen.getByTestId('item-action-form')).toBeInTheDocument();
+    const alert = await within(screen.getByTestId('item-action-form')).findByRole('alert');
+    expect(alert.textContent).toContain(enT('commitment.errors.manage_required'));
     expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it('an abort request needs a reason and goes to the server without a date', async () => {
+    mocked.requestAbort.mockResolvedValue(release({ purpose: 'abort' }));
+    const { onChanged } = panel();
+    fireEvent.click(screen.getByTestId('item-abort'));
+    expect(screen.getByTestId('end-send')).toBeDisabled();
+    fireEvent.change(document.getElementById('end-reason')!, { target: { value: ' Client cancelled the wing ' } });
+    fireEvent.click(screen.getByTestId('end-send'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(mocked.requestAbort).toHaveBeenCalledWith('p1', 'i1', 'Client cancelled the wing');
+  });
+
+  it('an abort the server cannot size is refused in words that say what to do', async () => {
+    mocked.requestAbort.mockRejectedValue(
+      new ApiError(422, 'Unprocessable', { detail: { code: 'abort_exposure_unknown', message: 'unknown' } }),
+    );
+    panel();
+    fireEvent.click(screen.getByTestId('item-abort'));
+    fireEvent.change(document.getElementById('end-reason')!, { target: { value: 'Stop' } });
+    fireEvent.click(screen.getByTestId('end-send'));
+    const alert = await within(screen.getByTestId('end-form')).findByRole('alert');
+    expect(alert.textContent).toContain('Complete the abort terms first');
+  });
+
+  it('a hand-over needs a target item and a reason', async () => {
+    mocked.transferItem.mockResolvedValue(item({ status: 'transferred' }));
+    const { onChanged } = panel();
+    fireEvent.click(screen.getByTestId('item-transfer'));
+    fireEvent.change(document.getElementById('end-reason')!, { target: { value: 'Merged into the lift order' } });
+    expect(screen.getByTestId('end-send')).toBeDisabled();
+    fireEvent.change(document.getElementById('end-target')!, { target: { value: 'i2' } });
+    fireEvent.click(screen.getByTestId('end-send'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(mocked.transferItem).toHaveBeenCalledWith('p1', 'i1', {
+      target_item_id: 'i2',
+      reason: 'Merged into the lift order',
+    });
+  });
+
+  it('a hand-over with no other open item says what to do first', () => {
+    panel({}, [item({ id: 'i3', code: 'CR-003', status: 'aborted' })]);
+    fireEvent.click(screen.getByTestId('item-transfer'));
+    expect(screen.getByTestId('transfer-no-target')).toBeInTheDocument();
+    expect(document.getElementById('end-target')).toBeNull();
+  });
+
+  it('a stopped item shows what was decided and what is left to do by hand', () => {
+    panel({
+      status: 'aborted',
+      can: can({ edit: 'item_closed', link: 'item_closed', request_release: 'invalid_transition', request_abort: 'invalid_transition' }),
+      links: [link()],
+      abort: {
+        release_id: 'rel9',
+        decided_at: '2026-10-11T10:00:00Z',
+        decided_by: 'u-owner',
+        reason: 'Client cancelled the wing',
+        residual_loss: '240000.00',
+        currency: 'EUR',
+        follow_up: [{ kind: 'contract', document_id: 'doc1', action: 'terminate', status: 'active' }],
+      },
+    });
+    const box = screen.getByTestId('abort-outcome');
+    expect(box.textContent).toContain('Client cancelled the wing');
+    expect(box.textContent).toContain('Dana Weber');
+    expect(screen.getByTestId('abort-residual').textContent).toMatch(/240[,.\s  ]?000/);
+    expect(screen.getByTestId('abort-follow-up').textContent).toContain(enT('commitment.abort.follow_up.terminate'));
+    // An ended item offers neither a stop nor a hand-over.
+    expect(screen.queryByTestId('end-item')).toBeNull();
+  });
+
+  it('a handed-over item names the item that took over and opens it', () => {
+    const { onOpenItem } = panel({ status: 'transferred', transferred_to_item_id: 'i2' });
+    expect(screen.getByTestId('item-transferred')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('item-successor'));
+    expect(onOpenItem).toHaveBeenCalledWith('i2');
   });
 
   it('warns when more is bound than released, with the difference', () => {

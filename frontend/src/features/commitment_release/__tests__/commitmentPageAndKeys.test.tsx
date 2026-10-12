@@ -34,7 +34,7 @@ import en from '@/app/locales/en';
 import de from '@/app/locales/de';
 import { ApiError } from '@/shared/lib/api';
 import * as api from '../api';
-import { DISABLED_REASON } from '../access';
+import { CAN_REASONS, DISABLED_REASON } from '../access';
 import { CommitmentReleasePage, FindingsList } from '../CommitmentReleasePage';
 import { ALL_KEY_MAPS, ERROR_TEXT } from '../labels';
 import { ABORT_TERMS_PROBLEM, ITEM_PROBLEM, RELEASE_PROBLEM } from '../rules';
@@ -55,17 +55,19 @@ function renderPage(search = '') {
   );
 }
 
+const page = <T,>(items: T[]) => ({ items, total: items.length, offset: 0, limit: 100 });
+
 const LOAD_FAILED = 'The commitments could not be loaded';
 const NO_MATRIX = 'No commitment matrix yet';
 
 describe('CommitmentReleasePage states', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mocked.listSchedules.mockResolvedValue([]);
-    mocked.listFindings.mockResolvedValue([]);
-    mocked.listReleases.mockResolvedValue([]);
-    mocked.listAbortTerms.mockResolvedValue([]);
-    mocked.listAbortBases.mockResolvedValue([]);
+    mocked.listSchedules.mockResolvedValue(page([]));
+    mocked.listFindings.mockResolvedValue(page([]));
+    mocked.listReleases.mockResolvedValue(page([]));
+    mocked.listAbortTerms.mockResolvedValue(page([]));
+    mocked.listAbortBases.mockResolvedValue(page([]));
   });
   afterEach(cleanup);
 
@@ -99,7 +101,7 @@ describe('CommitmentReleasePage states', () => {
 
   it('a matrix without items points at the one thing to do next', async () => {
     mocked.getMatrix.mockResolvedValue(matrix());
-    mocked.listItems.mockResolvedValue({ items: [], totals: totals({ planned: '0', released: '0', committed: '0' }) });
+    mocked.listItems.mockResolvedValue({ ...page([]), totals: totals({ planned: '0', released: '0', committed: '0' }) });
     renderPage();
     expect(await screen.findByText('No commitment items yet')).toBeInTheDocument();
     expect(screen.getAllByTestId('item-add')).toHaveLength(1);
@@ -116,7 +118,7 @@ describe('CommitmentReleasePage states', () => {
 
   it('with items it shows the grid and how strict the guard is', async () => {
     mocked.getMatrix.mockResolvedValue(matrix({ enforcement: 'block' }));
-    mocked.listItems.mockResolvedValue({ items: [item()], totals: totals() });
+    mocked.listItems.mockResolvedValue({ ...page([item()]), totals: totals() });
     renderPage();
     expect(await screen.findByTestId('commitment-grid')).toBeInTheDocument();
     expect(screen.getAllByTestId('grid-row')).toHaveLength(1);
@@ -125,7 +127,7 @@ describe('CommitmentReleasePage states', () => {
 
   it('an item link opens that item, and a stale link says the item is gone', async () => {
     mocked.getMatrix.mockResolvedValue(matrix());
-    mocked.listItems.mockResolvedValue({ items: [item()], totals: totals() });
+    mocked.listItems.mockResolvedValue({ ...page([item()]), totals: totals() });
     const first = renderPage('?item=i1');
     expect(await screen.findByTestId('item-panel')).toBeInTheDocument();
     first.unmount();
@@ -142,11 +144,12 @@ describe('CommitmentReleasePage states', () => {
         findings={[
           {
             rule_id: 'commitment.over_release',
+            passed: false,
             severity: 'error',
-            message_key: 'commitment.rule.over_release',
             message: 'Committed amount exceeds the release',
             element_ref: 'CR-002',
-          } as never,
+            suggestion: null,
+          },
         ]}
       />,
     );
@@ -182,6 +185,17 @@ describe('commitment i18n keys', () => {
     expect(used.has('commitment.page.empty_matrix_title')).toBe(true);
     expect(used.has('commitment.errors.preconditions_open')).toBe(true);
     expect(used.has('commitment.disabled.role_manage')).toBe(true);
+    expect(used.has('commitment.decide.approve')).toBe(true);
+  });
+
+  it.each([
+    ['en', en.translation],
+    ['de', de.translation],
+  ] as const)('every refusal code a capability flag can carry has its two sentences in %s', (_lang, table) => {
+    const missing = CAN_REASONS.flatMap((code) =>
+      [`commitment.disabled.${code}`, `commitment.errors.${code}`].filter((k) => !(k in table)),
+    );
+    expect(missing).toEqual([]);
   });
 
   it.each([
