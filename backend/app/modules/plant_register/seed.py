@@ -19,6 +19,16 @@ because a fee binds money only through a released commitment. ``installed`` is
 read from an owner-furnished item of the delivery-model module and is not
 seeded here. Money is in the project's own currency or left out.
 
+One demo project is told differently: the one whose phase model is pinned
+from a pack is the project a walkthrough is recorded on, and every seeder
+describes the same day of it. It stands in development, three weeks before the
+gate that enables construction start, with construction another three and a
+half weeks behind that. So there nothing is past ``ordered`` and only one item
+is ordered at all, every need date lies after the construction start, each
+long-lead item must be ordered before the gate date (which is why it cannot
+wait for the gate), and the construction-phase IT services are still planned.
+All of it in day offsets from the seed day, never a calendar date.
+
 Only projects carrying the demo marker are touched; a project that already has
 plant items is skipped, so a re-run never duplicates.
 """
@@ -39,6 +49,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 ROUTE = "contractor_furnished_installed"
+
+# The recorded project, in days from the seed day.
+GATE_TARGET_DAYS = 21
+CONSTRUCTION_START_DAYS = 45
+# The one item already ordered on the recorded project; every other stops at ``route_set``.
+_ORDERED_BEFORE_GATE = "PL-005"
 
 # quotes: (source, source_name, enquiry offset days, response offset days, min weeks, max weeks, basis)
 # reach: the state the item is taken to, by the rules; need_days: need date relative to today.
@@ -301,7 +317,9 @@ async def seed_plant_register_demo(session: AsyncSession, project_ids: Iterable[
             continue
         try:
             async with session.begin_nested():
-                counts = await _seed_project(session, pid, owner, currency or "")
+                counts = await _seed_project(
+                    session, pid, owner, currency or "", before_gate=await _pins_a_pack_model(session, pid)
+                )
         except Exception:
             logger.warning("plant_register demo seed skipped for %s", pid, exc_info=True)
             continue
@@ -309,6 +327,41 @@ async def seed_plant_register_demo(session: AsyncSession, project_ids: Iterable[
         for k, v in counts.items():
             totals[k] += v
     return totals
+
+
+async def _pins_a_pack_model(session: AsyncSession, project_id: uuid.UUID) -> bool:
+    """Whether the project's phase model comes from a pack: that is the recorded project."""
+    from app.modules.project_governance.catalogue_packs import PACK_SOURCE
+    from app.modules.project_governance.repository import GovernanceRepository
+
+    model = await GovernanceRepository(session).get_model(project_id)
+    return model is not None and model.catalogue_source == PACK_SOURCE
+
+
+def _reach_before_gate(spec: dict[str, Any]) -> str:
+    """How far an item may have got while the project is still in development."""
+    from app.modules.plant_register import calc
+
+    if not calc.at_least(spec["reach"], "ordered") or spec["reach"] == "cancelled":
+        return spec["reach"]
+    return "ordered" if spec["code"] == _ORDERED_BEFORE_GATE else "route_set"
+
+
+async def _order_before_the_gate(
+    svc: Any, project_id: uuid.UUID, item_id: uuid.UUID, today: date, slack_days: int, owner: uuid.UUID
+) -> None:
+    """Move the need date of a long-lead item so its latest order date falls ``slack_days`` from today.
+
+    The latest order date is computed by the register (lead time, basis,
+    buffers, review period), so the seed asks for it and shifts the need date
+    by the difference instead of repeating that arithmetic.
+    """
+    view = (await svc.item_views(project_id, today=today, only=[item_id]))[0]
+    if not view["long_lead"] or view["latest_order_date"] is None or view["need_date"] is None:
+        return
+    shift = (today + timedelta(days=slack_days)) - view["latest_order_date"]
+    need = max(view["need_date"] + shift, today + timedelta(days=CONSTRUCTION_START_DAYS + 15))
+    await svc.update_item(project_id, item_id, {"need_date_fixed": need}, actor_id=owner)
 
 
 async def _package(svc: Any, project_id: uuid.UUID) -> tuple[bool, uuid.UUID | None]:
@@ -406,7 +459,7 @@ async def _commissioned_system(session: AsyncSession, project_id: uuid.UUID, tit
 
 
 async def _seed_project(
-    session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID, currency: str
+    session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID, currency: str, *, before_gate: bool = False
 ) -> dict[str, int]:
     from app.modules.plant_register import calc
     from app.modules.plant_register.service import PlantService
@@ -416,8 +469,9 @@ async def _seed_project(
     money = currency if re.fullmatch(r"[A-Z]{3}", currency) else ""
     can_route, package = await _package(svc, project_id)
     counts = {"items": 0, "quotes": 0}
-    for spec in _ITEMS:
-        reach = spec["reach"]
+    for index, spec in enumerate(_ITEMS):
+        reach = _reach_before_gate(spec) if before_gate else spec["reach"]
+        need_days = max(spec["need_days"], CONSTRUCTION_START_DAYS + 15) if before_gate else spec["need_days"]
         item = await svc.create_item(
             project_id,
             {
@@ -428,7 +482,7 @@ async def _seed_project(
                 "unit": "pcs",
                 "redundancy_scheme": spec["redundancy"],
                 "performance": spec["performance"],
-                "need_date_fixed": today + timedelta(days=spec["need_days"]),
+                "need_date_fixed": today + timedelta(days=need_days),
                 "owner_user_id": owner,
             },
             actor_id=owner,
@@ -452,6 +506,10 @@ async def _seed_project(
                 today=today,
             )
             counts["quotes"] += 1
+        if before_gate and spec["quotes"]:
+            # Between a few days from now and just before the gate, a different day per item.
+            slack = 4 + (index * 5) % (GATE_TARGET_DAYS - 6)
+            await _order_before_the_gate(svc, project_id, item.id, today, slack, owner)
         for category, text, qty, unit in spec["spares"]:
             await svc.create_spare(
                 project_id,
@@ -517,7 +575,12 @@ async def _seed_project(
     ):
         await svc.create_it_service(
             project_id,
-            {"kind": kind, "description": desc, "needed_from": today + timedelta(days=start)},
+            {
+                "kind": kind,
+                "description": desc,
+                # Before the gate nothing of the construction phase is in service yet.
+                "needed_from": today + timedelta(days=max(start, 30) if before_gate else start),
+            },
             actor_id=owner,
         )
     await _seed_site_plant(session, project_id, today)
