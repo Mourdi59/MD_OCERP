@@ -287,6 +287,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _str("source", 20, "manual"),
             sa.Column("confidence", MoneyType(5, 4), nullable=True),
             _str("text_span", 40),
+            _text("source_passage"),
             _bool("confirmed", True),
             _guid("gate_condition_id"),
             _guid("original_id"),

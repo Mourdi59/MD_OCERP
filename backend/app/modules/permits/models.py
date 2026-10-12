@@ -281,6 +281,8 @@ class PermitCondition(Base):
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")
     confidence: Mapped[Decimal | None] = mapped_column(MoneyType(5, 4), nullable=True)
     text_span: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    # The quoted sentence of the notice an extracted proposal is taken from (rule 15).
+    source_passage: Mapped[str] = mapped_column(Text, nullable=False, default="")
     confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     gate_condition_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     original_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)

@@ -30,6 +30,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from app.core.i18n import get_locale
 from app.core.tenant_scope import resolve_tenant_id
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
+from app.modules.permits import guards
 from app.modules.permits import service as sv
 from app.modules.permits.catalogue import PERMIT_TYPE_KIND
 from app.modules.permits.errors import PermitError
@@ -105,6 +106,16 @@ def _can(payload: dict[str, Any], permission: str) -> bool:
     if permission in (payload.get("permissions") or []):
         return True
     return permission_registry.role_has_permission(str(payload.get("role") or ""), permission)
+
+
+def _caller(payload: dict[str, Any], user_id: str) -> guards.Caller:
+    """Who asks and what they hold, for the ``can`` flags a record is served with."""
+    return guards.Caller(
+        actor_id=_uid(user_id),
+        edit=_can(payload, "permits.edit"),
+        manage=_can(payload, "permits.manage"),
+        verify=_can(payload, "permits.verify"),
+    )
 
 
 def _today(value: date | None) -> date:
@@ -261,9 +272,12 @@ async def diff_catalogue(
 
 
 @router.get("/projects/{project_id}/roadmap", dependencies=[READ])
-async def get_roadmap(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+async def get_roadmap(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    return sv.roadmap_out(await _run(svc.get_roadmap(project_id)))
+    row = await _run(svc.get_roadmap(project_id))
+    return {**sv.roadmap_out(row), "can": await svc.roadmap_can(project_id, _caller(payload, user_id))}
 
 
 @router.put("/projects/{project_id}/roadmap", dependencies=[MANAGE])
@@ -317,12 +331,20 @@ async def accept(project_id: uuid.UUID, body: AcceptIn, session: SessionDep, use
 
 @router.get("/projects/{project_id}/requirements", dependencies=[READ])
 async def list_requirements(
-    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, category: str | None = None
+    project_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    category: str | None = None,
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     roadmap = await _run(svc.get_roadmap(project_id))
     types = await _run(svc._types(roadmap))
     snap = await svc.state_snapshot(project_id)
+    caller = _caller(payload, user_id)
+    doc = await svc._roadmap_document(project_id)
+    binding = doc is not None and doc.status == "binding"
+    applications = await svc.repo.list_applications(project_id)
     items = []
     for r in snap["requirements"]:
         t = types.get(r.permit_type_code)
@@ -335,6 +357,7 @@ async def list_requirements(
                 "category": t.category if t else None,
                 "name_key": t.name_key if t else None,
                 "depends_on": [{"id": e.depends_on, "on": e.on} for e in snap["edges"] if e.requirement == str(r.id)],
+                "can": svc.requirement_can(r, [a for a in applications if a.requirement_id == r.id], caller, binding),
             }
         )
     return _page(items)
@@ -430,11 +453,18 @@ async def timeline(
 
 @router.get("/projects/{project_id}/applications", dependencies=[READ])
 async def list_applications(
-    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, requirement_id: uuid.UUID | None = None
+    project_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    requirement_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     rows = [a for a in await svc.repo.list_applications(project_id) if requirement_id in (None, a.requirement_id)]
-    return _page([sv.application_out(a) for a in rows])
+    # An application exists only under a roadmap, so the roadmap is there whenever a row is.
+    roadmap = await _run(svc.get_roadmap(project_id)) if rows else None
+    caller = _caller(payload, user_id)
+    return _page([{**sv.application_out(a), "can": await svc.application_can(a, roadmap, caller)} for a in rows])
 
 
 @router.post("/projects/{project_id}/applications", status_code=201, dependencies=[EDIT])
@@ -451,21 +481,32 @@ async def get_application(
     application_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
     today: date | None = None,
 ) -> dict[str, Any]:
-    """Application drawer: state, clock with stop/extension history, decisions."""
+    """Application drawer: state, clock with stop/extension history, decisions, what the caller may do."""
     svc = await _svc(project_id, user_id, session)
     app = await svc.repo.get_application(project_id, application_id)
     if app is None:
         raise HTTPException(status_code=404, detail={"code": "application_not_found"})
     deemed = await _run(svc.deemed_status(project_id, application_id, _today(today)))
-    decisions = [d for d in await svc.repo.list_decisions(project_id) if d.application_id == application_id]
+    every = await svc.repo.list_decisions(project_id)
+    newest = sv._current_decisions(every).get(str(application_id))
+    caller = _caller(payload, user_id)
+    can = await svc.application_can(app, await _run(svc.get_roadmap(project_id)), caller, deep=True)
     return {
         **sv.application_out(app),
         "clock": deemed["clock"],
         "clock_events": [sv.clock_event_out(e) for e in await svc.repo.list_clock_events(project_id, application_id)],
-        "decisions": [sv.decision_out(d) for d in decisions],
-        "allowed_targets": sorted(t for t in sv.USER_TARGETS if sv.APPLICATION_FSM.has_transition(app.status, t)),
+        "decisions": [
+            {**sv.decision_out(d), "can": svc.decision_can(d, newest, caller)}
+            for d in every
+            if d.application_id == application_id
+        ],
+        # The moves this project's lifecycle offers from here, in the order the work goes. Whether
+        # the caller may make one, and why not, is ``can.transition[target]``.
+        "allowed_targets": [t for t in guards.TARGET_ORDER if can["transition"][t]["applies"]],
+        "can": can,
     }
 
 
@@ -582,10 +623,14 @@ async def correct_decision(
 
 @router.get("/projects/{project_id}/permits", dependencies=[READ])
 async def list_permits(
-    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
+    project_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    today: date | None = None,
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    return _page(await svc.permit_rows(project_id, _today(today)))
+    return _page(await svc.permit_rows(project_id, _today(today), _caller(payload, user_id)))
 
 
 @router.post("/projects/{project_id}/permits/{permit_id}/start-notice", dependencies=[EDIT])
@@ -654,6 +699,27 @@ async def propose_conditions(
     return _page([sv.condition_out(r) for r in rows])
 
 
+@router.post(
+    "/projects/{project_id}/permits/{permit_id}/condition-proposals/extract", status_code=201, dependencies=[EDIT]
+)
+async def extract_conditions(
+    project_id: uuid.UUID, permit_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    """Rule 15: read the permit's decision notice with the AI provider the caller has configured.
+
+    What it finds is stored as unconfirmed proposals with a confidence each; a person
+    confirms or rejects every one. No body: the document is the notice of the decision.
+    """
+    svc = await _svc(project_id, user_id, session)
+    out = await _run(svc.extract_conditions(project_id, permit_id, actor_id=_uid(user_id)))
+    return _page(
+        [sv.condition_out(r) for r in out["items"]],
+        already_known=out["already_known"],
+        rejected=out["rejected"],
+        document_cut=out["document_cut"],
+    )
+
+
 # ── condition register ─────────────────────────────────────────────────────
 
 
@@ -662,6 +728,7 @@ async def list_conditions(
     project_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
     trigger: str | None = None,
     topic: str | None = None,
     owner_user_id: uuid.UUID | None = None,
@@ -675,7 +742,7 @@ async def list_conditions(
     limit: int = Query(0, ge=0, le=1000),
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    rows = await svc.condition_rows(project_id, _today(today))
+    rows = await svc.condition_rows(project_id, _today(today), _caller(payload, user_id))
 
     def keep(r: dict[str, Any]) -> bool:
         if not include_proposals and not r["confirmed"]:
@@ -707,21 +774,17 @@ async def get_condition(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    """One condition with its evidence, its discharges and what the caller may do to discharge it."""
+    """One condition with its evidence, its discharges and what the caller may do to it."""
     svc = await _svc(project_id, user_id, session)
     c = await svc.repo.get_condition(project_id, condition_id)
     if c is None:
         raise HTTPException(status_code=404, detail={"code": "condition_not_found"})
-    can = await _run(
-        svc.discharge_capability(
-            project_id, condition_id, actor_id=_uid(user_id), can_verify=_can(payload, "permits.verify")
-        )
-    )
+    evidence = await svc.evidence_rows(project_id, condition_id)
     return {
         **sv.condition_out(c),
-        "evidence": [sv.evidence_out(e) for e in await svc.repo.list_evidence(project_id, condition_id)],
+        "evidence": evidence,
         "discharges": [sv.discharge_out(d) for d in await svc.repo.list_discharges(project_id, condition_id)],
-        "can": {"discharge": can},
+        "can": svc.condition_can(c, _caller(payload, user_id), len(evidence), await svc._involved(c)),
     }
 
 

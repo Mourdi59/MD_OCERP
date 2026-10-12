@@ -234,6 +234,8 @@ class ConditionIn(_In):
 class ConditionProposal(ConditionIn):
     confidence: str = Field(pattern=r"^(0(\.\d{1,4})?|1(\.0{1,4})?)$")
     text_span: str = Field(default="", max_length=40)
+    # The sentence of the notice the condition is taken from; ``text_span`` is only its locator.
+    passage: str = Field(default="", max_length=2000)
 
 
 class ProposalsIn(_In):

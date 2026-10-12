@@ -42,6 +42,34 @@ def test_decisions_need_manage_and_discharge_needs_verify() -> None:
     assert decision == {"permits.manage"}
     discharge = next(v for (p, _m), v in perms.items() if p.endswith("/discharge"))
     assert discharge == {"permits.verify"}
+    # Reading the notice with the AI writes proposals: it is an editor's action and takes no body.
+    extract = next(r for r in permits_router.router.routes if r.path.endswith("/condition-proposals/extract"))
+    assert {getattr(d.dependency, "permission", None) for d in extract.dependencies} == {"permits.edit"}
+    assert set(inspect.signature(extract.endpoint).parameters) == {"project_id", "permit_id", "session", "user_id"}
+
+
+def test_every_record_read_is_served_with_what_the_caller_may_do() -> None:
+    """A button follows the server: each read of a record a user acts on builds its ``can`` from the caller."""
+    reads = {
+        "/projects/{project_id}/roadmap",
+        "/projects/{project_id}/requirements",
+        "/projects/{project_id}/applications",
+        "/projects/{project_id}/applications/{application_id}",
+        "/projects/{project_id}/permits",
+        "/projects/{project_id}/conditions",
+        "/projects/{project_id}/conditions/{condition_id}",
+    }
+    seen = set()
+    for route in permits_router.router.routes:
+        if "GET" in route.methods and route.path.removeprefix(permits_router.router.prefix) in reads:
+            assert "_caller(payload, user_id)" in inspect.getsource(route.endpoint), route.path
+            seen.add(route.path.removeprefix(permits_router.router.prefix))
+    assert seen == reads
+    # Nothing but the guards decides a flag: the service builds every one through ``guards``.
+    from app.modules.permits.service import PermitService
+
+    for name in ("roadmap_can", "requirement_can", "application_can", "decision_can", "permit_can", "condition_can"):
+        assert "guards.flag(" in inspect.getsource(getattr(PermitService, name)), name
 
 
 def test_approval_target_kind_registered_in_model_and_schema() -> None:
@@ -56,7 +84,10 @@ def test_every_error_code_has_an_english_and_german_message() -> None:
     codes: set[str] = set()
     for path in MODULE_DIR.glob("*.py"):
         codes |= set(
-            re.findall(r'(?:PermitError|not_found|conflict|forbidden|ClockError)\("([a-z_]+)"', path.read_text("utf-8"))
+            re.findall(
+                r'(?:PermitError|not_found|conflict|forbidden|not_applicable|refused|ClockError)\(\s*"([a-z_]+)"',
+                path.read_text("utf-8"),
+            )
         )
     assert len(codes) > 50
     for code in codes:

@@ -43,6 +43,7 @@ from app.core.audit_log import log_activity
 from app.core.events import publish_after_commit
 from app.core.fsm import FSMError
 from app.modules.permits import conditions as cnd
+from app.modules.permits import guards
 from app.modules.permits import hosting as hst
 from app.modules.permits import roadmap as rm
 from app.modules.permits.catalogue import (
@@ -90,7 +91,7 @@ logger = logging.getLogger(__name__)
 
 MODULE = "permits"
 TARGET_KIND = "permit_application"
-DECIDABLE = ("submitted", "validated", "under_review", "info_requested")
+DECIDABLE = guards.DECIDABLE
 NOT_REFUSED = ("granted", "granted_with_conditions", "partially_granted", "deemed_granted")
 PERMIT_KINDS = ("new", "early_start", "variation", "amendment_non_material")
 CHILD_KINDS = ("variation", "amendment_non_material", "extension_of_validity", "discharge_of_conditions")
@@ -119,7 +120,7 @@ REGISTERS: tuple[str, ...] = ("roadmap", "permits", "conditions")
 # Requirement fields that decide what a gate reads or who may edit the row: ``permits.manage`` only.
 MANAGED_REQUIREMENT_FIELDS = ("applicable", "conflict_accepted", "responsible_user_id")
 # Condition fields a gate reads. Changing one needs ``permits.manage`` and an open condition.
-GATE_CONDITION_FIELDS = ("kind", "trigger", "requires_authority_approval", "gate_condition_id", "purpose")
+GATE_CONDITION_FIELDS = guards.GATE_FIELDS
 # A date the authority or the applicant acted on may be at most this far ahead of the server's
 # UTC date (the project may sit in a time zone ahead of UTC).
 FUTURE_SLACK_DAYS = 1
@@ -165,6 +166,14 @@ def _uuid(value: Any) -> uuid.UUID | None:
         return uuid.UUID(str(value))
     except ValueError as exc:
         raise PermitError("id_invalid", 422, detail=str(value)[:80]) from exc
+
+
+def _uuid_or_none(value: Any) -> uuid.UUID | None:
+    """A free-text reference read as an id, where it is one."""
+    try:
+        return uuid.UUID(str(value))
+    except ValueError:
+        return None
 
 
 def _iso(value: Any) -> Any:
@@ -785,8 +794,7 @@ class PermitService:
         req = await self.repo.get_requirement(project_id, rid, lock=True)
         if req is None:
             raise not_found("requirement_not_found")
-        if not can_manage and req.responsible_user_id != actor_id:
-            raise forbidden("not_requirement_owner")
+        guards.requirement_edit(req, actor_id, can_manage)
         change_request_id = data.pop("change_request_id", None)
         changed = {k for k, v in data.items() if getattr(req, k, None) != (_uuid(v) if k.endswith("_id") else v)}
         if changed & set(MANAGED_REQUIREMENT_FIELDS) and not can_manage:
@@ -830,8 +838,7 @@ class PermitService:
         if req is None:
             raise not_found("requirement_not_found")
         apps = [a for a in await self.repo.list_applications(project_id) if a.requirement_id == rid]
-        if any(a.status not in ("planned", "withdrawn") for a in apps):
-            raise conflict("requirement_has_applications")
+        guards.requirement_delete(apps)
         spent = await self._structural_guard(roadmap, change_request_id)
         await self.session.delete(req)
         await self.session.flush()
@@ -1235,8 +1242,9 @@ class PermitService:
         app = await self.repo.get_application(project_id, aid, lock=True)
         if app is None:
             raise not_found("application_not_found")
-        if app.status in ("decided", "withdrawn") and set(data) - {"appeal_note"}:
-            raise conflict("application_closed")
+        if set(data) - {"appeal_note"}:
+            # The appeal note is the one thing still written on a closed application.
+            guards.application_edit(app)
         for key in ("submitted_at", "received_at", "validated_at"):
             _not_in_future(data.get(key), _today())
         for v in data.get("review_cycle_ids") or []:
@@ -1274,9 +1282,7 @@ class PermitService:
         app = await self.repo.get_application(project_id, aid, lock=True)
         if app is None:
             raise not_found("application_not_found")
-        if app.status == target or app.status in ("decided", "withdrawn"):
-            # Same-state and post-terminal moves write nothing.
-            raise conflict("invalid_transition", detail=f"{app.status} -> {target}")
+        guards.application_transition(app, target, roadmap.internal_review)
         when = on_date or today
         if target == "submitted":
             await self._admit_submit(roadmap, app, can_manage)
@@ -1303,14 +1309,16 @@ class PermitService:
         return app
 
     async def _admit_submit(self, roadmap: PermitRoadmap, app: PermitApplication, can_manage: bool) -> None:
-        """Rule 3 (dependencies) and lead decision k (optional internal release)."""
+        """Rule 3 (dependencies) and the internal release of lead decision k, once it runs.
+
+        Whether the project has an internal release at all is the guard's question
+        (``guards.application_transition``); this asks what only a query answers.
+        """
         if app.kind in ("new", "early_start"):
             snap = await self.state_snapshot(app.project_id)
             unmet = rm.unmet_dependencies(str(app.requirement_id), snap["edges"], snap["states"], snap["submitted"])
             if unmet:
                 raise PermitError("dependency_not_met", 422, detail=",".join(unmet))
-        if roadmap.internal_review and app.status == "preparing":
-            raise conflict("internal_review_required")
         if app.status == "internal_review" and app.approval_instance_id is not None:
             from app.modules.approval_routes.models import Instance
 
@@ -1363,8 +1371,7 @@ class PermitService:
         app = await self.repo.get_application(project_id, aid, lock=True)
         if app is None:
             raise not_found("application_not_found")
-        if app.status in ("planned", "preparing", "internal_review", "decided", "withdrawn"):
-            raise conflict("clock_not_running")
+        guards.application_clock(app)
         req = await self.repo.get_requirement(project_id, app.requirement_id)
         ptype = self._type(await self._types(roadmap), req.permit_type_code)
         spec = self._app_spec(app, ptype, req.clock_variant)
@@ -1417,10 +1424,7 @@ class PermitService:
         app = await self.repo.get_application(project_id, aid, lock=True)
         if app is None:
             raise not_found("application_not_found")
-        if app.status == "decided":
-            raise conflict("already_decided")
-        if app.status not in DECIDABLE:
-            raise conflict("application_not_decidable")
+        guards.application_decide(app)
         outcome = data["outcome"]
         if outcome not in DECISION_OUTCOMES:
             raise PermitError("outcome_invalid", 422)
@@ -1538,8 +1542,7 @@ class PermitService:
         if old is None:
             raise not_found("decision_not_found")
         newest = _current_decisions(await self.repo.list_decisions(project_id)).get(str(old.application_id))
-        if newest is None or newest.id != old.id:
-            raise conflict("decision_superseded")
+        guards.decision_current(old, newest)
         if not (data.get("reason") or "").strip():
             raise PermitError("correction_needs_reason", 422)
         for key in ("decision_date", "served_date"):
@@ -1676,6 +1679,7 @@ class PermitService:
                     # A copy stays what it was: an AI proposal keeps its confidence and its span.
                     "confidence": src.confidence if copied else None,
                     "text_span": src.text_span if copied else "",
+                    "passage": src.source_passage if copied else "",
                 },
                 decision_id=permit.decision_id,
                 actor_id=actor_id,
@@ -1826,10 +1830,7 @@ class PermitService:
         permit = await self.repo.get_permit(project_id, pid, lock=True)
         if permit is None:
             raise not_found("permit_not_found")
-        if permit.status != "in_force":
-            raise conflict("permit_not_in_force")
-        if permit.start_notified_at is not None:
-            raise conflict("start_already_notified")
+        guards.permit_start(permit)
         permit.start_notified_at = on_date
         permit.valid_until = None
         await self.session.flush()
@@ -1850,21 +1851,14 @@ class PermitService:
         permit = await self.repo.get_permit(project_id, pid, lock=True)
         if permit is None:
             raise not_found("permit_not_found")
-        if permit.status != "in_force":
-            raise conflict("permit_not_in_force")
-        if permit.start_notified_at is None:
-            raise conflict("work_not_started")
+        guards.permit_interruption(permit, resumed)
         when = on_date or today
         if resumed:
-            if permit.paused_since is None:
-                raise conflict("work_not_interrupted")
             if when < permit.paused_since:
                 raise PermitError("resume_before_interruption", 422)
             permit.paused_since, permit.valid_until = None, None
             action = "work_resumed"
         else:
-            if permit.paused_since is not None:
-                raise conflict("work_already_interrupted")
             if when < permit.start_notified_at:
                 raise PermitError("interruption_before_start", 422)
             permit.paused_since = when
@@ -1877,13 +1871,10 @@ class PermitService:
     async def transition_permit(
         self, project_id: uuid.UUID, pid: uuid.UUID, target: str, *, actor_id: uuid.UUID, reason: str | None
     ) -> Permit:
-        if target not in ("suspended", "in_force", "revoked", "expired", "lapsed"):
-            raise PermitError("transition_not_allowed", 422)
         permit = await self.repo.get_permit(project_id, pid, lock=True)
         if permit is None:
             raise not_found("permit_not_found")
-        if target == "in_force" and permit.status == "lapsed":
-            raise PermitError("lapsed_needs_extension_decision", 422)
+        guards.permit_transition(permit, target)
         await self._fsm(PERMIT_FSM, permit, target, actor_id, reason)
         await self.session.flush()
         self._publish("permit.state_changed", {"project_id": str(project_id), "permit_id": str(pid), "state": target})
@@ -1927,6 +1918,7 @@ class PermitService:
             source=source,
             confidence=Decimal(str(c["confidence"])) if c.get("confidence") is not None else None,
             text_span=c.get("text_span") or "",
+            source_passage=c.get("passage") or "",
             confirmed=confirmed,
             gate_condition_id=_uuid(c.get("gate_condition_id")),
             original_id=original_id,
@@ -1969,10 +1961,7 @@ class PermitService:
         if dec is None:
             raise not_found("decision_not_found")
         newest = _current_decisions(await self.repo.list_decisions(project_id)).get(str(dec.application_id))
-        if newest is not None and newest.id != dec.id:
-            raise conflict("decision_superseded")
-        if not dec.conditions_pending:
-            raise conflict("register_already_complete")
+        guards.decision_complete_register(dec, newest)
         permit = (await self.session.execute(select(Permit).where(Permit.decision_id == dec.id))).scalar_one_or_none()
         if permit is not None:
             conds = [c for c in await self.repo.conditions_of_permit(project_id, permit.id) if c.confirmed]
@@ -1998,8 +1987,7 @@ class PermitService:
         c = await self.repo.get_condition(project_id, cid, lock=lock)
         if c is None:
             raise not_found("condition_not_found")
-        if not can_manage and c.owner_user_id not in (None, actor_id):
-            raise forbidden("not_condition_owner")
+        guards.condition_owned(c, actor_id, can_manage)
         return c
 
     async def update_condition(
@@ -2012,8 +2000,7 @@ class PermitService:
         can_manage: bool,
     ) -> PermitCondition:
         c = await self._owned_condition(project_id, cid, actor_id, can_manage)
-        if c.status in ("superseded", "waived"):
-            raise conflict("condition_closed")
+        guards.condition_edit(c)
         if "text" in data and c.status not in ("open",):
             raise conflict("condition_text_frozen")
         current = {**_condition_payload(c), "gate_condition_id": c.gate_condition_id}
@@ -2027,9 +2014,7 @@ class PermitService:
         guarded = changed & set(GATE_CONDITION_FIELDS)
         if guarded and not can_manage:
             raise forbidden("manage_required", detail=",".join(sorted(guarded)))
-        frozen = changed & {*GATE_CONDITION_FIELDS, "owner_user_id"}
-        if frozen and c.status != "open":
-            raise conflict("condition_field_frozen", detail=",".join(sorted(frozen)))
+        guards.condition_frozen(c, changed & {*GATE_CONDITION_FIELDS, "owner_user_id"})
         if data.get("gate_condition_id"):
             await self._check_link("gate_condition", data["gate_condition_id"], project_id)
         merged_input = {**_condition_payload(c), **{k: v for k, v in data.items() if v is not None}}
@@ -2090,8 +2075,7 @@ class PermitService:
         kind = data["kind"]
         if kind not in EVIDENCE_KINDS:
             raise PermitError("evidence_kind_invalid", 422)
-        if c.status in ("superseded", "waived", "discharged"):
-            raise conflict("condition_closed")
+        guards.condition_add_evidence(c)
         ref = str(data.get("ref_id") or "").strip()
         content_hash = ""
         if kind in LINKED_EVIDENCE:
@@ -2132,9 +2116,7 @@ class PermitService:
         self, project_id: uuid.UUID, cid: uuid.UUID, eid: uuid.UUID, *, actor_id: uuid.UUID, can_manage: bool
     ) -> None:
         c = await self._owned_condition(project_id, cid, actor_id, can_manage)
-        if c.status in ("discharged", "not_triggered", "waived", "superseded"):
-            # What a discharge relied on stays on record.
-            raise conflict("condition_closed")
+        guards.condition_remove_evidence(c)
         ev = await self.repo.get_evidence(project_id, eid)
         if ev is None or ev.condition_id != cid:
             raise not_found("evidence_not_found")
@@ -2149,10 +2131,7 @@ class PermitService:
         self, project_id: uuid.UUID, cid: uuid.UUID, *, actor_id: uuid.UUID, can_manage: bool
     ) -> PermitCondition:
         c = await self._owned_condition(project_id, cid, actor_id, can_manage)
-        if not c.confirmed:
-            raise conflict("condition_not_confirmed")
-        if not await self.repo.list_evidence(project_id, cid):
-            raise PermitError("evidence_required", 422)
+        guards.condition_submit_evidence(c, len(await self.repo.list_evidence(project_id, cid)))
         await self._fsm(CONDITION_FSM, c, "evidence_submitted", actor_id, "evidence submitted")
         # Who certified the evidence: this person can never verify the discharge (rule 13).
         c.evidence_submitted_by = actor_id
@@ -2169,54 +2148,26 @@ class PermitService:
         self, project_id: uuid.UUID, cid: uuid.UUID, *, actor_id: uuid.UUID, can_verify: bool
     ) -> dict[str, Any]:
         """``can`` flags for the three manual discharge modes, from the very checks that enforce them."""
-        out: dict[str, Any] = {}
-        for mode in ("self_certified", "not_triggered", "waived_by_authority"):
-            reason = None
-            if not can_verify:
-                reason = "verify_required"
-            else:
-                c = await self.repo.get_condition(project_id, cid)
-                if c is None:
-                    raise not_found("condition_not_found")
-                # A document can still be attached: only what a document cannot cure is a reason.
-                try:
-                    await self._discharge_target(c, mode, actor_id, has_document=True)
-                except PermitError as exc:
-                    reason = exc.code
-            out[mode] = {"allowed": reason is None, "reason": reason}
-        return out
+        c = await self.repo.get_condition(project_id, cid)
+        if c is None:
+            raise not_found("condition_not_found")
+        return self._discharge_can(c, guards.Caller(actor_id, verify=can_verify), await self._involved(c))
+
+    def _discharge_can(self, c: PermitCondition, caller: guards.Caller, involved: set[uuid.UUID]) -> dict[str, Any]:
+        # A document can still be attached: only what a document cannot cure is a reason.
+        return {
+            mode: guards.flag(
+                lambda mode=mode: (
+                    guards.needs_verify(caller),
+                    guards.condition_discharge(c, mode, caller.actor_id, involved, has_document=True),
+                )
+            )
+            for mode in guards.DISCHARGE_MODES
+        }
 
     async def _discharge_target(self, c: PermitCondition, mode: str, actor_id: uuid.UUID, *, has_document: bool) -> str:
         """Every rule of a manual discharge; returns the condition state it leads to."""
-        if not c.confirmed:
-            raise conflict("condition_not_confirmed")
-        if mode not in ("self_certified", "not_triggered", "waived_by_authority"):
-            # authority_discharged / deemed_discharged come only from a decided discharge application.
-            raise PermitError("discharge_needs_application", 422)
-        if mode == "self_certified":
-            if c.requires_authority_approval:
-                raise PermitError("authority_discharge_required", 422)
-            if c.owner_user_id is None:
-                raise PermitError("condition_needs_owner", 422)
-            if c.status != "evidence_submitted":
-                raise conflict("evidence_not_submitted")
-            target = "discharged"
-        else:
-            target = "not_triggered" if mode == "not_triggered" else "waived"
-            if not CONDITION_FSM.has_transition(c.status, target):
-                raise conflict("invalid_transition", detail=f"{c.status} -> {target}")
-            if mode == "waived_by_authority" and not has_document:
-                raise PermitError("waiver_needs_document", 422)
-            # "The trigger never occurred" releases a suspensive condition, or one only the
-            # authority may discharge, on one person's word. That word needs a document behind it.
-            strict = c.kind == "suspensive" or c.requires_authority_approval
-            if mode == "not_triggered" and strict and not has_document:
-                raise PermitError("not_triggered_needs_document", 422)
-        if c.owner_user_id == actor_id:
-            raise forbidden("verifier_is_owner")
-        if actor_id in await self._involved(c):
-            raise forbidden("verifier_is_involved")
-        return target
+        return guards.condition_discharge(c, mode, actor_id, await self._involved(c), has_document=has_document)
 
     async def _evidence_snapshot(self, c: PermitCondition) -> list[dict[str, Any]]:
         return [
@@ -2284,8 +2235,7 @@ class PermitService:
             c = await self.repo.get_condition(project_id, cid, lock=True)
             if c is None:
                 raise not_found("condition_not_found")
-        if c.trigger != "ongoing":
-            raise PermitError("condition_not_ongoing", 422)
+        guards.condition_ongoing(c, target)
         if target == "breach":
             kind = data.get("ref_kind") or "manual"
             if kind not in BREACH_REF_KINDS:
@@ -2335,8 +2285,7 @@ class PermitService:
         c = await self.repo.get_condition(project_id, cid, lock=True)
         if c is None:
             raise not_found("condition_not_found")
-        if c.confirmed:
-            raise conflict("condition_already_confirmed")
+        guards.condition_confirm(c)
         if not accept:
             await self.session.delete(c)
             await self.session.flush()
@@ -2576,13 +2525,278 @@ class PermitService:
                 lapsed.append(str(pid))
         return {"notified": notified, "escalated": escalated, "unescalated": unescalated, "lapsed": lapsed}
 
+    # ── what the caller may do (``can`` flags) ─────────────────────────────
+    #
+    # Every flag is the guard of the write run dry (see ``guards``): ``{allowed, applies, reason}``
+    # with the error code the write would answer with. What only the request body can decide
+    # (a date in the future, a missing document) is not in a flag.
+
+    async def roadmap_can(self, project_id: uuid.UUID, caller: guards.Caller) -> dict[str, Any]:
+        doc = await self._roadmap_document(project_id)
+        # Once the frame document is binding each structural change spends one approved change request.
+        binding = {"change_request_required": doc is not None and doc.status == "binding"}
+        manage = guards.flag(lambda: guards.needs_manage(caller))
+        return {
+            "edit": manage,
+            "add_requirement": {**manage, **binding},
+            "accept_proposals": {**manage, **binding},
+            "escalate": manage,
+            "publish_frame_document": guards.flag(lambda: (guards.needs_manage(caller), guards.frame_document(doc))),
+        }
+
+    def requirement_can(
+        self, req: PermitRequirement, applications: list[PermitApplication], caller: guards.Caller, binding: bool
+    ) -> dict[str, Any]:
+        cr = {"change_request_required": binding}
+        manage = guards.flag(lambda: guards.needs_manage(caller))
+        edit = guards.flag(lambda: guards.needs_edit(caller))
+        return {
+            "edit": guards.flag(
+                lambda: (guards.needs_edit(caller), guards.requirement_edit(req, caller.actor_id, caller.manage))
+            ),
+            # ``applicable``, ``conflict_accepted`` and the responsible user.
+            "manage_fields": manage,
+            "delete": {
+                **guards.flag(lambda: (guards.needs_manage(caller), guards.requirement_delete(applications))),
+                **cr,
+            },
+            "set_dependencies": {**manage, **cr},
+            "create_application": edit,
+            "push_milestone": edit,
+        }
+
+    async def application_can(
+        self, app: PermitApplication, roadmap: PermitRoadmap, caller: guards.Caller, *, deep: bool = False
+    ) -> dict[str, Any]:
+        """Flags of one application.
+
+        ``deep`` also asks what only a query can answer (unmet dependencies, the internal
+        release) for the move to ``submitted``; a list leaves that to the detail read.
+        """
+
+        def move(target: str) -> dict[str, Any]:
+            return guards.flag(
+                lambda: (
+                    guards.needs_edit(caller),
+                    guards.application_transition(app, target, roadmap.internal_review),
+                )
+            )
+
+        transition = {t: move(t) for t in guards.TARGET_ORDER}
+        if deep and transition["submitted"]["allowed"]:
+            try:
+                await self._admit_submit(roadmap, app, caller.manage)
+            except PermitError as exc:
+                transition["submitted"] = guards.refused(exc.code)
+        return {
+            "edit": guards.flag(lambda: (guards.needs_edit(caller), guards.application_edit(app))),
+            "clock": guards.flag(lambda: (guards.needs_edit(caller), guards.application_clock(app))),
+            "decide": guards.flag(lambda: (guards.needs_manage(caller), guards.application_decide(app))),
+            "transition": transition,
+        }
+
+    def decision_can(
+        self, decision: PermitDecision, newest: PermitDecision | None, caller: guards.Caller
+    ) -> dict[str, Any]:
+        return {
+            "correct": guards.flag(lambda: (guards.needs_manage(caller), guards.decision_current(decision, newest))),
+            "complete_register": guards.flag(
+                lambda: (guards.needs_manage(caller), guards.decision_complete_register(decision, newest))
+            ),
+        }
+
+    async def permit_can(
+        self, permit: Permit, caller: guards.Caller, no_provider: PermitError | None
+    ) -> dict[str, Any]:
+        """Flags of one permit. ``no_provider`` is the refusal of :meth:`_ai_refusal` for this caller."""
+        return {
+            "start": guards.flag(lambda: (guards.needs_edit(caller), guards.permit_start(permit))),
+            "interrupt": guards.flag(lambda: (guards.needs_edit(caller), guards.permit_interruption(permit, False))),
+            "resume": guards.flag(lambda: (guards.needs_edit(caller), guards.permit_interruption(permit, True))),
+            "transition": {
+                t: guards.flag(lambda t=t: (guards.needs_manage(caller), guards.permit_transition(permit, t)))
+                for t in guards.PERMIT_TARGETS
+            },
+            "add_condition": guards.flag(lambda: guards.needs_manage(caller)),
+            "propose_conditions": await self._can_propose(permit, caller, no_provider),
+        }
+
+    def condition_can(
+        self, c: PermitCondition, caller: guards.Caller, evidence_count: int, involved: set[uuid.UUID]
+    ) -> dict[str, Any]:
+        """Flags of one condition. ``involved``: its owner, who submitted and who added evidence."""
+
+        def owned(guard: Callable[[], Any]) -> dict[str, Any]:
+            return guards.flag(
+                lambda: (
+                    guards.needs_edit(caller),
+                    guards.condition_owned(c, caller.actor_id, caller.manage),
+                    guard(),
+                )
+            )
+
+        return {
+            "edit": owned(lambda: guards.condition_edit(c)),
+            # ``kind``, ``trigger``, ``purpose``, ``requires_authority_approval``: what a gate reads.
+            "manage_fields": guards.flag(lambda: (guards.needs_manage(caller), guards.condition_gate_fields(c))),
+            "assign": guards.flag(lambda: (guards.needs_manage(caller), guards.condition_assign(c))),
+            "add_evidence": owned(lambda: guards.condition_add_evidence(c)),
+            "remove_evidence": owned(lambda: guards.condition_remove_evidence(c)),
+            "submit_evidence": owned(lambda: guards.condition_submit_evidence(c, evidence_count)),
+            "breach": guards.flag(lambda: (guards.needs_edit(caller), guards.condition_ongoing(c, "breach"))),
+            "in_compliance": owned(lambda: guards.condition_ongoing(c, "in_compliance")),
+            "confirm": guards.flag(lambda: (guards.needs_edit(caller), guards.condition_confirm(c))),
+            "discharge": self._discharge_can(c, caller, involved),
+        }
+
+    # ── condition proposals read out of the notice (rule 15) ───────────────
+
+    async def _extraction_source(self, permit: Permit) -> Any:
+        """The CDE revision of the decision notice the permit was issued with."""
+        from app.modules.cde.models import DocumentRevision
+
+        decision = await self.repo.get_decision(permit.project_id, permit.decision_id) if permit.decision_id else None
+        revision_id = decision.document_revision_id if decision is not None else None
+        if revision_id is None:
+            raise conflict("permit_has_no_document")
+        revision = await self.session.get(DocumentRevision, revision_id)
+        if revision is None or not revision.storage_key:
+            raise PermitError("document_unreadable", 422)
+        return revision
+
+    async def _ai_provider(self, actor_id: uuid.UUID | None) -> tuple[str, str, str | None]:
+        """The caller's configured AI provider, from the platform's own AI settings. No second client."""
+        from app.modules.ai.ai_client import resolve_provider_key_model
+        from app.modules.ai.repository import AISettingsRepository
+
+        settings = await AISettingsRepository(self.session).get_by_user_id(actor_id) if actor_id else None
+        try:
+            return resolve_provider_key_model(settings)
+        except ValueError as exc:
+            raise conflict("ai_not_configured") from exc
+
+    async def _ai_refusal(self, actor_id: uuid.UUID | None) -> PermitError | None:
+        try:
+            await self._ai_provider(actor_id)
+        except PermitError as exc:
+            return exc
+        return None
+
+    async def _can_propose(
+        self, permit: Permit, caller: guards.Caller, no_provider: PermitError | None
+    ) -> dict[str, Any]:
+        """The extraction's own preconditions, in the order the extraction checks them."""
+        try:
+            guards.needs_edit(caller)
+            await self._extraction_source(permit)
+            if no_provider is not None:
+                raise no_provider
+        except PermitError as exc:
+            return guards.refused(exc.code)
+        return guards.flag(lambda: None)
+
+    async def extract_conditions(self, project_id: uuid.UUID, pid: uuid.UUID, *, actor_id: uuid.UUID) -> dict[str, Any]:
+        """Read the permit's decision notice and store the conditions the AI finds as UNCONFIRMED proposals.
+
+        Nothing extracted counts anywhere until a person confirms it (rule 15). A condition the
+        permit already carries, by text or by number, is not proposed again, so running the
+        extraction twice adds nothing.
+        """
+        import asyncio
+
+        import httpx
+
+        from app.core.storage import get_storage_backend
+        from app.modules.ai import ai_client
+        from app.modules.file_search.extractors import extract_text
+        from app.modules.permits import extraction
+
+        permit = await self.repo.get_permit(project_id, pid)
+        if permit is None:
+            raise not_found("permit_not_found")
+        revision = await self._extraction_source(permit)
+        provider, api_key, model = await self._ai_provider(actor_id)
+        try:
+            payload = await get_storage_backend().get(revision.storage_key)
+        except FileNotFoundError as exc:
+            raise PermitError("document_unreadable", 422) from exc
+        document = (await asyncio.to_thread(extract_text, payload, revision.mime_type)).text
+        if not document.strip():
+            # A scan without a text layer, or a file type nothing here can read.
+            raise PermitError("document_has_no_text", 422)
+        prompt, cut = extraction.build_prompt(document)
+        try:
+            answer, _tokens = await ai_client.call_ai(
+                provider, api_key, extraction.system_prompt(), prompt, model=model, max_tokens=8000
+            )
+        except (ValueError, httpx.HTTPError) as exc:
+            logger.warning("permits: condition extraction failed at the AI provider for permit %s: %s", pid, exc)
+            raise PermitError("ai_request_failed", 502) from exc
+        parsed = extraction.parse_response(ai_client.extract_json(answer), document)
+        if parsed is None:
+            raise PermitError("ai_response_unreadable", 502)
+        existing = [c for c in await self.repo.conditions_of_permit(project_id, pid) if c.status != "superseded"]
+        known_texts = {c.text_hash for c in existing}
+        known_numbers = {c.number for c in existing}
+        rows: list[PermitCondition] = []
+        already_known = 0
+        for p in parsed.proposals:
+            if cnd.text_hash(p["text"]) in known_texts or p["number"].strip() in known_numbers:
+                already_known += 1
+                continue
+            rows.append(
+                await self._add_condition(
+                    permit, p, decision_id=permit.decision_id, actor_id=actor_id, source="ai_extracted", confirmed=False
+                )
+            )
+            known_numbers.add(p["number"].strip())
+        await self._audit(
+            actor_id,
+            "authority_permit",
+            pid,
+            "conditions_extracted",
+            metadata={
+                "document_revision_id": str(revision.id),
+                "proposed": len(rows),
+                "already_known": already_known,
+                "rejected": parsed.rejected,
+            },
+        )
+        return {"items": rows, "already_known": already_known, "rejected": parsed.rejected, "document_cut": cut}
+
+    async def evidence_rows(self, project_id: uuid.UUID, cid: uuid.UUID) -> list[dict[str, Any]]:
+        """Evidence of one condition; a linked document revision carries its document title and revision label."""
+        from app.modules.cde.models import DocumentContainer, DocumentRevision
+
+        rows = await self.repo.list_evidence(project_id, cid)
+        ids = [rid for e in rows if e.kind == "cde_revision" and (rid := _uuid_or_none(e.ref_id)) is not None]
+        named: dict[str, tuple[str, str]] = {}
+        if ids:
+            stmt = (
+                select(DocumentRevision.id, DocumentContainer.title, DocumentRevision.revision_code)
+                .join(DocumentContainer, DocumentRevision.container_id == DocumentContainer.id)
+                .where(DocumentRevision.id.in_(ids), DocumentContainer.project_id == project_id)
+            )
+            named = {str(i): (title or "", code or "") for i, title, code in (await self.session.execute(stmt)).all()}
+        out = []
+        for e in rows:
+            title, label = named.get(str(_uuid_or_none(e.ref_id)), ("", ""))
+            out.append({**evidence_out(e), "ref_title": title or None, "ref_revision": label or None})
+        return out
+
     # ── read models ────────────────────────────────────────────────────────
 
-    async def condition_rows(self, project_id: uuid.UUID, today: date) -> list[dict[str, Any]]:
+    async def condition_rows(
+        self, project_id: uuid.UUID, today: date, caller: guards.Caller | None = None
+    ) -> list[dict[str, Any]]:
+        """The condition register; with a ``caller`` every row says what that caller may do to it."""
         permits = {str(p.id): p for p in await self.repo.list_permits(project_id)}
         evidence: dict[str, int] = {}
+        added: dict[str, set[uuid.UUID]] = {}
         for e in await self.repo.list_evidence(project_id):
             evidence[str(e.condition_id)] = evidence.get(str(e.condition_id), 0) + 1
+            if e.added_by is not None:
+                added.setdefault(str(e.condition_id), set()).add(e.added_by)
         out = []
         for c in await self.repo.list_conditions(project_id):
             v = _cond_view(c)
@@ -2597,13 +2811,23 @@ class PermitService:
                     "evidence_count": evidence.get(str(c.id), 0),
                 }
             )
+            if caller is not None:
+                involved = {u for u in (c.owner_user_id, c.evidence_submitted_by) if u is not None}
+                involved |= added.get(str(c.id), set())
+                out[-1]["can"] = self.condition_can(c, caller, evidence.get(str(c.id), 0), involved)
         return out
 
-    async def permit_rows(self, project_id: uuid.UUID, today: date) -> list[dict[str, Any]]:
+    async def permit_rows(
+        self, project_id: uuid.UUID, today: date, caller: guards.Caller | None = None
+    ) -> list[dict[str, Any]]:
         out = []
+        # Whether an AI provider is configured is one question per caller, not one per permit.
+        no_provider = await self._ai_refusal(caller.actor_id) if caller is not None else None
         for p in await self.repo.list_permits(project_id):
             d = permit_out(p)
             d["lapse_warning"] = cnd.lapse_warning(p.valid_until, today) if p.status in ("in_force", "lapsed") else None
+            if caller is not None:
+                d["can"] = await self.permit_can(p, caller, no_provider)
             out.append(d)
         return out
 
@@ -2644,13 +2868,8 @@ class PermitService:
         project = await self._project(project_id)
         await self.require_roadmap(project_id)
         doc = await self._roadmap_document(project_id)
-        doc_type = doc.code if doc is not None else None
-        if doc is None:
-            raise not_found("frame_document_not_found")
-        if doc.container_id is None:
-            raise conflict("frame_document_without_container")
-        if doc.read_only:
-            raise conflict("frame_document_read_only")
+        guards.frame_document(doc)
+        doc_type = doc.code
         await self._check_link("cde_container", doc.container_id, project_id)
         today = _today()
         content = render(
@@ -2987,6 +3206,7 @@ def condition_out(c: PermitCondition) -> dict[str, Any]:
         "source": c.source,
         "confidence": None if c.confidence is None else str(c.confidence),
         "text_span": c.text_span,
+        "passage": c.source_passage,
         "confirmed": c.confirmed,
         "gate_condition_id": _s(c.gate_condition_id),
         "original_id": _s(c.original_id),
@@ -3043,4 +3263,5 @@ def roadmap_out(r: PermitRoadmap) -> dict[str, Any]:
         "approval_route_id": _s(r.approval_route_id),
         "escalation_days": r.escalation_days,
         "buffer_days": r.buffer_days,
+        "consumed_change_request_ids": list(r.consumed_change_request_ids or []),
     }
