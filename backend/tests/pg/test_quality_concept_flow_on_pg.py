@@ -305,7 +305,7 @@ async def test_a_stage_is_released_only_by_its_hold_gate(pg_session) -> None:
     # Two writers on one row: the one that lost the race is told so (409), not answered with a 500.
     await release(gate_a2, "qa")
     await pg_session.execute(
-        text("UPDATE oe_qconcept_stage_progress SET version = version + 1 WHERE id = :id"), {"id": a0.id}
+        text("UPDATE oe_qconcept_stage_progress SET version = version + 1 WHERE id = :id"), {"id": str(a0.id)}
     )
     err = await _refused(svc.apply_gate_released(gate_a2.id))
     assert (err.code, err.status_code) == ("concurrent_release", 409)
