@@ -215,12 +215,23 @@ def test_the_port_exports_its_second_round() -> None:
         assert hasattr(public, name), name
 
 
-def test_the_membership_read_is_the_rule_governance_itself_applies() -> None:
-    import inspect
+def test_the_membership_read_is_the_rule_governance_itself_applies(monkeypatch: pytest.MonkeyPatch) -> None:
+    import asyncio
 
+    from app.modules.project_governance.service import GovernanceService
+
+    asked: list[tuple] = []
+
+    async def _rule(self, project_id, user_id):
+        asked.append((self.session, project_id, user_id))
+        return "the answer of the service"
+
+    monkeypatch.setattr(GovernanceService, "user_can_access_project", _rule)
+    session, project_id, user_id = object(), uuid.uuid4(), uuid.uuid4()
     assert "user_can_access_project" in public.__all__
-    source = inspect.getsource(public.user_can_access_project)
-    assert "GovernanceService(session).user_can_access_project(project_id, user_id)" in source
+    answer = asyncio.run(public.user_can_access_project(session, project_id, user_id))
+    assert answer == "the answer of the service"
+    assert asked == [(session, project_id, user_id)]
 
 
 # ── control settings and the bound content hash ──
