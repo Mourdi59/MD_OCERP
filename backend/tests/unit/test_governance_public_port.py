@@ -211,3 +211,11 @@ def test_the_port_exports_its_second_round() -> None:
     assert {"project_gate_decisions", "project_conditions", "project_change_requests"} <= set(public.__all__)
     for name in public.__all__:
         assert hasattr(public, name), name
+
+
+def test_the_membership_read_is_the_rule_governance_itself_applies() -> None:
+    import inspect
+
+    assert "user_can_access_project" in public.__all__
+    source = inspect.getsource(public.user_can_access_project)
+    assert "GovernanceService(session).user_can_access_project(project_id, user_id)" in source
