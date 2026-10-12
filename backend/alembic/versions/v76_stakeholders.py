@@ -60,24 +60,24 @@ def _fk(column: str, target: str, name: str, ondelete: str, nullable: bool) -> s
     return sa.Column(column, GUID(), sa.ForeignKey(target, ondelete=ondelete, name=name), nullable=nullable)
 
 
+# Defaults are the models' Python-side ones, so the helpers below declare none: a database built by this
+# revision and one built by ``create_all`` then carry the same column defaults. The ``default`` arguments
+# record what the model fills in and are not sent to the database. The one server default the model
+# declares (mandate ``scope``) is spelled out where that column is created.
 def _str(name: str, length: int, default: str | None = "", nullable: bool = False) -> sa.Column:
-    if default is None:
-        return sa.Column(name, sa.String(length=length), nullable=nullable)
-    return sa.Column(name, sa.String(length=length), nullable=nullable, server_default=default)
+    return sa.Column(name, sa.String(length=length), nullable=nullable)
 
 
 def _text(name: str) -> sa.Column:
-    return sa.Column(name, sa.Text(), nullable=False, server_default="")
+    return sa.Column(name, sa.Text(), nullable=False)
 
 
 def _bool(name: str, default: bool) -> sa.Column:
-    return sa.Column(name, sa.Boolean(), nullable=False, server_default=sa.text("true" if default else "false"))
+    return sa.Column(name, sa.Boolean(), nullable=False)
 
 
 def _int(name: str, default: int | None = None, nullable: bool = False) -> sa.Column:
-    if default is None:
-        return sa.Column(name, sa.Integer(), nullable=nullable)
-    return sa.Column(name, sa.Integer(), nullable=nullable, server_default=str(default))
+    return sa.Column(name, sa.Integer(), nullable=nullable)
 
 
 def _guid(name: str, nullable: bool = True) -> sa.Column:
@@ -109,7 +109,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[_Index]]] = [
             _int("framework_version"),
             _str("analysis_method", 64, "power_interest"),
             _int("review_interval_days", 90),
-            _str("owner_area_code", 64, "m01_project_management"),
+            _str("owner_area_code", 64, ""),
             _guid("commitment_route_id"),
             _guid("created_by"),
             sa.UniqueConstraint("project_id", name="uq_oe_stk_settings_project"),
@@ -304,7 +304,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[_Index]]] = [
         lambda: [
             _project_fk("fk_oe_stk_mandate_project"),
             _str("decision_type", 64, None),
-            _str("scope", 128, ""),
+            sa.Column("scope", sa.String(length=128), nullable=False, server_default=""),
             _str("holder_kind", 10, None),
             _str("holder_code", 64, None),
             _str("letter", 1, None),

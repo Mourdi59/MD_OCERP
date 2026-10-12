@@ -56,7 +56,7 @@ class StakeholderSettings(Base):
     framework_version: Mapped[int] = mapped_column(Integer, nullable=False)
     analysis_method: Mapped[str] = mapped_column(String(64), nullable=False, default="power_interest")
     review_interval_days: Mapped[int] = mapped_column(Integer, nullable=False, default=90)
-    owner_area_code: Mapped[str] = mapped_column(String(64), nullable=False, default="m01_project_management")
+    owner_area_code: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     # approval_routes.Route of kind ``stakeholder_commitment`` (soft), used when the framework routes commitments.
     commitment_route_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)

@@ -120,6 +120,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     from app.modules.projects.models import Project
     from app.modules.stakeholders.models import StakeholderAssessment
     from app.modules.stakeholders.service import StakeholderService
+    from app.modules.teams.models import RosterMember
 
     project = await session.get(Project, project_id)
     owner = project.owner_id
@@ -338,6 +339,13 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     )
 
     # Roles from the team, then the steering committee, then decisions under the mandate.
+    # The client is an organisation: a roster entry without a user account.
+    client = RosterMember(project_id=project_id, display_name="Client organisation", company_name="Client")
+    session.add(client)
+    await session.flush()
+    await svc.put_role_holders(
+        project_id, "client", [{"roster_member_id": str(client.id)}], actor_id=owner, today=today
+    )
     await svc.put_role_holders(
         project_id,
         "client_pm",
@@ -362,16 +370,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             actor_id=owner,
             today=today,
         )
-    body = await svc.create_body(
-        project_id,
-        {
-            "code": "steering_committee",
-            "body_type": "steering_committee",
-            "name": "Steering committee",
-            "quorum_kind": "majority",
-        },
-        actor_id=owner,
-    )
+    # The first pin created the bodies the mandate template names; the committee only needs its members.
+    body = next(b for b in await svc.repo.bodies(project_id) if b.code == "steering_committee")
     await svc.put_members(
         project_id,
         body.id,
@@ -388,12 +388,14 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     ):
         for target in steps:
             await svc.transition_commitment(project_id, cid, target, actor_id=owner, today=today)
-    await svc.transition_commitment(
-        project_id,
-        c4,
-        "verified",
-        actor_id=owner,
-        communicated_back_at=datetime.now(UTC) - timedelta(days=1),
-        today=today,
-    )
+    if pm != owner:
+        # Four eyes: the commitment's owner (the project manager) does not verify it; the client lead does.
+        await svc.transition_commitment(
+            project_id,
+            c4,
+            "verified",
+            actor_id=owner,
+            communicated_back_at=datetime.now(UTC) - timedelta(days=1),
+            today=today,
+        )
     return {"stakeholders": len(ids), "commitments": commitments}

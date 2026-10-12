@@ -94,7 +94,13 @@ class Resolution:
 
     @property
     def user_ids(self) -> list[str]:
+        """Everyone seated, voting or not (who is informed of the decision)."""
         return sorted({p.user_id for p in self.parties if p.user_id})
+
+    @property
+    def voting_user_ids(self) -> list[str]:
+        """Who may take the decision: a guest without a vote sits in the body but does not decide."""
+        return sorted({p.user_id for p in self.parties if p.user_id and p.voting})
 
 
 @dataclass(frozen=True)
@@ -117,12 +123,19 @@ def role_parties(role_code: str, holders: Iterable[Holder], today: date) -> list
     ]
 
 
-def quorum_needed(body: Body) -> int:
-    seats = sum(1 for m in body.members if m.voting)
+def quorum_needed(body: Body, today: date) -> int:
+    """Voting seats that must be filled today for the body to decide (rule 15).
+
+    Only seats valid today count, on both sides of the comparison: a member
+    whose term ended no longer sits, so the expired row neither fills a seat
+    nor raises the bar. A body with no valid voting seat needs one and has
+    none, so it is never quorate by being empty.
+    """
+    seats = sum(1 for m in body.members if m.voting and m.valid_on(today))
     if body.quorum_kind == "min_members":
         return int(body.quorum_min or 1)
     if body.quorum_kind == "unanimous":
-        return seats
+        return max(seats, 1)
     return seats // 2 + 1
 
 
@@ -209,7 +222,7 @@ def who_decides(
         res.flags.append("unknown_body")
         return res
     res.parties = body_parties(body, holders, today)
-    res.quorum_needed = quorum_needed(body)
+    res.quorum_needed = quorum_needed(body, today)
     res.quorum_present = body_present(body, holders, today)
     if res.quorum_present < res.quorum_needed:
         res.flags.append("body_inquorate")
@@ -246,7 +259,8 @@ def conflicts(
             body = bodies_by_code.get(r.holder_code)
             parties = body_parties(body, holders, today) if body else []
         for p in parties:
-            if not p.user_id:
+            if not p.user_id or not p.voting:
+                # A seat without a vote does not hold the body's letter.
                 continue
             slot = letters.setdefault((r.decision_type, r.scope, p.user_id), {})
             slot.setdefault(r.letter, set()).add(p.via_role or r.holder_code)

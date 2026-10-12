@@ -33,6 +33,14 @@ def fw():
         "INTERVAL=2",
         "FREQ=DAILY;UNTIL=20261231T000000Z",
         "nonsense",
+        "FREQ=DAILY;INTERVAL=0",
+        "FREQ=DAILY;INTERVAL=-1",
+        "FREQ=DAILY;INTERVAL=X",
+        "FREQ=DAILY;COUNT=0",
+        "FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=30",
+        "FREQ=MONTHLY;BYDAY=6MO",
+        "FREQ=WEEKLY;BYDAY=2MO",
+        "FREQ=MONTHLY;BYMONTH=13",
     ],
 )
 def test_unsupported_rules_are_refused(bad: str) -> None:
@@ -184,14 +192,12 @@ def test_body_members_and_quorum() -> None:
     assert "body_inquorate" not in res.flags
 
 
-def test_body_inquorate_when_seats_expire() -> None:
-    body = md.Body(
-        "board",
-        "unanimous",
-        members=(md.Member(user_id="u1"), md.Member(user_id="u2", valid_to=date(2026, 10, 1))),
-    )
+def test_body_inquorate_when_a_valid_seat_is_unfilled() -> None:
+    """A seat held through a role nobody holds today is a seat, and it is empty (rule 15)."""
+    body = md.Body("board", "unanimous", members=(md.Member(user_id="u1"), md.Member(role_code="client")))
     res = md.who_decides([R("x", "body", "board", "D")], "x", "", [], [body], TODAY)
     assert res.flags == ["body_inquorate"]
+    assert (res.quorum_needed, res.quorum_present) == (2, 1)
     mm = md.Body("board", "min_members", quorum_min=3, members=(md.Member(user_id="u1"), md.Member(user_id="u2")))
     assert md.who_decides([R("x", "body", "board", "D")], "x", "", [], [mm], TODAY).flags == ["body_inquorate"]
 
@@ -244,3 +250,31 @@ def test_decide_and_approve_conflict_through_a_body(fw) -> None:
     (c,) = md.conflicts(fw, rows, [md.Holder("client", "u1")], [body], TODAY)
     assert c.letters == ("D", "A")
     assert c.severity == "error"
+
+
+def test_a_follow_up_event_belongs_to_the_occurrence_already_recorded() -> None:
+    """Monthly from 1 Oct, recorded once. A follow-up on 3 Oct must not consume November."""
+    start = date(2026, 10, 1)
+    common = {"frequency": "FREQ=MONTHLY", "trigger_kind": None, "starts_on": start}
+    after_first = rc.next_due(**common, ends_on=None, done=[start])
+    assert after_first == date(2026, 11, 1)
+    follow_up = rc.occurrence_for(**common, held_on=date(2026, 10, 3), next_due=after_first, done=[start])
+    assert follow_up == start
+    assert rc.next_due(**common, ends_on=None, done=[start, follow_up]) == date(2026, 11, 1)
+
+
+def test_an_event_takes_the_pending_occurrence_when_it_is_due_or_first() -> None:
+    start = date(2026, 10, 1)
+    common = {"frequency": "FREQ=MONTHLY", "trigger_kind": None, "starts_on": start}
+    # Held early, nothing recorded yet: it is the first occurrence.
+    assert rc.occurrence_for(**common, held_on=date(2026, 9, 28), next_due=start, done=[]) == start
+    # A missed September is still the one being caught up on.
+    late = rc.occurrence_for(
+        frequency="FREQ=MONTHLY",
+        trigger_kind=None,
+        starts_on=date(2026, 8, 1),
+        held_on=date(2026, 10, 3),
+        next_due=date(2026, 9, 1),
+        done=[date(2026, 8, 1)],
+    )
+    assert late == date(2026, 9, 1)

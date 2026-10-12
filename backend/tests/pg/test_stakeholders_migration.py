@@ -64,7 +64,11 @@ def _reflect(sync_conn) -> dict:
         if table not in tables:
             continue
         out[table] = {
-            "columns": {c["name"]: (str(c["type"]), c["nullable"]) for c in inspector.get_columns(table)},
+            # Type, nullability and the server default: a migrated database and a ``create_all`` one must
+            # fill a column the same way when a row arrives without it.
+            "columns": {
+                c["name"]: (str(c["type"]), c["nullable"], c.get("default")) for c in inspector.get_columns(table)
+            },
             # ``app.core.pg_optimizations`` adds ``ix_oe_stakeholders_<table>_...`` on
             # every create_all and no revision reproduces them; compare only the
             # indexes this module declares (``ix_oe_stk_*``).

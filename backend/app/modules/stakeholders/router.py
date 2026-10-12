@@ -27,7 +27,7 @@ from collections.abc import Awaitable
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 
 from app.core.i18n import get_locale
 from app.core.tenant_scope import resolve_tenant_id
@@ -75,6 +75,11 @@ async def _run[T](awaitable: Awaitable[T]) -> T:
         err = StakeholderError(exc.code, exc.status_code, violations=exc.violations, detail=exc.detail)
         message = translate(f"stakeholders.errors.{exc.code}", locale=get_locale() or "en")
         raise HTTPException(status_code=exc.status_code, detail=err.as_detail(message)) from exc
+
+
+async def _refuse(code: str, status_code: int = 422) -> None:
+    """Raise a named, translated refusal through the same path as a service error."""
+    raise StakeholderError(code, status_code)
 
 
 def _uid(user_id: str) -> uuid.UUID:
@@ -281,17 +286,9 @@ async def put_settings(
     project_id: uuid.UUID, body: SettingsPut, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     """Pin a framework (default by country) and set options; the first pin copies the mandate template."""
-    from app.modules.project_governance.catalogue_store import CatalogueStore
-
     await verify_project_access(project_id, user_id, session)
     svc = StakeholderService(session)
-    if body.framework_source == "tenant" and body.framework_id:
-        await _run(
-            CatalogueStore(session).assert_pinnable(
-                _tenant(payload), "tenant", body.framework_id, body.framework_version, kind=FRAMEWORK_KIND
-            )
-        )
-    await _run(svc.put_settings(project_id, _data(body), actor_id=_uid(user_id)))
+    await _run(svc.put_settings(project_id, _data(body), actor_id=_uid(user_id), tenant_id=resolve_tenant_id(payload)))
     settings, fw = await _run(svc.context(project_id))
     return _settings_out(settings, fw, payload)
 
@@ -464,7 +461,7 @@ async def due(
     lo = start or day - timedelta(days=30)
     hi = end or day + timedelta(days=90)
     if hi < lo or (hi - lo).days > 731:
-        raise HTTPException(status_code=422, detail={"code": "invalid_window"})
+        await _run(_refuse("invalid_window"))
     return _page(await _run(StakeholderService(session).due(project_id, start=lo, end=hi, today=day)))
 
 
@@ -612,14 +609,27 @@ async def get_commitment(
 
 @router.patch("/projects/{project_id}/commitments/{commitment_id}", dependencies=[EDIT])
 async def update_commitment(
-    project_id: uuid.UUID, commitment_id: uuid.UUID, body: CommitmentIn, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    commitment_id: uuid.UUID,
+    body: CommitmentIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = StakeholderService(session)
     data = _data(body)
     data.pop("source_kind", None)
     data.pop("source_ref", None)
-    row = await _run(svc.update_commitment(project_id, commitment_id, data, actor_id=_uid(user_id)))
+    row = await _run(
+        svc.update_commitment(
+            project_id,
+            commitment_id,
+            data,
+            actor_id=_uid(user_id),
+            can_manage=_has(payload, "organisation.manage"),
+        )
+    )
     return svc.commitment_out(row, _today(None))
 
 
@@ -630,12 +640,14 @@ async def transition_commitment(
     body: CommitmentTransition,
     session: SessionDep,
     user_id: CurrentUserId,
-    today: date | None = None,
 ) -> dict[str, Any]:
-    """Move a commitment; ``agreed`` / ``withdrawn`` are mandate decisions (rule 10), possibly via approval."""
+    """Move a commitment; ``agreed`` / ``withdrawn`` are mandate decisions (rule 10), possibly via approval.
+
+    The date that decides who holds the mandate today is the server's, never the caller's.
+    """
     await verify_project_access(project_id, user_id, session)
     svc = StakeholderService(session)
-    day = _today(today)
+    day = _today(None)
     row, warnings = await _run(
         svc.transition_commitment(
             project_id,
@@ -656,10 +668,10 @@ async def transition_commitment(
 
 
 @router.post("/projects/{project_id}/sweep", dependencies=[EDIT])
-async def sweep(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None) -> dict:
-    """The daily job for one project: review due, plan overdue, commitment overdue notices (each once)."""
+async def sweep(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict:
+    """The daily job for one project, on the server date: review, plan and commitment notices (each once)."""
     await verify_project_access(project_id, user_id, session)
-    return await _run(StakeholderService(session).sweep(project_id, today=_today(today)))
+    return await _run(StakeholderService(session).sweep(project_id, today=_today(None)))
 
 
 @router.get("/projects/{project_id}/readiness", dependencies=[READ])
@@ -698,7 +710,7 @@ async def validation(
 
 
 async def _render(
-    svc: StakeholderService, project_id: uuid.UUID, which: str, fmt: str, payload: dict[str, Any]
+    svc: StakeholderService, project_id: uuid.UUID, which: str, fmt: str, can_read_personal: bool
 ) -> tuple[bytes, str]:
     from app.modules.projects.models import Project
     from app.modules.stakeholders import export
@@ -709,7 +721,7 @@ async def _render(
     project = await svc.session.get(Project, project_id)
     name = getattr(project, "name", "") or ""
     if which == "organisation":
-        doc = export.organisation_document(
+        docs = export.organisation_documents(
             fw,
             roles=await _run(svc.roles_view(project_id, today=day)),
             bodies=await _run(svc.bodies_view(project_id, today=day)),
@@ -719,20 +731,16 @@ async def _render(
         )
         stem = "project_organisation_and_mandates"
     else:
-        doc = export.register_document(
+        docs = export.register_documents(
             fw,
-            stakeholders=await _run(
-                svc.stakeholder_views(
-                    project_id, can_read_personal=_has(payload, "stakeholders.read_personal"), today=day
-                )
-            ),
+            stakeholders=await _run(svc.stakeholder_views(project_id, can_read_personal=can_read_personal, today=day)),
             plan_items=[svc.plan_out(p, day) for p in await svc.repo.plan_items(project_id)],
             commitments=[svc.commitment_out(c, day) for c in await svc.repo.commitments(project_id)],
             project_name=name,
             locale=locale,
         )
         stem = "stakeholder_and_communication_plan"
-    return export.render(doc, fmt), f"{stem}.{fmt}"
+    return export.render(docs, fmt), f"{stem}.{fmt}"
 
 
 @router.get("/projects/{project_id}/export", dependencies=[READ])
@@ -745,7 +753,9 @@ async def export_register(
 ) -> Response:
     """Stakeholder and communication plan as PDF or XLSX; private names masked without ``read_personal``."""
     await verify_project_access(project_id, user_id, session)
-    content, file_name = await _render(StakeholderService(session), project_id, "register", fmt, payload)
+    content, file_name = await _render(
+        StakeholderService(session), project_id, "register", fmt, _has(payload, "stakeholders.read_personal")
+    )
     return Response(
         content=content, media_type=_MEDIA[fmt], headers={"Content-Disposition": f'attachment; filename="{file_name}"'}
     )
@@ -761,11 +771,17 @@ async def file_frame_document(
     """
     await verify_project_access(project_id, user_id, session)
     svc = StakeholderService(session)
-    masked_payload = {"role": "viewer", "permissions": []}
-    content, file_name = await _render(svc, project_id, body.document, body.format, masked_payload)
+    content, file_name = await _render(svc, project_id, body.document, body.format, False)
     return await _run(
         svc.file_frame_document(
-            project_id, content=content, file_name=file_name, mime_type=_MEDIA[body.format], actor_id=_uid(user_id)
+            project_id,
+            which=body.document,
+            content=content,
+            file_name=file_name,
+            mime_type=_MEDIA[body.format],
+            actor_id=_uid(user_id),
+            change_reason=body.change_reason,
+            change_impact=body.change_impact,
         )
     )
 
@@ -784,7 +800,11 @@ async def list_roles(
 
 @router.put("/projects/{project_id}/organisation/roles/{role_code}", dependencies=[ORG])
 async def put_role_holders(
-    project_id: uuid.UUID, role_code: str, body: RoleHoldersPut, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    body: RoleHoldersPut,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    role_code: str = Path(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]*$"),
 ) -> dict[str, Any]:
     """Replace the holders of one role; returns conflicts (warnings), area owner hints and frame warnings."""
     await verify_project_access(project_id, user_id, session)

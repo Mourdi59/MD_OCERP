@@ -8,7 +8,7 @@
 // in German, and German is a translation, not a copy.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen as page, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen as page, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
@@ -107,7 +107,7 @@ describe('the stakeholders page', () => {
     expect(await page.findByText('The stakeholders could not be loaded')).toBeTruthy();
     const before = mocked.getSettings.mock.calls.length;
     fireEvent.click(page.getByRole('button', { name: /retry|again/i }));
-    expect(mocked.getSettings.mock.calls.length).toBeGreaterThan(before);
+    await waitFor(() => expect(mocked.getSettings.mock.calls.length).toBeGreaterThan(before));
   });
 
   it('opens on the register and counts what is overdue on the tabs', async () => {
@@ -200,7 +200,7 @@ describe('the wording', () => {
       const text = enTable[k] ?? '';
       if (text !== deTable[k]) return false;
       const words = text.replace(/\{\{\w+\}\}/g, '');
-      return LONG_DASH.test(both) || /\{\{[^}]*$|\{[^{][^}]*\}\}/.test(both);
+      return LONG_DASH.test(both) || /[{}]/.test(both.replace(/\{\{\w+\}\}/g, ''));
     });
     expect(bad).toEqual([]);
   });

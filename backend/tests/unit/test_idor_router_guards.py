@@ -71,6 +71,51 @@ from pathlib import Path
 import pytest
 
 ROUTER_HANDLERS: dict[str, list[str]] = {
+    # Every project route of the module; the framework routes are tenant scoped, see _NOT_ROUTER_GATED.
+    "stakeholders": [
+        "get_settings",
+        "put_settings",
+        "list_stakeholders",
+        "create_stakeholder",
+        "get_stakeholder",
+        "update_stakeholder",
+        "archive_stakeholder",
+        "list_assessments",
+        "create_assessment",
+        "grid",
+        "list_plan_items",
+        "due",
+        "create_plan_item",
+        "update_plan_item",
+        "delete_plan_item",
+        "record_occurrence",
+        "list_events",
+        "create_event",
+        "update_event",
+        "delete_event",
+        "list_commitments",
+        "create_commitment",
+        "get_commitment",
+        "update_commitment",
+        "transition_commitment",
+        "sweep",
+        "readiness",
+        "validation",
+        "export_register",
+        "file_frame_document",
+        "list_roles",
+        "put_role_holders",
+        "list_bodies",
+        "create_body",
+        "update_body",
+        "delete_body",
+        "put_members",
+        "get_mandates",
+        "put_mandates",
+        "who_decides",
+        "conflicts",
+        "export_organisation",
+    ],
     "ncr": [
         "get_ncr",
         "update_ncr",
@@ -606,6 +651,26 @@ def _is_object_scoped(paths: set[str]) -> bool:
 # codebase means removing its line here, test_exclusions_name_a_live_route
 # fails on a stale entry rather than letting it shadow a future handler.
 _NOT_ROUTER_GATED: dict[str, str] = {
+    "stakeholders.get_shipped_framework": (
+        "framework_id names a framework shipped with the product (a file in the package), the same for "
+        "every tenant, so there is no owning project to check."
+    ),
+    "stakeholders.get_framework": (
+        "catalogue_id names a tenant framework in module 1's catalogue store, not a project row. "
+        "CatalogueStore.get resolves it under the caller's tenant and answers 404 for any other tenant's."
+    ),
+    "stakeholders.update_framework": (
+        "catalogue_id names a tenant framework in module 1's catalogue store, not a project row. "
+        "CatalogueStore.get resolves it under the caller's tenant and answers 404 for any other tenant's."
+    ),
+    "stakeholders.publish_framework": (
+        "catalogue_id names a tenant framework in module 1's catalogue store, not a project row. "
+        "CatalogueStore.get resolves it under the caller's tenant and answers 404 for any other tenant's."
+    ),
+    "stakeholders.diff_framework": (
+        "catalogue_id names a tenant framework in module 1's catalogue store, not a project row. "
+        "CatalogueStore.get resolves it under the caller's tenant and answers 404 for any other tenant's."
+    ),
     "meetings.materialize_meeting_series_no_slash": (
         "Underscore mirror of POST /series/{master_id}/materialize/. It awaits "
         "materialize_meeting_series, which is pinned above, so the guard runs once in the delegate."

@@ -66,7 +66,7 @@ async def handle_route_event(data: dict, *, verdict: str, session_factory=None) 
             await session.commit()
             return done
     except Exception:
-        logger.debug("stakeholders: route %s wiring failed for %s", verdict, instance_id, exc_info=True)
+        logger.warning("stakeholders: route %s wiring failed for %s", verdict, instance_id, exc_info=True)
         return False
 
 
@@ -98,7 +98,7 @@ async def handle_trigger(name: str, data: dict, *, session_factory=None) -> int:
             await session.commit()
             return fired
     except Exception:
-        logger.debug("stakeholders: trigger %s failed for %s", name, project_id, exc_info=True)
+        logger.warning("stakeholders: trigger %s failed for %s", name, project_id, exc_info=True)
         return 0
 
 

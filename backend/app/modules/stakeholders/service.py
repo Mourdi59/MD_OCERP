@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit_log import log_activity
 from app.core.events import publish_after_commit
 from app.core.fsm import FSMError
+from app.core.i18n import get_locale
 from app.modules.stakeholders import analysis as an
 from app.modules.stakeholders import mandates as md
 from app.modules.stakeholders import recurrence as rc
@@ -48,6 +49,7 @@ from app.modules.stakeholders.fsm import (
     MANDATE_TARGETS,
     PLAN_FSM,
 )
+from app.modules.stakeholders.messages import translate
 from app.modules.stakeholders.models import (
     CommunicationPlanItem,
     EngagementEvent,
@@ -67,6 +69,10 @@ logger = logging.getLogger(__name__)
 MODULE = "stakeholders"
 TARGET_KIND = "stakeholder_commitment"
 COMMITMENT_DECISION = "stakeholder_commitment"
+# Frozen once a commitment leaves ``proposed``: the decider agreed to exactly these.
+COMMITMENT_FROZEN = frozenset({"text", "cost_estimate", "currency"})
+# The risk module's own category for an obligation towards third parties that was not met.
+BREACH_RISK_CATEGORY = "regulatory"
 COMMITMENT_CATEGORIES: tuple[str, ...] = (
     "noise",
     "traffic",
@@ -137,7 +143,11 @@ def _amount(value: Any) -> Decimal | None:
         out = Decimal(str(value).strip())
     except (InvalidOperation, ValueError) as exc:
         raise StakeholderError("invalid_amount") from exc
-    if not out.is_finite():
+    if not out.is_finite() or out < 0:
+        raise StakeholderError("invalid_amount")
+    exponent = out.as_tuple().exponent
+    if (isinstance(exponent, int) and exponent < -4) or out >= Decimal(10) ** 14:
+        # The column is Numeric(18, 4); anything wider is a 500 on PostgreSQL, so it is refused here.
         raise StakeholderError("invalid_amount")
     return out
 
@@ -239,7 +249,13 @@ class StakeholderService:
 
     # ── links into other modules (rule 22) ─────────────────────────────────
 
-    async def _contact(self, contact_id: Any, actor_id: Any) -> Any:
+    async def _contact(self, contact_id: Any, actor_id: Any, *, linked: Any = ()) -> Any:
+        """Check that the caller may link this contact.
+
+        ``linked`` are contact ids the record being rewritten already carries.
+        A full replace resends them, and the caller need not own a contact a
+        colleague linked earlier: keeping a link is not creating one.
+        """
         from fastapi import HTTPException
 
         from app.modules.contacts.lookup import assignable_contact
@@ -247,6 +263,8 @@ class StakeholderService:
         cid = _uuid(contact_id)
         if cid is None:
             raise not_found("contact_not_found")
+        if cid in {_uuid(x) for x in linked if x}:
+            return None
         try:
             return await assignable_contact(self.session, cid, _s(actor_id))
         except HTTPException as exc:
@@ -320,12 +338,14 @@ class StakeholderService:
         return settings, fw
 
     async def put_settings(
-        self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID
+        self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID, tenant_id: str | None = None
     ) -> StakeholderSettings:
         """Pin a framework (default by the project's country) and set register options.
 
         The first pin copies the framework's mandate template into the project
-        when the project has no mandate rows yet.
+        when the project has no mandate rows yet. A tenant framework is checked
+        against the caller's tenant on the EFFECTIVE source and id, so a body
+        that inherits ``tenant`` from the stored pin cannot name a foreign one.
         """
         project = await self._project(project_id)
         settings = await self.repo.get_settings(project_id, lock=True)
@@ -338,7 +358,19 @@ class StakeholderService:
         version = data.get("framework_version")
         if settings is not None and fid == settings.framework_id and version is None and not data.get("framework_id"):
             version = settings.framework_version
-        fw = await self.framework(source, fid or DEFAULT_FRAMEWORK_ID, version)
+        fid = fid or DEFAULT_FRAMEWORK_ID
+        repinned = settings is None or (source, str(fid)) != (settings.framework_source, settings.framework_id)
+        if source == "tenant" and (repinned or data.get("framework_version") is not None):
+            from app.modules.project_governance.catalogue_store import CatalogueStore
+            from app.modules.project_governance.errors import GovernanceError
+
+            try:
+                await CatalogueStore(self.session).assert_pinnable(
+                    tenant_id, source, str(fid), version, kind=FRAMEWORK_KIND
+                )
+            except GovernanceError as exc:
+                raise StakeholderError(exc.code, exc.status_code, detail=exc.detail) from exc
+        fw = await self.framework(source, fid, version)
         method = data.get("analysis_method") or (settings.analysis_method if settings else fw.default_method)
         if fw.method(method) is None:
             raise StakeholderError("unknown_method")
@@ -347,17 +379,28 @@ class StakeholderService:
             await self._check_route(project_id, route_id)
         created = settings is None
         if settings is None:
-            settings = StakeholderSettings(project_id=project_id, created_by=actor_id)
-            self.session.add(settings)
+            settings = StakeholderSettings(project_id=project_id, created_by=actor_id, owner_area_code="")
+            settings.framework_source, settings.framework_id = source, fw.id
+            settings.framework_version, settings.analysis_method = fw.version, method
+            try:
+                async with self.session.begin_nested():
+                    self.session.add(settings)
+                    await self.session.flush()
+            except IntegrityError as exc:
+                # Two first pins at once: the row lock cannot serialise what does not exist yet.
+                raise conflict("concurrent_change") from exc
         settings.framework_source = source
         settings.framework_id = fw.id
         settings.framework_version = fw.version
         settings.analysis_method = method
         settings.review_interval_days = int(data.get("review_interval_days") or settings.review_interval_days or 90)
-        settings.owner_area_code = data.get("owner_area_code") or settings.owner_area_code or "m01_project_management"
+        if "owner_area_code" in data:
+            # An explicit override only. Left empty, the hosting area is read from the governance catalogue's tags.
+            settings.owner_area_code = (data["owner_area_code"] or "").strip()
         settings.commitment_route_id = _uuid(route_id)
         await self.session.flush()
         if created and not await self.repo.mandates(project_id):
+            await self._create_template_bodies(project_id, fw)
             for row in fw.mandate_template:
                 self.session.add(
                     Mandate(
@@ -379,6 +422,43 @@ class StakeholderService:
             metadata=an.jsonable({"framework": f"{source}:{fw.id}@{fw.version}", "method": method}),
         )
         return settings
+
+    async def _create_template_bodies(self, project_id: uuid.UUID, fw: StakeholderFramework) -> None:
+        """Create the governance bodies the mandate template names, empty.
+
+        The template gives decisions to bodies by body type code. Without the
+        body the copied matrix could not be saved back (its holder would be
+        unknown) and the decision would have a decider that does not exist.
+        """
+        existing = {b.code for b in await self.repo.bodies(project_id)}
+        types = {b.code: b for b in fw.body_types}
+        for code in dict.fromkeys(r.holder_code for r in fw.mandate_template if r.holder_kind == "body"):
+            body_type = types.get(code)
+            if body_type is None or code in existing:
+                continue
+            name = (body_type.labels or {}).get(get_locale() or "en") or (
+                translate(body_type.name_key, locale=get_locale() or "en") if body_type.name_key else code
+            )
+            self.session.add(
+                GovernanceBody(
+                    project_id=project_id,
+                    code=code,
+                    body_type=code,
+                    name=name[:255],
+                    decision_level=body_type.default_decision_level,
+                )
+            )
+        await self.session.flush()
+
+    async def host_area_code(self, project_id: uuid.UUID, settings: StakeholderSettings | None = None) -> str | None:
+        """The governance area that hosts this module: the project's override, else the catalogue's tag."""
+        from app.modules.stakeholders import hosting
+
+        settings = settings or await self.repo.get_settings(project_id)
+        if settings is not None and settings.owner_area_code:
+            return settings.owner_area_code
+        catalogue = await hosting.project_catalogue(self.session, project_id)
+        return hosting.hosting_area_code(catalogue) if catalogue is not None else None
 
     async def _check_route(self, project_id: uuid.UUID, route_id: Any) -> None:
         from app.modules.approval_routes.models import Route
@@ -416,7 +496,7 @@ class StakeholderService:
                 raise StakeholderError("unknown_category")
             out["category"] = data["category"]
         if data.get("contact_id"):
-            await self._contact(data["contact_id"], actor_id)
+            await self._contact(data["contact_id"], actor_id, linked=[row.contact_id] if row is not None else ())
             out["contact_id"] = _uuid(data["contact_id"])
         elif "contact_id" in data:
             out["contact_id"] = None
@@ -466,7 +546,8 @@ class StakeholderService:
             # The name of a private person lives in contacts only, so erasing the contact erases it here too.
             fields["display_name"] = ""
         if "is_confidential" not in fields:
-            fields["is_confidential"] = category.private_person
+            # Rule 17 protects a private person. A group ("residents of the north boundary") names nobody.
+            fields["is_confidential"] = category.private_person and not fields.get("is_group")
         code = (data.get("code") or "").strip() or await self.repo.next_code(Stakeholder, project_id, "S-")
         if await self.repo.stakeholder_by_code(project_id, code) is not None:
             raise conflict("duplicate_code")
@@ -495,10 +576,18 @@ class StakeholderService:
         contact = fields.get("contact_id", row.contact_id)
         if not contact and not fields.get("display_name", row.display_name):
             raise StakeholderError("display_name_required")
+        category = fw.category(fields.get("category", row.category))
+        if category and category.private_person and contact and not fields.get("is_group", row.is_group):
+            # Same rule as create: the name of a private person lives in contacts only.
+            fields["display_name"] = ""
         before = {k: _s(getattr(row, k)) for k in fields}
-        for k, v in fields.items():
-            setattr(row, k, v)
-        await self.session.flush()
+        try:
+            async with self.session.begin_nested():
+                for k, v in fields.items():
+                    setattr(row, k, v)
+                await self.session.flush()
+        except IntegrityError as exc:
+            raise conflict("duplicate_code") from exc
         await self._audit(
             actor_id,
             "stakeholder",
@@ -560,6 +649,7 @@ class StakeholderService:
                 {
                     **self.stakeholder_out(r),
                     **name,
+                    **(self.masked_fields() if name["masked"] else {}),
                     "classification": current.classification if current else an.NOT_ASSESSED,
                     "method_code": method_code,
                     "engagement_current": latest.engagement_current if latest else None,
@@ -604,6 +694,15 @@ class StakeholderService:
             name = row.display_name or None
         masked = bool(row.is_confidential and not can_read_personal and not anonymised)
         return {"name": None if masked else name, "masked": masked, "anonymised": anonymised}
+
+    @staticmethod
+    def masked_fields() -> dict[str, Any]:
+        """What a reader without ``stakeholders.read_personal`` gets in place of the identifying fields (rule 17).
+
+        ``display_name`` holds the name whenever no contact is linked and ``geo``
+        is the home address of a private person, so both go with the name.
+        """
+        return {"display_name": "", "geo": None}
 
     @staticmethod
     def stakeholder_out(r: Stakeholder) -> dict[str, Any]:
@@ -1044,7 +1143,19 @@ class StakeholderService:
                 **{k: v for k, v in data.items() if v is not None},
             }
             if not data.get("occurrence_date"):
-                data["occurrence_date"] = item.next_due or data.get("held_on")
+                held = _day(data.get("held_on"))
+                data["occurrence_date"] = (
+                    rc.occurrence_for(
+                        frequency=item.frequency,
+                        trigger_kind=item.trigger_kind,
+                        starts_on=item.starts_on,
+                        held_on=held,
+                        next_due=item.next_due,
+                        done=await self._done_occurrences(item),
+                    )
+                    if held is not None
+                    else item.next_due
+                )
         elif data.get("format_code") and not data.get("participation_level"):
             fmt = fw.format(data["format_code"])
             if fmt is not None:
@@ -1185,13 +1296,24 @@ class StakeholderService:
         if "cost_estimate" in data:
             out["cost_estimate"] = _amount(data["cost_estimate"])
         if "currency" in data and data["currency"] is not None:
-            out["currency"] = str(data["currency"]).strip().upper()[:3]
+            currency = str(data["currency"]).strip().upper()
+            if len(currency) != 3 or not currency.isalpha():
+                raise StakeholderError("currency_required")
+            out["currency"] = currency
         if "risk_id" in data:
             out["risk_id"] = (await self._risk(project_id, data["risk_id"])).id if data["risk_id"] else None
         for key in ("task_id", "requirement_id", "release_item_id"):
             if key in data:
                 out[key] = _uuid(data[key])
         return out
+
+    async def _project_currency(self, project_id: uuid.UUID) -> str:
+        """The currency an amount without one takes; an amount never stays without a currency."""
+        project = await self._project(project_id)
+        currency = (getattr(project, "currency", "") or "").strip().upper()
+        if len(currency) != 3:
+            raise StakeholderError("currency_required")
+        return currency
 
     async def create_commitment(
         self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID
@@ -1205,8 +1327,7 @@ class StakeholderService:
         ref, snapshot = await self._source(project_id, kind, data.get("source_ref"))
         fields = await self._commitment_fields(project_id, data)
         if fields.get("cost_estimate") is not None and not fields.get("currency"):
-            project = await self._project(project_id)
-            fields["currency"] = (getattr(project, "currency", "") or "")[:3]
+            fields["currency"] = await self._project_currency(project_id)
         code = await self.repo.next_code(StakeholderCommitment, project_id, "C-")
         row = StakeholderCommitment(
             project_id=project_id,
@@ -1228,15 +1349,31 @@ class StakeholderService:
         return row
 
     async def update_commitment(
-        self, project_id: uuid.UUID, cid: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID
+        self,
+        project_id: uuid.UUID,
+        cid: uuid.UUID,
+        data: dict[str, Any],
+        *,
+        actor_id: uuid.UUID,
+        can_manage: bool = False,
     ) -> StakeholderCommitment:
         row = await self.get_commitment(project_id, cid, lock=True)
         if COMMITMENT_FSM.is_terminal(row.status):
             raise conflict("invalid_transition")
+        if row.pending_target:
+            # The approver is looking at this text and this amount; they stay as they are until the verdict.
+            raise conflict("approval_pending")
         fields = await self._commitment_fields(project_id, data)
-        if row.status != "proposed" and ("text" in fields or "cost_estimate" in fields):
+        changed = {k for k, v in fields.items() if getattr(row, k) != v}
+        if row.status != "proposed" and changed & COMMITMENT_FROZEN:
             # What was agreed is what the decider saw; a new promise is a new commitment.
-            raise conflict("invalid_transition")
+            raise conflict("commitment_frozen")
+        if row.status != "proposed" and "owner_user_id" in changed and not can_manage:
+            # The owner may not verify their own commitment, so who the owner is cannot be moved freely.
+            raise forbidden("owner_change_needs_manage")
+        amount = fields.get("cost_estimate", row.cost_estimate)
+        if amount is not None and not fields.get("currency", row.currency):
+            fields["currency"] = await self._project_currency(project_id)
         for k, v in fields.items():
             setattr(row, k, v)
         await self.session.flush()
@@ -1271,7 +1408,7 @@ class StakeholderService:
         """
         settings, fw = await self.context(project_id)
         row = await self.get_commitment(project_id, cid, lock=True)
-        if row.pending_target:
+        if row.pending_target and not await self._reconcile_pending(row):
             raise conflict("approval_pending")
         if not COMMITMENT_FSM.has_transition(row.status, target):
             raise conflict("invalid_transition", detail=f"{row.status} -> {target}")
@@ -1290,6 +1427,9 @@ class StakeholderService:
             if create_risk and row.risk_id is None:
                 row.risk_id = await self._open_risk(project_id, row, actor_id)
         if target == "verified":
+            if row.owner_user_id is not None and row.owner_user_id == actor_id:
+                # Four eyes: whoever keeps the commitment does not confirm that it was kept.
+                raise forbidden("owner_cannot_verify")
             loop = (loop_not_required_rationale or "").strip()
             if communicated_back_at is not None:
                 row.communicated_back_at = _aware(communicated_back_at)
@@ -1305,6 +1445,9 @@ class StakeholderService:
             if dt is not None and dt.approval_target_kind == TARGET_KIND:
                 await self._start_commitment_approval(settings, row, target, rationale, actor_id)
                 return row, warnings
+            if "body_inquorate" in resolution["flags"]:
+                # One member cannot speak for a body that could not meet.
+                raise conflict("body_inquorate")
             if str(actor_id) not in resolution["user_ids"]:
                 raise forbidden("not_decider")
             row.decision_ref = an.jsonable(
@@ -1387,11 +1530,35 @@ class StakeholderService:
             metadata=an.jsonable({"target": target, "instance_id": instance.id}),
         )
 
+    async def _reconcile_pending(self, row: StakeholderCommitment) -> bool:
+        """Catch up with an approval whose verdict never reached this module.
+
+        The verdict arrives through an event subscriber in its own session. If
+        that failed, the commitment would wait for ever. So before answering
+        ``approval_pending`` the instance itself is asked: a terminal one is
+        applied here and now. Returns whether the wait is over.
+        """
+        from app.modules.approval_routes.models import Instance
+
+        instance = await self.session.get(Instance, row.approval_instance_id) if row.approval_instance_id else None
+        status = getattr(instance, "status", None)
+        if instance is None:
+            status = "cancelled"
+        if status not in ("approved", "rejected", "cancelled"):
+            return False
+        await self._apply_verdict(row, verdict=status, decided_by=getattr(instance, "decided_by", None))
+        return True
+
     async def apply_route_verdict(self, instance_id: uuid.UUID, *, verdict: str, decided_by: Any) -> bool:
         """Terminal approval verdict: approved applies the pending transition, anything else clears it."""
         row = await self.repo.commitment_by_instance(instance_id)
         if row is None or not row.pending_target:
             return False
+        await self._apply_verdict(row, verdict=verdict, decided_by=decided_by)
+        return True
+
+    async def _apply_verdict(self, row: StakeholderCommitment, *, verdict: str, decided_by: Any) -> None:
+        instance_id = row.approval_instance_id
         target = row.pending_target
         rationale = row.pending_rationale
         row.pending_target = None
@@ -1399,7 +1566,7 @@ class StakeholderService:
         if verdict != "approved":
             await self._audit(decided_by, "stakeholder_commitment", row.id, f"approval_{verdict}")
             await self.session.flush()
-            return True
+            return
         row.decision_ref = an.jsonable(
             {
                 "mode": "approval",
@@ -1417,7 +1584,6 @@ class StakeholderService:
         )
         await self.session.flush()
         self._after_commitment_transition(row, target)
-        return True
 
     async def _open_risk(
         self, project_id: uuid.UUID, row: StakeholderCommitment, actor_id: uuid.UUID
@@ -1429,9 +1595,9 @@ class StakeholderService:
         risk = await RiskService(self.session).create_risk(
             RiskCreate(
                 project_id=project_id,
-                title=f"{row.code}: breached commitment to stakeholders"[:255],
+                title=translate("stakeholders.risk.breach_title", locale=get_locale() or "en", code=row.code)[:255],
                 description=f"{row.text}\n\n{row.breach_rationale}"[:5000],
-                category="regulatory",
+                category=BREACH_RISK_CATEGORY,
                 owner_user_id=row.owner_user_id,
             ),
             user_id=_s(actor_id),
@@ -1660,8 +1826,11 @@ class StakeholderService:
     ) -> dict[str, Any]:
         """Replace the holders of one role (rule 14) and publish ``stakeholders.role.changed`` (rule 16)."""
         _settings, fw = await self.context(project_id)
+        await self.require_settings(project_id, lock=True)  # serialises concurrent replace-all writes
         role = fw.role(role_code)
-        existing_custom = [r for r in await self.repo.roles(project_id) if r.role_code == role_code and r.custom_label]
+        current = [r for r in await self.repo.roles(project_id) if r.role_code == role_code]
+        linked = [r.holder_contact_id for r in current]
+        existing_custom = [r for r in current if r.custom_label]
         if role is None and not (custom_label.strip() or existing_custom):
             raise StakeholderError("unknown_role")
         label = custom_label.strip() or (existing_custom[0].custom_label if existing_custom else "")
@@ -1682,7 +1851,7 @@ class StakeholderService:
                 if member.user_id is not None and not await self.is_member(project_id, member.user_id):
                     raise StakeholderError("user_not_project_member")
             else:
-                await self._contact(contact_id, actor_id)
+                await self._contact(contact_id, actor_id, linked=linked)
             deputy = h.get("deputy_roster_member_id")
             if deputy:
                 await self._roster(project_id, deputy)
@@ -1739,13 +1908,22 @@ class StakeholderService:
     async def _enforce_conflicts(
         self, project_id: uuid.UUID, fw: StakeholderFramework, today: date
     ) -> list[md.Conflict]:
-        """Rule 12 at write time: an error-severity conflict refuses the write, warnings are returned."""
+        """Rule 12 at write time.
+
+        An error-severity conflict refuses the write. A warning conflict needs a
+        rationale on a holder row of that person in one of the roles involved
+        (the acknowledgement); without it the write is refused too. Acknowledged
+        warnings are returned so the screen keeps showing them.
+        """
         _roles, holders, _roster = await self._holders(project_id)
         _bodies, bodies = await self._bodies(project_id)
         found = md.conflicts(fw, self._mandate_rows(await self.repo.mandates(project_id)), holders, bodies, today)
         errors = [c for c in found if c.severity == "error"]
         if errors:
             raise StakeholderError("self_approval_forbidden", violations=[_conflict_out(c) for c in errors])
+        open_warnings = [c for c in found if not c.acknowledged]
+        if open_warnings:
+            raise StakeholderError("conflict_not_acknowledged", violations=[_conflict_out(c) for c in open_warnings])
         return found
 
     async def _area_owner_hints(self, project_id: uuid.UUID, removed_users: set[str]) -> list[dict[str, Any]]:
@@ -1767,8 +1945,9 @@ class StakeholderService:
         """Rule 21 / decision n: editing the organisation after the gate warns that the frame document is binding."""
         from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
 
-        settings = await self.repo.get_settings(project_id)
-        area_code = settings.owner_area_code if settings else "m01_project_management"
+        area_code = await self.host_area_code(project_id)
+        if area_code is None:
+            return []
         stmt = (
             select(GovernanceDocument.status)
             .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
@@ -1863,7 +2042,9 @@ class StakeholderService:
         self, project_id: uuid.UUID, bid: uuid.UUID, members: list[dict[str, Any]], *, actor_id: uuid.UUID, today: date
     ) -> list[GovernanceBodyMember]:
         _settings, fw = await self.context(project_id)
+        await self.require_settings(project_id, lock=True)  # serialises concurrent replace-all writes
         body = await self.get_body(project_id, bid, lock=True)
+        linked = [x.contact_id for x in await self.repo.body_members(project_id) if x.body_id == body.id]
         rows: list[GovernanceBodyMember] = []
         custom_roles = {r.role_code for r in await self.repo.roles(project_id)}
         for m in members:
@@ -1875,7 +2056,7 @@ class StakeholderService:
             if m.get("user_id"):
                 await self._require_member(project_id, m["user_id"])
             if m.get("contact_id"):
-                await self._contact(m["contact_id"], actor_id)
+                await self._contact(m["contact_id"], actor_id, linked=linked)
             vf, vt = _day(m.get("valid_from")), _day(m.get("valid_to"))
             if vf and vt and vt < vf:
                 raise StakeholderError("invalid_validity")
@@ -1907,7 +2088,7 @@ class StakeholderService:
         members = await self.repo.body_members(project_id)
         out = []
         for b, p in zip(bodies, parsed, strict=True):
-            needed, present = md.quorum_needed(p), md.body_present(p, holders, today)
+            needed, present = md.quorum_needed(p, today), md.body_present(p, holders, today)
             out.append(
                 {
                     "id": str(b.id),
@@ -2062,7 +2243,8 @@ class StakeholderService:
             "scope": scope,
             "holder_kind": res.holder_kind,
             "holder_code": res.holder_code,
-            "user_ids": res.user_ids,
+            # Who may decide: voting seats only. ``parties`` lists everyone seated, with the flag.
+            "user_ids": res.voting_user_ids,
             "parties": [
                 {
                     "user_id": p.user_id,
@@ -2109,59 +2291,117 @@ class StakeholderService:
 
     # ── frame documents (rule 21) ─────────────────────────────────────────
 
-    async def file_frame_document(
-        self, project_id: uuid.UUID, *, content: bytes, file_name: str, mime_type: str, actor_id: uuid.UUID
-    ) -> dict[str, Any]:
-        """File a generated export as a new CDE revision of the owner area's frame document.
+    async def frame_documents(self, project_id: uuid.UUID, which: str) -> list[Any]:
+        """The module 1 frame documents one export of this module is filed into.
 
-        The binding version is whatever module 1 makes binding at the gate; this
-        only adds the pending revision to the frame document's container.
+        Module 1 keys a document by (area, document type). The type is found by
+        the catalogue's ``hosts`` tag for this export, never by a code.
+        """
+        from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
+        from app.modules.stakeholders import hosting
+
+        catalogue = await hosting.project_catalogue(self.session, project_id)
+        if catalogue is None:
+            return []
+        doc_types = hosting.frame_document_types(catalogue, hosting.EXPORT_TAGS[which])
+        area_code = await self.host_area_code(project_id)
+        if not doc_types or area_code is None:
+            return []
+        stmt = (
+            select(GovernanceDocument)
+            .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
+            .where(
+                GovernanceDocument.project_id == project_id,
+                GovernanceArea.code == area_code,
+                GovernanceDocument.doc_type.in_(doc_types),
+            )
+            .order_by(GovernanceDocument.created_at)
+        )
+        return list((await self.session.execute(stmt)).scalars())
+
+    async def file_frame_document(
+        self,
+        project_id: uuid.UUID,
+        *,
+        which: str,
+        content: bytes,
+        file_name: str,
+        mime_type: str,
+        actor_id: uuid.UUID,
+        change_reason: str = "",
+        change_impact: str = "",
+    ) -> dict[str, Any]:
+        """File a generated export as a new CDE revision of its frame document (rule 21).
+
+        Before the gate the revision is simply the pending one; module 1 makes
+        it binding at the gate. Once the document is binding, the new revision
+        is proposed through a module 1 change request, which needs a reason.
+        A read-only document takes no revision at all.
         """
         from fastapi import HTTPException
 
         from app.core.storage import get_storage_backend
         from app.modules.cde.schemas import RevisionCreate
         from app.modules.cde.service import CDEService
-        from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
+        from app.modules.project_governance.errors import GovernanceError
+        from app.modules.project_governance.service import GovernanceService
 
-        settings = await self.require_settings(project_id)
-        stmt = (
-            select(GovernanceDocument)
-            .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
-            .where(
-                GovernanceDocument.project_id == project_id,
-                GovernanceArea.code == settings.owner_area_code,
-                GovernanceDocument.container_id.is_not(None),
-            )
-            .order_by(GovernanceDocument.created_at)
-        )
-        doc = (await self.session.execute(stmt)).scalars().first()
-        if doc is None:
+        await self.require_settings(project_id)
+        docs = [d for d in await self.frame_documents(project_id, which) if d.container_id is not None]
+        if not docs:
             raise conflict("frame_document_missing")
-        key = f"stakeholders/{project_id}/{uuid.uuid4().hex}_{file_name}"
-        await get_storage_backend().put(key, content)
-        try:
-            revision = await CDEService(self.session).create_revision(
-                doc.container_id,
-                RevisionCreate(file_name=file_name, file_size=str(len(content)), mime_type=mime_type, storage_key=key),
-                user_id=str(actor_id),
+        if any(d.read_only for d in docs):
+            raise conflict("frame_document_read_only")
+        binding = [d for d in docs if d.status == "binding"]
+        reason = (change_reason or "").strip()
+        if binding and not reason:
+            raise StakeholderError("change_reason_required")
+        filed: list[dict[str, Any]] = []
+        for doc in docs:
+            key = f"stakeholders/{project_id}/{uuid.uuid4().hex}_{file_name}"
+            await get_storage_backend().put(key, content)
+            try:
+                revision = await CDEService(self.session).create_revision(
+                    doc.container_id,
+                    RevisionCreate(
+                        file_name=file_name, file_size=str(len(content)), mime_type=mime_type, storage_key=key
+                    ),
+                    user_id=str(actor_id),
+                )
+            except HTTPException as exc:
+                raise conflict("frame_document_missing", detail=str(exc.detail)) from exc
+            change_request_id = None
+            if doc.status == "binding":
+                try:
+                    request = await GovernanceService(self.session).create_change_request(
+                        project_id,
+                        doc.id,
+                        reason=reason,
+                        impact=(change_impact or "").strip(),
+                        proposed_revision_id=revision.id,
+                        actor_id=actor_id,
+                        role=None,
+                    )
+                except GovernanceError as exc:
+                    raise StakeholderError(exc.code, exc.status_code, detail=exc.detail) from exc
+                change_request_id = str(request.id)
+            await self._audit(
+                actor_id,
+                "stakeholder_frame_document",
+                doc.id,
+                "filed",
+                metadata=an.jsonable({"revision_id": revision.id, "file_name": file_name, "doc_type": doc.doc_type}),
             )
-        except HTTPException as exc:
-            raise conflict("frame_document_missing", detail=str(exc.detail)) from exc
-        warnings = ["frame_document_binding"] if doc.status == "binding" else []
-        await self._audit(
-            actor_id,
-            "stakeholder_frame_document",
-            doc.id,
-            "filed",
-            metadata=an.jsonable({"revision_id": revision.id, "file_name": file_name}),
-        )
-        return {
-            "document_id": str(doc.id),
-            "container_id": str(doc.container_id),
-            "revision_id": str(revision.id),
-            "warnings": warnings,
-        }
+            filed.append(
+                {
+                    "document_id": str(doc.id),
+                    "doc_type": doc.doc_type,
+                    "container_id": str(doc.container_id),
+                    "revision_id": str(revision.id),
+                    "change_request_id": change_request_id,
+                }
+            )
+        return {**filed[0], "documents": filed, "warnings": ["frame_document_binding"] if binding else []}
 
     # ── readiness (rule 20) and validation payload ────────────────────────
 
@@ -2269,9 +2509,12 @@ class StakeholderService:
                 "conflicts": [_conflict_out(c) for c in md.conflicts(fw, rows, holders, bodies, today)],
                 "vacant_required": md.vacant_roles(fw, holders, today, required_only=True),
                 "bodies": [
-                    {"code": b.code, "needed": md.quorum_needed(b), "present": md.body_present(b, holders, today)}
+                    {
+                        "code": b.code,
+                        "needed": md.quorum_needed(b, today),
+                        "present": md.body_present(b, holders, today),
+                    }
                     for b in bodies
-                    if b.members
                 ],
             }
         )

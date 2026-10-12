@@ -53,7 +53,54 @@ def _parse_parts(rule: str) -> dict[str, str]:
         raise RecurrenceError("COUNT and UNTIL are exclusive")
     if "UNTIL" in parts and ("T" in parts["UNTIL"] or len(parts["UNTIL"]) != 8):
         raise RecurrenceError("UNTIL must be a date YYYYMMDD")
+    _check_bounds(parts)
     return parts
+
+
+_MONTH_DAYS = (31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+
+
+def _ints(parts: dict[str, str], key: str, lo: int, hi: int) -> list[int]:
+    out: list[int] = []
+    for raw in parts[key].split(","):
+        try:
+            value = int(raw)
+        except ValueError as exc:
+            raise RecurrenceError(f"{key} must be whole numbers") from exc
+        if not lo <= abs(value) <= hi or (value < 0 and key in ("INTERVAL", "COUNT", "BYMONTH")):
+            raise RecurrenceError(f"{key} out of range")
+        out.append(value)
+    return out
+
+
+def _check_bounds(parts: dict[str, str]) -> None:
+    """Refuse a rule that never advances or never occurs.
+
+    dateutil accepts ``INTERVAL=0`` and then yields the start date forever, and
+    it scans to year 9999 for a rule with no occurrence (30 February, the
+    sixth Monday of a month). Either would block the worker on the first read.
+    """
+    if "INTERVAL" in parts:
+        _ints(parts, "INTERVAL", 1, 1000)
+    if "COUNT" in parts:
+        _ints(parts, "COUNT", 1, _SCAN_LIMIT)
+    months = _ints(parts, "BYMONTH", 1, 12) if "BYMONTH" in parts else list(range(1, 13))
+    if "BYMONTHDAY" in parts:
+        days = _ints(parts, "BYMONTHDAY", 1, 31)
+        if not any(abs(d) <= _MONTH_DAYS[m - 1] for d in days for m in months):
+            raise RecurrenceError("BYMONTHDAY never occurs in BYMONTH")
+    if "BYDAY" in parts:
+        for raw in parts["BYDAY"].split(","):
+            ordinal, day = raw[:-2], raw[-2:]
+            if day not in ("MO", "TU", "WE", "TH", "FR", "SA", "SU"):
+                raise RecurrenceError("BYDAY must name weekdays")
+            if ordinal:
+                try:
+                    n = int(ordinal)
+                except ValueError as exc:
+                    raise RecurrenceError("BYDAY ordinal must be a whole number") from exc
+                if not 1 <= abs(n) <= 5 or parts["FREQ"] not in ("MONTHLY", "YEARLY"):
+                    raise RecurrenceError("BYDAY ordinal out of range")
 
 
 def normalise(frequency: str | None) -> str:
@@ -101,6 +148,35 @@ def occurrences_between(frequency: str, starts_on: date, start: date, end: date)
             break
         out.append(dt.date())
     return out
+
+
+def occurrence_for(
+    *,
+    frequency: str | None,
+    trigger_kind: str | None,
+    starts_on: date | None,
+    held_on: date,
+    next_due: date | None,
+    done: list[date],
+) -> date:
+    """Which occurrence an event held on ``held_on`` belongs to when the caller names none (rule 7).
+
+    The pending occurrence when it has come due, or when nothing is recorded
+    yet (an early first meeting). Otherwise the latest scheduled occurrence on
+    or before the day it was held: a follow-up to a meeting already recorded
+    counts towards that meeting and does not consume the next one.
+    """
+    if next_due is not None and (next_due <= held_on or not done):
+        return next_due
+    if trigger_kind or starts_on is None:
+        return max(done) if done else held_on
+    freq = normalise(frequency)
+    if freq == ONCE:
+        return starts_on
+    previous = rrulestr(freq, dtstart=datetime.combine(starts_on, time())).before(
+        datetime.combine(held_on, time()), inc=True
+    )
+    return previous.date() if previous is not None else (max(done) if done else held_on)
 
 
 def next_due(

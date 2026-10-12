@@ -141,6 +141,17 @@ def test_every_error_code_raised_has_a_message(locale: str) -> None:
     for f in ("service.py", "router.py"):
         codes |= set(_ERR.findall((_MODULE / f).read_text(encoding="utf-8")))
     codes |= {"approval_pending", "no_commitment_route"}
+    # Refusals of module 1 that pass through this module's routes with their own code.
+    codes |= {
+        "catalogue_retired",
+        "document_not_found",
+        "not_area_owner",
+        "document_read_only",
+        "document_not_binding",
+        "no_pending_revision",
+        "change_request_not_open",
+        "no_decision_route",
+    }
     missing = sorted(c for c in codes if not is_key_present(f"stakeholders.errors.{c}", locale))
     assert missing == []
 

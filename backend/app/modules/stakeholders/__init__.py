@@ -15,10 +15,11 @@ mandate matrix. What is configurable is the catalogue kind
 
 
 async def on_startup() -> None:
-    """Register the catalogue kind, permissions, rules, subscribers and the gate evidence provider."""
+    """Register the catalogue kind, permissions, rules, subscribers, the gate evidence provider and the daily sweep."""
     from app.modules.stakeholders.catalogue import register_kind
     from app.modules.stakeholders.events import register_stakeholder_subscribers
     from app.modules.stakeholders.evidence import register_gate_evidence
+    from app.modules.stakeholders.jobs import register_sweep_process
     from app.modules.stakeholders.permissions import register_stakeholder_permissions
     from app.modules.stakeholders.validators import register_stakeholder_rules
 
@@ -27,3 +28,4 @@ async def on_startup() -> None:
     register_stakeholder_rules()
     register_stakeholder_subscribers()
     register_gate_evidence()
+    register_sweep_process()

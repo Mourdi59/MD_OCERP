@@ -10,12 +10,17 @@ Money arrives as a decimal string.
 
 from __future__ import annotations
 
+import uuid
 from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 _CODE = r"^[a-z0-9][a-z0-9_]*$"
+# A stakeholder code as people write it (S-001, NB.12): no spaces, no control characters.
+_REF = r"^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+# Head counts are stored in a 32-bit integer; nothing real comes near this.
+_MAX_COUNT = 100_000_000
 
 
 class _In(BaseModel):
@@ -29,26 +34,26 @@ class SettingsPut(_In):
     analysis_method: str | None = Field(default=None, max_length=64)
     review_interval_days: int | None = Field(default=None, ge=1, le=3650)
     owner_area_code: str | None = Field(default=None, max_length=64)
-    commitment_route_id: str | None = None
+    commitment_route_id: uuid.UUID | None = None
 
 
 class StakeholderIn(_In):
-    code: str | None = Field(default=None, max_length=40)
+    code: str | None = Field(default=None, pattern=_REF, max_length=40)
     display_name: str | None = Field(default=None, max_length=255)
     category: str | None = Field(default=None, max_length=64)
-    contact_id: str | None = None
+    contact_id: uuid.UUID | None = None
     is_group: bool | None = None
-    group_size_estimate: int | None = Field(default=None, ge=0)
-    parent_stakeholder_id: str | None = None
-    user_id: str | None = None
+    group_size_estimate: int | None = Field(default=None, ge=0, le=_MAX_COUNT)
+    parent_stakeholder_id: uuid.UUID | None = None
+    user_id: uuid.UUID | None = None
     interests: str | None = Field(default=None, max_length=10000)
     expectations: str | None = Field(default=None, max_length=10000)
     concerns: str | None = Field(default=None, max_length=10000)
-    relationship_owner_user_id: str | None = None
+    relationship_owner_user_id: uuid.UUID | None = None
     geo: dict[str, str] | None = None
     is_confidential: bool | None = None
     status: Literal["active", "dormant", "archived"] | None = None
-    risk_id: str | None = None
+    risk_id: uuid.UUID | None = None
 
 
 class AssessmentIn(_In):
@@ -64,54 +69,54 @@ class PlanItemIn(_In):
     title: str | None = Field(default=None, max_length=255)
     purpose: str | None = Field(default=None, max_length=10000)
     key_message: str | None = Field(default=None, max_length=10000)
-    audience_stakeholder_ids: list[str] | None = None
+    audience_stakeholder_ids: list[uuid.UUID] | None = None
     audience_categories: list[str] | None = None
-    audience_body_id: str | None = None
+    audience_body_id: uuid.UUID | None = None
     participation_level: str | None = Field(default=None, max_length=32)
     channel: str | None = Field(default=None, max_length=32)
     format_code: str | None = Field(default=None, max_length=64)
     frequency: str | None = Field(default=None, max_length=255)
     trigger_kind: Literal["gate", "event"] | None = None
     trigger_ref: str | None = Field(default=None, max_length=128)
-    owner_user_id: str | None = None
+    owner_user_id: uuid.UUID | None = None
     starts_on: date | None = None
     ends_on: date | None = None
     status: Literal["planned", "active", "paused", "completed", "cancelled"] | None = None
 
 
 class EventIn(_In):
-    plan_item_id: str | None = None
+    plan_item_id: uuid.UUID | None = None
     occurrence_date: date | None = None
     format_code: str | None = Field(default=None, max_length=64)
     participation_level: str | None = Field(default=None, max_length=32)
     title: str | None = Field(default=None, max_length=255)
     held_on: date | None = None
     location: str | None = Field(default=None, max_length=255)
-    stakeholder_ids: list[str] | None = None
-    attendance_count: int | None = Field(default=None, ge=0)
+    stakeholder_ids: list[uuid.UUID] | None = None
+    attendance_count: int | None = Field(default=None, ge=0, le=_MAX_COUNT)
     outcome: str | None = Field(default=None, max_length=10000)
     feedback_summary: str | None = Field(default=None, max_length=10000)
-    meeting_id: str | None = None
-    correspondence_ids: list[str] | None = None
-    cde_container_ids: list[str] | None = None
+    meeting_id: uuid.UUID | None = None
+    correspondence_ids: list[uuid.UUID] | None = None
+    cde_container_ids: list[uuid.UUID] | None = None
     status: Literal["planned", "held", "cancelled"] | None = None
 
 
 class CommitmentIn(_In):
-    stakeholder_ids: list[str] | None = None
+    stakeholder_ids: list[uuid.UUID] | None = None
     source_kind: Literal["event", "meeting", "correspondence", "permit_condition", "manual"] | None = None
     source_ref: str | None = Field(default=None, max_length=255)
     text: str | None = Field(default=None, max_length=10000)
     category: str | None = Field(default=None, max_length=32)
-    owner_user_id: str | None = None
+    owner_user_id: uuid.UUID | None = None
     due_date: date | None = None
     verification: str | None = Field(default=None, max_length=10000)
     cost_estimate: str | None = Field(default=None, max_length=40)
     currency: str | None = Field(default=None, max_length=3)
-    release_item_id: str | None = None
-    task_id: str | None = None
-    risk_id: str | None = None
-    requirement_id: str | None = None
+    release_item_id: uuid.UUID | None = None
+    task_id: uuid.UUID | None = None
+    risk_id: uuid.UUID | None = None
+    requirement_id: uuid.UUID | None = None
 
 
 class CommitmentTransition(_In):
@@ -123,9 +128,9 @@ class CommitmentTransition(_In):
 
 
 class HolderIn(_In):
-    roster_member_id: str | None = None
-    holder_contact_id: str | None = None
-    deputy_roster_member_id: str | None = None
+    roster_member_id: uuid.UUID | None = None
+    holder_contact_id: uuid.UUID | None = None
+    deputy_roster_member_id: uuid.UUID | None = None
     valid_from: date | None = None
     valid_to: date | None = None
     conflict_rationale: str = Field(default="", max_length=5000)
@@ -145,13 +150,13 @@ class BodyIn(_In):
     quorum_min: int | None = Field(default=None, ge=1, le=100)
     decision_level: int | None = Field(default=None, ge=1, le=20)
     meeting_series_ref: str | None = Field(default=None, max_length=64)
-    terms_container_id: str | None = None
+    terms_container_id: uuid.UUID | None = None
 
 
 class MemberIn(_In):
     role_code: str | None = Field(default=None, max_length=64)
-    user_id: str | None = None
-    contact_id: str | None = None
+    user_id: uuid.UUID | None = None
+    contact_id: uuid.UUID | None = None
     voting: bool = True
     valid_from: date | None = None
     valid_to: date | None = None
@@ -190,3 +195,6 @@ class FrameworkUpdate(_In):
 class FileExportIn(_In):
     document: Literal["register", "organisation"]
     format: Literal["pdf", "xlsx"] = "pdf"
+    # Required once the frame document is binding: the revision then goes through a change request.
+    change_reason: str = Field(default="", max_length=5000)
+    change_impact: str = Field(default="", max_length=5000)
