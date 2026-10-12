@@ -553,6 +553,56 @@ async def test_the_concept_follows_its_frame_document(pg_session, monkeypatch) -
     assert [len(r.snapshot["proofs"]) for r in revisions][-3:] == [1, 2, 2]
 
 
+async def test_a_frame_document_whose_event_never_arrived_is_followed_by_the_next_write(
+    pg_session, monkeypatch
+) -> None:
+    p = await _plan(pg_session)
+    svc, pid = p.svc, p.pid
+    await _units(p)
+    await svc.generate_proofs(pid, s.ProofGenerateIn(package_ref="P-01", confirm=["om_manual"]))
+    document = uuid.uuid4()
+    status, in_force = {"value": "draft"}, {"value": None}
+
+    async def frame_documents(self, project_id):
+        return {document: status["value"]}
+
+    async def bound_revision(self, project_id, document_id):
+        return in_force["value"]
+
+    monkeypatch.setattr(QualityConceptService, "_frame_documents", frame_documents)
+    monkeypatch.setattr(QualityConceptService, "_bound_revision", bound_revision)
+
+    await svc.submit(pid, p.manager)
+    concept = await svc.require_concept(pid)
+    assert concept.state == "in_review"
+
+    # The gate approves the document and the event is lost: the next write binds the concept first.
+    status["value"], in_force["value"] = "binding", "revision-1"
+    extra = s.ProofIn(
+        package_ref="P-02",
+        evidence_type="warranty_certificate",
+        deliverer_role="contractor",
+        required_by_kind="date",
+        required_by_ref="2027-03-01",
+    )
+    err = await _refused(svc.create_proof(pid, extra, p.manager))
+    assert (err.code, concept.state) == ("binding_requires_change_request", "binding")
+    assert [r.reason for r in await svc.revisions(pid)] == ["submitted", "approved"]
+
+    # A change request puts another revision in force and that event is lost: the plan write reopens it.
+    in_force["value"] = "revision-2"
+    await svc.create_proof(pid, extra, p.manager)
+    assert concept.state == "revising"
+    assert [r.reason for r in await svc.revisions(pid)] == ["submitted", "approved", "change_request"]
+
+    # Bound again under the new revision, neither the late event nor a further write reopens it.
+    await svc.submit(pid, p.manager)
+    assert concept.state == "binding"
+    assert await svc.apply_governance_state(pid, document, "binding", change_request="revision-2") is False
+    assert await svc.reconcile_governance(pid, reopen=True) is False
+    assert concept.state == "binding"
+
+
 # ── the documentation set becomes closeout slots and FM data deliverables ───
 
 

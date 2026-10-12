@@ -263,6 +263,48 @@ class QualityConceptService:
         documents = await public.project_documents(self.session, project_id)
         return {d.id: d.status for d in documents if d.code == host.doc_type}
 
+    async def _bound_revision(self, project_id: uuid.UUID, document_id: uuid.UUID | None) -> str | None:
+        """The revision of a frame document that is in force, as governance names it."""
+        from app.modules.project_governance import public
+
+        if document_id is None:
+            return None
+        for doc in await public.project_documents(self.session, project_id):
+            if doc.id == document_id:
+                return str(doc.bound_revision_id) if doc.bound_revision_id else None
+        return None
+
+    async def reconcile_governance(self, project_id: uuid.UUID, *, reopen: bool = False) -> bool:
+        """Follow a frame document whose event never arrived (rule 22). Called from write routes only.
+
+        A concept in review under a document that is binding is approved and bound.
+
+        ``reopen``: also follow an approved change request. A bound concept is reopened only
+        when the document names a revision in force other than the one the concept was
+        approved under; a concept approved before that was recorded is left alone. Asked
+        only where the plan is about to be written, since it reads the last approved revision.
+        """
+        state = await self.concept_state(project_id)
+        if state != "in_review" and not (reopen and state == "binding"):
+            return False
+        bound = [doc for doc, status in (await self._frame_documents(project_id)).items() if status == "binding"]
+        if not bound:
+            return False
+        if state == "in_review":
+            return await self.apply_governance_state(project_id, bound[0], "binding")
+        in_force = await self._bound_revision(project_id, bound[0])
+        stmt = (
+            select(QualityConceptRevision.snapshot)
+            .where(QualityConceptRevision.project_id == project_id)
+            .where(QualityConceptRevision.reason == "approved")
+            .order_by(QualityConceptRevision.revision_no.desc())
+            .limit(1)
+        )
+        under = ((await self.session.execute(stmt)).scalar_one_or_none() or {}).get("document_revision_id")
+        if not in_force or not under or under == in_force:
+            return False
+        return await self.apply_governance_state(project_id, bound[0], "binding", change_request=in_force)
+
     async def _ensure_requirement_set(self, project_id: uuid.UUID, actor: uuid.UUID | None) -> uuid.UUID:
         from app.modules.requirements.models import RequirementSet
         from app.modules.requirements.schemas import RequirementSetCreate
@@ -329,6 +371,7 @@ class QualityConceptService:
         _refuse(caps.plan_refusal(concept.state), detail=concept.state)
 
     async def _plan_concept(self, project_id: uuid.UUID) -> QualityConcept:
+        await self.reconcile_governance(project_id, reopen=True)
         concept = await self.require_concept(project_id)
         self._assert_plan_editable(concept)
         return concept
@@ -555,6 +598,7 @@ class QualityConceptService:
 
     async def act_on_concept(self, project_id: uuid.UUID, action: str, actor: uuid.UUID) -> QualityConcept:
         """User action ``return`` (in_review -> draft)."""
+        await self.reconcile_governance(project_id)
         concept = await self.require_concept(project_id, lock=True)
         concept.state = _transition("concept", concept.state, action)
         await self.session.flush()
@@ -602,7 +646,11 @@ class QualityConceptService:
         project_id = concept.project_id
         if concept.state == "in_review":
             concept.state = _transition("concept", concept.state, "approve", mirror=True)
-            await self._freeze(concept, "approved", None)
+            revision = await self._freeze(concept, "approved", None)
+            # What the concept was approved under; a later change of the document is told from it.
+            in_force = await self._bound_revision(project_id, concept.governance_doc_id)
+            if in_force:
+                revision.snapshot = {**revision.snapshot, "document_revision_id": in_force}
         if concept.state == "approved":
             concept.state = _transition("concept", concept.state, "bind", mirror=True)
             await self.session.flush()
@@ -1093,14 +1141,10 @@ class QualityConceptService:
         return proof
 
     async def _four_eyes(self, project_id: uuid.UUID) -> bool:
-        from app.modules.project_governance.models import GovernanceModel
+        """The project's four-eyes control as governance states it; on when the project has no model."""
+        from app.modules.project_governance import public
 
-        value = (
-            await self.session.execute(
-                select(GovernanceModel.four_eyes).where(GovernanceModel.project_id == project_id)
-            )
-        ).scalar_one_or_none()
-        return True if value is None else bool(value)
+        return (await public.project_controls(self.session, project_id)).four_eyes
 
     # ── evidence links ──────────────────────────────────────────────────────
 
@@ -1344,6 +1388,7 @@ class QualityConceptService:
 
         Only rows whose state changes are written. Called from write routes only.
         """
+        await self.reconcile_governance(project_id)
         await self.reconcile_released_gates(project_id)
         for row, results in await self.evaluate_progress(project_id):
             target = ev.computed_stage_state(row.state, results)
@@ -1823,6 +1868,7 @@ class QualityConceptService:
         """
         from app.modules.construction_control.models import HandoverPackage
 
+        await self.reconcile_governance(project_id)
         stmt = (
             select(HandoverPackage.id, HandoverPackage.status, AcceptanceUnit.state)
             .join(AcceptanceUnit, AcceptanceUnit.handover_package_id == HandoverPackage.id)

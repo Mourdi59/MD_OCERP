@@ -697,3 +697,37 @@ async def test_the_unit_list_reads_names_and_acts_once_for_all_units(monkeypatch
     out = await qc_router._units_out(svc, pid, units, date(2026, 1, 1))
     assert [o["code"] for o in out] == ["AU-0", "AU-1", "AU-2"]
     assert calls == {"labels": 1, "acts": 1}
+
+
+def test_the_concept_can_reach_binding_in_every_shipped_phase_model() -> None:
+    """Governance binds a frame document only at a gate that lists it, and the concept follows that document.
+
+    A model whose quality document is required at no gate would keep the concept in review for
+    the life of the project: no approved revision, the plan closed to edits.
+    """
+    models = _phase_models()
+    assert len(models) >= 6
+    for cat in models:
+        document = cat.host_of(hosting.SUBJECT)
+        assert document is not None, cat.id
+        assert document.required_at_gates, cat.id
+        assert set(document.required_at_gates) <= {g.code for g in cat.gates}, cat.id
+
+
+@pytest.mark.asyncio
+async def test_four_eyes_is_read_through_the_governance_port(monkeypatch) -> None:
+    from app.modules.project_governance import public
+    from app.modules.quality_concept.service import QualityConceptService
+
+    asked = []
+
+    async def controls(session, project_id):
+        asked.append(project_id)
+        return public.control_settings(SimpleNamespace(four_eyes=False, current_phase="p1", stopped=False))
+
+    monkeypatch.setattr(public, "project_controls", controls)
+    pid = uuid.uuid4()
+    assert await QualityConceptService(None)._four_eyes(pid) is False
+    assert asked == [pid]
+    # No model: the control is on until somebody with the authority switches it off.
+    assert public.control_settings(None).four_eyes is True
