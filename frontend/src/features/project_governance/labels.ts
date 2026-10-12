@@ -135,7 +135,7 @@ function fromLabel(label: GovernanceLabel | null | undefined, ctx: LabelContext)
   return '';
 }
 
-export type CatalogueItemKind = 'phase' | 'gate' | 'area' | 'doc';
+export type CatalogueItemKind = 'phase' | 'gate' | 'area' | 'doc' | 'criterion';
 
 /**
  * The name of a catalogue item: the project's own override first, then the
@@ -187,6 +187,7 @@ export const ERROR_TEXT: Record<string, string> = {
   area_without_owner: 'This management area has no owner, so nobody can attest its readiness',
   area_not_ready: 'This management area is not ready for the gate',
   evidence_not_met: 'Required readiness evidence for this area is not met',
+  unknown_criterion: "This readiness criterion is not part of the project's model for this area and gate",
   unknown_evidence_not_acknowledged:
     'A module could not say whether this area is ready. Confirm that you have seen this before you let the gate pass',
   check_stale: 'A document changed after readiness was confirmed, so the area must be confirmed again',

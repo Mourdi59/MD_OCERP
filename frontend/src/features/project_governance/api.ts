@@ -142,7 +142,8 @@ export interface EvidenceItem {
   code: string;
   state: EvidenceState;
   label: GovernanceLabel;
-  link: { kind: string; id: string } | null;
+  /** `href` is a path of the web app the owning module registered for the kind, or null when none did. */
+  link: { kind: string; id: string; href?: string | null } | null;
   detail: string;
   provider: string;
   blocking: boolean;
@@ -165,6 +166,17 @@ export interface GateCheck {
   confirmed_at: string | null;
   stale: boolean;
   na_rationale: string;
+  criteria?: Record<string, { met: boolean; note?: string; by?: string | null; at?: string | null }>;
+}
+
+/** One readiness criterion of an area on a gate, with the owner's tick. Who and when come from the server. */
+export interface GateCriterion {
+  code: string;
+  name: GovernanceLabel;
+  met: boolean;
+  note: string;
+  ticked_by: string | null;
+  ticked_at: string | null;
 }
 
 export interface GateAreaDocument {
@@ -188,6 +200,8 @@ export interface GateArea {
   check: GateCheck | null;
   evidence: EvidenceItem[];
   documents: GateAreaDocument[];
+  /** The model's criteria for this gate and area in catalogue order; empty when it defines none. */
+  criteria?: GateCriterion[];
   name?: GovernanceLabel;
 }
 
@@ -561,6 +575,20 @@ export function confirmCheck(
   body: { status: Exclude<CheckStatus, 'not_applicable'>; rag: Rag; note: string },
 ): Promise<GateCheck> {
   return apiPut<GateCheck>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/checks/${areaId}`, body);
+}
+
+/** Ticks or unticks one readiness criterion. Area owner or deputy only. */
+export function setCriterion(
+  projectId: string,
+  gateId: string,
+  areaId: string,
+  code: string,
+  body: { met: boolean; note?: string },
+): Promise<GateCheck> {
+  return apiPut<GateCheck>(
+    `/v1/project-governance/projects/${projectId}/gates/${gateId}/checks/${areaId}/criteria/${code}`,
+    body,
+  );
 }
 
 export function markCheckNotApplicable(

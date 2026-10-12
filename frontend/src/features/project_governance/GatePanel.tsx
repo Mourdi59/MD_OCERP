@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -64,6 +65,7 @@ import {
 } from './access';
 import { DecisionDialog } from './DecisionDialog';
 import { GateConditionForm } from './GateConditionForm';
+import { ReadinessCriteria } from './ReadinessCriteria';
 import {
   CHECK_TONE,
   DOCUMENT_TONE,
@@ -279,7 +281,13 @@ function AreaReadiness({
             <li key={e.code} className="flex items-start gap-1.5 text-xs text-content-secondary">
               <EvidenceIcon state={e.state} />
               <span>
-                {evidenceText(t, labels, e)}
+                {e.link?.href ? (
+                  <Link to={e.link.href} className="text-oe-blue hover:underline" data-testid="evidence-link">
+                    {evidenceText(t, labels, e)}
+                  </Link>
+                ) : (
+                  evidenceText(t, labels, e)
+                )}
                 {e.detail && <span className="text-content-tertiary"> - {e.detail}</span>}
                 {e.blocking && e.state === 'not_met' && (
                   <span className="ml-1 font-medium text-semantic-error">
@@ -298,6 +306,17 @@ function AreaReadiness({
           ))}
         </ul>
       )}
+
+      <ReadinessCriteria
+        projectId={projectId}
+        gateId={gateId}
+        area={area}
+        verdict={verdict}
+        labels={labels}
+        catalogueId={catalogueId}
+        personName={personName}
+        onChanged={onChanged}
+      />
 
       <div className="mt-2">
         {!editing ? (
