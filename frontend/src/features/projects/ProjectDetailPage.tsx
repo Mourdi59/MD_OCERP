@@ -39,6 +39,7 @@ import {
   Image as ImageIcon,
   LayoutGrid,
   Receipt,
+  Handshake,
   ChevronDown,
   MessagesSquare,
   MapPin,
@@ -1805,6 +1806,16 @@ export function ProjectDetailPage() {
             { label: project.name },
           ]}
         />
+        <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Handshake size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/stakeholders`)}
+          data-testid="project-stakeholders-link"
+        >
+          {t('stakeholders.ui.title', { defaultValue: 'Stakeholders' })}
+        </Button>
         <Button
           variant={customizing ? 'primary' : 'ghost'}
           size="sm"
@@ -1820,6 +1831,7 @@ export function ProjectDetailPage() {
             ? t('project.layout.done', { defaultValue: 'Done' })
             : t('project.layout.customize', { defaultValue: 'Customize' })}
         </Button>
+        </div>
       </div>
 
       <DismissibleInfo

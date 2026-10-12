@@ -75,6 +75,9 @@ const NotificationsPage = lazy(() =>
 const FundingPage = lazy(() =>
   import('@/features/funding/FundingPage').then((m) => ({ default: m.FundingPage }))
 );
+const StakeholdersPage = lazy(() =>
+  import('@/features/stakeholders').then((m) => ({ default: m.StakeholdersPage }))
+);
 const TenderingPage = lazy(() =>
   import('@/features/tendering/TenderingPage').then((m) => ({ default: m.TenderingPage }))
 );
@@ -1437,6 +1440,7 @@ export default function App() {
         <Route path="/project-route" element={<P title="Route Classifier"><ProjectRoutePage /></P>} />
         <Route path="/projects/:projectId/site-supervision" element={<P title="Site Supervision"><SiteSupervisionPage /></P>} />
         <Route path="/site-supervision" element={<P title="Site Supervision"><SiteSupervisionPage /></P>} />
+        <Route path="/projects/:projectId/stakeholders" element={<P title="Stakeholders"><StakeholdersPage /></P>} />
         <Route path="/projects/:projectId/cde" element={<P title="CDE"><CDEPage /></P>} />
         <Route path="/cde" element={<P title="CDE"><CDEPage /></P>} />
         <Route path="/projects/:projectId/transmittals" element={<P title="Transmittals"><TransmittalsPage /></P>} />
