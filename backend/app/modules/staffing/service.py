@@ -168,9 +168,18 @@ def _uid(actor: Any) -> Any:
     return actor.user_id if isinstance(actor, Actor) else actor
 
 
-def _can(allowed: bool, reason: str | None) -> dict[str, Any]:
-    """One capability for the client: whether the action is allowed, and the code of the refusal when not."""
-    return {"allowed": bool(allowed), "reason": None if allowed else reason}
+_SAME = "same-as-reason"
+
+
+def _can(allowed: bool, reason: str | None, state_reason: str | None = _SAME) -> dict[str, Any]:
+    """One capability for the client: ``allowed``, the refusal code when not, and whether it ``applies``.
+
+    ``state_reason`` is the refusal a caller with every right would get (``None``
+    when the state allows the action). Left out, the refusal itself is read,
+    which is right for a refusal that is only ever about a right.
+    """
+    refused = None if allowed else reason
+    return rules.capability(refused, refused if state_reason is _SAME else state_reason)
 
 
 def _refusal(reason: str, **kw: Any) -> StaffingError:
@@ -378,7 +387,15 @@ class StaffingService:
         project = await self._project(project_id)
         if await self.repo.plan(project_id) is not None:
             raise conflict("plan_exists")
-        cid = catalogue_id or default_catalogue_id_for_country(getattr(project, "country_code", None))
+        country = getattr(project, "country_code", None)
+        cid = catalogue_id
+        if cid is None:
+            # The active pack is asked first; the module's own default applies only when it has no opinion.
+            pin = governance.default_catalogue_pin(STAFFING_MODEL_KIND, country)
+            if pin is not None:
+                catalogue_source, cid, catalogue_version = pin.source, pin.catalogue_id, pin.version
+            else:
+                cid = default_catalogue_id_for_country(country)
         version = await self._pin(tenant_id, catalogue_source, cid, catalogue_version)
         plan = StaffingPlan(
             project_id=project_id,
@@ -552,7 +569,8 @@ class StaffingService:
 
         def plan_can(action: str) -> dict[str, Any]:
             refused = rules.plan_action_refusal(action, plan.status, can_edit=who.edit, has_frame_document=has_frame)
-            return _can(refused is None, refused)
+            by_state = rules.plan_action_refusal(action, plan.status, can_edit=True, has_frame_document=has_frame)
+            return _can(refused is None, refused, by_state)
 
         return {
             "id": str(plan.id),
@@ -577,14 +595,17 @@ class StaffingService:
                 "submit": plan_can("submit"),
                 "return": plan_can("return"),
                 "change_catalogue": plan_can("change_catalogue"),
+                # Add, edit and delete positions and handovers, the plan's settings, and who fills what.
+                "edit": plan_can("edit"),
             },
         }
 
     async def _open_for_edit(self, project_id: uuid.UUID, actor_id: Any) -> StaffingPlan:
         """Rule 7: draft and revising edit freely; approved or binding opens a revision; in review is locked."""
         plan = await self.require_plan(project_id, lock=True)
-        if plan.status == "in_review":
-            raise conflict("plan_in_review")
+        refused = rules.plan_action_refusal("edit", plan.status, can_edit=True)
+        if refused:
+            raise conflict(refused)
         if plan.status not in PLAN_EDITABLE:
             await self._fsm(PLAN_FSM, plan, "revising", actor_id)
             await self._audit(actor_id, "staffing_plan", plan.id, "revision_opened")
@@ -596,8 +617,9 @@ class StaffingService:
         Outside review a fill is day to day staffing, not plan structure: it opens no revision.
         """
         plan = await self.require_plan(project_id, lock=True)
-        if plan.status == "in_review":
-            raise conflict("plan_in_review")
+        refused = rules.plan_action_refusal("edit", plan.status, can_edit=True)
+        if refused:
+            raise conflict(refused)
         return plan
 
     async def _resolve_frame_document(self, project_id: uuid.UUID) -> Any:
@@ -952,29 +974,32 @@ class StaffingService:
 
         def fill_can(f: PositionFill, p: StaffingPosition) -> dict[str, Any]:
             def one(action: str) -> dict[str, Any]:
-                refused = rules.fill_action_refusal(
-                    action,
-                    f.status,
-                    plan_status,
-                    can_edit=who.edit,
-                    anonymised=f.roster_member_id is None,
-                    confirms_own_position=self._confirms_own_position(p, who, may_assign),
-                )
-                return _can(refused is None, refused)
+                def refusal(*, can_edit: bool, own: bool) -> str | None:
+                    return rules.fill_action_refusal(
+                        action,
+                        f.status,
+                        plan_status,
+                        can_edit=can_edit,
+                        anonymised=f.roster_member_id is None,
+                        confirms_own_position=own,
+                    )
+
+                refused = refusal(can_edit=who.edit, own=self._confirms_own_position(p, who, may_assign))
+                return _can(refused is None, refused, refusal(can_edit=True, own=False))
 
             return {"confirm": one("confirm"), "end": one("end"), "delete": one("delete")}
 
         def status_can(p: StaffingPosition) -> dict[str, Any]:
             out: dict[str, Any] = {}
             for target in POSITION_SETTABLE:
-                refused = rules.position_status_refusal(
-                    p.status,
-                    target,
-                    plan_status,
-                    can_edit=who.edit,
-                    transition_exists=POSITION_FSM.has_transition(p.status, target),
+                exists = POSITION_FSM.has_transition(p.status, target)
+                refused, by_state = (
+                    rules.position_status_refusal(
+                        p.status, target, plan_status, can_edit=can_edit, transition_exists=exists
+                    )
+                    for can_edit in (who.edit, True)
                 )
-                out[target] = _can(refused is None, refused)
+                out[target] = _can(refused is None, refused, by_state)
             return out
 
         out = []
@@ -1009,7 +1034,9 @@ class StaffingService:
                     "can": {
                         "gate_fields": _can(*rules.gate_fields_access(p.status, can_manage=who.manage)),
                         "status": status_can(p),
-                        "request_resource": _can(request_refused is None, request_refused),
+                        "request_resource": _can(
+                            request_refused is None, request_refused, self._resource_request_refusal(p, can_edit=True)
+                        ),
                     },
                 }
             )
@@ -1793,8 +1820,9 @@ class StaffingService:
         erase_refused, _detail = await self.erase_refusal(project_id, pfile, actor)
 
         def transition(action: str) -> dict[str, Any]:
-            refused = why_not if not editable else rules.file_transition_refusal(action, pfile.status)
-            return _can(refused is None, refused)
+            by_state = rules.file_transition_refusal(action, pfile.status)
+            refused = why_not if not editable else by_state
+            return _can(refused is None, refused, by_state)
 
         return {
             "id": str(pfile.id),
@@ -1824,11 +1852,13 @@ class StaffingService:
             "leave": [_leave_view(lv) for lv in leaves],
             "warnings": warnings,
             "can": {
-                "edit": _can(editable, why_not),
+                "edit": _can(editable, why_not, "file_anonymised" if pfile.status == "anonymised" else None),
                 "end": transition("end"),
                 "hold": transition("hold"),
                 "release": transition("release"),
-                "erase": _can(erase_refused is None, erase_refused),
+                "erase": _can(
+                    erase_refused is None, erase_refused, rules.file_transition_refusal("erase", pfile.status)
+                ),
                 "export": _can(relation == "self", "own_file_only"),
             },
             "can_edit": editable,
@@ -1895,7 +1925,7 @@ class StaffingService:
                     "special_category": bool(
                         catalogue.document_kind(kind) and catalogue.document_kind(kind).special_category
                     ),
-                    "can": {"verify": _can(refused is None, refused)},
+                    "can": {"verify": _can(refused is None, refused, self._verify_refusal(d, None))},
                 }
             )
         return out
@@ -2317,6 +2347,7 @@ class StaffingService:
             "key_roles_required": bool(asked & gate["enabled"]),
             "key_role_findings": [f.as_dict() for f in key],
             "unresolved_tags": sorted(asked - hosting.enabled_tags(catalogue)),
+            "open_key_roles": rules.open_key_positions(positions, fills, gate["enabled"]),
             "errors": [f.as_dict() for f in errors],
         }
 

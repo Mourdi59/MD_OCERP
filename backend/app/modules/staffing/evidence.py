@@ -24,7 +24,13 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, register_evidence_provider
+from app.modules.project_governance.evidence import (
+    EVIDENCE_STATES,
+    EvidenceItem,
+    GateAttempt,
+    register_evidence_link,
+    register_evidence_provider,
+)
 from app.modules.staffing import hosting
 
 PROVIDER_NAME = "staffing.plan_ready"
@@ -54,9 +60,9 @@ def items(ready: dict[str, Any], link: tuple[str, str]) -> list[EvidenceItem]:
         # The model hosts staffing, but this project has no document row of that type: unknown, never met.
         out.append(
             EvidenceItem(
-                code="staffing_plan_submitted",
+                code="staffing_frame_document_missing",
                 state="unknown",
-                label_key="staffing.evidence.plan_submitted",
+                label_key="staffing.evidence.frame_document_missing",
                 link=link,
                 detail=NO_DOCUMENT,
             )
@@ -84,9 +90,9 @@ def items(ready: dict[str, Any], link: tuple[str, str]) -> list[EvidenceItem]:
         # A key position waits for something no phase of this governance model enables: no gate can check it.
         out.append(
             EvidenceItem(
-                code="staffing_key_roles_filled",
+                code="staffing_key_roles_unresolved",
                 state="unknown",
-                label_key="staffing.evidence.key_roles_filled",
+                label_key="staffing.evidence.key_roles_unresolved",
                 link=link,
                 detail="no_phase_enables: " + ", ".join(ready["unresolved_tags"]),
             )
@@ -99,6 +105,27 @@ def items(ready: dict[str, Any], link: tuple[str, str]) -> list[EvidenceItem]:
                 label_key="staffing.evidence.key_roles_filled",
                 link=link,
                 detail=", ".join(sorted(f["detail"] for f in ready["key_role_findings"])),
+            )
+        )
+    if ready.get("open_key_roles") and "warning" in EVIDENCE_STATES:
+        # Not asked at this gate and still vacant: the gate passes, the decider sees the risk named.
+        out.append(
+            EvidenceItem(
+                code="staffing_key_roles_open",
+                state="warning",
+                label_key="staffing.evidence.key_roles_open",
+                link=link,
+                detail=", ".join(ready["open_key_roles"]),
+            )
+        )
+    if not out:
+        # The hosting area always gets an answer: nothing of the plan is due at this gate.
+        out.append(
+            EvidenceItem(
+                code="staffing_nothing_due",
+                state="met",
+                label_key="staffing.evidence.nothing_due",
+                link=link,
             )
         )
     return out
@@ -118,11 +145,11 @@ async def plan_ready(session: Any, project_id: uuid.UUID, attempt: GateAttempt, 
     ask, unknown_reason = applies(catalogue, area.code, first, has_data=has_data)
     if not ask:
         return []
-    link = ("staffing", str(project_id))
+    link = (LINK_KIND, str(project_id))
     if unknown_reason:
         return [
             EvidenceItem(
-                code="staffing_plan_submitted",
+                code="staffing_host_unknown",
                 state="unknown",
                 label_key="staffing.evidence.area_unknown",
                 link=link,
@@ -132,5 +159,10 @@ async def plan_ready(session: Any, project_id: uuid.UUID, attempt: GateAttempt, 
     return items(await svc.readiness(project_id, attempt.gate_code), link)
 
 
+LINK_KIND = "staffing"
+
+
 def register_gate_evidence() -> None:
     register_evidence_provider("*", plan_ready, name=PROVIDER_NAME, blocking=True)
+    # Where an evidence item of this module opens: the project's staffing screen.
+    register_evidence_link(LINK_KIND, "/projects/{project_id}/staffing")

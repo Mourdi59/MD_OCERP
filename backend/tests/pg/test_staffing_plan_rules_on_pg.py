@@ -366,10 +366,9 @@ async def test_evidence_is_unknown_when_the_project_has_no_document_row_for_the_
     w = await build_world(factory)
     await drop_frame_document(w)
     items = await _evidence(w, PERSONNEL_AREA)
-    assert [(i.state, i.detail) for i in items if i.code == "staffing_plan_submitted"] == [
-        ("unknown", "project_has_no_frame_document_for_staffing")
+    assert [(i.code, i.state, i.detail) for i in items] == [
+        ("staffing_frame_document_missing", "unknown", "project_has_no_frame_document_for_staffing")
     ]
-    assert "met" not in {i.state for i in items if i.code != "staffing_key_roles_filled"}
 
 
 async def test_the_host_and_the_gate_are_resolved_from_the_shipped_tags(factory) -> None:
@@ -401,23 +400,36 @@ async def test_position_and_fill_capabilities_are_what_the_actions_enforce(facto
         return next(p for p in await call(w, "position_views", actor) if p["id"] == str(pid))
 
     row = await view(editor)
-    assert row["can"]["request_resource"] == {"allowed": False, "reason": "position_not_recruiting"}
-    assert row["can"]["status"]["recruiting"] == {"allowed": True, "reason": None}
+    assert row["can"]["request_resource"] == {
+        "allowed": False,
+        "reason": "position_not_recruiting",
+        "applies": False,
+    }
+    assert row["can"]["status"]["recruiting"] == {"allowed": True, "reason": None, "applies": True}
+    assert row["can"]["status"]["open"]["applies"] is False
+    assert (await call(w, "plan_view", editor))["can"]["edit"] == {"allowed": True, "reason": None, "applies": True}
     assert row["can"]["status"]["open"]["reason"] == "already_in_state"
     assert row["fills"][0]["can"]["confirm"]["allowed"] is True
     assert row["fills"][0]["can"]["end"]["reason"] == "fill_not_confirmed"
     assert row["fills"][0]["can"]["delete"]["allowed"] is True
     # The line manager of the position (the world's manager) cannot confirm it; a reader can do nothing.
     own = await view(Actor(w.manager, edit=True))
-    assert own["fills"][0]["can"]["confirm"]["reason"] == "owner_cannot_confirm_own_fill"
+    assert own["fills"][0]["can"]["confirm"] == {
+        "allowed": False,
+        "reason": "owner_cannot_confirm_own_fill",
+        "applies": True,
+    }
     err = await _refused(call(w, "confirm_fill", fid, Actor(w.manager, edit=True)))
     assert (err.code, err.status_code) == ("owner_cannot_confirm_own_fill", 403)
     reader = await view(Actor(w.editor))
     assert reader["can"]["request_resource"]["reason"] == "edit_permission_required"
     assert reader["fills"][0]["can"]["confirm"]["reason"] == "edit_permission_required"
+    # The right is missing, the action exists: shown disabled. Ending a proposal does not exist: hidden.
+    assert reader["fills"][0]["can"]["confirm"]["applies"] is True
+    assert reader["fills"][0]["can"]["end"]["applies"] is False
 
     await call(w, "set_position_status", pid, "recruiting", w.manager)
-    assert (await view(editor))["can"]["request_resource"] == {"allowed": True, "reason": None}
+    assert (await view(editor))["can"]["request_resource"] == {"allowed": True, "reason": None, "applies": True}
     await call(w, "request_resource", pid, w.manager)
     assert (await view(editor))["can"]["request_resource"]["reason"] == "resource_request_exists"
     await confirm(w, fid)
@@ -433,8 +445,8 @@ async def test_a_requirement_no_phase_enables_is_unknown_not_silently_met(factor
     w = await build_world(factory)
     await position(w, "site_manager", required_before="first_power")
     items = {i.code: i for i in await _evidence(w, PERSONNEL_AREA)}
-    assert items["staffing_key_roles_filled"].state == "unknown"
-    assert "first_power" in items["staffing_key_roles_filled"].detail
+    assert items["staffing_key_roles_unresolved"].state == "unknown"
+    assert "first_power" in items["staffing_key_roles_unresolved"].detail
 
 
 # ── finding 18: spec items ─────────────────────────────────────────────────
@@ -483,13 +495,88 @@ async def test_planned_days_are_working_days_of_the_project_calendar(factory) ->
 # ── finding 13: the demo seed, read back through the screens' services ─────
 
 
+async def _seed_demo(w) -> dict:
+    from app.modules.projects.models import Project
+    from app.modules.staffing.models import StaffingPlan
+    from app.modules.staffing.seed import seed_staffing_demo
+
+    async with w.factory() as s:
+        await s.delete(
+            (await s.execute(select(StaffingPlan).where(StaffingPlan.project_id == w.project_id))).scalar_one()
+        )
+        project = await s.get(Project, w.project_id)
+        project.metadata_ = {"demo_id": "demo-staffing"}
+        project.currency = "CHF"
+        await s.commit()
+    async with w.factory() as s:
+        totals = await seed_staffing_demo(s, [w.project_id])
+        await s.commit()
+    return totals
+
+
+async def test_before_the_gate_into_construction_the_seed_puts_nobody_on_site(factory) -> None:
+    from app.modules.credentials.models import Credential
+    from app.modules.project_governance.models import GovernanceGate
+    from app.modules.staffing.models import StaffingPlan, TravelRecord
+    from app.modules.staffing.seed import before_construction
+
+    # The shipped model's gate into the phase that enables the start of construction is not decided.
+    w = await build_world(factory)
+    today = datetime.now(UTC).date()
+    async with w.factory() as s:
+        assert await before_construction(s, w.project_id) is True
+        gate = (
+            await s.execute(
+                select(GovernanceGate).where(GovernanceGate.project_id == w.project_id, GovernanceGate.code == GATE)
+            )
+        ).scalar_one()
+        gate.target_date = (today + timedelta(days=21)).isoformat()
+        await s.commit()
+    assert (await _seed_demo(w))["projects"] == 1
+
+    owner = admin(w)
+    positions = await call(w, "position_views", owner)
+    site = [p for p in positions if p["phase"] != "development"]
+    assert site and all(date.fromisoformat(p["entry_date"]) >= today + timedelta(days=175) for p in site)
+    # A site position can have its person named; nobody is assigned to it before the site mobilises.
+    starts = [date.fromisoformat(f["from_date"]) for p in site for f in p["fills"]]
+    assert starts and min(starts) >= today + timedelta(days=175)
+    assert "filled" in {p["status"] for p in positions if p["phase"] == "development"}
+    named = {p["role_code"] for p in site if any(f["status"] == "confirmed" for f in p["fills"])}
+    assert {"site_manager", "hse_manager"} <= named and "commissioning_manager" not in named
+    assert "recruiting" in {p["stored_status"] for p in site}
+
+    async with w.factory() as s:
+        plan = (await s.execute(select(StaffingPlan).where(StaffingPlan.project_id == w.project_id))).scalar_one()
+        trips = (await s.execute(select(TravelRecord).where(TravelRecord.project_id == w.project_id))).scalars().all()
+        creds = (await s.execute(select(Credential).where(Credential.project_id == w.project_id))).scalars().all()
+    assert plan.status == "in_review" and plan.commissioning_date == today + timedelta(days=560)
+    assert trips and {t.kind for t in trips} == {"mobilisation"}
+    assert all(t.depart_date == today + timedelta(days=174) for t in trips)
+    assert creds and all(c.issued_at is None or c.issued_at <= today for c in creds)
+
+    # The gate three weeks ahead finds the plan submitted and every key role it asks for named.
+    ready = await call(w, "readiness", GATE)
+    assert ready["submitted"] is True and ready["errors"] == [] and ready["key_role_findings"] == []
+    assert ready["key_roles_required"] is True
+    states = {i.code: i.state for i in await _evidence(w, PERSONNEL_AREA)}
+    assert "not_met" not in states.values() and "unknown" not in states.values()
+    assert states["staffing_key_roles_filled"] == "met"
+    matrix = await call(w, "compliance_matrix", owner)
+    cells = {c["state"] for row in matrix["items"] for c in row["cells"].values()}
+    assert {"valid", "expiring", "missing", "waived"} <= cells
+
+
 async def test_the_demo_seed_fills_every_list_and_runs_twice_without_duplicating(factory, monkeypatch) -> None:
     from app.modules.credentials.models import Credential
     from app.modules.projects.models import Project
     from app.modules.staffing.models import StaffingPlan, StaffingPosition
-    from app.modules.staffing.seed import seed_staffing_demo
+    from app.modules.staffing.seed import before_construction, seed_staffing_demo
 
-    w = await build_world(factory)
+    # No phase model: the seed tells the story of a site a month into construction.
+    w = await build_world(factory, governance=False)
+    async with w.factory() as s:
+        assert await before_construction(s, w.project_id) is False
     async with w.factory() as s:
         await s.delete(
             (await s.execute(select(StaffingPlan).where(StaffingPlan.project_id == w.project_id))).scalar_one()

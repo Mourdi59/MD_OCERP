@@ -207,6 +207,24 @@ async def test_a_plain_viewer_gets_no_document_state_from_the_compliance_matrix_
     assert body["document_kinds"] == []
     assert all(row["can"]["see_documents"]["reason"] == "no_relationship_to_person" for row in body["items"])
     assert export.status_code == 200
+    # The plan findings a reader gets are about the plan only: no finding there reads a personnel file.
+    async with client_as(world, world.editor, "viewer") as c:
+        findings = await c.get(f"{p}/plan/findings")
+        own_export = await c.get(f"{p}/export", params={"what": "plan", "format": "pdf"})
+    assert findings.status_code == 200 and findings.json()["restricted_people"] == 0
+    plan_codes = {
+        "key_role_missing",
+        "commissioning_date_missing",
+        "operation_role_late",
+        "handover_missing",
+        "person_overallocated",
+        "fte_out_of_range",
+        "fte_precision",
+        "headcount_invalid",
+        "exit_before_entry",
+    }
+    assert {f["code"] for f in findings.json()["items"]} <= plan_codes
+    assert own_export.headers["content-language"] == "en"
     # The preview is an edit-tier route even though it writes nothing.
     assert preview.status_code == 403
 

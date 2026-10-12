@@ -314,8 +314,9 @@ def test_a_missing_document_row_is_unknown_and_nothing_else_is_read() -> None:
     }
     items = evidence.items(ready, ("staffing", "p"))
     assert [(i.code, i.state, i.detail) for i in items] == [
-        ("staffing_plan_submitted", "unknown", "project_has_no_frame_document_for_staffing")
+        ("staffing_frame_document_missing", "unknown", "project_has_no_frame_document_for_staffing")
     ]
+    assert items[0].label_key == "staffing.evidence.frame_document_missing"
 
 
 def test_capabilities_name_the_refusal_the_action_would_answer() -> None:
@@ -361,6 +362,124 @@ def test_capabilities_name_the_refusal_the_action_would_answer() -> None:
     assert fill("end", "ended", "draft", can_edit=True) == "already_in_state"
     assert fill("delete", "confirmed", "draft", can_edit=True) == "fill_not_proposed"
     assert fill("end", "confirmed", "in_review", can_edit=True) == "plan_in_review"
+
+
+def test_every_unknown_evidence_item_has_its_own_code_and_a_sentence_in_both_languages() -> None:
+    import json
+
+    for name in ("en", "de"):
+        bundle = json.loads((MODULE_DIR / "messages" / f"{name}.json").read_text(encoding="utf-8"))
+        for key in ("area_unknown", "frame_document_missing", "key_roles_unresolved", "key_roles_open"):
+            text = bundle[f"staffing.evidence.{key}"]
+            # A sentence that says what to do, not a label.
+            assert text.endswith(".") and len(text.split()) > 10, (name, key)
+        assert bundle["staffing.evidence.nothing_due"]
+
+
+def test_the_hosting_area_always_gets_an_answer() -> None:
+    from app.modules.staffing import evidence
+
+    ready = {
+        "status": "draft",
+        "submitted": False,
+        "frame_document_missing": False,
+        "frame_required": False,
+        "errors": [],
+        "key_roles_required": False,
+        "key_role_findings": [],
+        "unresolved_tags": [],
+        "open_key_roles": [],
+    }
+    assert [(i.code, i.state) for i in evidence.items(ready, ("staffing", "p"))] == [("staffing_nothing_due", "met")]
+
+
+def test_the_evidence_link_of_the_module_opens_the_staffing_screen() -> None:
+    from app.modules.project_governance.evidence import evidence_link_href
+    from app.modules.staffing.evidence import LINK_KIND, register_gate_evidence
+
+    register_gate_evidence()
+    assert evidence_link_href(LINK_KIND, "ignored", "p1") == "/projects/p1/staffing"
+
+
+def test_a_flag_applies_by_the_state_of_the_record_and_never_by_a_right() -> None:
+    from app.modules.staffing import rules
+
+    # The line manager on a proposed fill of their own position: the action exists, they may not take it.
+    own = rules.fill_action_refusal("confirm", "proposed", "draft", can_edit=True, confirms_own_position=True)
+    assert rules.capability(own, None) == {
+        "allowed": False,
+        "reason": "owner_cannot_confirm_own_fill",
+        "applies": True,
+    }
+    # A reader on an already confirmed fill: refused for the right, and the action does not exist anyway.
+    reader = rules.fill_action_refusal("confirm", "confirmed", "draft", can_edit=False)
+    by_state = rules.fill_action_refusal("confirm", "confirmed", "draft", can_edit=True)
+    assert rules.capability(reader, by_state) == {
+        "allowed": False,
+        "reason": "edit_permission_required",
+        "applies": False,
+    }
+    assert rules.capability(None, None) == {"allowed": True, "reason": None, "applies": True}
+    # A precondition somebody can still meet is shown, not hidden.
+    for fixable in ("plan_in_review", "frame_document_missing", "position_dates_required", "retention_hold_active"):
+        assert rules.capability(fixable, fixable)["applies"] is True
+    for gone in ("plan_not_in_review", "position_not_recruiting", "file_not_held", "file_not_active", "own_file_only"):
+        assert rules.capability(gone, gone)["applies"] is False
+    assert rules.plan_action_refusal("edit", "in_review", can_edit=True) == "plan_in_review"
+    assert rules.plan_action_refusal("edit", "binding", can_edit=True) is None
+    assert rules.plan_action_refusal("edit", "draft", can_edit=False) == "edit_permission_required"
+
+
+def test_a_key_role_that_enters_after_the_gate_is_asked_to_be_named_not_to_be_there() -> None:
+    from app.modules.staffing import rules
+
+    gate_day = D(2027, 3, 1)
+    later = _pos(key_role=True, required_before="construction_start", entry_date=D(2027, 8, 1))
+    named = [{**_fill(later), "from_date": D(2027, 8, 1)}]
+    assert rules.key_role_gate_findings([later], named, {"construction_start"}, gate_day) == []
+    assert len(rules.key_role_gate_findings([later], [], {"construction_start"}, gate_day)) == 1
+    # Named, but only from a month after the position starts: still a gap on its first day.
+    late = [{**_fill(later), "from_date": D(2027, 9, 1)}]
+    assert len(rules.key_role_gate_findings([later], late, {"construction_start"}, gate_day)) == 1
+    # A position already running on the gate's day is asked on the gate's day, as before.
+    early = _pos(key_role=True, required_before="construction_start", entry_date=D(2027, 1, 1))
+    gone = [{**_fill(early), "from_date": D(2027, 1, 1), "to_date": D(2027, 2, 1)}]
+    assert len(rules.key_role_gate_findings([early], gone, {"construction_start"}, gate_day)) == 1
+
+    vacant = _pos(key_role=True, required_before=None, role_code="commissioning_manager")
+    assert rules.open_key_positions([later, vacant], named, {"construction_start"}) == ["commissioning_manager"]
+
+
+async def test_an_emptied_bus_gets_the_staffing_handlers_again() -> None:
+    from app.core.events import event_bus
+    from app.modules.staffing import events
+
+    names = ("project_governance.frame_document.state_changed", "credentials.expiry.alert")
+    saved = {n: list(event_bus._handlers.get(n, [])) for n in names}
+    seen: list[dict] = []
+
+    async def record(data: dict, **_kw) -> bool:
+        seen.append(data)
+        return True
+
+    real = events.handle_frame_document
+    events.handle_frame_document = record
+    try:
+        events.register_staffing_subscribers()
+        for n in names:
+            event_bus._handlers[n] = []
+        events.register_staffing_subscribers()
+        assert events._on_frame_document in event_bus._handlers[names[0]]
+        assert events._on_expiry_alert in event_bus._handlers[names[1]]
+        await event_bus.publish(names[0], {"status": "binding", "document_id": "x"}, source_module="test")
+        assert seen == [{"status": "binding", "document_id": "x"}]
+        # Registering twice subscribes once.
+        events.register_staffing_subscribers()
+        assert event_bus._handlers[names[0]].count(events._on_frame_document) == 1
+    finally:
+        events.handle_frame_document = real
+        for n in names:
+            event_bus._handlers[n] = saved[n]
 
 
 def test_a_catalogue_change_keeps_maps_or_frees_a_role() -> None:
@@ -411,8 +530,9 @@ def test_evidence_items_never_report_an_unresolved_requirement_as_met() -> None:
     }
     items = {i.code: i for i in evidence.items(ready, link)}
     assert items["staffing_plan_submitted"].state == "met"
-    assert items["staffing_key_roles_filled"].state == "unknown"
-    assert "construction_start" in items["staffing_key_roles_filled"].detail
+    assert items["staffing_key_roles_unresolved"].state == "unknown"
+    assert "construction_start" in items["staffing_key_roles_unresolved"].detail
+    assert "staffing_key_roles_filled" not in items
 
     ready = {**ready, "unresolved_tags": [], "key_roles_required": True, "key_role_findings": [{"detail": "x"}]}
     assert {i.code: i.state for i in evidence.items(ready, link)}["staffing_key_roles_filled"] == "not_met"

@@ -3,7 +3,13 @@
 """Demo staffing plan for the demo estate, run by ``app.core.demo_enrichment``.
 
 Each demo project gets the staffing catalogue its country resolves to and the
-plan a project lead would be working on a month into construction:
+plan a project lead would be working on. Which plan that is follows from the
+project's own state, read through the governance port: when the gate into the
+phase that enables the start of construction exists and is not decided, the
+project is before construction and nobody is on site yet (the site team is
+named and enters at mobilisation, the plan is submitted for that gate). In
+every other case, a project without a phase model included, it is the plan a
+month into construction:
 
 * development: the owner's lead team, on the project for eight months;
 * execution: the site team that started a month ago, one person arriving in
@@ -22,8 +28,9 @@ mobilisation next week, one rotation) and leave (one approved, one requested)
 fill the rest. Money is in the project's own currency; a project without one
 gets its trips without a cost.
 
-The plan stays ``draft``: submission and approval go through the governance
-gate, never through a seeder. People come from the teams roster (seeded first
+Approval goes through the governance gate, never through a seeder. Before
+construction the plan is submitted, so the gate finds it in review; a month
+into construction it is a draft somebody is working on. People come from the teams roster (seeded first
 when the project has none), so no name is invented here. Only projects
 carrying the demo marker are touched; a project that already has a plan is
 skipped, so a re-run never duplicates.
@@ -72,6 +79,23 @@ FILLED = (
     "document_controller",
 )
 COMMISSIONING_IN_DAYS = 420
+# Before construction. Offsets of the shared demo timeline: mobilisation of the site team 175 days after
+# the seed day, start of construction 190, commissioning 560. Nobody of the site team is on site yet.
+MOBILISATION_IN_DAYS = 175
+POSITIONS_BEFORE_CONSTRUCTION: tuple[tuple[str, str, int, int | None, str], ...] = (
+    *(row for row in POSITIONS if row[1] == "development"),
+    ("site_manager", "execution", 175, None, "open"),
+    ("hse_manager", "execution", 175, None, "open"),
+    ("site_supervisor_civil", "execution", 175, None, "open"),
+    ("document_controller", "execution", 175, None, "open"),
+    ("quality_manager", "execution", 190, None, "open"),
+    ("site_supervisor_mep", "execution", 190, 560, "recruiting"),
+    ("commissioning_manager", "execution", 440, None, "open"),
+    ("operator_plant_manager", "operation", 470, None, "open"),
+    ("operator_shift_lead", "operation", 500, None, "open"),
+)
+COMMISSIONING_BEFORE_CONSTRUCTION_IN_DAYS = 560
+MOBILISED = ("site_manager", "hse_manager", "site_supervisor_civil", "document_controller")
 PERMIT_HOLDER = "site_supervisor_civil"
 # (role, document kind) -> days until the document expires. The three windows of the upcoming view.
 EXPIRING: dict[tuple[str, str], int] = {
@@ -119,6 +143,16 @@ async def seed_staffing_demo(session: AsyncSession, project_ids: Iterable[uuid.U
     return totals
 
 
+async def before_construction(session: AsyncSession, project_id: uuid.UUID) -> bool:
+    """Whether the project stands before the gate into construction, by its own state and nothing else."""
+    from app.modules.project_governance import public as governance
+
+    enabling = await governance.phases_enabling(session, project_id, "construction_start")
+    gates = await governance.project_gates(session, project_id)
+    gate = next((g for g in gates if g.to_phase in enabling), None)
+    return gate is not None and gate.status != "decided"
+
+
 def _day(today: date, offset: int | None) -> date | None:
     return None if offset is None else today + timedelta(days=offset)
 
@@ -149,18 +183,21 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     priced = len(currency) == 3 and currency.isalpha()
     svc = StaffingService(session)
     today = datetime.now(UTC).date()
+    early = await before_construction(session, project_id)
+    planned = POSITIONS_BEFORE_CONSTRUCTION if early else POSITIONS
+    commissioning = COMMISSIONING_BEFORE_CONSTRUCTION_IN_DAYS if early else COMMISSIONING_IN_DAYS
 
     await svc.set_plan(
         project_id,
         actor_id=owner,
         tenant_id=None,
-        commissioning_date=today + timedelta(days=COMMISSIONING_IN_DAYS),
+        commissioning_date=today + timedelta(days=commissioning),
     )
     catalogue = await svc.catalogue_for(await svc.require_plan(project_id))
     counts = {"positions": 0, "fills": 0, "files": 0, "documents": 0}
 
     positions: dict[str, Any] = {}
-    for role_code, phase, entry, leaving, status in POSITIONS:
+    for role_code, phase, entry, leaving, status in planned:
         if catalogue.role(role_code) is None:
             continue
         row = await svc.create_position(
@@ -210,7 +247,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         )
         files[role_code] = pfile
         counts["files"] += 1
-        hired = position.entry_date - timedelta(days=30)
+        # Signed a month before the first day, and never in the future.
+        hired = min(position.entry_date, today) - timedelta(days=30)
         for kind_code in rules.required_document_kinds(catalogue, [role_code], "employee", needs_permit):
             kind = catalogue.document_kind(kind_code)
             if kind is None or (role_code, kind_code) == MISSING:
@@ -253,14 +291,24 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             **priced_part,
         }
 
-    if "document_controller" in files:
+    if early:
+        # Nobody has travelled to a site that does not exist yet: the site team arrives the day before it starts.
+        for role_code, amount in zip(MOBILISED, ("420.00", "380.00", "360.00", "340.00"), strict=True):
+            if role_code in files:
+                await svc.create_travel(
+                    project_id,
+                    files[role_code].id,
+                    trip("mobilisation", MOBILISATION_IN_DAYS - 1, None, amount),
+                    actor,
+                )
+    elif "document_controller" in files:
         # Arrives one day before the first working day.
         await svc.create_travel(
             project_id, files["document_controller"].id, trip("mobilisation", 9, None, "380.00"), actor
         )
-    if "site_manager" in files:
+    if not early and "site_manager" in files:
         await svc.create_travel(project_id, files["site_manager"].id, trip("rotation", 20, 34, "240.00"), actor)
-    if "project_manager" in files:
+    if not early and "project_manager" in files:
         done = await svc.create_travel(
             project_id, files["project_manager"].id, trip("business", -20, -18, "510.00"), actor
         )
@@ -302,4 +350,20 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                 },
                 owner,
             )
+    if early:
+        await _submit_for_the_gate(svc, project_id, owner)
     return counts
+
+
+async def _submit_for_the_gate(svc: Any, project_id: uuid.UUID, owner: uuid.UUID) -> None:
+    """Before the gate the plan is with the reviewer. Approval stays the gate's decision, never the seeder's."""
+    from app.modules.staffing import rules
+
+    frame = await svc._resolve_frame_document(project_id)
+    refused = rules.plan_action_refusal("submit", "draft", can_edit=True, has_frame_document=frame is not None)
+    errors = [f.code for f in await svc.submission_findings(project_id) if f.severity == rules.ERROR]
+    if refused or errors:
+        # A demo plan that cannot be submitted is a seed defect worth reading, not a reason to lose the project.
+        logger.warning("staffing demo seed: plan of %s stays a draft (%s)", project_id, refused or sorted(errors))
+        return
+    await svc.submit(project_id, owner)
