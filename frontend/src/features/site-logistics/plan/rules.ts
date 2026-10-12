@@ -170,6 +170,23 @@ export function findingText(words: Words, finding: Finding | Violation, catalogu
   return text.replace(/^\s*:\s*/, '').replace(/^./, (c) => c.toUpperCase());
 }
 
+/**
+ * What a readiness item still waits for, where the server names it. The detail
+ * reads `permit_applied: <titles>; permit_missing: <titles>`; any other detail
+ * is for the log and gives nothing here.
+ */
+export function openParts(detail: string | null | undefined): { key: TextKey; titles: string }[] {
+  const parts: { key: TextKey; titles: string }[] = [];
+  for (const piece of (detail ?? '').split('; ')) {
+    const at = piece.indexOf(': ');
+    if (at < 0) continue;
+    const key = `readiness.open.${piece.slice(0, at)}`;
+    const titles = piece.slice(at + 2).trim();
+    if (isTextKey(key) && titles) parts.push({ key, titles });
+  }
+  return parts;
+}
+
 /* ── Forms ────────────────────────────────────────────────────────────── */
 
 export type Option = { value: string; label: string };

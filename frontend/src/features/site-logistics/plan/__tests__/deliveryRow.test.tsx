@@ -15,10 +15,11 @@ import { DeliveryRow } from '../../SiteLogisticsPage';
 
 const yes = { allowed: true, applies: true, reason: null };
 
-function delivery(can: BoardCan): DeliveryBooking {
+function delivery(can: BoardCan, warnings: DeliveryBooking['warnings'] = []): DeliveryBooking {
   return {
     id: 'd1',
     can,
+    warnings,
     project_id: 'p1',
     gate_id: null,
     supplier_name: 'Rebar supplier',
@@ -39,12 +40,12 @@ function delivery(can: BoardCan): DeliveryBooking {
   };
 }
 
-function renderRow(can: BoardCan) {
+function renderRow(can: BoardCan, warnings: DeliveryBooking['warnings'] = []) {
   const onApprove = vi.fn();
   render(
     <MemoryRouter>
       <DeliveryRow
-        delivery={delivery(can)}
+        delivery={delivery(can, warnings)}
         gate={undefined}
         busy={false}
         onApprove={onApprove}
@@ -89,5 +90,16 @@ describe('a delivery on the board', () => {
     expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Edit delivery' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+  });
+
+  it('says on the row what the server could not check, and still lets the approval through', () => {
+    const { onApprove } = renderRow({ edit: yes, delete: yes, approve: yes, reject: yes }, [
+      { code: 'gate_hours_unchecked', severity: 'warning', field: 'site_timezone' },
+    ]);
+    expect(screen.getByTestId('delivery-warning')).toHaveTextContent(
+      'Opening hours are not checked until the site time zone is set.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    expect(onApprove).toHaveBeenCalledTimes(1);
   });
 });

@@ -96,6 +96,8 @@ export interface DeliveryLine {
 export interface DeliveryBooking {
   id: string;
   can?: BoardCan;
+  /** What the server could not check for this delivery, for example gate hours on a site without a time zone. */
+  warnings?: { code: string; severity: string; field?: string | null }[];
   project_id: string;
   gate_id: string | null;
   supplier_name: string;

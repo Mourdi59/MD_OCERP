@@ -114,13 +114,16 @@ export interface PlanCatalogue {
   customs_document_kinds: CatalogueEntry[];
   noise_limits: NoiseLimitEntry[];
   neighbour_issue_kinds: CatalogueEntry[];
-  pin: { source: 'shipped' | 'tenant'; id: string; version: number | null };
+  pin: { source: CatalogueSource; id: string; version: number | null };
   resolved_thresholds: Record<string, string | number>;
 }
 
+/** Where a catalogue comes from: the platform, the organisation, or the active country pack. */
+export type CatalogueSource = 'shipped' | 'tenant' | 'pack';
+
 /** One catalogue a project may pin, as the governance catalogue list returns it. */
 export interface CatalogueChoice {
-  source: 'shipped' | 'tenant';
+  source: CatalogueSource;
   id: string;
   code: string;
   name: { key: string | null; text: Record<string, string> | null };
@@ -343,7 +346,7 @@ export interface Concept {
   can?: Can;
   /** Null until the concept was saved once; reading never creates it. */
   id: string | null;
-  catalogue_source: 'shipped' | 'tenant';
+  catalogue_source: CatalogueSource;
   catalogue_id: string;
   catalogue_version: number | null;
   strategy: Flow[];

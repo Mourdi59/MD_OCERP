@@ -271,6 +271,8 @@ export const EN = {
   'readiness.unknown': 'Not checked',
   'readiness.passed_title': 'Above an entrance limit, covered by a permit',
   'readiness.passed_item': '{{title}}: permit {{reference}}',
+  'readiness.open.permit_applied': 'Applied for, not granted yet: {{titles}}',
+  'readiness.open.permit_missing': 'No permit: {{titles}}',
   'readiness.governance.no_governance_model':
     'This project has no governance model, so the checks below are not tied to a gate.',
   'readiness.governance.no_area_hosts_logistics':
@@ -305,7 +307,7 @@ export const EN = {
   'evidence.balance_closed': 'Area balance closed for every open stage',
   'evidence.first_stage_media_contracted': 'Utilities for the first stage contracted',
   'evidence.concept_saved_and_exported': 'Logistics concept saved and filed',
-  'evidence.heavy_transports_applied': 'Permits applied for every heavy transport',
+  'evidence.heavy_transports_applied': 'Permit granted for every heavy transport',
   'evidence.neighbourhood_limit_source': 'Noise limit source set',
   'evidence.gate_loads_admitted': 'Every load admitted by its entrance or covered by an oversize permit',
   'evidence.unresolved': 'The logistics plan could not be placed in the governance model',
@@ -339,6 +341,8 @@ export const EN = {
     '{{count}} approved deliveries start in the hour from {{hour}}, the concept allows {{limit}}.',
   'finding.jit_without_location': '{{title}}: a just-in-time delivery of flow {{flow}} names no takt area.',
   'finding.site_timezone_missing': 'The site has no time zone, so the time-of-day rules were not checked.',
+  'finding.gate_hours_unchecked':
+    'The site has no time zone, so deliveries were not compared with the opening hours.',
 
   'state.planned': 'Planned',
   'state.active': 'Active',
@@ -438,6 +442,7 @@ export const EN = {
   'enum.frame.wgs84': 'Map coordinates',
   'enum.source.shipped': 'Shipped',
   'enum.source.tenant': 'Own catalogue',
+  'enum.source.pack': 'From the active pack',
 
   'f.code': 'Short code',
   'f.code_hint': 'Lower case letters, digits and underscores, for example stage_1.',

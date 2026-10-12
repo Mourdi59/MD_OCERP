@@ -16,11 +16,11 @@ import { REGISTERS, exportRegister, pinCatalogue, runSweep, type CatalogueChoice
 import { useCatalogueChoices, useConcept, useInvalidatePlan, useReadiness, useReportProblem, useWords } from './hooks';
 import { ChecksPanel } from './ChecksPanel';
 import { Card, FormDialog, Loaded, PanelHead } from './PlanBits';
-import { denied, enumLabel, findingText, humanise, type Field } from './rules';
+import { denied, enumLabel, findingText, humanise, openParts, type Field } from './rules';
 import type { PanelProps } from './SitePanels';
 import { isTextKey, served, tx } from './texts';
 
-const PINNABLE: string[] = ['shipped', 'tenant'];
+const PINNABLE: string[] = ['shipped', 'tenant', 'pack'];
 
 export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
   const words = useWords();
@@ -89,7 +89,7 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
       kind: 'select',
       required: true,
       wide: true,
-      // The pin takes a shipped or a tenant catalogue; any other source in the list would be refused.
+      // The pin takes a shipped, a tenant or a pack catalogue; any other source in the list would be refused.
       options: (choices.data ?? [])
         .filter((c) => PINNABLE.includes(c.source))
         .map((c) => ({ value: `${c.source}:${c.id}`, label: catalogueName(c) })),
@@ -136,7 +136,15 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
                     ) : (
                       <XCircle size={15} className="mt-0.5 shrink-0 text-semantic-error" aria-hidden />
                     )}
-                    <span className="text-content-primary">{evidence(item.code)}</span>
+                    <span className="text-content-primary">
+                      {evidence(item.code)}
+                      {item.state !== 'met' &&
+                        openParts(item.detail).map((part) => (
+                          <span key={part.key} className="block text-xs text-content-secondary" data-testid="plan-ready-open">
+                            {tx(t, part.key, { titles: part.titles })}
+                          </span>
+                        ))}
+                    </span>
                     {item.state === 'unknown' ? (
                       <span className="text-content-tertiary">{tx(t, 'readiness.unknown')}</span>
                     ) : (

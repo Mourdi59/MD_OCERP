@@ -51,8 +51,8 @@ import { FlowSelect } from './plan/FlowSelect';
 import { SiteClockNotice } from './plan/SiteClockNotice';
 import { GateLimits } from './plan/GateLimits';
 import { BoardCanNotice, useBoardCreate } from './plan/boardCan';
-import { denied, offered, reasonText, shown } from './plan/rules';
-import type { TFn } from './plan/texts';
+import { denied, humanise, offered, reasonText, shown } from './plan/rules';
+import { served, type TFn } from './plan/texts';
 import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { getErrorMessage } from '@/shared/lib/api';
@@ -1005,6 +1005,16 @@ export function DeliveryRow({
         {delivery.materials_desc && (
           <p className="text-2xs text-content-tertiary truncate">{delivery.materials_desc}</p>
         )}
+        {(delivery.warnings ?? []).map((w) => (
+          <p
+            key={w.code}
+            className="mt-0.5 flex items-center gap-1 text-2xs text-semantic-warning"
+            data-testid="delivery-warning"
+          >
+            <AlertTriangle size={11} className="shrink-0" aria-hidden />
+            {served(t as TFn, `site_logistics.errors.${w.code}`, humanise(w.code))}
+          </p>
+        ))}
       </div>
 
       {/* Gate */}
