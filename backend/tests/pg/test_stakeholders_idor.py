@@ -348,3 +348,108 @@ async def test_commitment_links_and_their_pickers_stay_inside_the_project(world:
     assert release.json() == {"items": [], "available": False, "reason": "commitment_release_not_installed"}
     assert gates.json() == {"items": []}
     assert [r.status_code for r in strangers] == [404, 404, 404]
+
+
+# ── every stored reference is checked against the project ─────────────────
+
+
+async def _foreign_rows(world: World) -> dict[str, str]:
+    """One row of each linkable kind in a second project."""
+    from app.modules.correspondence.models import Correspondence
+    from app.modules.risk.models import RiskItem
+    from app.modules.tasks.models import Task
+
+    other = await build_world(world.factory)
+    async with world.factory() as s:
+        rows = {
+            "task": Task(project_id=other.project_id, task_type="task", title="Their task"),
+            "risk": RiskItem(project_id=other.project_id, code="R-001", title="Their risk"),
+            "correspondence": Correspondence(
+                project_id=other.project_id,
+                reference_number="COR-001",
+                direction="incoming",
+                subject="Their letter",
+                correspondence_type="letter",
+            ),
+        }
+        s.add_all(rows.values())
+        await s.commit()
+        ids = {kind: str(row.id) for kind, row in rows.items()}
+    ids["stakeholder"] = str(await stakeholder(other, "Their neighbour group", is_group=True))
+    return ids
+
+
+async def test_a_row_of_another_project_is_refused_for_every_reference_kind(world: World) -> None:
+    foreign = await _foreign_rows(world)
+    sid = await stakeholder(world, "Residents east", is_group=True)
+    cid = await commitment(world, sid)
+    p = f"{BASE}/projects/{world.project_id}"
+    new_commitment = {"stakeholder_ids": [str(sid)], "text": "Promise", "category": "working_hours"}
+    new_stakeholder = {"category": "utility", "display_name": "Utility"}
+    event = {"title": "Evening", "participation_level": "inform"}
+    async with client_as(world, world.editor, "editor") as c:
+        answers = {
+            "task on create": await c.post(f"{p}/commitments", json={**new_commitment, "task_id": foreign["task"]}),
+            "task on patch": await c.patch(f"{p}/commitments/{cid}", json={"task_id": foreign["task"]}),
+            "risk on create": await c.post(f"{p}/commitments", json={**new_commitment, "risk_id": foreign["risk"]}),
+            "risk on patch": await c.patch(f"{p}/commitments/{cid}", json={"risk_id": foreign["risk"]}),
+            "stakeholder risk on create": await c.post(
+                f"{p}/stakeholders", json={**new_stakeholder, "risk_id": foreign["risk"]}
+            ),
+            "stakeholder risk on patch": await c.patch(f"{p}/stakeholders/{sid}", json={"risk_id": foreign["risk"]}),
+            "parent on create": await c.post(
+                f"{p}/stakeholders", json={**new_stakeholder, "parent_stakeholder_id": foreign["stakeholder"]}
+            ),
+            "parent on patch": await c.patch(
+                f"{p}/stakeholders/{sid}", json={"parent_stakeholder_id": foreign["stakeholder"]}
+            ),
+            "commitment stakeholder on create": await c.post(
+                f"{p}/commitments", json={**new_commitment, "stakeholder_ids": [foreign["stakeholder"]]}
+            ),
+            "correspondence on create": await c.post(
+                f"{p}/events", json={**event, "correspondence_ids": [foreign["correspondence"]]}
+            ),
+        }
+        listed = await c.get(f"{p}/commitments")
+    expected = {
+        "task on create": "task_not_found",
+        "task on patch": "task_not_found",
+        "risk on create": "risk_not_found",
+        "risk on patch": "risk_not_found",
+        "stakeholder risk on create": "risk_not_found",
+        "stakeholder risk on patch": "risk_not_found",
+        "parent on create": "stakeholder_not_found",
+        "parent on patch": "stakeholder_not_found",
+        "commitment stakeholder on create": "stakeholder_not_found",
+        "correspondence on create": "correspondence_not_found",
+    }
+    assert {k: (r.status_code, _code(r)) for k, r in answers.items()} == {k: (404, v) for k, v in expected.items()}
+    assert listed.json()["total"] == 1
+
+
+async def test_a_release_item_is_stored_only_when_its_module_confirms_it(world: World) -> None:
+    from app.modules.stakeholders import authority
+
+    sid = await stakeholder(world, "Residents east", is_group=True)
+    cid = await commitment(world, sid)
+    mine, theirs = uuid.uuid4(), uuid.uuid4()
+    p = f"{BASE}/projects/{world.project_id}/commitments/{cid}"
+
+    async def checker(session, project_id, item_id):
+        return authority.ReleaseItemAnswer(
+            has_matrix=True, item_valid=project_id == world.project_id and item_id == mine
+        )
+
+    async with client_as(world, world.editor, "editor") as c:
+        unchecked = await c.patch(p, json={"release_item_id": str(mine)})
+        authority.register_release_item_checker(checker)
+        try:
+            foreign = await c.patch(p, json={"release_item_id": str(theirs)})
+            own = await c.patch(p, json={"release_item_id": str(mine)})
+        finally:
+            authority.register_release_item_checker(None)
+        cleared = await c.patch(p, json={"release_item_id": None})
+    assert (unchecked.status_code, _code(unchecked)) == (409, "release_items_unavailable")
+    assert (foreign.status_code, _code(foreign)) == (404, "release_item_not_found")
+    assert (own.status_code, own.json()["release_item_id"]) == (200, str(mine))
+    assert (cleared.status_code, cleared.json()["release_item_id"]) == (200, None)

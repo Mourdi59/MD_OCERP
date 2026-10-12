@@ -340,6 +340,19 @@ class StakeholderService:
 
         return await self._in_project(RiskItem, project_id, risk_id, "risk_not_found")
 
+    async def _release_item(self, project_id: uuid.UUID, item_id: Any) -> uuid.UUID:
+        """A release item belongs to the commitment release module, so that module says whether it is the project's.
+
+        With no checker registered nobody can say, and an unchecked id is never stored.
+        """
+        rid = _uuid(item_id)
+        checker = release_item_checker()
+        if checker is None:
+            raise conflict("release_items_unavailable")
+        if rid is None or not (await checker(self.session, project_id, rid)).item_valid:
+            raise not_found("release_item_not_found")
+        return rid
+
     async def _task(self, project_id: uuid.UUID, task_id: Any) -> Any:
         from app.modules.tasks.models import Task
 
@@ -1466,8 +1479,9 @@ class StakeholderService:
                 await self._requirement(project_id, data["requirement_id"]) if data["requirement_id"] else None
             )
         if "release_item_id" in data:
-            # Checked by the commitment release module when the commitment is agreed (rule 10).
-            out["release_item_id"] = _uuid(data["release_item_id"])
+            out["release_item_id"] = (
+                await self._release_item(project_id, data["release_item_id"]) if data["release_item_id"] else None
+            )
         return out
 
     async def _project_currency(self, project_id: uuid.UUID) -> str:
