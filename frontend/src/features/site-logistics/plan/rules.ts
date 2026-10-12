@@ -25,6 +25,12 @@ export function absent(verdict: Verdict | undefined): boolean {
   return !!verdict && !verdict.applies;
 }
 
+/**
+ * Stands in for an answer that has not arrived yet: the button is there,
+ * disabled and without a reason, and wakes up when the server has spoken.
+ */
+export const WAITING: Verdict = { allowed: false, applies: true, reason: null };
+
 /** The action can be pressed: it exists and the server allows it. Unknown counts as allowed. */
 export function offered(verdict: Verdict | undefined): boolean {
   return !denied(verdict) && !absent(verdict);

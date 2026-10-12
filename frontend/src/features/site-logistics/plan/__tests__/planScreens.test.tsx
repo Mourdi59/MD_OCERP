@@ -153,6 +153,17 @@ describe('area balance', () => {
 });
 
 describe('stages and areas', () => {
+  it('the add button waits disabled until the list has said whether a stage may be added', async () => {
+    let answer: (value: unknown) => void = () => undefined;
+    mocked.listStages.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)) as never);
+    renderPlan('stages');
+    const add = await screen.findByTestId('plan-add_stage');
+    expect(add).toBeDisabled();
+    expect(add).not.toHaveAttribute('title');
+    answer(page([]));
+    await waitFor(() => expect(screen.getByTestId('plan-add_stage')).toBeEnabled());
+  });
+
   it('a new stage is not sent while a required field is empty', async () => {
     renderPlan('stages');
     await screen.findByTestId('plan-stage');

@@ -20,6 +20,7 @@ import {
   humanise,
   moveLabel,
   offered,
+  reasonText,
   shown,
   stateLabel,
   toBody,
@@ -27,6 +28,7 @@ import {
   weekdayOptions,
   type Field,
   type Lifecycle,
+  WAITING,
 } from '../rules';
 import { instantOf, wallClock } from '../siteTime';
 import { EN, isTextKey } from '../texts';
@@ -309,8 +311,14 @@ describe('what a verdict does to a button', () => {
     expect([yes, refused, noRight, noSuchMove].map(shown)).toEqual([true, true, false, false]);
   });
 
-  it('refuses nothing while the server has not answered', () => {
+  it('refuses nothing where the server gives no verdict at all', () => {
     expect(offered(undefined)).toBe(true);
     expect(shown(undefined)).toBe(true);
+  });
+
+  it('waits on the screen, not pressable and without a reason, until the answer arrives', () => {
+    expect(shown(WAITING)).toBe(true);
+    expect(offered(WAITING)).toBe(false);
+    expect(reasonText(enT, WAITING)).toBeUndefined();
   });
 });

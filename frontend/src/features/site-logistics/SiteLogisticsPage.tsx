@@ -50,7 +50,7 @@ import { LogisticsPlan, type PlanTab } from './plan/LogisticsPlan';
 import { FlowSelect } from './plan/FlowSelect';
 import { SiteClockNotice } from './plan/SiteClockNotice';
 import { GateLimits } from './plan/GateLimits';
-import { denied, offered, reasonText, shown } from './plan/rules';
+import { WAITING, denied, offered, reasonText, shown } from './plan/rules';
 import type { TFn } from './plan/texts';
 import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
@@ -924,19 +924,22 @@ function BookDeliveryModal({
 
 /**
  * What the server lets this reader create on the board. The lists are plain
- * arrays, so the answer is its own read; while it is unknown nothing is refused
- * here and the server still decides on the write.
+ * arrays, so the answer is its own read. Until it arrives the verdict is
+ * WAITING: a button is there but disabled, a form is not shown yet. Without a
+ * project, or when the read failed, there is no verdict and the server decides
+ * on the write.
  */
 function useBoardCreate(projectId: string, kind: BoardKind) {
-  const { data } = useQuery({
+  const { data, isPending } = useQuery({
     queryKey: ['site-logistics-can', projectId],
     queryFn: () => fetchBoardCan(projectId),
     enabled: !!projectId,
   });
-  return data?.[kind]?.create;
+  if (!projectId) return undefined;
+  return isPending ? WAITING : data?.[kind]?.create;
 }
 
-function DeliveryRow({
+export function DeliveryRow({
   delivery,
   gate,
   busy,

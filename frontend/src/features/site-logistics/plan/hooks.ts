@@ -43,7 +43,7 @@ import {
   type ResourceKind,
   type Verdict,
 } from './api';
-import { findingText, type Words } from './rules';
+import { WAITING, findingText, type Words } from './rules';
 import type { TFn } from './texts';
 
 function items<T>(page: PlanPage<T>): T[] {
@@ -59,13 +59,19 @@ function usePlanList<T>(projectId: string, name: string, fetcher: () => Promise<
   });
 }
 
-/** Whether a record may be added to a list, as the list's own answer says. Reads the cache the list filled. */
+/**
+ * Whether a record may be added to a list, as the list's own answer says. Reads
+ * the cache the list filled. Until the list has answered the verdict is WAITING,
+ * so the button never invites a press the server may then refuse; a list that
+ * failed to load gives no verdict and its panel shows the failure instead.
+ */
 export function useCreateVerdict(projectId: string, name: string): Verdict | undefined {
-  return useQuery<PlanPage<unknown>, Error, Verdict | undefined>({
+  const query = useQuery<PlanPage<unknown>, Error, Verdict | undefined>({
     queryKey: planKeys.of(projectId, name),
     enabled: false,
     select: (page) => page.can?.create,
-  }).data;
+  });
+  return query.isPending ? WAITING : query.data;
 }
 
 /** The list each kind of record is added to. */
