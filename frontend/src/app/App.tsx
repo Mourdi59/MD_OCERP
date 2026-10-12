@@ -72,6 +72,9 @@ const MatchElementsPage = lazy(() =>
 const NotificationsPage = lazy(() =>
   import('@/features/notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage }))
 );
+const QualityConceptPage = lazy(() =>
+  import('@/features/quality_concept').then((m) => ({ default: m.QualityConceptPage }))
+);
 const FundingPage = lazy(() =>
   import('@/features/funding/FundingPage').then((m) => ({ default: m.FundingPage }))
 );
@@ -1276,6 +1279,7 @@ export default function App() {
         <Route path="/projects" element={<P title="Projects"><ProjectsPage /></P>} />
         <Route path="/projects/new" element={<P title="New Project"><CreateProjectPage /></P>} />
         <Route path="/projects/:projectId" element={<P title="Project"><ProjectDetailPage /></P>} />
+        <Route path="/projects/:projectId/quality-concept" element={<P title="Quality concept"><QualityConceptPage /></P>} />
         <Route path="/projects/:projectId/settings" element={<P title="Project Settings"><ProjectSettingsPage /></P>} />
         <Route path="/projects/:projectId/timeline" element={<P title="Project Timeline"><TimelinePage /></P>} />
         <Route path="/projects/:projectId/boq/new" element={<P title="New BOQ"><CreateBOQPage /></P>} />

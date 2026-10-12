@@ -64,6 +64,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   // Overview
   'Dashboard': 'nav.dashboard',
   'Projects': 'nav.projects',
+  'Quality concept': 'qualityConcept.title',
   'New Project': 'projects.new_project',
   'Project': 'nav.projects',
   'Project Settings': 'nav.settings',

@@ -1,0 +1,927 @@
+// DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+// Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+//
+// REST client for the project quality concept: standards basis, certification
+// targets, proofs and their evidence, commissioning stages, acceptance units,
+// evidence preservation surveys and expert reports.
+//
+// Backend module: backend/app/modules/quality_concept/router.py, mounted at
+// /api/v1/quality-concept/. Every route lives under /projects/{project_id}/.
+//
+// Responses are the stored row plus a few computed fields (see the `_*_out`
+// helpers in the router). Points and quantities travel as decimal strings in
+// both directions: the server refuses a JSON float. Calendar days are ISO
+// `YYYY-MM-DD` strings.
+//
+// Errors arrive as `detail = {code, message_key, message, violations?, info?}`.
+
+import { API_BASE, ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
+
+const BASE = '/v1/quality-concept';
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+/** A catalogue label: a message key for shipped items, texts per locale for tenant ones. */
+export interface QcLabel {
+  key: string | null;
+  text: Record<string, string> | null;
+}
+
+export interface Finding {
+  code: string;
+  severity: 'error' | 'warning' | string;
+  ref: string;
+  params: Record<string, unknown>;
+}
+
+export type ConceptState = 'draft' | 'in_review' | 'approved' | 'binding' | 'revising';
+export type CertificationState =
+  | 'planned'
+  | 'registered'
+  | 'design_assessed'
+  | 'post_construction_assessed'
+  | 'certified'
+  | 'level_missed'
+  | 'abandoned';
+export type CreditState = 'targeted' | 'evidence_submitted' | 'achieved' | 'not_achieved' | 'dropped';
+export type ProofState = 'open' | 'partly_delivered' | 'delivered' | 'accepted' | 'waived';
+export type ProofDecision = 'none' | 'accepted' | 'waived';
+export type StageState =
+  | 'blocked'
+  | 'ready'
+  | 'in_test'
+  | 'failed'
+  | 'passed'
+  | 'released'
+  | 'stale'
+  | 'not_applicable';
+export type AcceptanceState =
+  | 'planned'
+  | 'requested'
+  | 'inspection_scheduled'
+  | 'refused'
+  | 'accepted'
+  | 'accepted_with_reservations'
+  | 'deemed_accepted';
+export type SurveyState = 'planned' | 'invited' | 'surveyed' | 'report_issued' | 'closed' | 'access_refused';
+export type ExpertReportState = 'planned' | 'commissioned' | 'reporting' | 'completed' | 'cancelled';
+
+export type CertificationAction =
+  | 'register'
+  | 'assess_design'
+  | 'assess_post_construction'
+  | 'certify'
+  | 'miss_level'
+  | 'abandon';
+export type CreditAction = 'submit_evidence' | 'achieve' | 'not_achieve' | 'return' | 'drop' | 'reinstate';
+export type UnitAction = 'schedule_inspection' | 'withdraw' | 'confirm_deemed';
+export type SurveyAction = 'invite' | 'record_survey' | 'issue_report' | 'close' | 'refuse_access';
+
+export interface PackageScope {
+  ref: string;
+  code: string;
+  title: string;
+  no_proofs_rationale: string;
+}
+
+export interface Concept {
+  id: string;
+  project_id: string;
+  catalogue_source: 'shipped' | 'tenant';
+  catalogue_id: string;
+  catalogue_version: number;
+  state: ConceptState;
+  governance_doc_id: string | null;
+  requirement_set_id: string | null;
+  documentation_set_code: string | null;
+  packages: PackageScope[];
+  holidays: string[];
+  revision_no: number;
+  submitted_by: string | null;
+  submitted_at: string | null;
+  catalogue_label: QcLabel;
+  catalogue_review_status: string;
+  applicable_packages: PackageScope[];
+  findings: Finding[];
+  /** The one capability flag the server sends: the plan is complete and in an editable state. */
+  can_submit: boolean;
+}
+
+export interface ConceptRevision {
+  id: string;
+  revision_no: number;
+  reason: string;
+  created_by: string | null;
+  created_at?: string;
+}
+
+/* ── Catalogue ─────────────────────────────────────────────────────────── */
+
+export interface CatalogueItem {
+  code: string;
+  name_key?: string;
+  labels?: Record<string, string> | null;
+  source_url?: string | null;
+  review_status?: string;
+}
+
+export interface CatalogueLevel extends CatalogueItem {
+  min_score: string | null;
+  score_unit: string;
+}
+
+export interface CatalogueScheme extends CatalogueItem {
+  scope: string;
+  versions: string[];
+  levels: CatalogueLevel[];
+  credit_categories: string[];
+}
+
+export interface CatalogueEvidenceType extends CatalogueItem {
+  kind: string;
+  fulfilled_by: string[];
+  default_deliverer: string;
+}
+
+export interface CatalogueStage extends CatalogueItem {
+  order: number;
+  description_key?: string;
+  default_release_party: string;
+  evidence_types: string[];
+}
+
+export interface RegimeEffect {
+  effect: string;
+  detail_key?: string;
+  value?: string | null;
+  source_url?: string | null;
+  review_status?: string;
+}
+
+export interface CatalogueRegime extends CatalogueItem {
+  country_code: string | null;
+  contract_basis: string;
+  act_name: string;
+  partial_allowed: boolean;
+  partial_term: string;
+  reservable: string[];
+  refusal_needs_defect: boolean;
+  effects: RegimeEffect[];
+}
+
+export interface CatalogueSubject extends CatalogueItem {
+  influence_triggers: string[];
+  survey_methods: string[];
+}
+
+export interface Catalogue {
+  id: string;
+  version: number;
+  name_key?: string;
+  labels?: Record<string, string> | null;
+  review_status?: string;
+  standard_families: CatalogueItem[];
+  requirement_categories: Array<CatalogueItem & { verification_method: string }>;
+  certification_schemes: CatalogueScheme[];
+  evidence_types: CatalogueEvidenceType[];
+  commissioning_stages: CatalogueStage[];
+  acceptance_regimes: CatalogueRegime[];
+  documentation_sets: CatalogueItem[];
+  preservation_subjects: CatalogueSubject[];
+}
+
+/* ── Standards and requirements ────────────────────────────────────────── */
+
+export type Mandate = 'statute' | 'contract' | 'voluntary';
+
+export interface AppliedStandard {
+  id: string;
+  code: string;
+  edition: string;
+  title: string;
+  family_code: string | null;
+  discipline: string;
+  package_refs: string[];
+  source_url: string | null;
+  mandate: Mandate;
+  note: string;
+}
+
+export interface StandardInput {
+  code: string;
+  edition?: string;
+  title?: string;
+  family_code?: string | null;
+  discipline?: string;
+  mandate?: Mandate;
+  note?: string;
+}
+
+export interface QualityRequirement {
+  id: string;
+  category: string;
+  entity: string;
+  attribute: string;
+  constraint_value: string;
+  unit: string;
+  source_ref: string;
+  verification_method: string | null;
+  status: string | null;
+  rationale: string;
+}
+
+export interface RequirementInput {
+  category: string;
+  entity: string;
+  attribute: string;
+  constraint_value?: string;
+  unit?: string;
+  source_ref?: string;
+  verification_method?: string | null;
+  rationale?: string;
+}
+
+/* ── Certification ─────────────────────────────────────────────────────── */
+
+export interface Credit {
+  id: string;
+  target_id: string;
+  credit_code: string;
+  category: string;
+  points_targeted: string;
+  points_achieved: string | null;
+  owner_user_id: string | null;
+  state: CreditState;
+}
+
+export interface Certification {
+  id: string;
+  scheme_code: string;
+  scheme_version: string;
+  scope: string;
+  target_level: string;
+  achieved_level: string | null;
+  assessor_contact_id: string | null;
+  registration_no: string;
+  certificate_cde_id: string | null;
+  state: CertificationState;
+  rationale: string;
+  registered_on: string | null;
+  certified_on: string | null;
+  credits: Credit[];
+  points_targeted: string;
+  points_achieved: string;
+}
+
+export interface CertificationInput {
+  scheme_code: string;
+  scheme_version?: string;
+  scope: string;
+  target_level: string;
+  registration_no?: string;
+}
+
+export interface CertificationPatch {
+  scheme_version?: string;
+  target_level?: string;
+  registration_no?: string;
+}
+
+export interface CertificationTransitionInput {
+  action: CertificationAction;
+  achieved_level?: string | null;
+  rationale?: string;
+  on?: string | null;
+}
+
+export interface CreditInput {
+  credit_code: string;
+  category?: string;
+  /** Decimal string; the server refuses a JSON number with a fraction. */
+  points_targeted: string;
+  owner_user_id?: string | null;
+}
+
+export interface CreditPatch {
+  category?: string;
+  points_targeted?: string;
+  points_achieved?: string;
+  owner_user_id?: string | null;
+  action?: CreditAction;
+}
+
+/* ── Proofs and evidence ───────────────────────────────────────────────── */
+
+export interface QuantityRule {
+  per_quantity?: string;
+  unit?: string;
+  min_count?: number;
+  placed_quantity?: string | null;
+}
+
+export interface Proof {
+  id: string;
+  package_ref: string | null;
+  plant_item_id: string | null;
+  cx_system_id: string | null;
+  evidence_type: string;
+  title: string;
+  deliverer_role: string;
+  deliverer_contact_id: string | null;
+  required_by_kind: string;
+  required_by_ref: string;
+  quantity_rule: QuantityRule;
+  review_by_role: string;
+  source: string;
+  decision: ProofDecision;
+  decision_rationale: string;
+  requested_by: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  derived_state: string;
+  state: ProofState;
+  counted: number;
+  required: number;
+  findings: Finding[];
+}
+
+export interface ProofInput {
+  package_ref?: string | null;
+  evidence_type: string;
+  title?: string;
+  deliverer_role: string;
+  required_by_kind: string;
+  required_by_ref: string;
+  quantity_rule?: QuantityRule | null;
+}
+
+export interface ProofPatch {
+  title?: string;
+  deliverer_role?: string;
+  required_by_kind?: string;
+  required_by_ref?: string;
+  quantity_rule?: QuantityRule | null;
+}
+
+export interface ProofPreviewRow {
+  evidence_type: string;
+  deliverer_role: string;
+  required_by_kind: string;
+  required_by_ref: string;
+  quantity_rule: QuantityRule;
+  quantity_rule_review_status: string | null;
+  exists: boolean;
+}
+
+export interface ProofGenerateResult extends Page<ProofPreviewRow> {
+  created: Proof[];
+  preview: boolean;
+}
+
+export interface CoverageRow {
+  package_ref: string | null;
+  total: number;
+  done: number;
+  [state: string]: number | string | null;
+}
+
+export interface CoverageResponse extends Page<CoverageRow> {
+  findings: Finding[];
+}
+
+export type LinkOwnerKind = 'proof' | 'credit' | 'stage_progress' | 'preservation' | 'expert_report';
+
+export interface EvidenceFact {
+  outcome: string | null;
+  sample: string | null;
+  calibration_expired: boolean;
+  expired_at_use: boolean;
+  quantity: string | null;
+}
+
+export interface EvidenceLink {
+  id: string;
+  owner_kind: LinkOwnerKind;
+  owner_id: string;
+  link_kind: string;
+  link_id: string;
+  retest_of: string | null;
+  note: string;
+  fact?: EvidenceFact | null;
+}
+
+export interface LinkCandidate {
+  id: string;
+  label: string;
+  outcome?: string | null;
+}
+
+/* ── Stages ────────────────────────────────────────────────────────────── */
+
+export interface StagePrecondition {
+  code: string;
+  params: Record<string, unknown>;
+}
+
+export interface StageDef {
+  id: string;
+  code: string;
+  order: number;
+  name_override: string;
+  owner_user_id: string | null;
+  release_party_role: string;
+  release_user_ids: string[];
+  preconditions: StagePrecondition[];
+  evidence_types: string[];
+  applies_to: Record<string, unknown>;
+  catalogue_code: string;
+}
+
+export interface StageDefInput {
+  code: string;
+  order: number;
+  name_override?: string;
+  owner_user_id?: string | null;
+  release_party_role: string;
+}
+
+export interface StageDefPatch {
+  order?: number;
+  name_override?: string;
+  owner_user_id?: string | null;
+  release_party_role?: string;
+}
+
+export interface PreconditionResult {
+  code: string;
+  met: boolean;
+  reason: string;
+  params: Record<string, unknown>;
+}
+
+export interface StageProgress {
+  id: string;
+  system_id: string;
+  stage_code: string;
+  state: StageState;
+  rationale: string;
+  depends_on_system_ids: string[];
+  hold_gate_id: string | null;
+  released_at: string | null;
+  released_by: string | null;
+  computed_state: StageState;
+  preconditions: PreconditionResult[];
+}
+
+export interface CxSystemRef {
+  id: string;
+  name: string;
+  system_type: string;
+  status: string;
+}
+
+export interface StageMatrix extends Page<StageProgress> {
+  systems: CxSystemRef[];
+  stages: StageDef[];
+}
+
+export interface ReleaseRequestResult {
+  progress_id: string;
+  hold_gate: { id: string; gate_number: string | number | null; required_party_role: string; status: string };
+}
+
+/* ── Acceptance ────────────────────────────────────────────────────────── */
+
+export interface DeemedDate {
+  trigger: string;
+  from: string;
+  deemed_on: string | null;
+  days_left: number | null;
+  needs_deadline: boolean;
+  source_url: string | null;
+  review_status: string;
+}
+
+export interface AppliedEffect {
+  id: string;
+  unit_id: string;
+  effect: string;
+  effective_date: string | null;
+  source_url: string | null;
+  review_status: string;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+}
+
+export interface UnmetPrecondition {
+  kind: string;
+  ref: string;
+}
+
+export interface AcceptanceUnit {
+  id: string;
+  code: string;
+  title: string;
+  kind: string;
+  package_refs: string[];
+  section_ref: string;
+  regime_code: string | null;
+  planned_date: string | null;
+  handover_package_id: string | null;
+  state: AcceptanceState;
+  completion_notice_at: string | null;
+  use_started_at: string | null;
+  deadline_at: string | null;
+  accepted_on: string | null;
+  reservations: Array<Record<string, unknown>>;
+  refusal_reason: string;
+  refusal_defects: string[];
+  regime: CatalogueRegime | null;
+  deemed: DeemedDate[];
+  effects_applied: AppliedEffect[];
+  effects_proposed: RegimeEffect[];
+  unmet: UnmetPrecondition[];
+}
+
+export interface AcceptanceUnitInput {
+  code?: string;
+  title?: string;
+  kind: string;
+  package_refs?: string[];
+  section_ref?: string;
+  regime_code?: string | null;
+  planned_date?: string | null;
+}
+
+export type AcceptanceUnitPatch = Partial<Omit<AcceptanceUnitInput, 'kind'>>;
+
+export interface AcceptanceDatesInput {
+  completion_notice_at?: string | null;
+  use_started_at?: string | null;
+  deadline_at?: string | null;
+}
+
+/* ── Preservation and expert reports ───────────────────────────────────── */
+
+export interface Survey {
+  id: string;
+  subject_kind: string;
+  subject_ref: string;
+  address: string;
+  parcel: string;
+  influence_triggers: string[];
+  phase: string;
+  methods: string[];
+  planned_date: string | null;
+  survey_date: string | null;
+  invitation_sent_on: string | null;
+  owner_acknowledged: boolean | null;
+  access_refused_on: string | null;
+  access_refusal_note: string;
+  state: SurveyState;
+  paired_with_id: string | null;
+}
+
+export interface SurveyInput {
+  subject_kind: string;
+  subject_ref: string;
+  address?: string;
+  parcel?: string;
+  influence_triggers?: string[];
+  phase: string;
+  methods?: string[];
+  planned_date?: string | null;
+}
+
+export type SurveyPatch = Partial<Pick<SurveyInput, 'address' | 'parcel' | 'influence_triggers' | 'methods' | 'planned_date'>>;
+
+export interface SurveyActionInput {
+  action: SurveyAction;
+  on?: string | null;
+  owner_acknowledged?: boolean | null;
+  note?: string;
+}
+
+export interface SurveyList extends Page<Survey> {
+  findings: Finding[];
+}
+
+export interface ExpertReport {
+  id: string;
+  subject: string;
+  expert_contact_id: string | null;
+  trigger: string;
+  frequency: string;
+  due_dates: string[];
+  commitment_ref: string | null;
+  state: ExpertReportState;
+}
+
+export interface ExpertReportInput {
+  subject: string;
+  trigger?: string;
+  frequency?: string;
+  due_dates?: string[];
+  state?: ExpertReportState;
+}
+
+/* ── Readiness and validation ──────────────────────────────────────────── */
+
+export interface Readiness {
+  concept: boolean;
+  approved: boolean;
+  errors: Finding[];
+  preservation_unplanned: Finding[];
+}
+
+export interface ValidationItem {
+  rule_id: string;
+  passed: boolean;
+  severity: string;
+  message: string;
+  element_ref: string | null;
+  suggestion: string | null;
+}
+
+export type ExportWhat = 'proofs' | 'stages' | 'acceptance' | 'preservation' | 'certification';
+
+/* ── Errors ────────────────────────────────────────────────────────────── */
+
+export interface RefusalDetail {
+  code: string | null;
+  messageKey: string | null;
+  message: string | null;
+  violations: Finding[];
+  info: string | null;
+}
+
+/** The structured refusal the backend put in `detail`, or null for any other failure. */
+export function refusalDetail(err: unknown): RefusalDetail | null {
+  if (!(err instanceof ApiError)) return null;
+  const body = err.body as { detail?: unknown } | null;
+  const detail = body && typeof body === 'object' ? body.detail : null;
+  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return null;
+  const d = detail as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' && v ? v : null);
+  return {
+    code: str(d.code),
+    messageKey: str(d.message_key),
+    message: str(d.message),
+    violations: Array.isArray(d.violations) ? (d.violations as Finding[]) : [],
+    info: str(d.info),
+  };
+}
+
+/** Today as the calendar day the reader is living in, not UTC. */
+export function localToday(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+export const qcKeys = {
+  project: (projectId: string) => ['quality-concept', projectId] as const,
+  concept: (projectId: string) => ['quality-concept', projectId, 'concept'] as const,
+  catalogue: (projectId: string) => ['quality-concept', projectId, 'catalogue'] as const,
+  revisions: (projectId: string) => ['quality-concept', projectId, 'revisions'] as const,
+  standards: (projectId: string) => ['quality-concept', projectId, 'standards'] as const,
+  requirements: (projectId: string) => ['quality-concept', projectId, 'requirements'] as const,
+  certifications: (projectId: string) => ['quality-concept', projectId, 'certifications'] as const,
+  proofs: (projectId: string) => ['quality-concept', projectId, 'proofs'] as const,
+  coverage: (projectId: string) => ['quality-concept', projectId, 'coverage'] as const,
+  links: (projectId: string, kind: string, id: string) => ['quality-concept', projectId, 'links', kind, id] as const,
+  candidates: (projectId: string, kind: string, q: string) =>
+    ['quality-concept', projectId, 'candidates', kind, q] as const,
+  stages: (projectId: string) => ['quality-concept', projectId, 'stages'] as const,
+  matrix: (projectId: string) => ['quality-concept', projectId, 'stage-progress'] as const,
+  units: (projectId: string) => ['quality-concept', projectId, 'acceptance-units'] as const,
+  surveys: (projectId: string) => ['quality-concept', projectId, 'preservation'] as const,
+  expertReports: (projectId: string) => ['quality-concept', projectId, 'expert-reports'] as const,
+  readiness: (projectId: string) => ['quality-concept', projectId, 'readiness'] as const,
+  validation: (projectId: string) => ['quality-concept', projectId, 'validation'] as const,
+};
+
+const p = (projectId: string) => `${BASE}/projects/${projectId}`;
+
+/* ── Concept ───────────────────────────────────────────────────────────── */
+
+export const getConcept = (projectId: string) => apiGet<Concept>(`${p(projectId)}/concept`);
+
+export const patchConcept = (
+  projectId: string,
+  body: { packages?: PackageScope[]; holidays?: string[]; documentation_set_code?: string | null },
+) => apiPatch<Concept>(`${p(projectId)}/concept`, body);
+
+export const pinCatalogue = (
+  projectId: string,
+  body: { catalogue_source: 'shipped' | 'tenant'; catalogue_id: string; catalogue_version?: number | null },
+) => apiPut<Concept>(`${p(projectId)}/concept/catalogue`, body);
+
+export const getCatalogue = (projectId: string) => apiGet<Catalogue>(`${p(projectId)}/concept/catalogue`);
+
+export const submitConcept = (projectId: string) => apiPost<Concept>(`${p(projectId)}/concept/submit`, {});
+
+export const conceptAction = (projectId: string, action: 'return' | 'revise') =>
+  apiPost<Concept>(`${p(projectId)}/concept/${action}`, {});
+
+export const listRevisions = (projectId: string) => apiGet<Page<ConceptRevision>>(`${p(projectId)}/concept/revisions`);
+
+/* ── Standards and requirements ────────────────────────────────────────── */
+
+export const listStandards = (projectId: string) => apiGet<Page<AppliedStandard>>(`${p(projectId)}/standards`);
+
+export const createStandard = (projectId: string, body: StandardInput) =>
+  apiPost<AppliedStandard>(`${p(projectId)}/standards`, body);
+
+export const patchStandard = (projectId: string, id: string, body: Partial<StandardInput>) =>
+  apiPatch<AppliedStandard>(`${p(projectId)}/standards/${id}`, body);
+
+export const deleteStandard = (projectId: string, id: string) => apiDelete(`${p(projectId)}/standards/${id}`);
+
+export const listRequirements = (projectId: string) =>
+  apiGet<Page<QualityRequirement>>(`${p(projectId)}/requirements`);
+
+export const addRequirement = (projectId: string, body: RequirementInput) =>
+  apiPost<QualityRequirement>(`${p(projectId)}/requirements`, body);
+
+/* ── Certification ─────────────────────────────────────────────────────── */
+
+export const listCertifications = (projectId: string) =>
+  apiGet<Page<Certification> & { findings: Finding[] }>(`${p(projectId)}/certifications`);
+
+export const createCertification = (projectId: string, body: CertificationInput) =>
+  apiPost<Certification>(`${p(projectId)}/certifications`, body);
+
+export const patchCertification = (projectId: string, id: string, body: CertificationPatch) =>
+  apiPatch<Certification>(`${p(projectId)}/certifications/${id}`, body);
+
+export const transitionCertification = (projectId: string, id: string, body: CertificationTransitionInput) =>
+  apiPost<Certification>(`${p(projectId)}/certifications/${id}/transition`, body);
+
+export const deleteCertification = (projectId: string, id: string) =>
+  apiDelete(`${p(projectId)}/certifications/${id}`);
+
+export const addCredits = (projectId: string, certificationId: string, items: CreditInput[]) =>
+  apiPost<Page<Credit>>(`${p(projectId)}/certifications/${certificationId}/credits`, { items });
+
+/** Credit state changes travel in the same PATCH as its fields: there is no separate transition route. */
+export const patchCredit = (projectId: string, id: string, body: CreditPatch) =>
+  apiPatch<Credit>(`${p(projectId)}/credits/${id}`, body);
+
+export const deleteCredit = (projectId: string, id: string) => apiDelete(`${p(projectId)}/credits/${id}`);
+
+/* ── Proofs ────────────────────────────────────────────────────────────── */
+
+export const listProofs = (projectId: string) => apiGet<Page<Proof>>(`${p(projectId)}/proofs?limit=2000`);
+
+export const createProof = (projectId: string, body: ProofInput) => apiPost<Proof>(`${p(projectId)}/proofs`, body);
+
+export const patchProof = (projectId: string, id: string, body: ProofPatch) =>
+  apiPatch<Proof>(`${p(projectId)}/proofs/${id}`, body);
+
+export const deleteProof = (projectId: string, id: string) => apiDelete(`${p(projectId)}/proofs/${id}`);
+
+/** Without `confirm` the server only previews; with it, it creates the named evidence types. */
+export const generateProofs = (projectId: string, body: { package_ref: string; confirm?: string[] }) =>
+  apiPost<ProofGenerateResult>(`${p(projectId)}/proofs/generate`, body);
+
+export const getCoverage = (projectId: string) => apiGet<CoverageResponse>(`${p(projectId)}/proofs/coverage`);
+
+export const requestWaiver = (projectId: string, id: string, rationale: string) =>
+  apiPost<Proof>(`${p(projectId)}/proofs/${id}/waiver-request`, { rationale });
+
+export const decideWaiver = (projectId: string, id: string, approve: boolean) =>
+  apiPost<Proof>(`${p(projectId)}/proofs/${id}/waiver-decision`, { approve });
+
+export const proofAction = (projectId: string, id: string, action: 'accept' | 'reopen') =>
+  apiPost<Proof>(`${p(projectId)}/proofs/${id}/${action}`, {});
+
+/* ── Evidence links ────────────────────────────────────────────────────── */
+
+export const listLinks = (projectId: string, ownerKind: LinkOwnerKind, ownerId: string) =>
+  apiGet<Page<EvidenceLink>>(`${p(projectId)}/evidence-links?owner_kind=${ownerKind}&owner_id=${ownerId}`);
+
+export const addLink = (
+  projectId: string,
+  body: { owner_kind: LinkOwnerKind; owner_id: string; link_kind: string; link_id: string; note?: string },
+) => apiPost<EvidenceLink>(`${p(projectId)}/evidence-links`, body);
+
+export const removeLink = (projectId: string, id: string) => apiDelete(`${p(projectId)}/evidence-links/${id}`);
+
+export const listCandidates = (projectId: string, linkKind: string, q: string) =>
+  apiGet<Page<LinkCandidate>>(
+    `${p(projectId)}/evidence-links/candidates?link_kind=${encodeURIComponent(linkKind)}&q=${encodeURIComponent(q)}`,
+  );
+
+/* ── Stages ────────────────────────────────────────────────────────────── */
+
+export const listStages = (projectId: string) => apiGet<Page<StageDef>>(`${p(projectId)}/stages`);
+
+export const applyCatalogueStages = (projectId: string) =>
+  apiPost<Page<StageDef>>(`${p(projectId)}/stages/apply-catalogue`, {});
+
+export const addStage = (projectId: string, body: StageDefInput) => apiPost<StageDef>(`${p(projectId)}/stages`, body);
+
+export const patchStage = (projectId: string, id: string, body: StageDefPatch) =>
+  apiPatch<StageDef>(`${p(projectId)}/stages/${id}`, body);
+
+export const deleteStage = (projectId: string, id: string) => apiDelete(`${p(projectId)}/stages/${id}`);
+
+export const getStageMatrix = (projectId: string) => apiGet<StageMatrix>(`${p(projectId)}/stage-progress`);
+
+export const syncStageProgress = (projectId: string) => apiPost<StageMatrix>(`${p(projectId)}/stage-progress/sync`, {});
+
+export const openStageTest = (projectId: string, id: string) =>
+  apiPost<StageProgress>(`${p(projectId)}/stage-progress/${id}/open-test`, {});
+
+export const recordStageResult = (
+  projectId: string,
+  id: string,
+  body: { result: 'pass' | 'fail'; note?: string; severity?: 'low' | 'medium' | 'high' | 'critical' },
+) => apiPost<StageProgress>(`${p(projectId)}/stage-progress/${id}/result`, body);
+
+export const requestStageRelease = (projectId: string, id: string) =>
+  apiPost<ReleaseRequestResult>(`${p(projectId)}/stage-progress/${id}/request-release`, {});
+
+export const markStageNotApplicable = (projectId: string, id: string, rationale: string) =>
+  apiPost<StageProgress>(`${p(projectId)}/stage-progress/${id}/not-applicable`, { rationale });
+
+export const setStageDependencies = (projectId: string, id: string, systemIds: string[]) =>
+  apiPut<StageProgress>(`${p(projectId)}/stage-progress/${id}/depends-on`, { system_ids: systemIds });
+
+/* ── Acceptance ────────────────────────────────────────────────────────── */
+
+export const listUnits = (projectId: string) =>
+  apiGet<Page<AcceptanceUnit>>(`${p(projectId)}/acceptance-units?today=${localToday()}`);
+
+export const createUnit = (projectId: string, body: AcceptanceUnitInput) =>
+  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units`, body);
+
+export const patchUnit = (projectId: string, id: string, body: AcceptanceUnitPatch) =>
+  apiPatch<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}`, body);
+
+export const deleteUnit = (projectId: string, id: string) => apiDelete(`${p(projectId)}/acceptance-units/${id}`);
+
+export const requestAcceptance = (projectId: string, id: string, withReservations: boolean) =>
+  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}/request`, { with_reservations: withReservations });
+
+export const recordUnitDates = (projectId: string, id: string, body: AcceptanceDatesInput) =>
+  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}/dates`, body);
+
+export const refuseUnit = (projectId: string, id: string, body: { rationale: string; defects: string[] }) =>
+  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}/refuse`, body);
+
+export const confirmEffect = (projectId: string, id: string, body: { effect: string; effective_date?: string | null }) =>
+  apiPost<AppliedEffect>(`${p(projectId)}/acceptance-units/${id}/effects`, body);
+
+export const unitAction = (projectId: string, id: string, action: UnitAction) =>
+  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}/${action}?today=${localToday()}`, {});
+
+/* ── Preservation and expert reports ───────────────────────────────────── */
+
+export const listSurveys = (projectId: string) =>
+  apiGet<SurveyList>(`${p(projectId)}/preservation?today=${localToday()}`);
+
+export const createSurvey = (projectId: string, body: SurveyInput) =>
+  apiPost<Survey>(`${p(projectId)}/preservation`, body);
+
+export const patchSurvey = (projectId: string, id: string, body: SurveyPatch) =>
+  apiPatch<Survey>(`${p(projectId)}/preservation/${id}`, body);
+
+export const surveyAction = (projectId: string, id: string, body: SurveyActionInput) =>
+  apiPost<Survey>(`${p(projectId)}/preservation/${id}/action`, body);
+
+export const pairSurvey = (projectId: string, id: string, beforeId: string) =>
+  apiPost<Survey>(`${p(projectId)}/preservation/${id}/pair`, { before_id: beforeId });
+
+export const deleteSurvey = (projectId: string, id: string) => apiDelete(`${p(projectId)}/preservation/${id}`);
+
+export const listExpertReports = (projectId: string) =>
+  apiGet<Page<ExpertReport>>(`${p(projectId)}/expert-reports`);
+
+export const createExpertReport = (projectId: string, body: ExpertReportInput) =>
+  apiPost<ExpertReport>(`${p(projectId)}/expert-reports`, body);
+
+export const patchExpertReport = (projectId: string, id: string, body: Partial<ExpertReportInput>) =>
+  apiPatch<ExpertReport>(`${p(projectId)}/expert-reports/${id}`, body);
+
+export const deleteExpertReport = (projectId: string, id: string) =>
+  apiDelete(`${p(projectId)}/expert-reports/${id}`);
+
+/* ── Readiness, validation, export ─────────────────────────────────────── */
+
+export const getReadiness = (projectId: string) =>
+  apiGet<Readiness>(`${p(projectId)}/readiness?today=${localToday()}`);
+
+export const getValidation = (projectId: string) =>
+  apiGet<Page<ValidationItem>>(`${p(projectId)}/validation?today=${localToday()}`);
+
+export function downloadExport(projectId: string, what: ExportWhat, format: 'pdf' | 'xlsx'): Promise<void> {
+  return downloadWithAuth(`${API_BASE}${p(projectId)}/export?what=${what}&format=${format}`, `quality_${what}.${format}`);
+}
