@@ -2552,6 +2552,7 @@ class StakeholderService:
         actor_id: uuid.UUID,
         change_reason: str = "",
         change_impact: str = "",
+        can_manage_governance: bool = False,
     ) -> dict[str, Any]:
         """File a generated export as a new CDE revision of its frame document (rule 21).
 
@@ -2602,7 +2603,8 @@ class StakeholderService:
                         impact=(change_impact or "").strip(),
                         proposed_revision_id=revision.id,
                         actor_id=actor_id,
-                        role=None,
+                        # Module 1 decides who may propose a change: its manager, or the area's owner.
+                        is_manager=can_manage_governance,
                     )
                 except GovernanceError as exc:
                     raise StakeholderError(exc.code, exc.status_code, detail=exc.detail) from exc

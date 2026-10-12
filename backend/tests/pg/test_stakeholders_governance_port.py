@@ -136,7 +136,7 @@ async def test_an_export_is_filed_into_the_document_its_subject_is_hosted_by(wor
             if d.doc_type == organisation.doc_type
         )
         await GovernanceService(s).attach_container(
-            world.project_id, document.id, container_id=container, actor_id=world.owner, role="editor"
+            world.project_id, document.id, container_id=container, actor_id=world.manager, is_manager=True
         )
         await s.commit()
     async with world.factory() as s:
@@ -217,3 +217,51 @@ async def test_a_plan_trigger_must_name_a_gate_of_the_project(world: gov.World) 
         await s.commit()
     assert (exc.value.code, exc.value.status_code) == ("unknown_gate", 422)
     assert (item.trigger_ref, any_gate.trigger_ref) == (real, "")
+
+
+async def test_a_binding_frame_document_changes_only_through_a_reasoned_change_request(world: gov.World) -> None:
+    from app.modules.cde.models import DocumentContainer
+
+    hosts = await _hosts(world)
+    organisation = hosts[hosting.ORGANISATION_TAG]
+    async with world.factory() as s:
+        container = await gov.add_container(s, world.project_id, "organisation-frame")
+        document = next(
+            d
+            for d in await GovernanceService(s).repo.list_documents(world.project_id)
+            if d.doc_type == organisation.doc_type
+        )
+        # The state a decided gate leaves behind: the current revision is the binding one.
+        document.container_id = container
+        document.status = "binding"
+        document.bound_revision_id = (await s.get(DocumentContainer, container)).current_revision_id
+        await s.commit()
+
+    async def file(reason: str, *, manages: bool):
+        async with world.factory() as s:
+            result = await StakeholderService(s).file_frame_document(
+                world.project_id,
+                which="organisation",
+                content=b"%PDF-1.4 organisation v2",
+                file_name="organisation.pdf",
+                mime_type="application/pdf",
+                actor_id=world.manager,
+                change_reason=reason,
+                change_impact="Two new members on the steering committee",
+                can_manage_governance=manages,
+            )
+            await s.commit()
+            return result
+
+    with pytest.raises(StakeholderError) as silent:
+        await file("", manages=True)
+    with pytest.raises(StakeholderError) as not_owner:
+        await file("New committee members", manages=False)
+    filed = await file("New committee members", manages=True)
+    with pytest.raises(StakeholderError) as second:
+        await file("Another change", manages=True)
+    assert (silent.value.code, silent.value.status_code) == ("change_reason_required", 422)
+    assert (not_owner.value.code, not_owner.value.status_code) == ("not_area_owner", 403)
+    assert filed["change_request_id"] is not None
+    assert filed["warnings"] == ["frame_document_binding"]
+    assert (second.value.code, second.value.status_code) == ("change_request_not_open", 409)

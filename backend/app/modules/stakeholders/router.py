@@ -835,6 +835,7 @@ async def file_frame_document(
             actor_id=_uid(user_id),
             change_reason=body.change_reason,
             change_impact=body.change_impact,
+            can_manage_governance=_has(payload, "governance.manage"),
         )
     )
 
