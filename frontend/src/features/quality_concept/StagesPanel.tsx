@@ -120,10 +120,14 @@ export function StagesPanel(props: PanelProps) {
             defaultValue:
               'Stages are the steps every technical system passes before handover, from the factory test to the proof of operation. Start from the stages the catalogue proposes and adjust them to the project.',
           })}
-          action={{
-            label: t('qualityConcept.stages.apply', { defaultValue: 'Use the catalogue stages' }),
-            onClick: () => write.send(() => applyCatalogueStages(projectId)),
-          }}
+          action={
+            editable
+              ? {
+                  label: t('qualityConcept.stages.apply', { defaultValue: 'Use the catalogue stages' }),
+                  onClick: () => write.send(() => applyCatalogueStages(projectId)),
+                }
+              : undefined
+          }
         />
       </div>
     );
@@ -298,9 +302,9 @@ export function StagesPanel(props: PanelProps) {
           action={<StateBadge map={STAGE_STATE} tones={STAGE_TONE} code={current.computed_state} testId="stage-detail-state" />}
         >
           <ul className="space-y-1" data-testid="precondition-list">
-            {current.preconditions.map((pre) => (
+            {current.preconditions.map((pre, i) => (
               <li
-                key={pre.code}
+                key={`${pre.code}:${i}`}
                 className="flex items-start gap-1.5 text-sm"
                 data-testid="precondition"
                 data-met={preconditionNotApplicable(pre) ? 'not-applicable' : pre.met}

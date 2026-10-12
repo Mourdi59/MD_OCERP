@@ -21,7 +21,7 @@ export function emptyProject(api: MockedObject<typeof Api>): void {
   api.listRevisions.mockResolvedValue(page([]));
   api.listStandards.mockResolvedValue(page([]));
   api.listRequirements.mockResolvedValue(page([]));
-  api.listCertifications.mockResolvedValue(page([]));
+  api.listCertifications.mockResolvedValue({ ...page([]), findings: [] });
   api.listProofs.mockResolvedValue(page([]));
   api.getCoverage.mockResolvedValue({ ...page([]), findings: [] });
   api.getStageMatrix.mockResolvedValue(matrix([], []));

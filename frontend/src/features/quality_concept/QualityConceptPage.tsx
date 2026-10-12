@@ -20,9 +20,10 @@ import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { TabBar } from '@/shared/ui/TabBar';
 import { getErrorMessage } from '@/shared/lib/api';
+import { fmtList } from '@/shared/lib/formatters';
 
 import { AcceptancePanel } from './AcceptancePanel';
-import { createConcept, isConceptMissing, type Finding } from './api';
+import { createConcept, isConceptMissing } from './api';
 import { CertificationPanel } from './CertificationPanel';
 import { ConceptPanel } from './ConceptPanel';
 import {
@@ -37,7 +38,7 @@ import {
 import { QC_TABS, type PanelProps, type QcTab } from './panel';
 import { PreservationPanel } from './PreservationPanel';
 import { ProofsPanel } from './ProofsPanel';
-import { FindingList, RefusalNote } from './QualityBits';
+import { RefusalNote } from './QualityBits';
 import { conceptEditable } from './rules';
 import { StagesPanel } from './StagesPanel';
 
@@ -65,7 +66,6 @@ function ReadinessStrip({ projectId }: { projectId: string }) {
   if (!readiness.data) return null;
   const r = readiness.data;
   const failed = (validation.data ?? []).filter((v) => !v.passed);
-  const refName = (f: Finding) => f.ref;
 
   return (
     <section className="rounded-lg border border-border-light p-3" data-testid="readiness-strip">
@@ -97,9 +97,16 @@ function ReadinessStrip({ projectId }: { projectId: string }) {
           </Button>
         )}
       </div>
+      {r.preservation_unplanned.length > 0 && (
+        <p className="mt-2 text-sm text-content-primary" data-testid="unplanned-subjects">
+          {t('qualityConcept.readiness.preservation_refs', {
+            defaultValue: 'No before survey yet for: {{refs}}',
+            refs: fmtList(r.preservation_unplanned),
+          })}
+        </p>
+      )}
       {open && (
         <div className="mt-3 space-y-2">
-          <FindingList findings={r.preservation_unplanned} refName={refName} />
           <ul className="space-y-1" data-testid="check-list">
             {failed.map((v, i) => (
               <li key={`${v.rule_id}:${v.element_ref ?? ''}:${i}`} className="text-sm">

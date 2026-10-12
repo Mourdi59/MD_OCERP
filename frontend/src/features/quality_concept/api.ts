@@ -527,6 +527,8 @@ export interface AppliedEffect {
   review_status: string;
   confirmed_by: string | null;
   confirmed_at: string | null;
+  /** What confirming it set in motion; `revoked_at` marks a confirmation that no longer holds. */
+  outcome?: Record<string, unknown> | null;
 }
 
 export interface UnmetPrecondition {
@@ -648,7 +650,8 @@ export interface Readiness {
   concept: boolean;
   approved: boolean;
   errors: Finding[];
-  preservation_unplanned: Finding[];
+  /** References of the subjects that have no before survey yet. */
+  preservation_unplanned: string[];
 }
 
 export interface ValidationItem {

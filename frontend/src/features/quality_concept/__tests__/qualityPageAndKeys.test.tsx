@@ -110,7 +110,7 @@ describe('QualityConceptPage states', () => {
       concept: false,
       approved: false,
       errors: [{ code: 'standards_basis_missing', severity: 'error', ref: '', params: {} }],
-      preservation_unplanned: [],
+      preservation_unplanned: ['north-neighbour'],
     });
     mocked.getValidation.mockResolvedValue(
       page([
@@ -121,8 +121,9 @@ describe('QualityConceptPage states', () => {
     renderPage();
     expect(await screen.findByTestId('ready-complete')).toHaveAttribute('data-met', 'false');
     expect(screen.getByTestId('ready-complete')).toHaveTextContent('Concept has open points: 1');
-    expect(screen.getByTestId('ready-preservation')).toHaveAttribute('data-met', 'true');
+    expect(screen.getByTestId('ready-preservation')).toHaveAttribute('data-met', 'false');
     fireEvent.click(await screen.findByTestId('checks-toggle'));
+    expect(screen.getByTestId('unplanned-subjects')).toHaveTextContent('north-neighbour');
     expect(screen.getByTestId('check-list')).toHaveTextContent('A stage has no owner.');
     expect(screen.getByTestId('check-list')).not.toHaveTextContent('Fine.');
   });
@@ -165,7 +166,7 @@ describe('quality concept keys', () => {
   });
 
   it('writes no long dash', () => {
-    const dashed = all.filter((k) => /[–—]/.test(en.translation[k]! + de.translation[k]!));
+    const dashed = all.filter((k) => /[\u2013\u2014]/.test(en.translation[k]! + de.translation[k]!));
     expect(dashed).toEqual([]);
   });
 });

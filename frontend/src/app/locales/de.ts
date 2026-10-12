@@ -50339,6 +50339,7 @@ const resource = {
     "qualityConcept.readiness.not_approved": "Konzept noch nicht freigegeben",
     "qualityConcept.readiness.preservation_ok": "Zustandsfeststellungen geplant",
     "qualityConcept.readiness.preservation_open": "Objekte ohne Vorher-Feststellung: {{n}}",
+    "qualityConcept.readiness.preservation_refs": "Noch keine Vorher-Feststellung für: {{refs}}",
     "qualityConcept.readiness.title": "Bereitschaft",
     "qualityConcept.reason.authority_acceptance_missing": "Es liegt keine behördliche Abnahme vor",
     "qualityConcept.reason.delivery_limit_agreed_not_met": "Die Liefergrenzen sind noch nicht vereinbart",

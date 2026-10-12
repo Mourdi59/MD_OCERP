@@ -217,7 +217,7 @@ describe('stages tab', () => {
       matrix([
         progress({
           preconditions: [
-            { code: 'plant_item_released', met: true, reason: 'no_plant_register', params: { not_applicable: true } },
+            { code: 'plant_item_delivered', met: true, reason: 'no_plant_register', params: { not_applicable: true } },
           ],
         }),
       ]),
@@ -226,7 +226,7 @@ describe('stages tab', () => {
     fireEvent.click(await screen.findByTestId('matrix-cell'));
     const row = screen.getByTestId('precondition');
     expect(row).toHaveAttribute('data-met', 'not-applicable');
-    expect(row).toHaveTextContent('Equipment released');
+    expect(row).toHaveTextContent('Equipment delivered');
     expect(row).toHaveTextContent('Not applicable');
     expect(row).toHaveTextContent('No equipment register is installed');
   });
@@ -300,6 +300,32 @@ describe('acceptance tab', () => {
     expect(screen.getByTestId('unit-request-dialog')).toBeInTheDocument();
   });
 
+  it('offers an effect again once its confirmation was revoked', async () => {
+    const revoked = {
+      id: 'e1',
+      unit_id: 'u1',
+      effect: 'risk_transfer',
+      effective_date: '2027-03-02',
+      source_url: null,
+      review_status: 'unconfirmed',
+      confirmed_by: 'u9',
+      confirmed_at: '2027-03-03T08:00:00Z',
+      outcome: { revoked_at: '2027-03-05T08:00:00Z' },
+    };
+    mocked.listUnits.mockResolvedValue(
+      page([
+        unit({
+          state: 'accepted',
+          effects_applied: [revoked],
+          effects_proposed: [{ effect: 'risk_transfer', review_status: 'unconfirmed' }],
+        }),
+      ]),
+    );
+    renderPage('acceptance');
+    expect(await screen.findByTestId('effect-proposed')).toHaveTextContent('Risk passes to the client');
+    expect(screen.queryByTestId('effect-applied')).toBeNull();
+  });
+
   it('lets an accepted unit confirm what the regime proposes, one effect at a time', async () => {
     mocked.listUnits.mockResolvedValue(
       page([
@@ -310,7 +336,17 @@ describe('acceptance tab', () => {
         }),
       ]),
     );
-    mocked.confirmEffect.mockResolvedValue(unit());
+    mocked.confirmEffect.mockResolvedValue({
+      id: 'e1',
+      unit_id: 'u1',
+      effect: 'risk_transfer',
+      effective_date: '2027-03-02',
+      source_url: null,
+      review_status: 'unconfirmed',
+      confirmed_by: 'u9',
+      confirmed_at: '2027-03-03T08:00:00Z',
+      outcome: {},
+    });
     renderPage('acceptance');
     const row = await screen.findByTestId('effect-proposed');
     expect(row).toHaveTextContent('Risk passes to the client');
@@ -354,6 +390,12 @@ describe('a reader who may not manage the plan', () => {
     expect(screen.getByTestId('stage-action-open_test')).toBeEnabled();
     expect(screen.getByTestId('stage-action-not_applicable')).toBeDisabled();
     expect(screen.getByTestId('stage-depends')).toBeDisabled();
+  });
+
+  it('is not offered the catalogue stages on an empty stage plan', async () => {
+    renderPage('stages');
+    expect(await screen.findByText('No commissioning stages yet')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Use the catalogue stages' })).toBeNull();
   });
 
   it('cannot add a certification target', async () => {

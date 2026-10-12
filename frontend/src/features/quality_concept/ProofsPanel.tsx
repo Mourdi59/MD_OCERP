@@ -197,10 +197,12 @@ export function ProofsPanel(props: PanelProps) {
                     label: t('qualityConcept.proofs.to_stages', { defaultValue: 'Set up the stages' }),
                     onClick: () => openTab('stages'),
                   }
-                : {
-                    label: t('qualityConcept.proofs.generate', { defaultValue: 'Propose proofs for a package' }),
-                    onClick: () => setGenerating(true),
-                  }
+                : editable
+                  ? {
+                      label: t('qualityConcept.proofs.generate', { defaultValue: 'Propose proofs for a package' }),
+                      onClick: () => setGenerating(true),
+                    }
+                  : undefined
           }
         />
         {dialogs}
@@ -512,7 +514,8 @@ function ProofDialog({
                   deliverer_role: deliverer,
                   required_by_kind: dueKind,
                   required_by_ref: ref,
-                  ...(rule ? { quantity_rule: rule } : {}),
+                  // An emptied field clears a rule the proof had; a proof without one is left alone.
+                  ...(rule ? { quantity_rule: rule } : proof.quantity_rule.per_quantity ? { quantity_rule: null } : {}),
                 })
               : createProof(projectId, {
                   package_ref: pkg || null,

@@ -60,7 +60,14 @@ import {
   VocabSelect,
   inputCls,
 } from './QualityBits';
-import { ACCEPTANCE_ACTIONS, RECORDING_UNIT_ACTIONS, isAccepted, lines, type AcceptanceAction } from './rules';
+import {
+  ACCEPTANCE_ACTIONS,
+  RECORDING_UNIT_ACTIONS,
+  effectInForce,
+  isAccepted,
+  lines,
+  type AcceptanceAction,
+} from './rules';
 
 const KINDS = ['partial_package', 'partial_section', 'total', 'handover_to_operation', 'authority'] as const;
 
@@ -170,7 +177,8 @@ export function AcceptancePanel(props: PanelProps) {
       <RefusalNote refusal={write.refusal} violations={write.violations} />
 
       {rows.map((u) => {
-        const applied = new Set(u.effects_applied.map((e) => e.effect));
+        const inForce = u.effects_applied.filter(effectInForce);
+        const applied = new Set(inForce.map((e) => e.effect));
         const open = u.state === 'requested' || u.state === 'inspection_scheduled';
         return (
           <Section
@@ -307,13 +315,13 @@ export function AcceptancePanel(props: PanelProps) {
                     {t('qualityConcept.acceptance.accepted_on', { defaultValue: 'Accepted on {{date}}', date: fmtDate(u.accepted_on) })}
                   </p>
                 )}
-                {u.effects_proposed.length === 0 && u.effects_applied.length === 0 ? (
+                {u.effects_proposed.length === 0 && inForce.length === 0 ? (
                   <Hint>
                     {t('qualityConcept.acceptance.effects_none', { defaultValue: 'The regime names no effects for this unit.' })}
                   </Hint>
                 ) : (
                   <ul className="space-y-1 text-sm">
-                    {u.effects_applied.map((e) => (
+                    {inForce.map((e) => (
                       <li key={e.id} className="flex flex-wrap items-center gap-2" data-testid="effect-applied">
                         <span className="text-content-primary">{vocab(t as TFn, LEGAL_EFFECT, e.effect)}</span>
                         <span className="text-xs text-semantic-success">

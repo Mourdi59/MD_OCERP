@@ -37,8 +37,8 @@ import {
 import { refusalText, type LabelContext, type TFn } from './labels';
 
 /**
- * The concept. Reading it creates an empty draft on the server when the
- * project has none, so there is no "missing" answer to handle here: every
+ * The concept. Reading never creates one: a project without a concept answers
+ * 404 `concept_missing`, which the page shows as its first-visit state. Every
  * other query waits for this one.
  */
 export function useConcept(projectId: string) {
@@ -199,6 +199,8 @@ export function useQcWrite(projectId: string): QcWrite {
   const [violations, setViolations] = useState<Finding[]>([]);
   const mutation = useMutation({
     mutationFn: (job: WriteJob) => job.run(),
+    // The refusal is shown next to the action, in the server's words; the global toast would repeat it.
+    meta: { suppressGlobalErrorToast: true },
     onMutate: () => {
       setRefusal(null);
       setViolations([]);

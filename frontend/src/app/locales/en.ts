@@ -42418,6 +42418,7 @@ const resource = {
     "qualityConcept.readiness.not_approved": "Concept not approved yet",
     "qualityConcept.readiness.preservation_ok": "Condition surveys planned",
     "qualityConcept.readiness.preservation_open": "Subjects without a before survey: {{n}}",
+    "qualityConcept.readiness.preservation_refs": "No before survey yet for: {{refs}}",
     "qualityConcept.readiness.title": "Readiness",
     "qualityConcept.reason.authority_acceptance_missing": "No authority acceptance is on file",
     "qualityConcept.reason.delivery_limit_agreed_not_met": "The delivery limits are not agreed yet",

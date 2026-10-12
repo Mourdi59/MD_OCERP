@@ -117,6 +117,11 @@ export const RECORDING_UNIT_ACTIONS: ReadonlySet<AcceptanceAction> = new Set<Acc
   'record_dates',
 ]);
 
+/** An effect whose confirmation still holds; a revoked one is proposed again. */
+export function effectInForce(effect: { outcome?: Record<string, unknown> | null }): boolean {
+  return !effect.outcome?.revoked_at;
+}
+
 export function isAccepted(state: AcceptanceState): boolean {
   return state === 'accepted' || state === 'accepted_with_reservations' || state === 'deemed_accepted';
 }
