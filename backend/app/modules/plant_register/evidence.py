@@ -71,7 +71,8 @@ async def plant_readiness(session: Any, project_id: uuid.UUID, attempt: GateAtte
             detail=detail,
         )
 
-    frame_known = bool(host.document_types)
+    # A project pinned before the frame document type existed has no row for it: unknown, not "not met".
+    frame_known = r["frame_document_exists"]
     return [
         item(
             "no_error_findings",
@@ -83,7 +84,7 @@ async def plant_readiness(session: Any, project_id: uuid.UUID, attempt: GateAtte
         item(
             "frame_document_attached",
             r["frame_document_attached"] if frame_known else None,
-            "" if frame_known else "no_document_type_hosts_plant",
+            "" if frame_known else "frame_document_missing",
         ),
     ]
 

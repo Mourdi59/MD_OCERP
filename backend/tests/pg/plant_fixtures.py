@@ -34,9 +34,9 @@ TODAY = date(2026, 10, 11)
 
 # The catalogue tags the plant register reads. The governance catalogue of this
 # branch does not carry them yet (module 1 adds ``hosts`` and ``enables``), so the
-# tests supply what the shipped catalogue will say.
+# tests supply what the shipped catalogue will say (``hosts`` on the frame document type, whose
+# area is then the hosting area; ``enables`` on the phase).
 CATALOGUE_TAGS: dict[tuple[str, str], tuple[str, ...]] = {
-    ("hosts", "m04_equipment"): ("plant",),
     ("hosts", "m04_equipment_frame"): ("plant",),
     ("enables", "execution"): ("construction_start",),
 }

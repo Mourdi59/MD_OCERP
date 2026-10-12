@@ -67,6 +67,24 @@ logger = logging.getLogger(__name__)
 MODULE = "plant_register"
 EVENT_PREFIX = "plant"
 PAPER_TARGET_KIND = "plant_decision_paper"
+
+
+def _pin_read() -> dict[str, Any]:
+    """How a stored pin is resolved: ``from_pin=True`` once the governance resolver knows the flag.
+
+    The resolver on the governance branch refuses a tenant catalogue unless the
+    caller says whether the id comes from a request (tenant checked) or from a
+    pin that was checked when it was written. This read is the second. Until
+    both branches meet, the resolver here has no such parameter.
+    """
+    import inspect
+
+    from app.modules.project_governance.catalogue_store import resolve_catalogue
+
+    return {"from_pin": True} if "from_pin" in inspect.signature(resolve_catalogue).parameters else {}
+
+
+_PIN_READ = _pin_read()
 VENDOR_BOUND_REASONS = ("standardisation", "existing_estate", "warranty", "sole_source")
 ITEM_FIELDS = (
     "title",
@@ -269,7 +287,7 @@ class PlantService:
             else ("shipped", DEFAULT_CATALOGUE_ID, None)
         )
         try:
-            return await resolve_catalogue(self.session, source, cid, version, kind=PLANT_KIND)
+            return await resolve_catalogue(self.session, source, cid, version, kind=PLANT_KIND, **_PIN_READ)
         except GovernanceError as exc:
             raise not_found("unknown_catalogue") from exc
 
@@ -1822,6 +1840,7 @@ class PlantService:
             "critical_open": critical_open,
             "long_lead_open": long_lead_open,
             "frame_document_attached": frame_ok,
+            "frame_document_exists": frame is not None,
         }
 
     async def _frame_document(self, project_id: uuid.UUID) -> Any:

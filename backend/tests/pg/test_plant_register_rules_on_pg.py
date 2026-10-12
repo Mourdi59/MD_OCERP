@@ -535,13 +535,21 @@ async def test_evidence_is_unknown_with_a_reason_when_the_model_does_not_say_whe
     assert first == [("plant:host_unresolved", "unknown", "no_area_hosts_plant")] and elsewhere == []
     assert code == "not_equipment_owner"
 
-    with tagged_catalogue({("hosts", "m04_equipment"): ("plant",)}):
+    with tagged_catalogue({("hosts", "m04_equipment_frame"): ("plant",)}):
         no_gate = await _evidence(world, "m04_equipment")
     assert no_gate == [("plant:host_unresolved", "unknown", "no_phase_enables_construction_start")]
 
-    with tagged_catalogue({("hosts", "m04_equipment"): ("plant",), ("enables", "execution"): ("construction_start",)}):
-        no_doc = {code: (state, detail) for code, state, detail in await _evidence(world, "m04_equipment")}
-    assert no_doc["plant:frame_document_attached"] == ("unknown", "no_document_type_hosts_plant")
+    # The model names the document type, but this project has no such document row.
+    from app.modules.project_governance.models import GovernanceDocument
+
+    async with world.factory() as s:
+        rows = await s.execute(select(GovernanceDocument).where(GovernanceDocument.project_id == world.project_id))
+        for doc in rows.scalars():
+            if doc.doc_type == "m04_equipment_frame":
+                await s.delete(doc)
+        await s.commit()
+    no_row = {code: (state, detail) for code, state, detail in await _evidence(world, "m04_equipment")}
+    assert no_row["plant:frame_document_attached"] == ("unknown", "frame_document_missing")
 
 
 # ── the catalogue a project pins ──────────────────────────────────────────
