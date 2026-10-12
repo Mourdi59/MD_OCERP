@@ -10,6 +10,8 @@
 
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/shared/lib/api';
 
+import type { Verdict } from './plan/api';
+
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
 export type DeliveryStatus =
@@ -19,14 +21,38 @@ export type DeliveryStatus =
   | 'arrived'
   | 'completed';
 
+/** What the server lets this reader do with one record of the board, each with its reason. */
+export interface BoardCan {
+  edit?: Verdict;
+  delete?: Verdict;
+  /** Deliveries only. */
+  approve?: Verdict;
+  reject?: Verdict;
+}
+
+export type BoardKind = 'gate' | 'zone' | 'delivery';
+
+/** The board lists are plain arrays, so what may be created is asked for separately. */
+export type BoardCreate = Partial<Record<BoardKind, { create?: Verdict }>>;
+
 export interface Gate {
   id: string;
+  can?: BoardCan;
   project_id: string;
   name: string;
   open_time: string;
   close_time: string;
   capacity_per_slot: number;
   notes: string | null;
+  /** Catalogue code of the kind of access (road gate, rail siding ...). */
+  access_kind?: string | null;
+  /** Load and dimension limits as decimal strings; the plan checks transports against them. */
+  max_axle_load_t?: string | null;
+  max_gross_t?: string | null;
+  max_height_m?: string | null;
+  max_width_m?: string | null;
+  max_length_m?: string | null;
+  turning_radius_m?: string | null;
   created_by: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
@@ -35,6 +61,7 @@ export interface Gate {
 
 export interface LaydownZone {
   id: string;
+  can?: BoardCan;
   project_id: string;
   name: string;
   capacity_desc: string | null;
@@ -68,6 +95,9 @@ export interface DeliveryLine {
 
 export interface DeliveryBooking {
   id: string;
+  can?: BoardCan;
+  /** What the server could not check for this delivery, for example gate hours on a site without a time zone. */
+  warnings?: { code: string; severity: string; field?: string | null }[];
   project_id: string;
   gate_id: string | null;
   supplier_name: string;
@@ -79,6 +109,8 @@ export interface DeliveryBooking {
   window_end: string;
   status: DeliveryStatus;
   po_ref: string | null;
+  /** A flow of the logistics concept; the server refuses a code the concept does not have. */
+  flow_code?: string | null;
   notes: string | null;
   created_by: string | null;
   lines: DeliveryLine[];
@@ -148,6 +180,15 @@ export interface CreateGatePayload {
   close_time?: string;
   capacity_per_slot?: number;
   notes?: string;
+  /** Catalogue code of the kind of access (road gate, rail siding ...). */
+  access_kind?: string | null;
+  /** Load and dimension limits as decimal strings; the plan checks transports against them. */
+  max_axle_load_t?: string | null;
+  max_gross_t?: string | null;
+  max_height_m?: string | null;
+  max_width_m?: string | null;
+  max_length_m?: string | null;
+  turning_radius_m?: string | null;
 }
 
 export type UpdateGatePayload = Partial<Omit<CreateGatePayload, 'project_id'>>;
@@ -175,6 +216,7 @@ export interface CreateDeliveryPayload {
   window_end: string;
   status?: DeliveryStatus;
   po_ref?: string;
+  flow_code?: string | null;
   notes?: string;
   lines?: DeliveryLineInput[];
 }
@@ -194,6 +236,10 @@ export interface DeliveryFilters {
 }
 
 /* ── Gates ──────────────────────────────────────────────────────────────── */
+
+export async function fetchBoardCan(projectId: string): Promise<BoardCreate> {
+  return apiGet<BoardCreate>(`/v1/site-logistics/can/?project_id=${encodeURIComponent(projectId)}`);
+}
 
 export async function fetchGates(projectId: string): Promise<Gate[]> {
   return apiGet<Gate[]>(
@@ -321,5 +367,42 @@ export async function fetchSiteLogisticsStats(
 ): Promise<SiteLogisticsStats> {
   return apiGet<SiteLogisticsStats>(
     `/v1/site-logistics/stats/?project_id=${encodeURIComponent(projectId)}`,
+  );
+}
+
+/* ── Neighbour issues (logistics plan) ──────────────────────────────────── */
+
+export type NeighbourIssueState = 'received' | 'acknowledged' | 'action_taken' | 'closed';
+
+/** A complaint from the surroundings, as `GET /projects/{id}/neighbour-issues` returns it. */
+export interface NeighbourIssue {
+  id: string;
+  kind: string;
+  reported_on: string;
+  reporter: string;
+  location: Record<string, unknown> | null;
+  description: string;
+  transport_id: string | null;
+  delivery_id: string | null;
+  owner_user_id: string | null;
+  response: string;
+  response_due: string | null;
+  state: NeighbourIssueState | string;
+  /** Past its response date and not yet acknowledged (server-side rule 18). */
+  overdue: boolean;
+  created_at: string | null;
+}
+
+export interface NeighbourIssuePage {
+  items: NeighbourIssue[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+/** Every neighbour issue of a project; closed ones are filtered by the caller. */
+export async function fetchNeighbourIssues(projectId: string): Promise<NeighbourIssuePage> {
+  return apiGet<NeighbourIssuePage>(
+    `/v1/site-logistics/projects/${encodeURIComponent(projectId)}/neighbour-issues`,
   );
 }

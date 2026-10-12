@@ -1380,6 +1380,7 @@ export default function App() {
         <Route path="/prefab" element={<P title="Off-site / Prefab"><PrefabPage /></P>} />
         <Route path="/projects/:projectId/cvr" element={<P title="Cost-Value Reconciliation"><CvrPage /></P>} />
         <Route path="/cvr" element={<P title="Cost-Value Reconciliation"><CvrPage /></P>} />
+        <Route path="/projects/:projectId/site-logistics" element={<P title="Site Logistics"><SiteLogisticsPage /></P>} />
         <Route path="/site-logistics" element={<P title="Site Logistics"><SiteLogisticsPage /></P>} />
         <Route path="/commissioning" element={<P title="Commissioning"><CommissioningPage /></P>} />
         <Route path="/esg" element={<P title="ESG Site Performance"><EsgPage /></P>} />

@@ -162,6 +162,10 @@
       "de",
       "en"
     ],
+    "backend/app/modules/site_logistics/messages": [
+      "de",
+      "en"
+    ],
     "backend/app/modules/subcontractors/messages": [
       "de",
       "en",

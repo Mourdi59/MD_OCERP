@@ -65,6 +65,7 @@ _SOURCE_TO_MODULE = {
     "ncr": "ncr",
     "bcf": "bcf",
     "clash": "clash",
+    "neighbour": "site_logistics",
 }
 
 # Modules holding a defect register the hub does not read. Each line is a work

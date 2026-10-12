@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
@@ -30,6 +30,7 @@ import {
   Search,
   Unlink,
   ClipboardList,
+  Route,
 } from 'lucide-react';
 import {
   Button,
@@ -44,13 +45,20 @@ import {
 } from '@/shared/ui';
 import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { IssueHubLink } from '@/features/issues/IssueHubLink';
+import { LogisticsPlan, type PlanTab } from './plan/LogisticsPlan';
+import { FlowSelect } from './plan/FlowSelect';
+import { SiteClockNotice } from './plan/SiteClockNotice';
+import { GateLimits } from './plan/GateLimits';
+import { BoardCanNotice, useBoardCreate } from './plan/boardCan';
+import { denied, humanise, offered, reasonText, shown } from './plan/rules';
+import { served, type TFn } from './plan/texts';
 import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { getErrorMessage } from '@/shared/lib/api';
 import { fetchProjectList } from '@/shared/lib/projectList';
 import { useActiveProjectId } from '@/shared/hooks/useActiveProjectId';
 import { useToastStore } from '@/stores/useToastStore';
-import { useAuthStore } from '@/stores/useAuthStore';
 import {
   fetchGates,
   fetchLaydownZones,
@@ -80,7 +88,6 @@ import {
   type UpdateLaydownZonePayload,
 } from './api';
 import { getIntlLocale } from '@/shared/lib/formatters';
-import { normalizeRole } from '@/shared/lib/roles';
 
 /* ── Constants & helpers ───────────────────────────────────────────────── */
 
@@ -254,6 +261,7 @@ interface DeliveryFormState {
   window_start: string;
   window_end: string;
   po_ref: string;
+  flow_code: string;
   notes: string;
   lines: DeliveryFormLine[];
 }
@@ -273,6 +281,7 @@ function defaultForm(): DeliveryFormState {
     window_start: toLocalInput(start),
     window_end: toLocalInput(end),
     po_ref: '',
+    flow_code: '',
     notes: '',
     lines: [],
   };
@@ -290,6 +299,7 @@ function formFromDelivery(d: DeliveryBooking): DeliveryFormState {
     window_start: isoToInput(d.window_start),
     window_end: isoToInput(d.window_end),
     po_ref: d.po_ref ?? '',
+    flow_code: d.flow_code ?? '',
     notes: d.notes ?? '',
     lines: (d.lines ?? []).map((line) => ({
       position_id: line.boq_position_id,
@@ -719,6 +729,12 @@ function BookDeliveryModal({
                 className={inputCls}
               />
             </div>
+            <FlowSelect
+              projectId={projectId}
+              value={form.flow_code}
+              onChange={(code) => set('flow_code', code)}
+              className={inputCls}
+            />
           </div>
 
           {/* What the lorry is carrying, said in the bill's own words. The
@@ -905,12 +921,9 @@ function BookDeliveryModal({
 
 /* ── Delivery row ──────────────────────────────────────────────────────── */
 
-function DeliveryRow({
+export function DeliveryRow({
   delivery,
   gate,
-  canApprove,
-  canEdit,
-  canDelete,
   busy,
   onApprove,
   onReject,
@@ -920,9 +933,6 @@ function DeliveryRow({
 }: {
   delivery: DeliveryBooking;
   gate: Gate | undefined;
-  canApprove: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
   busy: boolean;
   onApprove: (d: DeliveryBooking) => void;
   onReject: (d: DeliveryBooking) => void;
@@ -932,6 +942,10 @@ function DeliveryRow({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  // The server says what may be done with this delivery, and why not.
+  const can = delivery.can ?? {};
+  const canEdit = offered(can.edit);
+  const canDelete = offered(can.delete);
   const cfg = STATUS_CONFIG[delivery.status] ?? STATUS_CONFIG.requested;
   const lines = delivery.lines ?? [];
 
@@ -991,6 +1005,16 @@ function DeliveryRow({
         {delivery.materials_desc && (
           <p className="text-2xs text-content-tertiary truncate">{delivery.materials_desc}</p>
         )}
+        {(delivery.warnings ?? []).map((w) => (
+          <p
+            key={w.code}
+            className="mt-0.5 flex items-center gap-1 text-2xs text-semantic-warning"
+            data-testid="delivery-warning"
+          >
+            <AlertTriangle size={11} className="shrink-0" aria-hidden />
+            {served(t as TFn, `site_logistics.errors.${w.code}`, humanise(w.code))}
+          </p>
+        ))}
       </div>
 
       {/* Gate */}
@@ -1017,14 +1041,26 @@ function DeliveryRow({
 
       {/* Actions */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {canApprove && (delivery.status === 'requested' || delivery.status === 'rejected') && (
-          <Button variant="primary" size="sm" disabled={busy} onClick={() => onApprove(delivery)}>
+        {shown(can.approve) && (delivery.status === 'requested' || delivery.status === 'rejected') && (
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={busy || denied(can.approve)}
+            title={reasonText(t as TFn, can.approve)}
+            onClick={() => onApprove(delivery)}
+          >
             <Check size={13} className="mr-1" />
             {t('siteLogistics.action_approve', { defaultValue: 'Approve' })}
           </Button>
         )}
-        {canApprove && (delivery.status === 'requested' || delivery.status === 'approved') && (
-          <Button variant="ghost" size="sm" disabled={busy} onClick={() => onReject(delivery)}>
+        {shown(can.reject) && (delivery.status === 'requested' || delivery.status === 'approved') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={busy || denied(can.reject)}
+            title={reasonText(t as TFn, can.reject)}
+            onClick={() => onReject(delivery)}
+          >
             <Ban size={13} className="mr-1" />
             {t('siteLogistics.action_reject', { defaultValue: 'Reject' })}
           </Button>
@@ -1095,10 +1131,7 @@ function DeliveryBoard({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
-  const role = normalizeRole(useAuthStore((s) => s.userRole));
-  const canApprove = role === 'manager' || role === 'admin';
-  const canEdit = role === 'editor' || role === 'manager' || role === 'admin';
-  const canDelete = role === 'manager' || role === 'admin';
+  const mayBook = useBoardCreate(projectId, 'delivery');
 
   const [day, setDay] = useState('');
   const [gateFilter, setGateFilter] = useState('');
@@ -1288,7 +1321,7 @@ function DeliveryBoard({
                 })
           }
           action={
-            !day && !gateFilter && !statusFilter
+            !day && !gateFilter && !statusFilter && offered(mayBook)
               ? {
                   label: t('siteLogistics.book_delivery', { defaultValue: 'Book delivery' }),
                   onClick: onBook,
@@ -1318,9 +1351,6 @@ function DeliveryBoard({
                     key={d.id}
                     delivery={d}
                     gate={d.gate_id ? gateById.get(d.gate_id) : undefined}
-                    canApprove={canApprove}
-                    canEdit={canEdit}
-                    canDelete={canDelete}
                     busy={busy}
                     onApprove={(x) => decisionMut.mutate({ action: 'approve', id: x.id })}
                     onReject={(x) => decisionMut.mutate({ action: 'reject', id: x.id })}
@@ -1344,9 +1374,7 @@ function GatesPanel({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
-  const role = normalizeRole(useAuthStore((s) => s.userRole));
-  const canEdit = role === 'editor' || role === 'manager' || role === 'admin';
-  const canDelete = role === 'manager' || role === 'admin';
+  const canCreate = offered(useBoardCreate(projectId, 'gate'));
 
   const [name, setName] = useState('');
   const [openTime, setOpenTime] = useState('07:00');
@@ -1416,7 +1444,7 @@ function GatesPanel({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-4">
-      {canEdit && (
+      {canCreate && (
         <Card padding="none" className="p-4">
           <p className="text-sm font-medium text-content-primary mb-3">
             {t('siteLogistics.add_gate', { defaultValue: 'Add a gate' })}
@@ -1496,8 +1524,6 @@ function GatesPanel({ projectId }: { projectId: string }) {
             <GateCard
               key={g.id}
               gate={g}
-              canEdit={canEdit}
-              canDelete={canDelete}
               onSave={(data) => updateMut.mutateAsync({ id: g.id, data })}
               onDelete={() => deleteMut.mutate(g.id)}
               busy={deleteMut.isPending}
@@ -1512,22 +1538,20 @@ function GatesPanel({ projectId }: { projectId: string }) {
 
 function GateCard({
   gate,
-  canEdit,
-  canDelete,
   onSave,
   onDelete,
   busy,
   savePending,
 }: {
   gate: Gate;
-  canEdit: boolean;
-  canDelete: boolean;
   onSave: (data: UpdateGatePayload) => Promise<unknown>;
   onDelete: () => void;
   busy: boolean;
   savePending: boolean;
 }) {
   const { t } = useTranslation();
+  const canEdit = offered(gate.can?.edit);
+  const canDelete = offered(gate.can?.delete);
   const [editing, setEditing] = useState(false);
 
   if (editing) {
@@ -1586,6 +1610,7 @@ function GateCard({
         })}
       </div>
       {gate.notes && <p className="text-2xs text-content-tertiary">{gate.notes}</p>}
+      <GateLimits gate={gate} canEdit={canEdit} />
     </Card>
   );
 }
@@ -1704,9 +1729,7 @@ function LaydownPanel({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
-  const role = normalizeRole(useAuthStore((s) => s.userRole));
-  const canEdit = role === 'editor' || role === 'manager' || role === 'admin';
-  const canDelete = role === 'manager' || role === 'admin';
+  const canCreate = offered(useBoardCreate(projectId, 'zone'));
 
   const [name, setName] = useState('');
   const [capacityDesc, setCapacityDesc] = useState('');
@@ -1779,7 +1802,7 @@ function LaydownPanel({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-4">
-      {canEdit && (
+      {canCreate && (
         <Card padding="none" className="p-4">
           <p className="text-sm font-medium text-content-primary mb-3">
             {t('siteLogistics.add_zone', { defaultValue: 'Add a laydown zone' })}
@@ -1839,8 +1862,6 @@ function LaydownPanel({ projectId }: { projectId: string }) {
             <LaydownCard
               key={z.id}
               zone={z}
-              canEdit={canEdit}
-              canDelete={canDelete}
               onSave={(data) => updateMut.mutateAsync({ id: z.id, data })}
               onDelete={() => deleteMut.mutate(z.id)}
               busy={deleteMut.isPending}
@@ -1855,22 +1876,20 @@ function LaydownPanel({ projectId }: { projectId: string }) {
 
 function LaydownCard({
   zone,
-  canEdit,
-  canDelete,
   onSave,
   onDelete,
   busy,
   savePending,
 }: {
   zone: LaydownZone;
-  canEdit: boolean;
-  canDelete: boolean;
   onSave: (data: UpdateLaydownZonePayload) => Promise<unknown>;
   onDelete: () => void;
   busy: boolean;
   savePending: boolean;
 }) {
   const { t } = useTranslation();
+  const canEdit = offered(zone.can?.edit);
+  const canDelete = offered(zone.can?.delete);
   const [editing, setEditing] = useState(false);
 
   if (editing) {
@@ -2102,8 +2121,7 @@ function GateTimeline({
 }) {
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
-  const role = normalizeRole(useAuthStore((s) => s.userRole));
-  const canEdit = role === 'editor' || role === 'manager' || role === 'admin';
+  const mayBook = useBoardCreate(projectId, 'delivery');
 
   const [day, setDay] = useState<string>(() => todayInput());
 
@@ -2326,10 +2344,14 @@ function GateTimeline({
             defaultValue:
               'Add a gate and book deliveries to see the day laid out gate by gate, hour by hour.',
           })}
-          action={{
-            label: t('siteLogistics.book_delivery', { defaultValue: 'Book delivery' }),
-            onClick: onBook,
-          }}
+          action={
+            offered(mayBook)
+              ? {
+                  label: t('siteLogistics.book_delivery', { defaultValue: 'Book delivery' }),
+                  onClick: onBook,
+                }
+              : undefined
+          }
         />
       ) : (
         <>
@@ -2421,6 +2443,7 @@ function GateTimeline({
                           const height = Math.max(22, ((endMin - startMin) / 60) * HOUR_PX);
                           const widthPct = 100 / lanes;
                           const cfg = STATUS_CONFIG[delivery.status] ?? STATUS_CONFIG.requested;
+                          const canEdit = offered(delivery.can?.edit);
                           return (
                             <button
                               key={delivery.id}
@@ -2700,7 +2723,7 @@ function BillCoveragePanel({ projectId }: { projectId: string }) {
   );
 }
 
-type TabKey = 'deliveries' | 'timeline' | 'coverage' | 'gates' | 'laydown';
+type TabKey = 'deliveries' | 'timeline' | 'coverage' | 'gates' | 'laydown' | 'plan';
 
 export function SiteLogisticsPage() {
   const { t } = useTranslation();
@@ -2708,7 +2731,11 @@ export function SiteLogisticsPage() {
   const addToast = useToastStore((s) => s.addToast);
   const activeProjectId = useActiveProjectId();
 
-  const [tab, setTab] = useState<TabKey>('deliveries');
+  // A link that names the project (a gate item, a notification) means its
+  // logistics plan; the bare address opens the delivery board as before.
+  const { projectId: linkedProjectId } = useParams<{ projectId?: string }>();
+  const [tab, setTab] = useState<TabKey>(linkedProjectId ? 'plan' : 'deliveries');
+  const [planTab, setPlanTab] = useState<PlanTab>('balance');
   const [showBook, setShowBook] = useState(false);
   // The delivery being edited (shared by the board and the gate timeline so a
   // marshal can fix a booking from whichever view they are looking at).
@@ -2722,6 +2749,8 @@ export function SiteLogisticsPage() {
 
   const projectId = activeProjectId || projects[0]?.id || '';
   const projectName = projects.find((p) => p.id === projectId)?.name || '';
+
+  const mayBook = useBoardCreate(projectId, 'delivery');
 
   // Gates power the board's gate lookup, the filters and the booking form.
   const { data: gates = [] } = useQuery({
@@ -2770,6 +2799,7 @@ export function SiteLogisticsPage() {
       window_start: form.window_start,
       window_end: form.window_end,
       po_ref: form.po_ref.trim() || undefined,
+      flow_code: form.flow_code || undefined,
       notes: form.notes.trim() || undefined,
       lines: linePayload(form.lines),
     });
@@ -2813,6 +2843,7 @@ export function SiteLogisticsPage() {
         window_start: form.window_start,
         window_end: form.window_end,
         po_ref: form.po_ref.trim(),
+        flow_code: form.flow_code || null,
         notes: form.notes.trim(),
         // Sent whole: the dialog always saves the whole booking, so the list
         // it shows is the list the delivery ends up carrying.
@@ -2846,6 +2877,11 @@ export function SiteLogisticsPage() {
       key: 'laydown',
       label: t('siteLogistics.tab_laydown', { defaultValue: 'Laydown zones' }),
       icon: <Package size={14} />,
+    },
+    {
+      key: 'plan',
+      label: t('site_logistics.plan.title', { defaultValue: 'Logistics plan' }),
+      icon: <Route size={14} />,
     },
   ];
 
@@ -2890,29 +2926,34 @@ export function SiteLogisticsPage() {
             'Plan what arrives on site: book deliveries into gate time slots, keep laydown zones tidy, and approve or reject each booking so gates never double-book.',
         })}
         actions={
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => {
-              if (!projectId) {
-                addToast({
-                  type: 'info',
-                  title: t('siteLogistics.select_project_first_title', {
-                    defaultValue: 'Select a project first',
-                  }),
-                  message: t('siteLogistics.select_project_first', {
-                    defaultValue: 'Pick a project from the top bar, then book a delivery.',
-                  }),
-                });
-                return;
-              }
-              setShowBook(true);
-            }}
-            className="shrink-0 whitespace-nowrap"
-          >
-            <Truck size={14} className="mr-1 shrink-0" />
-            <span>{t('siteLogistics.book_delivery', { defaultValue: 'Book delivery' })}</span>
-          </Button>
+          <>
+            <IssueHubLink />
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={denied(mayBook)}
+              title={reasonText(t as TFn, mayBook)}
+              onClick={() => {
+                if (!projectId) {
+                  addToast({
+                    type: 'info',
+                    title: t('siteLogistics.select_project_first_title', {
+                      defaultValue: 'Select a project first',
+                    }),
+                    message: t('siteLogistics.select_project_first', {
+                      defaultValue: 'Pick a project from the top bar, then book a delivery.',
+                    }),
+                  });
+                  return;
+                }
+                setShowBook(true);
+              }}
+              className="shrink-0 whitespace-nowrap"
+            >
+              <Truck size={14} className="mr-1 shrink-0" />
+              <span>{t('siteLogistics.book_delivery', { defaultValue: 'Book delivery' })}</span>
+            </Button>
+          </>
         }
       />
 
@@ -2952,6 +2993,7 @@ export function SiteLogisticsPage() {
         {tabs.map((tb) => (
           <button
             key={tb.key}
+            data-testid={`site-logistics-tab-${tb.key}`}
             onClick={() => setTab(tb.key)}
             className={clsx(
               'flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
@@ -2965,6 +3007,18 @@ export function SiteLogisticsPage() {
           </button>
         ))}
       </div>
+
+      {projectId && <BoardCanNotice projectId={projectId} />}
+
+      {projectId && (tab === 'deliveries' || tab === 'timeline') && (
+        <SiteClockNotice
+          projectId={projectId}
+          onOpen={() => {
+            setPlanTab('concept');
+            setTab('plan');
+          }}
+        />
+      )}
 
       {/* Content */}
       {!projectId ? (
@@ -2987,6 +3041,8 @@ export function SiteLogisticsPage() {
         <BillCoveragePanel projectId={projectId} />
       ) : tab === 'gates' ? (
         <GatesPanel projectId={projectId} />
+      ) : tab === 'plan' ? (
+        <LogisticsPlan projectId={projectId} initialTab={planTab} />
       ) : (
         <LaydownPanel projectId={projectId} />
       )}

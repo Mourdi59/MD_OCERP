@@ -62,6 +62,14 @@ class GateCreate(BaseModel):
     close_time: str = Field(default="18:00", pattern=_HHMM_PATTERN)
     capacity_per_slot: int = Field(default=1, ge=1, le=100)
     notes: str | None = None
+    # Access kind (catalogue ``access_kinds``) and load limits (rule 5).
+    access_kind: str | None = Field(default=None, max_length=40)
+    max_axle_load_t: Decimal | None = Field(default=None, ge=0)
+    max_gross_t: Decimal | None = Field(default=None, ge=0)
+    max_height_m: Decimal | None = Field(default=None, ge=0)
+    max_width_m: Decimal | None = Field(default=None, ge=0)
+    max_length_m: Decimal | None = Field(default=None, ge=0)
+    turning_radius_m: Decimal | None = Field(default=None, ge=0)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -81,6 +89,14 @@ class GateUpdate(BaseModel):
     close_time: str | None = Field(default=None, pattern=_HHMM_PATTERN)
     capacity_per_slot: int | None = Field(default=None, ge=1, le=100)
     notes: str | None = None
+    # Access kind (catalogue ``access_kinds``) and load limits (rule 5).
+    access_kind: str | None = Field(default=None, max_length=40)
+    max_axle_load_t: Decimal | None = Field(default=None, ge=0)
+    max_gross_t: Decimal | None = Field(default=None, ge=0)
+    max_height_m: Decimal | None = Field(default=None, ge=0)
+    max_width_m: Decimal | None = Field(default=None, ge=0)
+    max_length_m: Decimal | None = Field(default=None, ge=0)
+    turning_radius_m: Decimal | None = Field(default=None, ge=0)
     metadata: dict[str, Any] | None = None
 
 
@@ -89,6 +105,8 @@ class GateResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
+    # What the caller may do with this record now; set by the routes, absent elsewhere.
+    can: dict[str, Any] | None = None
     id: UUID
     project_id: UUID
     name: str
@@ -96,6 +114,13 @@ class GateResponse(BaseModel):
     close_time: str
     capacity_per_slot: int
     notes: str | None = None
+    access_kind: str | None = None
+    max_axle_load_t: Decimal | None = None
+    max_gross_t: Decimal | None = None
+    max_height_m: Decimal | None = None
+    max_width_m: Decimal | None = None
+    max_length_m: Decimal | None = None
+    turning_radius_m: Decimal | None = None
     created_by: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
@@ -114,6 +139,8 @@ class LaydownZoneCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     capacity_desc: str | None = Field(default=None, max_length=255)
     usage_note: str | None = None
+    # The planned site area this zone operates in (rule 4); must be in the same project.
+    site_area_id: UUID | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -125,6 +152,7 @@ class LaydownZoneUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     capacity_desc: str | None = Field(default=None, max_length=255)
     usage_note: str | None = None
+    site_area_id: UUID | None = None
     metadata: dict[str, Any] | None = None
 
 
@@ -133,11 +161,14 @@ class LaydownZoneResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
+    # What the caller may do with this record now; set by the routes, absent elsewhere.
+    can: dict[str, Any] | None = None
     id: UUID
     project_id: UUID
     name: str
     capacity_desc: str | None = None
     usage_note: str | None = None
+    site_area_id: UUID | None = None
     created_by: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
@@ -229,6 +260,13 @@ class DeliveryCreate(BaseModel):
     status: str = Field(default="requested", pattern=_STATUS_PATTERN)
     po_ref: str | None = Field(default=None, max_length=120)
     notes: str | None = None
+    # The transport this slot belongs to (Decision 3) and the load it carries (rule 5).
+    transport_id: UUID | None = None
+    direction: str = Field(default="inbound", pattern=r"^(inbound|outbound)$")
+    gross_weight_t: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=2)
+    plant_item_id: UUID | None = None
+    takt_location_id: UUID | None = None
+    flow_code: str | None = Field(default=None, max_length=40)
     lines: list[DeliveryLineInput] = Field(default_factory=list, max_length=MAX_DELIVERY_LINES)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -260,6 +298,13 @@ class DeliveryUpdate(BaseModel):
     # that list. The delivery modal always saves the whole booking, so a
     # partial line patch would only invite two clients disagreeing about which
     # lines survived.
+    # The transport this slot belongs to (Decision 3) and the load it carries (rule 5).
+    transport_id: UUID | None = None
+    direction: str | None = Field(default=None, pattern=r"^(inbound|outbound)$")
+    gross_weight_t: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=2)
+    plant_item_id: UUID | None = None
+    takt_location_id: UUID | None = None
+    flow_code: str | None = Field(default=None, max_length=40)
     lines: list[DeliveryLineInput] | None = Field(default=None, max_length=MAX_DELIVERY_LINES)
     metadata: dict[str, Any] | None = None
 
@@ -277,6 +322,10 @@ class DeliveryResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
+    # What the caller may do with this record now; set by the routes, absent elsewhere.
+    can: dict[str, Any] | None = None
+    # Checks that were not made for this delivery (``gate_hours_unchecked``); set by the routes.
+    warnings: list[dict[str, Any]] = Field(default_factory=list)
     id: UUID
     project_id: UUID
     gate_id: UUID | None = None
@@ -290,6 +339,12 @@ class DeliveryResponse(BaseModel):
     status: str = "requested"
     po_ref: str | None = None
     notes: str | None = None
+    transport_id: UUID | None = None
+    direction: str = "inbound"
+    gross_weight_t: Decimal | None = None
+    plant_item_id: UUID | None = None
+    takt_location_id: UUID | None = None
+    flow_code: str | None = None
     created_by: str | None = None
     lines: list[DeliveryLineResponse] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")

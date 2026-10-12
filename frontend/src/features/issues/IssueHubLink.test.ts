@@ -34,6 +34,8 @@ const SOURCE_PAGES: Record<string, string> = {
   // navigated to a register and a "back to the hub" button would be noise.
   bcf: 'bcf/BcfPage.tsx',
   clash: 'clash/ClashDetectionPage.tsx',
+  // Neighbour complaints live in the logistics plan of the site logistics page.
+  neighbour: 'site-logistics/SiteLogisticsPage.tsx',
 };
 
 function declaredSources(): string[] {
@@ -50,7 +52,7 @@ function declaredSources(): string[] {
 
 describe('issue hub back-links', () => {
   it('parses the source union from the file that defines it', () => {
-    expect(declaredSources().sort()).toEqual(['bcf', 'clash', 'markup', 'ncr', 'punch']);
+    expect(declaredSources().sort()).toEqual(['bcf', 'clash', 'markup', 'ncr', 'neighbour', 'punch']);
   });
 
   it('maps every declared source to a page', () => {

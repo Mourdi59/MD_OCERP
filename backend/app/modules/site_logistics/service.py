@@ -5,16 +5,20 @@
 Stateless service layer. The delivery rules are enforced here so a booking that
 breaks them is never persisted:
 
-* a delivery window must fall inside its gate's open/close hours, and
-* two *approved* deliveries on the same gate must not overlap in time.
+* a delivery window must fall inside its gate's open/close hours, read on the
+  site's clock (the time zone of the logistics concept),
+* two *approved* deliveries on the same gate must not overlap in time, and
+* an approved delivery never carries a load its gate cannot take, nor exceeds
+  the concept's deliveries per hour. ``_assert_approvable`` is the one place
+  that decides this; create, update and approve all go through it.
 
-Both checks reuse the pure helpers in ``validators.py`` and raise
-``HTTPException(400)`` with a clear, user-facing message.
+The checks reuse the pure helpers in ``validators.py`` and the plan service and
+raise ``HTTPException(400)`` with a clear, user-facing message.
 """
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
 from decimal import Decimal
 from typing import Any
 
@@ -25,12 +29,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.events import event_bus
 from app.core.json_merge import merge_metadata
 from app.modules.site_logistics.coverage import BillLine, DeliveredLine, coverage_by_position, to_decimal
+from app.modules.site_logistics.errors import LogisticsError
 from app.modules.site_logistics.events import (
     DELIVERY_APPROVED,
     DELIVERY_BOOKED,
     DELIVERY_REJECTED,
 )
-from app.modules.site_logistics.models import DeliveryBooking, DeliveryLine, Gate, LaydownZone
+from app.modules.site_logistics.models import DeliveryBooking, DeliveryLine, Gate, LaydownZone, LogisticsConcept
+from app.modules.site_logistics.planning import narrower_hours
 from app.modules.site_logistics.repository import (
     BillPositionRepository,
     DeliveryLineRepository,
@@ -52,6 +58,7 @@ from app.modules.site_logistics.schemas import (
     SiteLogisticsStatsResponse,
 )
 from app.modules.site_logistics.validators import (
+    GATE_HOURS_UNCHECKED,
     delivery_within_gate_hours,
     find_first_overlap,
 )
@@ -63,14 +70,23 @@ logger = logging.getLogger(__name__)
 _TERMINAL_ON_SITE = ("arrived", "completed")
 
 
-def _ensure_aware(value: datetime) -> datetime:
-    """Attach UTC to a naive datetime so windows are comparable and storable.
+def _refusal(code: str, detail: str, status_code: int = status.HTTP_400_BAD_REQUEST) -> HTTPException:
+    """A refused booking in the style of these routes, carrying the stable code its ``can`` flag reports."""
+    exc = HTTPException(status_code=status_code, detail=detail)
+    exc.code = code  # type: ignore[attr-defined]
+    return exc
 
-    Delivery boards run in one site timezone, so a naive wall-clock value from a
-    ``datetime-local`` input is treated as UTC. This keeps overlap comparisons
-    (stored tz-aware vs incoming) from raising and keeps PostgreSQL happy.
+
+def _ensure_aware(value: datetime, tz: tzinfo | None = None) -> datetime:
+    """Make a window comparable and storable.
+
+    A value with an offset is the instant it names. A naive value comes from a
+    ``datetime-local`` input and is the site's wall clock, so it gets the site
+    time zone ``tz``. While the site has no zone it is stored labelled UTC, as it
+    always was; no time-of-day rule is evaluated without a zone, so nothing reads
+    that label as a clock.
     """
-    return value.replace(tzinfo=UTC) if value.tzinfo is None else value
+    return value.replace(tzinfo=tz or UTC) if value.tzinfo is None else value
 
 
 class SiteLogisticsService:
@@ -95,6 +111,13 @@ class SiteLogisticsService:
             close_time=data.close_time,
             capacity_per_slot=data.capacity_per_slot,
             notes=data.notes,
+            access_kind=data.access_kind,
+            max_axle_load_t=data.max_axle_load_t,
+            max_gross_t=data.max_gross_t,
+            max_height_m=data.max_height_m,
+            max_width_m=data.max_width_m,
+            max_length_m=data.max_length_m,
+            turning_radius_m=data.turning_radius_m,
             created_by=user_id,
             metadata_=data.metadata,
         )
@@ -145,11 +168,13 @@ class SiteLogisticsService:
 
     async def create_zone(self, data: LaydownZoneCreate, user_id: str | None = None) -> LaydownZone:
         """Create a laydown zone."""
+        await self._assert_plan_row("area", data.site_area_id, data.project_id)
         zone = LaydownZone(
             project_id=data.project_id,
             name=data.name,
             capacity_desc=data.capacity_desc,
             usage_note=data.usage_note,
+            site_area_id=data.site_area_id,
             created_by=user_id,
             metadata_=data.metadata,
         )
@@ -175,6 +200,8 @@ class SiteLogisticsService:
         fields = self._merge_metadata_fields(data.model_dump(exclude_unset=True), zone)
         if not fields:
             return zone
+        if fields.get("site_area_id") is not None:
+            await self._assert_plan_row("area", fields["site_area_id"], zone.project_id)
         await self.zone_repo.update_fields(zone_id, **fields)
         await self.session.refresh(zone)
         await self.session.commit()
@@ -191,14 +218,37 @@ class SiteLogisticsService:
 
     async def create_delivery(self, data: DeliveryCreate, user_id: str | None = None) -> DeliveryBooking:
         """Book an inbound delivery, validating window and gate rules first."""
-        window_start = _ensure_aware(data.window_start)
-        window_end = _ensure_aware(data.window_end)
+        tz = await self._plan().site_tz(data.project_id)
+        window_start = _ensure_aware(data.window_start, tz)
+        window_end = _ensure_aware(data.window_end, tz)
 
+        await self._assert_plan_row("transport", data.transport_id, data.project_id)
+        await self._plan_call(
+            self._plan().assert_delivery_links(
+                data.project_id,
+                takt_location_id=data.takt_location_id,
+                plant_item_id=data.plant_item_id,
+                flow_code=data.flow_code,
+            )
+        )
+        gate = None
+        if data.status == "approved":
+            await self._lock_approvals(data.project_id, data.gate_id)
         if data.gate_id is not None:
             gate = await self._load_project_gate(data.gate_id, data.project_id)
-            self._assert_within_gate_hours(gate, window_start, window_end)
-            if data.status == "approved":
-                await self._assert_no_overlap(data.gate_id, window_start, window_end, exclude_id=None)
+            self._assert_within_gate_hours(
+                gate, window_start, window_end, await self._concept_hours(gate.project_id), tz
+            )
+        if data.status == "approved":
+            await self._assert_approvable(
+                data.project_id,
+                gate=gate,
+                gross_weight_t=data.gross_weight_t,
+                transport_id=data.transport_id,
+                start=window_start,
+                end=window_end,
+                exclude_id=None,
+            )
 
         lines = await self._build_lines(data.project_id, data.lines)
 
@@ -215,6 +265,12 @@ class SiteLogisticsService:
             status=data.status,
             po_ref=data.po_ref,
             notes=data.notes,
+            transport_id=data.transport_id,
+            direction=data.direction,
+            gross_weight_t=data.gross_weight_t,
+            plant_item_id=data.plant_item_id,
+            takt_location_id=data.takt_location_id,
+            flow_code=data.flow_code,
             created_by=user_id,
             lines=lines,
             metadata_=data.metadata,
@@ -268,6 +324,11 @@ class SiteLogisticsService:
     async def update_delivery(self, delivery_id: uuid.UUID, data: DeliveryUpdate) -> DeliveryBooking:
         """Update a delivery, re-validating window and gate rules on the result."""
         delivery = await self.get_delivery(delivery_id)
+        sent = data.model_dump(exclude_unset=True)
+        if sent.get("status", delivery.status) == "approved":
+            await self._lock_approvals(delivery.project_id, sent.get("gate_id", delivery.gate_id))
+            # The booking as it stands once the writers before this one are done.
+            await self.session.refresh(delivery)
         previous_status = delivery.status
         fields = self._merge_metadata_fields(data.model_dump(exclude_unset=True), delivery)
         # Lines are their own rows, so they never travel in the column update.
@@ -276,10 +337,15 @@ class SiteLogisticsService:
         if not fields and line_inputs is None:
             return delivery
 
+        tz = await self._plan().site_tz(delivery.project_id)
+        for key in ("window_start", "window_end", "status", "direction"):
+            if key in fields and fields[key] is None:
+                # These columns are NOT NULL: null is not "leave it", it is a wrong value.
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"field_required: {key}")
         if "window_start" in fields:
-            fields["window_start"] = _ensure_aware(fields["window_start"])
+            fields["window_start"] = _ensure_aware(fields["window_start"], tz)
         if "window_end" in fields:
-            fields["window_end"] = _ensure_aware(fields["window_end"])
+            fields["window_end"] = _ensure_aware(fields["window_end"], tz)
 
         new_start: datetime = fields.get("window_start", delivery.window_start)
         new_end: datetime = fields.get("window_end", delivery.window_end)
@@ -291,11 +357,32 @@ class SiteLogisticsService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="window_end must be after window_start",
             )
+        if fields.get("transport_id") is not None:
+            await self._assert_plan_row("transport", fields["transport_id"], delivery.project_id)
+        await self._plan_call(
+            self._plan().assert_delivery_links(
+                delivery.project_id,
+                takt_location_id=fields.get("takt_location_id"),
+                plant_item_id=fields.get("plant_item_id"),
+                flow_code=fields.get("flow_code"),
+                current_plant_item_id=delivery.plant_item_id,
+            )
+        )
+        gate = None
         if new_gate_id is not None:
             gate = await self._load_project_gate(new_gate_id, delivery.project_id)
-            self._assert_within_gate_hours(gate, new_start, new_end)
-            if new_status == "approved":
-                await self._assert_no_overlap(new_gate_id, new_start, new_end, exclude_id=delivery_id)
+            self._assert_within_gate_hours(gate, new_start, new_end, await self._concept_hours(delivery.project_id), tz)
+        if new_status == "approved":
+            # The values the booking will carry after this update, not the stored ones.
+            await self._assert_approvable(
+                delivery.project_id,
+                gate=gate,
+                gross_weight_t=fields.get("gross_weight_t", delivery.gross_weight_t),
+                transport_id=fields.get("transport_id", delivery.transport_id),
+                start=new_start,
+                end=new_end,
+                exclude_id=delivery_id,
+            )
 
         if line_inputs is not None:
             lines = await self._build_lines(delivery.project_id, line_inputs)
@@ -331,25 +418,12 @@ class SiteLogisticsService:
     ) -> DeliveryBooking:
         """Approve a delivery: requested/rejected -> approved, clash-checked."""
         delivery = await self.get_delivery(delivery_id)
+        await self._lock_approvals(delivery.project_id, delivery.gate_id)
+        # Read again behind the lock: another approval may have decided this booking meanwhile.
+        await self.session.refresh(delivery)
         if delivery.status == "approved":
             return delivery
-        if delivery.status in _TERMINAL_ON_SITE:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot approve a delivery that has already {delivery.status}",
-            )
-
-        # Re-check window + gate hours and clash at decision time - a gate's
-        # hours or a rival booking may have changed since it was requested.
-        if delivery.gate_id is not None:
-            gate = await self._load_project_gate(delivery.gate_id, delivery.project_id)
-            self._assert_within_gate_hours(gate, delivery.window_start, delivery.window_end)
-            await self._assert_no_overlap(
-                delivery.gate_id,
-                delivery.window_start,
-                delivery.window_end,
-                exclude_id=delivery_id,
-            )
+        await self._guard_approve(delivery)
 
         fields = self._decision_fields(delivery, "approved", reason, user_id)
         await self.delivery_repo.update_fields(delivery_id, **fields)
@@ -368,11 +442,7 @@ class SiteLogisticsService:
     ) -> DeliveryBooking:
         """Reject a delivery: requested/approved -> rejected, releasing its slot."""
         delivery = await self.get_delivery(delivery_id)
-        if delivery.status in _TERMINAL_ON_SITE:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot reject a delivery that has already {delivery.status}",
-            )
+        self._guard_decision(delivery, "reject")
         if delivery.status == "rejected":
             return delivery
 
@@ -383,6 +453,105 @@ class SiteLogisticsService:
         logger.info("Delivery rejected: %s by %s", delivery_id, user_id)
         self._emit(DELIVERY_REJECTED, delivery, user_id)
         return delivery
+
+    async def _lock_approvals(self, project_id: uuid.UUID, gate_id: uuid.UUID | None) -> None:
+        """Queue the writers that produce an approved delivery, for the check and the write.
+
+        The hourly rate of the concept and the slot on a gate are both counted over
+        the approved bookings. Two approvals that read that set before either
+        commits would both pass, so each one first takes the row the count hangs
+        on: the concept row (the rate) and then the gate row (the slot), always in
+        this order. The locks last until the transaction ends. A read never takes
+        them: the ``can`` flags call the guards, not this. The lock is the kind
+        that lets a new booking reference the gate meanwhile, so a request for a
+        slot does not wait behind an approval.
+        """
+        await self.session.execute(
+            select(LogisticsConcept.id).where(LogisticsConcept.project_id == project_id).with_for_update(key_share=True)
+        )
+        if gate_id is not None:
+            await self.session.execute(select(Gate.id).where(Gate.id == gate_id).with_for_update(key_share=True))
+
+    # ── Guards and allowed moves ──────────────────────────────────────────
+    #
+    # A guard refuses without changing anything. The write calls it, and ``can``
+    # calls the same guard to say what the write would answer.
+
+    @staticmethod
+    def _guard_decision(delivery: DeliveryBooking, action: str) -> None:
+        """A delivery that is on site or done is a record: it is not approved or rejected again."""
+        if delivery.status in _TERMINAL_ON_SITE:
+            raise _refusal("delivery_already_on_site", f"Cannot {action} a delivery that has already {delivery.status}")
+
+    async def _guard_approve(self, delivery: DeliveryBooking) -> None:
+        """Everything an approval checks at decision time.
+
+        Window, gate hours and clash are checked again here: a gate's hours or a
+        rival booking may have changed since the delivery was requested.
+        """
+        self._guard_decision(delivery, "approve")
+        gate = None
+        if delivery.gate_id is not None:
+            gate = await self._load_project_gate(delivery.gate_id, delivery.project_id)
+            self._assert_within_gate_hours(
+                gate,
+                delivery.window_start,
+                delivery.window_end,
+                await self._concept_hours(delivery.project_id),
+                await self._plan().site_tz(delivery.project_id),
+            )
+        await self._assert_approvable(
+            delivery.project_id,
+            gate=gate,
+            gross_weight_t=delivery.gross_weight_t,
+            transport_id=delivery.transport_id,
+            start=delivery.window_start,
+            end=delivery.window_end,
+            exclude_id=delivery.id,
+        )
+
+    @staticmethod
+    def can_plain(perms: Any) -> dict[str, Any]:
+        """The flags of a gate or a laydown zone: no state refuses, only the permission."""
+        from app.modules.site_logistics.plan_service import _flag
+
+        return {"edit": _flag(perms.write), "delete": _flag(perms.write)}
+
+    @staticmethod
+    def can_board(perms: Any) -> dict[str, Any]:
+        """Whether the caller may add a gate, a laydown zone or a delivery (these lists have no envelope)."""
+        from app.modules.site_logistics.plan_service import _flag
+
+        return {kind: {"create": _flag(perms.write)} for kind in ("gate", "zone", "delivery")}
+
+    async def can_delivery(self, delivery: DeliveryBooking, perms: Any) -> dict[str, Any]:
+        """What the caller may do with one delivery now: ``{allowed, applies, reason}`` per action.
+
+        ``reason`` is the code of the refusal the write would answer with, or
+        ``permission_denied``. Approving an approved delivery and rejecting a
+        rejected one do not apply.
+        """
+        from app.modules.site_logistics.plan_service import _flag
+
+        async def why_not(guard: Any) -> str | None:
+            try:
+                out = guard()
+                if hasattr(out, "__await__"):
+                    await out
+            except HTTPException as exc:
+                return str(getattr(exc, "code", "delivery_refused"))
+            return None
+
+        flags = {"edit": _flag(perms.write), "delete": _flag(perms.write)}
+        if delivery.status == "approved":
+            flags["approve"] = _flag(perms.approve, "invalid_transition", applies=False)
+        else:
+            flags["approve"] = _flag(perms.approve, await why_not(lambda: self._guard_approve(delivery)))
+        if delivery.status == "rejected":
+            flags["reject"] = _flag(perms.approve, "invalid_transition", applies=False)
+        else:
+            flags["reject"] = _flag(perms.approve, await why_not(lambda: self._guard_decision(delivery, "reject")))
+        return flags
 
     # ── Bill coverage ─────────────────────────────────────────────────────
 
@@ -580,12 +749,128 @@ class SiteLogisticsService:
             )
         return gate
 
+    def _plan(self) -> Any:
+        """The plan service on this session: the site clock, the gate load rule and the link checks live there."""
+        from app.modules.site_logistics.plan_service import LogisticsPlanService
+
+        return LogisticsPlanService(self.session)
+
     @staticmethod
-    def _assert_within_gate_hours(gate: Gate, window_start: datetime, window_end: datetime) -> None:
-        """Raise 400 when the window falls outside the gate's operating hours."""
-        ok, reason = delivery_within_gate_hours(gate.open_time, gate.close_time, window_start, window_end)
+    async def _plan_call(awaitable: Any) -> Any:
+        """Run a plan service call and show its refusal in this router's ``HTTPException`` style.
+
+        The detail starts with the stable error code. A 422 of the plan becomes
+        the 400 these routes have always used for a refused booking.
+        """
+        try:
+            return await awaitable
+        except LogisticsError as exc:
+            code = status.HTTP_400_BAD_REQUEST if exc.status_code == 422 else exc.status_code
+            info = f": {exc.detail}" if exc.detail else ""
+            raise _refusal(exc.code, f"{exc.code}{info}", code) from exc
+
+    async def _assert_approvable(
+        self,
+        project_id: uuid.UUID,
+        *,
+        gate: Gate | None,
+        gross_weight_t: Decimal | None,
+        transport_id: uuid.UUID | None,
+        start: datetime,
+        end: datetime,
+        exclude_id: uuid.UUID | None,
+    ) -> None:
+        """Everything an APPROVED delivery has to satisfy, for every path that produces one.
+
+        Rule 5 (gate load, lifted only by a granted oversize permit covering the
+        transport and the window), rule 12 (deliveries per hour of the concept)
+        and the slot clash on the gate.
+        """
+        plan = self._plan()
+        await self._plan_call(
+            plan.assert_gate_load(
+                project_id,
+                gate=gate,
+                vehicle={"gross_weight_t": gross_weight_t},
+                transport_id=transport_id,
+                start=start,
+                end=end,
+            )
+        )
+        rate = await plan.delivery_rate_violation(project_id, start, exclude_id=exclude_id)
+        if rate is not None:
+            info = ", ".join(f"{k}={v}" for k, v in rate.items() if k != "code")
+            raise _refusal(rate["code"], f"{rate['code']}: {info}" if info else rate["code"])
+        if gate is not None:
+            await self._assert_no_overlap(gate.id, start, end, exclude_id=exclude_id)
+
+    @staticmethod
+    def _assert_within_gate_hours(
+        gate: Gate,
+        window_start: datetime,
+        window_end: datetime,
+        concept_hours: tuple[str | None, str | None] | None = None,
+        tz: tzinfo | None = None,
+    ) -> None:
+        """Raise 400 when the window falls outside the gate's operating hours on the site clock.
+
+        ``concept_hours`` are the logistics concept's delivery hours; they apply
+        only where they are narrower than the gate's (rule 12). ``tz`` is the site
+        time zone. On a site without one the hours are not compared and the window
+        passes: see :meth:`delivery_warnings` for how that is told.
+        """
+        open_time, close_time = narrower_hours((gate.open_time, gate.close_time), concept_hours)
+        ok, reason = delivery_within_gate_hours(open_time, close_time, window_start, window_end, tz)
         if not ok:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=reason)
+            raise _refusal("outside_gate_hours", str(reason))
+
+    async def delivery_warnings(self, delivery: DeliveryBooking) -> list[dict[str, Any]]:
+        """What was not checked for this delivery, each ``{code, severity, field}``.
+
+        ``gate_hours_unchecked``: the gate (or the concept) has opening hours and
+        the site has no time zone, so the window was not compared with them.
+        ``field`` names the concept field that ends the warning.
+        """
+        if delivery.gate_id is None or delivery.window_start is None or delivery.window_end is None:
+            return []
+        if await self._plan().site_tz(delivery.project_id) is not None:
+            return []
+        gate = await self.gate_repo.get_by_id(delivery.gate_id)
+        if gate is None:
+            return []
+        open_time, close_time = narrower_hours(
+            (gate.open_time, gate.close_time), await self._concept_hours(delivery.project_id)
+        )
+        _, reason = delivery_within_gate_hours(open_time, close_time, delivery.window_start, delivery.window_end, None)
+        if str(reason or "").startswith(GATE_HOURS_UNCHECKED):
+            return [{"code": GATE_HOURS_UNCHECKED, "severity": "warning", "field": "site_timezone"}]
+        return []
+
+    async def _concept_hours(self, project_id: uuid.UUID) -> tuple[str | None, str | None] | None:
+        """The logistics concept's delivery hours of a project, ``None`` without a concept."""
+        from app.modules.site_logistics.models import LogisticsConcept
+
+        row = (
+            await self.session.execute(
+                select(LogisticsConcept.delivery_open, LogisticsConcept.delivery_close).where(
+                    LogisticsConcept.project_id == project_id
+                )
+            )
+        ).first()
+        if row is None or not row[0] or not row[1]:
+            return None
+        return (row[0], row[1])
+
+    async def _assert_plan_row(self, kind: str, row_id: uuid.UUID | None, project_id: uuid.UUID) -> None:
+        """404 when a new foreign key names a plan row of another project (rule 20)."""
+        if row_id is None:
+            return
+        from app.modules.site_logistics.models import SiteArea, Transport
+
+        model = {"area": SiteArea, "transport": Transport}[kind]
+        owner = (await self.session.execute(select(model.project_id).where(model.id == row_id))).scalar_one_or_none()
+        if owner != project_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{kind.capitalize()} not found")
 
     async def _assert_no_overlap(
         self,
@@ -600,12 +885,10 @@ class SiteLogisticsService:
         clash = find_first_overlap(window_start, window_end, [(s, e) for _id, s, e in existing])
         if clash is not None:
             clash_start, clash_end = clash
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "This window clashes with an approved delivery from "
-                    f"{clash_start:%Y-%m-%d %H:%M} to {clash_end:%H:%M} on this gate"
-                ),
+            raise _refusal(
+                "slot_taken",
+                "This window clashes with an approved delivery from "
+                f"{clash_start:%Y-%m-%d %H:%M} to {clash_end:%H:%M} on this gate",
             )
 
     @staticmethod

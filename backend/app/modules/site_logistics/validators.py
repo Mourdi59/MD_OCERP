@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, tzinfo
 from typing import Any
 
 from app.core.validation.engine import (
@@ -38,6 +38,8 @@ from app.modules.site_logistics.coverage import (
     coverage_by_position,
     to_decimal,
 )
+from app.modules.site_logistics.messages import translate
+from app.modules.site_logistics.planning import narrower_hours, site_zone
 
 logger = logging.getLogger(__name__)
 
@@ -66,17 +68,30 @@ def parse_hhmm(value: str | None) -> int | None:
     return hours * 60 + minutes
 
 
+TIMEZONE_MISSING = "site_timezone_missing"
+# Opening hours could not be compared because the site has no time zone. A warning, never a refusal:
+# a site that booked deliveries before it had a zone keeps booking them.
+GATE_HOURS_UNCHECKED = "gate_hours_unchecked"
+
+
 def delivery_within_gate_hours(
     open_time: str | None,
     close_time: str | None,
     window_start: datetime,
     window_end: datetime,
+    tz: tzinfo | None = None,
 ) -> tuple[bool, str | None]:
     """Check a delivery window falls inside a gate's daily operating hours.
 
     Returns ``(ok, reason)``. ``reason`` is a plain-English explanation when the
     window is rejected, and ``None`` when it passes. A gate with no configured
     hours (either bound missing/malformed) is treated as unrestricted -> passes.
+
+    Gate hours are times on the site's wall clock, so the window is converted to
+    ``tz``, the site time zone, before it is compared. Without a zone the hours
+    are not compared at all: the window passes and ``reason`` starts with
+    ``gate_hours_unchecked``. The clock of whatever offset the window happened
+    to arrive with is never read, and UTC is never assumed.
     """
     if window_end <= window_start:
         return False, "Delivery window end must be after its start"
@@ -89,6 +104,11 @@ def delivery_within_gate_hours(
     if close_min <= open_min:
         # Non-sensical gate window; don't block deliveries on gate misconfig.
         return True, None
+
+    if tz is None:
+        return True, f"{GATE_HOURS_UNCHECKED}: opening hours are not checked until the site time zone is set"
+    window_start = window_start.astimezone(tz)
+    window_end = window_end.astimezone(tz)
 
     # Gate hours are a time-of-day window, so a booking that crosses midnight
     # cannot sit inside a single day's opening hours.
@@ -166,6 +186,22 @@ def _gates(context: ValidationContext) -> dict[str, dict[str, Any]]:
     return {}
 
 
+def _site_tz(context: ValidationContext) -> tzinfo | None:
+    """The site time zone carried by the context (``site_timezone``: an IANA name), if any."""
+    data = context.data
+    return site_zone(data.get("site_timezone")) if isinstance(data, dict) else None
+
+
+def _concept_hours(context: ValidationContext) -> tuple[str | None, str | None] | None:
+    """The concept delivery hours carried by the context (``concept_hours: [open, close]``), if any."""
+    data = context.data
+    if isinstance(data, dict):
+        hours = data.get("concept_hours")
+        if isinstance(hours, list | tuple) and len(hours) == 2:
+            return (hours[0], hours[1])
+    return None
+
+
 def _bill_positions(context: ValidationContext) -> list[BillLine]:
     """Read the bill positions out of a validation context, if it carries any."""
     data = context.data
@@ -227,7 +263,9 @@ class SiteLogisticsGateHoursRule(ValidationRule):
 
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         gates = _gates(context)
+        tz = _site_tz(context)
         results: list[RuleResult] = []
+        missing_zone = False
         for d in _deliveries(context):
             gate_id = d.get("gate_id")
             gate = gates.get(str(gate_id)) if gate_id is not None else None
@@ -237,12 +275,15 @@ class SiteLogisticsGateHoursRule(ValidationRule):
             end = _as_dt(d.get("window_end"))
             if start is None or end is None:
                 continue
-            ok, reason = delivery_within_gate_hours(
-                gate.get("open_time"),
-                gate.get("close_time"),
-                start,
-                end,
+            # Rule 12: the logistics concept's delivery hours apply where narrower.
+            open_time, close_time = narrower_hours(
+                (gate.get("open_time"), gate.get("close_time")), _concept_hours(context)
             )
+            ok, reason = delivery_within_gate_hours(open_time, close_time, start, end, tz)
+            if ok and str(reason or "").startswith(GATE_HOURS_UNCHECKED):
+                # One row for the plan, not one per delivery: nothing was compared.
+                missing_zone = True
+                continue
             supplier = d.get("supplier_name") or "delivery"
             results.append(
                 RuleResult(
@@ -254,6 +295,19 @@ class SiteLogisticsGateHoursRule(ValidationRule):
                     message="OK" if ok else f"{supplier}: {reason}",
                     element_ref=str(d.get("id") or ""),
                     suggestion=None if ok else "Move the delivery inside the gate's operating hours",
+                )
+            )
+        if missing_zone:
+            results.append(
+                RuleResult(
+                    rule_id=self.rule_id,
+                    rule_name=self.name,
+                    severity=Severity.WARNING,
+                    category=self.category,
+                    passed=False,
+                    message=f"{GATE_HOURS_UNCHECKED}: gate hours were not checked, the site has no time zone",
+                    element_ref=None,
+                    suggestion="Set the site time zone in the logistics concept",
                 )
             )
         return results
@@ -353,9 +407,195 @@ class SiteLogisticsOverDeliveryRule(ValidationRule):
         return results
 
 
+# ── Logistics plan rules (framework module 6, SPEC section 7) ──────────────
+#
+# The plan rules read one payload, built by
+# ``LogisticsPlanService.validation_payload``: ``{"findings": [...]}``, each
+# finding ``{"rule", "code", "severity", "ref", "params"}``. The findings are
+# computed by the pure helpers in ``planning.py`` from the database; a rule here
+# reports its own findings, or one passing row when it has none.
+
+
+class _PlanRule(ValidationRule):
+    standard = "site_logistics"
+    category = RuleCategory.CONSISTENCY
+    severity = Severity.ERROR
+    key = ""
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        data = context.data if isinstance(context.data, dict) else {}
+        if "findings" not in data:
+            return []
+        meta = getattr(context, "metadata", None) or {}
+        locale = str(meta.get("locale") or "en")
+        mine = [f for f in data.get("findings") or [] if isinstance(f, dict) and f.get("rule") == self.key]
+        if not mine:
+            return [
+                RuleResult(
+                    rule_id=self.rule_id,
+                    rule_name=self.name,
+                    severity=self.severity,
+                    category=self.category,
+                    passed=True,
+                    message=translate("common.ok", locale=locale),
+                    element_ref="",
+                )
+            ]
+        out = []
+        for f in mine:
+            base = f"site_logistics.findings.{f.get('code')}"
+            out.append(
+                RuleResult(
+                    rule_id=self.rule_id,
+                    rule_name=self.name,
+                    severity=Severity.WARNING if f.get("severity") == "warning" else Severity.ERROR,
+                    category=self.category,
+                    passed=False,
+                    message=translate(f"{base}.fail", locale=locale, **(f.get("params") or {})),
+                    element_ref=str(f.get("ref") or ""),
+                    suggestion=translate(f"{base}.suggestion", locale=locale),
+                )
+            )
+        return out
+
+
+def _plan_rule(key: str, name: str, severity: Severity, description: str) -> type[_PlanRule]:
+    return type(
+        f"SiteLogisticsPlanRule_{key}",
+        (_PlanRule,),
+        {
+            "key": key,
+            "rule_id": f"site_logistics.{key}",
+            "name": name,
+            "severity": severity,
+            "description": description,
+        },
+    )
+
+
+_PLAN_RULE_SPECS: tuple[tuple[str, str, Severity, str], ...] = (
+    (
+        "site_timezone_set",
+        "Site time zone set",
+        Severity.ERROR,
+        "Time-of-day rules are evaluated on the site clock, so the site states its time zone",
+    ),
+    (
+        "gate_hours_checked",
+        "Gate hours checked",
+        Severity.WARNING,
+        "Opening hours of a gate are compared on the site clock, which needs the site time zone",
+    ),
+    (
+        "delivery_rate_respected",
+        "Delivery rate respected",
+        Severity.ERROR,
+        "No site clock hour holds more approved deliveries than the concept allows",
+    ),
+    (
+        "area_balance_closed",
+        "Area balance closed",
+        Severity.WARNING,
+        "Per stage, the counted allocations add up to the site total within tolerance",
+    ),
+    ("allocation_within_area", "Allocation within area", Severity.ERROR, "An allocation is never larger than its area"),
+    (
+        "area_overlap",
+        "No overlapping areas",
+        Severity.WARNING,
+        "Two areas of different kinds in one stage do not overlap",
+    ),
+    (
+        "stage_has_storage",
+        "Stage has storage",
+        Severity.ERROR,
+        "An active stage has at least one storage or laydown allocation",
+    ),
+    (
+        "stage_has_site_setup",
+        "Stage has site setup",
+        Severity.ERROR,
+        "An active stage has at least one site setup allocation",
+    ),
+    ("zone_mapped", "Laydown zone mapped", Severity.WARNING, "Every laydown zone is linked to a planned site area"),
+    (
+        "gate_load_respected",
+        "Gate load respected",
+        Severity.ERROR,
+        "Weights and dimensions stay within the gate limits",
+    ),
+    ("gate_limits_known", "Gate limits known", Severity.WARNING, "Every gate states its load and dimension limits"),
+    (
+        "heavy_transport_permitted",
+        "Heavy transport permitted",
+        Severity.ERROR,
+        "A heavy transport is scheduled only with a granted permit covering its window",
+    ),
+    ("permit_not_expiring", "Permit not expiring", Severity.WARNING, "No permit runs out while its transports remain"),
+    (
+        "media_capacity_sufficient",
+        "Media capacity sufficient",
+        Severity.ERROR,
+        "Per stage and media, demand with reserve stays within the contracted capacity",
+    ),
+    ("media_sourced", "Media sourced", Severity.WARNING, "Every media demand is served by a connection"),
+    (
+        "media_on_time",
+        "Media on time",
+        Severity.ERROR,
+        "A connection a stage needs is contracted or promised before the stage starts",
+    ),
+    (
+        "jit_aligned_to_takt",
+        "Just in time aligned to takt",
+        Severity.ERROR,
+        "A just-in-time delivery arrives within its buffer before the takt start of its location",
+    ),
+    (
+        "quiet_hours_respected",
+        "Quiet hours respected",
+        Severity.ERROR,
+        "No approved delivery or transport falls in the quiet hours without a night work permit",
+    ),
+    (
+        "hs_code_valid",
+        "HS code valid",
+        Severity.ERROR,
+        "Every customs line carries an HS code of digits, at least the catalogue minimum long",
+    ),
+    (
+        "incoterm_known",
+        "Incoterm known",
+        Severity.ERROR,
+        "A customs case names an incoterm of its version; sea-only terms need sea transport",
+    ),
+    (
+        "customs_documents_complete",
+        "Customs documents complete",
+        Severity.WARNING,
+        "Every required customs document is received before declaration",
+    ),
+    (
+        "declarant_matches_incoterm",
+        "Declarant matches incoterm",
+        Severity.WARNING,
+        "On an import, the declarant is the party the incoterm assigns import clearance to",
+    ),
+    (
+        "neighbour_issue_on_time",
+        "Neighbour complaint answered on time",
+        Severity.ERROR,
+        "A complaint is acknowledged before its response date",
+    ),
+)
+PLAN_RULES: tuple[type[_PlanRule], ...] = tuple(_plan_rule(*spec) for spec in _PLAN_RULE_SPECS)
+
+
 def register_site_logistics_validation_rules() -> None:
     """Register the site-logistics rules with the platform rule registry."""
     rule_registry.register(SiteLogisticsGateHoursRule(), ["site_logistics"])
     rule_registry.register(SiteLogisticsDeliveryOverlapRule(), ["site_logistics"])
     rule_registry.register(SiteLogisticsOverDeliveryRule(), ["site_logistics"])
-    logger.debug("site_logistics: registered 3 validation rules")
+    for rule in PLAN_RULES:
+        rule_registry.register(rule(), ["site_logistics"])
+    logger.debug("site_logistics: registered %d validation rules", 3 + len(PLAN_RULES))

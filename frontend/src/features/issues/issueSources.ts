@@ -21,11 +21,12 @@ import type { Markup } from '../markups/api';
 import type { PunchItem } from '../punchlist/api';
 import type { NCR } from '../ncr/api';
 import type { ClashIssue } from '../clash/api';
+import type { NeighbourIssue } from '../site-logistics/api';
 
 /* --- Public types --------------------------------------------------------- */
 
-/** The five issue-owning modules the hub unions. */
-export type IssueSource = 'markup' | 'punch' | 'ncr' | 'bcf' | 'clash';
+/** The issue-owning modules the hub unions. */
+export type IssueSource = 'markup' | 'punch' | 'ncr' | 'bcf' | 'clash' | 'neighbour';
 
 /** Every source status collapses into one of these four lifecycle buckets. */
 export type IssueStatusBucket = 'open' | 'in_progress' | 'resolved' | 'closed';
@@ -168,6 +169,13 @@ const CLASH_BUCKET: Record<string, IssueStatusBucket | undefined> = {
   // resolved, ignored, archived -> terminal / not-open
 };
 
+const NEIGHBOUR_BUCKET: Record<string, IssueStatusBucket | undefined> = {
+  received: 'open',
+  acknowledged: 'in_progress',
+  action_taken: 'resolved',
+  // closed -> terminal
+};
+
 /** Lower-cased BCF topic statuses that mean the topic is done. */
 const BCF_CLOSED_STATUSES = new Set(['closed', 'done', 'completed']);
 
@@ -285,6 +293,32 @@ export function mapClashIssue(c: ClashIssue): UnifiedIssue | null {
     // Smart issues are project-scoped, so link to the run where the clash was
     // last seen (opens the clash page in context), or the clash page itself.
     deepLink: runId ? `/clash?run=${encodeURIComponent(runId)}` : '/clash',
+  };
+}
+
+/**
+ * A complaint from the site's surroundings (noise, dust, blocked access ...).
+ * Its due date is the response date, which only binds until the complaint is
+ * acknowledged; after that the open work is the action, which has no date. The
+ * server's own overdue flag (rule 18) raises it to high priority.
+ */
+export function mapNeighbourIssue(n: NeighbourIssue): UnifiedIssue | null {
+  const bucket = NEIGHBOUR_BUCKET[n.state];
+  if (!bucket) return null;
+  const firstLine = strOrNull(str(n.description).split('
+')[0]);
+  return {
+    id: `neighbour:${n.id}`,
+    rawId: n.id,
+    source: 'neighbour',
+    title: firstLine ?? `Neighbour complaint: ${str(n.kind) || 'other'}`,
+    status: bucket,
+    rawStatus: n.state,
+    priority: n.overdue ? 'high' : 'medium',
+    assignee: strOrNull(n.owner_user_id),
+    dueDate: n.state === 'received' ? strOrNull(n.response_due) : null,
+    createdAt: strOrNull(n.created_at) ?? strOrNull(n.reported_on),
+    deepLink: `/site-logistics?neighbourIssue=${encodeURIComponent(n.id)}`,
   };
 }
 

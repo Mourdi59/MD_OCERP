@@ -1,0 +1,122 @@
+{
+  "id": "neutral",
+  "version": 1,
+  "name_key": "site_logistics.catalogue.neutral",
+  "jurisdiction": "",
+  "review_status": "unconfirmed",
+  "incoterm_version": "2020",
+  "incoterms_source_url": "https://iccwbo.org/business-solutions/incoterms-rules/incoterms-2020/",
+  "incoterms_review_status": "unconfirmed",
+  "hs_source_url": "https://www.wcoomd.org/en/topics/nomenclature/overview/what-is-the-harmonized-system.aspx",
+  "area_kinds": [
+    {"code": "site_total", "counts_in_balance": false, "balance_group": "built"},
+    {"code": "building_footprint", "counts_in_balance": true, "balance_group": "built"},
+    {"code": "storage", "counts_in_balance": true, "balance_group": "logistics"},
+    {"code": "laydown", "counts_in_balance": true, "balance_group": "logistics"},
+    {"code": "site_setup", "counts_in_balance": true, "balance_group": "logistics"},
+    {"code": "traffic_route", "counts_in_balance": true, "balance_group": "logistics"},
+    {"code": "operating", "counts_in_balance": true, "balance_group": "built"},
+    {"code": "expansion_reserve", "counts_in_balance": true, "balance_group": "reserve"},
+    {"code": "green_retained", "counts_in_balance": true, "balance_group": "reserve"},
+    {"code": "third_party", "counts_in_balance": false, "balance_group": "external"}
+  ],
+  "access_kinds": [
+    {"code": "road_gate"},
+    {"code": "pedestrian"},
+    {"code": "rail_siding"},
+    {"code": "waterside_quay"},
+    {"code": "crane_oversail"}
+  ],
+  "load_classes": [],
+  "media_kinds": [
+    {"code": "power", "capacity_unit": "kVA", "phase": "both"},
+    {"code": "water", "capacity_unit": "m3/h", "phase": "both"},
+    {"code": "sewage", "capacity_unit": "l/s", "phase": "both"},
+    {"code": "stormwater", "capacity_unit": "l/s", "phase": "both"},
+    {"code": "telecom", "capacity_unit": "Mbit/s", "phase": "both"},
+    {"code": "district_heat", "capacity_unit": "kW", "phase": "operation"},
+    {"code": "gas", "capacity_unit": "kW", "phase": "both"}
+  ],
+  "transport_kinds": [
+    {"code": "inbound_delivery", "direction": "inbound"},
+    {"code": "outbound_waste", "direction": "outbound"},
+    {"code": "outbound_spoil", "direction": "outbound"},
+    {"code": "outbound_return", "direction": "outbound"},
+    {"code": "heavy_oversize", "direction": "both", "always_heavy": true},
+    {"code": "just_in_time", "direction": "inbound"},
+    {"code": "abnormal_load_escort", "direction": "both", "always_heavy": true}
+  ],
+  "permit_kinds": [
+    {"code": "oversize_permit"},
+    {"code": "road_occupancy"},
+    {"code": "traffic_order"},
+    {"code": "escort_notification"},
+    {"code": "night_work"},
+    {"code": "crane_oversail_consent"}
+  ],
+  "incoterms": [
+    {"code": "EXW", "risk_transfer_point": "seller_premises_at_buyer_disposal", "export_clearance_by": "buyer", "import_clearance_by": "buyer", "sea_only": false},
+    {"code": "FCA", "risk_transfer_point": "handed_to_buyer_carrier_at_named_place", "export_clearance_by": "seller", "import_clearance_by": "buyer", "sea_only": false},
+    {"code": "CPT", "risk_transfer_point": "handed_to_first_carrier", "export_clearance_by": "seller", "import_clearance_by": "buyer", "sea_only": false},
+    {"code": "CIP", "risk_transfer_point": "handed_to_first_carrier", "export_clearance_by": "seller", "import_clearance_by": "buyer", "sea_only": false},
+    {"code": "DAP", "risk_transfer_point": "arrival_at_named_place_ready_for_unloading", "export_clearance_by": "seller", "import_clearance_by": "buyer", "sea_only": false},
+    {"code": "DPU", "risk_transfer_point": "unloaded_at_named_place", "export_clearance_by": "seller", "import_clearance_by": "buyer", "sea_only": false},
+    {"code": "DDP", "risk_transfer_point": "arrival_at_named_place_ready_for_unloading", "export_clearance_by": "seller", "import_clearance_by": "seller", "sea_only": false},
+    {"code": "FAS", "risk_transfer_point": "alongside_vessel_at_port_of_shipment", "export_clearance_by": "seller", "import_clearance_by": "buyer", "sea_only": true},
+    {"code": "FOB", "risk_transfer_point": "on_board_vessel_at_port_of_shipment", "export_clearance_by": "seller", "import_clearance_by": "buyer", "sea_only": true},
+    {"code": "CFR", "risk_transfer_point": "on_board_vessel_at_port_of_shipment", "export_clearance_by": "seller", "import_clearance_by": "buyer", "sea_only": true},
+    {"code": "CIF", "risk_transfer_point": "on_board_vessel_at_port_of_shipment", "export_clearance_by": "seller", "import_clearance_by": "buyer", "sea_only": true}
+  ],
+  "customs_document_kinds": [
+    {"code": "commercial_invoice"},
+    {"code": "packing_list"},
+    {"code": "certificate_of_origin"},
+    {"code": "bill_of_lading"},
+    {"code": "air_waybill"},
+    {"code": "cmr"},
+    {"code": "import_declaration"},
+    {"code": "export_declaration"},
+    {"code": "ata_carnet"},
+    {"code": "dual_use_licence"},
+    {"code": "preferential_origin_statement"}
+  ],
+  "document_rules": [
+    {"kind": "commercial_invoice"},
+    {"kind": "packing_list"},
+    {"kind": "certificate_of_origin", "directions": ["import"]},
+    {"kind": "import_declaration", "clearance": "import"},
+    {"kind": "export_declaration", "clearance": "export"},
+    {"kind": "preferential_origin_statement", "preferential_only": true},
+    {"kind": "bill_of_lading", "modes": ["sea", "inland_waterway"]},
+    {"kind": "air_waybill", "modes": ["air"]},
+    {"kind": "cmr", "modes": ["road"]}
+  ],
+  "permit_roles": {
+    "heavy_transport": ["oversize_permit", "escort_notification"],
+    "gate_load": ["oversize_permit"],
+    "quiet_hours": ["night_work"]
+  },
+  "noise_limits": [
+    {"code": "project_residential", "zone_type": "residential", "project_value_required": true},
+    {"code": "project_mixed", "zone_type": "mixed", "project_value_required": true},
+    {"code": "project_industrial", "zone_type": "industrial", "project_value_required": true}
+  ],
+  "neighbour_issue_kinds": [
+    {"code": "noise"},
+    {"code": "dust"},
+    {"code": "vibration"},
+    {"code": "traffic"},
+    {"code": "parking"},
+    {"code": "dirt_on_road"},
+    {"code": "light"},
+    {"code": "access_blocked"},
+    {"code": "damage"}
+  ],
+  "thresholds": {
+    "area_balance_tolerance_pct": "2",
+    "media_reserve_pct": "10",
+    "permit_warn_days": 14,
+    "customs_hs_digits_min": 6,
+    "neighbour_response_days": 5
+  }
+}

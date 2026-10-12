@@ -307,8 +307,9 @@ async def test_the_demo_seed_books_against_the_projects_own_bill(pg_session) -> 
             assert line.unit
 
         gate = gate_by_id[delivery.gate_id]
+        # The demo project has no site time zone; its windows are seeded on the UTC clock.
         ok, reason = delivery_within_gate_hours(
-            gate.open_time, gate.close_time, delivery.window_start, delivery.window_end
+            gate.open_time, gate.close_time, delivery.window_start, delivery.window_end, UTC
         )
         assert ok, f"seeded delivery breaks its own gate hours: {reason}"
 
