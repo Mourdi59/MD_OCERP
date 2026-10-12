@@ -19,7 +19,7 @@ T = TypeVar("T")
 
 Outcome = Literal["go", "go_with_conditions", "hold", "recycle", "stop"]
 Severity = Literal["critical", "essential", "recommended"]
-CatalogueSource = Literal["shipped", "tenant"]
+CatalogueSource = Literal["shipped", "tenant", "pack"]
 
 
 # Label of a catalogue item: {key, text}; both null when the catalogue no longer has the item.

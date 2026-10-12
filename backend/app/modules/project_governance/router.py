@@ -217,10 +217,19 @@ async def _tenant_out(store: CatalogueStore, row: Any) -> TenantCatalogueOut:
 
 @router.get("/catalogues", response_model=Page[dict[str, Any]], dependencies=[READ])
 async def list_catalogues(
-    session: SessionDep, payload: CurrentUserPayload, kind: str = Query("phase_model", max_length=40)
+    session: SessionDep,
+    payload: CurrentUserPayload,
+    kind: str = Query("phase_model", max_length=40),
+    country: str | None = Query(None, max_length=2),
 ) -> dict[str, Any]:
-    """Shipped catalogues and the caller's tenant catalogues of one kind."""
-    items = await _run(CatalogueStore(session).list_available(resolve_tenant_id(payload), kind=kind))
+    """Shipped catalogues, the active pack's and the caller's tenant catalogues of one kind.
+
+    ``country`` is the project's country; the item a new project of that
+    country should pin carries ``default: true``.
+    """
+    items = await _run(
+        CatalogueStore(session).list_available(resolve_tenant_id(payload), kind=kind, country_code=country)
+    )
     return _page(items)
 
 
