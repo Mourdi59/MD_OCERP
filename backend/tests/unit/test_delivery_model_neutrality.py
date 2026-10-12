@@ -3,9 +3,9 @@
 """The delivery model matches nothing by a literal code: carrier, procurement gate, rule 6, overrides.
 
 Every case shows the input that used to pass or be skipped. Where a governance
-catalogue is needed, a small stand-in carries the tags as module 1 will
-(``hosts`` on a document type, ``enables`` on a phase); the last test reads
-the catalogues module 1 really ships.
+catalogue is needed, a small stand-in answers the two accessors of the
+governance catalogue (``host_of`` and ``phases_enabling``) from tags, as
+module 1 does; one test reads the catalogues module 1 really ships.
 """
 
 from __future__ import annotations
@@ -71,6 +71,12 @@ class _Governance:
     phases: tuple[_Phase, ...] = ()
     gates: tuple[_Gate, ...] = field(default=())
 
+    def host_of(self, subject: str) -> _Doc | None:
+        return next((d for d in self.document_types if subject in d.hosts), None)
+
+    def phases_enabling(self, capability: str) -> tuple[_Phase, ...]:
+        return tuple(p for p in self.phases if capability in p.enables)
+
 
 def test_the_carrier_is_the_tagged_document_whatever_it_is_called() -> None:
     model = _Governance(
@@ -79,23 +85,13 @@ def test_the_carrier_is_the_tagged_document_whatever_it_is_called() -> None:
             _Doc("vergabestrategie", "vergabe", hosts=("delivery_model",)),
         )
     )
-    assert hosting.carrier_document_types(model) == ("vergabestrategie",)
+    assert hosting.carrier_document_type(model) == "vergabestrategie"
 
 
 def test_an_untagged_model_has_no_carrier_and_no_other_document_stands_in() -> None:
     # The old resolver took the first document of the area here (a bill of quantities under one model).
     model = _Governance(document_types=(_Doc("bill_of_quantities", "procurement"), _Doc("x_frame", "procurement")))
-    assert hosting.carrier_document_types(model) == ()
-
-
-def test_a_document_without_the_attribute_is_not_a_carrier() -> None:
-    class Bare:
-        code = "frame"
-
-    class Model:
-        document_types = (Bare(),)
-
-    assert hosting.carrier_document_types(Model()) == ()
+    assert hosting.carrier_document_type(model) is None
 
 
 def test_the_procurement_gate_is_the_gate_into_the_tagged_phase() -> None:
@@ -120,9 +116,9 @@ def test_every_shipped_phase_model_names_one_carrier_and_a_procurement_phase() -
     from app.modules.project_governance.catalogue import list_catalogues
 
     missing = {
-        c.id: (hosting.carrier_document_types(c), hosting.procurement_gate_codes(c))
+        c.id: (hosting.carrier_document_type(c), hosting.procurement_gate_codes(c))
         for c in list_catalogues()
-        if len(hosting.carrier_document_types(c)) != 1 or not hosting.procurement_gate_codes(c)
+        if hosting.carrier_document_type(c) is None or not hosting.procurement_gate_codes(c)
     }
     assert missing == {}
 

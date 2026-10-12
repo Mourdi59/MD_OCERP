@@ -56,18 +56,23 @@ def tag_governance(
     """Serve governance catalogues with the delivery tags module 1 will ship (see the module docstring)."""
     from app.modules.delivery_model import hosting
 
+    untagged = documents == {}  # a model that hosts the delivery model nowhere, whatever the tree ships
     documents = {CONTRACT_DOC: (hosting.CARRIER_TAG,)} if documents is None else documents
     phases = {"execution": (hosting.PROCUREMENT_TAG,)} if phases is None else phases
     real = hosting.governance_catalogue
 
     async def with_tags(session: Any, project_id: uuid.UUID) -> Any:
         catalogue = await real(session, project_id)
-        if catalogue is None or hosting.carrier_document_types(catalogue):
+        if catalogue is None or (hasattr(catalogue, "host_of") and not untagged):
             return catalogue
+        docs = tuple(_Tagged(d, hosts=documents.get(d.code, ())) for d in catalogue.document_types)
+        tagged = tuple(_Tagged(p, enables=phases.get(p.code, ())) for p in catalogue.phases)
         return _Tagged(
             catalogue,
-            document_types=tuple(_Tagged(d, hosts=documents.get(d.code, ())) for d in catalogue.document_types),
-            phases=tuple(_Tagged(p, enables=phases.get(p.code, ())) for p in catalogue.phases),
+            document_types=docs,
+            phases=tagged,
+            host_of=lambda subject: next((d for d in docs if subject in d.hosts), None),
+            phases_enabling=lambda capability: tuple(p for p in tagged if capability in p.enables),
         )
 
     monkeypatch.setattr(hosting, "governance_catalogue", with_tags)

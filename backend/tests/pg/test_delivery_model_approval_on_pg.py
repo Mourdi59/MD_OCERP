@@ -81,8 +81,9 @@ async def _decide_gate(w, *, decider: uuid.UUID | None = None, deliver: bool = T
 
 
 @pytest.mark.parametrize("catalogue_id", ["hoai_lph", "neutral", "riba_2020", "aia_b101", "aho_heft9"])
-async def test_a_phase_model_without_a_carrier_refuses_the_proposal(factory, catalogue_id) -> None:
-    """Untagged, as these models are in this tree. Under hoai_lph the old code bound the bill of quantities."""
+async def test_a_phase_model_without_a_carrier_refuses_the_proposal(factory, catalogue_id, monkeypatch) -> None:
+    """A model that hosts the delivery model nowhere. Under hoai_lph the old code bound the bill of quantities."""
+    tag_governance(monkeypatch, documents={}, phases={})
     w = await build_world(factory, catalogue_id=catalogue_id)
     ids = await compare(w)
     with pytest.raises(DeliveryModelError) as exc:
@@ -108,9 +109,10 @@ async def test_without_a_governance_model_the_proposal_is_refused_with_its_own_r
     assert (await view(w, can_manage=True))["can"]["propose"]["reason"] == "governance_model_missing"
 
 
-async def test_a_blocking_provider_says_unknown_once_when_there_is_no_carrier(factory) -> None:
+async def test_a_blocking_provider_says_unknown_once_when_there_is_no_carrier(factory, monkeypatch) -> None:
     """Not an empty list: a project that uses the module and cannot be checked must be visible at the gate."""
-    w = await build_world(factory)  # elf model, untagged in this tree
+    tag_governance(monkeypatch, documents={}, phases={})
+    w = await build_world(factory)
     await compare(w)
     g = await gate(w, GATE)
     attempt = GateAttempt(gate_id=g.id, gate_code=GATE, attempt_no=1)
