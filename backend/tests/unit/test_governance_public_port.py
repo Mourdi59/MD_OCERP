@@ -105,3 +105,109 @@ def test_every_listing_model_has_the_common_fields(view: type) -> None:
 
 def test_the_port_exports_its_listing_calls() -> None:
     assert {"project_gates", "project_areas", "project_documents"} <= set(public.__all__)
+
+
+def test_gate_views_read_the_planned_day_from_the_schedule_when_given() -> None:
+    from datetime import date
+
+    neutral = cat.get_catalogue("neutral")
+    own = _gate(1, "strategy_to_brief", 1)
+    own.target_date = "2027-03-01"
+    linked = _gate(2, "brief_to_concept", 2)
+    linked.target_date = ""
+    unplanned = _gate(3, "concept_to_design", 3)
+    unplanned.target_date = ""
+    views = public.gate_views(neutral, [own, linked, unplanned], {_id(2): "2027-06-15", _id(3): ""})
+    assert [v.target_date for v in views] == [date(2027, 3, 1), date(2027, 6, 15), None]
+
+
+def test_document_views_carry_the_pointers_a_module_files_against() -> None:
+    neutral = cat.get_catalogue("neutral")
+    areas = public.area_views(neutral, [_area(1, "scope", 1)])
+    row = _doc(11, "scope_statement", 1, container_id=_id(50), bound_revision_id=_id(51), approved_gate_id=_id(52))
+    (view,) = public.document_views(neutral, [row], areas)
+    assert (view.container_id, view.bound_revision_id, view.approved_gate_id) == (_id(50), _id(51), _id(52))
+    (bare,) = public.document_views(neutral, [_doc(12, "requirements_brief", 1)], areas)
+    assert (bare.container_id, bare.bound_revision_id, bare.approved_gate_id) == (None, None, None)
+
+
+def test_decision_views_are_oldest_first() -> None:
+    from datetime import UTC, datetime
+
+    def row(n: int, day: int, outcome: str, attempt: int) -> SimpleNamespace:
+        return SimpleNamespace(
+            id=_id(n),
+            gate_id=_id(1),
+            gate_code="strategy_to_brief",
+            attempt_no=attempt,
+            outcome=outcome,
+            decided_by=_id(9),
+            decided_at=datetime(2026, 10, day, tzinfo=UTC),
+        )
+
+    views = public.decision_views([row(2, 12, "go", 2), row(1, 5, "recycle", 1)])
+    assert [(v.id, v.outcome, v.attempt_no) for v in views] == [(_id(1), "recycle", 1), (_id(2), "go", 2)]
+    assert views[0].decided_by == _id(9) and views[0].gate_code == "strategy_to_brief"
+
+
+def _condition(n: int, status: str, due: str, **kw) -> SimpleNamespace:
+    base = {
+        "decision_id": _id(100),
+        "gate_id": _id(1),
+        "gate_code": "strategy_to_brief",
+        "text": f"condition {n}",
+        "severity": "essential",
+        "area_code": None,
+        "document_type": None,
+        "owner_user_id": _id(7),
+        "cleared_at": None,
+    }
+    return SimpleNamespace(id=_id(n), status=status, due_date=due, **{**base, **kw})
+
+
+def test_condition_views_read_overdue_from_the_day_given_not_from_the_stored_status() -> None:
+    from datetime import date
+
+    rows = [
+        _condition(1, "open", "2026-10-01"),
+        _condition(2, "open", "2026-12-01"),
+        _condition(3, "cleared", "2026-09-01"),
+        _condition(4, "open", ""),
+        _condition(5, "waived", "2026-08-01"),
+    ]
+    views = public.condition_views(rows, date(2026, 10, 12))
+    assert {v.id: v.status for v in views} == {
+        _id(1): "overdue",
+        _id(2): "open",
+        _id(3): "cleared",
+        _id(4): "open",
+        _id(5): "waived",
+    }
+    # Earliest due date first, undated last.
+    assert [v.id for v in views] == [_id(5), _id(3), _id(1), _id(2), _id(4)]
+    assert views[2].due_date == date(2026, 10, 1) and views[-1].due_date is None
+    # The same rows a day before the first one fell due.
+    assert {v.status for v in public.condition_views(rows[:1], date(2026, 10, 1))} == {"open"}
+
+
+def test_change_request_views_say_which_is_open() -> None:
+    def row(n: int, status: str) -> SimpleNamespace:
+        return SimpleNamespace(
+            id=_id(n),
+            document_id=_id(11),
+            status=status,
+            reason="newer file",
+            proposed_revision_id=_id(60 + n),
+            requested_by=_id(7),
+            decided_at=None,
+        )
+
+    views = public.change_request_views([row(1, "rejected"), row(2, "submitted"), row(3, "approved")])
+    assert [(v.id, v.open) for v in views] == [(_id(1), False), (_id(2), True), (_id(3), False)]
+    assert views[1].proposed_revision_id == _id(62)
+
+
+def test_the_port_exports_its_second_round() -> None:
+    assert {"project_gate_decisions", "project_conditions", "project_change_requests"} <= set(public.__all__)
+    for name in public.__all__:
+        assert hasattr(public, name), name
