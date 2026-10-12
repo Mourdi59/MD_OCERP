@@ -260,9 +260,11 @@ export function PreservationPanel(props: PanelProps) {
           </Hint>
         ) : (
           <ul className="divide-y divide-border-light" data-testid="report-list">
-            <li className="empty:hidden">
-              <SharedReasons codes={sharedReasons(reports.data ?? [], planRowActions)} />
-            </li>
+            {sharedReasons(reports.data ?? [], planRowActions).length > 0 && (
+              <li>
+                <SharedReasons codes={sharedReasons(reports.data ?? [], planRowActions)} />
+              </li>
+            )}
             {(reports.data ?? []).map((r) => (
               <li key={r.id} className="py-2" data-testid="report-entry">
                 <div className="flex flex-wrap items-center gap-2 text-sm">

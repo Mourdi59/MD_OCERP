@@ -247,9 +247,11 @@ export function CertificationPanel(props: PanelProps) {
                   </Hint>
                 ) : (
                   <ul className="divide-y divide-border-light" data-testid="credit-list">
-                    <li className="empty:hidden">
-                      <SharedReasons codes={sharedReasons(target.credits, creditActions)} />
-                    </li>
+                    {sharedReasons(target.credits, creditActions).length > 0 && (
+                      <li>
+                        <SharedReasons codes={sharedReasons(target.credits, creditActions)} />
+                      </li>
+                    )}
                     {target.credits.map((c) => (
                       <li key={c.id} className="py-2" data-testid="credit-entry">
                         <div className="flex flex-wrap items-center gap-2 text-sm">

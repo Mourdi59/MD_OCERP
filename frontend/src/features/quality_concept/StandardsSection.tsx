@@ -63,9 +63,11 @@ export function StandardsSection(props: PanelProps) {
           </Hint>
         ) : (
           <ul className="divide-y divide-border-light" data-testid="standards-list">
-            <li className="empty:hidden">
-              <SharedReasons codes={sharedReasons(standards.data ?? [], planRowActions)} />
-            </li>
+            {sharedReasons(standards.data ?? [], planRowActions).length > 0 && (
+              <li>
+                <SharedReasons codes={sharedReasons(standards.data ?? [], planRowActions)} />
+              </li>
+            )}
             {(standards.data ?? []).map((s) => (
               <li key={s.id} className="flex flex-wrap items-center gap-2 py-2 text-sm" data-testid="standard-entry">
                 <span className="font-medium text-content-primary">{s.code}</span>

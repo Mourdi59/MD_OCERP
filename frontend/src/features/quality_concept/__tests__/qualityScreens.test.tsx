@@ -15,7 +15,7 @@ vi.mock('../api', async (importOriginal) => (await import('./apiMock')).apiMock(
 import { ApiError } from '@/shared/lib/api';
 
 import * as api from '../api';
-import type { CatalogueChoice } from '../api';
+import type { CatalogueChoice, ExpertReport } from '../api';
 import { MAY_SUBMIT, NOT_MANAGER, PLAN_CLOSED, SHELL, concept, matrix, page, progress, proof, unit } from './fixtures';
 import { emptyProject, renderPage } from './harness';
 
@@ -761,5 +761,38 @@ describe('a reason every row shares', () => {
     const note = await screen.findByTestId('scope-closed-reason');
     expect(note.textContent).toBe('Only a manager or the owner of the quality area can change the plan.');
     expect(screen.getByTestId('scope-edit')).toBeDisabled();
+  });
+});
+
+describe('a list without a shared reason', () => {
+  const report = (id: string, over: Partial<ExpertReport> = {}): ExpertReport => ({
+    id,
+    subject: `Report ${id}`,
+    expert_contact_id: null,
+    trigger: '',
+    frequency: '',
+    due_dates: [],
+    commitment_ref: null,
+    state: 'planned',
+    ...over,
+  });
+
+  it('has exactly as many items as rows', async () => {
+    mocked.listExpertReports.mockResolvedValue(
+      page([report('x1'), report('x2', { can: { edit: false }, can_reason: { edit: 'manage_required' } })]),
+    );
+    renderPage('preservation');
+    const list = await screen.findByTestId('report-list');
+    expect(list.children).toHaveLength(2);
+    expect(screen.queryByTestId('closed-reason-shared')).toBeNull();
+  });
+
+  it('gains one item for the reason when every row shares it', async () => {
+    const closed = { can: { edit: false, delete: false }, can_reason: { edit: 'manage_required', delete: 'manage_required' } };
+    mocked.listExpertReports.mockResolvedValue(page([report('x1', closed), report('x2', closed)]));
+    renderPage('preservation');
+    const list = await screen.findByTestId('report-list');
+    expect(list.children).toHaveLength(3);
+    expect(within(list).getAllByText('Only a manager or the owner of the quality area can change the plan.')).toHaveLength(1);
   });
 });
