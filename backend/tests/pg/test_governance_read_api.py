@@ -201,13 +201,18 @@ async def test_four_eyes_shows_up_in_can_decide(world: World) -> None:
         await s.commit()
     can = await _can(world, g.id, world.decider, "manager")
     status, code = await _try_stop(world, g.id, world.decider, "manager")
-    assert can == {
+    # Named keys, not the whole dict: the gate answers more flags than the decision ones.
+    assert {k: can[k] for k in ("edit", "decide", "decide_reason", "go", "go_reason")} == {
         "edit": True,
         "decide": False,
         "decide_reason": "decider_is_area_owner",
         "go": False,
         "go_reason": "decider_is_area_owner",
     }
+    # Four eyes is about the person, so it closes every outcome, not only the go.
+    assert can["outcomes"] and all(
+        o == {"allowed": False, "reason": "decider_is_area_owner"} for o in can["outcomes"].values()
+    )
     assert (status, code) == (403, "decider_is_area_owner")
 
 

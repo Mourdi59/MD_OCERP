@@ -79,7 +79,7 @@ const PlantRegisterPage = lazy(() =>
   import('@/features/plant_register').then((m) => ({ default: m.PlantRegisterPage }))
 );
 const ProjectGovernancePage = lazy(() =>
-  import('@/features/project_governance').then((m) => ({ default: m.ProjectGovernancePage }))
+  import('@/features/project_governance/ProjectGovernancePage').then((m) => ({ default: m.ProjectGovernancePage }))
 );
 const TenderingPage = lazy(() =>
   import('@/features/tendering/TenderingPage').then((m) => ({ default: m.TenderingPage }))

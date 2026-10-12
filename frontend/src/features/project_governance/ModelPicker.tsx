@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Layers } from 'lucide-react';
+import { ArrowRight, Layers } from 'lucide-react';
 import clsx from 'clsx';
 
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -153,7 +153,9 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
               return current ? catalogueTitle(labels, current) : humanizeCode(model.catalogue_id);
             })()}
           </span>
-          <span className="text-xs text-content-tertiary">v{model.catalogue_version}</span>
+          <span className="text-xs text-content-tertiary">
+            {t('governance.project.model.version', { defaultValue: 'Version {{n}}', n: model.catalogue_version })}
+          </span>
           <label className="ml-auto inline-flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -262,9 +264,7 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
                 <span className="w-40 shrink-0 truncate text-content-primary">
                   {catalogueName(labels, { kind: 'phase', code: p.code, catalogueId: model?.catalogue_id, label: p.name })}
                 </span>
-                <span aria-hidden className="text-content-tertiary">
-                  {'->'}
-                </span>
+                <ArrowRight size={14} aria-hidden className="shrink-0 text-content-tertiary" />
                 {choice.phases && choice.phases.length > 0 ? (
                   <select
                     className="flex-1 rounded-md border border-border-light bg-surface-primary px-2 py-1 text-sm"

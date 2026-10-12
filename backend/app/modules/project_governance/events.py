@@ -29,8 +29,6 @@ from app.database import async_session_factory
 
 logger = logging.getLogger(__name__)
 
-_SUBSCRIBED_FLAG = "_governance_approval_subscribers_registered"
-
 
 async def _can_open_isolated_session() -> bool:
     try:
@@ -84,9 +82,12 @@ async def _on_rejected(event: Event) -> None:
 
 
 def register_governance_subscribers() -> None:
-    """Idempotently wire the approval-route subscribers of this module."""
-    if getattr(event_bus, _SUBSCRIBED_FLAG, False):
-        return
+    """Wire the approval-route subscribers of this module; safe to call again.
+
+    No "already registered" flag is kept: the bus is emptied when an app is
+    restarted inside one process, a flag would outlive that, and the module
+    would never hear a route verdict again. ``subscribe_once`` already makes a
+    repeated call bind nothing twice.
+    """
     event_bus.subscribe_once("approval_routes.instance.completed", _on_completed)
     event_bus.subscribe_once("approval_routes.instance.rejected", _on_rejected)
-    setattr(event_bus, _SUBSCRIBED_FLAG, True)
