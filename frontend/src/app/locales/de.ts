@@ -49818,6 +49818,9 @@ const resource = {
     "site_logistics.plan.siteplan.edit_outline": "Umriss ändern",
     "site_logistics.plan.siteplan.empty_title": "Noch nichts zu zeichnen",
     "site_logistics.plan.siteplan.empty_body": "Zuerst eine Baustellenfläche, einen Transport, eine Genehmigung oder einen Medienanschluss anlegen. Danach lässt sich jedes davon hier zeichnen.",
+    "site_logistics.plan.siteplan.zoom_in": "Vergrößern",
+    "site_logistics.plan.siteplan.zoom_out": "Verkleinern",
+    "site_logistics.plan.siteplan.fit": "An Zeichnung anpassen",
   }
 } as { translation: Record<string, string> };
 

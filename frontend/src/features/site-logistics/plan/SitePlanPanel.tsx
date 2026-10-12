@@ -6,8 +6,8 @@
 // connection. The drawing only records corners. What an outline measures and
 // which areas overlap is computed by the server and shown as it answers.
 
-import { useMemo, useState, type MouseEvent } from 'react';
-import { AlertTriangle, MapPinned, Undo2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { AlertTriangle, MapPinned, Maximize2, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { useToastStore } from '@/stores/useToastStore';
@@ -20,15 +20,19 @@ import {
   linePoints,
   moveVertex,
   openRing,
+  panView,
   pointOf,
   removeVertex,
+  screenScale,
   screenToMetres,
   svgPoints,
   toLine,
   toPoint,
   viewBox,
   viewOf,
+  zoomView,
   type Pt,
+  type View,
 } from './geometry';
 import {
   useAreas,
@@ -85,6 +89,11 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
   const [selected, setSelected] = useState<number | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  // Null follows the drawing; a view the reader chose by zooming or panning stays until "fit".
+  const [chosenView, setChosenView] = useState<View | null>(null);
+  const [sheet, setSheet] = useState<SVGSVGElement | null>(null);
+  const fingers = useRef(new Map<number, Pt>());
+  const gesture = useRef<{ from: Pt; view: View; spread: number | null; moved: boolean } | null>(null);
 
   const stageId = stagePick || stages.find((s) => s.state === 'active')?.id || stages[0]?.id || '';
   const areaRows = areas.data ?? [];
@@ -129,7 +138,23 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
     (x) => x !== target && x.points.length > 0 && (x.kind !== 'area' || stageAreas.some((a) => a.id === x.id)),
   );
   // The sheet does not move while a corner is dragged: it is laid out from the saved drawing only.
-  const view = viewOf([...background.map((x) => x.points), ...(target ? [target.points] : [])]);
+  const view = chosenView ?? viewOf([...background.map((x) => x.points), ...(target ? [target.points] : [])]);
+  const viewNow = useRef(view);
+  viewNow.current = view;
+
+  // The wheel zooms the sheet instead of scrolling the page, which React's own passive wheel listener cannot stop.
+  useEffect(() => {
+    if (!sheet) return undefined;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const about = screenToMetres([e.clientX, e.clientY], sheet.getBoundingClientRect(), viewNow.current);
+      setChosenView(zoomView(viewNow.current, e.deltaY > 0 ? 1.15 : 1 / 1.15, about));
+    };
+    sheet.addEventListener('wheel', onWheel, { passive: false });
+    return () => sheet.removeEventListener('wheel', onWheel);
+  }, [sheet]);
+  const zoomBy = (factor: number) =>
+    setChosenView(zoomView(view, factor, [view.minX + view.width / 2, view.minY + view.height / 2]));
   const unit = Math.max(view.width, view.height) / 100;
 
   const begin = (key: string) => {
@@ -151,18 +176,23 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
     setSelected(null);
   };
 
-  const at = (e: MouseEvent<SVGSVGElement>): Pt =>
+  const at = (e: MouseEvent<SVGSVGElement> | PointerEvent<SVGSVGElement>): Pt =>
     screenToMetres([e.clientX, e.clientY], e.currentTarget.getBoundingClientRect(), view);
 
   const editable = !readOnly && !!target;
   const onSheet = (e: MouseEvent<SVGSVGElement>) => {
+    // A click that ends a pan or a pinch is not a point.
+    if (gesture.current?.moved) {
+      gesture.current = null;
+      return;
+    }
     // Only a click on the bare sheet adds a point; a click that ends on a corner is the end of a drag.
     if (!editable || !shape || (e.target as Element).getAttribute('data-sheet') === null) return;
     if (shape === 'point') change({ points: [at(e)], closed: false });
     else if (!draft.closed) change({ points: [...draft.points, at(e)], closed: false });
     else setSelected(null);
   };
-  const onCorner = (e: MouseEvent, i: number) => {
+  const onCorner = (e: PointerEvent, i: number) => {
     if (!editable) return;
     e.stopPropagation();
     if (shape === 'outline' && !draft.closed && i === 0 && draft.points.length >= 3) {
@@ -173,8 +203,53 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
     setHistory((h) => [...h, draft]);
     setDragging(i);
   };
-  const onMove = (e: MouseEvent<SVGSVGElement>) => {
-    if (dragging !== null) setDraft((d) => ({ ...d, points: moveVertex(d.points, dragging, at(e)) }));
+  const spreadOf = (): { spread: number; middle: Pt } | null => {
+    const [a, b] = [...fingers.current.values()];
+    return a && b ? { spread: Math.hypot(b[0] - a[0], b[1] - a[1]), middle: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] } : null;
+  };
+  const onDown = (e: PointerEvent<SVGSVGElement>) => {
+    fingers.current.set(e.pointerId, [e.clientX, e.clientY]);
+    if (fingers.current.size === 1) gesture.current = { from: [e.clientX, e.clientY], view, spread: null, moved: false };
+    else if (gesture.current) gesture.current.spread = spreadOf()?.spread ?? null;
+  };
+  const onMove = (e: PointerEvent<SVGSVGElement>) => {
+    if (dragging !== null) {
+      setDraft((d) => ({ ...d, points: moveVertex(d.points, dragging, at(e)) }));
+      return;
+    }
+    const g = gesture.current;
+    if (!g || !fingers.current.has(e.pointerId)) return;
+    fingers.current.set(e.pointerId, [e.clientX, e.clientY]);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const two = spreadOf();
+    if (two) {
+      // Two fingers: the sheet scales with their distance, around the point between them.
+      if (g.spread && two.spread > 0) {
+        setChosenView(zoomView(view, g.spread / two.spread, screenToMetres(two.middle, rect, view)));
+        g.moved = true;
+      }
+      g.spread = two.spread;
+      return;
+    }
+    const dx = e.clientX - g.from[0];
+    const dy = e.clientY - g.from[1];
+    // A few pixels of tremor are still a tap.
+    if (!g.moved && Math.hypot(dx, dy) < 5) return;
+    g.moved = true;
+    const scale = screenScale(rect, g.view);
+    setChosenView(panView(g.view, -dx * scale, dy * scale));
+  };
+  const onUp = (e: PointerEvent<SVGSVGElement>) => {
+    setDragging(null);
+    fingers.current.delete(e.pointerId);
+    const g = gesture.current;
+    const left = [...fingers.current.values()][0];
+    if (g && left) {
+      // One finger stays after a pinch: it pans on from where it is.
+      g.spread = null;
+      g.from = left;
+      g.view = viewNow.current;
+    }
   };
 
   const body = (): Body | null => {
@@ -332,11 +407,14 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
                 viewBox={viewBox(view)}
                 role="img"
                 aria-label={tx(t, 'siteplan.sheet')}
-                className={`h-[28rem] w-full rounded-lg border border-border-light bg-surface-secondary ${editable ? 'cursor-crosshair' : ''}`}
+                ref={setSheet}
+                className={`h-[28rem] w-full touch-none select-none rounded-lg border border-border-light bg-surface-secondary ${editable ? 'cursor-crosshair' : 'cursor-grab'}`}
                 onClick={onSheet}
-                onMouseMove={onMove}
-                onMouseUp={() => setDragging(null)}
-                onMouseLeave={() => setDragging(null)}
+                onPointerDown={onDown}
+                onPointerMove={onMove}
+                onPointerUp={onUp}
+                onPointerCancel={onUp}
+                onPointerLeave={onUp}
                 data-testid="siteplan-sheet"
               >
                 <rect data-sheet="" x={view.minX} y={-(view.minY + view.height)} width={view.width} height={view.height} fill="transparent" />
@@ -393,12 +471,26 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
                       aria-pressed={selected === i}
                       className={selected === i ? 'cursor-move fill-oe-blue stroke-white' : 'cursor-move fill-white stroke-oe-blue'}
                       strokeWidth={unit * 0.3}
-                      onMouseDown={(e) => onCorner(e, i)}
+                      onPointerDown={(e) => onCorner(e, i)}
                       data-testid="siteplan-corner"
                     />
                   ))}
               </svg>
-              <p className="text-xs text-content-tertiary">{tx(t, 'siteplan.metres')}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-content-tertiary">{tx(t, 'siteplan.metres')}</p>
+                <div className="flex gap-1">
+                  <Button size="sm" variant="ghost" aria-label={tx(t, 'siteplan.zoom_in')} title={tx(t, 'siteplan.zoom_in')} onClick={() => zoomBy(0.8)} data-testid="siteplan-zoom-in">
+                    <ZoomIn size={14} />
+                  </Button>
+                  <Button size="sm" variant="ghost" aria-label={tx(t, 'siteplan.zoom_out')} title={tx(t, 'siteplan.zoom_out')} onClick={() => zoomBy(1.25)} data-testid="siteplan-zoom-out">
+                    <ZoomOut size={14} />
+                  </Button>
+                  <Button size="sm" variant="ghost" disabled={!chosenView} onClick={() => setChosenView(null)} data-testid="siteplan-fit">
+                    <Maximize2 size={14} className="mr-1" />
+                    {tx(t, 'siteplan.fit')}
+                  </Button>
+                </div>
+              </div>
 
               {overlaps.length > 0 && (
                 <ul className="space-y-1" data-testid="siteplan-overlaps">

@@ -341,7 +341,7 @@ describe('site plan drawing', () => {
     fireEvent.click(screen.getByTestId('siteplan-undo'));
     expect(screen.getAllByTestId('siteplan-corner')).toHaveLength(3);
     expect(screen.getByTestId('siteplan-save')).toBeDisabled();
-    fireEvent.mouseDown(screen.getAllByTestId('siteplan-corner')[0]!);
+    fireEvent.pointerDown(screen.getAllByTestId('siteplan-corner')[0]!);
     expect(screen.getByTestId('siteplan-hint')).toHaveTextContent('Drag a corner to move it.');
     fireEvent.click(screen.getByTestId('siteplan-save'));
     await waitFor(() =>
@@ -360,6 +360,18 @@ describe('site plan drawing', () => {
         },
       }),
     );
+  });
+
+  it('zooming changes the sheet and fit brings it back to the drawing', async () => {
+    renderPlan('siteplan');
+    const fit = await screen.findByTestId('siteplan-fit');
+    const sheetBox = () => screen.getByTestId('siteplan-sheet').getAttribute('viewBox');
+    expect(sheetBox()).toBe('0 -60 100 60');
+    expect(fit).toBeDisabled();
+    fireEvent.click(screen.getByTestId('siteplan-zoom-in'));
+    expect(sheetBox()).toBe('10 -54 80 48');
+    fireEvent.click(fit);
+    expect(sheetBox()).toBe('0 -60 100 60');
   });
 
   it('shows the areas of the stage with the measured area and names the overlap the server found', async () => {

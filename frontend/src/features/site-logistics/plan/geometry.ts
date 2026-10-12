@@ -177,6 +177,31 @@ export function screenToMetres(
   return [round2(x), round2(y)];
 }
 
+/** Metres one screen pixel covers; one when the element has no size. */
+export function screenScale(rect: { width: number; height: number }, view: View): number {
+  return rect.width > 0 && rect.height > 0 ? Math.max(view.width / rect.width, view.height / rect.height) : 1;
+}
+
+const NARROWEST_M = 1;
+const WIDEST_M = 1e6;
+
+/** The view scaled by `factor` (below one zooms in) so that `about` stays where it is on screen. */
+export function zoomView(view: View, factor: number, about: Pt): View {
+  const widest = Math.max(view.width, view.height);
+  const f = Math.min(Math.max(factor, NARROWEST_M / widest), WIDEST_M / widest);
+  return {
+    minX: about[0] - (about[0] - view.minX) * f,
+    minY: about[1] - (about[1] - view.minY) * f,
+    width: view.width * f,
+    height: view.height * f,
+  };
+}
+
+/** The view moved by metres. */
+export function panView(view: View, dx: number, dy: number): View {
+  return { ...view, minX: view.minX + dx, minY: view.minY + dy };
+}
+
 export function centre(list: readonly Pt[]): Pt | null {
   if (list.length === 0) return null;
   return [list.reduce((s, p) => s + p[0], 0) / list.length, list.reduce((s, p) => s + p[1], 0) / list.length];

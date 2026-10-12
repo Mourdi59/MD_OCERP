@@ -10,6 +10,9 @@ import {
   metresPerPixel,
   metresToImage,
   moveVertex,
+  panView,
+  screenScale,
+  zoomView,
   openRing,
   pointOf,
   removeVertex,
@@ -142,6 +145,25 @@ describe('screen', () => {
     expect(screenToMetres([0, 50], rect, view)).toEqual([0, 50]);
     expect(screenToMetres([200, 150], rect, view)).toEqual([100, 0]);
     expect(screenToMetres([100, 100], rect, view)).toEqual([50, 25]);
+  });
+
+  it('zooming keeps the point under the pointer where it is', () => {
+    const view = { minX: 0, minY: 0, width: 100, height: 60 };
+    expect(zoomView(view, 0.5, [50, 30])).toEqual({ minX: 25, minY: 15, width: 50, height: 30 });
+    expect(zoomView(view, 0.5, [0, 0])).toEqual({ minX: 0, minY: 0, width: 50, height: 30 });
+    expect(zoomView(view, 2, [100, 60])).toEqual({ minX: -100, minY: -60, width: 200, height: 120 });
+  });
+
+  it('zooming stops at a sheet one metre wide', () => {
+    const view = { minX: 0, minY: 0, width: 2, height: 1 };
+    expect(zoomView(view, 0.01, [0, 0]).width).toBe(1);
+  });
+
+  it('panning moves the view by metres, and a screen pixel is worth the larger of the two ratios', () => {
+    const view = { minX: 0, minY: 0, width: 100, height: 50 };
+    expect(panView(view, -10, 5)).toEqual({ minX: -10, minY: 5, width: 100, height: 50 });
+    expect(screenScale({ width: 200, height: 200 }, view)).toBe(0.5);
+    expect(screenScale({ width: 0, height: 0 }, view)).toBe(1);
   });
 
   it('an element without a size counts one pixel per metre', () => {
