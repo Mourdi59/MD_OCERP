@@ -14,7 +14,8 @@ Per project:
   there is no threshold regime this seed could honestly apply to it;
 * award packages for every package, with estimates sized to the project
   currency, a procedure the threshold check allows, need dates a few months out
-  and supply lead times; one design package with a fee;
+  and supply lead times; the design package with a fee, already awarded (the
+  designers were appointed before the works were planned);
 * one long-lead supply as an advance package, but only when something of the
   project's demo data already releases it: a released commitment with a lead
   time (the reserved fabrication slot, answered by the commitment matrix when
@@ -24,7 +25,8 @@ Per project:
 * a prequalification profile with five criteria; candidates on the main works
   package from the demo subcontractor register (in a fixed order), topped up
   with named candidates still to be registered;
-* three market soundings, one with a tight capacity signal and its mitigation;
+* three market soundings held one to four months before the seed day, one with
+  a tight capacity signal and its mitigation;
 * one framework agreement of the project owner's company, called off by a
   supply package.
 
@@ -229,7 +231,9 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             else {},
             need_date=need.isoformat(),
             lead_time_days=lead or None,
-            state="procedure_set",
+            # The designers were appointed before the works were planned: that award is a fact of the past.
+            # Everything else is a plan with a procedure chosen, waiting for the gate.
+            state="awarded" if cp.kind == "design" else "procedure_set",
         )
         if cp.kind == "supply" and framework is not None and not framework_used:
             row.framework_agreement_id = framework.id
@@ -333,7 +337,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             project_id=project_id,
             package_ids=[str(main.id)],
             trade="Structural works",
-            held_on=(today - timedelta(days=30)).isoformat(),
+            held_on=(today - timedelta(days=110)).isoformat(),
             method="meeting",
             findings="Four regional contractors interested; two prefer a split into frame and finishes.",
             capacity_signal="adequate",
@@ -345,7 +349,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                 str(a.id) for a, c in zip(awards, cps, strict=True) if c.kind in ("supply", "supply_and_install")
             ],
             trade="Steel and precast supply",
-            held_on=(today - timedelta(days=21)).isoformat(),
+            held_on=(today - timedelta(days=70)).isoformat(),
             method="rfi",
             findings="Mill slots booked for nine months; prices rising.",
             capacity_signal="tight",
@@ -357,7 +361,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             project_id=project_id,
             package_ids=[],
             trade="Mechanical services",
-            held_on=(today - timedelta(days=10)).isoformat(),
+            held_on=(today - timedelta(days=30)).isoformat(),
             method="survey",
             findings="Six installers responded, three with capacity from next spring.",
             capacity_signal="ample",

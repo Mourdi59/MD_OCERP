@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
@@ -30,6 +30,7 @@ from app.modules.procurement_concept.models import (
     AwardPackage,
     BidderCandidate,
     FrameworkAgreement,
+    MarketSounding,
     ProcurementConcept,
 )
 from app.modules.procurement_concept.seed import seed_procurement_concept_demo
@@ -316,12 +317,18 @@ async def test_the_seed_leaves_a_concept_that_can_go_to_the_gate(world: World) -
         )
         advance = next(r for r in rows if r.is_advance)
         release = await svc.advance_release_status(pid, advance, await svc.release_gate(pid, concept))
+        soundings = (await s.execute(sa.select(MarketSounding).where(MarketSounding.project_id == pid))).scalars().all()
     assert "DE" in cat.jurisdiction_countries
     assert (concept.public_client, concept.state, concept.release_gate_code) == (True, "draft", gate_code)
     assert concept.client_type in cat.jurisdiction(concept.jurisdiction).client_types
     assert [f for f in found if f["blocks_approval"]] == []
     assert len(rows) == 4
     assert {r.currency for r in rows} == {"EUR"}
+    # The design appointment is a fact of the past; every other package is a plan that waits for the gate.
+    assert sorted(r.state for r in rows) == ["awarded", "procedure_set", "procedure_set", "procedure_set"]
+    held = sorted((datetime.now(UTC).date() - date.fromisoformat(m.held_on)).days for m in soundings)
+    # Held one to four months before the seed day (a day of slack for a run across midnight).
+    assert len(held) == 3 and 30 <= held[0] and held[-1] <= 120
     assert names == [f"Demo contractor {n:02d}" for n in range(1, 5)]
     assert (advance.advance_release_id, release) == (condition_id, "released")
 
