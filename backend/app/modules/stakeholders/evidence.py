@@ -26,10 +26,18 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, register_evidence_provider
+from app.modules.project_governance.evidence import (
+    EvidenceItem,
+    GateAttempt,
+    register_evidence_link,
+    register_evidence_provider,
+)
 from app.modules.stakeholders.hosting import ORGANISATION_TAG, STAKEHOLDERS_TAG, SUBJECTS
 
 PROVIDER_NAME = "stakeholders.governance_readiness"
+# Every evidence item of this module links to the project's stakeholders screen.
+LINK_KIND = "stakeholders"
+LINK_ROUTE = "/projects/{project_id}/stakeholders"
 CHECK_SUBJECT: dict[str, str] = {
     "register_present": STAKEHOLDERS_TAG,
     "key_stakeholders_planned": STAKEHOLDERS_TAG,
@@ -95,7 +103,7 @@ async def governance_readiness(
         return []
     catalogue = await hosting.project_catalogue(session, project_id)
     first = hosting.first_area_code(catalogue) if catalogue is not None else None
-    link = ("stakeholders", str(project_id))
+    link = (LINK_KIND, str(project_id))
     checks: dict[str, dict[str, Any]] | None = None
     out: list[EvidenceItem] = []
     for subject in SUBJECTS:
@@ -128,3 +136,4 @@ async def governance_readiness(
 
 def register_gate_evidence() -> None:
     register_evidence_provider("*", governance_readiness, name=PROVIDER_NAME, blocking=False)
+    register_evidence_link(LINK_KIND, LINK_ROUTE)

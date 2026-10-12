@@ -105,6 +105,19 @@ def test_each_check_is_reported_under_a_subject_this_module_owns() -> None:
     assert host_code("organisation") == "stakeholders:host:organisation"
 
 
+def test_the_evidence_link_opens_the_stakeholders_screen_of_the_project() -> None:
+    from app.modules.project_governance.evidence import evidence_link_href, unregister_evidence_link
+    from app.modules.stakeholders.evidence import LINK_KIND, register_gate_evidence
+
+    unregister_evidence_link(LINK_KIND)
+    assert evidence_link_href(LINK_KIND, "p1", "p1") is None
+    register_gate_evidence()
+    assert evidence_link_href(LINK_KIND, "p1", "p1") == "/projects/p1/stakeholders"
+    declared = (_MODULE.parents[3] / "frontend" / "src" / "app" / "App.tsx").read_text(encoding="utf-8")
+    # The registered path is a route the web app declares.
+    assert 'path="/projects/:projectId/stakeholders"' in declared
+
+
 def test_every_unknown_item_has_a_stable_code_and_says_what_to_do_in_each_locale() -> None:
     from app.modules.stakeholders.evidence import NO_DOCUMENT_REASON, NO_HOST_REASON, unknown_item
 
@@ -362,6 +375,10 @@ def test_every_action_carries_allowed_and_a_reason_code() -> None:
     # A missing right or a precondition that can be met stays visible with its reason.
     assert _can(is_decider=False)["agreed"] == {"applies": True, "allowed": False, "reason": "not_decider"}
     assert _can(can_edit=False)["agreed"]["applies"] is True
+    # A closed commitment offers nothing, editing included; an open one always offers the edit.
+    assert not any(v["applies"] for v in _can(status="verified").values())
+    assert not any(v["applies"] for v in _can(status="withdrawn").values())
+    assert _can(status="breached")["edit"] == {"applies": True, "allowed": True, "reason": None}
 
 
 def test_the_reason_is_the_code_the_write_would_answer() -> None:

@@ -199,7 +199,11 @@ def commitment_actions(
         return None
 
     out = {target: verdict(move(target)) for target in COMMITMENT_STATES if target != "proposed"}
-    out["edit"] = verdict("no_permission" if not can_edit else "approval_pending" if pending else None)
+    # A closed commitment takes no edit at all (the write answers the same), so the action does not apply.
+    closed = COMMITMENT_FSM.is_terminal(status)
+    out["edit"] = verdict(
+        "invalid_transition" if closed else "no_permission" if not can_edit else "approval_pending" if pending else None
+    )
     return out
 
 
