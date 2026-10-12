@@ -1131,10 +1131,16 @@ def _holidays_it(year: int) -> set[date]:
     """Italy's national holidays (Law 260/1949 as amended, Law 54/1977, DPR 792/1985).
 
     Easter Sunday is listed because the shipped Italian roster lists it; it
-    is a Sunday and changes no working day. 4 October (San Francesco) is a
-    national holiday again from 2026 under Law 151/2025. Patron saints' days
-    are local and left out, so a site in Rome or Milan has one more day off
-    than this returns.
+    is a Sunday and changes no working day. Patron saints' days are local
+    and left out, so a site in Rome or Milan has one more day off than this
+    returns.
+
+    4 October, the feast of San Francesco d'Assisi, is a public holiday from
+    2026. Legge 8 ottobre 2025, n. 151 (Gazzetta Ufficiale n. 236 of 10
+    October 2025) adds it to the list of giorni festivi in art. 2 of Law
+    260/1949, the same list that carries 25 April and 1 May, and the act
+    enters into force on 1 January 2026. Text:
+    https://www.normattiva.it/eli/id/2025/10/10/25G00153/ORIGINAL
     """
     e = easter(year)
     days = {

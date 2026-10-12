@@ -29,5 +29,11 @@ def test_italian_holidays_are_answered_for_the_years_a_plan_spans() -> None:
 
 
 def test_saint_francis_is_a_national_holiday_from_2026_only() -> None:
+    """Legge 8 ottobre 2025, n. 151 (GU n. 236, 10.10.2025), in force 1 January 2026.
+
+    It amends art. 2 of Law 260/1949, so 4 October is a full public holiday
+    from 2026 and an ordinary day in 2025, the year the act was published.
+    """
     assert date(2026, 10, 4) in resolve_holidays("IT", 2026)["dates"]
     assert date(2025, 10, 4) not in resolve_holidays("IT", 2025)["dates"]
+    assert date(2027, 10, 4) in resolve_holidays("IT", 2027)["dates"]
