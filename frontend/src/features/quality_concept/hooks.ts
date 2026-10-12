@@ -20,9 +20,11 @@ import {
   getStageMatrix,
   getValidation,
   listCandidates,
+  listCatalogues,
   listCertifications,
   listExpertReports,
   listLinks,
+  listOptions,
   listProofs,
   listRequirements,
   listRevisions,
@@ -33,6 +35,7 @@ import {
   refusalDetail,
   type Finding,
   type LinkOwnerKind,
+  type OptionKind,
 } from './api';
 import { refusalText, type LabelContext, type TFn } from './labels';
 
@@ -120,6 +123,24 @@ export function useLinkCandidates(projectId: string, linkKind: string, q: string
     queryKey: qcKeys.candidates(projectId, linkKind, q),
     queryFn: () => listCandidates(projectId, linkKind, q).then((p) => p.items),
     enabled: !!projectId && !!linkKind,
+  });
+}
+
+/** The catalogues this project may be pinned to, with whether the reader may pin one. */
+export function useCatalogues(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: qcKeys.catalogues(projectId),
+    queryFn: () => listCatalogues(projectId),
+    enabled: !!projectId && enabled,
+  });
+}
+
+/** Records of another module to choose from. The whole answer is kept: it may say no list can be offered. */
+export function useOptions(projectId: string, kind: OptionKind, q: string) {
+  return useQuery({
+    queryKey: qcKeys.options(projectId, kind, q),
+    queryFn: () => listOptions(projectId, kind, q),
+    enabled: !!projectId,
   });
 }
 

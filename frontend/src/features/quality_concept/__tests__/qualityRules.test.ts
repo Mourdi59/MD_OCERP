@@ -41,6 +41,7 @@ import {
   percent,
   pointsString,
   preconditionNotApplicable,
+  refChange,
   proofActions,
   waiverPending,
   whyNot,
@@ -260,5 +261,14 @@ describe('capability flags', () => {
     expect(vocabOrRaw(enT, EXPERT_FREQUENCY, 'once')).toBe('Once');
     expect(vocabOrRaw(enT, EXPERT_FREQUENCY, 'every second pour')).toBe('every second pour');
     expect(vocabOrRaw(enT, EXPERT_FREQUENCY, '')).toBe('');
+  });
+});
+
+describe('references to records of another module', () => {
+  it('sends a reference only when it changed, and null when it was emptied', () => {
+    expect(refChange('expert_contact_id', 'c1', 'c1')).toEqual({});
+    expect(refChange('expert_contact_id', null, '')).toEqual({});
+    expect(refChange('expert_contact_id', undefined, 'c2')).toEqual({ expert_contact_id: 'c2' });
+    expect(refChange('expert_contact_id', 'c1', '')).toEqual({ expert_contact_id: null });
   });
 });

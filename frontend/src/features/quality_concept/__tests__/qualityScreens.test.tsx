@@ -15,6 +15,7 @@ vi.mock('../api', async (importOriginal) => (await import('./apiMock')).apiMock(
 import { ApiError } from '@/shared/lib/api';
 
 import * as api from '../api';
+import type { CatalogueChoice } from '../api';
 import { MAY_SUBMIT, NOT_MANAGER, PLAN_CLOSED, SHELL, concept, matrix, page, progress, proof, unit } from './fixtures';
 import { emptyProject, renderPage } from './harness';
 
@@ -482,5 +483,106 @@ describe('expert reports', () => {
       trigger: 'before_acceptance',
       frequency: 'once',
     });
+  });
+});
+
+describe('listings to choose from', () => {
+  const choice = (over: Partial<CatalogueChoice> = {}): CatalogueChoice => ({
+    kind: 'quality',
+    source: 'shipped',
+    id: 'cat-1',
+    code: 'base',
+    name: { key: null, text: { en: 'Base catalogue' } },
+    state: 'active',
+    versions: [1],
+    latest_version: 1,
+    review_status: null,
+    jurisdiction_countries: [],
+    default: true,
+    pinned: true,
+    ...over,
+  });
+
+  it('pins the catalogue the reader picks, with its source and latest version', async () => {
+    mocked.listCatalogues.mockResolvedValue({
+      ...page([
+        choice(),
+        choice({ source: 'pack', id: 'cat-2', code: 'pack', name: { key: null, text: { en: 'Pack catalogue' } }, versions: [1, 2, 3], latest_version: 3, default: false, pinned: false }),
+      ]),
+      can: { pin: true },
+    });
+    mocked.pinCatalogue.mockResolvedValue(concept());
+    renderPage();
+    fireEvent.click(await screen.findByTestId('catalogue-change'));
+    expect(screen.getByText('Pack catalogue')).toBeInTheDocument();
+    expect(screen.getByTestId('form-submit')).toBeDisabled();
+    fireEvent.click(screen.getAllByTestId('catalogue-choice')[1]!);
+    fireEvent.click(screen.getByTestId('form-submit'));
+    await waitFor(() => expect(mocked.pinCatalogue).toHaveBeenCalled());
+    expect(mocked.pinCatalogue.mock.calls[0]![1]).toEqual({
+      catalogue_source: 'pack',
+      catalogue_id: 'cat-2',
+      catalogue_version: 3,
+    });
+  });
+
+  it('does not offer the change to a reader who may not pin', async () => {
+    mocked.listCatalogues.mockResolvedValue({ ...page([choice()]), can: { pin: false } });
+    renderPage();
+    await screen.findByTestId('concept-state');
+    await waitFor(() => expect(mocked.listCatalogues).toHaveBeenCalled());
+    expect(screen.queryByTestId('catalogue-change')).toBeNull();
+  });
+
+  it('sends the contact the reader picked for an expert report', async () => {
+    mocked.listOptions.mockResolvedValue({ ...page([{ id: 'c1', label: 'Structural expert' }]), available: true, reason: null });
+    mocked.createExpertReport.mockResolvedValue({
+      id: 'x1',
+      subject: 'Facade',
+      expert_contact_id: 'c1',
+      trigger: '',
+      frequency: '',
+      due_dates: [],
+      commitment_ref: null,
+      state: 'planned',
+    });
+    renderPage('preservation');
+    fireEvent.click(await screen.findByTestId('report-add'));
+    fireEvent.change(screen.getByTestId('report-subject'), { target: { value: 'Facade' } });
+    await screen.findByText('Structural expert');
+    expect(mocked.listOptions.mock.calls[0]!.slice(0, 2)).toEqual(['p1', 'contact']);
+    fireEvent.change(screen.getByTestId('report-expert'), { target: { value: 'c1' } });
+    fireEvent.click(screen.getByTestId('form-submit'));
+    await waitFor(() => expect(mocked.createExpertReport).toHaveBeenCalled());
+    expect(mocked.createExpertReport.mock.calls[0]![1]).toMatchObject({ subject: 'Facade', expert_contact_id: 'c1' });
+  });
+
+  it('leaves a reference out of the request when the reader did not touch it', async () => {
+    mocked.createExpertReport.mockResolvedValue({
+      id: 'x1',
+      subject: 'Facade',
+      expert_contact_id: null,
+      trigger: '',
+      frequency: '',
+      due_dates: [],
+      commitment_ref: null,
+      state: 'planned',
+    });
+    renderPage('preservation');
+    fireEvent.click(await screen.findByTestId('report-add'));
+    fireEvent.change(screen.getByTestId('report-subject'), { target: { value: 'Facade' } });
+    fireEvent.click(screen.getByTestId('form-submit'));
+    await waitFor(() => expect(mocked.createExpertReport).toHaveBeenCalled());
+    expect(mocked.createExpertReport.mock.calls[0]![1]).not.toHaveProperty('expert_contact_id');
+  });
+
+  it('takes a typed reference and says why when no list can be offered', async () => {
+    mocked.listOptions.mockResolvedValue({ ...page([]), available: false, reason: 'plant_listing_unavailable' });
+    renderPage('preservation');
+    fireEvent.click(await screen.findByTestId('report-add'));
+    const field = await screen.findByTestId('report-expert');
+    await waitFor(() => expect(screen.getByTestId('report-expert').tagName).toBe('INPUT'));
+    expect(field).toBeInTheDocument();
+    expect(screen.queryByText(/quality_concept\./)).toBeNull();
   });
 });

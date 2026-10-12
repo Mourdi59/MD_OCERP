@@ -242,6 +242,20 @@ export function preconditionNotApplicable(pre: { met: boolean; params: Record<st
   return pre.met && pre.params.not_applicable === true;
 }
 
+/**
+ * A reference to a record of another module goes into a request only when the
+ * reader changed it, so a stored reference the reader cannot list is never
+ * sent back. An emptied field is sent as null, which clears it.
+ */
+export function refChange<K extends string>(
+  field: K,
+  before: string | null | undefined,
+  now: string,
+): Partial<Record<K, string | null>> {
+  if ((before ?? '') === now) return {};
+  return { [field]: now || null } as Partial<Record<K, string | null>>;
+}
+
 /** Share of a whole as a number between 0 and 100, safe for an empty whole. */
 export function percent(done: number, total: number): number {
   if (!total || total <= 0) return 0;

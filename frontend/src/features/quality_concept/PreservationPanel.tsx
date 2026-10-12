@@ -35,6 +35,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useExpertReports, useQcWrite, useSurveys } from './hooks';
+import { OptionPicker } from './OptionPicker';
 import {
   EXPERT_FREQUENCY,
   EXPERT_STATE,
@@ -65,7 +66,7 @@ import {
   VocabSelect,
   inputCls,
 } from './QualityBits';
-import { SURVEY_ACTIONS, needsRationale } from './rules';
+import { SURVEY_ACTIONS, needsRationale, refChange } from './rules';
 
 const PHASES = ['before', 'during', 'after', 'on_complaint'] as const;
 const METHODS = ['photo', 'crack_mapping', 'level_survey', 'vibration_monitoring', 'reality_capture'] as const;
@@ -357,6 +358,8 @@ function SurveyDialog({
   const [triggers, setTriggers] = useState<string[]>(survey?.influence_triggers ?? []);
   const [methods, setMethods] = useState<string[]>(survey?.methods ?? ['photo']);
   const [planned, setPlanned] = useState(survey?.planned_date ?? '');
+  const [owner, setOwner] = useState(survey?.owner_contact_id ?? '');
+  const [surveyor, setSurveyor] = useState(survey?.surveyor_contact_id ?? '');
   const problem = !subject
     ? t('qualityConcept.preservation.problem_subject', { defaultValue: 'Choose what is surveyed' })
     : !ref.trim()
@@ -386,6 +389,8 @@ function SurveyDialog({
                   influence_triggers: triggers,
                   methods,
                   planned_date: planned || null,
+                  ...refChange('owner_contact_id', survey.owner_contact_id, owner),
+                  ...refChange('surveyor_contact_id', survey.surveyor_contact_id, surveyor),
                 })
               : createSurvey(projectId, {
                   subject_kind: subject,
@@ -395,6 +400,8 @@ function SurveyDialog({
                   phase,
                   methods,
                   planned_date: planned || null,
+                  ...refChange('owner_contact_id', null, owner),
+                  ...refChange('surveyor_contact_id', null, surveyor),
                 }),
           onClose,
         )
@@ -439,6 +446,14 @@ function SurveyDialog({
       <Field label={t('qualityConcept.acceptance.planned_date', { defaultValue: 'Planned date' })}>
         <input type="date" className={`${inputCls} w-auto`} value={planned} onChange={(e) => setPlanned(e.target.value)} />
       </Field>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label={t('qualityConcept.preservation.owner', { defaultValue: 'Owner of the neighbouring property' })}>
+          <OptionPicker projectId={projectId} kind="contact" value={owner} onChange={setOwner} testId="survey-owner" />
+        </Field>
+        <Field label={t('qualityConcept.preservation.surveyor', { defaultValue: 'Surveyor' })}>
+          <OptionPicker projectId={projectId} kind="contact" value={surveyor} onChange={setSurveyor} testId="survey-surveyor" />
+        </Field>
+      </div>
     </FormDialog>
   );
 }
@@ -563,7 +578,15 @@ function ReportDialog({ projectId, report, onClose }: PanelProps & { report: Exp
   const [dates, setDates] = useState<string[]>(report?.due_dates ?? []);
   const [day, setDay] = useState('');
   const [state, setState] = useState<ExpertReportState>(report?.state ?? 'planned');
-  const body = { subject: subject.trim(), trigger: trigger.trim(), frequency: frequency.trim(), due_dates: dates, state };
+  const [expert, setExpert] = useState(report?.expert_contact_id ?? '');
+  const body = {
+    subject: subject.trim(),
+    trigger: trigger.trim(),
+    frequency: frequency.trim(),
+    due_dates: dates,
+    state,
+    ...refChange('expert_contact_id', report?.expert_contact_id, expert),
+  };
 
   return (
     <FormDialog
@@ -651,6 +674,9 @@ function ReportDialog({ projectId, report, onClose }: PanelProps & { report: Exp
           ))}
         </div>
       </div>
+      <Field label={t('qualityConcept.expert.expert', { defaultValue: 'Expert' })}>
+        <OptionPicker projectId={projectId} kind="contact" value={expert} onChange={setExpert} testId="report-expert" />
+      </Field>
     </FormDialog>
   );
 }

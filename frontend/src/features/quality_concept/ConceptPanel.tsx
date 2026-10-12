@@ -11,11 +11,28 @@ import { useTranslation } from 'react-i18next';
 import { Plus, Send, Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
-import { fmtDate } from '@/shared/lib/formatters';
+import { fmtDate, fmtList } from '@/shared/lib/formatters';
 
-import { applyDocumentationSet, conceptAction, patchConcept, submitConcept, type Finding } from './api';
-import { useQcWrite, useRevisions } from './hooks';
-import { CONCEPT_STATE, PACKAGE_PROBLEM, SUBMIT_REASON, catalogueName, nameIn, vocab, type TFn } from './labels';
+import {
+  applyDocumentationSet,
+  conceptAction,
+  patchConcept,
+  pinCatalogue,
+  submitConcept,
+  type CatalogueChoice,
+  type Finding,
+} from './api';
+import { useCatalogues, useQcWrite, useRevisions } from './hooks';
+import {
+  CATALOGUE_SOURCE,
+  CONCEPT_STATE,
+  PACKAGE_PROBLEM,
+  SUBMIT_REASON,
+  catalogueName,
+  nameIn,
+  vocab,
+  type TFn,
+} from './labels';
 import { packageName, type PanelProps } from './panel';
 import {
   CONCEPT_TONE,
@@ -44,7 +61,9 @@ export function ConceptPanel(props: PanelProps) {
   const { t } = useTranslation();
   const write = useQcWrite(projectId);
   const revisions = useRevisions(projectId);
+  const catalogues = useCatalogues(projectId);
   const [scopeOpen, setScopeOpen] = useState(false);
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [setApplied, setSetApplied] = useState<number | null>(null);
 
   const actions = CONCEPT_ACTIONS[concept.state] ?? [];
@@ -105,6 +124,11 @@ export function ConceptPanel(props: PanelProps) {
             })}
           </span>
           <ReviewBadge status={concept.catalogue_review_status} />
+          {catalogues.data?.can.pin && (
+            <Button variant="ghost" size="sm" onClick={() => setCatalogueOpen(true)} data-testid="catalogue-change">
+              {t('qualityConcept.catalogues.change', { defaultValue: 'Change catalogue' })}
+            </Button>
+          )}
           {concept.revision_no > 0 && (
             <span className="text-content-tertiary">
               {t('qualityConcept.concept.revision', { defaultValue: 'Revision {{no}}', no: concept.revision_no })}
@@ -277,7 +301,91 @@ export function ConceptPanel(props: PanelProps) {
           onClose={() => setScopeOpen(false)}
         />
       )}
+      {catalogueOpen && (
+        <CatalogueDialog {...props} choices={catalogues.data?.items ?? []} onClose={() => setCatalogueOpen(false)} />
+      )}
     </div>
+  );
+}
+
+function CatalogueDialog({
+  projectId,
+  labels,
+  choices,
+  onClose,
+}: PanelProps & { choices: CatalogueChoice[]; onClose: () => void }) {
+  const { t } = useTranslation();
+  const write = useQcWrite(projectId);
+  const [picked, setPicked] = useState(choices.find((c) => c.pinned)?.id ?? '');
+  const choice = choices.find((c) => c.id === picked) ?? null;
+
+  return (
+    <FormDialog
+      open
+      testId="catalogue-dialog"
+      title={t('qualityConcept.catalogues.title', { defaultValue: 'Choose the catalogue' })}
+      subtitle={t('qualityConcept.catalogues.body', {
+        defaultValue:
+          'The catalogue supplies the evidence types, the stages and the acceptance regimes the concept is built from.',
+      })}
+      onClose={onClose}
+      busy={write.pending}
+      refusal={write.refusal}
+      problem={
+        !choice
+          ? t('qualityConcept.catalogues.problem_none', { defaultValue: 'Choose a catalogue' })
+          : choice.pinned
+            ? t('qualityConcept.catalogues.problem_same', { defaultValue: 'The concept already uses this catalogue' })
+            : null
+      }
+      submitLabel={t('qualityConcept.catalogues.pin', { defaultValue: 'Use this catalogue' })}
+      onSubmit={() => {
+        if (!choice) return;
+        write.send(
+          () =>
+            pinCatalogue(projectId, {
+              catalogue_source: choice.source,
+              catalogue_id: choice.id,
+              catalogue_version: choice.latest_version,
+            }),
+          onClose,
+        );
+      }}
+    >
+      <ul className="space-y-2">
+        {choices.map((c) => (
+          <li key={`${c.source}:${c.id}`}>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 text-sm">
+              <input
+                type="radio"
+                name="qc-catalogue"
+                className="mt-1"
+                checked={picked === c.id}
+                onChange={() => setPicked(c.id)}
+                data-testid="catalogue-choice"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-content-primary">
+                    {catalogueName(labels, { code: c.code, name_key: c.name.key ?? undefined, labels: c.name.text }) || c.code}
+                  </span>
+                  <ReviewBadge status={c.review_status} />
+                </span>
+                <span className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-content-tertiary">
+                  <span>{vocab(t as TFn, CATALOGUE_SOURCE, c.source)}</span>
+                  {c.latest_version != null && (
+                    <span>{t('qualityConcept.catalogues.version', { defaultValue: 'Version {{no}}', no: c.latest_version })}</span>
+                  )}
+                  {c.jurisdiction_countries.length > 0 && <span>{fmtList(c.jurisdiction_countries)}</span>}
+                  {c.pinned && <span>{t('qualityConcept.catalogues.pinned', { defaultValue: 'In use' })}</span>}
+                  {c.default && <span>{t('qualityConcept.catalogues.default', { defaultValue: 'Default' })}</span>}
+                </span>
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </FormDialog>
   );
 }
 

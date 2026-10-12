@@ -34,6 +34,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useAcceptanceUnits, useCoverage, useProofs, useQcWrite, useStageMatrix } from './hooks';
+import { OptionPicker } from './OptionPicker';
 import { DELIVERER_ROLE, PROOF_ACTION, PROOF_STATE, REQUIRED_BY_KIND, gate, nameIn, vocab, type TFn } from './labels';
 import { packageName, type PanelProps } from './panel';
 import {
@@ -49,7 +50,7 @@ import {
   VocabSelect,
   inputCls,
 } from './QualityBits';
-import { percent, pointsString, proofActions, waiverPending, type ProofAction } from './rules';
+import { percent, pointsString, proofActions, refChange, waiverPending, type ProofAction } from './rules';
 
 const DELIVERERS = ['designer', 'contractor', 'supplier', 'independent_expert', 'owner', 'authority'] as const;
 const DUE_KINDS = ['stage', 'acceptance_unit', 'activity', 'date'] as const;
@@ -483,6 +484,8 @@ function ProofDialog({
   const [pickedType, setType] = useState(proof?.evidence_type ?? '');
   const type = pickedType || types[0]?.code || '';
   const [title, setTitle] = useState(proof?.title ?? '');
+  const [person, setPerson] = useState(proof?.deliverer_contact_id ?? '');
+  const [system, setSystem] = useState('');
   const [pickedDeliverer, setDeliverer] = useState(proof?.deliverer_role ?? '');
   const deliverer = pickedDeliverer || types.find((e) => e.code === type)?.default_deliverer || 'contractor';
   const [dueKind, setDueKind] = useState(proof?.required_by_kind ?? 'stage');
@@ -526,6 +529,7 @@ function ProofDialog({
                   required_by_ref: ref,
                   // An emptied field clears a rule the proof had; a proof without one is left alone.
                   ...(rule ? { quantity_rule: rule } : proof.quantity_rule.per_quantity ? { quantity_rule: null } : {}),
+                  ...refChange('deliverer_contact_id', proof.deliverer_contact_id, person),
                 })
               : createProof(projectId, {
                   package_ref: pkg || null,
@@ -535,6 +539,8 @@ function ProofDialog({
                   required_by_kind: dueKind,
                   required_by_ref: ref,
                   quantity_rule: rule,
+                  ...refChange('deliverer_contact_id', null, person),
+                  ...refChange('cx_system_id', null, system),
                 }),
           onClose,
         )
@@ -621,6 +627,14 @@ function ProofDialog({
           <input className={inputCls} value={unit} onChange={(e) => setUnit(e.target.value)} />
         </Field>
       </div>
+      <Field label={t('qualityConcept.proofs.deliverer_contact', { defaultValue: 'Contact who delivers it' })}>
+        <OptionPicker projectId={projectId} kind="contact" value={person} onChange={setPerson} testId="proof-contact" />
+      </Field>
+      {!proof && (
+        <Field label={t('qualityConcept.proofs.system', { defaultValue: 'Building system it belongs to' })}>
+          <OptionPicker projectId={projectId} kind="cx_system" value={system} onChange={setSystem} testId="proof-system" />
+        </Field>
+      )}
     </FormDialog>
   );
 }

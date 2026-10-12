@@ -532,6 +532,12 @@ export function vocab(t: TFn, map: KeyMap, code: string | null | undefined, para
 }
 
 /** A code written for a reader: `pressure_test` becomes "Pressure test". Never a raw key. */
+export const CATALOGUE_SOURCE: Record<string, KeyText> = {
+  shipped: ['qualityConcept.catalogues.source_shipped', 'Shipped with the product'],
+  tenant: ['qualityConcept.catalogues.source_tenant', 'Kept by your organisation'],
+  pack: ['qualityConcept.catalogues.source_pack', 'From a country pack'],
+};
+
 export function humanizeCode(code: string): string {
   const words = code.replace(/^quality\./, '').replace(/[_-]+/g, ' ').trim();
   if (!words) return '';

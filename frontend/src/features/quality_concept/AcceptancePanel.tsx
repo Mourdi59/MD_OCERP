@@ -34,6 +34,7 @@ import {
 } from './api';
 import { ExportButtons } from './ExportButtons';
 import { useAcceptanceUnits, useQcWrite } from './hooks';
+import { OptionPicker } from './OptionPicker';
 import {
   ACCEPTANCE_ACTION,
   ACCEPTANCE_KIND,
@@ -67,6 +68,8 @@ import {
   effectInForce,
   isAccepted,
   lines,
+  may,
+  refChange,
   type AcceptanceAction,
 } from './rules';
 
@@ -405,6 +408,8 @@ function UnitDialog({
   const [refs, setRefs] = useState<string[]>(unit?.package_refs ?? []);
   const [section, setSection] = useState(unit?.section_ref ?? '');
   const [planned, setPlanned] = useState(unit?.planned_date ?? '');
+  const [activity, setActivity] = useState(unit?.schedule_activity_id ?? '');
+  const [act, setAct] = useState(unit?.handover_package_id ?? '');
   const problem =
     !code.trim() && !title.trim()
       ? t('qualityConcept.acceptance.problem_name', { defaultValue: 'Give the unit a code or a title' })
@@ -418,6 +423,7 @@ function UnitDialog({
     section_ref: section.trim(),
     regime_code: regime || null,
     planned_date: planned || null,
+    ...refChange('schedule_activity_id', unit?.schedule_activity_id, activity),
   };
 
   return (
@@ -436,7 +442,13 @@ function UnitDialog({
       problem={problem}
       submitLabel={t('qualityConcept.common.save', { defaultValue: 'Save' })}
       onSubmit={() =>
-        write.send(() => (unit ? patchUnit(projectId, unit.id, body) : createUnit(projectId, { ...body, kind })), onClose)
+        write.send(
+          () =>
+            unit
+              ? patchUnit(projectId, unit.id, { ...body, ...refChange('handover_package_id', unit.handover_package_id, act) })
+              : createUnit(projectId, { ...body, kind }),
+          onClose,
+        )
       }
     >
       <div className="grid gap-3 md:grid-cols-3">
@@ -494,6 +506,14 @@ function UnitDialog({
               </span>
             ))}
           </div>
+        </Field>
+      )}
+      <Field label={t('qualityConcept.acceptance.activity', { defaultValue: 'Schedule activity' })}>
+        <OptionPicker projectId={projectId} kind="schedule_activity" value={activity} onChange={setActivity} testId="unit-activity" />
+      </Field>
+      {unit && may(unit, 'link_handover', true) && (
+        <Field label={t('qualityConcept.acceptance.handover_pick', { defaultValue: 'Handover act' })}>
+          <OptionPicker projectId={projectId} kind="handover_package" value={act} onChange={setAct} testId="unit-handover" />
         </Field>
       )}
     </FormDialog>

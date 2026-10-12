@@ -34,6 +34,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useCertifications, useQcWrite } from './hooks';
+import { OptionPicker } from './OptionPicker';
 import {
   CERTIFICATION_ACTION,
   CERTIFICATION_SCOPE,
@@ -61,7 +62,7 @@ import {
   VocabSelect,
   inputCls,
 } from './QualityBits';
-import { CERTIFICATION_ACTIONS, CREDIT_ACTIONS, needsAchievedLevel, needsRationale, pointsString } from './rules';
+import { CERTIFICATION_ACTIONS, CREDIT_ACTIONS, needsAchievedLevel, needsRationale, pointsString, refChange } from './rules';
 
 const SCOPES = ['building', 'plant', 'operation'] as const;
 
@@ -344,6 +345,8 @@ function TargetDialog({
   const [scope, setScope] = useState(target?.scope ?? '');
   const [version, setVersion] = useState(target?.scheme_version ?? '');
   const [registration, setRegistration] = useState(target?.registration_no ?? '');
+  const [assessor, setAssessor] = useState(target?.assessor_contact_id ?? '');
+  const [certificate, setCertificate] = useState(target?.certificate_cde_id ?? '');
   const [available, setAvailable] = useState(target?.points_available ?? '');
   const availableClean = available.trim() ? pointsString(available) : '';
   const total = availableClean ? { points_available: availableClean } : {};
@@ -380,6 +383,8 @@ function TargetDialog({
                   target_level: level,
                   registration_no: registration.trim(),
                   ...total,
+                  ...refChange('assessor_contact_id', target.assessor_contact_id, assessor),
+                  ...refChange('certificate_cde_id', target.certificate_cde_id, certificate),
                 })
               : createCertification(projectId, {
                   scheme_code: schemeCode,
@@ -388,6 +393,7 @@ function TargetDialog({
                   target_level: level,
                   registration_no: registration.trim(),
                   ...total,
+                  ...refChange('assessor_contact_id', null, assessor),
                 }),
           onClose,
         )
@@ -442,6 +448,14 @@ function TargetDialog({
           />
         </Field>
       </div>
+      <Field label={t('qualityConcept.certification.assessor', { defaultValue: 'Assessor' })}>
+        <OptionPicker projectId={projectId} kind="contact" value={assessor} onChange={setAssessor} testId="certification-assessor" />
+      </Field>
+      {target && (
+        <Field label={t('qualityConcept.certification.certificate', { defaultValue: 'Certificate document' })}>
+          <OptionPicker projectId={projectId} kind="certificate_document" value={certificate} onChange={setCertificate} testId="certification-certificate" />
+        </Field>
+      )}
     </FormDialog>
   );
 }

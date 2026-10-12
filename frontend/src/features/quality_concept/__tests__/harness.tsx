@@ -29,6 +29,8 @@ export function emptyProject(api: MockedObject<typeof Api>): void {
   api.listSurveys.mockResolvedValue({ ...page([]), findings: [] });
   api.listExpertReports.mockResolvedValue(page([]));
   api.listLinks.mockResolvedValue(page([]));
+  api.listCatalogues.mockResolvedValue({ ...page([]), can: { pin: false } });
+  api.listOptions.mockResolvedValue({ ...page([]), available: true, reason: null });
 }
 
 export function renderPage(tab?: string) {

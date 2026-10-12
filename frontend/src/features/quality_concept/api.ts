@@ -24,6 +24,8 @@ export interface Page<T> {
   limit: number;
 }
 
+export type CatalogueSource = 'shipped' | 'tenant' | 'pack';
+
 /** A catalogue label: a message key for shipped items, texts per locale for tenant ones. */
 export interface QcLabel {
   key: string | null;
@@ -123,7 +125,7 @@ export interface ConceptCan {
 export interface Concept {
   id: string;
   project_id: string;
-  catalogue_source: 'shipped' | 'tenant';
+  catalogue_source: CatalogueSource;
   catalogue_id: string;
   catalogue_version: number;
   state: ConceptState;
@@ -317,6 +319,7 @@ export interface CertificationInput {
   scope: string;
   target_level: string;
   registration_no?: string;
+  assessor_contact_id?: string | null;
   /** Decimal string, or left out when the scheme has no fixed total. */
   points_available?: string;
 }
@@ -325,6 +328,8 @@ export interface CertificationPatch {
   scheme_version?: string;
   target_level?: string;
   registration_no?: string;
+  assessor_contact_id?: string | null;
+  certificate_cde_id?: string | null;
   points_available?: string;
 }
 
@@ -388,9 +393,11 @@ export interface Proof extends Capable {
 
 export interface ProofInput {
   package_ref?: string | null;
+  cx_system_id?: string | null;
   evidence_type: string;
   title?: string;
   deliverer_role: string;
+  deliverer_contact_id?: string | null;
   required_by_kind: string;
   required_by_ref: string;
   quantity_rule?: QuantityRule | null;
@@ -399,6 +406,7 @@ export interface ProofInput {
 export interface ProofPatch {
   title?: string;
   deliverer_role?: string;
+  deliverer_contact_id?: string | null;
   required_by_kind?: string;
   required_by_ref?: string;
   quantity_rule?: QuantityRule | null;
@@ -578,6 +586,7 @@ export interface AcceptanceUnit extends Capable {
   section_ref: string;
   regime_code: string | null;
   planned_date: string | null;
+  schedule_activity_id?: string | null;
   handover_package_id: string | null;
   handover_package?: RecordRef | null;
   state: AcceptanceState;
@@ -603,9 +612,10 @@ export interface AcceptanceUnitInput {
   section_ref?: string;
   regime_code?: string | null;
   planned_date?: string | null;
+  schedule_activity_id?: string | null;
 }
 
-export type AcceptanceUnitPatch = Partial<Omit<AcceptanceUnitInput, 'kind'>>;
+export type AcceptanceUnitPatch = Partial<Omit<AcceptanceUnitInput, 'kind'>> & { handover_package_id?: string | null };
 
 export interface AcceptanceDatesInput {
   completion_notice_at?: string | null;
@@ -621,6 +631,8 @@ export interface Survey extends Capable {
   subject_ref: string;
   address: string;
   parcel: string;
+  owner_contact_id?: string | null;
+  surveyor_contact_id?: string | null;
   influence_triggers: string[];
   phase: string;
   methods: string[];
@@ -643,9 +655,16 @@ export interface SurveyInput {
   phase: string;
   methods?: string[];
   planned_date?: string | null;
+  owner_contact_id?: string | null;
+  surveyor_contact_id?: string | null;
 }
 
-export type SurveyPatch = Partial<Pick<SurveyInput, 'address' | 'parcel' | 'influence_triggers' | 'methods' | 'planned_date'>>;
+export type SurveyPatch = Partial<
+  Pick<
+    SurveyInput,
+    'address' | 'parcel' | 'influence_triggers' | 'methods' | 'planned_date' | 'owner_contact_id' | 'surveyor_contact_id'
+  >
+>;
 
 export interface SurveyActionInput {
   action: SurveyAction;
@@ -671,10 +690,56 @@ export interface ExpertReport extends Capable {
 
 export interface ExpertReportInput {
   subject: string;
+  expert_contact_id?: string | null;
   trigger?: string;
   frequency?: string;
   due_dates?: string[];
   state?: ExpertReportState;
+}
+
+/* ── Listings to choose from ───────────────────────────────────────────── */
+
+/** One catalogue the project may pin: shipped with the product, kept by the tenant, or brought by a pack. */
+export interface CatalogueChoice {
+  kind: string;
+  source: CatalogueSource;
+  id: string;
+  code: string;
+  name: QcLabel;
+  state: string;
+  versions: number[];
+  latest_version: number | null;
+  review_status: string | null;
+  jurisdiction_countries: string[];
+  /** The one a new concept starts on. */
+  default: boolean;
+  /** The one this concept uses. */
+  pinned: boolean;
+  pack?: string | null;
+}
+
+export interface CatalogueChoices extends Page<CatalogueChoice> {
+  can: { pin: boolean };
+}
+
+export type OptionKind =
+  | 'contact'
+  | 'plant_item'
+  | 'cx_system'
+  | 'schedule_activity'
+  | 'handover_package'
+  | 'certificate_document'
+  | 'retest_of';
+
+export interface OptionItem {
+  id: string;
+  label: string;
+}
+
+/** `available: false` is not an empty list: the server cannot offer one, and `reason` says why. */
+export interface OptionList extends Page<OptionItem> {
+  available: boolean;
+  reason: string | null;
 }
 
 /* ── Readiness and validation ──────────────────────────────────────────── */
@@ -750,6 +815,8 @@ export const qcKeys = {
   project: (projectId: string) => ['quality-concept', projectId] as const,
   concept: (projectId: string) => ['quality-concept', projectId, 'concept'] as const,
   catalogue: (projectId: string) => ['quality-concept', projectId, 'catalogue'] as const,
+  catalogues: (projectId: string) => ['quality-concept', projectId, 'catalogues'] as const,
+  options: (projectId: string, kind: string, q: string) => ['quality-concept', projectId, 'options', kind, q] as const,
   revisions: (projectId: string) => ['quality-concept', projectId, 'revisions'] as const,
   standards: (projectId: string) => ['quality-concept', projectId, 'standards'] as const,
   requirements: (projectId: string) => ['quality-concept', projectId, 'requirements'] as const,
@@ -785,8 +852,15 @@ export const applyDocumentationSet = (projectId: string) =>
 
 export const pinCatalogue = (
   projectId: string,
-  body: { catalogue_source: 'shipped' | 'tenant'; catalogue_id: string; catalogue_version?: number | null },
+  body: { catalogue_source: CatalogueSource; catalogue_id: string; catalogue_version?: number | null },
 ) => apiPut<Concept>(`/v1/quality-concept/projects/${projectId}/concept/catalogue`, body);
+
+export const listCatalogues = (projectId: string) => apiGet<CatalogueChoices>(`/v1/quality-concept/projects/${projectId}/catalogues`);
+
+export const listOptions = (projectId: string, kind: OptionKind, q: string) =>
+  apiGet<OptionList>(
+    `/v1/quality-concept/projects/${projectId}/options?kind=${encodeURIComponent(kind)}&q=${encodeURIComponent(q)}`,
+  );
 
 export const getCatalogue = (projectId: string) => apiGet<Catalogue>(`/v1/quality-concept/projects/${projectId}/concept/catalogue`);
 
