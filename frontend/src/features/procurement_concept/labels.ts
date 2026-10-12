@@ -9,6 +9,7 @@
 
 import type {
   EvaluationMethod,
+  GateOption,
   CallOffMode,
   CandidateList,
   CandidateSource,
@@ -217,6 +218,18 @@ export type CatalogueItemKind = 'procedure' | 'criterion' | 'jurisdiction';
  * The name of a catalogue item: the key the API sent, then the texts a company
  * catalogue carries, then the shipped key for the code, then the code itself.
  */
+/** A gate as the reader knows it: its code, and the name the governance model gives it when it has one. */
+export function gateName(ctx: LabelContext, gate: Pick<GateOption, 'code' | 'label'>): string {
+  const label = gate.label;
+  let name = '';
+  if (label?.key && ctx.exists(label.key)) name = ctx.t(label.key);
+  else if (label?.text) {
+    const lang = ctx.language.split('-')[0] ?? 'en';
+    name = label.text[ctx.language] ?? label.text[lang] ?? label.text.en ?? '';
+  }
+  return name && name !== gate.code ? `${gate.code} ${name}` : gate.code;
+}
+
 export function catalogueName(ctx: LabelContext, kind: CatalogueItemKind, item: Named | string | null | undefined): string {
   if (!item) return '';
   const named: Named = typeof item === 'string' ? { code: item } : item;

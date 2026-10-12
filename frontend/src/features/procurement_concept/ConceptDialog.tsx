@@ -15,7 +15,7 @@ import { WideModal } from '@/shared/ui/WideModal';
 
 import { setConcept, type CatalogueSummary, type Concept } from './api';
 import { useGates } from './hooks';
-import { CLIENT_TYPE, JURISDICTION, catalogueName, errorText, vocab, type LabelContext } from './labels';
+import { gateName, CLIENT_TYPE, JURISDICTION, catalogueName, errorText, vocab, type LabelContext } from './labels';
 import { FIELD_CLASS, Field, ProblemList, RefusalBox } from './ProcurementBits';
 import { conceptInput, gateVerdict, parseAmount, publicClientTypes } from './rules';
 
@@ -237,7 +237,7 @@ export function ConceptDialog({ open, onClose, projectId, concept, catalogues, c
               {gate && !gates.some((g) => g.code === gate) && <option value={gate}>{gate}</option>}
               {gates.map((g) => (
                 <option key={g.code} value={g.code}>
-                  {g.code}
+                  {gateName(labels, g)}
                 </option>
               ))}
             </select>

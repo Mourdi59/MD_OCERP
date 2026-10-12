@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { catalogueName, errorText, findingText, humanizeCode, vocab, PACKAGE_STATE, type LabelContext } from '../labels';
+import { catalogueName, gateName, errorText, findingText, humanizeCode, vocab, PACKAGE_STATE, type LabelContext } from '../labels';
 import {
   calledOffShare,
   awardWeightsTotal,
@@ -629,6 +629,13 @@ describe('framework agreements', () => {
 describe('labels', () => {
   const known = new Set(['procurement_concept.catalogue.procedure.open']);
   const ctx: LabelContext = { t: enT, language: 'de-AT', exists: (k) => known.has(k) };
+
+  it('names a gate by its code and the label of the governance model', () => {
+    expect(gateName(ctx, { code: 'g3' })).toBe('g3');
+    expect(gateName(ctx, { code: 'g3', label: { key: 'procurement_concept.catalogue.procedure.open', text: null } })).toBe('g3 Open procedure');
+    expect(gateName(ctx, { code: 'g3', label: { key: 'not.a.known.key', text: null } })).toBe('g3');
+    expect(gateName(ctx, { code: 'g3', label: { key: null, text: { de: 'Vergabefreigabe', en: 'Procurement release' } } })).toBe('g3 Vergabefreigabe');
+  });
 
   it('names a catalogue item by its key, then by its own texts, then by the code', () => {
     expect(catalogueName(ctx, 'procedure', { code: 'open', name_key: 'procurement_concept.catalogue.procedure.open' })).toBe('Open procedure');

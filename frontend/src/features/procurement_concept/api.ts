@@ -17,8 +17,6 @@
 
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
 
-const BASE = '/v1/procurement-concept';
-
 export interface Page<T> {
   items: T[];
   total: number;
@@ -190,6 +188,8 @@ export interface Readiness {
 /** A gate of the project, for choosing the one that releases procurement. */
 export interface GateOption {
   code: string;
+  /** The name the governance model gives the gate: a message key for a shipped model, texts per locale for a company one. */
+  label?: { key: string | null; text: Record<string, string> | null } | null;
   from_phase: string | null;
   to_phase: string | null;
   status: string;
@@ -681,55 +681,53 @@ export const procurementKeys = {
   ledger: (frameworkId: string) => ['procurement-concept-company', 'ledger', frameworkId] as const,
 };
 
-const p = (projectId: string) => `${BASE}/projects/${projectId}`;
-
 /* ── Catalogue and concept ────────────────────────────────────────────── */
 
 export function listCatalogues(): Promise<Page<CatalogueSummary>> {
-  return apiGet<Page<CatalogueSummary>>(`${BASE}/catalogues`);
+  return apiGet<Page<CatalogueSummary>>(`/v1/procurement-concept/catalogues`);
 }
 
 export function getPinnedCatalogue(projectId: string): Promise<PinnedCatalogue> {
-  return apiGet<PinnedCatalogue>(`${p(projectId)}/catalogue`);
+  return apiGet<PinnedCatalogue>(`/v1/procurement-concept/projects/${projectId}/catalogue`);
 }
 
 export function getConcept(projectId: string): Promise<Concept> {
-  return apiGet<Concept>(`${p(projectId)}/concept`);
+  return apiGet<Concept>(`/v1/procurement-concept/projects/${projectId}/concept`);
 }
 
 export function setConcept(projectId: string, body: ConceptInput): Promise<Concept> {
-  return apiPut<Concept>(`${p(projectId)}/concept`, body);
+  return apiPut<Concept>(`/v1/procurement-concept/projects/${projectId}/concept`, body);
 }
 
 /** Submit for the gate, or return to draft. Approval is the governance gate's, so there is no route for it here. */
 export function conceptAction(projectId: string, action: ConceptAction): Promise<Concept> {
-  return apiPost<Concept>(`${p(projectId)}/concept/${action}`, {});
+  return apiPost<Concept>(`/v1/procurement-concept/projects/${projectId}/concept/${action}`, {});
 }
 
 export function getReadiness(projectId: string): Promise<Readiness> {
-  return apiGet<Readiness>(`${p(projectId)}/readiness`);
+  return apiGet<Readiness>(`/v1/procurement-concept/projects/${projectId}/readiness`);
 }
 
 export function listFindings(projectId: string): Promise<Page<Finding>> {
-  return apiGet<Page<Finding>>(`${p(projectId)}/findings?today=${localToday()}`);
+  return apiGet<Page<Finding>>(`/v1/procurement-concept/projects/${projectId}/findings?today=${localToday()}`);
 }
 
 /* ── Packages ─────────────────────────────────────────────────────────── */
 
 export function listPackages(projectId: string): Promise<Page<PackageView>> {
-  return apiGet<Page<PackageView>>(`${p(projectId)}/packages?today=${localToday()}`);
+  return apiGet<Page<PackageView>>(`/v1/procurement-concept/projects/${projectId}/packages?today=${localToday()}`);
 }
 
 export function putPackage(projectId: string, packageId: string, body: PackageInput): Promise<AwardPackage> {
-  return apiPut<AwardPackage>(`${p(projectId)}/packages/${packageId}`, body);
+  return apiPut<AwardPackage>(`/v1/procurement-concept/projects/${projectId}/packages/${packageId}`, body);
 }
 
 export function setPackageState(projectId: string, packageId: string, action: PackageAction): Promise<AwardPackage> {
-  return apiPost<AwardPackage>(`${p(projectId)}/packages/${packageId}/state`, { action });
+  return apiPost<AwardPackage>(`/v1/procurement-concept/projects/${projectId}/packages/${packageId}/state`, { action });
 }
 
 export function getThreshold(projectId: string, packageId: string): Promise<ThresholdCheck> {
-  return apiGet<ThresholdCheck>(`${p(projectId)}/packages/${packageId}/threshold?today=${localToday()}`);
+  return apiGet<ThresholdCheck>(`/v1/procurement-concept/projects/${projectId}/packages/${packageId}/threshold?today=${localToday()}`);
 }
 
 export function createExecution(
@@ -737,50 +735,50 @@ export function createExecution(
   packageId: string,
   body: { submission_deadline?: string | null } = {},
 ): Promise<ExecutionResult> {
-  return apiPost<ExecutionResult>(`${p(projectId)}/packages/${packageId}/execution`, body);
+  return apiPost<ExecutionResult>(`/v1/procurement-concept/projects/${projectId}/packages/${packageId}/execution`, body);
 }
 
 /** Link an existing tender package of the project as the vehicle of this award. Nothing is created. */
 export function linkExecution(projectId: string, packageId: string, tenderPackageId: string): Promise<ExecutionResult> {
-  return apiPost<ExecutionResult>(`${p(projectId)}/packages/${packageId}/execution/link`, { tender_package_id: tenderPackageId });
+  return apiPost<ExecutionResult>(`/v1/procurement-concept/projects/${projectId}/packages/${packageId}/execution/link`, { tender_package_id: tenderPackageId });
 }
 
 export function listTenderPackages(projectId: string): Promise<Page<TenderPackageOption>> {
-  return apiGet<Page<TenderPackageOption>>(`${p(projectId)}/tender-packages`);
+  return apiGet<Page<TenderPackageOption>>(`/v1/procurement-concept/projects/${projectId}/tender-packages`);
 }
 
 export function listCostSections(projectId: string): Promise<Page<CostSection>> {
-  return apiGet<Page<CostSection>>(`${p(projectId)}/cost-refs`);
+  return apiGet<Page<CostSection>>(`/v1/procurement-concept/projects/${projectId}/cost-refs`);
 }
 
 export function listGates(projectId: string): Promise<Page<GateOption>> {
-  return apiGet<Page<GateOption>>(`${p(projectId)}/gates`);
+  return apiGet<Page<GateOption>>(`/v1/procurement-concept/projects/${projectId}/gates`);
 }
 
 export function listAdvanceReleases(projectId: string): Promise<Page<AdvanceRelease>> {
-  return apiGet<Page<AdvanceRelease>>(`${p(projectId)}/advance-releases`);
+  return apiGet<Page<AdvanceRelease>>(`/v1/procurement-concept/projects/${projectId}/advance-releases`);
 }
 
 /* ── Prequalification ─────────────────────────────────────────────────── */
 
 export function listProfiles(projectId: string): Promise<PageWithCan<PrequalProfile, 'create'>> {
-  return apiGet<PageWithCan<PrequalProfile, 'create'>>(`${p(projectId)}/prequal-profiles`);
+  return apiGet<PageWithCan<PrequalProfile, 'create'>>(`/v1/procurement-concept/projects/${projectId}/prequal-profiles`);
 }
 
 export function createProfile(projectId: string, body: ProfileInput): Promise<PrequalProfile> {
-  return apiPost<PrequalProfile>(`${p(projectId)}/prequal-profiles`, body);
+  return apiPost<PrequalProfile>(`/v1/procurement-concept/projects/${projectId}/prequal-profiles`, body);
 }
 
 export function updateProfile(projectId: string, profileId: string, body: ProfileInput): Promise<PrequalProfile> {
-  return apiPut<PrequalProfile>(`${p(projectId)}/prequal-profiles/${profileId}`, body);
+  return apiPut<PrequalProfile>(`/v1/procurement-concept/projects/${projectId}/prequal-profiles/${profileId}`, body);
 }
 
 export function deleteProfile(projectId: string, profileId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/prequal-profiles/${profileId}`);
+  return apiDelete(`/v1/procurement-concept/projects/${projectId}/prequal-profiles/${profileId}`);
 }
 
 export function listCandidates(projectId: string, packageId: string): Promise<CandidateMatrix> {
-  return apiGet<CandidateMatrix>(`${p(projectId)}/packages/${packageId}/candidates`);
+  return apiGet<CandidateMatrix>(`/v1/procurement-concept/projects/${projectId}/packages/${packageId}/candidates`);
 }
 
 export function addCandidate(
@@ -788,7 +786,7 @@ export function addCandidate(
   packageId: string,
   body: CandidateInput,
 ): Promise<{ id: string; list: CandidateList }> {
-  return apiPost<{ id: string; list: CandidateList }>(`${p(projectId)}/packages/${packageId}/candidates`, body);
+  return apiPost<{ id: string; list: CandidateList }>(`/v1/procurement-concept/projects/${projectId}/packages/${packageId}/candidates`, body);
 }
 
 export function patchCandidate(
@@ -796,15 +794,15 @@ export function patchCandidate(
   candidateId: string,
   body: CandidateInput,
 ): Promise<{ id: string; list: CandidateList }> {
-  return apiPatch<{ id: string; list: CandidateList }>(`${p(projectId)}/candidates/${candidateId}`, body);
+  return apiPatch<{ id: string; list: CandidateList }>(`/v1/procurement-concept/projects/${projectId}/candidates/${candidateId}`, body);
 }
 
 export function deleteCandidate(projectId: string, candidateId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/candidates/${candidateId}`);
+  return apiDelete(`/v1/procurement-concept/projects/${projectId}/candidates/${candidateId}`);
 }
 
 export function putScores(projectId: string, candidateId: string, scores: ScoreInput[]): Promise<Page<CandidateScore>> {
-  return apiPut<Page<CandidateScore>>(`${p(projectId)}/candidates/${candidateId}/scores`, { scores });
+  return apiPut<Page<CandidateScore>>(`/v1/procurement-concept/projects/${projectId}/candidates/${candidateId}/scores`, { scores });
 }
 
 export function addReference(
@@ -812,25 +810,25 @@ export function addReference(
   candidateId: string,
   body: ReferenceInput,
 ): Promise<{ id: string; verified: boolean }> {
-  return apiPost<{ id: string; verified: boolean }>(`${p(projectId)}/candidates/${candidateId}/references`, body);
+  return apiPost<{ id: string; verified: boolean }>(`/v1/procurement-concept/projects/${projectId}/candidates/${candidateId}/references`, body);
 }
 
 export function deleteReference(projectId: string, candidateId: string, referenceId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/candidates/${candidateId}/references/${referenceId}`);
+  return apiDelete(`/v1/procurement-concept/projects/${projectId}/candidates/${candidateId}/references/${referenceId}`);
 }
 
 export function confirmShortlist(projectId: string, packageId: string): Promise<AwardPackage> {
-  return apiPost<AwardPackage>(`${p(projectId)}/packages/${packageId}/shortlist`, {});
+  return apiPost<AwardPackage>(`/v1/procurement-concept/projects/${projectId}/packages/${packageId}/shortlist`, {});
 }
 
 /* ── Market sounding ──────────────────────────────────────────────────── */
 
 export function listSoundings(projectId: string): Promise<PageWithCan<MarketSounding, 'create' | 'edit' | 'delete'>> {
-  return apiGet<PageWithCan<MarketSounding, 'create' | 'edit' | 'delete'>>(`${p(projectId)}/market-soundings`);
+  return apiGet<PageWithCan<MarketSounding, 'create' | 'edit' | 'delete'>>(`/v1/procurement-concept/projects/${projectId}/market-soundings`);
 }
 
 export function createSounding(projectId: string, body: SoundingInput): Promise<MarketSounding> {
-  return apiPost<MarketSounding>(`${p(projectId)}/market-soundings`, body);
+  return apiPost<MarketSounding>(`/v1/procurement-concept/projects/${projectId}/market-soundings`, body);
 }
 
 export function patchSounding(
@@ -838,17 +836,17 @@ export function patchSounding(
   soundingId: string,
   body: Partial<SoundingInput>,
 ): Promise<MarketSounding> {
-  return apiPatch<MarketSounding>(`${p(projectId)}/market-soundings/${soundingId}`, body);
+  return apiPatch<MarketSounding>(`/v1/procurement-concept/projects/${projectId}/market-soundings/${soundingId}`, body);
 }
 
 export function deleteSounding(projectId: string, soundingId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/market-soundings/${soundingId}`);
+  return apiDelete(`/v1/procurement-concept/projects/${projectId}/market-soundings/${soundingId}`);
 }
 
 /* ── Award schedule ───────────────────────────────────────────────────── */
 
 export function getSchedule(projectId: string): Promise<ScheduleView> {
-  return apiGet<ScheduleView>(`${p(projectId)}/schedule?today=${localToday()}`);
+  return apiGet<ScheduleView>(`/v1/procurement-concept/projects/${projectId}/schedule?today=${localToday()}`);
 }
 
 export function confirmSchedule(
@@ -856,7 +854,7 @@ export function confirmSchedule(
   packageIds: string[],
 ): Promise<Page<{ package_id: string; start_date: string; award_date: string }>> {
   return apiPost<Page<{ package_id: string; start_date: string; award_date: string }>>(
-    `${p(projectId)}/schedule/confirm`,
+    `/v1/procurement-concept/projects/${projectId}/schedule/confirm`,
     { package_ids: packageIds },
   );
 }
@@ -871,32 +869,32 @@ export function downloadExport(
 ): Promise<void> {
   const qs = new URLSearchParams({ format, part });
   if (packageId) qs.set('package_id', packageId);
-  return downloadWithAuth(`/api${p(projectId)}/export?${qs.toString()}`, `procurement_${part}.${format}`);
+  return downloadWithAuth(`/api/v1/procurement-concept/projects/${projectId}/export?${qs.toString()}`, `procurement_${part}.${format}`);
 }
 
 /* ── Framework agreements (company level) ─────────────────────────────── */
 
 /** The agreements a package of this project may call off. */
 export function listProjectFrameworks(projectId: string): Promise<Page<Framework>> {
-  return apiGet<Page<Framework>>(`${p(projectId)}/frameworks`);
+  return apiGet<Page<Framework>>(`/v1/procurement-concept/projects/${projectId}/frameworks`);
 }
 
 export function listFrameworks(): Promise<PageWithCan<Framework, 'create'>> {
-  return apiGet<PageWithCan<Framework, 'create'>>(`${BASE}/frameworks`);
+  return apiGet<PageWithCan<Framework, 'create'>>(`/v1/procurement-concept/frameworks`);
 }
 
 export function createFramework(body: FrameworkInput): Promise<Framework> {
-  return apiPost<Framework>(`${BASE}/frameworks`, body);
+  return apiPost<Framework>(`/v1/procurement-concept/frameworks`, body);
 }
 
 export function patchFramework(frameworkId: string, body: FrameworkPatch): Promise<Framework> {
-  return apiPatch<Framework>(`${BASE}/frameworks/${frameworkId}`, body);
+  return apiPatch<Framework>(`/v1/procurement-concept/frameworks/${frameworkId}`, body);
 }
 
 export function setFrameworkState(frameworkId: string, target: FrameworkTarget): Promise<Framework> {
-  return apiPost<Framework>(`${BASE}/frameworks/${frameworkId}/state`, { target });
+  return apiPost<Framework>(`/v1/procurement-concept/frameworks/${frameworkId}/state`, { target });
 }
 
 export function getLedger(frameworkId: string): Promise<FrameworkLedger> {
-  return apiGet<FrameworkLedger>(`${BASE}/frameworks/${frameworkId}/ledger`);
+  return apiGet<FrameworkLedger>(`/v1/procurement-concept/frameworks/${frameworkId}/ledger`);
 }
