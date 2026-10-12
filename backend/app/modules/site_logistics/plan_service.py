@@ -3176,8 +3176,9 @@ class LogisticsPlanService:
                 items.append(_item("concept_saved_and_exported", exported, "" if exported else "not_exported"))
         heavy_kinds = cat.permit_kinds_for("heavy_transport")
         # A heavy transport is ready for the gate with a granted permit only. An applied one
-        # is in progress and a missing one is not started; the detail says which.
-        waiting: dict[str, list[str]] = {"permit_applied": [], "permit_missing": []}
+        # is in progress and a missing one is not started. The item lists both groups as
+        # data; its detail is the same thing as a sentence for the gate screen.
+        waiting: dict[str, list[dict[str, str]]] = {"applied": [], "missing": []}
         blocked = []
         passed_by_permit = []
         for t in await self._list(Transport, project_id, Transport.created_at):
@@ -3188,17 +3189,25 @@ class LogisticsPlanService:
             if view["is_heavy"]:
                 standing = pl.heavy_permit_standing(view["permits"], heavy_kinds)
                 if standing != "granted":
-                    waiting[f"permit_{standing}"].append(name)
+                    waiting[standing].append({"id": str(t.id), "title": name})
             if view["gate_blocked"]:
                 blocked.append(name)
             elif view["gate_passed_by_permit"] is not None:
                 passed_by_permit.append({"transport_id": str(t.id), "title": name, **view["gate_passed_by_permit"]})
         items.append(
-            _item(
-                "heavy_transports_permitted",
-                not any(waiting.values()),
-                "; ".join(f"{reason}: {','.join(names)}" for reason, names in waiting.items() if names),
-            )
+            {
+                **_item(
+                    "heavy_transports_permitted",
+                    not any(waiting.values()),
+                    "; ".join(
+                        f"permit_{standing}: {','.join(t['title'] for t in rows)}"
+                        for standing, rows in waiting.items()
+                        if rows
+                    ),
+                ),
+                # A title may hold any character, so a reader takes the transports from here.
+                "transports": waiting,
+            }
         )
         # Met while no load is refused by its gate; a load above the limit that an
         # oversize permit covers passes, and the detail names the permit it passes on.

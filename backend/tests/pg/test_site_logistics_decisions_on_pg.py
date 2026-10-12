@@ -216,9 +216,13 @@ async def test_an_applied_permit_does_not_make_a_heavy_transport_ready(world: Wo
     pid = world.project_id
     day = (datetime.now(SITE) + timedelta(days=10)).date()
 
+    groups: list[dict[str, list[tuple[str, str]]]] = []
+
     async def item(svc: LogisticsPlanService) -> tuple[str, str]:
         readiness = await svc.readiness(pid)
         found = next(i for i in readiness["items"] if i["code"] == "heavy_transports_permitted")
+        named = {group: [(t["id"], t["title"]) for t in rows] for group, rows in found["transports"].items()}
+        groups.append(named)
         return found["state"], found["detail"]
 
     async with world.factory() as s:
@@ -228,12 +232,15 @@ async def test_an_applied_permit_does_not_make_a_heavy_transport_ready(world: Wo
             {
                 "direction": "inbound",
                 "transport_kind": "heavy_oversize",
-                "title": "Transformer",
+                "title": "Transformer; north, part 1",
                 "gross_weight_t": Decimal("62"),
             },
             world.manager,
         )
-        assert await item(svc) == ("not_met", "permit_missing: Transformer")
+        me = (str(transport.id), "Transformer; north, part 1")
+        assert await item(svc) == ("not_met", "permit_missing: Transformer; north, part 1")
+        # The title holds the separators of the sentence; the lists name the transport whole.
+        assert groups[-1] == {"applied": [], "missing": [me]}
         permit = await svc.create_permit(
             pid,
             {
@@ -246,12 +253,14 @@ async def test_an_applied_permit_does_not_make_a_heavy_transport_ready(world: Wo
             world.manager,
         )
         # A draft is not an application.
-        assert await item(svc) == ("not_met", "permit_missing: Transformer")
+        assert await item(svc) == ("not_met", "permit_missing: Transformer; north, part 1")
         await svc.transition_permit(pid, permit.id, "applied", world.manager)
         # The defect: this used to read as met.
-        assert await item(svc) == ("not_met", "permit_applied: Transformer")
+        assert await item(svc) == ("not_met", "permit_applied: Transformer; north, part 1")
+        assert groups[-1] == {"applied": [me], "missing": []}
         await svc.transition_permit(pid, permit.id, "granted", world.manager)
         assert await item(svc) == ("met", "")
+        assert groups[-1] == {"applied": [], "missing": []}
 
 
 # The entry and the body as the pack carries them: a German catalogue that adds no figure of
