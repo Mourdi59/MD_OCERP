@@ -621,7 +621,9 @@ async def reassign_instance(
         to_user_id=payload.to_user_id,
         actor_id=_safe_user_uuid(user_id),
         reason=payload.reason,
-        manage=role == "admin" or permission_registry.role_has_permission(role, "approval_routes.manage"),
+        manage=role == "admin"
+        or "approval_routes.manage" in (user_payload.get("permissions") or [])
+        or permission_registry.role_has_permission(role, "approval_routes.manage"),
         caller_role=role or None,
     )
     return await _instance_to_response(updated, service)
