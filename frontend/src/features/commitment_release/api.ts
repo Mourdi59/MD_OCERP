@@ -306,7 +306,9 @@ export interface CommitmentItem {
   over_release: boolean;
   /** Released less the expired part nothing is bound under; null when the bound sum has no exchange rate. */
   released_in_force?: string | null;
-  /** A release passed its validity date and took something away from what is in force. */
+  /** Released less what is in force. It stays after a renewal: history, not a warning. */
+  released_lapsed?: string | null;
+  /** A passed validity date is what stops further money right now. A renewed release with headroom clears it. */
   release_expired?: boolean;
   /** The passed validity dates, earliest first. */
   expired_release_dates?: string[];

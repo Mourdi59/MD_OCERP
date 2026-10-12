@@ -62,7 +62,7 @@ import {
   type LabelContext,
 } from './labels';
 import { ReleaseDialog } from './ReleaseDialog';
-import { nothingCommitted, overRelease, remainingToRelease, shownExposureLines } from './rules';
+import { isPositiveAmount, nothingCommitted, overRelease, remainingToRelease, shownExposureLines } from './rules';
 
 export interface ItemPanelProps {
   projectId: string;
@@ -293,6 +293,8 @@ export function ItemPanel({
   const withdrawV = itemVerdict(item, 'withdraw');
   const pending = (historyQ.data ?? []).find((r) => r.outcome === 'pending') ?? null;
   const ended = item.status === 'aborted' || item.status === 'transferred';
+  // A part of the released sum that lapsed with its date stays on the record after a renewal too.
+  const lapsed = isPositiveAmount(item.released_lapsed);
   // The latest validity date that has passed, when the server names one.
   const expiredOn = item.expired_release_dates?.[item.expired_release_dates.length - 1] ?? null;
   // The server names the item that took over. Inside this project it opens
@@ -533,7 +535,7 @@ export function ItemPanel({
         <Figure label={t('commitment.grid.released', { defaultValue: 'Released' })}>
           <Amount value={item.released} currency={item.schedule_currency} />
         </Figure>
-        {item.release_expired && (
+        {(item.release_expired || lapsed) && (
           <Figure label={t('commitment.item.released_in_force', { defaultValue: 'Of that still in force' })}>
             <span data-testid="item-released-in-force">
               <Amount value={item.released_in_force} currency={item.schedule_currency} />

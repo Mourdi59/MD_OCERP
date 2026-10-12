@@ -202,6 +202,7 @@ const resource = {
     "modules.catalog.collaboration": "Comments & Viewpoints",
     "modules.catalog.collaboration_locks": "Real-time collaboration locks",
     "modules.catalog.commissioning": "Commissioning (Cx)",
+    "modules.catalog.commitment_release": "Commitment release",
     "modules.catalog.compliance": "Compliance DSL",
     "modules.catalog.compliance_ai": "Compliance AI",
     "modules.catalog.compliance_docs": "Compliance Documents",

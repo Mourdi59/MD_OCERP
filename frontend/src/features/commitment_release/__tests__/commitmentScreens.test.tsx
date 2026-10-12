@@ -761,6 +761,19 @@ describe('ItemPanel', () => {
     expect(screen.getByTestId('item-released-in-force').textContent).toMatch(/200[,.\s]?000/);
   });
 
+  it('after a renewal the lapsed part stays visible as a figure, without the warning', () => {
+    panel({
+      status: 'released',
+      released: '800000.00',
+      released_in_force: '500000.00',
+      released_lapsed: '300000.00',
+      release_expired: false,
+      expired_release_dates: ['2026-09-30'],
+    });
+    expect(screen.queryByTestId('item-release-expired')).toBeNull();
+    expect(screen.getByTestId('item-released-in-force').textContent).toMatch(/500[,.\s]?000/);
+  });
+
   it('an item whose releases are all in date shows neither the notice nor a second released figure', () => {
     panel({ status: 'released', released: '500000.00', released_in_force: '500000.00', release_expired: false });
     expect(screen.queryByTestId('item-release-expired')).toBeNull();

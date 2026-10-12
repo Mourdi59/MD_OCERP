@@ -200,6 +200,7 @@ const resource = {
     "modules.catalog.collaboration": "Kommentare & Ansichtspunkte",
     "modules.catalog.collaboration_locks": "Echtzeit-Kollaborationssperren",
     "modules.catalog.commissioning": "Inbetriebnahme (Cx)",
+    "modules.catalog.commitment_release": "Freigabe von Verpflichtungen",
     "modules.catalog.compliance": "Compliance-DSL",
     "modules.catalog.compliance_ai": "Compliance-KI",
     "modules.catalog.compliance_docs": "Compliance-Dokumente",
