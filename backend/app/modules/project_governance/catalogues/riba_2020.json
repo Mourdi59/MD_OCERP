@@ -156,7 +156,9 @@
       "code": "procurement_strategy",
       "area": "procurement",
       "name_key": "governance.catalogue.neutral.doc.procurement_strategy",
-      "required_at_gates": [],
+      "required_at_gates": [
+        "stage3_to_stage4"
+      ],
       "hosts": [
         "delivery_model",
         "procurement"
@@ -166,7 +168,9 @@
       "code": "approval_conditions_register",
       "area": "scope",
       "name_key": "governance.catalogue.neutral.doc.approval_conditions_register",
-      "required_at_gates": [],
+      "required_at_gates": [
+        "stage4_to_stage5"
+      ],
       "hosts": [
         "permits"
       ]
@@ -175,7 +179,9 @@
       "code": "scope_statement",
       "area": "scope",
       "name_key": "governance.catalogue.neutral.doc.scope_statement",
-      "required_at_gates": [],
+      "required_at_gates": [
+        "stage3_to_stage4"
+      ],
       "hosts": [
         "design"
       ]
@@ -184,7 +190,9 @@
       "code": "stakeholder_register",
       "area": "stakeholders",
       "name_key": "governance.catalogue.neutral.doc.stakeholder_register",
-      "required_at_gates": [],
+      "required_at_gates": [
+        "stage3_to_stage4"
+      ],
       "hosts": [
         "stakeholders"
       ]
@@ -193,7 +201,9 @@
       "code": "project_handbook",
       "area": "integration",
       "name_key": "governance.catalogue.neutral.doc.project_handbook",
-      "required_at_gates": [],
+      "required_at_gates": [
+        "stage3_to_stage4"
+      ],
       "hosts": [
         "organisation"
       ]
@@ -202,7 +212,9 @@
       "code": "quality_management_plan",
       "area": "quality",
       "name_key": "governance.catalogue.neutral.doc.quality_management_plan",
-      "required_at_gates": [],
+      "required_at_gates": [
+        "stage4_to_stage5"
+      ],
       "hosts": [
         "quality"
       ]
@@ -211,7 +223,9 @@
       "code": "resource_plan",
       "area": "resources",
       "name_key": "governance.catalogue.neutral.doc.resource_plan",
-      "required_at_gates": [],
+      "required_at_gates": [
+        "stage4_to_stage5"
+      ],
       "hosts": [
         "plant",
         "staffing",
@@ -222,7 +236,9 @@
       "code": "budget_baseline",
       "area": "cost_finance",
       "name_key": "governance.catalogue.neutral.doc.budget_baseline",
-      "required_at_gates": [],
+      "required_at_gates": [
+        "stage4_to_stage5"
+      ],
       "hosts": [
         "commitment_release"
       ]

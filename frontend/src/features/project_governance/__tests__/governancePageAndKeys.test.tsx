@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 vi.mock('react-i18next', async () => (await import('./i18nMock')).i18nMockModule);
+vi.mock('@/features/approval-routes/ApprovalInstanceDetailDrawer', () => ({ ApprovalInstanceDetailDrawer: () => null }));
 vi.mock('@/features/teams/api', () => ({ listRoster: vi.fn(async () => ({ items: [], total: 0 })) }));
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();

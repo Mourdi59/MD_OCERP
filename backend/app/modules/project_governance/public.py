@@ -26,15 +26,16 @@ The tag vocabulary lives in :mod:`catalogue_kinds` (``register_host_subject``,
 
 from __future__ import annotations
 
+import logging
 import uuid
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.project_governance.catalogue import Catalogue, label_of
+from app.modules.project_governance.catalogue import Catalogue, InvalidCatalogueError, label_of
 from app.modules.project_governance.catalogue_kinds import (
     host_subjects,
     phase_capabilities,
@@ -43,11 +44,22 @@ from app.modules.project_governance.catalogue_kinds import (
 )
 from app.modules.project_governance.catalogue_packs import CataloguePin
 from app.modules.project_governance.catalogue_store import default_catalogue_pin, resolve_catalogue
+from app.modules.project_governance.errors import GovernanceError
 from app.modules.project_governance.repository import GovernanceRepository
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "AreaView",
+    "area_views",
     "CataloguePin",
+    "change_request_views",
+    "condition_views",
+    "control_settings",
+    "ControlSettings",
+    "decision_views",
+    "document_views",
+    "gate_views",
     "ChangeRequestView",
     "ConditionView",
     "DecisionView",
@@ -63,6 +75,7 @@ __all__ = [
     "phases_enabling_in",
     "project_areas",
     "project_catalogue",
+    "project_controls",
     "project_change_requests",
     "project_conditions",
     "project_documents",
@@ -107,9 +120,23 @@ async def project_catalogue(session: AsyncSession, project_id: uuid.UUID) -> Cat
     model = await GovernanceRepository(session).get_model(project_id)
     if model is None:
         return None
-    return await resolve_catalogue(
-        session, model.catalogue_source, model.catalogue_id, model.catalogue_version, from_pin=True
-    )
+    try:
+        return await resolve_catalogue(
+            session, model.catalogue_source, model.catalogue_id, model.catalogue_version, from_pin=True
+        )
+    except (GovernanceError, InvalidCatalogueError) as exc:
+        # A pack that was removed, a pack file that no longer loads, a stored version the rules
+        # refuse today. Every reader of this port treats None as "no model", which is what the
+        # project has until somebody repairs the pin; raising would be a 500 in each of them.
+        logger.warning(
+            "project %s pins %s:%s@%s, which does not resolve: %s",
+            project_id,
+            model.catalogue_source,
+            model.catalogue_id,
+            model.catalogue_version,
+            exc,
+        )
+        return None
 
 
 async def host_for(session: AsyncSession, project_id: uuid.UUID, subject: str) -> Host | None:
@@ -202,6 +229,7 @@ class DocumentView:
         container_id: The document container holding its revisions, if one is attached.
         bound_revision_id: The revision in force, once a gate approved the document.
         approved_gate_id: The gate (``GateView.id``) whose decision approved it.
+        bound_content_hash: Content hash of the bound revision as recorded when the gate approved it.
     """
 
     id: uuid.UUID
@@ -216,6 +244,43 @@ class DocumentView:
     container_id: uuid.UUID | None = None
     bound_revision_id: uuid.UUID | None = None
     approved_gate_id: uuid.UUID | None = None
+    bound_content_hash: str | None = None
+
+
+@dataclass(frozen=True)
+class ControlSettings:
+    """The project-wide controls other modules have to respect.
+
+    Attributes:
+        has_model: The project pinned a phase model.
+        four_eyes: Whoever prepared or owns a thing must not be the one who approves it.
+            ``True`` when the project has no model: a control is on until somebody with
+            the authority switches it off.
+        current_phase: Code of the phase the project is in; ``None`` without a model.
+        stopped: A stop decision ended the project; nothing is submitted or decided any more.
+    """
+
+    has_model: bool
+    four_eyes: bool
+    current_phase: str | None
+    stopped: bool
+
+
+def control_settings(model: Any) -> ControlSettings:
+    """Read model of a governance model row, or of its absence."""
+    if model is None:
+        return ControlSettings(has_model=False, four_eyes=True, current_phase=None, stopped=False)
+    return ControlSettings(
+        has_model=True,
+        four_eyes=bool(model.four_eyes),
+        current_phase=model.current_phase or None,
+        stopped=bool(getattr(model, "stopped", False)),
+    )
+
+
+async def project_controls(session: AsyncSession, project_id: uuid.UUID) -> ControlSettings:
+    """Four-eyes, the current phase and the stop flag of a project. Never raises for a project without a model."""
+    return control_settings(await GovernanceRepository(session).get_model(project_id))
 
 
 @dataclass(frozen=True)
@@ -340,7 +405,8 @@ def gate_views(catalogue: Any, rows: Any, target_dates: Mapping[uuid.UUID, Any] 
             from_phase=g.from_phase,
             to_phase=g.to_phase,
             last_outcome=g.last_outcome or "",
-            target_date=_day(planned[g.id] if g.id in planned else getattr(g, "target_date", None)),
+            # The linked activity's day; the gate's own when it is not linked or the activity has none.
+            target_date=_day(planned.get(g.id) or getattr(g, "target_date", None)),
         )
         for index, g in enumerate(ordered, start=1)
     )
@@ -383,6 +449,7 @@ def document_views(catalogue: Any, rows: Any, areas: tuple[AreaView, ...]) -> tu
             container_id=getattr(d, "container_id", None),
             bound_revision_id=getattr(d, "bound_revision_id", None),
             approved_gate_id=getattr(d, "approved_gate_id", None),
+            bound_content_hash=getattr(d, "bound_content_hash", None) or None,
         )
         for index, d in enumerate(ordered, start=1)
     )
@@ -482,6 +549,22 @@ def change_request_views(rows: Any) -> tuple[ChangeRequestView, ...]:
     )
 
 
+def rows_of_gates(rows: Iterable[Any], current: Any, *, asked: uuid.UUID | None = None) -> list[Any]:
+    """Rows of the gates of the current phase model, or of the one gate that was asked for.
+
+    Without ``asked``, rows of a gate the project left with its earlier model
+    are dropped, as :func:`project_gates` drops the gate itself. A caller that
+    names a gate gets that gate's rows, historic or not.
+    """
+    if asked is not None:
+        return [r for r in rows if r.gate_id == asked]
+    return [r for r in rows if r.gate_id in current]
+
+
+async def _current_gate_ids(repo: GovernanceRepository, project_id: uuid.UUID) -> frozenset[uuid.UUID]:
+    return frozenset(g.id for g in await repo.list_gates(project_id))
+
+
 async def project_gate_decisions(
     session: AsyncSession, project_id: uuid.UUID, gate_id: uuid.UUID | None = None
 ) -> tuple[DecisionView, ...]:
@@ -489,7 +572,9 @@ async def project_gate_decisions(
 
     A gate id of another project lists nothing: the project filter always applies.
     """
-    return decision_views(await GovernanceRepository(session).list_decisions(project_id, gate_id))
+    repo = GovernanceRepository(session)
+    rows = await repo.list_decisions(project_id, gate_id)
+    return decision_views(rows_of_gates(rows, await _current_gate_ids(repo, project_id), asked=gate_id))
 
 
 async def project_conditions(
@@ -498,9 +583,9 @@ async def project_conditions(
     """Conditions of one gate, or of the whole project, with their status as of the server's today."""
     from app.modules.project_governance.service import server_today
 
-    rows, _ = await GovernanceRepository(session).list_conditions(project_id)
-    if gate_id is not None:
-        rows = [c for c in rows if c.gate_id == gate_id]
+    repo = GovernanceRepository(session)
+    rows, _ = await repo.list_conditions(project_id)
+    rows = rows_of_gates(rows, await _current_gate_ids(repo, project_id), asked=gate_id)
     return condition_views(rows, server_today())
 
 

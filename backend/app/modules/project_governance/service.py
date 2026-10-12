@@ -94,6 +94,33 @@ def _parse_day(value: str) -> date | None:
         return None
 
 
+def approval_would_clear(step: Any, states: Any, entitled: Any, decider_id: Any) -> bool:
+    """Whether one more approval, by ``decider_id``, clears the final step of a pending route.
+
+    The rule is the approval engine's own (``simulate.step_cleared``), fed with
+    the recorded decisions of that step plus the one the caller would add, so
+    what the screen offers cannot drift from what ``decide`` then accepts.
+    ``entitled`` is the engine's set of named deciders, ``None`` for a
+    role-based step.
+    """
+    from app.modules.approval_routes.simulate import step_cleared
+
+    mine = [s for s in states if s.step_id == step.id]
+    approvers = {s.approver_user_id for s in mine if s.decision == "approved"}
+    added = 0 if decider_id in approvers else 1
+    approvers = approvers | {decider_id}
+    return step_cleared(
+        mode=step.mode,
+        user_pinned=entitled is not None,
+        pinned_user_approved=bool(set(entitled or ()) & approvers),
+        approvals=sum(1 for s in mine if s.decision == "approved") + added,
+        distinct_approvers=len(approvers),
+        rejections=sum(1 for s in mine if s.decision == "rejected"),
+        total_acted=sum(1 for s in mine if s.decision != "pending") + added,
+        quorum=step.required_approver_count,
+    )
+
+
 def server_today() -> date:
     """The date every write is judged against. A client never supplies it."""
     return datetime.now(UTC).date()
@@ -589,7 +616,10 @@ class GovernanceService:
             }
 
         before = _state()
-        if four_eyes is not None:
+        if "four_eyes" in fields_set and four_eyes is None:
+            raise GovernanceError("null_not_allowed", 422)
+        if four_eyes is not None and four_eyes != model.four_eyes:
+            await self._refuse_while_under_decision(project_id)
             model.four_eyes = four_eyes
         for field, kind, value in (
             ("decision_route_id", GATE_TARGET_KIND, decision_route_id),
@@ -611,6 +641,12 @@ class GovernanceService:
         )
         return model
 
+    async def _refuse_while_under_decision(self, project_id: uuid.UUID) -> None:
+        """409 while any gate of the project is in review or on hold."""
+        code = ev.settings_freeze_violation(g.status for g in await self.repo.list_gates(project_id))
+        if code:
+            raise conflict(code)
+
     # ── areas ──────────────────────────────────────────────────────────────
 
     async def update_area(
@@ -631,6 +667,13 @@ class GovernanceService:
             "deputy_user_id": _s(area.deputy_user_id),
             "applicable": area.applicable,
         }
+        for field in ("applicable", "na_rationale", "name_override"):
+            if field in changes and changes[field] is None:
+                # These columns hold no null; a name override is cleared with an empty string.
+                raise GovernanceError("null_not_allowed", 422)
+        if "applicable" in changes and changes["applicable"] != area.applicable:
+            # Taking an area out of a gate that is being decided would remove its blockers unseen.
+            await self._refuse_while_under_decision(project_id)
         for field in ("owner_user_id", "deputy_user_id"):
             if field in changes and changes[field] is not None:
                 if not await self.user_can_access_project(project_id, changes[field]):
@@ -916,6 +959,16 @@ class GovernanceService:
             raise GovernanceError(code, status, violations=[v.as_dict() for v in violations])
         return instance, final_step, ctx, areas, docs
 
+    async def _one_approval_clears(self, instance: Any, final_step: Any, decider_id: uuid.UUID) -> bool:
+        """Whether this caller's approval would complete the pending route of a gate."""
+        if instance.status != "pending":
+            return True
+        from app.modules.approval_routes.service import ApprovalRouteService
+
+        svc = ApprovalRouteService(self.session)
+        entitled = await svc.entitled_deciders(instance, final_step, now=datetime.now(UTC))
+        return approval_would_clear(final_step, await svc.list_step_states(instance.id), entitled, decider_id)
+
     async def decide_capability(
         self, project_id: uuid.UUID, gate_id: uuid.UUID, *, decider_id: uuid.UUID, role: str | None, today: date
     ) -> dict[str, Any]:
@@ -938,11 +991,16 @@ class GovernanceService:
         for members in (_POSITIVE, _NEGATIVE):
             reason: str | None = None
             try:
-                await self._admit_actor(model, gate, outcome=members[-1], decider_id=decider_id, role=role)
+                instance, final_step = await self._admit_actor(
+                    model, gate, outcome=members[-1], decider_id=decider_id, role=role
+                )
                 if ctx is None:
                     ctx, _, _ = await self.gate_context(model, gate, today)
                 if ev.four_eyes_violation(ctx, str(decider_id)):
                     reason = "decider_is_area_owner"
+                elif members is _POSITIVE and not await self._one_approval_clears(instance, final_step, decider_id):
+                    # A role step in mode all or majority: decide would answer 409 after this approval.
+                    reason = "route_needs_more_approvals"
             except GovernanceError as exc:
                 reason = exc.code
             for outcome in members:

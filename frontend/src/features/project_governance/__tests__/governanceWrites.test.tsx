@@ -24,6 +24,10 @@ vi.mock('@/features/cde/api', () => ({
 }));
 vi.mock('@/features/documents/api', () => ({ uploadDocument: vi.fn() }));
 vi.mock('@/features/approval-routes/api', () => ({ listRoutes: vi.fn() }));
+vi.mock('@/features/approval-routes/ApprovalInstanceDetailDrawer', () => ({
+  ApprovalInstanceDetailDrawer: ({ instanceId }: { instanceId: string | null }) =>
+    instanceId ? <div data-testid="approval-drawer">{instanceId}</div> : null,
+}));
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
   return {
@@ -210,6 +214,30 @@ describe('GatePanel', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
+  it('an outcome that waits for more approvers leads to the approval itself', async () => {
+    open(
+      detail({
+        gate: gate({ status: 'in_review', approval_instance_id: 'inst-1' }),
+        can: {
+          edit: true,
+          decide: true,
+          outcomes: {
+            go: { allowed: false, reason: 'route_needs_more_approvals' },
+            go_with_conditions: { allowed: false, reason: 'route_needs_more_approvals' },
+            hold: { allowed: true, reason: null },
+            stop: { allowed: true, reason: null },
+          },
+        },
+      }),
+    );
+    expect(await screen.findByTestId('open-approval')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('open-decision'));
+    expect(screen.getByRole('radio', { name: /^Go\b(?! with)/ })).toBeDisabled();
+    fireEvent.click(screen.getByTestId('outcome-go-open-approval'));
+    expect(await screen.findByTestId('approval-drawer')).toHaveTextContent('inst-1');
+    expect(screen.queryByTestId('decision-dialog')).toBeNull();
+  });
+
   it('a gate on hold offers to resume, not to decide', async () => {
     open(detail({ gate: gate({ status: 'on_hold', hold_resume_date: '2026-11-01', last_outcome: 'hold' }) }));
     await screen.findByTestId('resume-gate');
@@ -376,6 +404,24 @@ describe('AreaPanel documents', () => {
       />,
     );
   }
+
+  it('whether the area applies is locked while a gate is in review, with the reason', () => {
+    wrap(
+      <AreaPanel
+        projectId="p1"
+        area={theArea({ na_rationale: 'Not part of this project' })}
+        model={model()}
+        documents={[]}
+        changeRequests={[]}
+        gates={[gate({ status: 'in_review' })]}
+        labels={labels}
+        personName={names}
+        onBack={() => undefined}
+      />,
+    );
+    expect(screen.getByRole('checkbox', { name: 'Applies to this project' })).toBeDisabled();
+    expect(screen.getByText(enT('governance.errors.settings_frozen_in_review'))).toBeInTheDocument();
+  });
 
   it('takes the owner off only through its own button', async () => {
     mocked.updateArea.mockResolvedValue(theArea());

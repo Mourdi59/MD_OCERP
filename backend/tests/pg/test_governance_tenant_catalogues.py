@@ -114,7 +114,8 @@ async def test_another_tenant_cannot_see_read_or_pin_it(world: World) -> None:
     async with world.factory() as s:
         store = CatalogueStore(s)
         listed = await store.list_available(other)
-        assert all(i["source"] == "shipped" for i in listed)
+        # Not "all shipped": an installation with an active pack lists its catalogues too.
+        assert listed and all(i["source"] != "tenant" for i in listed)
         with pytest.raises(GovernanceError) as read:
             await store.get(other, row.id)
         pid = await add_project(s, world.outsider, [])

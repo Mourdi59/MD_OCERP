@@ -61,6 +61,8 @@ export interface DecisionDialogProps {
   serverViolations: Violation[];
   serverError: string | null;
   onSubmit: (input: DecisionInput) => void;
+  /** Opens the approval this gate runs on; offered where an outcome waits for more approvers. */
+  onOpenApproval?: () => void;
 }
 
 export function DecisionDialog({
@@ -75,6 +77,7 @@ export function DecisionDialog({
   serverViolations,
   serverError,
   onSubmit,
+  onOpenApproval,
 }: DecisionDialogProps) {
   const { t } = useTranslation();
   const naAreas = useMemo(() => notApplicableAreas(detail), [detail]);
@@ -221,6 +224,19 @@ export function DecisionDialog({
                   </span>{' '}
                   <span className="text-xs text-content-secondary">{vocab(t, OUTCOME_HINT, o)}</span>
                   <VerdictReason verdict={refused} />
+                  {onOpenApproval && refused && typeof refused === 'object' && refused.server === 'route_needs_more_approvals' && (
+                    <button
+                      type="button"
+                      className="self-start text-xs font-medium text-oe-blue hover:underline"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onOpenApproval();
+                      }}
+                      data-testid={`outcome-${o}-open-approval`}
+                    >
+                      {t('governance.project.gate.open_approval', { defaultValue: 'Open the approval' })}
+                    </button>
+                  )}
                 </label>
               );
             })}
