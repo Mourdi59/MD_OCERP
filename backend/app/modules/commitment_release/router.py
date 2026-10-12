@@ -364,6 +364,29 @@ async def project_capabilities(
     }
 
 
+@router.get("/projects/{project_id}/references", dependencies=[READ])
+async def project_references(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """Gates, areas, frame documents and funding applications a form may pick from. Never 404 for a
+    project without a governance model: the lists are empty and ``has_model`` is false."""
+    await verify_project_access(project_id, user_id, session)
+    return await _run(CommitmentService(session).references(project_id))
+
+
+@router.get("/projects/{project_id}/items/{item_id}/transfer-targets", dependencies=[MANAGE])
+async def transfer_targets(
+    project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> list[dict[str, Any]]:
+    """Projects (this one first) and their open items the item may be transferred to."""
+    from app.dependencies import accessible_project_ids
+
+    await verify_project_access(project_id, user_id, session)
+    return await _run(
+        CommitmentService(session).transfer_targets(
+            project_id, item_id, accessible=await accessible_project_ids(session, user_id), manage=True
+        )
+    )
+
+
 @router.get("/projects/{project_id}/matrix", response_model=MatrixOut, dependencies=[READ])
 async def get_matrix(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> MatrixOut:
     await verify_project_access(project_id, user_id, session)

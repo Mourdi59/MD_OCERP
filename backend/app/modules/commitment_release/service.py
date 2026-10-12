@@ -2552,6 +2552,102 @@ class CommitmentService:
             await self.recompute_item(target.project_id, target.id, actor_id=actor_id, locked=target)
         return item
 
+    async def references(self, project_id: uuid.UUID) -> dict[str, Any]:
+        """What the item and precondition forms let a person pick, read from the modules that own it.
+
+        Gates and areas are the project's own governance rows, labelled from the catalogue the
+        project pinned; frame documents and funding applications are what a linked precondition
+        names. Every list is empty for a project without a governance model (``has_model`` says so).
+        """
+        from app.modules.funding.models import FundingApplication
+        from app.modules.project_governance.catalogue import label_of
+        from app.modules.project_governance.public import project_catalogue
+        from app.modules.project_governance.repository import GovernanceRepository
+
+        repo = GovernanceRepository(self.session)
+        has_model = await repo.get_model(project_id) is not None
+        catalogue = await project_catalogue(self.session, project_id) if has_model else None
+
+        def label(items: Any, code: str, override: str = "") -> dict[str, Any]:
+            if override:
+                return {"key": None, "text": {"en": override}}
+            hit = next((i for i in (items or ()) if i.code == code), None)
+            return label_of(hit.name_key, hit.labels) if hit is not None else {"key": None, "text": None}
+
+        gates = await repo.list_gates(project_id) if has_model else []
+        areas = await repo.list_areas(project_id) if has_model else []
+        documents = await repo.list_documents(project_id) if has_model else []
+        area_code = {a.id: a.code for a in areas}
+        funding = await self.session.execute(
+            select(FundingApplication.id, FundingApplication.code, FundingApplication.title, FundingApplication.status)
+            .where(FundingApplication.project_id == project_id)
+            .order_by(FundingApplication.code)
+        )
+        return {
+            "has_model": has_model,
+            "gates": [
+                {
+                    "code": g.code,
+                    "name": label(getattr(catalogue, "gates", None), g.code),
+                    "status": g.status,
+                    "last_outcome": g.last_outcome or None,
+                }
+                for g in gates
+            ],
+            "areas": [
+                {"code": a.code, "name": label(getattr(catalogue, "areas", None), a.code, a.name_override)}
+                for a in areas
+            ],
+            "frame_documents": [
+                {
+                    "id": str(d.id),
+                    "doc_type": d.doc_type,
+                    "name": label(getattr(catalogue, "document_types", None), d.doc_type),
+                    "area_code": area_code.get(d.area_id),
+                    "status": d.status,
+                }
+                for d in documents
+            ],
+            "funding_applications": [
+                {"id": str(i), "code": code, "title": title, "status": status}
+                for i, code, title, status in funding.all()
+            ],
+        }
+
+    async def transfer_targets(
+        self, project_id: uuid.UUID, item_id: uuid.UUID, *, accessible: set[uuid.UUID] | None, manage: bool
+    ) -> list[dict[str, Any]]:
+        """Where the item may be handed over: this project first, then the caller's other projects
+        that have a matrix. ``accessible`` is the caller's project set (None: no restriction). Each
+        project carries ``can`` by the rule :meth:`transfer_item` enforces, and its open items."""
+        from app.modules.projects.models import Project
+
+        item = await self.get_item(project_id, item_id)
+        refusal = self.transfer_refusal(item, manage)
+        has_links = bool(await self.repo.list_links(project_id, [item.id]))
+        stmt = select(Project.id, Project.name).join(CommitmentMatrix, CommitmentMatrix.project_id == Project.id)
+        if accessible is not None:
+            stmt = stmt.where(Project.id.in_(accessible | {project_id}))
+        rows = (await self.session.execute(stmt.order_by(Project.name))).all()
+        out: list[dict[str, Any]] = []
+        for pid, name in sorted(rows, key=lambda r: (r[0] != project_id, r[1] or "")):
+            code = refusal or ("transfer_links_stay_in_project" if has_links and pid != project_id else None)
+            items = [
+                {"id": str(i.id), "code": i.code, "title": i.title}
+                for i in await self.repo.list_items(pid)
+                if i.id != item.id and i.status in WORKING
+            ]
+            out.append(
+                {
+                    "project_id": str(pid),
+                    "project_name": name,
+                    "same_project": pid == project_id,
+                    "can": {"allowed": code is None, "reason": code},
+                    "items": items,
+                }
+            )
+        return out
+
     async def history(self, project_id: uuid.UUID, item_id: uuid.UUID) -> list[ReleaseDecision]:
         item = await self.get_item(project_id, item_id)
         return await self.repo.list_releases(project_id, [item.id])

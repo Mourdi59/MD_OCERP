@@ -283,3 +283,43 @@ async def test_project_capabilities_and_route_states_come_from_the_server(world:
     async with client_as(world, world.manager, "manager") as c:
         tiers = {t["code"]: t["route_state"] for t in (await c.get(f"{url}/matrix")).json()["tiers"]}
     assert tiers == {"project_manager": "generated", "sponsor": "changed", "board": "generated"}
+
+
+async def test_references_are_empty_lists_without_a_governance_model_and_targets_follow_access(
+    world: World,
+) -> None:
+    from app.modules.commitment_release.service import CommitmentService
+    from tests.pg.commitment_fixtures import add_project, link
+
+    url = f"{BASE}/projects/{world.project_id}"
+    async with client_as(world, world.requester, "editor") as c:
+        refs = await c.get(f"{url}/references")
+    assert refs.status_code == 200, refs.text
+    assert refs.json() == {
+        "has_model": False,
+        "gates": [],
+        "areas": [],
+        "frame_documents": [],
+        "funding_applications": [],
+    }
+
+    async with world.factory() as s:
+        mine = await add_project(s, world.manager, [])
+        theirs = await add_project(s, world.outsider, [])
+        for pid, actor in ((mine, world.manager), (theirs, world.outsider)):
+            await CommitmentService(s).set_matrix(pid, actor_id=actor, tenant_id=str(actor), schedule_id="neutral")
+        await s.commit()
+    iid = await item(world, amount="10000")
+    other = await item(world, code="CR-8", amount="10000")
+    async with client_as(world, world.manager, "manager") as c:
+        targets = (await c.get(f"{url}/items/{iid}/transfer-targets")).json()
+    assert [t["project_id"] for t in targets] == [str(world.project_id), str(mine)]
+    assert targets[0]["same_project"] is True
+    assert targets[0]["items"] == [{"id": str(other), "code": "CR-8", "title": "Item CR-8"}]
+    assert all(t["can"] == {"allowed": True, "reason": None} for t in targets)
+
+    cid = await add_contract(world, "10000")
+    await link(world, iid, "contract", cid)
+    async with client_as(world, world.manager, "manager") as c:
+        targets = (await c.get(f"{url}/items/{iid}/transfer-targets")).json()
+    assert [t["can"]["reason"] for t in targets] == [None, "transfer_links_stay_in_project"]

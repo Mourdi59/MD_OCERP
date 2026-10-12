@@ -95,6 +95,7 @@ class LinkFigure:
             "link_id": str(self.link_id),
             "kind": self.kind,
             "document_id": str(self.document_id),
+            "contract_id": str(self.contract_id) if self.contract_id else None,
             "currency": self.currency,
             "document_amount": str(self.raw),
             "counted_amount": str(self.amount),
