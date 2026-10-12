@@ -21,6 +21,23 @@ export function scheduleArchiveConfirmation(t: TFunction, schedule: Schedule): C
   };
 }
 
+/**
+ * Delete pressed on a schedule that is still in use. It is never deleted
+ * directly: the dialog says so in plain words, names who may delete an
+ * archive, and its confirm button does the archiving.
+ */
+export function scheduleDeleteNeedsArchiveConfirmation(t: TFunction, schedule: Schedule): ConfirmOptions {
+  return {
+    title: t('schedule.delete_needs_archive_title', { defaultValue: 'Deleting starts with archiving' }),
+    message: t('schedule.delete_needs_archive_body', {
+      defaultValue:
+        '“{{name}}” cannot be deleted directly. Archive it first: nothing is lost and it can be restored. The project owner or an administrator can then delete it permanently (with saved baselines, only an administrator). Archived schedules are listed under the Archived filter.',
+      name: schedule.name,
+    }),
+    confirmLabel: t('common.archive'),
+  };
+}
+
 export function scheduleRestoreConfirmation(t: TFunction, schedule: Schedule): ConfirmOptions {
   const previous = scheduleRestoreStatus(schedule);
   return {

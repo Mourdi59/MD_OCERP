@@ -103,6 +103,37 @@ describe('reversible archive actions', () => {
   });
 });
 
+describe('Delete on a schedule that is still in use', () => {
+  it.each([false, true])('is offered to an editor and explains that archiving comes first (compact %s)', async (compact) => {
+    const { onChanged } = view({}, compact);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Contract plan' }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent('Deleting starts with archiving');
+    expect(dialog).toHaveTextContent('cannot be deleted directly');
+    expect(dialog).toHaveTextContent('project owner or an administrator');
+    expect(dialog).toHaveTextContent('with saved baselines, only an administrator');
+    expect(scheduleApi.archiveSchedule).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Archive' }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledOnce());
+    expect(scheduleApi.archiveSchedule).toHaveBeenCalledExactlyOnceWith('s1');
+    expect(scheduleApi.purgeSchedule).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when the dialog is cancelled', async () => {
+    view();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Contract plan' }));
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(scheduleApi.archiveSchedule).not.toHaveBeenCalled();
+  });
+
+  it('is not shown to a viewer, who may not archive either', () => {
+    useAuthStore.setState({ userRole: 'viewer' });
+    view();
+    expect(screen.queryByRole('button', { name: 'Delete Contract plan' })).toBeNull();
+  });
+});
+
 describe('permanent deletion is for an administrator or the project owner', () => {
   it.each(['editor', 'manager', 'viewer'])('never offers purge to a %s the server refuses', async (role) => {
     useAuthStore.setState({ userRole: role });
@@ -110,8 +141,16 @@ describe('permanent deletion is for an administrator or the project owner', () =
       payment_milestone_count: 0, can_delete: false, blocked_reason: 'permission_denied' });
     view({ status: 'archived' });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(screen.queryByRole('button', { name: /Permanently delete/ })).toBeNull();
-    if (role === 'viewer') expect(screen.queryByRole('button', { name: /Restore/ })).toBeNull();
+    if (role === 'viewer') {
+      expect(screen.queryByRole('button', { name: /Permanently delete/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: /Restore/ })).toBeNull();
+      return;
+    }
+    // Shown switched off, with who may delete in words next to it.
+    expect(await screen.findByRole('button', { name: /Permanently delete/ })).toBeDisabled();
+    expect(screen.getByTestId('schedule-purge-blocked'))
+      .toHaveTextContent('Only the project owner or an administrator');
+    expect(scheduleApi.purgeSchedule).not.toHaveBeenCalled();
   });
 
   it('offers purge to an editor who owns the project, once the server says so', async () => {
