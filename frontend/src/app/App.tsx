@@ -169,7 +169,7 @@ const CredentialsPage = lazy(() =>
   import('@/features/credentials/CredentialsPage').then((m) => ({ default: m.CredentialsPage }))
 );
 const ProjectStaffingPage = lazy(() =>
-  import('@/features/staffing').then((m) => ({ default: m.ProjectStaffingPage }))
+  import('@/features/staffing/ProjectStaffingPage').then((m) => ({ default: m.ProjectStaffingPage }))
 );
 const ModuleBuilderPage = lazy(() =>
   import('@/features/module-builder/ModuleBuilderPage').then((m) => ({ default: m.ModuleBuilderPage }))

@@ -86,7 +86,7 @@ export function ProjectStaffingPage() {
         ]}
       />
       <div>
-        <h1 className="text-xl font-semibold text-content-primary">{title}</h1>
+        <h1 className="text-xl font-semibold text-content-primary">{t('staffing.title', { defaultValue: 'Staffing' })}</h1>
         <p className="text-sm text-content-secondary">
           {t('staffing.subtitle', {
             defaultValue: 'Which roles the project needs in each phase, who fills them, and whether each person is cleared to start.',
