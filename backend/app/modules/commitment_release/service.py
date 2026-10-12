@@ -1366,7 +1366,9 @@ class CommitmentService:
                 new_money = "release_expired" if in_force < released else "commitment_not_released"
             view = {
                 "released_in_force": _money_str(in_force),
-                "release_expired": expired > 0 and (in_force is None or in_force < released),
+                # True while the passed date is what stops further money; a renewal clears it.
+                "release_expired": new_money == "release_expired",
+                "released_lapsed": _money_str(released - in_force) if in_force is not None else None,
                 "expired_release_dates": sorted(
                     {
                         r.valid_until

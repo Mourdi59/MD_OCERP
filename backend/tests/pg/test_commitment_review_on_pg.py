@@ -1333,6 +1333,7 @@ async def test_a_release_past_its_date_keeps_what_is_bound_and_authorises_nothin
         D("30000"),
     )
     assert after["release_expired"] is True
+    assert D(after["released_lapsed"]) == D("10000")
     assert after["expired_release_dates"] == ["2020-01-31"]
     assert after["can"]["commit_new"] == {"allowed": False, "reason": "release_expired"}
     # The bound contract as it stands is still covered; growing it is new money and is refused by name.
@@ -1359,4 +1360,10 @@ async def test_a_release_past_its_date_keeps_what_is_bound_and_authorises_nothin
     renewed = await view()
     assert D(renewed["released_in_force"]) == D("40000")
     assert renewed["can"]["commit_new"] == {"allowed": True, "reason": None}
+    # The renewal clears the warning; the lapsed 10,000 of the old release stay on record.
+    assert (renewed["release_expired"], D(renewed["released"]), D(renewed["released_lapsed"])) == (
+        False,
+        D("50000"),
+        D("10000"),
+    )
     assert (await check("contract", cid, "40000"))["result"] == "ok"
