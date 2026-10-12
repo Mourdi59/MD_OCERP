@@ -182,7 +182,7 @@ describe('GatePanel', () => {
     });
 
     it('tells somebody who may not manage whom to ask', async () => {
-      render(model({ can: { manage: false, edit: true } }), () => undefined);
+      render(model({ can: { manage: false } }), () => undefined);
       fireEvent.click(await screen.findByRole('button', { name: 'Submit for review' }));
       const notice = await screen.findByTestId('gate-no-route');
       expect(notice).toHaveTextContent('A governance manager chooses it in the phase model settings.');
@@ -292,8 +292,12 @@ describe('GatePanel', () => {
         }),
       );
       expect(await screen.findByTestId('open-reopen')).toBeDisabled();
-      expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'server:later_gate_active');
-      expect(screen.getByTestId('disabled-reason')).toHaveTextContent(enT('governance.errors.later_gate_active'));
+      // Other buttons on the gate carry reasons of their own; this is the one of the reopen button.
+      const reason = screen
+        .getAllByTestId('disabled-reason')
+        .find((r) => r.getAttribute('data-reason') === 'server:later_gate_active');
+      expect(reason).toBeDefined();
+      expect(reason).toHaveTextContent(enT('governance.errors.later_gate_active'));
       view.unmount();
 
       open(detail({ gate: gate({ status: 'in_review' }) }));
@@ -691,7 +695,7 @@ describe('RoutePin', () => {
 
   it('is read-only with a reason for somebody who may not manage', async () => {
     mockedRoutes.listRoutes.mockResolvedValue([route('r1', 'Gate board')]);
-    wrap(<RoutePin projectId="p1" model={model({ can: { manage: false, edit: true } })} kind="gate" onDone={() => undefined} />);
+    wrap(<RoutePin projectId="p1" model={model({ can: { manage: false } })} kind="gate" onDone={() => undefined} />);
     expect(await screen.findByRole('combobox')).toBeDisabled();
     expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'role_manage');
   });

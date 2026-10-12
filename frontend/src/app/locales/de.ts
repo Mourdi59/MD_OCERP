@@ -32560,6 +32560,7 @@ const resource = {
     "governance.project.model.source_shipped": "In der Plattform enthalten",
     "governance.project.model.source_tenant": "Ihre Organisation",
     "governance.project.model.unconfirmed": "Einige Einträge sind noch nicht an der Primärquelle geprüft.",
+    "governance.project.model.version": "Version {{n}}",
     "governance.project.not_applicable": "Nicht zutreffend",
     "governance.project.outcome.go": "Go",
     "governance.project.outcome.go_with_conditions": "Go mit Auflagen",

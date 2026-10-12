@@ -188,7 +188,7 @@ function DocumentRow({
                 <li key={r.id} className="flex flex-wrap gap-2">
                   <span className="font-mono">{r.revision_code || r.revision_number}</span>
                   <span className="text-content-secondary">{r.file_name}</span>
-                  <span className="text-content-tertiary">{fmtDate(r.created_at)}</span>
+                  <span className="text-content-tertiary">{r.created_at ? fmtDate(r.created_at) : ''}</span>
                   {r.in_force && (
                     <span className="font-medium text-semantic-success">
                       {t('governance.project.area.in_force', { defaultValue: 'In force' })}
@@ -216,7 +216,7 @@ function DocumentRow({
               <ToneBadge tone={c.status === 'approved' ? 'success' : c.status === 'submitted' ? 'blue' : 'neutral'}>
                 {vocab(t, CR_STATUS, c.status)}
               </ToneBadge>
-              <span className="text-content-tertiary">{fmtDate(c.created_at)}</span>
+              <span className="text-content-tertiary">{c.created_at ? fmtDate(c.created_at) : ''}</span>
             </li>
           ))}
         </ul>

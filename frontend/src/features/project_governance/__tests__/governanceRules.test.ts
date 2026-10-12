@@ -142,8 +142,8 @@ describe('other verdicts', () => {
     expect(canSubmitGate(model(), d('in_preparation', false))).toBe('role_edit');
   });
   it('manage follows the model flag', () => {
-    expect(canManage(model({ can: { manage: true, edit: true } }))).toBeNull();
-    expect(canManage(model({ can: { manage: false, edit: true } }))).toBe('role_manage');
+    expect(canManage(model({ can: { manage: true } }))).toBeNull();
+    expect(canManage(model({ can: { manage: false } }))).toBe('role_manage');
   });
   it('adding a document follows the flag of the area', () => {
     expect(canAddDocument(area({ can: { add_document: true } }))).toBeNull();

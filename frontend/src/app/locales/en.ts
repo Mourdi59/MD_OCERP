@@ -29784,6 +29784,7 @@ const resource = {
     "governance.project.model.source_shipped": "Included with the platform",
     "governance.project.model.source_tenant": "Your organisation",
     "governance.project.model.unconfirmed": "Some entries are not yet verified against the primary source.",
+    "governance.project.model.version": "Version {{n}}",
     "governance.project.not_applicable": "Not applicable",
     "governance.project.outcome.go": "Go",
     "governance.project.outcome.go_with_conditions": "Go with conditions",
