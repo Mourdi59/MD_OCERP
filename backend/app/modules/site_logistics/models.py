@@ -22,7 +22,7 @@ Logistics plan (framework module 6, SPEC v1 2026-10-11), all project-scoped:
     oe_site_logistics_customs_line            - goods lines with HS codes
     oe_site_logistics_customs_document        - the document checklist of a case
     oe_site_logistics_neighbourhood           - noise limits, quiet hours (one per project)
-    oe_site_logistics_neighbour_complaint     - complaints from the surroundings
+    oe_site_logistics_neighbour_issue         - complaints from the surroundings (Issue Hub source)
     oe_site_logistics_coordination            - dated coordination log
 
 Plant and crane positions (``oe_site_logistics_plant_position``) are defined by
@@ -628,18 +628,18 @@ class NeighbourhoodPlan(Base):
     correspondence_thread_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
 
 
-class NeighbourComplaint(Base):
+class NeighbourIssue(Base):
     """A complaint from the surroundings (noise, dust, traffic ...) and our response.
 
     Stores no personal data by default (Decision 10): ``reporter`` is optional
-    free text. A complaint about the site's effect on its neighbours, not a
-    construction defect, so no defect hub reads it.
+    free text. It has an owner, a response date and a lifecycle, so the Unified
+    Issue Hub lists open ones beside punch items and NCRs (source ``neighbour``).
     """
 
-    __tablename__ = "oe_site_logistics_neighbour_complaint"
-    __table_args__ = (Index("ix_oe_site_complaint_project", "project_id"),)
+    __tablename__ = "oe_site_logistics_neighbour_issue"
+    __table_args__ = (Index("ix_oe_site_nissue_project", "project_id"),)
 
-    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_complaint_project")
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_nissue_project")
     kind: Mapped[str] = mapped_column(String(40), nullable=False)
     reported_on: Mapped[date] = mapped_column(Date, nullable=False)
     reporter: Mapped[str] = mapped_column(String(255), nullable=False, default="")
@@ -649,6 +649,9 @@ class NeighbourComplaint(Base):
     delivery_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     response: Mapped[str] = mapped_column(Text, nullable=False, default="")
     response_due: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Who answers it; defaults to the owner of governance area m06 and is the
+    # assignee the Issue Hub shows.
+    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="received")
     overdue_notified_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 

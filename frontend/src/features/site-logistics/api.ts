@@ -323,3 +323,40 @@ export async function fetchSiteLogisticsStats(
     `/v1/site-logistics/stats/?project_id=${encodeURIComponent(projectId)}`,
   );
 }
+
+/* ── Neighbour issues (logistics plan) ──────────────────────────────────── */
+
+export type NeighbourIssueState = 'received' | 'acknowledged' | 'action_taken' | 'closed';
+
+/** A complaint from the surroundings, as `GET /projects/{id}/neighbour-issues` returns it. */
+export interface NeighbourIssue {
+  id: string;
+  kind: string;
+  reported_on: string;
+  reporter: string;
+  location: Record<string, unknown> | null;
+  description: string;
+  transport_id: string | null;
+  delivery_id: string | null;
+  owner_user_id: string | null;
+  response: string;
+  response_due: string | null;
+  state: NeighbourIssueState | string;
+  /** Past its response date and not yet acknowledged (server-side rule 18). */
+  overdue: boolean;
+  created_at: string | null;
+}
+
+export interface NeighbourIssuePage {
+  items: NeighbourIssue[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+/** Every neighbour issue of a project; closed ones are filtered by the caller. */
+export async function fetchNeighbourIssues(projectId: string): Promise<NeighbourIssuePage> {
+  return apiGet<NeighbourIssuePage>(
+    `/v1/site-logistics/projects/${encodeURIComponent(projectId)}/neighbour-issues`,
+  );
+}

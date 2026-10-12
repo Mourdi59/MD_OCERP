@@ -162,3 +162,38 @@ def test_translate_falls_back_to_english() -> None:
     assert translate("site_logistics.errors.code_taken", locale="xx") == translate(
         "site_logistics.errors.code_taken", locale="en"
     )
+
+
+def test_neighbour_issue_output_carries_what_the_issue_hub_reads() -> None:
+    """``frontend/src/features/issues/issueSources.ts`` maps these fields of a neighbour issue."""
+    import uuid
+    from datetime import UTC, date, datetime
+
+    from app.modules.site_logistics.models import NeighbourIssue
+
+    row = NeighbourIssue(
+        id=uuid.uuid4(),
+        project_id=uuid.uuid4(),
+        kind="noise",
+        reported_on=date(2026, 10, 5),
+        description="Concrete pump before 07:00",
+        owner_user_id=uuid.uuid4(),
+        response_due=date(2026, 10, 10),
+        state="received",
+        created_at=datetime(2026, 10, 5, 8, tzinfo=UTC),
+    )
+    out = plan_service.complaint_out(row, today=date(2026, 10, 12))
+    for field in ("id", "kind", "description", "owner_user_id", "response_due", "state", "overdue", "created_at"):
+        assert field in out, field
+    assert out["owner_user_id"] == str(row.owner_user_id)
+    assert out["overdue"] is True
+    json.dumps(out)
+
+
+def test_neighbour_issues_are_seen_by_the_issue_hub_census() -> None:
+    """The register is named so the hub's census finds it, and the hub reads its module."""
+    import importlib
+
+    hub = importlib.import_module("tests.unit.test_issue_hub_sources")
+    assert "NeighbourIssue" in hub._modules_with_issue_registers().get("site_logistics", [])
+    assert hub._SOURCE_TO_MODULE.get("neighbour") == "site_logistics"

@@ -13,8 +13,8 @@ from app.modules.site_logistics import planning as pl
 from app.modules.site_logistics.catalogue import (
     INCOTERM_CODES_2020,
     SiteLogisticsCatalogue,
-    _has_figure,
     default_catalogue_id,
+    has_figure,
     resolved_shipped,
     shipped_catalogues,
     validate_site_logistics_catalogue,
@@ -457,7 +457,7 @@ def test_national_figures_are_sourced_and_unconfirmed() -> None:
             for entry in getattr(cat, group):
                 ref = f"{cat_id}:{group}:{entry.code}"
                 # An entry without a figure (a method, "project enters its own value") needs no source.
-                if _has_figure(entry):
+                if has_figure(entry):
                     assert entry.source_url, ref
                 if entry.review_status is not None:
                     assert entry.review_status.value == "unconfirmed", ref

@@ -127,6 +127,7 @@
       "money_not_decimal": "Den Betrag als Dezimalzahl eingeben.",
       "noise_limit_needs_project_value": "Diese Rechtsordnung legt keine festen Werte fest; die genehmigten Projektwerte eintragen.",
       "not_found": "Nicht gefunden.",
+      "owner_not_member": "Der Verantwortliche muss Mitglied dieses Projekts sein.",
       "permit_not_found": "Genehmigung nicht gefunden.",
       "plant_position_required": "Eine Geraeteposition ist erforderlich.",
       "po_not_found": "Bestellung in diesem Projekt nicht gefunden.",

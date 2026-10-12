@@ -321,3 +321,25 @@ async def test_json_columns_hold_json_native_values(bare: World) -> None:
                 if v is not None:
                     assert "Decimal(" not in v and "datetime." not in v, (table, column, v)
                     json.loads(v)
+
+
+async def test_neighbour_issue_owner_must_be_a_project_member(world: World) -> None:
+    from app.modules.site_logistics.plan_service import complaint_out
+
+    async with world.factory() as s:
+        svc = LogisticsPlanService(s)
+        owned = await svc.create_complaint(
+            world.project_id,
+            {"kind": "noise", "description": "Pump before 07:00", "owner_user_id": world.editor},
+            world.manager,
+        )
+        assert complaint_out(owned)["owner_user_id"] == str(world.editor)
+        with pytest.raises(LogisticsError) as exc:
+            await svc.create_complaint(
+                world.project_id, {"kind": "dust", "owner_user_id": world.outsider}, world.manager
+            )
+        assert exc.value.code == "owner_not_member"
+        with pytest.raises(LogisticsError) as exc:
+            await svc.update_complaint(world.project_id, owned.id, {"owner_user_id": world.outsider}, world.manager)
+        assert exc.value.code == "owner_not_member"
+        await s.commit()

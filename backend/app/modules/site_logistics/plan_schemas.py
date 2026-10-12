@@ -239,6 +239,7 @@ class ComplaintIn(_In):
     delivery_id: uuid.UUID | None = None
     response: str | None = Field(default=None, max_length=10000)
     response_due: date | None = None
+    owner_user_id: uuid.UUID | None = None
 
 
 class CoordinationIn(_In):

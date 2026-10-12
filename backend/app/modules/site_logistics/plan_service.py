@@ -53,8 +53,8 @@ from app.modules.site_logistics.models import (
     LogisticsConcept,
     MediaConnection,
     MediaDemand,
-    NeighbourComplaint,
     NeighbourhoodPlan,
+    NeighbourIssue,
     PermitTransportLink,
     SiteArea,
     Transport,
@@ -236,6 +236,7 @@ _COMPLAINT_FIELDS = (
     "delivery_id",
     "response",
     "response_due",
+    "owner_user_id",
 )
 _COORD_FIELDS = ("entry_date", "body", "topic", "outcome", "next_action_due", "correspondence_id")
 _JSON_FIELDS = (
@@ -1567,13 +1568,16 @@ class LogisticsPlanService:
         await self._audit(actor_id, "logistics_neighbourhood", row.id, "neighbourhood_saved", metadata=changed)
         return row
 
-    async def create_complaint(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> NeighbourComplaint:
+    async def create_complaint(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> NeighbourIssue:
         cat = await self.catalogue(project_id)
         self._need(cat, "neighbour_issue_kinds", data.get("kind"), "unknown_issue_kind")
         await self._soft("transport", data.get("transport_id"), project_id)
         await self._soft("delivery", data.get("delivery_id"), project_id)
-        row = NeighbourComplaint(project_id=project_id, state="received")
+        await self._assert_owner(project_id, data.get("owner_user_id"))
+        row = NeighbourIssue(project_id=project_id, state="received")
         self._apply(row, data, _COMPLAINT_FIELDS)
+        if row.owner_user_id is None:
+            row.owner_user_id = await self._area_owner(project_id)
         if row.reported_on is None:
             row.reported_on = datetime.now(UTC).date()
         if row.response_due is None:
@@ -1585,12 +1589,13 @@ class LogisticsPlanService:
 
     async def update_complaint(
         self, project_id: uuid.UUID, complaint_id: Any, data: dict[str, Any], actor_id: Any
-    ) -> NeighbourComplaint:
-        row = await self._get(NeighbourComplaint, project_id, complaint_id, "complaint_not_found")
+    ) -> NeighbourIssue:
+        row = await self._get(NeighbourIssue, project_id, complaint_id, "complaint_not_found")
         if "kind" in data:
             self._need(await self.catalogue(project_id), "neighbour_issue_kinds", data["kind"], "unknown_issue_kind")
         await self._soft("transport", data.get("transport_id"), project_id)
         await self._soft("delivery", data.get("delivery_id"), project_id)
+        await self._assert_owner(project_id, data.get("owner_user_id"))
         changed = self._apply(row, data, _COMPLAINT_FIELDS)
         await self.session.flush()
         await self._audit(actor_id, "logistics_complaint", row.id, "complaint_updated", metadata=changed)
@@ -1598,8 +1603,8 @@ class LogisticsPlanService:
 
     async def transition_complaint(
         self, project_id: uuid.UUID, complaint_id: Any, target: str, actor_id: Any
-    ) -> NeighbourComplaint:
-        row = await self._get(NeighbourComplaint, project_id, complaint_id, "complaint_not_found")
+    ) -> NeighbourIssue:
+        row = await self._get(NeighbourIssue, project_id, complaint_id, "complaint_not_found")
         if target in ("action_taken", "closed") and not row.response.strip():
             raise LogisticsError("response_required", 422)
         before = self._move(pl.COMPLAINT_FSM, row, target)
@@ -1609,8 +1614,22 @@ class LogisticsPlanService:
         )
         return row
 
+    async def _assert_owner(self, project_id: uuid.UUID, owner_user_id: Any) -> None:
+        """An owner has to be someone who can open the project, or the issue is unanswerable."""
+        from fastapi import HTTPException
+
+        from app.dependencies import verify_project_access
+
+        uid = _uuid(owner_user_id)
+        if uid is None:
+            return
+        try:
+            await verify_project_access(project_id, str(uid), self.session)
+        except HTTPException as exc:
+            raise LogisticsError("owner_not_member", 422) from exc
+
     async def delete_complaint(self, project_id: uuid.UUID, complaint_id: Any, actor_id: Any) -> None:
-        row = await self._get(NeighbourComplaint, project_id, complaint_id, "complaint_not_found")
+        row = await self._get(NeighbourIssue, project_id, complaint_id, "complaint_not_found")
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_complaint", row.id, "complaint_deleted")
@@ -1619,13 +1638,15 @@ class LogisticsPlanService:
         """Rule 18: notify the m06 owner once per complaint past its response date."""
         owner = await self._area_owner(project_id)
         count = 0
-        for c in await self._list(NeighbourComplaint, project_id, state="received"):
+        for c in await self._list(NeighbourIssue, project_id, state="received"):
             if pl.complaint_overdue(c.state, c.response_due, today) and c.overdue_notified_on is None:
                 c.overdue_notified_on = today
                 count += 1
                 ctx = {"project_id": project_id, "complaint_id": c.id, "kind": c.kind, "due": c.response_due}
                 self._publish(ev.NEIGHBOUR_ISSUE_OVERDUE, ctx)
-                await self._notify(owner, "neighbour_issue_overdue", "logistics_complaint", c.id, ctx)
+                await self._notify(
+                    c.owner_user_id or owner, "neighbour_issue_overdue", "logistics_complaint", c.id, ctx
+                )
         await self.session.flush()
         return count
 
@@ -1789,7 +1810,7 @@ class LogisticsPlanService:
                             "customs_documents_complete", "required_document_missing", "warning", case.id, kind=kind
                         )
                     )
-        for c in await self._list(NeighbourComplaint, project_id):
+        for c in await self._list(NeighbourIssue, project_id):
             if pl.complaint_overdue(c.state, c.response_due, today):
                 out.append(
                     _finding("neighbour_issue_on_time", "neighbour_issue_overdue", "error", c.id, due=c.response_due)
@@ -2164,7 +2185,7 @@ def neighbourhood_out(n: NeighbourhoodPlan) -> dict[str, Any]:
     }
 
 
-def complaint_out(c: NeighbourComplaint, today: date | None = None) -> dict[str, Any]:
+def complaint_out(c: NeighbourIssue, today: date | None = None) -> dict[str, Any]:
     today = today or datetime.now(UTC).date()
     return {
         "id": str(c.id),
@@ -2177,8 +2198,10 @@ def complaint_out(c: NeighbourComplaint, today: date | None = None) -> dict[str,
         "delivery_id": _s(c.delivery_id),
         "response": c.response,
         "response_due": _iso(c.response_due),
+        "owner_user_id": _s(c.owner_user_id),
         "state": c.state,
         "overdue": pl.complaint_overdue(c.state, c.response_due, today),
+        "created_at": _iso(c.created_at),
     }
 
 

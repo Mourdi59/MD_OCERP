@@ -359,9 +359,9 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
         [],
     ),
     (
-        "oe_site_logistics_neighbour_complaint",
+        "oe_site_logistics_neighbour_issue",
         lambda: [
-            _project_fk("fk_oe_site_complaint_project"),
+            _project_fk("fk_oe_site_nissue_project"),
             _str("kind", 40, None),
             _date("reported_on", nullable=False),
             _str("reporter", 255),
@@ -371,10 +371,11 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _guid("delivery_id"),
             _text("response"),
             _date("response_due"),
+            _guid("owner_user_id"),
             _str("state", 20, "received"),
             _date("overdue_notified_on"),
         ],
-        [("ix_oe_site_complaint_project", ["project_id"])],
+        [("ix_oe_site_nissue_project", ["project_id"])],
     ),
     (
         "oe_site_logistics_coordination",

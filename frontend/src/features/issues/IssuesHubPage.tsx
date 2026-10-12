@@ -29,6 +29,7 @@ import {
   AlertOctagon,
   Radar,
   MessageSquare,
+  Megaphone,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -86,6 +87,12 @@ const SOURCE_META: Record<
   clash: { icon: Radar, labelKey: 'issues.source_clash', labelDefault: 'Clash', variant: 'blue' },
   markup: { icon: PenTool, labelKey: 'issues.source_markup', labelDefault: 'Mark-up', variant: 'blue' },
   bcf: { icon: MessageSquare, labelKey: 'issues.source_bcf', labelDefault: 'BCF', variant: 'neutral' },
+  neighbour: {
+    icon: Megaphone,
+    labelKey: 'issues.source_neighbour',
+    labelDefault: 'Neighbour',
+    variant: 'warning',
+  },
 };
 
 const PRIORITY_BADGE: Record<IssuePriority, BadgeVariant> = {

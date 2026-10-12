@@ -44,6 +44,7 @@ import {
 } from '@/shared/ui';
 import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { IssueHubLink } from '@/features/issues/IssueHubLink';
 import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { getErrorMessage } from '@/shared/lib/api';
@@ -2890,29 +2891,32 @@ export function SiteLogisticsPage() {
             'Plan what arrives on site: book deliveries into gate time slots, keep laydown zones tidy, and approve or reject each booking so gates never double-book.',
         })}
         actions={
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => {
-              if (!projectId) {
-                addToast({
-                  type: 'info',
-                  title: t('siteLogistics.select_project_first_title', {
-                    defaultValue: 'Select a project first',
-                  }),
-                  message: t('siteLogistics.select_project_first', {
-                    defaultValue: 'Pick a project from the top bar, then book a delivery.',
-                  }),
-                });
-                return;
-              }
-              setShowBook(true);
-            }}
-            className="shrink-0 whitespace-nowrap"
-          >
-            <Truck size={14} className="mr-1 shrink-0" />
-            <span>{t('siteLogistics.book_delivery', { defaultValue: 'Book delivery' })}</span>
-          </Button>
+          <>
+            <IssueHubLink />
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (!projectId) {
+                  addToast({
+                    type: 'info',
+                    title: t('siteLogistics.select_project_first_title', {
+                      defaultValue: 'Select a project first',
+                    }),
+                    message: t('siteLogistics.select_project_first', {
+                      defaultValue: 'Pick a project from the top bar, then book a delivery.',
+                    }),
+                  });
+                  return;
+                }
+                setShowBook(true);
+              }}
+              className="shrink-0 whitespace-nowrap"
+            >
+              <Truck size={14} className="mr-1 shrink-0" />
+              <span>{t('siteLogistics.book_delivery', { defaultValue: 'Book delivery' })}</span>
+            </Button>
+          </>
         }
       />
 

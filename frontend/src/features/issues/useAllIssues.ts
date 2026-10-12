@@ -15,6 +15,7 @@ import { fetchMarkups } from '../markups/api';
 import { fetchPunchItems } from '../punchlist/api';
 import { fetchNCRs } from '../ncr/api';
 import { clashApi } from '../clash/api';
+import { fetchNeighbourIssues } from '../site-logistics/api';
 
 import { bcfSourceAvailable, fetchBcfTopicsSafe } from './bcfSource';
 import {
@@ -23,6 +24,7 @@ import {
   mapNcr,
   mapClashIssue,
   mapBcfTopic,
+  mapNeighbourIssue,
   mapEach,
   sortIssues,
   type IssueSource,
@@ -66,7 +68,7 @@ export interface UseAllIssuesResult {
 }
 
 /** Display order for the per-source chips + state list. */
-export const SOURCE_ORDER: IssueSource[] = ['punch', 'ncr', 'clash', 'markup', 'bcf'];
+export const SOURCE_ORDER: IssueSource[] = ['punch', 'ncr', 'clash', 'neighbour', 'markup', 'bcf'];
 
 /* --- Constants ------------------------------------------------------------ */
 
@@ -145,6 +147,14 @@ export function useAllIssues(
         staleTime: 30_000,
       },
       {
+        // The neighbour-issues route returns the whole register (no paging), so
+        // the hub sees every open complaint, not a first page.
+        queryKey: ['issues-hub', 'neighbour', projectId],
+        queryFn: () => fetchNeighbourIssues(projectId),
+        enabled,
+        staleTime: 30_000,
+      },
+      {
         queryKey: ['issues-hub', 'bcf', projectId],
         queryFn: () => fetchBcfTopicsSafe(projectId),
         // Only run when a BCF api module is actually present in the build.
@@ -158,7 +168,8 @@ export function useAllIssues(
   const punchRes = results[1];
   const ncrRes = results[2];
   const clashRes = results[3];
-  const bcfRes = results[4];
+  const neighbourRes = results[4];
+  const bcfRes = results[5];
 
   const derived = useMemo(() => {
     // Each mapEach isolates per-item failures; a bad row is dropped alone.
@@ -166,6 +177,7 @@ export function useAllIssues(
     const punch = mapEach(punchRes?.data?.items, mapPunch);
     const ncr = mapEach(ncrRes?.data?.items, mapNcr);
     const clash = mapEach(clashRes?.data?.items, mapClashIssue);
+    const neighbour = mapEach(neighbourRes?.data?.items, mapNeighbourIssue);
     const bcf = bcfSourceAvailable ? mapEach(bcfRes?.data, mapBcfTopic) : [];
 
     const bySource: Record<IssueSource, number> = {
@@ -173,15 +185,17 @@ export function useAllIssues(
       punch: punch.length,
       ncr: ncr.length,
       clash: clash.length,
+      neighbour: neighbour.length,
       bcf: bcf.length,
     };
 
-    const merged = sortIssues([...punch, ...ncr, ...clash, ...markups, ...bcf], sortKey);
+    const merged = sortIssues([...punch, ...ncr, ...clash, ...neighbour, ...markups, ...bcf], sortKey);
 
     const sources: SourceState[] = [
       buildSourceState('punch', bySource.punch, punchRes),
       buildSourceState('ncr', bySource.ncr, ncrRes),
       buildSourceState('clash', bySource.clash, clashRes),
+      buildSourceState('neighbour', bySource.neighbour, neighbourRes),
       buildSourceState('markup', bySource.markup, markupRes),
       buildSourceState('bcf', bySource.bcf, bcfRes, !bcfSourceAvailable),
     ];
@@ -197,17 +211,20 @@ export function useAllIssues(
     punchRes?.data,
     ncrRes?.data,
     clashRes?.data,
+    neighbourRes?.data,
     bcfRes?.data,
     markupRes?.isError,
     punchRes?.isError,
     ncrRes?.isError,
     clashRes?.isError,
+    neighbourRes?.isError,
     bcfRes?.isError,
     sortKey,
   ]);
 
-  // The enabled queries (BCF only counts when its module is present).
-  const enabledResults = bcfSourceAvailable ? results : results.slice(0, 4);
+  // The enabled queries (BCF only counts when its module is present). BCF is
+  // the last query, so dropping it is dropping the tail.
+  const enabledResults = bcfSourceAvailable ? results : results.slice(0, results.length - 1);
 
   const isLoading = enabledResults.some((r) => r?.isLoading === true);
   // Page-level error only when every enabled source failed: there is genuinely

@@ -127,6 +127,7 @@
       "money_not_decimal": "Enter the amount as a decimal number.",
       "noise_limit_needs_project_value": "This jurisdiction sets no fixed values; enter the project's consented values.",
       "not_found": "Not found.",
+      "owner_not_member": "The owner must be a member of this project.",
       "permit_not_found": "Permit not found.",
       "plant_position_required": "A plant position is required.",
       "po_not_found": "Purchase order not found in this project.",

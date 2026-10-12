@@ -1272,11 +1272,11 @@ async def plan_list_complaints(
     user_id: CurrentUserId,
     state: str | None = Query(default=None, max_length=20),
 ) -> dict[str, Any]:
-    from app.modules.site_logistics.models import NeighbourComplaint
+    from app.modules.site_logistics.models import NeighbourIssue
 
     await verify_project_access(project_id, user_id, session)
     rows = await LogisticsPlanService(session)._list(
-        NeighbourComplaint, project_id, NeighbourComplaint.reported_on.desc(), state=state
+        NeighbourIssue, project_id, NeighbourIssue.reported_on.desc(), state=state
     )
     return _plan_page([complaint_out(c) for c in rows])
 
@@ -1414,7 +1414,7 @@ async def plan_export(
     """One register as PDF or XLSX (rule 21)."""
     from app.modules.projects.models import Project
     from app.modules.site_logistics import export as plan_export_mod
-    from app.modules.site_logistics.models import CoordinationEntry, CustomsDocument, CustomsLine, NeighbourComplaint
+    from app.modules.site_logistics.models import CoordinationEntry, CustomsDocument, CustomsLine, NeighbourIssue
 
     await verify_project_access(project_id, user_id, session)
     if register not in plan_export_mod.REGISTERS:
@@ -1438,7 +1438,7 @@ async def plan_export(
             )
         data["customs"] = cases
     if register == "neighbourhood":
-        data["complaints"] = [complaint_out(c) for c in await svc._list(NeighbourComplaint, project_id)]
+        data["complaints"] = [complaint_out(c) for c in await svc._list(NeighbourIssue, project_id)]
         data["coordination"] = [coordination_out(e) for e in await svc._list(CoordinationEntry, project_id)]
     project = await session.get(Project, project_id)
     locale = get_locale() or "en"

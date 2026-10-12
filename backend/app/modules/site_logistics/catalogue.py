@@ -201,7 +201,8 @@ _REQUIRED_AREA_KINDS = ("site_total", "storage", "laydown", "site_setup")
 INCOTERM_CODES_2020 = ("EXW", "FCA", "CPT", "CIP", "DAP", "DPU", "DDP", "FAS", "FOB", "CFR", "CIF")
 
 
-def _has_figure(entry: Any) -> bool:
+def has_figure(entry: Any) -> bool:
+    """True when a sourced entry carries a statutory figure, which then needs a source and a review status."""
     if isinstance(entry, LoadClass):
         return any(
             getattr(entry, f) is not None
@@ -234,7 +235,7 @@ def validate_site_logistics_catalogue(obj: SiteLogisticsCatalogue, source: str) 
             errors.append(f"duplicate_code: {group}")
     for group in _SOURCED_GROUPS:
         for e in getattr(obj, group):
-            if not _has_figure(e):
+            if not has_figure(e):
                 continue
             if not e.source_url or e.review_status is None:
                 errors.append(f"statutory_figure_without_source: {group}:{e.code}")
