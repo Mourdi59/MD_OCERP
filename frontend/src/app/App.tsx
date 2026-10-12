@@ -76,7 +76,7 @@ const FundingPage = lazy(() =>
   import('@/features/funding/FundingPage').then((m) => ({ default: m.FundingPage }))
 );
 const DeliveryModelPage = lazy(() =>
-  import('@/features/delivery_model').then((m) => ({ default: m.DeliveryModelPage }))
+  import('@/features/delivery_model/DeliveryModelPage').then((m) => ({ default: m.DeliveryModelPage }))
 );
 const TenderingPage = lazy(() =>
   import('@/features/tendering/TenderingPage').then((m) => ({ default: m.TenderingPage }))
