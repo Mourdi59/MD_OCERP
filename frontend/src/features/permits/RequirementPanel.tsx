@@ -166,7 +166,7 @@ export function RequirementPanel({
                 defaultValue: 'The decision is forecast after the needed date. This was accepted.',
               })
             : t('permits.ui.requirement.conflict_banner', {
-                defaultValue: 'The decision is forecast after the date this permit is needed. File earlier, or accept the delay under Edit.',
+                defaultValue: 'The decision is forecast after the date this permit is needed. Submit earlier, or accept the delay under Edit.',
               })}
         </p>
       )}
@@ -180,10 +180,10 @@ export function RequirementPanel({
           <PersonChip name={r.responsible_user_id ? personName(r.responsible_user_id) ?? t('permits.ui.unknown_person', { defaultValue: 'Project member' }) : null} />
         </Fact>
         <Fact label={t('permits.ui.requirement.needed_by', { defaultValue: 'Needed by' })}>{dateText(tl?.needed_by ?? r.needed_by_date)}</Fact>
-        <Fact label={t('permits.ui.requirement.latest_submit', { defaultValue: 'File by, at the latest' })} testId="fact-latest-submit">
+        <Fact label={t('permits.ui.requirement.latest_submit', { defaultValue: 'Submit by, at the latest' })} testId="fact-latest-submit">
           {dateText(tl?.latest_submit)}
         </Fact>
-        <Fact label={t('permits.ui.requirement.planned_submit', { defaultValue: 'Planned filing' })}>{dateText(r.planned_submit_date)}</Fact>
+        <Fact label={t('permits.ui.requirement.planned_submit', { defaultValue: 'Planned submission' })}>{dateText(r.planned_submit_date)}</Fact>
         <Fact label={t('permits.ui.requirement.forecast', { defaultValue: 'Decision expected' })} testId="fact-forecast">
           {dateText(tl?.forecast_decision)}
           {tl?.estimate && tl.forecast_decision && (
@@ -208,7 +208,7 @@ export function RequirementPanel({
             {r.depends_on.map((d) => (
               <li key={d.id}>
                 {d.on === 'submitted'
-                  ? t('permits.ui.requirement.waits_filed', { defaultValue: '{{name}} must be filed first', name: nameOf(d.id) })
+                  ? t('permits.ui.requirement.waits_filed', { defaultValue: '{{name}} must be submitted first', name: nameOf(d.id) })
                   : t('permits.ui.requirement.waits_granted', { defaultValue: '{{name}} must be granted first', name: nameOf(d.id) })}
               </li>
             ))}
@@ -246,7 +246,7 @@ export function RequirementPanel({
                   <span className="text-content-secondary">{fmtList([a.authority_name, a.authority_reference])}</span>
                   {a.submitted_at && (
                     <span className="ml-auto text-xs text-content-tertiary">
-                      {t('permits.ui.application.filed_on', { defaultValue: 'Filed {{date}}', date: dateText(a.submitted_at) })}
+                      {t('permits.ui.application.filed_on', { defaultValue: 'Submitted {{date}}', date: dateText(a.submitted_at) })}
                     </span>
                   )}
                 </button>
@@ -319,7 +319,7 @@ export function RequirementPanel({
       >
         <p className="text-sm text-content-secondary">
           {t('permits.ui.requirement.delete_body', {
-            defaultValue: 'A permit that already has a filed application cannot be removed. Mark it as not needed under Edit to keep the record.',
+            defaultValue: 'A permit that already has a submitted application cannot be removed. Mark it as not needed under Edit to keep the record.',
           })}
         </p>
         <ChangeRequestField

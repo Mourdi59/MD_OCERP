@@ -16,7 +16,7 @@ import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 
 import { confirmProposal, removeEvidence, submitEvidence, type ConditionRow } from './api';
 import { ConditionDialog, DischargeDialog, EvidenceDialog, LinkRequirementDialog, OngoingDialog } from './ConditionDialogs';
-import { refusalText, useConditionDetail, usePermitAction } from './hooks';
+import { refusalText, useConditionDetail, useDocumentNames, usePermitAction } from './hooks';
 import { CONDITION_KIND, CONDITION_STATE, DISCHARGE_MODE, EVIDENCE_KIND, TOPIC, TRIGGER, errorText, vocab, type TFn } from './labels';
 import { CONDITION_TONE, Fact, PanelHeader, PersonChip, Refusal, ToneBadge, dateText } from './PermitBits';
 import { conditionActions, dischargeModes, type ConditionAction } from './rules';
@@ -35,6 +35,8 @@ type Dialog = 'edit' | 'evidence' | 'discharge' | 'breach' | 'in_compliance' | '
 export function ConditionPanel({ projectId, conditionId, row, personName, onBack }: ConditionPanelProps) {
   const { t } = useTranslation();
   const detailQ = useConditionDetail(projectId, conditionId);
+  const hasDocument = !!detailQ.data?.evidence.some((e) => e.kind === 'cde_revision' && !e.ref_title);
+  const documentName = useDocumentNames(projectId, hasDocument);
   const [dialog, setDialog] = useState<Dialog>(null);
   const submit = usePermitAction(projectId, () => submitEvidence(projectId, conditionId));
   const confirm = usePermitAction(
@@ -237,6 +239,13 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
                 <li key={e.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border-light p-3 text-sm">
                   <span className="font-medium text-content-primary">{vocab(t, EVIDENCE_KIND, e.kind)}</span>
                   {e.kind !== 'cde_revision' && e.ref_id && <span className="break-all text-content-secondary">{e.ref_id}</span>}
+                  {e.kind === 'cde_revision' && (
+                    <span className="text-content-secondary" data-testid="evidence-document">
+                      {fmtList([e.ref_title ?? '', e.ref_revision ?? '']) ||
+                        documentName(e.ref_id) ||
+                        t('permits.ui.evidence.document_older', { defaultValue: 'An earlier revision of a project document' })}
+                    </span>
+                  )}
                   {e.note && <span className="text-content-secondary">{e.note}</span>}
                   <span className="ml-auto text-xs text-content-tertiary">
                     {fmtList([person(e.added_by) ?? '', e.added_at ? dateText(e.added_at) : ''])}

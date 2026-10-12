@@ -97,7 +97,7 @@ export function RoadmapTable({ rows, binding, labels, onOpen, onAdd, onPropose, 
         >
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-semantic-warning" aria-hidden />
           {t('permits.ui.roadmap.conflicts', {
-            defaultValue: 'Permits whose decision is forecast after the date they are needed: {{n}}. File earlier or move the works.',
+            defaultValue: 'Permits whose decision is forecast after the date they are needed: {{n}}. Submit earlier or move the works.',
             n: summary.conflicts,
           })}
         </p>
@@ -109,7 +109,7 @@ export function RoadmapTable({ rows, binding, labels, onOpen, onAdd, onPropose, 
               <th className="px-3 py-2 font-medium">{t('permits.ui.roadmap.col_permit', { defaultValue: 'Permit' })}</th>
               <th className="px-3 py-2 font-medium">{t('permits.ui.roadmap.col_applicant', { defaultValue: 'Applicant' })}</th>
               <th className="px-3 py-2 font-medium">{t('permits.ui.roadmap.col_state', { defaultValue: 'Status' })}</th>
-              <th className="px-3 py-2 font-medium">{t('permits.ui.roadmap.col_submit', { defaultValue: 'File by' })}</th>
+              <th className="px-3 py-2 font-medium">{t('permits.ui.roadmap.col_submit', { defaultValue: 'Submit by' })}</th>
               <th className="px-3 py-2 font-medium">{t('permits.ui.roadmap.col_forecast', { defaultValue: 'Decision expected' })}</th>
               <th className="px-3 py-2 font-medium">{t('permits.ui.roadmap.col_needed', { defaultValue: 'Needed by' })}</th>
             </tr>

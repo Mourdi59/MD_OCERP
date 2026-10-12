@@ -509,6 +509,9 @@ export interface Evidence {
   condition_id: string;
   kind: EvidenceKind;
   ref_id: string;
+  /** The linked document and its revision, named by the server when it can resolve them. */
+  ref_title?: string | null;
+  ref_revision?: string | null;
   content_hash: string;
   note: string;
   added_by: string | null;

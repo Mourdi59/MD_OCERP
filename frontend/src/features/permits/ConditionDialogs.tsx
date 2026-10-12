@@ -134,7 +134,7 @@ export function DocumentRevisionSelect({
       {containersQ.isSuccess && options.length === 0 && (
         <p className="mt-1 text-xs text-content-tertiary" data-testid="document-none">
           {t('permits.ui.document.none', {
-            defaultValue: 'No document with a revision yet. File the document in the project documents first.',
+            defaultValue: 'No document with a revision yet. Store the document in the project documents first.',
           })}
         </p>
       )}

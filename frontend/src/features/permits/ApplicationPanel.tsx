@@ -30,7 +30,7 @@ import {
   type LabelContext,
   type TFn,
 } from './labels';
-import { APPLICATION_TONE, Fact, OUTCOME_TONE, PanelHeader, Refusal, ToneBadge, dateText } from './PermitBits';
+import { APPLICATION_TONE, Fact, MoreActions, OUTCOME_TONE, PanelHeader, Refusal, ToneBadge, dateText } from './PermitBits';
 import { applicationSteps, clockEventKinds, isDecidable, isOpenApplication } from './rules';
 
 export interface ApplicationPanelProps {
@@ -89,6 +89,10 @@ export function ApplicationPanel({
   const { steps, primary: primaryStep } = applicationSteps(a, internalReview);
   const canWithdraw = a.allowed_targets.includes('withdrawn');
   const clockKinds = open ? clockEventKinds(clock) : [];
+  const stepLabel = (step: ApplicationTarget) =>
+    step === 'preparing' && a.state === 'internal_review'
+      ? t('permits.ui.app_step.back_to_preparing', { defaultValue: 'Return to preparation' })
+      : vocab(t, APPLICATION_STEP, step);
 
   return (
     <div className="space-y-5" data-testid="application-panel">
@@ -113,27 +117,40 @@ export function ApplicationPanel({
                 {t('permits.ui.decision.submit', { defaultValue: 'Record decision' })}
               </Button>
             )}
-            {steps.map((step) => (
-              <Button
-                key={step}
-                size="sm"
-                variant={step === primaryStep ? 'primary' : 'secondary'}
-                onClick={() => setTarget(step)}
-                data-testid={`application-step-${step}`}
-              >
-                {step === 'preparing' && a.state === 'internal_review'
-                  ? t('permits.ui.app_step.back_to_preparing', { defaultValue: 'Return to preparation' })
-                  : vocab(t, APPLICATION_STEP, step)}
-              </Button>
-            ))}
-            <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setDialog('edit')} data-testid="application-edit">
-              {t('permits.ui.edit', { defaultValue: 'Edit' })}
-            </Button>
-            {canWithdraw && (
-              <Button size="sm" variant="ghost" onClick={() => setTarget('withdrawn')} data-testid="application-step-withdrawn">
-                {vocab(t, APPLICATION_STEP, 'withdrawn')}
+            {primaryStep && (
+              <Button size="sm" onClick={() => setTarget(primaryStep)} data-testid={`application-step-${primaryStep}`}>
+                {stepLabel(primaryStep)}
               </Button>
             )}
+            <MoreActions
+              testId="application-more"
+              items={[
+                ...steps
+                  .filter((step) => step !== primaryStep)
+                  .map((step) => ({
+                    id: step,
+                    label: stepLabel(step),
+                    onClick: () => setTarget(step),
+                    testId: `application-step-${step}`,
+                  })),
+                {
+                  id: 'edit',
+                  label: t('permits.ui.application.edit', { defaultValue: 'Edit the application details' }),
+                  onClick: () => setDialog('edit'),
+                  testId: 'application-edit',
+                },
+                ...(canWithdraw
+                  ? [
+                      {
+                        id: 'withdrawn',
+                        label: vocab(t, APPLICATION_STEP, 'withdrawn'),
+                        onClick: () => setTarget('withdrawn'),
+                        testId: 'application-step-withdrawn',
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           </>
         }
       />
@@ -159,8 +176,8 @@ export function ApplicationPanel({
 
       <dl className="grid gap-4 rounded-lg border border-border-light p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Fact label={t('permits.ui.application.authority', { defaultValue: 'Authority' })}>{a.authority_name || '-'}</Fact>
-        <Fact label={t('permits.ui.application.reference', { defaultValue: 'File reference' })}>{a.authority_reference || '-'}</Fact>
-        <Fact label={t('permits.ui.application.submitted', { defaultValue: 'Filed' })}>{dateText(a.submitted_at)}</Fact>
+        <Fact label={t('permits.ui.application.reference', { defaultValue: 'Authority reference' })}>{a.authority_reference || '-'}</Fact>
+        <Fact label={t('permits.ui.application.submitted', { defaultValue: 'Submitted' })}>{dateText(a.submitted_at)}</Fact>
         <Fact label={t('permits.ui.application.received', { defaultValue: 'Received by the authority' })}>{dateText(a.received_at)}</Fact>
         <Fact label={t('permits.ui.application.validated', { defaultValue: 'Accepted as complete' })}>{dateText(a.validated_at)}</Fact>
         {a.appeal_note && <Fact label={t('permits.ui.application.appeal_note', { defaultValue: 'Appeal note' })}>{a.appeal_note}</Fact>}
@@ -227,7 +244,7 @@ export function ApplicationPanel({
               ? t('permits.ui.decision.none_decidable', {
                   defaultValue: 'No decision yet. Record it here as soon as the notice of the authority arrives.',
                 })
-              : t('permits.ui.decision.none', { defaultValue: 'No decision yet. A decision is recorded once the application is filed.' })}
+              : t('permits.ui.decision.none', { defaultValue: 'No decision yet. A decision is recorded once the application is submitted.' })}
           </p>
         ) : (
           <ul className="space-y-1.5" data-testid="decision-list">

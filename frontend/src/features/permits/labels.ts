@@ -86,7 +86,7 @@ export const APPLICATION_STATE: Record<ApplicationState, KeyText> = {
   planned: ['permits.ui.app_state.planned', 'Planned'],
   preparing: ['permits.ui.app_state.preparing', 'In preparation'],
   internal_review: ['permits.ui.app_state.internal_review', 'Internal release'],
-  submitted: ['permits.ui.app_state.submitted', 'Filed'],
+  submitted: ['permits.ui.app_state.submitted', 'Submitted'],
   validated: ['permits.ui.app_state.validated', 'Accepted as complete'],
   under_review: ['permits.ui.app_state.under_review', 'Under review'],
   info_requested: ['permits.ui.app_state.info_requested', 'Information requested'],
@@ -98,7 +98,7 @@ export const APPLICATION_STATE: Record<ApplicationState, KeyText> = {
 export const APPLICATION_STEP: Record<ApplicationTarget, KeyText> = {
   preparing: ['permits.ui.app_step.preparing', 'Start preparing'],
   internal_review: ['permits.ui.app_step.internal_review', 'Send for internal release'],
-  submitted: ['permits.ui.app_step.submitted', 'Record filing'],
+  submitted: ['permits.ui.app_step.submitted', 'Record submission'],
   validated: ['permits.ui.app_step.validated', 'Authority accepted it as complete'],
   under_review: ['permits.ui.app_step.under_review', 'Authority review started'],
   info_requested: ['permits.ui.app_step.info_requested', 'Authority asked for information'],
@@ -272,13 +272,13 @@ export const DISCHARGE_MODE_HINT: Record<DischargeMode, KeyText> = {
   ],
   waived_by_authority: [
     'permits.ui.discharge_hint.waived_by_authority',
-    'The authority dropped the condition in writing. The letter is filed as a document revision.',
+    'The authority dropped the condition in writing. The letter is stored as a document revision.',
   ],
 };
 
 export const DEPENDENCY_ON: Record<DependencyOn, KeyText> = {
   granted: ['permits.ui.dependency_on.granted', 'must be granted first'],
-  submitted: ['permits.ui.dependency_on.submitted', 'must be filed first'],
+  submitted: ['permits.ui.dependency_on.submitted', 'must be submitted first'],
 };
 
 export const READINESS_STATUS: Record<ReadinessStatus, KeyText> = {
@@ -327,7 +327,7 @@ export const READINESS_ITEM: Record<string, KeyText> = {
     'Condition {{detail}} does not say when it is due',
   ],
   occupancy_permit: ['permits.ui.readiness_item.occupancy_permit', '{{detail}}: permission to occupy'],
-  requirement_filed: ['permits.ui.readiness_item.requirement_filed', '{{detail}}: filed or granted'],
+  requirement_filed: ['permits.ui.readiness_item.requirement_filed', '{{detail}}: submitted or granted'],
   register_complete: ['permits.ui.readiness_item.register_complete', 'The condition register is complete'],
 };
 

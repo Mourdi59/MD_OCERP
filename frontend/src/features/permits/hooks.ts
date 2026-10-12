@@ -9,8 +9,10 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { fetchCDEContainers } from '@/features/cde/api';
 import { listRoster } from '@/features/teams/api';
 import { getErrorMessage } from '@/shared/lib/api';
+import { fmtList } from '@/shared/lib/formatters';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 import {
@@ -215,6 +217,25 @@ export function usePeopleNames(projectId: string): (userId: string | null | unde
     if (userId && fullName && !names.has(userId)) names.set(userId, fullName);
     return (id) => (id ? names.get(id) ?? null : null);
   }, [roster, userId, fullName]);
+}
+
+/**
+ * The name of the document a revision id belongs to, read from the project
+ * documents under the key the document picker caches them. Null for a
+ * revision that is no longer the current one of its document.
+ */
+export function useDocumentNames(projectId: string, enabled = true): (revisionId: string | null | undefined) => string | null {
+  const { data: containers = [] } = useQuery({
+    queryKey: ['permits', projectId, 'cde-containers'],
+    queryFn: () => fetchCDEContainers({ project_id: projectId }),
+    enabled: enabled && !!projectId,
+    staleTime: 60_000,
+  });
+  return useMemo(() => {
+    const names = new Map<string, string>();
+    for (const c of containers) if (c.current_revision_id) names.set(c.current_revision_id, fmtList([c.container_code, c.title]));
+    return (id) => (id ? names.get(id) ?? null : null);
+  }, [containers]);
 }
 
 export function useViewerId(): string | null {

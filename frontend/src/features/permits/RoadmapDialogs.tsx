@@ -174,7 +174,7 @@ export function RoadmapSetupDialog({ open, onClose, projectId, roadmap, labels }
           onChange={(e) => setInternalReview(e.target.checked)}
         />
         <span>
-          {t('permits.ui.setup.internal_review', { defaultValue: 'Release every application internally before it is filed' })}
+          {t('permits.ui.setup.internal_review', { defaultValue: 'Release every application internally before it is submitted' })}
           <span className="block text-xs text-content-tertiary">
             {t('permits.ui.setup.internal_review_hint', {
               defaultValue: 'A manager releases the application before it goes to the authority.',
@@ -284,6 +284,12 @@ export function ProposeDialog({ open, onClose, projectId, roadmap, labels }: Pro
       hideSubmit={!proposalQ.isLoading && offered.length === 0}
       onSubmit={() => action.run(picked)}
     >
+      <p className="text-sm text-content-secondary" data-testid="propose-route-hint">
+        {t('permits.ui.propose.route_hint', {
+          defaultValue:
+            'The permit route is the answer to which procedure the works go through: a full permit, a simplified one, a notification, or none. It is settled once for the project, and the permits listed here follow from it.',
+        })}
+      </p>
       {proposalQ.isLoading && (
         <p className="text-sm text-content-tertiary">{t('permits.ui.loading', { defaultValue: 'Loading...' })}</p>
       )}
@@ -539,7 +545,7 @@ export function RequirementDialog({
         )}
       </Field>
       <div className="grid gap-3 sm:grid-cols-3">
-        <Field label={t('permits.ui.requirement.planned_submit', { defaultValue: 'Planned filing' })}>
+        <Field label={t('permits.ui.requirement.planned_submit', { defaultValue: 'Planned submission' })}>
           {(id) => (
             <input id={id} type="date" className={fieldClass} value={plannedSubmit} onChange={(e) => setPlannedSubmit(e.target.value)} />
           )}
@@ -651,7 +657,7 @@ export function DependenciesDialog({ open, onClose, projectId, roadmap, requirem
       testId="dependencies-dialog"
       title={t('permits.ui.dependencies.title', { defaultValue: 'What has to come first' })}
       subtitle={t('permits.ui.dependencies.subtitle', {
-        defaultValue: 'Tick the permits this one waits for. Its latest filing date follows from them.',
+        defaultValue: 'Tick the permits this one waits for. Its latest submission date follows from them.',
       })}
       submitLabel={t('permits.ui.save', { defaultValue: 'Save' })}
       busy={action.busy}

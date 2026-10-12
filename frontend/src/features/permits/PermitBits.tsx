@@ -4,9 +4,9 @@
 // Small pieces the permit screens share: the colour of each state, a person
 // chip, a labelled fact, and the one dialog frame every write goes through.
 
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MoreHorizontal } from 'lucide-react';
 
 import { Badge, type BadgeVariant } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
@@ -299,5 +299,77 @@ export function FormDialog({
         {children}
       </div>
     </WideModal>
+  );
+}
+
+/* ── More actions ─────────────────────────────────────────────────────── */
+
+export interface MoreAction {
+  id: string;
+  label: string;
+  onClick: () => void;
+  testId?: string;
+}
+
+/**
+ * Everything a record offers besides its next step, behind one button, so a
+ * screen shows a single primary action. Renders nothing without items.
+ */
+export function MoreActions({ items, testId }: { items: MoreAction[]; testId: string }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+  if (items.length === 0) return null;
+  return (
+    <div ref={box} className="relative">
+      <Button
+        size="sm"
+        variant="secondary"
+        icon={<MoreHorizontal size={14} />}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        data-testid={testId}
+      >
+        {t('permits.ui.more_actions', { defaultValue: 'More actions' })}
+      </Button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 z-20 mt-1 min-w-[14rem] rounded-md border border-border-light bg-surface-primary py-1 shadow-lg"
+        >
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="menuitem"
+              className="block w-full px-3 py-1.5 text-left text-sm text-content-primary hover:bg-surface-secondary"
+              onClick={() => {
+                setOpen(false);
+                item.onClick();
+              }}
+              data-testid={item.testId}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

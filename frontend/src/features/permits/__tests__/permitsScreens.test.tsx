@@ -17,6 +17,8 @@ vi.mock('../api', async (importOriginal) => {
   return {
     ...actual,
     escalateConditions: vi.fn(),
+    getApplication: vi.fn(),
+    getCondition: vi.fn(),
     notifyStart: vi.fn(),
     recordInterruption: vi.fn(),
     recordResumption: vi.fn(),
@@ -24,14 +26,18 @@ vi.mock('../api', async (importOriginal) => {
   };
 });
 
+import * as cde from '@/features/cde/api';
 import { ApiError } from '@/shared/lib/api';
 import * as api from '../api';
+import { ApplicationPanel } from '../ApplicationPanel';
 import { ChecksPanel, sortReadinessItems } from '../ChecksPanel';
+import { ConditionPanel } from '../ConditionPanel';
 import { ConditionsRegister } from '../ConditionsRegister';
 import { PermitsRegister } from '../PermitsRegister';
 import { RoadmapTable } from '../RoadmapTable';
 import { buildRoadmapRows } from '../rules';
 import { application, condition, labels, loaded, permit, readiness, requirement, timelineRow } from './fixtures';
+import { enT } from './i18nMock';
 
 const mocked = vi.mocked(api);
 const personName = (id: string | null | undefined) => (id === 'u1' ? 'Site manager' : null);
@@ -263,6 +269,113 @@ describe('ConditionsRegister', () => {
     renderIn(<ConditionsRegister {...base} conditions={list} />);
     fireEvent.click(screen.getByTestId('conditions-escalate'));
     expect(await screen.findByText('Only the area owner may escalate.')).toBeInTheDocument();
+  });
+});
+
+describe('ApplicationPanel', () => {
+  const clock = {
+    start: null,
+    base_due: null,
+    forecast: null,
+    reason: 'clock_not_started',
+    stopped_days: 0,
+    stopped_now: false,
+    extensions: [],
+    estimate: false,
+    deemed_proposal: null,
+    deemed_requires_notice: false,
+    period: 3,
+    unit: 'months' as const,
+    start_event: null,
+  };
+  const props = {
+    projectId: 'p1',
+    applicationId: 'a1',
+    requirementName: 'Main building permit',
+    permits: [],
+    conditions: [],
+    labels,
+    personName,
+    onBack: vi.fn(),
+  };
+
+  it('shows the next step as the one button and keeps the rest behind More actions', async () => {
+    mocked.getApplication.mockResolvedValue({
+      ...application({ state: 'preparing', submitted_at: null }),
+      clock,
+      clock_events: [],
+      decisions: [],
+      allowed_targets: ['internal_review', 'submitted', 'withdrawn'],
+    });
+    renderIn(<ApplicationPanel {...props} internalReview={false} />);
+    expect(await screen.findByTestId('application-step-submitted')).toHaveTextContent('Record submission');
+    expect(screen.queryByTestId('application-decide')).toBeNull();
+    expect(screen.queryByTestId('application-edit')).toBeNull();
+    fireEvent.click(screen.getByTestId('application-more'));
+    expect(screen.getByTestId('application-edit')).toBeInTheDocument();
+    expect(screen.getByTestId('application-step-withdrawn')).toBeInTheDocument();
+    // Internal release is off for this roadmap, so that branch is not offered at all.
+    expect(screen.queryByTestId('application-step-internal_review')).toBeNull();
+  });
+
+  it('makes the decision the one button once the application is with the authority', async () => {
+    mocked.getApplication.mockResolvedValue({
+      ...application({ state: 'under_review' }),
+      clock: { ...clock, start: '2026-05-04', forecast: '2026-08-04', reason: null },
+      clock_events: [],
+      decisions: [],
+      allowed_targets: ['info_requested', 'withdrawn'],
+    });
+    renderIn(<ApplicationPanel {...props} internalReview />);
+    expect(await screen.findByTestId('application-decide')).toBeInTheDocument();
+    expect(screen.queryByTestId('application-step-info_requested')).toBeNull();
+    fireEvent.click(screen.getByTestId('application-more'));
+    expect(screen.getByTestId('application-step-info_requested')).toBeInTheDocument();
+  });
+});
+
+describe('ConditionPanel', () => {
+  const detail = {
+    ...condition({ state: 'evidence_submitted' }),
+    evidence: [
+      { id: 'e1', condition_id: 'c1', kind: 'cde_revision' as const, ref_id: 'rev1', content_hash: '', note: '', added_by: 'u1', added_at: null },
+    ],
+    discharges: [],
+  };
+
+  it('says in words why the reader cannot close the condition', async () => {
+    vi.mocked(cde.fetchCDEContainers).mockResolvedValue([]);
+    mocked.getCondition.mockResolvedValue({
+      ...detail,
+      can: {
+        discharge: {
+          self_certified: { allowed: false, reason: 'verifier_is_owner' },
+          waived_by_authority: { allowed: false, reason: 'verifier_is_owner' },
+        },
+      },
+    });
+    renderIn(<ConditionPanel projectId="p1" conditionId="c1" row={condition()} personName={personName} onBack={vi.fn()} />);
+    expect(await screen.findByTestId('discharge-refusal')).toHaveTextContent(enT('permits.errors.verifier_is_owner'));
+    expect(screen.getByTestId('condition-discharge')).toBeDisabled();
+  });
+
+  it('offers to close it when the server allows one way, and names the document given as evidence', async () => {
+    vi.mocked(cde.fetchCDEContainers).mockResolvedValue([
+      { id: 'k1', container_code: 'DOC-1', title: 'Traffic plan', current_revision_id: 'rev1' },
+    ] as unknown as Awaited<ReturnType<typeof cde.fetchCDEContainers>>);
+    mocked.getCondition.mockResolvedValue({
+      ...detail,
+      can: {
+        discharge: {
+          self_certified: { allowed: true, reason: null },
+          waived_by_authority: { allowed: false, reason: 'verify_required' },
+        },
+      },
+    });
+    renderIn(<ConditionPanel projectId="p1" conditionId="c1" row={condition()} personName={personName} onBack={vi.fn()} />);
+    expect(await screen.findByTestId('condition-discharge')).toBeEnabled();
+    expect(screen.queryByTestId('discharge-refusal')).toBeNull();
+    expect(await screen.findByText(/Traffic plan/)).toBeInTheDocument();
   });
 });
 

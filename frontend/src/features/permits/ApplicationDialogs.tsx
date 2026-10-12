@@ -184,7 +184,7 @@ export function ApplicationDialog({
         application
           ? undefined
           : t('permits.ui.application.subtitle_new', {
-              defaultValue: 'It starts as planned. Record each step as it happens: preparing, filed, decided.',
+              defaultValue: 'It starts as planned. Record each step as it happens: preparing, submitted, decided.',
             })
       }
       submitLabel={
@@ -263,7 +263,7 @@ export function ApplicationDialog({
             {(id) => <input id={id} className={fieldClass} value={authority} onChange={(e) => setAuthority(e.target.value)} />}
           </Field>
           <Field
-            label={t('permits.ui.application.reference', { defaultValue: 'File reference' })}
+            label={t('permits.ui.application.reference', { defaultValue: 'Authority reference' })}
             hint={t('permits.ui.application.reference_hint', { defaultValue: 'The number the authority gave the application.' })}
           >
             {(id) => <input id={id} className={fieldClass} value={reference} onChange={(e) => setReference(e.target.value)} />}
@@ -287,7 +287,7 @@ export function ApplicationDialog({
         <Field
           label={t('permits.ui.application.appeal_note', { defaultValue: 'Appeal note' })}
           hint={t('permits.ui.application.appeal_note_hint', {
-            defaultValue: 'Whether an appeal is planned or filed, and by whom.',
+            defaultValue: 'Whether an appeal is planned or lodged, and by whom.',
           })}
         >
           {(id) => <textarea id={id} rows={2} className={fieldClass} value={appeal} onChange={(e) => setAppeal(e.target.value)} />}
@@ -351,7 +351,7 @@ export function TransitionDialog({ open, onClose, projectId, application, target
       subtitle={
         target === 'submitted'
           ? t('permits.ui.transition.subtitle_submitted', {
-              defaultValue: 'From the filing date the decision period is counted. Prerequisite permits are checked now.',
+              defaultValue: 'From the submission date the decision period is counted. Prerequisite permits are checked now.',
             })
           : undefined
       }
@@ -365,7 +365,7 @@ export function TransitionDialog({ open, onClose, projectId, application, target
         <Field
           label={
             target === 'submitted'
-              ? t('permits.ui.transition.filed_on', { defaultValue: 'Filed on' })
+              ? t('permits.ui.transition.filed_on', { defaultValue: 'Submitted on' })
               : t('permits.ui.transition.complete_on', { defaultValue: 'Accepted as complete on' })
           }
         >

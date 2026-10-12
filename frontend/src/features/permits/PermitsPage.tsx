@@ -20,6 +20,7 @@ import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { TabBar } from '@/shared/ui/TabBar';
+import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { downloadRegister, publishFrameDocument, type ExportRegister, type FrameDocumentType } from './api';
@@ -76,6 +77,7 @@ export function PermitsPage() {
   const personName = usePeopleNames(projectId);
   const viewerId = useViewerId();
   const addToast = useToastStore((s) => s.addToast);
+  const projectName = useProjectContextStore((s) => s.activeProjectName);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -121,7 +123,7 @@ export function PermitsPage() {
       setDialog(null);
       addToast({
         type: 'success',
-        title: t('permits.ui.file.done', { defaultValue: 'Filed as a new revision in the project documents.' }),
+        title: t('permits.ui.file.done', { defaultValue: 'Stored as a new revision in the project documents.' }),
       });
     },
   );
@@ -142,7 +144,7 @@ export function PermitsPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('permits.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName || t('permits.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('permits.ui.title', { defaultValue: 'Permits' }) },
         ]}
       />
@@ -162,8 +164,8 @@ export function PermitsPage() {
       >
         <ol className="ml-4 list-decimal space-y-1 text-sm text-content-secondary">
           <li>{t('permits.ui.how_step_1', { defaultValue: 'List the permits the project needs on the roadmap, with the date each one is needed.' })}</li>
-          <li>{t('permits.ui.how_step_2', { defaultValue: 'Open an application for a permit and record each step: prepared, filed, questions from the authority.' })}</li>
-          <li>{t('permits.ui.how_step_3', { defaultValue: 'The decision period is counted from the filing, so you see when the answer is due and whether it comes in time.' })}</li>
+          <li>{t('permits.ui.how_step_2', { defaultValue: 'Open an application for a permit and record each step: prepared, submitted, questions from the authority.' })}</li>
+          <li>{t('permits.ui.how_step_3', { defaultValue: 'The decision period is counted from the submission, so you see when the answer is due and whether it comes in time.' })}</li>
           <li>{t('permits.ui.how_step_4', { defaultValue: 'Record the decision with its conditions. Each condition gets an owner, evidence and a second person who checks it.' })}</li>
         </ol>
       </CollapsibleSection>
@@ -401,7 +403,7 @@ export function PermitsPage() {
                   }}
                   data-testid="file-register"
                 >
-                  {t('permits.ui.file.open', { defaultValue: 'File in project documents' })}
+                  {t('permits.ui.file.open', { defaultValue: 'Store in project documents' })}
                 </Button>
               </span>
             )}
@@ -436,12 +438,12 @@ export function PermitsPage() {
         open={dialog === 'file'}
         onClose={() => setDialog(null)}
         testId="file-register-dialog"
-        title={t('permits.ui.file.title', { defaultValue: 'File this register in the project documents' })}
+        title={t('permits.ui.file.title', { defaultValue: 'Store this register in the project documents' })}
         subtitle={t('permits.ui.file.subtitle', {
           defaultValue:
             'The register as it stands now is stored as a new revision of its governance document, so a gate can refer to exactly this state.',
         })}
-        submitLabel={t('permits.ui.file.submit', { defaultValue: 'File register' })}
+        submitLabel={t('permits.ui.file.submit', { defaultValue: 'Store register' })}
         busy={file.busy}
         error={file.error}
         problems={[]}

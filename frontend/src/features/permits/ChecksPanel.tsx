@@ -26,7 +26,7 @@ export const READINESS_GATE: Record<ReadinessGate, KeyText> = {
 export const READINESS_GATE_HINT: Record<ReadinessGate, KeyText> = {
   start: ['permits.ui.gate_hint.start', 'Every permit needed to start is in force and nothing due before start is open.'],
   handover: ['permits.ui.gate_hint.handover', 'Occupation is permitted and nothing due before occupation is open.'],
-  roadmap: ['permits.ui.gate_hint.roadmap', 'Every permit the next phase needs is filed or granted.'],
+  roadmap: ['permits.ui.gate_hint.roadmap', 'Every permit the next phase needs is submitted or granted.'],
   register: ['permits.ui.gate_hint.register', 'Every condition has an owner and says when it is due.'],
 };
 
