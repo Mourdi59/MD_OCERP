@@ -973,6 +973,9 @@ async def test_every_approver_of_a_tier_adds_conditions_and_the_earliest_date_st
     assert second.valid_until == "2027-03-31"
     # The last step closed the request; what it closed as is the tier holder rule's business, not this test's.
     assert second.outcome != "pending"
+    stored = await _release_row(world, d.id)
+    # Both approvers' conditions and the earlier of their two dates are what the database keeps.
+    assert (stored.conditions, stored.valid_until) == ("Report first\nCap the fee", "2027-03-31")
 
 
 async def test_an_abort_basis_of_another_tenant_is_unknown_to_this_one(world: World) -> None:
@@ -1325,6 +1328,14 @@ async def test_a_release_past_its_date_keeps_what_is_bound_and_authorises_nothin
         await s.commit()
 
     after = await view()
+    async with world.factory() as s:
+        totals = (await CommitmentService(s).item_views(world.project_id, today=TODAY))["totals"]
+    # The totals row serves the in-force sum, so nobody adds the lapsed 10,000 as available.
+    assert (D(totals["released"]), D(totals["released_in_force"]), D(totals["released_lapsed"])) == (
+        D("40000"),
+        D("30000"),
+        D("10000"),
+    )
     # What is bound stays released and committed: no new state, no re-release demanded.
     assert after["status"] == before["status"]
     assert (D(after["released"]), D(after["committed"]), D(after["released_in_force"])) == (

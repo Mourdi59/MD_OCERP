@@ -1319,7 +1319,7 @@ class CommitmentService:
         per_item, committed, committed_reason = await self.committed_for_items(matrix, project, schedule, on_date=today)
         tol = schedule.variation_tolerance
         views = []
-        totals = {"planned": ZERO, "released": ZERO, "committed": ZERO}
+        totals = {"planned": ZERO, "released": ZERO, "released_in_force": ZERO, "committed": ZERO}
         unconverted: set[str] = set()
         currencies: set[str] = set()
         for item in items:
@@ -1444,7 +1444,13 @@ class CommitmentService:
                 )
             views.append(view)
             currencies.add(sched_ccy)
-            for key, value in (("planned", planned_sched), ("released", released), ("committed", comm)):
+            for key, value in (
+                ("planned", planned_sched),
+                ("released", released),
+                # What a reader may still count as authority: never the lapsed part of a release.
+                ("released_in_force", in_force),
+                ("committed", comm),
+            ):
                 if value is None:
                     unconverted.add(key)
                     continue
@@ -1458,6 +1464,9 @@ class CommitmentService:
             "totals": {
                 "currency": base,
                 **{k: _money_str(v) for k, v in totals.items()},
+                "released_lapsed": _money_str(totals["released"] - totals["released_in_force"])
+                if not {"released", "released_in_force"} & unconverted
+                else None,
                 "mixed_currency": len({c for c in currencies if c}) > 1,
                 "incomplete": sorted(unconverted),
             },
