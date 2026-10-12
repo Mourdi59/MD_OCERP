@@ -1593,12 +1593,53 @@ class ProcurementConceptService:
 
     # ── execution (rules 15, 16) ─────────────────────────────────────────
 
-    async def _require_boq_section(self, project_id: uuid.UUID, position_id: uuid.UUID) -> None:
+    async def cost_reference_options(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
+        """What a package may name as its cost reference: the section headers of the project's bills.
+
+        The positions under the chosen section become the scope lines of the
+        execution vehicle, so ``positions`` says how many it would carry.
+        """
         from app.modules.boq.models import BOQ, Position
+        from app.modules.boq.service import SECTION_UNITS
+
+        rows = (
+            await self.session.execute(
+                select(Position, BOQ.name)
+                .join(BOQ, BOQ.id == Position.boq_id)
+                .where(BOQ.project_id == project_id, func.lower(func.trim(Position.unit)).in_(SECTION_UNITS))
+                .order_by(BOQ.name, Position.sort_order, Position.ordinal)
+            )
+        ).all()
+        ids = [pos.id for pos, _name in rows]
+        children: dict[uuid.UUID, int] = {}
+        if ids:
+            counted = await self.session.execute(
+                select(Position.parent_id, func.count()).where(Position.parent_id.in_(ids)).group_by(Position.parent_id)
+            )
+            children = {parent: n for parent, n in counted.all()}
+        return [
+            {
+                "kind": "boq_section",
+                "id": str(pos.id),
+                "code": pos.ordinal,
+                "title": pos.description,
+                "boq_id": str(pos.boq_id),
+                "boq_name": name,
+                "positions": children.get(pos.id, 0),
+            }
+            for pos, name in rows
+        ]
+
+    async def _require_boq_section(self, project_id: uuid.UUID, position_id: uuid.UUID) -> None:
+        """The reference is a section header of a bill of this project (what the picker lists)."""
+        from app.modules.boq.models import BOQ, Position
+        from app.modules.boq.service import SECTION_UNITS
 
         head = await self.session.get(Position, position_id)
         boq = await self.session.get(BOQ, head.boq_id) if head is not None else None
         if boq is None or boq.project_id != project_id:
+            raise not_found("cost_reference_not_found")
+        if (head.unit or "").strip().lower() not in SECTION_UNITS:
             raise not_found("cost_reference_not_found")
 
     async def _scope_lines(self, project_id: uuid.UUID, row: AwardPackage) -> list[dict[str, Any]]:

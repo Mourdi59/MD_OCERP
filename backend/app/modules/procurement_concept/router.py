@@ -321,6 +321,13 @@ async def list_tender_packages(project_id: uuid.UUID, session: SessionDep, user_
     return _page(await _run(ProcurementConceptService(session).tender_package_options(project_id)))
 
 
+@router.get("/projects/{project_id}/cost-refs", dependencies=[READ])
+async def list_cost_refs(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """Bill of quantities sections of this project a package may name as ``cost_ref_kind`` + ``cost_ref_id``."""
+    await verify_project_access(project_id, user_id, session)
+    return _page(await _run(ProcurementConceptService(session).cost_reference_options(project_id)))
+
+
 @router.put("/projects/{project_id}/packages/{package_id}", dependencies=[EDIT])
 async def put_package(
     project_id: uuid.UUID,

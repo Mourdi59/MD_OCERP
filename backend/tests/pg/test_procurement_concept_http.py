@@ -423,3 +423,50 @@ async def test_catalogues_carry_their_jurisdictions_and_client_types(world: Worl
     assert "sub_central" in eu[0]["client_types"]
     assert eu[0]["private_client_type"] == "private"
     assert all(i["jurisdictions"] for i in items if i["source"] == "shipped")
+
+
+async def test_the_cost_reference_picker_lists_what_the_package_body_then_accepts(world: World) -> None:
+    from app.modules.boq.models import BOQ, Position
+
+    other = await build_world(world.factory)
+    async with world.factory() as s:
+        own = BOQ(project_id=world.project_id, name="Main bill")
+        foreign = BOQ(project_id=other.project_id, name="Their bill")
+        s.add_all([own, foreign])
+        await s.flush()
+        section = Position(boq_id=own.id, ordinal="01", description="Structure", unit="section", sort_order=1)
+        foreign_section = Position(boq_id=foreign.id, ordinal="01", description="Theirs", unit="section")
+        s.add_all([section, foreign_section])
+        await s.flush()
+        line = Position(
+            boq_id=own.id, parent_id=section.id, ordinal="01.001", description="Concrete", unit="m3", quantity="12.5"
+        )
+        s.add(line)
+        await s.commit()
+    async with client_as(world, world.outsider, "manager") as c:
+        assert (await c.get(_p(world, "/cost-refs"))).status_code == 404
+    async with client_as(world, world.manager, "manager") as c:
+        items = (await c.get(_p(world, "/cost-refs"))).json()["items"]
+        assert [(i["kind"], i["id"], i["code"], i["title"], i["positions"]) for i in items] == [
+            ("boq_section", str(section.id), "01", "Structure", 1)
+        ]
+        ok = await c.put(
+            _pkg(world), json={**OPEN_WORKS, "cost_ref_kind": "boq_section", "cost_ref_id": items[0]["id"]}
+        )
+        assert (ok.status_code, ok.json()["cost_ref_id"]) == (200, str(section.id))
+        # A section of another project, and a priced line of this one, are not on the list and not accepted.
+        for bad in (foreign_section.id, line.id):
+            r = await c.put(_pkg(world), json={"cost_ref_kind": "boq_section", "cost_ref_id": str(bad)})
+            assert (r.status_code, r.json()["detail"]["code"]) == (404, "cost_reference_not_found")
+        lots = await c.post(
+            f"{BASE}/frameworks",
+            json={
+                "code": "FW-L",
+                "max_value": "1",
+                "currency": "EUR",
+                "start_date": "2026-01-01",
+                "end_date": "2027-01-01",
+                "lots": [{"code": "L1", "title": "Rebar", "surprise": 1}],
+            },
+        )
+        assert lots.status_code == 422

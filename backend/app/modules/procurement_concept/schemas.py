@@ -335,6 +335,13 @@ class ExecutionLinkIn(_In):
 # ── Frameworks ───────────────────────────────────────────────────────────
 
 
+class FrameworkLot(_In):
+    """One lot of a framework agreement."""
+
+    code: str = Field(min_length=1, max_length=64)
+    title: str = Field(default="", max_length=255)
+
+
 class FrameworkIn(_In):
     clearable: ClassVar[frozenset[str]] = frozenset({"subcontractor_id", "vendor_id"})
 
@@ -347,7 +354,7 @@ class FrameworkIn(_In):
     package_kinds: list[Literal["design", "works", "supply", "supply_and_install", "services"]] = Field(
         default_factory=list
     )
-    lots: list[dict[str, Any]] = Field(default_factory=list, max_length=50)
+    lots: list[FrameworkLot] = Field(default_factory=list, max_length=50)
     max_value: Decimal
     currency: str = Field(min_length=3, max_length=3)
     start_date: date
@@ -371,7 +378,7 @@ class FrameworkPatch(_In):
     supplier_name: str | None = Field(default=None, max_length=255)
     scope: str | None = Field(default=None, max_length=8000)
     package_kinds: list[Literal["design", "works", "supply", "supply_and_install", "services"]] | None = None
-    lots: list[dict[str, Any]] | None = None
+    lots: list[FrameworkLot] | None = Field(default=None, max_length=50)
     max_value: Decimal | None = None
     end_date: date | None = None
     call_off_mode: Literal["direct", "mini_competition"] | None = None
