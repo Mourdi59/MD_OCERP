@@ -1866,3 +1866,18 @@ html[data-ai-dock-resizing] * {
     transition: none;
   }
 }
+
+/* Centred overlay dialogs, one rule for all of them.
+   About 190 dialogs build their overlay inline as a fixed, flex-centred box
+   and most set no height limit, so a dialog taller than the window pushed its
+   action buttons below the fold with no way to reach them. The overlay now
+   scrolls instead. The auto margins keep a short dialog centred and let a
+   tall one start at the top, where plain centring would cut its head off.
+   Dialogs that already cap their own height fit and are unaffected. */
+.fixed.inset-0.flex.items-center.justify-center {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.fixed.inset-0.flex.items-center.justify-center > :not(.absolute):not(.fixed) {
+  margin-block: auto;
+}
