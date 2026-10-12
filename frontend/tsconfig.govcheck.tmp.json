@@ -1,1 +1,0 @@
-{ "extends": "./tsconfig.json", "include": ["src/features/project_governance", "src/vite-env.d.ts", "src/test/setup.ts"] }
