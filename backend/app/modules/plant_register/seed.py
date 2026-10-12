@@ -22,10 +22,11 @@ seeded here. Money is in the project's own currency or left out.
 A project that has not started building is told differently. Whether it has
 is read from its governance model: the gate into the phase that enables
 construction start exists and is not decided yet. Such a project stands before
-that gate, so nothing in its register is past ``ordered`` and only one item is
-ordered at all, every need date lies after the construction start, each
-long-lead item must be ordered before the gate date (which is why it cannot
-wait for the gate), and the construction-phase IT services are still planned.
+that gate, so nothing in its register is ordered yet, every need date lies
+after the construction start, each item whose lead time is longer than the
+wait for that start must be ordered before the gate date (which is why it
+cannot wait for the gate), and the construction-phase IT services are planned
+from the mobilisation of the site on.
 All of it in day offsets from the seed day, never a calendar date. A project
 without a governance model, or past that gate, gets the full range of states.
 
@@ -52,9 +53,8 @@ ROUTE = "contractor_furnished_installed"
 
 # A project before its construction gate, in days from the seed day.
 GATE_TARGET_DAYS = 21
-CONSTRUCTION_START_DAYS = 45
-# The one item already ordered before the gate; every other stops at ``route_set``.
-_ORDERED_BEFORE_GATE = "PL-005"
+MOBILISATION_DAYS = 175
+CONSTRUCTION_START_DAYS = 190
 
 # quotes: (source, source_name, enquiry offset days, response offset days, min weeks, max weeks, basis)
 # reach: the state the item is taken to, by the rules; need_days: need date relative to today.
@@ -353,7 +353,7 @@ def _reach_before_gate(spec: dict[str, Any]) -> str:
 
     if not calc.at_least(spec["reach"], "ordered") or spec["reach"] == "cancelled":
         return spec["reach"]
-    return "ordered" if spec["code"] == _ORDERED_BEFORE_GATE else "route_set"
+    return "route_set"
 
 
 async def _order_before_the_gate(
@@ -363,13 +363,18 @@ async def _order_before_the_gate(
 
     The latest order date is computed by the register (lead time, basis,
     buffers, review period), so the seed asks for it and shifts the need date
-    by the difference instead of repeating that arithmetic.
+    by the difference instead of repeating that arithmetic. An item whose lead
+    time is shorter than the wait for the construction start would then be
+    needed before anything is built; it keeps its need date and can be ordered
+    after the gate.
     """
     view = (await svc.item_views(project_id, today=today, only=[item_id]))[0]
     if not view["long_lead"] or view["latest_order_date"] is None or view["need_date"] is None:
         return
     shift = (today + timedelta(days=slack_days)) - view["latest_order_date"]
-    need = max(view["need_date"] + shift, today + timedelta(days=CONSTRUCTION_START_DAYS + 15))
+    need = view["need_date"] + shift
+    if need <= today + timedelta(days=CONSTRUCTION_START_DAYS):
+        return
     await svc.update_item(project_id, item_id, {"need_date_fixed": need}, actor_id=owner)
 
 
@@ -588,7 +593,7 @@ async def _seed_project(
                 "kind": kind,
                 "description": desc,
                 # Before the gate nothing of the construction phase is in service yet.
-                "needed_from": today + timedelta(days=max(start, 30) if before_gate else start),
+                "needed_from": today + timedelta(days=max(start, MOBILISATION_DAYS) if before_gate else start),
             },
             actor_id=owner,
         )

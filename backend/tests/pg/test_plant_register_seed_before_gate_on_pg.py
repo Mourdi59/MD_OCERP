@@ -4,7 +4,7 @@
 
 A project whose gate into the phase that enables construction start is still
 undecided is seeded as one day before that gate. Nothing may contradict that
-day: no item past ``ordered``, need dates after the construction start,
+day: no item ordered, need dates after the construction start,
 long-lead order dates before the gate date. A project past the gate, or
 without a governance model, gets the full range of states.
 """
@@ -117,9 +117,8 @@ async def test_a_project_before_its_construction_gate_is_seeded_as_that_day(worl
         services = list((await s.execute(select(ItService).where(ItService.project_id == world.project_id))).scalars())
         views = await PlantService(s).item_views(world.project_id, today=today)
 
-    # Nothing of execution has happened: one item is ordered, none is further.
-    assert {i.status for i in items} == {"identified", "specified", "enquired", "route_set", "ordered", "cancelled"}
-    assert [i.code for i in items if i.status == "ordered"] == ["PL-005"]
+    # Nothing of execution has happened and nothing is ordered: the first order is placed after the decision.
+    assert {i.status for i in items} == {"identified", "specified", "enquired", "route_set", "cancelled"}
     by_code = {i.code: i for i in items}
     assert by_code["PL-001"].status == "enquired"
     assert sorted(s.status for s in slots) == ["held", "requested"]
@@ -128,12 +127,15 @@ async def test_a_project_before_its_construction_gate_is_seeded_as_that_day(worl
     start = today + timedelta(days=seed.CONSTRUCTION_START_DAYS)
     gate = today + timedelta(days=seed.GATE_TARGET_DAYS)
     assert all(i.need_date_fixed > start for i in items)
-    long_lead = [v for v in views if v["long_lead"] and v["item"].status != "cancelled"]
-    assert len(long_lead) >= 5
-    # Each long-lead item has to be ordered before the gate date, and none is overdue on the seed day.
-    assert {v["code"]: v["latest_order_date"] for v in long_lead if not today <= v["latest_order_date"] < gate} == {}
-    assert len({v["latest_order_date"] for v in long_lead}) > 1
+    dated = [v for v in views if v["long_lead"] and v["item"].status != "cancelled" and v["latest_order_date"]]
+    # The items that cannot wait for the gate: their order date falls before it, and none is overdue today.
+    urgent = [v for v in dated if v["latest_order_date"] < gate]
+    assert len(urgent) >= 5
+    assert {v["code"]: v["latest_order_date"] for v in urgent if v["latest_order_date"] < today} == {}
+    assert len({v["latest_order_date"] for v in urgent}) > 1
+    # Every other long-lead item can be ordered after the decision.
+    assert all(v["latest_order_date"] >= gate for v in dated if v not in urgent)
     assert "overdue" not in {v["order_status"] for v in views}
 
     assert {x.status for x in services} == {"planned"}
-    assert all(x.needed_from >= today + timedelta(days=30) for x in services)
+    assert all(x.needed_from >= today + timedelta(days=seed.MOBILISATION_DAYS) for x in services)
