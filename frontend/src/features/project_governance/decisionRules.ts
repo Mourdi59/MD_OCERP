@@ -161,6 +161,14 @@ export function reopenRewind(gate: Pick<GovernanceGate, 'last_outcome'>): 'force
   return gate.last_outcome === 'go' || gate.last_outcome === 'go_with_conditions' ? 'forced' : 'none';
 }
 
+/** The day after an ISO date, for a date field that must lie in the future. */
+export function dayAfter(isoDate: string): string {
+  const day = new Date(`${isoDate}T00:00:00Z`);
+  if (Number.isNaN(day.getTime())) return isoDate;
+  day.setUTCDate(day.getUTCDate() + 1);
+  return day.toISOString().slice(0, 10);
+}
+
 /** A reopening is only accepted with a written reason. */
 export function reopenProblem(rationale: string): 'rationale_required' | null {
   return rationale.trim() ? null : 'rationale_required';

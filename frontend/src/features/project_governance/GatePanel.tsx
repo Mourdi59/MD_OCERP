@@ -199,8 +199,16 @@ function AreaReadiness({
       setNote('');
       onChanged();
     },
-    onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+    onError: (err) => addToast({ type: 'error', title: refusalText(t, err) }),
   });
+  // The form opens on what was confirmed last, so saving again never wipes the note by accident.
+  const openForm = () => {
+    const last = area.check;
+    setNaMode(last?.status === 'not_applicable');
+    setStatus(last && last.status !== 'not_applicable' && last.status !== 'not_assessed' ? last.status : 'ready');
+    setNote(last?.status === 'not_applicable' ? last.na_rationale : last?.note ?? '');
+    setEditing(true);
+  };
 
   const ownerName = area.owner_user_id
     ? personName(area.owner_user_id) ?? t('governance.project.unknown_person', { defaultValue: 'Project member' })
@@ -288,7 +296,7 @@ function AreaReadiness({
 
       <div className="mt-2">
         {!editing ? (
-          <ReasonedButton size="sm" variant="secondary" verdict={verdict} onClick={() => setEditing(true)}>
+          <ReasonedButton size="sm" variant="secondary" verdict={verdict} onClick={openForm}>
             {t('governance.project.gate.confirm_readiness', { defaultValue: 'Confirm readiness' })}
           </ReasonedButton>
         ) : (
@@ -321,7 +329,7 @@ function AreaReadiness({
               <Button size="sm" loading={save.isPending} disabled={naMode && !note.trim()} onClick={() => save.mutate()}>
                 {t('governance.project.save', { defaultValue: 'Save' })}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+              <Button size="sm" variant="ghost" disabled={save.isPending} onClick={() => setEditing(false)}>
                 {t('governance.project.cancel', { defaultValue: 'Cancel' })}
               </Button>
             </div>
@@ -423,7 +431,7 @@ export function GatePanel({
   const [routeMissing, setRouteMissing] = useState(false);
   const today = localToday();
 
-  const onFail = (err: unknown) => addToast({ type: 'error', title: getErrorMessage(err) });
+  const onFail = (err: unknown) => addToast({ type: 'error', title: refusalText(t, err) });
   const prepare = useMutation({ mutationFn: () => prepareGate(projectId, gateId), onSuccess: invalidate, onError: onFail });
   const submit = useMutation({
     mutationFn: () => submitGate(projectId, gateId),
@@ -484,14 +492,24 @@ export function GatePanel({
     },
   });
 
-  if (query.isLoading) return <SkeletonTable rows={6} columns={3} />;
-  if (query.isError || !query.data) {
+  // Only a gate that never arrived replaces the screen. A refetch that fails
+  // after a write keeps what is shown, and an open dialog with its draft.
+  if (!query.data) {
     return (
-      <ErrorState
-        title={t('governance.project.gate.load_failed', { defaultValue: 'The gate could not be loaded' })}
-        hint={getErrorMessage(query.error)}
-        onRetry={() => query.refetch()}
-      />
+      <div className="space-y-4" data-testid="gate-unavailable">
+        <Button size="sm" variant="ghost" icon={<ArrowLeft size={14} />} onClick={onBack}>
+          {t('governance.project.back_to_matrix', { defaultValue: 'Back to matrix' })}
+        </Button>
+        {query.isError ? (
+          <ErrorState
+            title={t('governance.project.gate.load_failed', { defaultValue: 'The gate could not be loaded' })}
+            hint={getErrorMessage(query.error)}
+            onRetry={() => query.refetch()}
+          />
+        ) : (
+          <SkeletonTable rows={6} columns={3} />
+        )}
+      </div>
     );
   }
   const detail: GateDetail = query.data;
@@ -509,6 +527,16 @@ export function GatePanel({
 
   return (
     <div className="space-y-5" data-testid="gate-panel">
+      {query.isError && (
+        <p className="flex flex-wrap items-center gap-2 text-sm text-semantic-error" role="alert" data-testid="gate-refresh-failed">
+          {t('governance.project.gate.refresh_failed', {
+            defaultValue: 'The gate could not be refreshed, so what is shown may be out of date.',
+          })}
+          <Button size="sm" variant="ghost" onClick={() => query.refetch()}>
+            {t('governance.project.retry', { defaultValue: 'Try again' })}
+          </Button>
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <Button size="sm" variant="ghost" icon={<ArrowLeft size={14} />} onClick={onBack}>
           {t('governance.project.back_to_matrix', { defaultValue: 'Back to matrix' })}
@@ -554,7 +582,8 @@ export function GatePanel({
             {t('governance.project.gate.resume', { defaultValue: 'Resume gate' })}
           </ReasonedButton>
         )}
-        {gate.status !== 'decided' && (
+        {/* A gate on hold is resumed first; the decision button comes back with the review. */}
+        {gate.status !== 'decided' && gate.status !== 'on_hold' && (
           <ReasonedButton verdict={decideVerdict} onClick={() => setDialogOpen(true)} data-testid="open-decision">
             {t('governance.project.gate.decide', { defaultValue: 'Record decision' })}
           </ReasonedButton>

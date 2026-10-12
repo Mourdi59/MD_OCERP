@@ -37,9 +37,16 @@ export type Severity = 'critical' | 'essential' | 'recommended';
 export type ChangeRequestStatus = 'submitted' | 'approved' | 'rejected' | 'cancelled';
 export type EvidenceState = 'met' | 'not_met' | 'unknown';
 
+/** Where a catalogue comes from: the platform, the organisation, or the active pack. */
+export type CatalogueSource = 'shipped' | 'tenant' | 'pack';
+
 export interface CatalogueSummary {
   kind: string;
-  source: 'shipped' | 'tenant';
+  source: CatalogueSource;
+  /** The pack a `pack` item comes from. */
+  pack?: string;
+  /** True on the one catalogue a new project of the asked country should start with. */
+  default?: boolean;
   id: string;
   code: string;
   name: GovernanceLabel;
@@ -49,7 +56,7 @@ export interface CatalogueSummary {
   based_on?: string;
   review_status: string;
   jurisdiction_countries: string[];
-  /** Not sent yet; the phase mapping step uses it as soon as it is. */
+  /** Only on a catalogue read in full; the phase mapping step offers a choice when it is there. */
   phases?: GovernancePhase[];
 }
 
@@ -63,7 +70,7 @@ export interface GovernancePhase {
 export interface GovernanceModel {
   id: string;
   project_id: string;
-  catalogue_source: 'shipped' | 'tenant';
+  catalogue_source: CatalogueSource;
   catalogue_id: string;
   catalogue_version: number;
   current_phase: string | null;
@@ -73,9 +80,8 @@ export interface GovernanceModel {
   stopped: boolean;
   stopped_at: string | null;
   phases: GovernancePhase[];
-  /** What the caller may do on this project, decided by the server. */
-  /** `edit` is absent from a server that does not report it; the write then answers for itself. */
-  can: { manage: boolean; edit?: boolean };
+  /** What the caller may do on the model, decided by the server. Writes on areas and documents carry flags of their own. */
+  can: { manage: boolean };
 }
 
 export interface GovernanceArea {
@@ -88,7 +94,7 @@ export interface GovernanceArea {
   applicable: boolean;
   na_rationale: string;
   retired: boolean;
-  /** Not sent yet, see the report on API gaps. */
+  /** The area's label when the server sends one; the catalogue key names it otherwise. */
   name?: GovernanceLabel;
   /** The catalogue's frame document types for this area; `tracked` says which ones the project already holds. */
   document_types?: AreaDocumentType[];
@@ -325,7 +331,7 @@ export interface DocumentRevision {
   revision_number: number;
   content_hash: string;
   file_name: string;
-  created_at: string;
+  created_at: string | null;
   in_force: boolean;
 }
 
@@ -342,7 +348,7 @@ export interface ChangeRequest {
   requested_by: string | null;
   decided_by: string | null;
   decided_at: string | null;
-  created_at: string;
+  created_at: string | null;
 }
 
 export interface DocumentHistory {
@@ -434,14 +440,21 @@ export const governanceKeys = {
   changeRequests: (projectId: string) => ['project-governance', projectId, 'change-requests'] as const,
   conditions: (projectId: string) => ['project-governance', projectId, 'conditions'] as const,
   containers: (projectId: string) => ['project-governance', projectId, 'containers'] as const,
-  routes: (projectId: string) => ['project-governance', projectId, 'routes'] as const,
+  routes: (projectId: string, targetKind: string) => ['project-governance', projectId, 'routes', targetKind] as const,
   catalogues: ['project-governance', 'catalogues'] as const,
 };
 
 /* ── Catalogues and model ─────────────────────────────────────────────── */
 
-export function listCatalogues(): Promise<Page<CatalogueSummary>> {
-  return apiGet<Page<CatalogueSummary>>('/v1/project-governance/catalogues?kind=phase_model');
+/** The phase models on offer. With the project's country the server marks the one to start with as `default`. */
+export function listCatalogues(country?: string | null): Promise<Page<CatalogueSummary>> {
+  const countryQs = country ? `&country=${encodeURIComponent(country)}` : '';
+  return apiGet<Page<CatalogueSummary>>(`/v1/project-governance/catalogues?kind=phase_model${countryQs}`);
+}
+
+/** The two-letter country of a project, or null when it has none. */
+export function getProjectCountry(projectId: string): Promise<string | null> {
+  return apiGet<{ country_code?: string | null }>(`/v1/projects/${projectId}`).then((project) => project.country_code ?? null);
 }
 
 export function getModel(projectId: string): Promise<GovernanceModel> {
@@ -450,7 +463,7 @@ export function getModel(projectId: string): Promise<GovernanceModel> {
 
 export function setModel(
   projectId: string,
-  body: { catalogue_source: 'shipped' | 'tenant'; catalogue_id: string; catalogue_version?: number; four_eyes: boolean },
+  body: { catalogue_source: CatalogueSource; catalogue_id: string; catalogue_version?: number; four_eyes: boolean },
 ): Promise<GovernanceModel> {
   return apiPut<GovernanceModel>(`/v1/project-governance/projects/${projectId}/model`, body);
 }
@@ -458,7 +471,7 @@ export function setModel(
 export function changeModel(
   projectId: string,
   body: {
-    catalogue_source: 'shipped' | 'tenant';
+    catalogue_source: CatalogueSource;
     catalogue_id: string;
     catalogue_version?: number;
     mapping: Record<string, string>;

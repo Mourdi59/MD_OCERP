@@ -217,10 +217,19 @@ async def _tenant_out(store: CatalogueStore, row: Any) -> TenantCatalogueOut:
 
 @router.get("/catalogues", response_model=Page[dict[str, Any]], dependencies=[READ])
 async def list_catalogues(
-    session: SessionDep, payload: CurrentUserPayload, kind: str = Query("phase_model", max_length=40)
+    session: SessionDep,
+    payload: CurrentUserPayload,
+    kind: str = Query("phase_model", max_length=40),
+    country: str | None = Query(None, max_length=2),
 ) -> dict[str, Any]:
-    """Shipped catalogues and the caller's tenant catalogues of one kind."""
-    items = await _run(CatalogueStore(session).list_available(resolve_tenant_id(payload), kind=kind))
+    """Shipped catalogues, the active pack's and the caller's tenant catalogues of one kind.
+
+    ``country`` is the project's country; the item a new project of that
+    country should pin carries ``default: true``.
+    """
+    items = await _run(
+        CatalogueStore(session).list_available(resolve_tenant_id(payload), kind=kind, country_code=country)
+    )
     return _page(items)
 
 
@@ -980,16 +989,21 @@ async def export_trail(
     fmt: Literal["pdf", "xlsx"] = Query("pdf", alias="format"),
 ) -> Response:
     """The decision trail as PDF or XLSX."""
-    from app.modules.project_governance.export import render
+    from app.modules.project_governance.export import render, written_locale
     from app.modules.projects.models import Project
 
     await verify_project_access(project_id, user_id, session)
     project = await session.get(Project, project_id)
     trail = await GovernanceService(session).trail(project_id)
-    content = render(trail, project_name=getattr(project, "name", "") or "", locale=get_locale() or "en", fmt=fmt)
+    locale = written_locale(get_locale())
+    content = render(trail, project_name=getattr(project, "name", "") or "", locale=locale, fmt=fmt)
     media = "application/pdf" if fmt == "pdf" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return Response(
         content=content,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="governance_trail.{fmt}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="governance_trail.{fmt}"',
+            # The language the trail was written in, which is not always the one asked for.
+            "Content-Language": locale,
+        },
     )

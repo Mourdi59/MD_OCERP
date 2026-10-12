@@ -236,6 +236,7 @@ export const ERROR_TEXT: Record<string, string> = {
   catalogue_code_taken: 'A catalogue with this code already exists',
   catalogue_retired: 'This catalogue is retired and can no longer be edited or pinned',
   catalogue_invalid: 'The catalogue draft breaks a catalogue rule and cannot be published',
+  pack_catalogue_invalid: 'The active pack declares this catalogue, but its file is missing or breaks the catalogue rules',
   area_retired: 'This area was retired by a change of the phase model and takes no new documents',
   gate_not_on_hold: 'Only a gate on hold can be resumed',
   gate_historic: 'This gate belongs to a phase model the project no longer uses',

@@ -32,6 +32,7 @@ vi.mock('../api', async (importOriginal) => {
     decideGate: vi.fn(),
     reopenGate: vi.fn(),
     resumeGate: vi.fn(),
+    updateArea: vi.fn(),
     submitGate: vi.fn(),
     addGateCondition: vi.fn(),
     createDocument: vi.fn(),
@@ -181,12 +182,38 @@ describe('GatePanel', () => {
     });
 
     it('tells somebody who may not manage whom to ask', async () => {
-      render(model({ can: { manage: false, edit: true } }), () => undefined);
+      render(model({ can: { manage: false } }), () => undefined);
       fireEvent.click(await screen.findByRole('button', { name: 'Submit for review' }));
       const notice = await screen.findByTestId('gate-no-route');
       expect(notice).toHaveTextContent('A governance manager chooses it in the phase model settings.');
       expect(within(notice).queryByTestId('gate-open-route')).toBeNull();
     });
+  });
+
+  it('a gate that cannot be loaded still offers the way back', async () => {
+    mocked.getGate.mockRejectedValue(new Error('offline'));
+    const onBack = vi.fn();
+    wrap(
+      <GatePanel
+        projectId="p1"
+        gateId="g1"
+        model={model()}
+        viewer={{ userId: 'u-me' }}
+        labels={labels}
+        personName={names}
+        onBack={onBack}
+        onOpenArea={() => undefined}
+      />,
+    );
+    expect(await screen.findByText('The gate could not be loaded')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to matrix' }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('a gate on hold offers to resume, not to decide', async () => {
+    open(detail({ gate: gate({ status: 'on_hold', hold_resume_date: '2026-11-01', last_outcome: 'hold' }) }));
+    await screen.findByTestId('resume-gate');
+    expect(screen.queryByTestId('open-decision')).toBeNull();
   });
 
   it('the resume button follows can.resume', async () => {
@@ -265,8 +292,12 @@ describe('GatePanel', () => {
         }),
       );
       expect(await screen.findByTestId('open-reopen')).toBeDisabled();
-      expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'server:later_gate_active');
-      expect(screen.getByTestId('disabled-reason')).toHaveTextContent(enT('governance.errors.later_gate_active'));
+      // Other buttons on the gate carry reasons of their own; this is the one of the reopen button.
+      const reason = screen
+        .getAllByTestId('disabled-reason')
+        .find((r) => r.getAttribute('data-reason') === 'server:later_gate_active');
+      expect(reason).toBeDefined();
+      expect(reason).toHaveTextContent(enT('governance.errors.later_gate_active'));
       view.unmount();
 
       open(detail({ gate: gate({ status: 'in_review' }) }));
@@ -345,6 +376,45 @@ describe('AreaPanel documents', () => {
       />,
     );
   }
+
+  it('takes the owner off only through its own button', async () => {
+    mocked.updateArea.mockResolvedValue(theArea());
+    open();
+    expect(screen.queryByTestId('unassign-deputy_user_id')).toBeNull();
+    fireEvent.click(screen.getByTestId('unassign-owner_user_id'));
+    await waitFor(() => expect(mocked.updateArea).toHaveBeenCalledWith('p1', 'a1', { owner_user_id: null }));
+  });
+
+  it('documents that are loading or failed never read as an empty area', () => {
+    const render = (props: object) =>
+      wrap(
+        <AreaPanel
+          projectId="p1"
+          area={theArea()}
+          model={model()}
+          documents={[]}
+          changeRequests={[]}
+          gates={[gate()]}
+          labels={labels}
+          personName={names}
+          onBack={() => undefined}
+          {...props}
+        />,
+      );
+    const loading = render({ documentsLoading: true });
+    expect(screen.getByTestId('area-documents-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('area-no-documents')).toBeNull();
+    expect(screen.queryByTestId('add-document')).toBeNull();
+    loading.unmount();
+
+    const onRetry = vi.fn();
+    render({ documentsError: new Error('offline'), onRetryDocuments: onRetry });
+    const failed = screen.getByTestId('area-documents-error');
+    expect(failed).toHaveTextContent('The frame documents could not be loaded.');
+    expect(screen.queryByTestId('area-no-documents')).toBeNull();
+    fireEvent.click(within(failed).getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
 
   it('a document without a file says so, cannot be submitted, and offers to attach one', () => {
     open();
@@ -625,7 +695,7 @@ describe('RoutePin', () => {
 
   it('is read-only with a reason for somebody who may not manage', async () => {
     mockedRoutes.listRoutes.mockResolvedValue([route('r1', 'Gate board')]);
-    wrap(<RoutePin projectId="p1" model={model({ can: { manage: false, edit: true } })} kind="gate" onDone={() => undefined} />);
+    wrap(<RoutePin projectId="p1" model={model({ can: { manage: false } })} kind="gate" onDone={() => undefined} />);
     expect(await screen.findByRole('combobox')).toBeDisabled();
     expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'role_manage');
   });

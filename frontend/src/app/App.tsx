@@ -79,7 +79,7 @@ const CommitmentReleasePage = lazy(() =>
   import('@/features/commitment_release').then((m) => ({ default: m.CommitmentReleasePage }))
 );
 const ProjectGovernancePage = lazy(() =>
-  import('@/features/project_governance').then((m) => ({ default: m.ProjectGovernancePage }))
+  import('@/features/project_governance/ProjectGovernancePage').then((m) => ({ default: m.ProjectGovernancePage }))
 );
 const TenderingPage = lazy(() =>
   import('@/features/tendering/TenderingPage').then((m) => ({ default: m.TenderingPage }))
