@@ -129,6 +129,13 @@ async def deadline_tick() -> None:
     await _run_once()
 
 
+async def governance_tick() -> None:
+    """Escalate gate conditions that passed their due date."""
+    from app.modules.project_governance.escalation import run_once
+
+    await run_once()
+
+
 async def ai_agents_tick() -> None:
     from app.modules.ai_agents.scheduler import fire_due_runs
 
@@ -297,6 +304,12 @@ def register_builtin_processes(
             logger_names=["app.modules.deadlines.sweeper"],
         ),
         _spec("risk_escalation", _loop(HOUR_S, risk_tick, HOUR_S), ["risk"]),
+        _spec(
+            "governance_escalation",
+            _loop(HOUR_S, governance_tick, HOUR_S),
+            ["project_governance"],
+            logger_names=["app.modules.project_governance.escalation"],
+        ),
         _spec(
             "permits_sweep",
             _loop(HOUR_S, permits_tick, HOUR_S),

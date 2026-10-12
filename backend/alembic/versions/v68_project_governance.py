@@ -220,7 +220,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _text("na_rationale"),
             sa.UniqueConstraint("gate_id", "attempt_no", "area_id", name="uq_oe_gov_check_attempt_area"),
         ],
-        [],
+        [("ix_oe_gov_check_project", ["project_id"])],
     ),
     (
         "oe_governance_decision",
@@ -274,7 +274,10 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _ts("waived_at"),
             _ts("escalated_at"),
         ],
-        [("ix_oe_gov_condition_project_status", ["project_id", "status"])],
+        [
+            ("ix_oe_gov_condition_project_status", ["project_id", "status"]),
+            ("ix_oe_gov_condition_decision", ["decision_id"]),
+        ],
     ),
     (
         "oe_governance_change_request",

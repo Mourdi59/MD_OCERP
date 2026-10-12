@@ -24,7 +24,7 @@ from app.modules.project_governance.permissions import register_governance_permi
 from app.modules.project_governance.router import router
 from app.modules.project_governance.service import GovernanceService
 from tests._pg import isolated_engine
-from tests.pg.governance_fixtures import World, add_user, build_world, gate, prepare_gate
+from tests.pg.governance_fixtures import World, build_world, gate, prepare_gate
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
 
@@ -164,12 +164,39 @@ async def test_an_editor_who_does_not_own_the_area_cannot_attest_it(world: World
     g = await prepare_gate(world, G1, submit=False)
     async with world.factory() as s:
         area = (await GovernanceService(s).repo.list_areas(world.project_id))[0]
-    stranger_editor = None
-    async with world.factory() as s:
-        stranger_editor = await add_user(s, "editor")
-        await s.commit()
     async with client_as(world, world.editor, "editor") as c:
         r = await c.put(f"{BASE}/projects/{world.project_id}/gates/{g.id}/checks/{area.id}", json={"status": "ready"})
     assert r.status_code == 403
     assert r.json()["detail"]["code"] == "not_area_owner"
-    assert stranger_editor is not None
+    async with world.factory() as s:
+        checks = await GovernanceService(s).repo.list_checks(g.id, g.attempt_no)
+    # The refused request left the attestation of the real owner as it was.
+    assert [(c.status, c.confirmed_by) for c in checks if c.area_id == area.id] == [("ready", world.owner)]
+
+
+async def test_a_gate_is_not_linked_to_a_schedule_activity_of_another_project(world: World) -> None:
+    """The link is a soft id, so the service has to prove the activity is this project's."""
+    from tests.pg.governance_fixtures import add_activity
+
+    other = await build_world(world.factory)
+    async with world.factory() as s:
+        foreign = await add_activity(s, other.project_id, "Their milestone", "2027-05-15")
+        await s.commit()
+    mine = await gate(world, G1)
+    theirs = await gate(other, G1)
+    async with client_as(world, world.manager, "manager") as c:
+        linked = await c.patch(
+            f"{BASE}/projects/{world.project_id}/gates/{mine.id}", json={"schedule_activity_id": str(foreign)}
+        )
+        unknown = await c.patch(
+            f"{BASE}/projects/{world.project_id}/gates/{mine.id}", json={"schedule_activity_id": str(uuid.uuid4())}
+        )
+        foreign_gate = await c.patch(
+            f"{BASE}/projects/{world.project_id}/gates/{theirs.id}", json={"target_date": "2027-01-01"}
+        )
+    assert linked.status_code == 422 and linked.json()["detail"]["code"] == "activity_not_in_project"
+    assert unknown.status_code == 422 and unknown.json()["detail"]["code"] == "activity_not_in_project"
+    assert foreign_gate.status_code == 404
+    after = await gate(world, G1)
+    assert after.schedule_activity_id is None and after.target_date == ""
+    assert (await gate(other, G1)).target_date == ""

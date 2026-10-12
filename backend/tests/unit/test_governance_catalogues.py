@@ -181,6 +181,36 @@ def test_neutral_follows_the_spine_one_to_one() -> None:
     assert tuple(p.spine_key for p in cat.get_catalogue("neutral").phases) == PHASE_SPINE
 
 
+_NEUTRAL_AREAS = [
+    "integration",
+    "scope",
+    "schedule",
+    "cost_finance",
+    "quality",
+    "resources",
+    "stakeholders",
+    "risk",
+    "procurement",
+    "hse",
+]
+
+
+def test_neutral_has_ten_management_areas_each_with_gate_documents() -> None:
+    c = cat.get_catalogue("neutral")
+    assert [a.code for a in c.areas] == _NEUTRAL_AREAS
+    assert c.review_status is cat.ReviewStatus.unconfirmed and c.source_url
+    for area in c.areas:
+        assert any(d.required_at_gates for d in c.documents_for_area(area.code)), area.code
+    # every gate asks for at least one frame document, so no gate passes on readiness alone
+    for gate in c.gates:
+        assert c.documents_required_at(gate.code), gate.code
+
+
+@pytest.mark.parametrize("cid", ["hoai_lph", "riba_2020", "aia_b101"])
+def test_catalogues_borrowing_neutral_areas_get_all_ten(cid: str) -> None:
+    assert [a.code for a in cat.get_catalogue(cid).areas] == _NEUTRAL_AREAS
+
+
 def _locale_keys(name: str) -> set[str]:
     text = (_LOCALES_DIR / f"{name}.ts").read_text(encoding="utf-8")
     return set(re.findall(r'^\s*"(governance\.catalogue\.[^"]+)":', text, re.MULTILINE))
