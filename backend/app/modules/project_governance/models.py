@@ -212,7 +212,10 @@ class GovernanceCheck(Base):
     """Readiness of one area for one attempt of one gate."""
 
     __tablename__ = "oe_governance_check"
-    __table_args__ = (UniqueConstraint("gate_id", "attempt_no", "area_id", name="uq_oe_gov_check_attempt_area"),)
+    __table_args__ = (
+        UniqueConstraint("gate_id", "attempt_no", "area_id", name="uq_oe_gov_check_attempt_area"),
+        Index("ix_oe_gov_check_project", "project_id"),
+    )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
         GUID(), ForeignKey(_PROJECT_FK, ondelete="CASCADE", name="fk_oe_gov_check_project"), nullable=False
@@ -266,7 +269,10 @@ class GovernanceCondition(Base):
     """A condition attached to a decision, cleared by evidence or waived with a reason."""
 
     __tablename__ = "oe_governance_condition"
-    __table_args__ = (Index("ix_oe_gov_condition_project_status", "project_id", "status"),)
+    __table_args__ = (
+        Index("ix_oe_gov_condition_project_status", "project_id", "status"),
+        Index("ix_oe_gov_condition_decision", "decision_id"),
+    )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
         GUID(), ForeignKey(_PROJECT_FK, ondelete="CASCADE", name="fk_oe_gov_condition_project"), nullable=False

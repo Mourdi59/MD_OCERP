@@ -5,7 +5,8 @@
 Three sources answer "which content does catalogue X version N of kind K have":
 
 * ``shipped``: JSON files in the owning module's ``catalogues/`` folder;
-* ``pack``: catalogues a pack ships (reserved; same JSON schema, not wired yet);
+* ``pack``: catalogues a pack ships as files and declares in its manifest
+  (:mod:`catalogue_packs`); same JSON schema, read-only, installation-wide;
 * ``tenant``: catalogues a company builds itself, stored in the database. It
   clones a shipped catalogue or starts empty, edits a draft and publishes
   immutable versions.
@@ -27,21 +28,27 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.project_governance import catalogue_packs
 from app.modules.project_governance.catalogue import (
     InvalidCatalogueError,
     UnknownCatalogueError,
+    default_catalogue_id_for_country,
     label_of,
 )
 from app.modules.project_governance.catalogue_kinds import PHASE_MODEL_KIND, get_catalogue_kind
+from app.modules.project_governance.catalogue_packs import CataloguePin
 from app.modules.project_governance.errors import GovernanceError, conflict, not_found
 from app.modules.project_governance.models import GovernanceCatalogue, GovernanceCatalogueVersion
 from app.modules.project_governance.repository import GovernanceRepository
+
+logger = logging.getLogger(__name__)
 
 SOURCES: tuple[str, ...] = ("shipped", "tenant", "pack")
 
@@ -118,12 +125,47 @@ def _kind(kind: str) -> Any:
 
 
 async def resolve_catalogue(
-    session: AsyncSession, source: str, catalogue_id: str, version: int | None, *, kind: str = PHASE_MODEL_KIND
+    session: AsyncSession,
+    source: str,
+    catalogue_id: str,
+    version: int | None,
+    *,
+    kind: str = PHASE_MODEL_KIND,
+    tenant_id: str | None = None,
+    from_pin: bool = False,
 ) -> Any:
-    """The one resolver: a pinned ``(kind, source, id, version)`` to a validated catalogue.
+    """The one resolver: ``(kind, source, id, version)`` to a validated catalogue.
+
+    A tenant catalogue is private. An id that reaches this function from a
+    request resolves only for its own tenant and only while the catalogue is
+    not retired, so pass the caller's ``tenant_id``. Without it nothing of the
+    tenant source resolves.
+
+    A pack catalogue belongs to the installation. An id from a request
+    resolves only in the active pack; a stored pin resolves in every
+    discovered pack, so a project keeps its catalogue when another pack
+    becomes active.
+
+    Args:
+        session: The database session.
+        source: ``"shipped"``, ``"tenant"`` or ``"pack"``.
+        catalogue_id: Shipped id, the uuid of a tenant catalogue, or the id a pack declares.
+        version: The version wanted; ``None`` means the latest published one.
+        kind: The catalogue kind.
+        tenant_id: The caller's tenant. Required for the tenant source unless
+            ``from_pin`` is set.
+        from_pin: The triple was read from a pin the server stored (a project's
+            model row), never from a request. The pin was checked when it was
+            written, and it keeps resolving for every member of the project
+            and after the catalogue is retired, so neither check runs. For the
+            pack source it widens the search from the active pack to every
+            discovered one.
 
     Raises:
-        GovernanceError: ``unknown_catalogue`` (404) for anything that does not resolve.
+        GovernanceError: ``unknown_catalogue`` (404) for anything that does not
+            resolve, a foreign tenant's catalogue included; ``catalogue_retired``
+            (409) for the caller's own retired catalogue; ``pack_catalogue_invalid``
+            (422) for a pack file that is declared but breaks the kind's rules.
     """
     spec = _kind(kind)
     if source == "shipped":
@@ -131,6 +173,11 @@ async def resolve_catalogue(
             return spec.get_shipped(catalogue_id, version)
         except UnknownCatalogueError as exc:
             raise not_found("unknown_catalogue") from exc
+    if source == catalogue_packs.PACK_SOURCE:
+        ref = catalogue_packs.find_pack_catalogue(kind, str(catalogue_id), version, active_only=not from_pin)
+        if ref is None:
+            raise not_found("unknown_catalogue")
+        return _load_pack(spec, ref)
     if source == "tenant":
         try:
             cid = uuid.UUID(str(catalogue_id))
@@ -140,6 +187,11 @@ async def resolve_catalogue(
         head = await session.get(GovernanceCatalogue, cid)
         if head is None or head.kind != kind:
             raise not_found("unknown_catalogue")
+        if not from_pin:
+            if not tenant_id or head.tenant_id != tenant_id:
+                raise not_found("unknown_catalogue")
+            if head.state == "retired":
+                raise conflict("catalogue_retired")
         if version is None:
             versions = await repo.list_catalogue_versions(cid)
             row = versions[-1] if versions else None
@@ -151,6 +203,47 @@ async def resolve_catalogue(
     raise not_found("unknown_catalogue")
 
 
+def _load_pack(spec: Any, ref: catalogue_packs.PackCatalogue) -> Any:
+    """A declared pack catalogue, or a named refusal that says what is wrong with the file."""
+    try:
+        return catalogue_packs.load_pack_catalogue(spec, ref)
+    except InvalidCatalogueError as exc:
+        raise GovernanceError("pack_catalogue_invalid", 422, detail="; ".join(exc.errors[:5])) from exc
+
+
+def default_catalogue_pin(kind: str = PHASE_MODEL_KIND, country_code: str | None = None) -> CataloguePin | None:
+    """The catalogue a new project should pin for ``kind``, or ``None``.
+
+    The active pack is asked first (:func:`catalogue_packs.pack_default_pin`);
+    a default whose file does not load is passed over, so a broken pack never
+    becomes what new projects pin. Without a pack opinion the phase model
+    falls back to the shipped catalogue of the project's country. For another
+    kind ``None`` says the owning module's own default applies.
+    """
+    pin = catalogue_packs.pack_default_pin(kind, country_code)
+    if pin is not None:
+        ref = catalogue_packs.find_pack_catalogue(kind, pin.catalogue_id, pin.version, active_only=True)
+        try:
+            if ref is not None:
+                catalogue_packs.load_pack_catalogue(_kind(kind), ref)
+                return pin
+        except InvalidCatalogueError as exc:
+            logger.warning("the active pack names a default %s catalogue that does not load: %s", kind, exc)
+    if kind != PHASE_MODEL_KIND:
+        return None
+    cid = default_catalogue_id_for_country(country_code)
+    return CataloguePin("shipped", cid, _kind(kind).get_shipped(cid).version)
+
+
+def _phase_items(phases: Any) -> list[dict[str, Any]]:
+    """``[{code, order, name}]`` from parsed phases or raw phase dicts, for the model picker's mapping."""
+    out = []
+    for p in phases:
+        get = p.get if isinstance(p, dict) else (lambda k, _p=p: getattr(_p, k, None))
+        out.append({"code": get("code"), "order": get("order"), "name": label_of(get("name_key") or "", get("labels"))})
+    return sorted(out, key=lambda x: (x["order"] is None, x["order"] or 0))
+
+
 class CatalogueStore:
     """Tenant catalogue lifecycle: create (clone or empty), edit, validate, publish, retire, diff."""
 
@@ -158,10 +251,45 @@ class CatalogueStore:
         self.session = session
         self.repo = GovernanceRepository(session)
 
-    async def list_available(self, tenant_id: str | None, *, kind: str = PHASE_MODEL_KIND) -> list[dict[str, Any]]:
-        """Shipped catalogues of a kind plus the caller's own, in one list."""
+    async def list_available(
+        self, tenant_id: str | None, *, kind: str = PHASE_MODEL_KIND, country_code: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Shipped catalogues of a kind, the active pack's, and the caller's own, in one list.
+
+        Every item says whether it is the ``default`` for a new project of
+        ``country_code``; at most one is.
+        """
+        items = await self._available(tenant_id, kind)
+        pin = default_catalogue_pin(kind, country_code)
+        for item in items:
+            item["default"] = pin is not None and (item["source"], item["id"]) == (pin.source, pin.catalogue_id)
+        return items
+
+    async def _available(self, tenant_id: str | None, kind: str) -> list[dict[str, Any]]:
         spec = _kind(kind)
         items: list[dict[str, Any]] = []
+        for ref in catalogue_packs.active_pack_catalogues(kind):
+            try:
+                c = catalogue_packs.load_pack_catalogue(spec, ref)
+            except InvalidCatalogueError:
+                # A broken pack file is not offered; pinning it by hand names the fault.
+                continue
+            items.append(
+                {
+                    "kind": kind,
+                    "source": catalogue_packs.PACK_SOURCE,
+                    "id": c.id,
+                    "code": c.id,
+                    "name": label_of(getattr(c, "name_key", "") or "", getattr(c, "labels", None)),
+                    "state": "published",
+                    "versions": [c.version],
+                    "latest_version": c.version,
+                    "review_status": str(getattr(c, "review_status", "unconfirmed")),
+                    "jurisdiction_countries": list(getattr(c, "jurisdiction_countries", ()) or ()),
+                    "phases": _phase_items(getattr(c, "phases", ())),
+                    "pack": ref.slug,
+                }
+            )
         for c in spec.shipped():
             items.append(
                 {
@@ -175,11 +303,15 @@ class CatalogueStore:
                     "latest_version": c.version,
                     "review_status": str(getattr(c, "review_status", "verified")),
                     "jurisdiction_countries": list(getattr(c, "jurisdiction_countries", ()) or ()),
+                    "phases": _phase_items(getattr(c, "phases", ())),
                 }
             )
         if tenant_id:
             for row in await self.repo.list_tenant_catalogues(tenant_id, kind=kind):
-                versions = [v.version for v in await self.repo.list_catalogue_versions(row.id)]
+                version_rows = await self.repo.list_catalogue_versions(row.id)
+                versions = [v.version for v in version_rows]
+                # The latest published body when there is one, else the draft as written.
+                body = version_rows[-1].body if version_rows else (row.draft_body or {})
                 items.append(
                     {
                         "kind": kind,
@@ -193,6 +325,7 @@ class CatalogueStore:
                         "based_on": row.based_on,
                         "review_status": str((row.draft_body or {}).get("review_status", "unconfirmed")),
                         "jurisdiction_countries": [],
+                        "phases": _phase_items(body.get("phases") or ()),
                     }
                 )
         return items
@@ -222,9 +355,22 @@ class CatalogueStore:
                 raise conflict("catalogue_code_taken")
         if based_on_source:
             if based_on_source == "tenant":
-                await self.get(tenant_id, uuid.UUID(str(based_on_id)))
+                try:
+                    own_id = uuid.UUID(str(based_on_id))
+                except ValueError as exc:
+                    # A tenant catalogue is addressed by its uuid; anything else names nothing.
+                    raise not_found("unknown_catalogue") from exc
+                await self.get(tenant_id, own_id)
+            # Ownership was checked just above; a retired catalogue may still be cloned
+            # into its successor, so the retired refusal of a request id does not apply.
+            # A pack catalogue is offered by the active pack only, as for pinning.
             source = await resolve_catalogue(
-                self.session, based_on_source, str(based_on_id), based_on_version, kind=kind
+                self.session,
+                based_on_source,
+                str(based_on_id),
+                based_on_version,
+                kind=kind,
+                from_pin=based_on_source != catalogue_packs.PACK_SOURCE,
             )
             body = shipped_body(source)
             body["id"] = code
@@ -336,7 +482,8 @@ class CatalogueStore:
         kind: str = PHASE_MODEL_KIND,
     ) -> int:
         """Whether this caller may pin the catalogue; returns the version to pin."""
-        if source == "shipped":
+        if source in ("shipped", catalogue_packs.PACK_SOURCE):
+            # Installation-wide sources. For a pack only the active pack's catalogues are pinnable.
             return (await resolve_catalogue(self.session, source, catalogue_id, version, kind=kind)).version
         if source != "tenant" or not tenant_id:
             raise not_found("unknown_catalogue")
@@ -349,4 +496,5 @@ class CatalogueStore:
             raise not_found("unknown_catalogue")
         if row.state == "retired":
             raise conflict("catalogue_retired")
-        return (await resolve_catalogue(self.session, source, catalogue_id, version, kind=kind)).version
+        resolved = await resolve_catalogue(self.session, source, catalogue_id, version, kind=kind, tenant_id=tenant_id)
+        return resolved.version
