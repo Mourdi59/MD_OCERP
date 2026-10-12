@@ -21,11 +21,6 @@ export function planIsLocked(status: PlanStatus): boolean {
   return status === 'in_review';
 }
 
-/** Only a draft or a revision can be submitted. */
-export function planCanBeSubmitted(status: PlanStatus): boolean {
-  return status === 'draft' || status === 'revising';
-}
-
 /** The states a position can be moved to by hand now: the ones the server allows, in the order it lists them. */
 export function allowedStatusMoves(position: Pick<Position, 'can'>): SettablePositionStatus[] {
   return Object.entries(position.can.status)

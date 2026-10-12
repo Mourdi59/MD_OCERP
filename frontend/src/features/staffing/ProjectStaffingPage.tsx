@@ -179,7 +179,11 @@ export function ProjectStaffingPage() {
     );
   } else if (tab === 'people') {
     body = filesQ.isLoading ? loading : filesQ.isError ? failed(filesQ.error, () => filesQ.refetch()) : (
-      <PeoplePanel projectId={projectId} files={filesQ.data ?? []} catalogue={catalogue} labels={labels} onOpen={openFile} onChanged={invalidate} />
+      <PeoplePanel
+        projectId={projectId}
+        files={filesQ.data?.files ?? []}
+        candidates={filesQ.data?.candidates ?? []}
+        catalogue={catalogue} labels={labels} onOpen={openFile} onChanged={invalidate} />
     );
   } else if (tab === 'compliance') {
     body = complianceQ.isLoading ? loading : complianceQ.isError || !complianceQ.data ? failed(complianceQ.error, () => complianceQ.refetch()) : (

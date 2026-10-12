@@ -128,7 +128,7 @@ export interface StaffingPlan {
   approved_at: string | null;
   approval_source: string | null;
   has_bound_snapshot: boolean;
-  can: { manage: Can; assign_owner: Can };
+  can: { manage: Can; assign_owner: Can; submit: Can; return: Can; change_catalogue: Can };
 }
 
 export interface Fill {
@@ -307,6 +307,18 @@ export interface PersonnelFileRow {
   status: FileStatus;
   /** Decided by the server: whether this caller may open the file. */
   can: { open: Can };
+}
+
+/** Somebody on the plan who has no personnel file yet, and whether this caller may open one. */
+export interface FileCandidate {
+  roster_member_id: string;
+  name: string | null;
+  roles: string[];
+  can: { create_file: Can };
+}
+
+export interface FilesPage extends Page<PersonnelFileRow> {
+  candidates?: FileCandidate[];
 }
 
 export interface FileDocument {
@@ -651,8 +663,8 @@ export function downloadExport(projectId: string, what: ExportWhat, format: Expo
 
 /* ── Personnel files ──────────────────────────────────────────────────── */
 
-export function listFiles(projectId: string): Promise<Page<PersonnelFileRow>> {
-  return apiGet<Page<PersonnelFileRow>>(`/v1/staffing/projects/${projectId}/personnel-files`);
+export function listFiles(projectId: string): Promise<FilesPage> {
+  return apiGet<FilesPage>(`/v1/staffing/projects/${projectId}/personnel-files`);
 }
 
 export function createFile(

@@ -11,6 +11,7 @@ import type {
   Fill,
   Handover,
   PersonnelFile,
+  FileCandidate,
   PersonnelFileRow,
   Position,
   StaffingCatalogue,
@@ -145,7 +146,7 @@ export function plan(over: Partial<StaffingPlan> = {}): StaffingPlan {
     approved_at: null,
     approval_source: null,
     has_bound_snapshot: false,
-    can: { manage: yes, assign_owner: yes },
+    can: { manage: yes, assign_owner: yes, submit: yes, return: no('plan_not_in_review'), change_catalogue: yes },
     ...over,
   };
 }
@@ -208,6 +209,10 @@ export function handover(over: Partial<Handover> = {}): Handover {
     status: 'planned',
     ...over,
   };
+}
+
+export function fileCandidate(over: Partial<FileCandidate> = {}): FileCandidate {
+  return { roster_member_id: 'rm-9', name: 'Ilya Novak', roles: ['site_manager'], can: { create_file: yes }, ...over };
 }
 
 export function fileRow(over: Partial<PersonnelFileRow> = {}): PersonnelFileRow {

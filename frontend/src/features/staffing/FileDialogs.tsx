@@ -32,7 +32,7 @@ import {
   type LawfulBasis,
   type LeaveRecord,
   type PersonnelFile,
-  type PersonnelFileRow,
+  type FileCandidate,
   type StaffingCatalogue,
   type TravelKind,
   type TravelRecord,
@@ -46,10 +46,11 @@ import {
   catalogueName,
   errorText,
   vocab,
+  whyNot,
   type LabelContext,
 } from './labels';
 import { costProblem, datesProblem, decimalString, last4Problem } from './rules';
-import { FIELD_CLASS, FormError, PeoplePickerNote, personLabel } from './StaffingBits';
+import { FIELD_CLASS, FormError, personLabel } from './StaffingBits';
 import { useSubmit } from './useSubmit';
 
 const BASES = Object.keys(EMPLOYMENT_BASIS) as EmploymentBasis[];
@@ -156,8 +157,14 @@ function HeaderFields({
   );
 }
 
-/** Open a personnel file for somebody on the project team who has none yet. */
-export function CreateFileDialog({ open, projectId, labels, existing, onClose, onDone }: DialogBase & { existing: PersonnelFileRow[] }) {
+/**
+ * Open a personnel file for somebody on the plan who has none yet.
+ *
+ * The people offered are the server's candidates; one it would refuse stays
+ * in the list, disabled, with its reason. The roster is read only to suggest
+ * the employer.
+ */
+export function CreateFileDialog({ open, projectId, labels, candidates, onClose, onDone }: DialogBase & { candidates: FileCandidate[] }) {
   const { t } = useTranslation();
   const rosterQ = useRoster(projectId, open);
   const [member, setMember] = useState('');
@@ -182,8 +189,6 @@ export function CreateFileDialog({ open, projectId, labels, existing, onClose, o
     }
   }, [open, reset]);
 
-  const taken = new Set(existing.map((f) => f.roster_member_id));
-  const people = (rosterQ.data ?? []).filter((m) => !taken.has(m.id));
 
   return (
     <WideModal
@@ -229,19 +234,22 @@ export function CreateFileDialog({ open, projectId, labels, existing, onClose, o
             value={member}
             onChange={(e) => {
               setMember(e.target.value);
-              const picked = people.find((m) => m.id === e.target.value);
+              const picked = (rosterQ.data ?? []).find((m) => m.id === e.target.value);
               if (picked && !employer) setEmployer(picked.company_name ?? '');
             }}
             data-testid="file-person"
           >
             <option value="">{t('staffing.choose', { defaultValue: 'Choose' })}</option>
-            {people.map((m) => (
-              <option key={m.id} value={m.id}>
-                {personLabel(labels.t, m.display_name)}
-              </option>
-            ))}
+            {candidates.map((c) => {
+              const name = personLabel(labels.t, c.name);
+              const refusal = c.can.create_file.allowed ? '' : whyNot(labels.t, c.can.create_file);
+              return (
+                <option key={c.roster_member_id} value={c.roster_member_id} disabled={!c.can.create_file.allowed}>
+                  {refusal ? `${name}: ${refusal}` : name}
+                </option>
+              );
+            })}
           </select>
-          <PeoplePickerNote failed={rosterQ.isError} empty={rosterQ.isSuccess && people.length === 0} onRetry={() => void rosterQ.refetch()} />
         </WideModalField>
         <HeaderFields
           employer={employer}

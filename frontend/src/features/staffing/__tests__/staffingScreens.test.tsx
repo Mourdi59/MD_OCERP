@@ -42,7 +42,7 @@ vi.mock('../api', async (importOriginal) => {
 import en from '@/app/locales/en';
 import { ApiError } from '@/shared/lib/api';
 import * as api from '../api';
-import { DocumentDialog, EndFileDialog } from '../FileDialogs';
+import { CreateFileDialog, DocumentDialog, EndFileDialog } from '../FileDialogs';
 import type { LabelContext } from '../labels';
 import { PeoplePanel } from '../PeoplePanel';
 import { ChangeCatalogueDialog } from '../PlanDialogs';
@@ -55,6 +55,7 @@ import {
   catalogue,
   compliance,
   complianceForViewer,
+  fileCandidate,
   fileDocument,
   fileRow,
   fill,
@@ -161,8 +162,15 @@ describe('PlanPanel', () => {
   });
 
   it('locks a plan in review, says why, and offers to return it', () => {
-    renderPlan({ plan: plan({ status: 'in_review' }) });
+    renderPlan({
+      plan: plan({
+        status: 'in_review',
+        can: { ...plan().can, submit: no('plan_not_editable'), return: yes, change_catalogue: no('plan_in_review') },
+      }),
+    });
     expect(screen.getByTestId('plan-status')).toHaveTextContent('In review');
+    expect(screen.getByTestId('plan-change-catalogue')).toBeDisabled();
+    expect(screen.getByTestId('plan-change-catalogue')).toHaveAttribute('title', en.translation['staffing.errors.plan_in_review']!);
     expect(screen.getByTestId('plan-locked-hint')).toBeInTheDocument();
     expect(screen.queryByTestId('plan-submit')).toBeNull();
     expect(screen.getByTestId('plan-return')).toHaveTextContent('Return to draft');
@@ -172,6 +180,26 @@ describe('PlanPanel', () => {
       expect(button).toHaveAttribute('title', 'The plan is in review. Return it to draft before editing.');
     }
     expect(screen.queryByTestId('fill-confirm')).toBeNull();
+  });
+
+  it('follows the server on submitting and returning, and gives its reason when it refuses', () => {
+    // A reader without the edit permission on a draft: the state alone would allow a submission.
+    const refused = no('edit_permission_required');
+    renderPlan({ plan: plan({ can: { ...plan().can, submit: refused, return: refused, change_catalogue: refused } }) });
+    const reason = en.translation['staffing.errors.edit_permission_required']!;
+    expect(screen.getByTestId('plan-submit')).toBeDisabled();
+    expect(screen.getByTestId('plan-submit')).toHaveAttribute('title', reason);
+    expect(screen.getByTestId('plan-submit-refused')).toHaveTextContent(reason);
+    expect(screen.queryByTestId('plan-return')).toBeNull();
+    expect(screen.getByTestId('plan-change-catalogue')).toBeDisabled();
+  });
+
+  it('offers the submission where the server allows it', () => {
+    renderPlan();
+    expect(screen.getByTestId('plan-submit')).toBeEnabled();
+    expect(screen.queryByTestId('plan-submit-refused')).toBeNull();
+    expect(screen.queryByTestId('plan-return')).toBeNull();
+    expect(screen.getByTestId('plan-change-catalogue')).toBeEnabled();
   });
 
   it('keeps every blocker of a refused submission on screen', async () => {
@@ -247,6 +275,7 @@ describe('PeoplePanel', () => {
     wrap(
       <PeoplePanel
         projectId="p1"
+        candidates={[fileCandidate()]}
         files={[fileRow(), fileRow({ id: 'file-2', name: 'Ilya Novak', roles: ['site_manager'], cleared_to_work: false, can: { open: no('no_relationship_to_person') } })]}
         catalogue={catalogue()}
         labels={labels}
@@ -265,9 +294,57 @@ describe('PeoplePanel', () => {
   });
 
   it('says what a personnel file is for when there is none', () => {
-    wrap(<PeoplePanel projectId="p1" files={[]} catalogue={catalogue()} labels={labels} onOpen={() => undefined} onChanged={() => undefined} />);
+    wrap(
+      <PeoplePanel
+        projectId="p1"
+        files={[]}
+        candidates={[fileCandidate()]}
+        catalogue={catalogue()}
+        labels={labels}
+        onOpen={() => undefined}
+        onChanged={() => undefined}
+      />,
+    );
     expect(screen.getByText('No personnel files yet')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open personnel file' })).toBeInTheDocument();
+    expect(screen.queryByTestId('create-file-refused')).toBeNull();
+  });
+
+  it('offers a new file only when the server names somebody it may be opened for', () => {
+    const refused = fileCandidate({ can: { create_file: no('no_relationship_to_person') } });
+    const view = wrap(
+      <PeoplePanel projectId="p1" files={[]} candidates={[refused]} catalogue={catalogue()} labels={labels} onOpen={() => undefined} onChanged={() => undefined} />,
+    );
+    expect(screen.queryByRole('button', { name: 'Open personnel file' })).toBeNull();
+    expect(screen.getByTestId('create-file-refused')).toHaveTextContent(en.translation['staffing.errors.no_relationship_to_person']!);
+    view.unmount();
+
+    wrap(
+      <PeoplePanel projectId="p1" files={[fileRow()]} candidates={[]} catalogue={catalogue()} labels={labels} onOpen={() => undefined} onChanged={() => undefined} />,
+    );
+    expect(screen.getByTestId('create-file')).toBeDisabled();
+    expect(screen.getByTestId('create-file')).toHaveAttribute('title', en.translation['staffing.people.no_candidates']!);
+  });
+
+  it('lists the candidates of the server in the dialog and disables the ones it would refuse', () => {
+    wrap(
+      <CreateFileDialog
+        open
+        projectId="p1"
+        labels={labels}
+        candidates={[
+          fileCandidate(),
+          fileCandidate({ roster_member_id: 'rm-8', name: 'Dana Weber', can: { create_file: no('no_relationship_to_person') } }),
+        ]}
+        onClose={() => undefined}
+        onDone={() => undefined}
+      />,
+    );
+    const options = within(screen.getByTestId('file-person')).getAllByRole('option') as HTMLOptionElement[];
+    expect(options.map((o) => o.value)).toEqual(['', 'rm-9', 'rm-8']);
+    expect(options[1]!.disabled).toBe(false);
+    expect(options[2]!.disabled).toBe(true);
+    expect(options[2]!).toHaveTextContent(en.translation['staffing.errors.no_relationship_to_person']!);
   });
 });
 
@@ -618,7 +695,7 @@ describe('PositionDialog', () => {
 
   it('follows the server when it refuses: the fields are locked with its reason and left out of the request', async () => {
     mocked.createPosition.mockResolvedValue(position());
-    open({ plan: plan({ can: { manage: no('manage_permission_required'), assign_owner: no('owner_assignment_forbidden') } }) });
+    open({ plan: plan({ can: { ...plan().can, manage: no('manage_permission_required'), assign_owner: no('owner_assignment_forbidden') } }) });
     expect(screen.getByTestId('position-key-role')).toBeDisabled();
     expect(screen.getByTestId('position-required-before')).toBeDisabled();
     expect(screen.queryByTestId('required-before-unchecked')).toBeNull();

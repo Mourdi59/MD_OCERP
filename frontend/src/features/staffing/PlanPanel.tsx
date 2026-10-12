@@ -51,11 +51,12 @@ import {
   findingText,
   positionName,
   vocab,
+  whyNot,
   type LabelContext,
 } from './labels';
 import { ChangeCatalogueDialog, PlanSettingsDialog } from './PlanDialogs';
 import { FillDialog, FromCatalogueDialog, HandoverDialog, PositionDialog } from './PositionDialogs';
-import { allowedStatusMoves, fteDecimals, groupByPhase, phasesOf, planCanBeSubmitted, planIsLocked } from './rules';
+import { allowedStatusMoves, fteDecimals, groupByPhase, phasesOf, planIsLocked } from './rules';
 import {
   ClearedBadge,
   ExportButtons,
@@ -136,6 +137,10 @@ export function PlanPanel({
   const [refused, setRefused] = useState<Finding[]>([]);
   const locked = planIsLocked(plan.status);
   const lockedReason = locked ? errorText(labels.t, 'plan_in_review') : undefined;
+  // Submitting, returning and re-pinning the catalogue follow the server's flags, state and permission both.
+  const maySubmit = plan.can.submit;
+  const mayReturn = plan.can.return;
+  const mayRepin = plan.can.change_catalogue;
 
   const submit = useStaffingAction(
     async () => {
@@ -226,15 +231,29 @@ export function PlanPanel({
             >
               {t('staffing.plan.settings', { defaultValue: 'Plan settings' })}
             </Button>
-            <Button variant="ghost" size="sm" disabled={locked} title={lockedReason} onClick={() => setDialog({ kind: 'catalogue' })}>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!mayRepin.allowed}
+              title={whyNot(labels.t, mayRepin) || undefined}
+              onClick={() => setDialog({ kind: 'catalogue' })}
+              data-testid="plan-change-catalogue"
+            >
               {t('staffing.plan.change_catalogue', { defaultValue: 'Change catalogue' })}
             </Button>
-            {planCanBeSubmitted(plan.status) && positions.length > 0 && (
-              <Button size="sm" loading={submit.isPending} onClick={() => submit.mutate()} data-testid="plan-submit">
+            {!mayReturn.allowed && positions.length > 0 && (
+              <Button
+                size="sm"
+                loading={submit.isPending}
+                disabled={!maySubmit.allowed}
+                title={whyNot(labels.t, maySubmit) || undefined}
+                onClick={() => submit.mutate()}
+                data-testid="plan-submit"
+              >
                 {t('staffing.plan.submit', { defaultValue: 'Submit for review' })}
               </Button>
             )}
-            {locked && (
+            {mayReturn.allowed && (
               <Button size="sm" variant="secondary" loading={giveBack.isPending} onClick={() => giveBack.mutate()} data-testid="plan-return">
                 {t('staffing.plan.return', { defaultValue: 'Return to draft' })}
               </Button>
@@ -263,7 +282,12 @@ export function PlanPanel({
             })}
           </p>
         )}
-        {planCanBeSubmitted(plan.status) && blockers.length > 0 && (
+        {!maySubmit.allowed && !mayReturn.allowed && positions.length > 0 && (
+          <p className="mt-3 text-sm text-content-secondary" role="status" data-testid="plan-submit-refused">
+            {whyNot(labels.t, maySubmit)}
+          </p>
+        )}
+        {maySubmit.allowed && blockers.length > 0 && (
           <div className="mt-3 rounded-md bg-surface-secondary p-3" data-testid="plan-blockers">
             <h3 className="mb-1.5 text-sm font-medium text-content-primary">
               {t('staffing.plan.findings', { defaultValue: 'Before you can submit' })}

@@ -126,7 +126,7 @@ export function useUpcoming(projectId: string, enabled = true) {
 export function usePersonnelFiles(projectId: string, enabled = true) {
   return useQuery({
     queryKey: staffingKeys.files(projectId),
-    queryFn: () => listFiles(projectId).then((page) => page.items),
+    queryFn: () => listFiles(projectId).then((page) => ({ files: page.items, candidates: page.candidates ?? [] })),
     enabled: !!projectId && enabled,
   });
 }
