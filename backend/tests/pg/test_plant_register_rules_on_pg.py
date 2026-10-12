@@ -1189,12 +1189,20 @@ async def test_the_rule_set_reports_each_rule_on_real_rows(world: World) -> None
 async def test_the_demo_seed_fills_every_list_by_the_rules_and_is_idempotent(world: World) -> None:
     from app.modules.approval_routes.models import Route, Step
     from app.modules.plant_register.seed import seed_plant_register_demo
+    from app.modules.project_governance.models import GovernanceGate
     from app.modules.projects.models import Project
 
     async with world.factory() as s:
         project = await s.get(Project, world.project_id)
         project.metadata_ = {"demo_id": "plant-demo"}
         project.currency = "CAD"
+        # This test reads the full story, which the seed tells only past the gate
+        # into construction; before it no item is seeded beyond ``ordered``.
+        gates = (await s.execute(select(GovernanceGate).where(GovernanceGate.project_id == world.project_id))).scalars()
+        decided = [g for g in gates if g.to_phase == "execution"]
+        assert decided, "the fixture no longer has a gate into execution"
+        for gate in decided:
+            gate.status = "decided"
         # The demo estate has no decision route of its own: the seed brings one.
         for step in (await s.execute(select(Step).where(Step.route_id == world.route_id))).scalars():
             await s.delete(step)
