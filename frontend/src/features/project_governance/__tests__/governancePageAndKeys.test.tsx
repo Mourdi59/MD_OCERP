@@ -19,6 +19,7 @@ vi.mock('../api', async (importOriginal) => {
     ...actual,
     getModel: vi.fn(),
     listCatalogues: vi.fn(),
+    getProjectCountry: vi.fn(),
     listAreas: vi.fn(),
     getMatrix: vi.fn(),
     listDocuments: vi.fn(),
@@ -58,6 +59,7 @@ const emptyPage = { items: [], total: 0, offset: 0, limit: 100 };
 describe('ProjectGovernancePage states', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocked.getProjectCountry.mockResolvedValue(null);
     mocked.listCatalogues.mockResolvedValue({
       ...emptyPage,
       total: 1,
@@ -105,6 +107,40 @@ describe('ProjectGovernancePage states', () => {
     renderPage();
     await screen.findByText('Neutral phase model');
     expect(refused()).toBe(false);
+  });
+
+  it('asks for the models of the project country and preselects the one the server marks', async () => {
+    mocked.getModel.mockRejectedValue(
+      new ApiError(404, 'Not Found', { detail: { code: 'model_missing', message: 'No governance model', can: { manage: true } } }),
+    );
+    mocked.getProjectCountry.mockResolvedValue('DE');
+    const item = (over: object) => ({
+      kind: 'phase_model',
+      source: 'shipped',
+      id: 'neutral',
+      code: 'neutral',
+      name: { key: null, text: { en: 'Neutral phase model' } },
+      state: 'published',
+      versions: [1],
+      latest_version: 1,
+      review_status: 'verified',
+      jurisdiction_countries: [],
+      ...over,
+    });
+    mocked.listCatalogues.mockResolvedValue({
+      ...emptyPage,
+      total: 2,
+      items: [
+        item({ source: 'pack', pack: 'de', id: 'pack_model', code: 'pack_model', default: true, name: { key: null, text: { en: 'Pack phase model' } } }),
+        item({}),
+      ],
+    } as never);
+    renderPage();
+    const preset = await screen.findByRole('radio', { name: 'Pack phase model' });
+    await waitFor(() => expect(preset).toBeChecked());
+    expect(mocked.listCatalogues).toHaveBeenCalledWith('DE');
+    expect(screen.getByText(/From the active pack/)).toHaveTextContent('Suggested for this project');
+    expect(screen.getByRole('radio', { name: 'Neutral phase model' })).not.toBeChecked();
   });
 
   it('a failing model request shows the error, not the empty state', async () => {

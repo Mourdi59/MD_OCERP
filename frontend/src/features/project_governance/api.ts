@@ -37,9 +37,16 @@ export type Severity = 'critical' | 'essential' | 'recommended';
 export type ChangeRequestStatus = 'submitted' | 'approved' | 'rejected' | 'cancelled';
 export type EvidenceState = 'met' | 'not_met' | 'unknown';
 
+/** Where a catalogue comes from: the platform, the organisation, or the active pack. */
+export type CatalogueSource = 'shipped' | 'tenant' | 'pack';
+
 export interface CatalogueSummary {
   kind: string;
-  source: 'shipped' | 'tenant';
+  source: CatalogueSource;
+  /** The pack a `pack` item comes from. */
+  pack?: string;
+  /** True on the one catalogue a new project of the asked country should start with. */
+  default?: boolean;
   id: string;
   code: string;
   name: GovernanceLabel;
@@ -63,7 +70,7 @@ export interface GovernancePhase {
 export interface GovernanceModel {
   id: string;
   project_id: string;
-  catalogue_source: 'shipped' | 'tenant';
+  catalogue_source: CatalogueSource;
   catalogue_id: string;
   catalogue_version: number;
   current_phase: string | null;
@@ -440,8 +447,15 @@ export const governanceKeys = {
 
 /* ── Catalogues and model ─────────────────────────────────────────────── */
 
-export function listCatalogues(): Promise<Page<CatalogueSummary>> {
-  return apiGet<Page<CatalogueSummary>>('/v1/project-governance/catalogues?kind=phase_model');
+/** The phase models on offer. With the project's country the server marks the one to start with as `default`. */
+export function listCatalogues(country?: string | null): Promise<Page<CatalogueSummary>> {
+  const countryQs = country ? `&country=${encodeURIComponent(country)}` : '';
+  return apiGet<Page<CatalogueSummary>>(`/v1/project-governance/catalogues?kind=phase_model${countryQs}`);
+}
+
+/** The two-letter country of a project, or null when it has none. */
+export function getProjectCountry(projectId: string): Promise<string | null> {
+  return apiGet<{ country_code?: string | null }>(`/v1/projects/${projectId}`).then((project) => project.country_code ?? null);
 }
 
 export function getModel(projectId: string): Promise<GovernanceModel> {
@@ -450,7 +464,7 @@ export function getModel(projectId: string): Promise<GovernanceModel> {
 
 export function setModel(
   projectId: string,
-  body: { catalogue_source: 'shipped' | 'tenant'; catalogue_id: string; catalogue_version?: number; four_eyes: boolean },
+  body: { catalogue_source: CatalogueSource; catalogue_id: string; catalogue_version?: number; four_eyes: boolean },
 ): Promise<GovernanceModel> {
   return apiPut<GovernanceModel>(`/v1/project-governance/projects/${projectId}/model`, body);
 }
@@ -458,7 +472,7 @@ export function setModel(
 export function changeModel(
   projectId: string,
   body: {
-    catalogue_source: 'shipped' | 'tenant';
+    catalogue_source: CatalogueSource;
     catalogue_id: string;
     catalogue_version?: number;
     mapping: Record<string, string>;
