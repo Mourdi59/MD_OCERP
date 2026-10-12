@@ -1013,7 +1013,9 @@ class GovernanceService:
         # What a go has to name. It is content of the request, as a rationale is, and not a
         # reason the go is closed, so the probe below names all of it.
         pending = ev.evidence_to_acknowledge(ctx) if ctx is not None else []
-        out["acknowledge"] = [{"area_code": e.area_code, "code": e.code, "provider": e.provider} for e in pending]
+        out["acknowledge"] = [
+            {"area_code": e.area_code, "code": e.code, "provider": e.provider, "state": e.state} for e in pending
+        ]
         if go_reason is None and ctx is not None:
             probe = ev.DecisionRequest(
                 outcome="go",

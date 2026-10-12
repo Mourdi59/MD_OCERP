@@ -525,6 +525,12 @@ async def get_gate(
         for row in area["criteria"]:
             crit = named.get(row["code"])
             row["name"] = label_of(crit.name_key, crit.labels) if crit is not None else dict(_NO_LABEL)
+        # The rule of the write route, so the screen offers no tick that ends in a refusal.
+        area["can_tick"] = (
+            detail["gate"].status != "decided"
+            and not detail["gate"].historic
+            and str(user_id) in (area["owner_user_id"], area["deputy_user_id"])
+        )
     can: dict[str, Any] = {"edit": await _has(payload, "governance.edit")}
     if await _has(payload, "governance.decide"):
         # Always the server date: ``can`` has to agree with the write routes, which take no date.

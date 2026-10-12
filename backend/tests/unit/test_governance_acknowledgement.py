@@ -111,7 +111,9 @@ def test_the_record_keeps_what_was_acknowledged_and_what_the_providers_said() ->
     ctx = _ctx(_evidence("A"), _evidence("B", "plant:fine", "met"))
     stale = ("B", "gone")
     snapshot = ev.build_snapshot(ctx, _req(acknowledged_evidence=(("A", "plant:error"), stale)))
-    assert snapshot["acknowledged_evidence"] == [{"area_code": "A", "code": "plant:error", "provider": "plant"}]
+    assert snapshot["acknowledged_evidence"] == [
+        {"area_code": "A", "code": "plant:error", "provider": "plant", "state": "unknown"}
+    ]
     assert {(e["area_code"], e["code"], e["state"], e["blocking"]) for e in snapshot["evidence"]} == {
         ("A", "plant:error", "unknown", True),
         ("B", "plant:fine", "met", True),
@@ -124,3 +126,34 @@ def test_the_code_is_registered_with_a_message_in_both_languages() -> None:
         path = Path(ev.__file__).parent / "messages" / f"{locale}.json"
         text = json.dumps(json.loads(path.read_text(encoding="utf-8")))
         assert f'"{CODE}": "' in text, locale
+
+
+# ── a warning: the provider's own rule lets the gate pass, with something outstanding ──
+
+
+def test_a_warning_never_blocks() -> None:
+    assert ev.gate_blockers(_ctx(_evidence("A", "permit_due_later", "warning"))) == []
+
+
+@pytest.mark.parametrize("blocking", [True, False])
+def test_a_warning_has_to_be_named_on_a_go_whoever_reports_it(blocking: bool) -> None:
+    ctx = _ctx(_evidence("A", "permit_due_later", "warning", blocking=blocking))
+    assert _refs(ctx, _req()) == [("A", "permit_due_later")]
+    assert ev.validate_decision(ctx, _req(acknowledged_evidence=(("A", "permit_due_later"),))) == []
+
+
+def test_a_warning_is_kept_in_the_record_with_its_state() -> None:
+    ctx = _ctx(_evidence("A", "permit_due_later", "warning"), _evidence("A"))
+    named = (("A", "permit_due_later"), ("A", "plant:error"))
+    snapshot = ev.build_snapshot(ctx, _req(acknowledged_evidence=named))
+    assert snapshot["acknowledged_evidence"] == [
+        {"area_code": "A", "code": "permit_due_later", "provider": "plant", "state": "warning"},
+        {"area_code": "A", "code": "plant:error", "provider": "plant", "state": "unknown"},
+    ]
+
+
+def test_a_provider_can_report_a_warning() -> None:
+    from app.modules.project_governance import evidence as evd
+
+    assert "warning" in evd.EVIDENCE_STATES
+    assert evd.EvidenceItem(code="permit_due_later", state="warning").state == "warning"

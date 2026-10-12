@@ -309,7 +309,7 @@ async def test_unknown_evidence_leaves_the_go_open_and_has_to_be_named(world: Wo
     evd.register_evidence_provider("risk", _down, name="probe_down", blocking=True)
     try:
         g = await prepare_gate(world, G1)
-        item = {"area_code": "risk", "code": "probe_down:error", "provider": "probe_down"}
+        item = {"area_code": "risk", "code": "probe_down:error", "provider": "probe_down", "state": "unknown"}
         can = await _can(world, g.id, world.decider, "manager")
         assert can["go"] is True
         assert can["acknowledge"] == [item]
