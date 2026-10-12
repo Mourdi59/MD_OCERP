@@ -857,7 +857,8 @@ async def list_frameworks(session: SessionDep, payload: CurrentUserPayload) -> d
     rows = await _run(svc.list_frameworks(resolve_tenant_id(payload)))
     create = None if await _has(payload, FRAMEWORKS_PERMISSION) else "permission_denied"
     return _page(
-        await _frameworks_out(svc, rows, payload), can={"create": {"allowed": create is None, "reason": create}}
+        await _frameworks_out(svc, rows, payload),
+        can={"create": {"allowed": create is None, "reason": create, "applies": True}},
     )
 
 

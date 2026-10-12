@@ -151,7 +151,7 @@ async def test_the_gate_decision_approves_the_submitted_concept_through_the_even
         svc = ProcurementConceptService(s)
         assert await svc.effective_state(await svc.get_concept(world.project_id)) == "binding"
         caps = await svc.capabilities(world.project_id, world.manager, True)
-    assert caps["edit_plan"] == {"allowed": False, "reason": "binding_requires_change_request"}
+    assert caps["edit_plan"] == {"allowed": False, "reason": "binding_requires_change_request", "applies": True}
 
 
 # ── Demo seed (finding 17) ──────────────────────────────────────────────

@@ -321,10 +321,10 @@ async def test_an_editor_who_does_not_own_the_procurement_area_cannot_steer(worl
     with _raises("not_procurement_owner", 403):
         await _submit(world, world.editor, can_manage=False)
     caps = await svc_call(world, "capabilities", world.project_id, world.editor, False)
-    assert caps["submit"] == {"allowed": False, "reason": "not_procurement_owner"}
+    assert caps["submit"] == {"allowed": False, "reason": "not_procurement_owner", "applies": True}
     owner_caps = await svc_call(world, "capabilities", world.project_id, world.area_owner, False)
-    assert owner_caps["submit"] == {"allowed": True, "reason": None}
-    assert owner_caps["set_gate_fields"] == {"allowed": False, "reason": "manage_required"}
+    assert owner_caps["submit"] == {"allowed": True, "reason": None, "applies": True}
+    assert owner_caps["set_gate_fields"] == {"allowed": False, "reason": "manage_required", "applies": True}
     assert (await _submit(world, world.area_owner, can_manage=False)).state == "in_review"
 
 

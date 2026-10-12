@@ -136,8 +136,8 @@ async def test_the_can_flags_say_what_the_writes_then_enforce(world: World) -> N
         can = (await c.get(_p(world, "/concept"))).json()["can"]
         refused = await c.put(_pkg(world), json=OPEN_WORKS)
         submit = await c.post(_p(world, "/concept/submit"))
-    assert can["edit_plan"] == {"allowed": False, "reason": "not_procurement_owner"}
-    assert can["submit"] == {"allowed": False, "reason": "not_procurement_owner"}
+    assert can["edit_plan"] == {"allowed": False, "reason": "not_procurement_owner", "applies": True}
+    assert can["submit"] == {"allowed": False, "reason": "not_procurement_owner", "applies": True}
     detail = refused.json()["detail"]
     assert (refused.status_code, detail["code"]) == (403, "not_procurement_owner")
     assert detail["message_key"] == "procurement_concept.errors.not_procurement_owner"
@@ -148,15 +148,15 @@ async def test_the_can_flags_say_what_the_writes_then_enforce(world: World) -> N
         can = (await c.get(_p(world, "/concept"))).json()["can"]
         ok = await c.put(_pkg(world), json=OPEN_WORKS)
         gate_field = await c.put(_p(world, "/concept"), json={"release_gate_code": OTHER_GATE})
-    assert can["edit_plan"] == {"allowed": True, "reason": None}
-    assert can["set_gate_fields"] == {"allowed": False, "reason": "manage_required"}
+    assert can["edit_plan"] == {"allowed": True, "reason": None, "applies": True}
+    assert can["set_gate_fields"] == {"allowed": False, "reason": "manage_required", "applies": True}
     assert ok.status_code == 200
     assert (gate_field.status_code, gate_field.json()["detail"]["code"]) == (403, "manage_required")
 
     async with client_as(world, world.manager, "manager") as c:
         body = (await c.get(_p(world, "/concept"))).json()
         set_gate = await c.put(_p(world, "/concept"), json={"release_gate_code": OTHER_GATE})
-    assert body["can"]["set_gate_fields"] == {"allowed": True, "reason": None}
+    assert body["can"]["set_gate_fields"] == {"allowed": True, "reason": None, "applies": True}
     assert set_gate.status_code == 200
     assert set_gate.json()["resolved_release_gate_code"] == OTHER_GATE
 
@@ -264,7 +264,11 @@ async def test_submit_gate_decision_and_execution_over_http(world: World) -> Non
     assert (concept["state"], concept["stored_state"]) == ("binding", "approved")
     assert (concept["submitted_by"], concept["approved_by"]) == (str(world.area_owner), str(world.manager))
     assert concept["four_eyes_violated"] is False
-    assert concept["can"]["edit_plan"] == {"allowed": False, "reason": "binding_requires_change_request"}
+    assert concept["can"]["edit_plan"] == {
+        "allowed": False,
+        "reason": "binding_requires_change_request",
+        "applies": True,
+    }
     assert (locked.status_code, locked.json()["detail"]["code"]) == (409, "binding_requires_change_request")
     assert ready["approved"] is True
     assert (made.status_code, made.json()["kind"]) == (201, "bid_package")
@@ -279,10 +283,15 @@ async def _row(c: AsyncClient, w: World, code: str = "W1") -> dict:
 
 
 def _no(reason: str) -> dict:
-    return {"allowed": False, "reason": reason}
+    return {"allowed": False, "reason": reason, "applies": True}
 
 
-YES = {"allowed": True, "reason": None}
+def _na(reason: str) -> dict:
+    """The move does not apply to the object as it is, whoever asks: the screen hides it."""
+    return {"allowed": False, "reason": reason, "applies": False}
+
+
+YES = {"allowed": True, "reason": None, "applies": True}
 
 
 async def test_package_can_flags_answer_what_the_writes_then_do(world: World) -> None:
@@ -293,21 +302,21 @@ async def test_package_can_flags_answer_what_the_writes_then_do(world: World) ->
     async with client_as(world, world.editor, "editor") as c:
         can = (await _row(c, world))["can"]
         assert can["edit"] == _no("not_procurement_owner")
-        assert can["create_execution"] == _no("not_procurement_owner")
+        assert can["create_execution"] == _na("package_not_found")
         assert (await c.get(_p(world, "/market-soundings"))).json()["can"]["create"] == YES
     async with client_as(world, world.manager, "manager") as c:
         before = (await _row(c, world))["can"]
-        assert (before["edit"], before["hold"]) == (YES, _no("package_not_found"))
+        assert (before["edit"], before["hold"]) == (YES, _na("package_not_found"))
         assert (await c.put(_pkg(world), json=OPEN_WORKS)).status_code == 200
         can = (await _row(c, world))["can"]
         assert (can["edit"], can["hold"], can["cancel"], can["confirm_shortlist"]) == (YES, YES, YES, YES)
-        assert can["resume"] == _no("package_not_on_hold")
+        assert can["resume"] == _na("package_not_on_hold")
         assert can["create_execution"] == _no("concept_not_approved")
         refused = await c.post(_pkg(world, tail="/execution"), json={})
         assert refused.json()["detail"]["code"] == can["create_execution"]["reason"]
         assert (await c.post(_pkg(world, tail="/state"), json={"action": "hold"})).status_code == 200
         held = (await _row(c, world))["can"]
-        assert (held["resume"], held["hold"]) == (YES, _no("invalid_transition"))
+        assert (held["resume"], held["hold"]) == (YES, _na("invalid_transition"))
         assert (await c.post(_pkg(world, tail="/state"), json={"action": "resume"})).status_code == 200
         assert (await c.post(_p(world, "/concept/submit"))).status_code == 200
     assert await bind_frame_document(world) is True
@@ -315,9 +324,11 @@ async def test_package_can_flags_answer_what_the_writes_then_do(world: World) ->
         can = (await _row(c, world))["can"]
         assert can["edit"] == _no("binding_requires_change_request")
         assert can["hold"] == _no("binding_requires_change_request")
+        # Whether a move applies is answered before who may make it: a locked plan still tells hold from resume.
+        assert can["resume"] == _na("package_not_on_hold")
         assert can["create_execution"] == YES
         assert (await c.post(_pkg(world, tail="/execution"), json={})).status_code == 201
-        assert (await _row(c, world))["can"]["create_execution"] == _no("execution_exists")
+        assert (await _row(c, world))["can"]["create_execution"] == _na("execution_exists")
 
 
 async def test_candidate_profile_and_framework_can_flags(world: World) -> None:
@@ -399,7 +410,7 @@ async def test_pickers_for_the_release_gate_the_advance_release_and_the_tender_p
         linked = await c.post(_pkg(world, tail="/execution/link"), json={"tender_package_id": str(own.id)})
         assert linked.status_code == 201
         (tender,) = (await c.get(_p(world, "/tender-packages"))).json()["items"]
-        assert (tender["linked_package_code"], tender["can"]["link"]) == ("W1", _no("execution_exists"))
+        assert (tender["linked_package_code"], tender["can"]["link"]) == ("W1", _na("execution_exists"))
 
 
 async def test_catalogues_carry_their_jurisdictions_and_client_types(world: World) -> None:

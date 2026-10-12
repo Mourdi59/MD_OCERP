@@ -83,6 +83,8 @@ _PLAN_LOCKED = ("approved", "binding", "in_review")
 _SUBMITTED = ("in_review", "approved")
 _GO = ("go", "go_with_conditions")
 _EXECUTION_OPEN = ("in_tender", "awarded")
+# Refusals that say the package is past or not yet at the point of getting a vehicle, whoever asks.
+_EXECUTION_NOT_APPLICABLE = ("execution_exists", "package_not_ready_for_execution")
 
 
 def _s(v: Any) -> str | None:
@@ -110,9 +112,21 @@ def _dec(v: Decimal | str | None) -> str | None:
     return None if v is None else format(Decimal(v), "f")
 
 
-def _answer(reason: str | None) -> dict[str, Any]:
-    """One ``can`` flag: allowed, or the error code that would refuse it."""
-    return {"allowed": reason is None, "reason": reason}
+def _answer(reason: str | None, *, applies: bool = True) -> dict[str, Any]:
+    """One ``can`` flag: allowed, or the error code that would refuse it.
+
+    ``applies`` is false when the move makes no sense for the object in its
+    present state (resuming a package that is not on hold), whoever asks. A
+    screen hides such an action and shows the others, enabled or refused.
+    """
+    return {"allowed": reason is None, "reason": reason, "applies": applies}
+
+
+def _flag(not_applicable: str | None, refused: str | None) -> dict[str, Any]:
+    """Applicability first: a move that does not apply is reported as such even to a caller who may not make it."""
+    if not_applicable is not None:
+        return _answer(not_applicable, applies=False)
+    return _answer(refused)
 
 
 class ProcurementConceptService:
@@ -718,38 +732,37 @@ class ProcurementConceptService:
         """The answers of the checks ``put_package``, ``set_package_state`` and ``create_execution`` enforce."""
         plan_reason = access["edit_plan"]["reason"]
         steer_reason = access["steer"]["reason"]
-        edit = plan_reason
-        if edit is None and CONTRACT_PACKAGE_KIND_MAP.get(cp.kind) is None:
-            edit = "package_kind_not_procured"
-        if edit is None and row is not None and row.state in ("in_tender", "awarded", "cancelled"):
-            edit = "package_closed"
+        edit_na = None
+        if CONTRACT_PACKAGE_KIND_MAP.get(cp.kind) is None:
+            edit_na = "package_kind_not_procured"
+        elif row is not None and row.state in ("in_tender", "awarded", "cancelled"):
+            edit_na = "package_closed"
 
-        def move(target: str | None, missing: str) -> str | None:
-            if plan_reason is not None:
-                return plan_reason
+        def move(target: str | None, missing: str) -> dict[str, Any]:
             if row is None:
-                return "package_not_found"
+                return _flag("package_not_found", None)
             if target is None:
-                return missing
-            return None if can_set_package_state_by_hand(row.state, target) else "invalid_transition"
+                return _flag(missing, None)
+            if not can_set_package_state_by_hand(row.state, target):
+                return _flag("invalid_transition", None)
+            return _flag(None, plan_reason)
 
         resume_to = row.state_before if row is not None and row.state == "on_hold" else None
-        shortlist = steer_reason
-        if shortlist is None:
-            shortlist = None if row is not None and row.state == "procedure_set" else "invalid_transition"
-        execution = steer_reason
-        if execution is None and row is None:
-            execution = "package_not_found"
-        if execution is None:
+        if row is None:
+            shortlist = _flag("package_not_found", None)
+            execution = _flag("package_not_found", None)
+        else:
+            shortlist = _flag(None if row.state == "procedure_set" else "invalid_transition", steer_reason)
             refusal = await self._execution_refusal(project_id, concept, row, cp, findings=findings)
-            execution = refusal.code if refusal is not None else None
+            code = refusal.code if refusal is not None else None
+            execution = _flag(code if code in _EXECUTION_NOT_APPLICABLE else None, steer_reason or code)
         return {
-            "edit": _answer(edit),
-            "hold": _answer(move("on_hold", "")),
-            "resume": _answer(move(resume_to, "package_not_on_hold")),
-            "cancel": _answer(move("cancelled", "")),
-            "confirm_shortlist": _answer(shortlist),
-            "create_execution": _answer(execution),
+            "edit": _flag(edit_na, plan_reason),
+            "hold": move("on_hold", ""),
+            "resume": move(resume_to, "package_not_on_hold"),
+            "cancel": move("cancelled", ""),
+            "confirm_shortlist": shortlist,
+            "create_execution": execution,
         }
 
     @staticmethod
@@ -2154,18 +2167,18 @@ class ProcurementConceptService:
     async def shortlist_can(self, view: dict[str, Any], access: dict[str, Any]) -> dict[str, Any]:
         """What the caller may do on one package's candidate list (``view`` from :meth:`candidate_views`)."""
         steer = access["steer"]["reason"]
-        confirm = steer
-        if confirm is None and view["package_state"] != "procedure_set":
-            confirm = "invalid_transition"
-        if confirm is None and any(f["severity"] == "error" for f in view["findings"]):
-            confirm = "shortlist_invalid"
+        invalid = any(f["severity"] == "error" for f in view["findings"])
+        confirm = _flag(
+            None if view["package_state"] == "procedure_set" else "invalid_transition",
+            steer or ("shortlist_invalid" if invalid else None),
+        )
         return {
             "add": access["edit"],
             "score": access["edit"],
             "reference": access["edit"],
             "set_list": _answer(steer),
             "delete": _answer(steer),
-            "confirm_shortlist": _answer(confirm),
+            "confirm_shortlist": confirm,
         }
 
     async def gate_options(self, project_id: uuid.UUID) -> dict[str, Any]:
@@ -2261,7 +2274,7 @@ class ProcurementConceptService:
                 "deadline": t.deadline,
                 "linked_package_id": str(linked[str(t.id)].id) if str(t.id) in linked else None,
                 "linked_package_code": linked[str(t.id)].code if str(t.id) in linked else None,
-                "can": {"link": _answer("execution_exists" if str(t.id) in linked else None)},
+                "can": {"link": _flag("execution_exists" if str(t.id) in linked else None, None)},
             }
             for t in rows
         ]
@@ -2312,8 +2325,7 @@ class ProcurementConceptService:
             else ("concept_locked" if state in _PLAN_LOCKED else None)
         )
 
-        def answer(reason: str | None) -> dict[str, Any]:
-            return {"allowed": reason is None, "reason": reason}
+        answer = _answer
 
         def move(target: str) -> str | None:
             return None if can_transition(CONCEPT_FSM, state, target) else (locked or "invalid_transition")
