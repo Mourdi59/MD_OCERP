@@ -356,10 +356,7 @@ def test_the_framework_catalogue_names_its_source_without_quoting_a_publication(
     body = json.loads(path.read_text(encoding="utf-8"))
     title = body["source_title"]
     # Verified with no URL, so the validator needs a title, and a neutral one.
-    assert title
-    assert title.isascii()
-    assert "source framework" in title.lower()
-    assert "elf module" not in title.lower()
+    assert title == "Source framework"
 
 
 def test_the_demo_seed_signs_in_as_the_platform_demo_accounts() -> None:
