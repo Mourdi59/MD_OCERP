@@ -1,5 +1,10 @@
 {
   "commitment": {
+    "abort_parameter": {
+      "fee_pct": "Fee on the unperformed part",
+      "presumed_unperformed_pct": "Presumed share of the unperformed part",
+      "profit_pct": "Profit on the performed part"
+    },
     "catalogue": {
       "custom": {
         "description": "A charge entered for this item",
@@ -55,12 +60,15 @@
     "errors": {
       "abort_basis_unknown": "Unknown abort basis",
       "abort_exposure_unknown": "The residual loss is unknown. Complete the abort terms first.",
+      "abort_parameter_invalid": "An abort parameter is a share between 0 and 1",
+      "abort_parameter_not_in_basis": "The chosen abort basis does not have this parameter",
       "abort_type_not_in_schedule": "The schedule has no tier for a termination settlement",
       "activity_not_found": "The schedule activity was not found in this project",
       "amount_invalid": "The amount is not a valid number",
       "amount_not_positive": "The amount must be greater than zero",
       "assignee_not_project_member": "The person is not a member of this project",
       "assignment_expired": "The approver's assignment has expired; update the assignments",
+      "assignment_needs_approver": "Name the approver of this tier before a deputy or a validity period",
       "assignment_window_inverted": "The assignment ends before it starts",
       "cancellation_schedule_invalid": "Each step needs a milestone, a date or progress, and exactly one charge",
       "catalogue_code_taken": "Another catalogue already uses this code",
@@ -81,6 +89,7 @@
       "document_not_found": "Document not found in this project",
       "edit_required": "Your role cannot edit commitment items",
       "enforcement_invalid": "Enforcement must be off, warn or block",
+      "external_approval_not_required": "This amount is decided by a tier of the schedule: remove the external approval reference",
       "external_approval_required": "The amount is above every tier: attach the external approval reference",
       "field_frozen": "This field can no longer be changed for this item",
       "field_required": "This field cannot be empty",

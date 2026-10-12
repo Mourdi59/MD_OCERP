@@ -111,7 +111,8 @@ class MatrixOut(_Out):
 
 class AssignmentIn(BaseModel):
     project_role: str = Field(min_length=1, max_length=64)
-    user_id: UUID
+    # Optional so that a row without an approver reaches the service and is refused by name.
+    user_id: UUID | None = None
     deputy_user_id: UUID | None = None
     valid_from: date | None = None
     valid_to: date | None = None

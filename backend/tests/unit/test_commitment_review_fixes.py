@@ -64,3 +64,52 @@ def test_every_refusal_code_has_a_message_in_every_language_the_module_ships() -
         keys = _flat(json.loads(file.read_text(encoding="utf-8")))
         missing = sorted(c for c in codes if f"commitment.errors.{c}" not in keys)
         assert missing == [], (file.name, missing)
+
+
+def test_every_parameter_a_method_reads_is_described_as_a_fraction_field() -> None:
+    from app.modules.commitment_release.catalogue import (
+        ABORT_BASIS_KIND,
+        METHOD_PARAMETERS,
+        parameter_fields,
+        register_kinds,
+    )
+    from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
+
+    register_kinds()
+    seen = set()
+    for basis in get_catalogue_kind(ABORT_BASIS_KIND).shipped():
+        fields = parameter_fields(basis)
+        assert [f["name"] for f in fields] == list(basis.parameters)
+        assert set(METHOD_PARAMETERS[basis.method]) <= {f["name"] for f in fields}
+        for f in fields:
+            assert (f["type"], f["unit"], f["min"], f["max"]) == ("fraction", "fraction_of_one", "0", "1")
+            assert f["required"] is (f["default"] is None)
+            assert f["label_key"] == f"commitment.abort_parameter.{f['name']}"
+            seen.add(f["label_key"])
+    assert seen
+    import json
+    from pathlib import Path
+
+    import app.modules.commitment_release as module
+
+    bundle = json.loads((Path(module.__file__).parent / "messages" / "en.json").read_text(encoding="utf-8"))
+    assert seen <= _flat(bundle)
+
+
+def test_parameters_of_another_basis_and_values_outside_a_share_are_refused() -> None:
+    from app.modules.commitment_release.catalogue import ABORT_BASIS_KIND, parameter_violation, register_kinds
+    from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
+
+    register_kinds()
+    bases = {b.id: b for b in get_catalogue_kind(ABORT_BASIS_KIND).shipped()}
+    fee = next(b for b in bases.values() if b.method == "fee_on_unperformed")
+    presumed = next(b for b in bases.values() if b.method == "price_less_saved_costs")
+    assert parameter_violation(fee, {"fee_pct": "0.1"}) is None
+    assert parameter_violation(fee, {}) is None
+    # The value entered under the fee basis does not ride along when the basis changes.
+    assert parameter_violation(presumed, {"fee_pct": "0.1"}) == ("abort_parameter_not_in_basis", "fee_pct")
+    assert parameter_violation(bases["custom"], {"fee_pct": "0.1"}) == ("abort_parameter_not_in_basis", "fee_pct")
+    assert parameter_violation(None, {"fee_pct": "0.1"}) == ("abort_parameter_not_in_basis", "fee_pct")
+    assert parameter_violation(fee, {"fee_pct": "10"}) == ("abort_parameter_invalid", "fee_pct")
+    assert parameter_violation(fee, {"fee_pct": "-0.1"}) == ("abort_parameter_invalid", "fee_pct")
+    assert parameter_violation(fee, {"fee_pct": "ten"}) == ("abort_parameter_invalid", "fee_pct")

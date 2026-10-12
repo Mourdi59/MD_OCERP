@@ -212,6 +212,54 @@ METHOD_PARAMETERS: dict[str, tuple[str, ...]] = {
 }
 
 
+def parameter_fields(basis: AbortBasis) -> list[dict[str, Any]]:
+    """The parameters abort terms may set for ``basis``, as form fields.
+
+    Every parameter a method reads is a share written as a fraction of one (``0.05`` is five per
+    cent). ``default`` is the value the basis ships; ``required`` says the basis ships none, so the
+    figure has to come from the contract.
+    """
+    return [
+        {
+            "name": name,
+            "type": "fraction",
+            "unit": "fraction_of_one",
+            "min": "0",
+            "max": "1",
+            "default": p.value,
+            "required": p.value is None,
+            "statutory": p.statutory,
+            "label_key": f"commitment.abort_parameter.{name}",
+            "note_key": p.note_key or None,
+        }
+        for name, p in basis.parameters.items()
+    ]
+
+
+def parameter_violation(basis: AbortBasis | None, parameters: dict[str, Any]) -> tuple[str, str] | None:
+    """``(code, names)`` when ``parameters`` do not fit ``basis``, else ``None``.
+
+    A parameter the basis does not have is refused, so the values of a basis the terms used before
+    never ride along under a new one; a value has to be a fraction between 0 and 1.
+    """
+    known = basis.parameters if basis is not None else {}
+    foreign = sorted(name for name in parameters if name not in known)
+    if foreign:
+        return "abort_parameter_not_in_basis", ", ".join(foreign)
+    invalid = []
+    for name, raw in parameters.items():
+        try:
+            value = parse_amount(raw)
+        except ValueError:
+            invalid.append(name)
+            continue
+        if not (Decimal("0") <= value <= Decimal("1")):
+            invalid.append(name)
+    if invalid:
+        return "abort_parameter_invalid", ", ".join(sorted(invalid))
+    return None
+
+
 def _sourced_errors(where: str, item: Sourced) -> list[str]:
     if not item.statutory:
         return []

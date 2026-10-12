@@ -1,5 +1,10 @@
 {
   "commitment": {
+    "abort_parameter": {
+      "fee_pct": "Zuschlag auf den nicht erbrachten Teil",
+      "presumed_unperformed_pct": "Vermuteter Anteil am nicht erbrachten Teil",
+      "profit_pct": "Gewinn auf den erbrachten Teil"
+    },
     "catalogue": {
       "custom": {
         "description": "Ein für diese Position erfasster Betrag",
@@ -55,12 +60,15 @@
     "errors": {
       "abort_basis_unknown": "Unbekannte Abbruchgrundlage",
       "abort_exposure_unknown": "Der Restschaden ist unbekannt. Bitte zuerst die Abbruchbedingungen vervollständigen.",
+      "abort_parameter_invalid": "Ein Abbruchparameter ist ein Anteil zwischen 0 und 1",
+      "abort_parameter_not_in_basis": "Die gewählte Abbruchgrundlage kennt diesen Parameter nicht",
       "abort_type_not_in_schedule": "Die Freigabeordnung kennt keine Stufe für eine Kündigungsabrechnung",
       "activity_not_found": "Der Vorgang wurde in diesem Projekt nicht gefunden",
       "amount_invalid": "Der Betrag ist keine gültige Zahl",
       "amount_not_positive": "Der Betrag muss größer als null sein",
       "assignee_not_project_member": "Die Person ist kein Mitglied dieses Projekts",
       "assignment_expired": "Die Zuordnung der genehmigenden Person ist abgelaufen; aktualisieren Sie die Zuordnungen",
+      "assignment_needs_approver": "Benennen Sie die freigebende Person dieser Stufe, bevor Sie Vertretung oder Gültigkeit angeben",
       "assignment_window_inverted": "Die Zuordnung endet vor ihrem Beginn",
       "cancellation_schedule_invalid": "Jede Stufe braucht einen Meilenstein, ein Datum oder einen Fortschritt und genau einen Betrag",
       "catalogue_code_taken": "Ein anderer Katalog verwendet diese Kennung bereits",
@@ -81,6 +89,7 @@
       "document_not_found": "Dokument in diesem Projekt nicht gefunden",
       "edit_required": "Ihre Rolle darf keine Positionen bearbeiten",
       "enforcement_invalid": "Durchsetzung muss aus, warnen oder sperren sein",
+      "external_approval_not_required": "Über diesen Betrag entscheidet eine Stufe der Freigabeordnung: entfernen Sie den Bezug der externen Zustimmung",
       "external_approval_required": "Der Betrag liegt über allen Stufen: geben Sie den Bezug der externen Zustimmung an",
       "field_frozen": "Dieses Feld kann für diese Position nicht mehr geändert werden",
       "field_required": "Dieses Feld darf nicht leer sein",

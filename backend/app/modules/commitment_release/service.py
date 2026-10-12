@@ -383,6 +383,10 @@ class CommitmentService:
 
         await self.require_matrix(project_id, lock=True)
         for r in rows:
+            if not r.get("user_id"):
+                # A deputy or a validity window describes an approver; without one there is nothing
+                # to stand in for and nothing to limit.
+                raise CommitmentError("assignment_needs_approver", 422, detail=str(r.get("project_role") or ""))
             for key in ("user_id", "deputy_user_id"):
                 if r.get(key) and not await user_can_access_project(self.session, project_id, _uuid(r[key])):
                     raise CommitmentError("assignee_not_project_member", 422)
@@ -1565,6 +1569,26 @@ class CommitmentService:
         )
         return row
 
+    async def _refuse_foreign_parameters(self, row: AbortTerms | None, data: dict[str, Any]) -> None:
+        """The parameters the terms will hold after this write must belong to the basis they will name."""
+        from app.modules.commitment_release.catalogue import parameter_violation
+
+        parameters = data.get("parameters")
+        if parameters is None:
+            parameters = (row.parameters if row is not None else None) or {}
+        if not parameters:
+            return
+        if "basis_code" in data:
+            code, source, version = data["basis_code"], data.get("basis_source"), data.get("basis_version")
+        else:
+            code, source, version = (
+                (row.basis_code, row.basis_source, row.basis_version) if row is not None else (None, None, None)
+            )
+        basis = await self.abort_basis(source or "shipped", code, version) if code else None
+        violation = parameter_violation(basis, parameters)
+        if violation:
+            raise CommitmentError(violation[0], 422, detail=violation[1])
+
     async def put_abort_terms(
         self,
         project_id: uuid.UUID,
@@ -1605,6 +1629,7 @@ class CommitmentService:
         if data.get("transferable", "no") not in ("no", "to_project", "resale"):
             raise CommitmentError("transferable_invalid", 422)
         row = await self.repo.get_abort_terms(item.id, scope)
+        await self._refuse_foreign_parameters(row, data)
         before = None
         if row is None:
             row = AbortTerms(project_id=project_id, item_id=item.id, scope=scope)
@@ -2022,6 +2047,10 @@ class CommitmentService:
         matrix, tier = e["matrix"], e["tier"]
         if tier.escalate_outside and not external_approval_ref.strip():
             raise CommitmentError("external_approval_required", 422)
+        if external_approval_ref.strip() and not tier.escalate_outside:
+            # A reference is evidence that somebody outside the schedule agreed. Kept on a request a
+            # tier decides, it would say an outside approval was part of a decision it was not.
+            raise CommitmentError("external_approval_not_required", 422)
         if e["open_preconditions"] and matrix.enforcement == "block":
             raise conflict(
                 "preconditions_open",

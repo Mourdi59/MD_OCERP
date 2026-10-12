@@ -286,18 +286,26 @@ async def evaluate_schedule(body: EvaluateIn, session: SessionDep, payload: Curr
 @router.get("/abort-bases", response_model=Page[dict[str, Any]], dependencies=[READ])
 async def list_abort_bases(session: SessionDep, payload: CurrentUserPayload) -> dict[str, Any]:
     """Shipped abort bases (with their review status) and the caller's own."""
+    from app.modules.commitment_release.catalogue import parameter_fields
     from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
     from app.modules.project_governance.catalogue_store import CatalogueStore
 
-    CommitmentService(session)
+    svc = CommitmentService(session)
     items = await _run(CatalogueStore(session).list_available(resolve_tenant_id(payload), kind=ABORT_BASIS_KIND))
     shipped = {b.id: b for b in get_catalogue_kind(ABORT_BASIS_KIND).shipped()}
     for it in items:
-        b = shipped.get(it["id"]) if it["source"] == "shipped" else None
-        if b is not None:
-            it["method"] = b.method
-            it["parameters"] = {k: v.model_dump(mode="json") for k, v in b.parameters.items()}
-            it["source_url"] = b.source_url
+        if it["source"] == "shipped":
+            b = shipped.get(it["id"])
+        elif it["latest_version"] is not None:
+            # The listing is the caller's own tenant, so the published body is read as a stored pin.
+            b = await _run(svc.abort_basis("tenant", it["id"], it["latest_version"]))
+        else:
+            # A draft that was never published cannot be chosen for abort terms yet.
+            b = None
+        it["method"] = b.method if b is not None else None
+        it["parameters"] = {k: v.model_dump(mode="json") for k, v in b.parameters.items()} if b is not None else {}
+        it["parameter_fields"] = parameter_fields(b) if b is not None else []
+        it["source_url"] = b.source_url if b is not None else None
     return _page(items)
 
 

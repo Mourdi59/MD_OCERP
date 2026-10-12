@@ -769,3 +769,89 @@ async def test_a_handed_over_item_names_its_successor_only_to_a_reader_of_the_re
     hidden = await successor(world.requester)
     assert (hidden["project_id"], hidden["item_id"], hidden["can_open"]) == (str(other), str(target.id), False)
     assert (hidden["project_name"], hidden["code"], hidden["title"]) == (None, None, None)
+
+
+# ── abort parameters, external reference, assignment without an approver ───────────────────
+
+
+async def test_abort_terms_refuse_a_parameter_the_chosen_basis_does_not_have(world: World) -> None:
+    from app.modules.commitment_release.catalogue import ABORT_BASIS_KIND
+    from app.modules.commitment_release.models import AbortTerms
+    from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
+
+    bases = list(get_catalogue_kind(ABORT_BASIS_KIND).shipped())
+    fee = next(b.id for b in bases if b.method == "fee_on_unperformed")
+    presumed = next(b.id for b in bases if b.method == "price_less_saved_costs")
+    iid = await item(world, amount="10000")
+
+    async def put(data: dict) -> None:
+        async with world.factory() as s:
+            await CommitmentService(s).put_abort_terms(
+                world.project_id, iid, data, actor_id=world.manager, manage=True, tenant_id=str(world.manager)
+            )
+            await s.commit()
+
+    await put({"basis_code": fee, "parameters": {"fee_pct": "0.1"}})
+    for data, code in (
+        # The form changed the basis and still sends the old basis's value.
+        ({"basis_code": presumed, "parameters": {"fee_pct": "0.1"}}, "abort_parameter_not_in_basis"),
+        # A caller that changes only the basis leaves the stored value behind: refused as well.
+        ({"basis_code": presumed}, "abort_parameter_not_in_basis"),
+        ({"basis_code": None, "parameters": {"fee_pct": "0.1"}}, "abort_parameter_not_in_basis"),
+        ({"basis_code": fee, "parameters": {"fee_pct": "10"}}, "abort_parameter_invalid"),
+    ):
+        with pytest.raises(CommitmentError) as exc:
+            await put(data)
+        assert (exc.value.code, exc.value.status_code) == (code, 422), data
+    async with world.factory() as s:
+        row = (await s.execute(select(AbortTerms).where(AbortTerms.item_id == iid))).scalar_one()
+    assert (row.basis_code, row.parameters) == (fee, {"fee_pct": "0.1"})
+
+    await put({"basis_code": presumed, "parameters": {}})
+    async with world.factory() as s:
+        row = (await s.execute(select(AbortTerms).where(AbortTerms.item_id == iid))).scalar_one()
+    assert (row.basis_code, row.parameters) == (presumed, {})
+
+
+async def test_an_external_reference_on_an_amount_a_tier_decides_is_refused(world: World) -> None:
+    iid = await item(world, amount="400000")
+    with pytest.raises(CommitmentError) as exc:
+        await request(world, iid, "400000", external_approval_ref="Board minute 12")
+    assert (exc.value.code, exc.value.status_code) == ("external_approval_not_required", 422)
+    assert (await state(world, iid)).status == "planned"
+    d = await request(world, iid, "400000")
+    assert d.external_approval_ref == ""
+
+    # Above every tier the reference is what makes the request possible.
+    big = await item(world, code="CR-BIG", amount="9000000")
+    with pytest.raises(CommitmentError) as exc:
+        await request(world, big, "9000000")
+    assert exc.value.code == "external_approval_required"
+    d = await request(world, big, "9000000", external_approval_ref="Board minute 12")
+    assert d.external_approval_ref == "Board minute 12"
+
+
+async def test_a_deputy_or_a_period_without_an_approver_is_refused_by_name(world: World) -> None:
+    from app.modules.commitment_release.models import AuthorityAssignment
+
+    async def put(rows: list[dict]) -> None:
+        async with world.factory() as s:
+            await CommitmentService(s).put_assignments(world.project_id, rows, actor_id=world.manager, today=TODAY)
+            await s.commit()
+
+    for row in (
+        {"project_role": "owner_sponsor", "user_id": None, "deputy_user_id": world.sponsor},
+        {"project_role": "owner_sponsor", "valid_to": "2027-01-31"},
+    ):
+        with pytest.raises(CommitmentError) as exc:
+            await put([{"project_role": "owner_pm", "user_id": world.pm}, row])
+        assert (exc.value.code, exc.value.status_code) == ("assignment_needs_approver", 422)
+        assert exc.value.detail == "owner_sponsor"
+    async with world.factory() as s:
+        rows = (
+            (await s.execute(select(AuthorityAssignment).where(AuthorityAssignment.project_id == world.project_id)))
+            .scalars()
+            .all()
+        )
+    # Nothing was replaced by the refused writes.
+    assert {r.project_role for r in rows} == {"owner_pm", "owner_sponsor", "owner_board_member"}
