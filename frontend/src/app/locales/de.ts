@@ -32264,6 +32264,7 @@ const resource = {
     "governance.catalogue.riba_2020.gate.stage6_to_stage7": "Gate: Phase 6 Übergabe zu Phase 7 Nutzung",
     "modules.catalog.project_governance": "Projektsteuerung",
     "governance.errors.activity_not_in_project": "Dieser Terminplanvorgang gehört nicht zum Projekt",
+    "governance.errors.area_retired": "Dieser Bereich wurde durch einen Wechsel des Phasenmodells stillgelegt und nimmt keine neuen Dokumente auf",
     "governance.errors.gate_historic": "Dieses Gate gehört zu einem Phasenmodell, das das Projekt nicht mehr nutzt",
     "governance.errors.gate_not_on_hold": "Nur ein angehaltenes Gate kann wieder aufgenommen werden",
     "governance.errors.later_gate_active": "Ein späteres Gate wurde bereits begonnen, daher kann dieses Gate nicht wieder geöffnet werden",

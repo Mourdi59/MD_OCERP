@@ -94,6 +94,8 @@ export interface GovernanceArea {
   name?: GovernanceLabel;
   /** The catalogue's frame document types for this area; `tracked` says which ones the project already holds. */
   document_types?: AreaDocumentType[];
+  /** Whether the reader may track a further frame document in this area. */
+  can?: { add_document: boolean; add_document_reason?: string | null };
 }
 
 export interface AreaDocumentType {
@@ -314,6 +316,9 @@ export interface DocumentCan {
   submit_reason?: string | null;
   return: boolean;
   return_reason?: string | null;
+  /** Whether the reader may raise a change request on this document. */
+  change_request?: boolean;
+  change_request_reason?: string | null;
 }
 
 export interface DocumentRevision {

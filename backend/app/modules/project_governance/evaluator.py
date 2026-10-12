@@ -77,6 +77,7 @@ ALL_CODES: tuple[str, ...] = (
     "route_needs_more_approvals",
     "route_not_pinnable",
     "no_change_route",
+    "area_retired",
     "activity_not_in_project",
     "target_date_owned_by_schedule",
 )

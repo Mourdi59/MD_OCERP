@@ -11,7 +11,15 @@
 // stopped project, an area without an owner. Where the server sends no flag,
 // the button stays enabled and the server's refusal is shown after the click.
 
-import type { FrameDocument, GateArea, GateDetail, GovernanceCondition, GovernanceModel, Outcome } from './api';
+import type {
+  FrameDocument,
+  GateArea,
+  GateDetail,
+  GovernanceArea,
+  GovernanceCondition,
+  GovernanceModel,
+  Outcome,
+} from './api';
 import type { KeyText } from './labels';
 
 export type DisabledReason =
@@ -223,14 +231,20 @@ export function documentVerdict(doc: Pick<FrameDocument, 'can' | 'container_id'>
   return flagVerdict(doc.can[action], reason, 'edit');
 }
 
-/** Tracking a further frame document needs the edit permission, which the server reports on the model. */
-export function canAddDocument(model: Pick<GovernanceModel, 'can'>): Verdict {
-  return model.can.edit === false ? 'role_edit' : null;
+/**
+ * Tracking a further frame document follows the area's own flag: the server
+ * knows the edit permission, who owns the area and whether it is retired.
+ * Without a flag nothing is guessed and the server's refusal shows after the click.
+ */
+export function canAddDocument(area: Pick<GovernanceArea, 'can'>): Verdict {
+  if (!area.can) return null;
+  return flagVerdict(area.can.add_document, area.can.add_document_reason, 'edit');
 }
 
-/** Raising a change request needs the edit permission; the route then decides who approves it. */
-export function canRaiseChange(model: Pick<GovernanceModel, 'can'>): Verdict {
-  return model.can.edit === false ? 'role_edit' : null;
+/** Raising a change request follows the document's own flag; the route then decides who approves it. */
+export function canRaiseChange(doc: Pick<FrameDocument, 'can'>): Verdict {
+  if (!doc.can || doc.can.change_request === undefined) return null;
+  return flagVerdict(doc.can.change_request, doc.can.change_request_reason, 'edit');
 }
 
 /** Clearing follows the condition's own flag: the edit permission plus owner-or-manager, checked by the server. */

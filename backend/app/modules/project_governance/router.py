@@ -424,16 +424,27 @@ async def get_matrix(
 
 @router.get("/projects/{project_id}/areas", response_model=Page[AreaOut], dependencies=[READ])
 async def list_areas(
-    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, include_retired: bool = False
+    project_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    include_retired: bool = False,
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = GovernanceService(session)
     rows = await svc.repo.list_areas(project_id, include_retired=include_retired)
     cat = await _catalogue(session, project_id)
     tracked = {(d.area_id, d.doc_type) for d in await svc.repo.list_documents(project_id)}
+    can = svc.area_capabilities(
+        rows,
+        actor_id=_uid(user_id),
+        can_edit=await _has(payload, "governance.edit"),
+        is_manager=await _has(payload, "governance.manage"),
+    )
     out = []
     for row in rows:
         area = _named(AreaOut, row, cat, "area", row.code)
+        area.can = can[row.id]
         area.document_types = [
             {
                 "code": d.code,
@@ -724,12 +735,20 @@ async def list_documents(
 
 @router.post("/projects/{project_id}/documents", response_model=DocumentOut, status_code=201, dependencies=[EDIT])
 async def create_document(
-    project_id: uuid.UUID, body: DocumentCreate, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    body: DocumentCreate,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> DocumentOut:
     await verify_project_access(project_id, user_id, session)
     doc = await _run(
         GovernanceService(session).create_document(
-            project_id, area_id=body.area_id, doc_type=body.doc_type, actor_id=_uid(user_id)
+            project_id,
+            area_id=body.area_id,
+            doc_type=body.doc_type,
+            actor_id=_uid(user_id),
+            is_manager=await _has(payload, "governance.manage"),
         )
     )
     cat = await _catalogue(session, project_id)

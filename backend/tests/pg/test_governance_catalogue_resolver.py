@@ -129,3 +129,58 @@ async def test_the_port_lists_gates_areas_and_documents_of_a_project(world: Worl
     # The host of a subject is one of the listed documents, in one of the listed areas.
     host = public.host_in(cat.get_catalogue("neutral"), "design")
     assert by_code[host.doc_type].area_code == host.area_code
+
+
+async def test_the_port_reads_decisions_conditions_and_change_requests(world: World) -> None:
+    from datetime import date, timedelta
+
+    from app.modules.project_governance import evaluator as ev
+    from tests.pg.governance_fixtures import decide, prepare_gate
+
+    other = await build_world(world.factory)
+    async with world.factory() as s:
+        assert await public.project_gate_decisions(s, world.project_id) == ()
+        assert await public.project_conditions(s, world.project_id) == ()
+        assert await public.project_change_requests(s, world.project_id) == ()
+
+    g = await prepare_gate(world, "strategy_to_brief")
+    await decide(
+        world,
+        g.id,
+        "go_with_conditions",
+        conditions=[
+            ev.ProposedCondition(
+                area_code="scope",
+                document_type=None,
+                text="Late already",
+                owner_user_id=str(world.owner),
+                due_date=date.today() - timedelta(days=3),
+            ),
+            ev.ProposedCondition(
+                area_code=None,
+                document_type=None,
+                text="Still time",
+                owner_user_id=str(world.owner),
+                due_date=date.today() + timedelta(days=30),
+            ),
+        ],
+    )
+    async with world.factory() as s:
+        decisions = await public.project_gate_decisions(s, world.project_id, g.id)
+        conditions = await public.project_conditions(s, world.project_id, g.id)
+        gates = {v.code: v for v in await public.project_gates(s, world.project_id)}
+        documents = {d.code: d for d in await public.project_documents(s, world.project_id)}
+        # Nothing of this project is listed under the other one, and a foreign gate id lists nothing here.
+        assert await public.project_gate_decisions(s, other.project_id, g.id) == ()
+        assert await public.project_conditions(s, other.project_id) == ()
+        assert await public.project_change_requests(s, world.project_id, open_only=True) == ()
+    assert [(d.outcome, d.gate_id, d.decided_by) for d in decisions] == [("go_with_conditions", g.id, world.decider)]
+    assert [(c.text, c.status, c.area_code) for c in conditions] == [
+        ("Late already", "overdue", "scope"),
+        ("Still time", "open", None),
+    ]
+    assert {c.decision_id for c in conditions} == {decisions[0].id}
+    assert gates["strategy_to_brief"].status == "decided" and gates["strategy_to_brief"].target_date is None
+    approved = documents["business_case"]
+    assert approved.approved_gate_id == g.id and approved.container_id == world.containers["business_case"]
+    assert approved.bound_revision_id is not None
