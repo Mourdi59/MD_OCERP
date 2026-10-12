@@ -25,7 +25,7 @@ import {
   type Readiness,
 } from './api';
 import { FINDING_SEVERITY, ITEM_CLASS, catalogueName, vocab, type KeyText, type LabelContext } from './labels';
-import { Refusal, Section, ToneBadge } from './PlantBits';
+import { Refusal, Section, ToneBadge, WriteButton } from './PlantBits';
 
 export const EXPORT_NAME: Record<Exclude<ExportKind, 'paper'>, KeyText> = {
   register: ['plant.export.register', 'Long-lead register'],
@@ -72,11 +72,12 @@ export function FrameSummary({ projectId, summary, readiness, findings, catalogu
       addToast({
         type: 'success',
         title:
-          result.overdue.length + result.expired_slots.length === 0
-            ? t('plant.frame.remind_none', { defaultValue: 'Nothing is overdue, so no reminder was sent.' })
+          result.overdue.length + result.due_soon.length + result.expired_slots.length === 0
+            ? t('plant.frame.remind_none', { defaultValue: 'No order is overdue or due soon, so no reminder was sent.' })
             : t('plant.frame.remind_done', {
-                defaultValue: 'Reminders sent. Overdue orders: {{orders}}. Expired slots: {{slots}}.',
+                defaultValue: 'Reminders sent. Overdue orders: {{orders}}. Orders due soon: {{soon}}. Expired slots: {{slots}}.',
                 orders: result.overdue.length,
+                soon: result.due_soon.length,
                 slots: result.expired_slots.length,
               }),
       }),
@@ -208,19 +209,19 @@ export function FrameSummary({ projectId, summary, readiness, findings, catalogu
         hint={t('plant.frame.documents_hint', { defaultValue: 'The register as a document, for a meeting or the project file.' })}
         testId="frame-exports"
         action={
-          <Button
+          <WriteButton
             size="sm"
             variant="secondary"
             icon={<BellRing size={14} />}
             loading={remind.isPending}
             data-testid="frame-remind"
             title={t('plant.frame.remind_hint', {
-              defaultValue: 'Notifies the responsible people about orders past their date and reservations past their deadline.',
+              defaultValue: 'Notifies the responsible people about orders past or close to their date and reservations past their deadline.',
             })}
             onClick={() => remind.mutate()}
           >
-            {t('plant.frame.remind', { defaultValue: 'Send overdue reminders' })}
-          </Button>
+            {t('plant.frame.remind', { defaultValue: 'Send order reminders' })}
+          </WriteButton>
         }
       >
         <Refusal error={remind.error ?? download.error} className="mb-3" />

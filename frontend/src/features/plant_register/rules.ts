@@ -50,6 +50,9 @@ export type Problem =
   | 'slot_range'
   | 'fee_invalid'
   | 'currency_invalid'
+  | 'fee_currency_required'
+  | 'cost_currency_required'
+  | 'no_asset_reason_required'
   | 'question_required'
   | 'option_incomplete'
   | 'option_codes_unique'
@@ -66,7 +69,10 @@ export const PROBLEM: Record<Problem, KeyText> = {
   ],
   title_required: ['plant.problem.title_required', 'Give the item a title.'],
   class_required: ['plant.problem.class_required', 'Choose what kind of plant this is.'],
-  quantity_invalid: ['plant.problem.quantity_invalid', 'Quantity must be a number greater than zero.'],
+  quantity_invalid: [
+    'plant.problem.quantity_invalid',
+    'Quantity must be a number greater than zero, with at most three decimals.',
+  ],
   vendor_reason_required: ['plant.problem.vendor_reason_required', 'A vendor-bound specification needs a reason.'],
   critical_reason_required: [
     'plant.problem.critical_reason_required',
@@ -86,12 +92,24 @@ export const PROBLEM: Record<Problem, KeyText> = {
   lead_weeks_required: ['plant.problem.lead_weeks_required', 'Enter the lead time in whole weeks.'],
   lead_weeks_range: ['plant.problem.lead_weeks_range', 'The shortest lead time must not exceed the longest.'],
   slot_range: ['plant.problem.slot_range', 'The slot ends before it starts.'],
-  fee_invalid: ['plant.problem.fee_invalid', 'The reservation fee must be an amount of zero or more.'],
+  fee_invalid: [
+    'plant.problem.fee_invalid',
+    'The reservation fee must be an amount of zero or more, with at most two decimals.',
+  ],
+  fee_currency_required: ['plant.problem.fee_currency_required', 'A reservation fee needs its currency.'],
+  cost_currency_required: ['plant.problem.cost_currency_required', 'An option with a cost needs its currency.'],
+  no_asset_reason_required: [
+    'plant.problem.no_asset_reason_required',
+    'Write down why the item is handed over without a service contract.',
+  ],
   currency_invalid: ['plant.problem.currency_invalid', 'Give the currency as a three-letter code, for example EUR.'],
   question_required: ['plant.problem.question_required', 'Write the question this paper decides.'],
   option_incomplete: ['plant.problem.option_incomplete', 'Every option needs a short code and a title.'],
   option_codes_unique: ['plant.problem.option_codes_unique', 'Every option needs its own code.'],
-  score_invalid: ['plant.problem.score_invalid', 'Scores, weights and costs must be numbers.'],
+  score_invalid: [
+    'plant.problem.score_invalid',
+    'Scores, weights and costs must be numbers, and a cost has at most two decimals.',
+  ],
   category_required: ['plant.problem.category_required', 'Choose the kind of spare.'],
   kind_required: ['plant.problem.kind_required', 'Choose the service.'],
   needed_range: ['plant.problem.needed_range', 'The service ends before it starts.'],
@@ -106,14 +124,19 @@ export function isDecimalText(raw: string): boolean {
   return raw.trim() !== '' && parseDecimalInput(raw.trim()) !== null;
 }
 
+/** The server takes three decimals on a quantity and two on money, and refuses a longer figure. */
+function fits(raw: string, places: number): boolean {
+  return (toDecimalPayloadString(raw).split('.')[1] ?? '').length <= places;
+}
+
 function positive(raw: string): boolean {
   const n = parseDecimalInput(raw.trim());
-  return n !== null && n > 0;
+  return n !== null && n > 0 && fits(raw, 3);
 }
 
 function nonNegative(raw: string): boolean {
   const n = parseDecimalInput(raw.trim());
-  return n !== null && n >= 0;
+  return n !== null && n >= 0 && fits(raw, 2);
 }
 
 /* ── Item ─────────────────────────────────────────────────────────────── */
@@ -287,6 +310,11 @@ export function nextManualStep(status: ItemStatus): ManualTarget | null {
   return NEXT_BY_HAND[status] ?? null;
 }
 
+/** From `route_set` on the server no longer takes a change to the critical and long-lead overrides. */
+export function classificationFrozen(status: ItemStatus): boolean {
+  return status !== 'identified' && status !== 'specified' && status !== 'enquired';
+}
+
 export function isClosed(status: ItemStatus): boolean {
   return status === 'handed_over' || status === 'cancelled';
 }
@@ -415,6 +443,7 @@ export function slotProblems(draft: SlotDraft): Problem[] {
   if (draft.slot_from && draft.slot_to && draft.slot_to < draft.slot_from) out.push('slot_range');
   if (draft.reservation_fee.trim() && !nonNegative(draft.reservation_fee)) out.push('fee_invalid');
   if (draft.currency.trim() && !CURRENCY_RE.test(draft.currency.trim().toUpperCase())) out.push('currency_invalid');
+  if (draft.reservation_fee.trim() && !draft.currency.trim()) out.push('fee_currency_required');
   return out;
 }
 
@@ -488,8 +517,10 @@ export function paperProblems(draft: PaperDraft): Problem[] {
   const currencyBad = draft.options.some(
     (o) => o.currency.trim() !== '' && !CURRENCY_RE.test(o.currency.trim().toUpperCase()),
   );
-  if (weeksBad || numbers.some((v) => !isDecimalText(v))) out.push('score_invalid');
+  const costBad = draft.options.some((o) => o.cost.trim() !== '' && !nonNegative(o.cost));
+  if (weeksBad || costBad || numbers.some((v) => !isDecimalText(v))) out.push('score_invalid');
   if (currencyBad) out.push('currency_invalid');
+  if (draft.options.some((o) => o.cost.trim() !== '' && !o.currency.trim())) out.push('cost_currency_required');
   return out;
 }
 

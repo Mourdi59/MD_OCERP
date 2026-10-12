@@ -42,6 +42,7 @@ import {
   toQuoteInput,
   toSlotInput,
   toSpareInput,
+  type Problem,
   type QuoteDraft,
   type SlotDraft,
   type SpareDraft,
@@ -690,10 +691,17 @@ export function SpareDialog({
 export function HandoverDialog({ open, onClose, projectId, item, onSaved }: ItemDialogBase) {
   const { t } = useTranslation();
   const [confirm, setConfirm] = useState(false);
+  const [reason, setReason] = useState('');
+  const [tried, setTried] = useState(false);
+  const problems: Problem[] = reason.trim() ? [] : ['no_asset_reason_required'];
   const save = useMutation({
-    mutationFn: () => handoverItem(projectId, item.id, confirm),
+    mutationFn: () => handoverItem(projectId, item.id, confirm, reason.trim()),
     onSuccess: onSaved,
   });
+  const submit = () => {
+    setTried(true);
+    if (problems.length === 0) save.mutate();
+  };
 
   return (
     <WideModal
@@ -708,12 +716,12 @@ export function HandoverDialog({ open, onClose, projectId, item, onSaved }: Item
       })}
       footer={
         <DialogFooter
-          problems={[]}
-          showProblems={false}
+          problems={problems}
+          showProblems={tried}
           busy={save.isPending}
           submitLabel={t('plant.handover.submit', { defaultValue: 'Hand over' })}
           onCancel={onClose}
-          onSubmit={() => save.mutate()}
+          onSubmit={submit}
         />
       }
     >
@@ -731,6 +739,24 @@ export function HandoverDialog({ open, onClose, projectId, item, onSaved }: Item
             defaultValue: 'The operator has taken over the plant, its documents and its spares.',
           })}
         </label>
+        <Field
+          label={t('plant.handover.no_asset_reason', { defaultValue: 'Why it is handed over without a service contract' })}
+          hint={t('plant.handover.no_asset_reason_hint', {
+            defaultValue: 'A service contract for the asset cannot be named here yet, so the handover records the reason.',
+          })}
+          required
+        >
+          {(id) => (
+            <textarea
+              id={id}
+              rows={2}
+              className={fieldClass}
+              data-testid="handover-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          )}
+        </Field>
       </div>
     </WideModal>
   );

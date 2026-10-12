@@ -5,7 +5,7 @@
 // shows why the server refused something, the lead time chip, a labelled form
 // field and the footer every dialog ends with.
 
-import { useId, type ReactNode } from 'react';
+import { createContext, useContext, useId, type ComponentProps, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 
@@ -14,7 +14,7 @@ import { Button } from '@/shared/ui/Button';
 import { getErrorMessage } from '@/shared/lib/api';
 import { fmtDate, fmtNumber } from '@/shared/lib/formatters';
 
-import { plantErrorCode, plantErrorMessage, plantViolations, type ItemStatus, type PaperStatus, type PlantCatalogue, type PlantItem, type SlotStatus, type SpareStatus, type ItStatus } from './api';
+import { plantErrorCode, plantErrorMessage, plantViolations, type Capability, type ItemStatus, type PaperStatus, type PlantCatalogue, type PlantItem, type PlantSettings, type SlotStatus, type SpareStatus, type ItStatus } from './api';
 import { errorText, leadSourceName, violationText, type LabelContext, type TFn } from './labels';
 import { PROBLEM, type Problem } from './rules';
 
@@ -60,6 +60,45 @@ export const IT_TONE: Record<ItStatus, BadgeVariant> = {
   provisioned: 'success',
   retired: 'neutral',
 };
+
+export interface PlantCan {
+  edit: Capability;
+  manage: Capability;
+}
+
+const OPEN: Capability = { allowed: true };
+
+/**
+ * What the server lets the reader do. Until the answer is in, and when it
+ * cannot be read, nothing is held back here: the server still refuses the
+ * write and its reason is shown.
+ */
+export function canOf(settings: PlantSettings | null | undefined): PlantCan {
+  return { edit: settings?.can?.edit ?? OPEN, manage: settings?.can?.manage ?? OPEN };
+}
+
+export const PlantCanContext = createContext<PlantCan>({ edit: OPEN, manage: OPEN });
+
+export function usePlantCan(): PlantCan {
+  return useContext(PlantCanContext);
+}
+
+/** The server's reason for a capability it withholds, or null when it is allowed. */
+export function withheldReason(t: TFn, capability: Capability, fallback: string): string | null {
+  return capability.allowed ? null : errorText(t, capability.reason ?? fallback);
+}
+
+/** A button for a write. It is off, with the server's reason as its tooltip, when the server withholds the capability. */
+export function WriteButton({
+  need = 'edit',
+  disabled,
+  title,
+  ...rest
+}: ComponentProps<typeof Button> & { need?: keyof PlantCan }) {
+  const { t } = useTranslation();
+  const reason = withheldReason(t, usePlantCan()[need], need === 'edit' ? 'edit_permission_required' : 'manage_required');
+  return <Button {...rest} disabled={disabled || reason !== null} title={reason ?? title} />;
+}
 
 export function ToneBadge({ tone, children, testId }: { tone: BadgeVariant; children: ReactNode; testId?: string }) {
   return (

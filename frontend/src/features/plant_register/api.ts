@@ -100,6 +100,21 @@ export interface PlantCatalogue {
   parties: CatalogueEntry[];
 }
 
+/** Whether the reader may do something, and the error code that says why not. */
+export interface Capability {
+  allowed: boolean;
+  reason?: string | null;
+}
+
+export interface PlantSettings {
+  catalogue_source: string;
+  catalogue_id: string;
+  catalogue_version: number | null;
+  pinned: boolean;
+  /** Decided by the server. `edit` covers every write, `manage` the overrides and the catalogue pin. */
+  can?: { edit?: Capability; manage?: Capability };
+}
+
 /* ── Item ─────────────────────────────────────────────────────────────── */
 
 export interface PerformanceRow {
@@ -413,6 +428,7 @@ export interface Finding {
 
 export interface EscalateResult {
   overdue: string[];
+  due_soon: string[];
   expired_slots: string[];
 }
 
@@ -471,6 +487,7 @@ export function localToday(): string {
 export const plantKeys = {
   project: (projectId: string) => ['plant-register', projectId] as const,
   catalogue: (projectId: string) => ['plant-register', projectId, 'catalogue'] as const,
+  settings: (projectId: string) => ['plant-register', projectId, 'settings'] as const,
   items: (projectId: string) => ['plant-register', projectId, 'items'] as const,
   quotes: (projectId: string, itemId: string) => ['plant-register', projectId, 'item', itemId, 'quotes'] as const,
   slots: (projectId: string, itemId: string) => ['plant-register', projectId, 'item', itemId, 'slots'] as const,
@@ -493,6 +510,10 @@ export function getCatalogue(projectId: string): Promise<PlantCatalogue> {
   return apiGet<PlantCatalogue>(`${p(projectId)}/catalogue`);
 }
 
+export function getSettings(projectId: string): Promise<PlantSettings> {
+  return apiGet<PlantSettings>(`${p(projectId)}/settings`);
+}
+
 export function listItems(projectId: string): Promise<Page<PlantItem>> {
   return apiGet<Page<PlantItem>>(`${p(projectId)}/items?limit=500&today=${localToday()}`);
 }
@@ -506,7 +527,7 @@ export function updateItem(projectId: string, itemId: string, body: ItemInput): 
 }
 
 export function transitionItem(projectId: string, itemId: string, target: ItemStatus): Promise<PlantItem> {
-  return apiPost<PlantItem>(`${item(projectId, itemId)}/transition?today=${localToday()}`, { target });
+  return apiPost<PlantItem>(`${item(projectId, itemId)}/transition`, { target });
 }
 
 export function syncItem(projectId: string, itemId: string): Promise<PlantItem> {
@@ -517,8 +538,14 @@ export function setRoute(projectId: string, itemId: string, route: ProcurementRo
   return apiPut<PlantItem>(`${item(projectId, itemId)}/route`, { procurement_route: route });
 }
 
-export function handoverItem(projectId: string, itemId: string, confirm: boolean): Promise<PlantItem> {
-  return apiPost<PlantItem>(`${item(projectId, itemId)}/handover`, { confirm });
+/** Handover with no service contract named, so the server asks why the item has no service asset. */
+export function handoverItem(
+  projectId: string,
+  itemId: string,
+  confirm: boolean,
+  noAssetReason: string,
+): Promise<PlantItem> {
+  return apiPost<PlantItem>(`${item(projectId, itemId)}/handover`, { confirm, no_asset_reason: noAssetReason });
 }
 
 /* ── Quotes ───────────────────────────────────────────────────────────── */
@@ -528,7 +555,7 @@ export function listQuotes(projectId: string, itemId: string): Promise<Page<Quot
 }
 
 export function addQuote(projectId: string, itemId: string, body: QuoteInput): Promise<Quote> {
-  return apiPost<Quote>(`${item(projectId, itemId)}/quotes?today=${localToday()}`, body);
+  return apiPost<Quote>(`${item(projectId, itemId)}/quotes`, body);
 }
 
 export function setBasisQuote(projectId: string, itemId: string, quoteId: string): Promise<Quote> {
@@ -574,6 +601,11 @@ export function updatePaper(projectId: string, itemId: string, paperId: string, 
 
 export function submitPaper(projectId: string, itemId: string, paperId: string): Promise<Paper> {
   return apiPost<Paper>(`${item(projectId, itemId)}/decision-paper/${paperId}/submit`, {});
+}
+
+/** Takes a submitted paper back to draft so it can be changed. */
+export function withdrawPaper(projectId: string, itemId: string, paperId: string): Promise<Paper> {
+  return apiPost<Paper>(`${item(projectId, itemId)}/decision-paper/${paperId}/withdraw`, {});
 }
 
 /* ── Delivery limits ──────────────────────────────────────────────────── */
@@ -663,7 +695,7 @@ export function listFindings(projectId: string): Promise<Page<Finding>> {
 }
 
 export function escalate(projectId: string): Promise<EscalateResult> {
-  return apiPost<EscalateResult>(`${p(projectId)}/escalate?today=${localToday()}`, {});
+  return apiPost<EscalateResult>(`${p(projectId)}/escalate`, {});
 }
 
 export function downloadExport(

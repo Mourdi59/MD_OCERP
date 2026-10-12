@@ -17,6 +17,7 @@ import {
   getFrameSummary,
   getLimitMatrix,
   getReadiness,
+  getSettings,
   listFindings,
   listItems,
   listItServices,
@@ -36,6 +37,16 @@ export function usePlantCatalogue(projectId: string) {
     queryFn: () => getCatalogue(projectId),
     enabled: !!projectId,
     staleTime: 5 * 60_000,
+    retry: false,
+  });
+}
+
+/** The project's settings; read for the capability flags the server decides. */
+export function usePlantSettings(projectId: string) {
+  return useQuery({
+    queryKey: plantKeys.settings(projectId),
+    queryFn: () => getSettings(projectId),
+    enabled: !!projectId,
     retry: false,
   });
 }

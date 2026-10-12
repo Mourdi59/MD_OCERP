@@ -17,9 +17,10 @@ import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 import { WideModal, WideModalSection } from '@/shared/ui/WideModal';
 
 import { createItem, updateItem, type PlantCatalogue, type PlantItem, type VendorBoundReason } from './api';
-import { ITEM_CLASS, VENDOR_POLICY, VENDOR_REASON, catalogueName, vocab, type LabelContext } from './labels';
-import { DialogFooter, Field, Refusal, fieldClass } from './PlantBits';
+import { ITEM_CLASS, VENDOR_POLICY, VENDOR_REASON, catalogueName, errorText, vocab, type LabelContext } from './labels';
+import { DialogFooter, Field, Refusal, fieldClass, usePlantCan, withheldReason } from './PlantBits';
 import {
+  classificationFrozen,
   emptyItemDraft,
   itemChanges,
   itemDraftOf,
@@ -62,6 +63,10 @@ export function ItemDialog({ open, onClose, projectId, item, catalogue, labels, 
     if (problems.length === 0) save.mutate();
   };
 
+  // The two overrides need the manage capability and stop changing once the route is set.
+  const overrideLock =
+    withheldReason(t, usePlantCan().manage, 'manage_required') ??
+    (item && classificationFrozen(item.status) ? errorText(t, 'classification_frozen') : null);
   const overrideLabel = (value: Override, kind: 'critical' | 'long_lead') => {
     if (value === 'default') {
       return kind === 'critical'
@@ -364,12 +369,14 @@ export function ItemDialog({ open, onClose, projectId, item, catalogue, labels, 
               />
             )}
           </Field>
-          <Field label={t('plant.field.critical', { defaultValue: 'Critical' })}>
+          <Field label={t('plant.field.critical', { defaultValue: 'Critical' })} hint={overrideLock ?? undefined}>
             {(id) => (
               <select
                 id={id}
                 className={fieldClass}
                 value={draft.critical}
+                disabled={overrideLock !== null}
+                data-testid="item-critical-override"
                 onChange={(e) => set('critical', e.target.value as Override)}
               >
                 {OVERRIDES.map((o) => (
@@ -380,12 +387,14 @@ export function ItemDialog({ open, onClose, projectId, item, catalogue, labels, 
               </select>
             )}
           </Field>
-          <Field label={t('plant.item.long_lead', { defaultValue: 'Long-lead' })}>
+          <Field label={t('plant.item.long_lead', { defaultValue: 'Long-lead' })} hint={overrideLock ?? undefined}>
             {(id) => (
               <select
                 id={id}
                 className={fieldClass}
                 value={draft.long_lead}
+                disabled={overrideLock !== null}
+                data-testid="item-long-lead-override"
                 onChange={(e) => set('long_lead', e.target.value as Override)}
               >
                 {OVERRIDES.map((o) => (
@@ -408,6 +417,7 @@ export function ItemDialog({ open, onClose, projectId, item, catalogue, labels, 
                   rows={2}
                   className={fieldClass}
                   value={draft.critical_reason}
+                  disabled={overrideLock !== null}
                   onChange={(e) => set('critical_reason', e.target.value)}
                 />
               )}
@@ -425,6 +435,7 @@ export function ItemDialog({ open, onClose, projectId, item, catalogue, labels, 
                   rows={2}
                   className={fieldClass}
                   value={draft.long_lead_override_reason}
+                  disabled={overrideLock !== null}
                   onChange={(e) => set('long_lead_override_reason', e.target.value)}
                 />
               )}

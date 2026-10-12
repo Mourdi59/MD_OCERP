@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 
-import { Button } from '@/shared/ui/Button';
 import { WideModal, WideModalSection } from '@/shared/ui/WideModal';
 import { fmtDate, fmtNumber } from '@/shared/lib/formatters';
 
@@ -25,7 +24,7 @@ import {
   type PlantCatalogue,
 } from './api';
 import { IT_STATE, catalogueName, vocab, type LabelContext } from './labels';
-import { DialogFooter, Field, IT_TONE, Refusal, Section, ToneBadge, fieldClass } from './PlantBits';
+import { DialogFooter, Field, IT_TONE, Refusal, Section, ToneBadge, WriteButton, fieldClass } from './PlantBits';
 import { itServiceProblems, toItServiceInput, type ItServiceDraft } from './rules';
 
 interface ItServiceDialogProps {
@@ -183,9 +182,9 @@ export function SiteItPanel({ projectId, services, sitePlant, catalogue, labels,
           defaultValue: 'Network, access control, time recording and access to the shared data environment for everybody on site.',
         })}
         action={
-          <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ service: null })} data-testid="it-add">
+          <WriteButton size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ service: null })} data-testid="it-add">
             {t('plant.it.add_submit', { defaultValue: 'Add service' })}
-          </Button>
+          </WriteButton>
         }
       >
         <Refusal error={run.error} className="mb-3" />
@@ -210,7 +209,7 @@ export function SiteItPanel({ projectId, services, sitePlant, catalogue, labels,
                 <span className="text-xs text-content-secondary">{period(s.needed_from, s.needed_until)}</span>
                 {s.status !== 'retired' && (
                   <span className="flex flex-wrap gap-1">
-                    <Button
+                    <WriteButton
                       size="sm"
                       variant="secondary"
                       onClick={() =>
@@ -220,8 +219,8 @@ export function SiteItPanel({ projectId, services, sitePlant, catalogue, labels,
                       {s.status === 'planned'
                         ? t('plant.it.provision', { defaultValue: 'Mark as provided' })
                         : t('plant.it.retire', { defaultValue: 'Mark as retired' })}
-                    </Button>
-                    <Button
+                    </WriteButton>
+                    <WriteButton
                       size="sm"
                       variant="ghost"
                       icon={<Pencil size={14} />}
@@ -229,7 +228,7 @@ export function SiteItPanel({ projectId, services, sitePlant, catalogue, labels,
                       onClick={() => setDialog({ service: s })}
                     />
                     {s.status === 'planned' && (
-                      <Button
+                      <WriteButton
                         size="sm"
                         variant="ghost"
                         icon={<Trash2 size={14} />}

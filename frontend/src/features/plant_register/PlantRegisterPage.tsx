@@ -13,7 +13,6 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { CalendarClock, Compass, Factory, Grid3x3, ListChecks, Plus, Router } from 'lucide-react';
 
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
-import { Button } from '@/shared/ui/Button';
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -33,12 +32,13 @@ import {
   usePeopleNames,
   usePlantCatalogue,
   usePlantItems,
+  usePlantSettings,
   useReadiness,
 } from './hooks';
 import { ItemDialog } from './ItemDialog';
 import { ItemPanel } from './ItemPanel';
 import { LongLeadTimeline } from './LongLeadTimeline';
-import { refusalText } from './PlantBits';
+import { PlantCanContext, WriteButton, canOf, refusalText, withheldReason } from './PlantBits';
 import { RegisterTable } from './RegisterTable';
 import { SiteItPanel } from './SiteItPanel';
 
@@ -66,6 +66,8 @@ export function PlantRegisterPage() {
 
   const catalogueQ = usePlantCatalogue(projectId);
   const itemsQ = usePlantItems(projectId);
+  const can = canOf(usePlantSettings(projectId).data);
+  const readOnly = withheldReason(t, can.edit, 'edit_permission_required');
   const loaded = !!catalogueQ.data && !!itemsQ.data;
   const matrixQ = useLimitMatrix(projectId, loaded && tab === 'limits' && !itemId);
   const itQ = useItServices(projectId, loaded && tab === 'site_it' && !itemId);
@@ -92,9 +94,9 @@ export function PlantRegisterPage() {
           </p>
         </div>
         {loaded && !itemId && (itemsQ.data?.items.length ?? 0) > 0 && (
-          <Button icon={<Plus size={16} />} onClick={() => setAdding(true)} data-testid="plant-add-item">
+          <WriteButton icon={<Plus size={16} />} onClick={() => setAdding(true)} data-testid="plant-add-item">
             {t('plant.item.add_submit', { defaultValue: 'Add item' })}
-          </Button>
+          </WriteButton>
         )}
       </div>
       <CollapsibleSection
@@ -184,7 +186,7 @@ export function PlantRegisterPage() {
           defaultValue:
             'Start with the equipment that takes longest to get, such as the main transformer or the switchgear. Add it here, then record its lead time and the day it is needed.',
         })}
-        action={{ label: t('plant.item.add_submit', { defaultValue: 'Add item' }), onClick: () => setAdding(true) }}
+        action={readOnly ? undefined : { label: t('plant.item.add_submit', { defaultValue: 'Add item' }), onClick: () => setAdding(true) }}
       />
     );
   } else if (tab === 'long_lead') {
@@ -228,8 +230,17 @@ export function PlantRegisterPage() {
   }
 
   return (
+    <PlantCanContext.Provider value={can}>
     <div className="space-y-5 animate-fade-in" data-testid="plant-register-page">
       {header}
+      {readOnly && (
+        <div role="status" data-testid="plant-read-only" className="rounded-md border border-border bg-surface-secondary p-3 text-sm">
+          <p className="font-medium text-content-primary">
+            {t('plant.page.read_only', { defaultValue: 'You can read the plant register but not change it.' })}
+          </p>
+          <p className="text-content-secondary">{readOnly}</p>
+        </div>
+      )}
       {!itemId && (
         <TabBar<Tab>
           ariaLabel={t('plant.page.tabs', { defaultValue: 'Plant register sections' })}
@@ -268,5 +279,6 @@ export function PlantRegisterPage() {
         />
       )}
     </div>
+    </PlantCanContext.Provider>
   );
 }

@@ -22,6 +22,7 @@ vi.mock('../api', async (importOriginal) => {
   return {
     ...actual,
     getCatalogue: vi.fn(),
+    getSettings: vi.fn(),
     listItems: vi.fn(),
     listQuotes: vi.fn(),
     listSlots: vi.fn(),
@@ -40,6 +41,7 @@ import en from '@/app/locales/en';
 import de from '@/app/locales/de';
 import { ApiError } from '@/shared/lib/api';
 import * as api from '../api';
+import type { Capability, PlantSettings } from '../api';
 import { ERROR_TEXT } from '../errors';
 import { EXPORT_NAME } from '../FrameSummary';
 import { ALL_KEY_MAPS } from '../labels';
@@ -49,6 +51,10 @@ import { PROBLEM } from '../rules';
 import { catalogue, frame, item, matrix, page, refusal } from './fixtures';
 
 const mocked = vi.mocked(api);
+
+function settings(edit: Capability = { allowed: true }, manage: Capability = { allowed: true }): PlantSettings {
+  return { catalogue_source: 'shipped', catalogue_id: 'neutral', catalogue_version: 1, pinned: false, can: { edit, manage } };
+}
 
 function renderPage(search = '') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -67,6 +73,7 @@ describe('PlantRegisterPage states', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocked.getCatalogue.mockResolvedValue(catalogue());
+    mocked.getSettings.mockResolvedValue(settings());
     mocked.listItems.mockResolvedValue(page([item(), item({ id: 'i2', code: 'PL-002', title: 'Medium voltage switchgear', order_status: 'ok', float_days: 30 })]));
     for (const list of [mocked.listQuotes, mocked.listSlots, mocked.listPapers, mocked.listLimits, mocked.listSpares, mocked.listFindings]) {
       list.mockResolvedValue(page([]) as never);
@@ -118,6 +125,33 @@ describe('PlantRegisterPage states', () => {
     expect(screen.getByText('How the plant register works')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Long-lead timeline/ })).toHaveTextContent('1');
     expect(screen.getByTestId('plant-add-item')).toBeInTheDocument();
+  });
+
+  it('a reader the server does not let edit is told so once, and the add button is off', async () => {
+    mocked.getSettings.mockResolvedValue(settings({ allowed: false, reason: 'edit_permission_required' }));
+    renderPage();
+    const notice = await screen.findByTestId('plant-read-only');
+    expect(notice).toHaveTextContent('You can read the plant register but not change it.');
+    expect(notice).toHaveTextContent('You do not have permission to change the plant register.');
+    expect(await screen.findAllByTestId('register-row')).toHaveLength(2);
+    expect(screen.getByTestId('plant-add-item')).toBeDisabled();
+  });
+
+  it('an empty register offers no add button to a reader who may not edit', async () => {
+    mocked.listItems.mockResolvedValue(page([]));
+    mocked.getSettings.mockResolvedValue(settings({ allowed: false, reason: 'not_equipment_owner' }));
+    renderPage();
+    expect(await screen.findByTestId('plant-read-only')).toBeInTheDocument();
+    expect(screen.getByText('No plant items yet')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add item' })).toBeNull();
+  });
+
+  it('the buttons stay on when the capability answer cannot be read; the server still decides', async () => {
+    mocked.getSettings.mockRejectedValue(new ApiError(500, 'Server Error', { detail: 'settings failed' }));
+    renderPage();
+    expect(await screen.findAllByTestId('register-row')).toHaveLength(2);
+    expect(screen.getByTestId('plant-add-item')).toBeEnabled();
+    expect(screen.queryByTestId('plant-read-only')).toBeNull();
   });
 
   it('opens the item the URL names and hides the tabs while it is open', async () => {

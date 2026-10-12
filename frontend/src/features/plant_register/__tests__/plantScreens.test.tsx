@@ -28,12 +28,16 @@ vi.mock('../api', async (importOriginal) => {
     transitionSpare: vi.fn(),
     transitionSlot: vi.fn(),
     submitPaper: vi.fn(),
+    withdrawPaper: vi.fn(),
+    escalate: vi.fn(),
     handoverItem: vi.fn(),
     addQuote: vi.fn(),
     createItem: vi.fn(),
     updateItem: vi.fn(),
   };
 });
+
+import { useToastStore } from '@/stores/useToastStore';
 
 import * as api from '../api';
 import { DeliveryLimitsMatrix } from '../DeliveryLimitsMatrix';
@@ -43,7 +47,7 @@ import { QuoteDialog } from '../ItemDialogs';
 import { ItemPanel } from '../ItemPanel';
 import type { LabelContext } from '../labels';
 import { LongLeadTimeline } from '../LongLeadTimeline';
-import { Refusal } from '../PlantBits';
+import { PlantCanContext, Refusal, type PlantCan } from '../PlantBits';
 import { RegisterTable } from '../RegisterTable';
 import { TODAY, catalogue, frame, item, matrix, page, paper, quote, readiness, refusal, slot, spare } from './fixtures';
 import { enT } from './i18nMock';
@@ -58,17 +62,21 @@ function wrap(node: ReactNode) {
   return render(<QueryClientProvider client={qc}>{node}</QueryClientProvider>);
 }
 
-function panel(over: Parameters<typeof item>[0] = {}, onChanged = vi.fn()) {
+const ALLOWED = { allowed: true };
+
+function panel(over: Parameters<typeof item>[0] = {}, onChanged = vi.fn(), can: PlantCan = { edit: ALLOWED, manage: ALLOWED }) {
   wrap(
-    <ItemPanel
-      projectId="p1"
-      item={item(over)}
-      catalogue={cat}
-      labels={labels}
-      personName={nobody}
-      onBack={() => undefined}
-      onChanged={onChanged}
-    />,
+    <PlantCanContext.Provider value={can}>
+      <ItemPanel
+        projectId="p1"
+        item={item(over)}
+        catalogue={cat}
+        labels={labels}
+        personName={nobody}
+        onBack={() => undefined}
+        onChanged={onChanged}
+      />
+    </PlantCanContext.Provider>,
   );
   return onChanged;
 }
@@ -299,6 +307,32 @@ describe('ItemPanel', () => {
     expect(box).toHaveTextContent('The project has no approval route for decision papers.');
   });
 
+  it('a submitted paper can be taken back to draft', async () => {
+    mocked.listPapers.mockResolvedValue(page([paper({ status: 'submitted' })]));
+    mocked.withdrawPaper.mockResolvedValue(paper({ status: 'draft' }));
+    const onChanged = panel();
+    fireEvent.click(await screen.findByTestId('paper-withdraw'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    expect(mocked.withdrawPaper).toHaveBeenCalledWith('p1', 'i1', 'pp1');
+    expect(screen.queryByTestId('paper-submit')).toBeNull();
+  });
+
+  it('a reader the server does not let edit sees every write switched off with the reason', async () => {
+    mocked.listPapers.mockResolvedValue(page([paper()]));
+    panel({}, vi.fn(), {
+      edit: { allowed: false, reason: 'not_equipment_owner' },
+      manage: { allowed: false, reason: 'manage_required' },
+    });
+    const why = 'Only a manager or the owner of the equipment area may change the plant register.';
+    for (const button of [await screen.findByTestId('paper-submit'), screen.getByTestId('item-cancel'), screen.getByTestId('item-set-route')]) {
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('title', why);
+    }
+    // Reading stays open: the way back and the paper as a document.
+    expect(screen.getByText('Back to the register').closest('button')).toBeEnabled();
+    expect(screen.getByText('PDF').closest('button')).toBeEnabled();
+  });
+
   it('an approved paper can no longer be edited or submitted', async () => {
     mocked.listPapers.mockResolvedValue(page([paper({ status: 'approved' })]));
     panel();
@@ -329,19 +363,42 @@ describe('ItemPanel', () => {
     expect(screen.getByTestId('spare-waiver-reason')).toBeInTheDocument();
   });
 
-  it('handover is offered on a commissioned item and sent exactly as confirmed', async () => {
+  it('handover is sent exactly as confirmed, with the reason the item has no service contract', async () => {
     mocked.handoverItem.mockRejectedValueOnce(refusal(422, 'handover_needs_confirmation', 'Handover must be confirmed.'));
     mocked.handoverItem.mockResolvedValueOnce(item({ status: 'handed_over' }));
     const onChanged = panel({ status: 'commissioned' });
     fireEvent.click(screen.getByTestId('item-handover'));
     const dialog = await screen.findByTestId('plant-handover-dialog');
     fireEvent.click(within(dialog).getByTestId('dialog-submit'));
+    expect(within(dialog).getByTestId('dialog-problems')).toHaveTextContent(
+      'Write down why the item is handed over without a service contract.',
+    );
+    expect(mocked.handoverItem).not.toHaveBeenCalled();
+    fireEvent.change(within(dialog).getByTestId('handover-reason'), { target: { value: ' Serviced by the estate team ' } });
+    fireEvent.click(within(dialog).getByTestId('dialog-submit'));
     expect(await within(dialog).findByTestId('plant-refusal')).toHaveTextContent('Handover must be confirmed.');
-    expect(mocked.handoverItem).toHaveBeenLastCalledWith('p1', 'i1', false);
+    expect(mocked.handoverItem).toHaveBeenLastCalledWith('p1', 'i1', false, 'Serviced by the estate team');
     fireEvent.click(within(dialog).getByTestId('handover-confirm'));
     fireEvent.click(within(dialog).getByTestId('dialog-submit'));
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
-    expect(mocked.handoverItem).toHaveBeenLastCalledWith('p1', 'i1', true);
+    expect(mocked.handoverItem).toHaveBeenLastCalledWith('p1', 'i1', true, 'Serviced by the estate team');
+  });
+
+  it('a handover blocked by several rules lists each of them', async () => {
+    mocked.handoverItem.mockRejectedValue(
+      refusal(422, 'transition_blocked', 'The state change is blocked by several rules.', [
+        { code: 'spares_not_handed_over' },
+        { code: 'critical_without_strategic_spares' },
+      ]),
+    );
+    panel({ status: 'commissioned' });
+    fireEvent.click(screen.getByTestId('item-handover'));
+    const dialog = await screen.findByTestId('plant-handover-dialog');
+    fireEvent.change(within(dialog).getByTestId('handover-reason'), { target: { value: 'No contract yet' } });
+    fireEvent.click(within(dialog).getByTestId('dialog-submit'));
+    const box = await within(dialog).findByTestId('plant-refusal');
+    expect(box).toHaveTextContent('Every spare part must be handed over or waived first.');
+    expect(box).toHaveTextContent('A critical item needs a strategic spare or a stated reason why not.');
   });
 
   it('handover is not offered before commissioning', () => {
@@ -380,6 +437,30 @@ describe('dialogs', () => {
       quantity: '2',
       vendor_policy: 'neutral',
     });
+  });
+
+  it('the critical and long-lead overrides are closed to a reader without the manage capability', () => {
+    wrap(
+      <PlantCanContext.Provider value={{ edit: ALLOWED, manage: { allowed: false, reason: 'manage_required' } }}>
+        <ItemDialog open onClose={() => undefined} projectId="p1" item={null} catalogue={cat} labels={labels} personName={nobody} onSaved={() => undefined} />
+      </PlantCanContext.Provider>,
+    );
+    expect(screen.getByTestId('item-critical-override')).toBeDisabled();
+    expect(screen.getByTestId('item-long-lead-override')).toBeDisabled();
+    expect(screen.getAllByText('Only a holder of the plant management permission may change this.')).toHaveLength(2);
+  });
+
+  it('the overrides are frozen once the route is set, and open before', () => {
+    const frozen = wrap(
+      <ItemDialog open onClose={() => undefined} projectId="p1" item={item({ status: 'route_set' })} catalogue={cat} labels={labels} personName={nobody} onSaved={() => undefined} />,
+    );
+    expect(screen.getByTestId('item-critical-override')).toBeDisabled();
+    expect(screen.getAllByText('Critical and long-lead overrides are frozen once the procurement route is set.')).toHaveLength(2);
+    frozen.unmount();
+    wrap(
+      <ItemDialog open onClose={() => undefined} projectId="p1" item={item({ status: 'enquired' })} catalogue={cat} labels={labels} personName={nobody} onSaved={() => undefined} />,
+    );
+    expect(screen.getByTestId('item-critical-override')).toBeEnabled();
   });
 
   it('an edit sends only the field that changed', async () => {
@@ -495,6 +576,18 @@ describe('FrameSummary', () => {
     ]);
     expect(screen.getByText('No route yet')).toBeInTheDocument();
     expect(screen.getAllByTestId('export-row')).toHaveLength(4);
+  });
+
+  it('sending reminders reports the orders due soon as well as the overdue ones', async () => {
+    mocked.escalate.mockResolvedValue({ overdue: ['PL-001'], due_soon: ['PL-002', 'PL-003'], expired_slots: [] });
+    wrap(<FrameSummary projectId="p1" summary={frame()} readiness={readiness()} findings={[]} catalogue={cat} labels={labels} />);
+    fireEvent.click(screen.getByTestId('frame-remind'));
+    await waitFor(() => expect(mocked.escalate).toHaveBeenCalledWith('p1'));
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts.map((toast) => toast.title)).toContain(
+        'Reminders sent. Overdue orders: 1. Orders due soon: 2. Expired slots: 0.',
+      ),
+    );
   });
 
   it('says the register is ready when it is, and that every check passes', () => {

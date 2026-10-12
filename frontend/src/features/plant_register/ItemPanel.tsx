@@ -26,6 +26,7 @@ import {
   downloadExport,
   setBasisQuote,
   submitPaper,
+  withdrawPaper,
   syncItem,
   transitionItem,
   transitionSlot,
@@ -71,6 +72,7 @@ import {
   SPARE_TONE,
   Section,
   ToneBadge,
+  WriteButton,
   fieldClass,
   fmtQuantity,
 } from './PlantBits';
@@ -167,11 +169,11 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
         </div>
         {!closed && (
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" size="sm" icon={<Pencil size={14} />} onClick={() => setDialog({ kind: 'edit' })}>
+            <WriteButton variant="ghost" size="sm" icon={<Pencil size={14} />} onClick={() => setDialog({ kind: 'edit' })}>
               {t('plant.common.edit', { defaultValue: 'Edit' })}
-            </Button>
+            </WriteButton>
             {isReadFromSource(item.status) && (
-              <Button
+              <WriteButton
                 variant="secondary"
                 size="sm"
                 icon={<RefreshCw size={14} />}
@@ -182,26 +184,26 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
                 onClick={() => run.mutate({ where: 'state', call: () => syncItem(projectId, item.id) })}
               >
                 {t('plant.item.sync', { defaultValue: 'Read state from the order' })}
-              </Button>
+              </WriteButton>
             )}
             {item.status === 'commissioned' && (
-              <Button size="sm" onClick={() => setDialog({ kind: 'handover' })} data-testid="item-handover">
+              <WriteButton size="sm" onClick={() => setDialog({ kind: 'handover' })} data-testid="item-handover">
                 {t('plant.handover.open', { defaultValue: 'Hand over to operation' })}
-              </Button>
+              </WriteButton>
             )}
             {next && (
-              <Button
+              <WriteButton
                 size="sm"
                 loading={busy('state')}
                 data-testid="item-next-step"
                 onClick={() => run.mutate({ where: 'state', call: () => transitionItem(projectId, item.id, next) })}
               >
                 {vocab(t, ITEM_STEP_ACTION, next)}
-              </Button>
+              </WriteButton>
             )}
-            <Button variant="ghost" size="sm" onClick={() => setConfirmCancel(true)} data-testid="item-cancel">
+            <WriteButton variant="ghost" size="sm" onClick={() => setConfirmCancel(true)} data-testid="item-cancel">
               {vocab(t, ITEM_STEP_ACTION, 'cancelled')}
-            </Button>
+            </WriteButton>
           </div>
         )}
       </div>
@@ -216,7 +218,7 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
               defaultValue: 'Cancel this item? It stays on record but leaves the dates, the counts and the readiness check. This cannot be undone.',
             })}
           </span>
-          <Button
+          <WriteButton
             size="sm"
             variant="danger"
             loading={busy('state')}
@@ -227,7 +229,7 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
             }}
           >
             {t('plant.item.cancel_yes', { defaultValue: 'Yes, cancel the item' })}
-          </Button>
+          </WriteButton>
           <Button size="sm" variant="ghost" onClick={() => setConfirmCancel(false)}>
             {t('plant.item.cancel_no', { defaultValue: 'Keep it' })}
           </Button>
@@ -326,9 +328,9 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
         testId="item-quotes"
         action={
           !closed && (
-            <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'quote' })}>
+            <WriteButton size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'quote' })}>
               {t('plant.quote.add', { defaultValue: 'Add lead time' })}
-            </Button>
+            </WriteButton>
           )
         }
       >
@@ -369,14 +371,14 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
                   </Badge>
                 ) : (
                   !closed && (
-                    <Button
+                    <WriteButton
                       size="sm"
                       variant="ghost"
                       loading={busy('quotes')}
                       onClick={() => run.mutate({ where: 'quotes', call: () => setBasisQuote(projectId, item.id, q.id) })}
                     >
                       {t('plant.quote.use_as_basis', { defaultValue: 'Plan on this' })}
-                    </Button>
+                    </WriteButton>
                   )
                 )}
               </li>
@@ -397,11 +399,11 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
         testId="item-route"
         action={
           !closed && (
-            <Button size="sm" variant="secondary" onClick={() => setDialog({ kind: 'route' })} data-testid="item-set-route">
+            <WriteButton size="sm" variant="secondary" onClick={() => setDialog({ kind: 'route' })} data-testid="item-set-route">
               {item.procurement_route
                 ? t('plant.route.change', { defaultValue: 'Change route' })
                 : t('plant.route.submit', { defaultValue: 'Set route' })}
-            </Button>
+            </WriteButton>
           )
         }
       >
@@ -439,23 +441,37 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
               )}
               {paper?.status === 'draft' && !closed && (
                 <>
-                  <Button size="sm" variant="secondary" onClick={() => setDialog({ kind: 'paper', paper })}>
+                  <WriteButton size="sm" variant="secondary" onClick={() => setDialog({ kind: 'paper', paper })}>
                     {t('plant.common.edit', { defaultValue: 'Edit' })}
-                  </Button>
-                  <Button
+                  </WriteButton>
+                  <WriteButton
                     size="sm"
                     loading={busy('paper')}
                     data-testid="paper-submit"
                     onClick={() => run.mutate({ where: 'paper', call: () => submitPaper(projectId, item.id, paper.id) })}
                   >
                     {t('plant.paper.submit', { defaultValue: 'Submit for approval' })}
-                  </Button>
+                  </WriteButton>
                 </>
               )}
+              {paper?.status === 'submitted' && !closed && (
+                <WriteButton
+                  size="sm"
+                  variant="secondary"
+                  loading={busy('paper')}
+                  data-testid="paper-withdraw"
+                  title={t('plant.paper.withdraw_hint', {
+                    defaultValue: 'Stops the approval and makes the paper a draft again, so it can be changed.',
+                  })}
+                  onClick={() => run.mutate({ where: 'paper', call: () => withdrawPaper(projectId, item.id, paper.id) })}
+                >
+                  {t('plant.paper.withdraw', { defaultValue: 'Take back to draft' })}
+                </WriteButton>
+              )}
               {(!paper || paper.status === 'rejected') && !closed && (
-                <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'paper', paper: null })}>
+                <WriteButton size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'paper', paper: null })}>
                   {t('plant.paper.write', { defaultValue: 'Write decision paper' })}
-                </Button>
+                </WriteButton>
               )}
             </div>
           </div>
@@ -517,9 +533,9 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
         action={
           !closed &&
           (!slot || !slotIsOpen(slot.status)) && (
-            <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'slot', slot: null })}>
+            <WriteButton size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'slot', slot: null })}>
               {t('plant.slot.add_submit', { defaultValue: 'Reserve slot' })}
-            </Button>
+            </WriteButton>
           )
         }
       >
@@ -575,21 +591,21 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
             {slot.terms && <p className="text-xs text-content-secondary">{slot.terms}</p>}
             {slotIsOpen(slot.status) && !closed && (
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setDialog({ kind: 'slot', slot })}>
+                <WriteButton size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setDialog({ kind: 'slot', slot })}>
                   {t('plant.common.edit', { defaultValue: 'Edit' })}
-                </Button>
+                </WriteButton>
                 {slot.status === 'requested' && (
-                  <Button
+                  <WriteButton
                     size="sm"
                     loading={busy('slot')}
                     data-testid="slot-hold"
                     onClick={() => run.mutate({ where: 'slot', call: () => transitionSlot(projectId, item.id, slot.id, 'held') })}
                   >
                     {t('plant.slot.hold', { defaultValue: 'Confirm the slot is held' })}
-                  </Button>
+                  </WriteButton>
                 )}
                 {slot.status === 'held' && (
-                  <Button
+                  <WriteButton
                     size="sm"
                     loading={busy('slot')}
                     onClick={() =>
@@ -597,15 +613,15 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
                     }
                   >
                     {t('plant.slot.convert', { defaultValue: 'Converted to an order' })}
-                  </Button>
+                  </WriteButton>
                 )}
-                <Button
+                <WriteButton
                   size="sm"
                   variant="ghost"
                   onClick={() => run.mutate({ where: 'slot', call: () => transitionSlot(projectId, item.id, slot.id, 'released') })}
                 >
                   {t('plant.slot.release', { defaultValue: 'Release the slot' })}
-                </Button>
+                </WriteButton>
               </div>
             )}
           </div>
@@ -625,9 +641,9 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
         testId="item-limits"
         action={
           !closed && (
-            <Button size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setDialog({ kind: 'limits' })}>
+            <WriteButton size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setDialog({ kind: 'limits' })}>
               {t('plant.common.edit', { defaultValue: 'Edit' })}
-            </Button>
+            </WriteButton>
           )
         }
       >
@@ -671,9 +687,9 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
         testId="item-spares"
         action={
           !closed && (
-            <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'spare', spare: null })}>
+            <WriteButton size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'spare', spare: null })}>
               {t('plant.spare.add_submit', { defaultValue: 'Add spare' })}
-            </Button>
+            </WriteButton>
           )
         }
       >
@@ -700,7 +716,7 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
                     {spareIsOpen(s.status) && !closed && waiving !== s.id && (
                       <span className="flex flex-wrap gap-1">
                         {step && (
-                          <Button
+                          <WriteButton
                             size="sm"
                             variant="secondary"
                             onClick={() =>
@@ -708,9 +724,9 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
                             }
                           >
                             {vocab(t, SPARE_STEP_ACTION, step)}
-                          </Button>
+                          </WriteButton>
                         )}
-                        <Button
+                        <WriteButton
                           size="sm"
                           variant="ghost"
                           data-testid="spare-waive"
@@ -720,17 +736,17 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
                           }}
                         >
                           {vocab(t, SPARE_STEP_ACTION, 'waived')}
-                        </Button>
+                        </WriteButton>
                         {s.status === 'required' && (
                           <>
-                            <Button
+                            <WriteButton
                               size="sm"
                               variant="ghost"
                               icon={<Pencil size={14} />}
                               aria-label={t('plant.spare.edit_title', { defaultValue: 'Edit the spare' })}
                               onClick={() => setDialog({ kind: 'spare', spare: s })}
                             />
-                            <Button
+                            <WriteButton
                               size="sm"
                               variant="ghost"
                               icon={<Trash2 size={14} />}
@@ -759,7 +775,7 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
                         onChange={(e) => setWaiverReason(e.target.value)}
                       />
                       <div className="flex gap-2">
-                        <Button
+                        <WriteButton
                           size="sm"
                           loading={busy('spares')}
                           data-testid="spare-waive-send"
@@ -771,7 +787,7 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
                           }
                         >
                           {t('plant.spare.waive_send', { defaultValue: 'Waive spare' })}
-                        </Button>
+                        </WriteButton>
                         <Button size="sm" variant="ghost" onClick={() => setWaiving(null)}>
                           {t('plant.common.cancel', { defaultValue: 'Cancel' })}
                         </Button>

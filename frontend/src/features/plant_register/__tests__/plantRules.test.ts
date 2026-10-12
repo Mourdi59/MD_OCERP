@@ -14,6 +14,7 @@ import { catalogueName, errorText, humanizeCode, type LabelContext } from '../la
 import { longLeadOrder } from '../LongLeadTimeline';
 import {
   buildTimeline,
+  classificationFrozen,
   emptyItemDraft,
   emptyQuoteDraft,
   emptySlotDraft,
@@ -134,6 +135,9 @@ describe('item draft', () => {
     const base = { ...emptyItemDraft(), code: 'PL-9', title: 'x', component_class_code: 'lift' };
     expect(itemProblems({ ...base, quantity: '0' }, true)).toEqual(['quantity_invalid']);
     expect(itemProblems({ ...base, quantity: 'two' }, true)).toEqual(['quantity_invalid']);
+    // The server keeps three decimals on a quantity and refuses a finer one.
+    expect(itemProblems({ ...base, quantity: '1.2345' }, true)).toEqual(['quantity_invalid']);
+    expect(itemProblems({ ...base, quantity: '1.234' }, true)).toEqual([]);
   });
 
   it('a create sends the quantity as a string and nothing the reader left empty', () => {
@@ -182,6 +186,11 @@ describe('states', () => {
     expect(nextManualStep('specified')).toBe('enquired');
     expect(nextManualStep('enquired')).toBe('route_set');
     expect(nextManualStep('ordered')).toBe('manufactured');
+  });
+
+  it('freezes the critical and long-lead overrides from the day the route is set', () => {
+    expect((['identified', 'specified', 'enquired'] as const).map(classificationFrozen)).toEqual([false, false, false]);
+    expect((['route_set', 'ordered', 'commissioned', 'handed_over', 'cancelled'] as const).every(classificationFrozen)).toBe(true);
   });
 
   it('offers no hand step where the state is read from the order or commissioning', () => {
@@ -251,9 +260,15 @@ describe('production slot draft', () => {
 
   it('refuses a window that ends before it starts, a negative fee and a currency that is no code', () => {
     expect(slotProblems({ ...emptySlotDraft(), slot_from: '2027-03-01', slot_to: '2027-02-01' })).toEqual(['slot_range']);
-    expect(slotProblems({ ...emptySlotDraft(), reservation_fee: '-5' })).toEqual(['fee_invalid']);
+    expect(slotProblems({ ...emptySlotDraft(), reservation_fee: '-5', currency: 'EUR' })).toEqual(['fee_invalid']);
+    expect(slotProblems({ ...emptySlotDraft(), reservation_fee: '10.005', currency: 'EUR' })).toEqual(['fee_invalid']);
     expect(slotProblems({ ...emptySlotDraft(), currency: 'euro' })).toEqual(['currency_invalid']);
     expect(slotProblems(emptySlotDraft())).toEqual([]);
+  });
+
+  it('a fee is not sent without its currency', () => {
+    expect(slotProblems({ ...emptySlotDraft(), reservation_fee: '500' })).toEqual(['fee_currency_required']);
+    expect(slotProblems({ ...emptySlotDraft(), reservation_fee: '500', currency: 'eur' })).toEqual([]);
   });
 });
 
@@ -303,6 +318,13 @@ describe('decision paper draft', () => {
     const worded = { ...draft, options: [{ ...draft.options[0]!, scores: { c1: 'good' } }, draft.options[1]!] };
     expect(paperProblems(worded)).toEqual(['score_invalid']);
     expect(paperProblems(draft)).toEqual([]);
+  });
+
+  it('refuses a cost without its currency and a cost finer than cents', () => {
+    const bare = { ...draft, options: [{ ...draft.options[0]!, currency: '' }, draft.options[1]!] };
+    expect(paperProblems(bare)).toEqual(['cost_currency_required']);
+    const fine = { ...draft, options: [{ ...draft.options[0]!, cost: '410000.125' }, draft.options[1]!] };
+    expect(paperProblems(fine)).toEqual(['score_invalid']);
   });
 
   it('makes a code from a title and falls back when the title has no letters', () => {
