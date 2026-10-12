@@ -334,7 +334,7 @@ describe('ExposureBlock and ReleaseHistory', () => {
     wrap(<ExposureBlock exposure={exposure()} labels={labels} />);
     const cell = screen.getByTestId('exposure-residual');
     expect(within(cell).queryByTestId('amount-unknown')).toBeNull();
-    expect(cell.textContent).toMatch(/240[,.\s  ]?000/);
+    expect(cell.textContent).toMatch(/240[,.\s]?000/);
     expect(screen.queryByTestId('exposure-unconfirmed')).toBeNull();
   });
 
@@ -616,7 +616,7 @@ describe('ItemPanel', () => {
     const box = screen.getByTestId('abort-outcome');
     expect(box.textContent).toContain('Client cancelled the wing');
     expect(box.textContent).toContain('Dana Weber');
-    expect(screen.getByTestId('abort-residual').textContent).toMatch(/240[,.\s  ]?000/);
+    expect(screen.getByTestId('abort-residual').textContent).toMatch(/240[,.\s]?000/);
     expect(screen.getByTestId('abort-follow-up').textContent).toContain(enT('commitment.abort.follow_up.terminate'));
     // An ended item offers neither a stop nor a hand-over.
     expect(screen.queryByTestId('end-item')).toBeNull();
@@ -682,6 +682,6 @@ describe('ItemPanel', () => {
   it('warns when more is bound than released, with the difference', () => {
     panel({ status: 'committed', committed: '1700000.00', released: '1500000.00', over_release: true });
     const warning = screen.getByTestId('item-over-release');
-    expect(warning.textContent).toMatch(/200[,.\s  ]?000/);
+    expect(warning.textContent).toMatch(/200[,.\s]?000/);
   });
 });

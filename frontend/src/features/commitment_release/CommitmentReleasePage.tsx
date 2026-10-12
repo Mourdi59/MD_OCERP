@@ -169,6 +169,16 @@ export function CommitmentReleasePage() {
             defaultValue: 'First choose who may approve up to which amount. After that you add the items the project will commit money to.',
           })}
         />
+        {capsQ.isError && (
+          <ErrorState
+            compact
+            title={t('commitment.page.capabilities_failed', {
+              defaultValue: 'What you may do here could not be loaded, so every action is off',
+            })}
+            hint={getErrorMessage(capsQ.error)}
+            onRetry={() => capsQ.refetch()}
+          />
+        )}
         <MatrixSettings projectId={projectId} matrix={null} can={can} labels={labels} onSaved={invalidate} />
       </div>
     );

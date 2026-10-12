@@ -500,7 +500,7 @@ describe('what would happen', () => {
     expect(result).toHaveAttribute('data-outcome', 'block');
     expect(result).toHaveTextContent(enT('commitment.check.outcome.block'));
     expect(screen.getByTestId('check-reason')).toHaveAttribute('data-code', 'commitment_not_released');
-    expect(screen.getByTestId('check-would-commit').textContent).toMatch(/1[.,\s  ]?900[.,\s  ]?000/);
+    expect(screen.getByTestId('check-would-commit').textContent).toMatch(/1[.,\s]?900[.,\s]?000/);
   });
 
   it('an amount that fits says so, and names no figure it was not given', async () => {

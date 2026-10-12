@@ -55,6 +55,8 @@ export function useCapabilities(projectId: string) {
     queryKey: commitmentKeys.capabilities(projectId),
     queryFn: () => getCapabilities(projectId),
     enabled: !!projectId,
+    // A failure is shown with its own retry button; silent retries would read as "checking" for seconds.
+    retry: false,
   });
 }
 

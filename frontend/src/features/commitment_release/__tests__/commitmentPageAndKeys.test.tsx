@@ -128,6 +128,16 @@ describe('CommitmentReleasePage states', () => {
     expect(screen.getByTestId('disabled-reason').getAttribute('data-reason')).toBe('unavailable');
   });
 
+  it('a failed capability request is said with a retry before a matrix exists too', async () => {
+    mocked.getCapabilities.mockRejectedValue(new ApiError(500, 'Server Error', { detail: 'down' }));
+    mocked.getMatrix.mockRejectedValue(
+      new ApiError(404, 'Not Found', { detail: { code: 'matrix_missing', message: 'No commitment matrix' } }),
+    );
+    renderPage();
+    expect(await screen.findByText(enText('commitment.page.capabilities_failed'))).toBeInTheDocument();
+    expect(screen.getByText(NO_MATRIX)).toBeInTheDocument();
+  });
+
   it('a failing item list is an error also when a link names an item', async () => {
     mocked.getMatrix.mockResolvedValue(matrix());
     mocked.listItems.mockRejectedValue(new ApiError(500, 'Server Error', { detail: 'database unavailable' }));
