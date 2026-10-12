@@ -74,7 +74,11 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
   const canUnlink = c.state === 'open' || c.state === 'evidence_submitted';
   // The server names who may close the condition; when it refuses every way, the button says why.
   const gates = c.can?.discharge;
-  const refused = dischargeModes(c).map((m) => gates?.[m]);
+  const openModes = dischargeModes(c).filter((m) => gates?.[m]?.applies !== false);
+  const canDischarge = can('discharge') && openModes.length > 0;
+  const refused = openModes.map((m) => gates?.[m]);
+  // Tracking a limit follows the server alone; a proposal nobody confirmed counts nowhere, so it waits.
+  const linkGate = gate(c.can?.link_requirement, can('link_requirement'));
   const dischargeRefusal =
     refused.length > 0 && refused.every((g) => g?.allowed === false) ? errorText(t as TFn, refused[0]?.reason ?? '', null) : null;
 
@@ -134,7 +138,7 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
                   : t('permits.ui.ongoing.submit_compliance', { defaultValue: 'Record compliance' })}
               </GatedButton>
             )}
-            {can('discharge') && (
+            {canDischarge && (
               <Button size="sm" variant={c.state === 'evidence_submitted' ? 'primary' : 'secondary'} disabled={!!dischargeRefusal} onClick={() => setDialog('discharge')} data-testid="condition-discharge">
                 {t('permits.ui.discharge.submit', { defaultValue: 'Close condition' })}
               </Button>
@@ -149,10 +153,10 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
                 {t('permits.ui.edit', { defaultValue: 'Edit' })}
               </GatedButton>
             )}
-            {can('link_requirement') && (
-              <Button size="sm" variant="ghost" onClick={() => setDialog('link')} data-testid="condition-link">
+            {c.confirmed && (
+              <GatedButton gate={linkGate} size="sm" variant="ghost" onClick={() => setDialog('link')} data-testid="condition-link">
                 {t('permits.ui.link.open', { defaultValue: 'Track a limit' })}
-              </Button>
+              </GatedButton>
             )}
           </>
         }
@@ -168,10 +172,11 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
           can('breach') && [t('permits.ui.ongoing.submit_breach', { defaultValue: 'Raise breach' }), gate(c.can?.breach, true)],
           can('edit') && [t('permits.ui.edit', { defaultValue: 'Edit' }), gate(c.can?.edit, true)],
           can('add_evidence') && [t('permits.ui.evidence.submit', { defaultValue: 'Add evidence' }), gate(c.can?.add_evidence, true)],
+          c.confirmed && [t('permits.ui.link.open', { defaultValue: 'Track a limit' }), linkGate],
         ]}
       />
       {refusal && <Refusal testId="condition-refusal">{refusal}</Refusal>}
-      {can('discharge') && dischargeRefusal && (
+      {canDischarge && dischargeRefusal && (
         <p role="status" className="rounded-md border border-border-light bg-surface-secondary px-3 py-2 text-sm text-content-secondary" data-testid="discharge-refusal">
           {t('permits.ui.discharge.not_you', { defaultValue: 'You cannot close this condition: {{reason}}', reason: dischargeRefusal })}
         </p>

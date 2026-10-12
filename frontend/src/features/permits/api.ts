@@ -509,6 +509,7 @@ export interface ConditionCan {
   breach?: CanFlag;
   in_compliance?: CanFlag;
   confirm?: CanFlag;
+  link_requirement?: CanFlag;
   discharge?: DischargeCan;
 }
 
@@ -603,6 +604,8 @@ export interface Discharge {
 /** Whether the reader may close the condition in one way, and the refusal code when not. */
 export interface DischargeGate {
   allowed: boolean;
+  /** False when this way of closing is not for the condition as it stands; it is then not offered. */
+  applies?: boolean;
   reason: string | null;
 }
 

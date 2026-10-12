@@ -521,7 +521,7 @@ export function DischargeDialog({
   can,
 }: ConditionActionDialogProps & { can?: DischargeCan }) {
   const { t } = useTranslation();
-  const modes = dischargeModes(condition);
+  const modes = dischargeModes(condition).filter((m) => can?.[m]?.applies !== false);
   // The server says which ways are open to this reader; without its word every way the state allows is offered.
   const blocked = (m: DischargeMode) => can?.[m]?.allowed === false;
   const free = modes.filter((m) => !blocked(m));

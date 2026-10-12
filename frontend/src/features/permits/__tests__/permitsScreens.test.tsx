@@ -515,6 +515,33 @@ describe('ConditionPanel', () => {
     expect(screen.queryByTestId('discharge-refusal')).toBeNull();
     expect(await screen.findByText(/Traffic plan/)).toBeInTheDocument();
   });
+
+  it('offers to track a limit on the word of the server, and leaves out a way of closing that does not apply', async () => {
+    vi.mocked(cde.fetchCDEContainers).mockResolvedValue([]);
+    const gone = { allowed: false, applies: false, reason: 'invalid_transition' };
+    mocked.getCondition.mockResolvedValue({
+      ...detail,
+      can: {
+        link_requirement: { allowed: false, applies: true, reason: 'edit_required' },
+        discharge: { self_certified: gone, waived_by_authority: gone },
+      },
+    });
+    const view = renderIn(<ConditionPanel projectId="p1" conditionId="c1" row={condition()} personName={personName} onBack={vi.fn()} />);
+    expect(await screen.findByTestId('condition-link')).toBeDisabled();
+    expect(screen.getByTestId('refused-actions')).toHaveTextContent('Track a limit: You need the right to edit permits for this.');
+    // No way of closing applies, so the button is not there at all and no refusal is written for it.
+    expect(screen.queryByTestId('condition-discharge')).toBeNull();
+    expect(screen.queryByTestId('discharge-refusal')).toBeNull();
+    view.unmount();
+
+    mocked.getCondition.mockResolvedValue({
+      ...detail,
+      can: { link_requirement: { allowed: false, applies: false, reason: 'condition_already_linked' } },
+    });
+    renderIn(<ConditionPanel projectId="p1" conditionId="c1" row={condition()} personName={personName} onBack={vi.fn()} />);
+    expect(await screen.findByTestId('condition-discharge')).toBeInTheDocument();
+    expect(screen.queryByTestId('condition-link')).toBeNull();
+  });
 });
 
 describe('ChecksPanel', () => {
