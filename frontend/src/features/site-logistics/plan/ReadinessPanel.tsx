@@ -1,0 +1,220 @@
+// DDC-CWICR-OE: DataDrivenConstruction - OpenConstructionERP
+// Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+//
+// Whether the logistics area is ready for its gate: the six checks the
+// server evaluates, every open finding behind them, the dated sweep, the
+// exports for the file, and the catalogue the project's figures come from.
+
+import { useState } from 'react';
+import { AlertTriangle, CheckCircle2, CircleAlert, Download, RefreshCw, XCircle } from 'lucide-react';
+
+import { Badge } from '@/shared/ui/Badge';
+import { Button } from '@/shared/ui/Button';
+import { useToastStore } from '@/stores/useToastStore';
+
+import { REGISTERS, exportRegister, pinCatalogue, runSweep, type Register } from './api';
+import { useCatalogueChoices, useInvalidatePlan, useReadiness, useReportProblem, useWords } from './hooks';
+import { Card, FormDialog, Loaded, PanelHead } from './PlanBits';
+import { enumLabel, findingText, humanise, type Field } from './rules';
+import type { PanelProps } from './SitePanels';
+import { isTextKey, tx } from './texts';
+
+export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
+  const words = useWords();
+  const { t, language } = words;
+  const readiness = useReadiness(projectId);
+  const invalidate = useInvalidatePlan(projectId);
+  const report = useReportProblem(catalogue);
+  const addToast = useToastStore((s) => s.addToast);
+  const [sweeping, setSweeping] = useState(false);
+  const [exporting, setExporting] = useState<string | null>(null);
+  const [pinning, setPinning] = useState(false);
+  const choices = useCatalogueChoices(projectId, pinning);
+
+  const sweep = async () => {
+    setSweeping(true);
+    try {
+      const result = await runSweep(projectId);
+      await invalidate();
+      addToast({
+        type: 'success',
+        title: tx(t, 'readiness.sweep_done'),
+        message: tx(t, 'readiness.sweep_result', {
+          permits: Object.values(result.permits).reduce((a, b) => a + b, 0),
+          complaints: result.complaints_overdue,
+          arrived: result.transports_arrived,
+        }),
+      });
+    } catch (err) {
+      report(err);
+    } finally {
+      setSweeping(false);
+    }
+  };
+
+  const download = async (register: Register, format: 'pdf' | 'xlsx') => {
+    setExporting(`${register}.${format}`);
+    try {
+      await exportRegister(projectId, register, format);
+    } catch (err) {
+      report(err);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const evidence = (code: string) => {
+    const key = `evidence.${code}`;
+    return isTextKey(key) ? tx(t, key) : humanise(code);
+  };
+
+  const pinFields: Field[] = [
+    {
+      name: 'choice',
+      label: 'f.catalogue',
+      kind: 'select',
+      required: true,
+      wide: true,
+      options: (choices.data ?? []).map((c) => ({
+        value: `${c.source}:${c.id}`,
+        label: c.name.text?.[language] ?? c.name.text?.en ?? humanise(c.code || c.id),
+      })),
+    },
+  ];
+
+  return (
+    <section className="space-y-5" data-testid="plan-readiness">
+      <div className="space-y-3">
+        <PanelHead title="tab.readiness">
+          <Button size="sm" variant="secondary" loading={sweeping} onClick={() => void sweep()} data-testid="plan-sweep">
+            <RefreshCw size={14} className="mr-1" />
+            {tx(t, 'readiness.sweep')}
+          </Button>
+        </PanelHead>
+        <p className="text-sm text-content-secondary">{tx(t, 'readiness.lead')}</p>
+        <Loaded query={readiness}>
+          {(r) => (
+            <>
+              <div
+                className="flex items-center gap-2 text-base font-semibold text-content-primary"
+                data-testid="plan-ready-verdict"
+                data-ready={r.ready}
+              >
+                {r.ready ? (
+                  <CheckCircle2 size={18} className="text-semantic-success" aria-hidden />
+                ) : (
+                  <CircleAlert size={18} className="text-semantic-error" aria-hidden />
+                )}
+                {tx(t, r.ready ? 'readiness.ready' : 'readiness.not_ready')}
+              </div>
+              <ul className="space-y-1.5">
+                {r.items.map((item) => (
+                  <li key={item.code} className="flex items-start gap-2 text-sm" data-testid="plan-ready-item" data-state={item.state}>
+                    {item.state === 'met' ? (
+                      <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-semantic-success" aria-hidden />
+                    ) : (
+                      <XCircle size={15} className="mt-0.5 shrink-0 text-semantic-error" aria-hidden />
+                    )}
+                    <span className="text-content-primary">{evidence(item.code)}</span>
+                    <span className="sr-only">{tx(t, item.state === 'met' ? 'readiness.met' : 'readiness.not_met')}</span>
+                  </li>
+                ))}
+              </ul>
+              <div>
+                <h4 className="text-sm font-semibold text-content-primary">{tx(t, 'readiness.findings')}</h4>
+                {r.findings.length === 0 ? (
+                  <p className="mt-1 text-sm text-content-secondary">{tx(t, 'empty.readiness_findings')}</p>
+                ) : (
+                  <ul className="mt-2 space-y-1.5">
+                    {r.findings.map((f, i) => (
+                      <li key={`${f.code}-${f.ref}-${i}`} className="flex items-start gap-2 text-sm" data-testid="plan-finding" data-severity={f.severity}>
+                        <Badge variant={f.severity === 'error' ? 'error' : 'warning'} size="sm">
+                          {tx(t, f.severity === 'error' ? 'readiness.error' : 'readiness.warning')}
+                        </Badge>
+                        <span className="text-content-primary">{findingText(words, f, catalogue)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </>
+          )}
+        </Loaded>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="text-base font-semibold text-content-primary">{tx(t, 'readiness.export')}</h3>
+        <p className="text-sm text-content-secondary">{tx(t, 'readiness.export_lead')}</p>
+        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {REGISTERS.map((register) => (
+            <li key={register} className="flex items-center justify-between gap-2 rounded-lg border border-border-light p-2">
+              <span className="text-sm text-content-primary">{tx(t, `register.${register}`)}</span>
+              <span className="flex gap-1">
+                {(['pdf', 'xlsx'] as const).map((format) => (
+                  <Button
+                    key={format}
+                    size="sm"
+                    variant="ghost"
+                    loading={exporting === `${register}.${format}`}
+                    onClick={() => void download(register, format)}
+                    data-testid={`plan-export-${register}-${format}`}
+                  >
+                    <Download size={13} className="mr-1" />
+                    {tx(t, `readiness.${format}`)}
+                  </Button>
+                ))}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {catalogue && (
+        <ul>
+          <Card testId="plan-catalogue">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-content-primary">{tx(t, 'readiness.catalogue')}</span>
+              <span className="text-sm text-content-secondary">
+                {tx(t, 'readiness.catalogue_version', {
+                  id: catalogue.labels?.[language] ?? catalogue.labels?.en ?? humanise(catalogue.pin.id),
+                  version: catalogue.pin.version ?? catalogue.version,
+                })}
+              </span>
+              <Badge variant="neutral" size="sm">
+                {enumLabel(t, 'source', catalogue.pin.source)}
+              </Badge>
+              <span className="ml-auto">
+                <Button size="sm" variant="secondary" onClick={() => setPinning(true)} data-testid="plan-change-catalogue">
+                  {tx(t, 'readiness.change_catalogue')}
+                </Button>
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-content-secondary">{tx(t, 'readiness.catalogue_hint')}</p>
+            {catalogue.review_status !== 'verified' && (
+              <p className="mt-1 flex items-start gap-1.5 text-xs text-semantic-warning" data-testid="plan-catalogue-unconfirmed">
+                <AlertTriangle size={13} className="mt-0.5 shrink-0" aria-hidden />
+                {tx(t, 'readiness.catalogue_unconfirmed')}
+              </p>
+            )}
+          </Card>
+        </ul>
+      )}
+      {pinning && catalogue && (
+        <FormDialog
+          title="edit_title.catalogue"
+          fields={pinFields}
+          defaults={{ choice: `${catalogue.pin.source}:${catalogue.pin.id}` }}
+          projectId={projectId}
+          catalogue={catalogue}
+          shape={(body) => {
+            const [source, id] = String(body.choice ?? '').split(':');
+            return { source, catalogue_id: id };
+          }}
+          onSubmit={(body) => pinCatalogue(projectId, body)}
+          onSaved={invalidate}
+          onClose={() => setPinning(false)}
+        />
+      )}
+    </section>
+  );
+}

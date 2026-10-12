@@ -30,6 +30,7 @@ import {
   Search,
   Unlink,
   ClipboardList,
+  Route,
 } from 'lucide-react';
 import {
   Button,
@@ -45,6 +46,8 @@ import {
 import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { IssueHubLink } from '@/features/issues/IssueHubLink';
+import { LogisticsPlan } from './plan/LogisticsPlan';
+import { GateLimits } from './plan/GateLimits';
 import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { getErrorMessage } from '@/shared/lib/api';
@@ -1587,6 +1590,7 @@ function GateCard({
         })}
       </div>
       {gate.notes && <p className="text-2xs text-content-tertiary">{gate.notes}</p>}
+      <GateLimits gate={gate} canEdit={canEdit} />
     </Card>
   );
 }
@@ -2701,7 +2705,7 @@ function BillCoveragePanel({ projectId }: { projectId: string }) {
   );
 }
 
-type TabKey = 'deliveries' | 'timeline' | 'coverage' | 'gates' | 'laydown';
+type TabKey = 'deliveries' | 'timeline' | 'coverage' | 'gates' | 'laydown' | 'plan';
 
 export function SiteLogisticsPage() {
   const { t } = useTranslation();
@@ -2848,6 +2852,11 @@ export function SiteLogisticsPage() {
       label: t('siteLogistics.tab_laydown', { defaultValue: 'Laydown zones' }),
       icon: <Package size={14} />,
     },
+    {
+      key: 'plan',
+      label: t('site_logistics.plan.title', { defaultValue: 'Logistics plan' }),
+      icon: <Route size={14} />,
+    },
   ];
 
   const statCards = stats
@@ -2956,6 +2965,7 @@ export function SiteLogisticsPage() {
         {tabs.map((tb) => (
           <button
             key={tb.key}
+            data-testid={`site-logistics-tab-${tb.key}`}
             onClick={() => setTab(tb.key)}
             className={clsx(
               'flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
@@ -2991,6 +3001,8 @@ export function SiteLogisticsPage() {
         <BillCoveragePanel projectId={projectId} />
       ) : tab === 'gates' ? (
         <GatesPanel projectId={projectId} />
+      ) : tab === 'plan' ? (
+        <LogisticsPlan projectId={projectId} />
       ) : (
         <LaydownPanel projectId={projectId} />
       )}

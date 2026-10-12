@@ -27,6 +27,15 @@ export interface Gate {
   close_time: string;
   capacity_per_slot: number;
   notes: string | null;
+  /** Catalogue code of the kind of access (road gate, rail siding ...). */
+  access_kind?: string | null;
+  /** Load and dimension limits as decimal strings; the plan checks transports against them. */
+  max_axle_load_t?: string | null;
+  max_gross_t?: string | null;
+  max_height_m?: string | null;
+  max_width_m?: string | null;
+  max_length_m?: string | null;
+  turning_radius_m?: string | null;
   created_by: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
@@ -148,6 +157,15 @@ export interface CreateGatePayload {
   close_time?: string;
   capacity_per_slot?: number;
   notes?: string;
+  /** Catalogue code of the kind of access (road gate, rail siding ...). */
+  access_kind?: string | null;
+  /** Load and dimension limits as decimal strings; the plan checks transports against them. */
+  max_axle_load_t?: string | null;
+  max_gross_t?: string | null;
+  max_height_m?: string | null;
+  max_width_m?: string | null;
+  max_length_m?: string | null;
+  turning_radius_m?: string | null;
 }
 
 export type UpdateGatePayload = Partial<Omit<CreateGatePayload, 'project_id'>>;
