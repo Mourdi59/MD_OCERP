@@ -4,8 +4,7 @@
 
 Built on :mod:`app.core.register_export`; every label comes from this module's
 message bundle. These exports are what the governance frame documents
-``dev_permit_roadmap`` / ``dev_special_permits`` (roadmap) and
-``dev_permit_conditions`` (conditions) store as CDE revisions at a gate (rule 18).
+the governance model hosts permits in stores as CDE revisions at a gate (rule 18).
 """
 
 from __future__ import annotations

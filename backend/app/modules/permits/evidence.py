@@ -3,9 +3,9 @@
 """Gate readiness evidence for module 1 (SPEC rule 19).
 
 Two providers, registered for every area (``"*"``). Which area and which gate
-they answer for is read from the tags of the project's pinned governance
-catalogue at the moment the gate asks (:mod:`app.modules.permits.hosting`); no
-area or phase code appears here and nothing resolved is stored.
+they answer for is asked of module 1's read port at the moment the gate asks
+(:mod:`app.modules.permits.hosting`); no area, document or phase code appears
+here and nothing resolved is stored.
 
 * ``permits.roadmap_and_register`` (advisory): on the area hosting the roadmap,
   every requirement the gate's target phase needs is filed or granted and no
@@ -23,8 +23,8 @@ with a detail that says so: the gate can then pass only as go with conditions
 with the area accepted at risk. It is never reported as met (rule 10).
 
 A project with a roadmap whose governance model does not say where permits
-live, or tags no phase at all, gets one ``unknown`` item with the reason on
-every area. A provider that has data must not answer with silence.
+live, has no row yet for the document that hosts them, or tags no phase at
+all, gets one ``unknown`` item with the reason on every area. A provider that has data must not answer with silence.
 """
 
 from __future__ import annotations
@@ -41,16 +41,32 @@ GATE_PROVIDER = "permits.start_and_handover"
 # Reasons of an ``unknown`` item (also the i18n key suffix under ``permits.evidence.unresolved``).
 NO_HOSTING_AREA = "no_area_hosts_permits"
 NO_PHASE_TAGS = "no_phase_enables_tag"
+NO_FRAME_DOCUMENT = "no_frame_document"
+
+
+async def _missing(session: Any, project_id: uuid.UUID, hosting: Hosting) -> str | None:
+    """Why the place of permits in the governance model cannot be answered for, or ``None`` when it can."""
+    from app.modules.project_governance import public
+
+    if hosting.roadmap_area is None:
+        return NO_HOSTING_AREA
+    if hosting.doc_type is not None:
+        # A project pinned before its model gained the document type has no row for it yet.
+        documents = await public.project_documents(session, project_id)
+        if not any(d.code == hosting.doc_type for d in documents):
+            return NO_FRAME_DOCUMENT
+    return None
 
 
 async def _context(session: Any, project_id: uuid.UUID, attempt: GateAttempt) -> tuple[Any, Hosting, str | None]:
     from app.modules.permits.repository import PermitRepository
-    from app.modules.project_governance.models import GovernanceGate
+    from app.modules.project_governance import public
 
     roadmap = await PermitRepository(session).get_roadmap(project_id)
     if roadmap is None:
         return None, Hosting(), None
-    gate = await session.get(GovernanceGate, attempt.gate_id)
+    gates = await public.project_gates(session, project_id)
+    gate = next((g for g in gates if g.id == attempt.gate_id), None)
     return roadmap, await project_hosting(session, project_id, roadmap), getattr(gate, "to_phase", None)
 
 
@@ -86,8 +102,8 @@ async def roadmap_and_register(
     roadmap, hosting, phase = await _context(session, project_id, attempt)
     if roadmap is None:
         return []
-    if hosting.roadmap_area is None:
-        return [unresolved(ROADMAP_PROVIDER, attempt, NO_HOSTING_AREA, project_id)]
+    if (reason := await _missing(session, project_id, hosting)) is not None:
+        return [unresolved(ROADMAP_PROVIDER, attempt, reason, project_id)]
     svc = PermitService(session)
     today = datetime.now(UTC).date()
     out: list[EvidenceItem] = []
@@ -110,8 +126,8 @@ async def start_and_handover(
     roadmap, hosting, phase = await _context(session, project_id, attempt)
     if roadmap is None:
         return []
-    if hosting.roadmap_area is None:
-        return [unresolved(GATE_PROVIDER, attempt, NO_HOSTING_AREA, project_id)]
+    if (reason := await _missing(session, project_id, hosting)) is not None:
+        return [unresolved(GATE_PROVIDER, attempt, reason, project_id)]
     if area.code != hosting.roadmap_area:
         return []
     if not hosting.phases_tagged:

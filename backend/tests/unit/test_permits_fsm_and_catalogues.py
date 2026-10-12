@@ -169,12 +169,23 @@ def test_no_phase_or_area_code_of_a_governance_model_is_written_into_the_module(
 
     root = Path(pkg.__file__).resolve().parents[1] / "project_governance" / "catalogues"
     codes: set[str] = set()
+    documents: set[str] = set()
     for path in root.glob("*.json"):
         data = json.loads(path.read_text(encoding="utf-8"))
-        codes |= {a["code"] for a in data.get("areas", [])}
+        codes |= {a["code"] for a in data.get("areas", []) if len(a["code"]) > 1}
+        documents |= {d["code"] for d in data.get("document_types", [])}
         codes |= {p["code"] for p in data.get("phases", []) if re.search(r"\d", p["code"])}
-    assert codes
-    for name in ("hosting.py", "evidence.py"):
+    assert codes and documents
+    # Area and phase codes are ordinary words in some models, so they are searched only where
+    # the governance model is read; a document type code is distinctive everywhere.
+    for name, wanted in (
+        ("hosting.py", codes | documents),
+        ("evidence.py", codes | documents),
+        ("service.py", documents),
+        ("router.py", documents),
+        ("seed.py", documents),
+        ("public.py", documents),
+    ):
         src = (Path(pkg.__file__).parent / name).read_text(encoding="utf-8")
-        found = sorted(c for c in codes if re.search(rf'"{re.escape(c)}"', src))
+        found = sorted(c for c in wanted if re.search(rf'"{re.escape(c)}"', src))
         assert found == [], (name, found)

@@ -114,13 +114,8 @@ EVIDENCE_KINDS = (
 # Evidence kinds that point at a record of another module: the reference is mandatory and checked.
 LINKED_EVIDENCE = ("cde_revision", "inspection", "commissioning_item", "discharge_decision")
 BREACH_REF_KINDS = ("safety_observation", "inspection", "manual")
-ROADMAP_DOC = "dev_permit_roadmap"
 # Frame documents of rule 18 and the register each one is the export of.
-FRAME_DOCUMENTS: dict[str, str] = {
-    "dev_permit_roadmap": "roadmap",
-    "dev_special_permits": "permits",
-    "dev_permit_conditions": "conditions",
-}
+REGISTERS: tuple[str, ...] = ("roadmap", "permits", "conditions")
 # Requirement fields that decide what a gate reads or who may edit the row: ``permits.manage`` only.
 MANAGED_REQUIREMENT_FIELDS = ("applicable", "conflict_accepted", "responsible_user_id")
 # Condition fields a gate reads. Changing one needs ``permits.manage`` and an open condition.
@@ -268,6 +263,12 @@ class PermitService:
         rid = _uuid(ref_id)
         if rid is None:
             return
+        if kind == "gate_condition":
+            from app.modules.project_governance import public
+
+            if not any(c.id == rid for c in await public.project_conditions(self.session, project_id)):
+                raise not_found("gate_condition_not_found")
+            return
         owner = await self._link_project(kind, rid)
         if owner != project_id:
             raise not_found(f"{kind}_not_found")
@@ -292,7 +293,6 @@ class PermitService:
             "inspection": ("app.modules.inspections.models", "QualityInspection"),
             "safety_observation": ("app.modules.safety.models", "SafetyObservation"),
             "route_assessment": ("app.modules.project_route.models", "RouteAssessment"),
-            "gate_condition": ("app.modules.project_governance.models", "GovernanceCondition"),
         }
         if kind == "commissioning_item":
             from app.modules.commissioning.models import CxChecklist, CxChecklistItem, CxSystem
@@ -347,6 +347,8 @@ class PermitService:
                 roadmap.catalogue_id,
                 roadmap.catalogue_version,
                 kind=PERMIT_TYPE_KIND,
+                # The pin was checked when it was stored and keeps resolving for every project member.
+                from_pin=True,
             )
         except GovernanceError as exc:
             raise PermitError(exc.code, exc.status_code) from exc
@@ -403,12 +405,15 @@ class PermitService:
         return roadmap
 
     async def _roadmap_document(self, project_id: uuid.UUID) -> Any:
-        from app.modules.project_governance.models import GovernanceDocument
+        """The frame document the governance model hosts permits in, as the port lists it; ``None``
+        when the model hosts permits nowhere or the project has no row for that document yet."""
+        from app.modules.project_governance import public
 
-        stmt = select(GovernanceDocument).where(
-            GovernanceDocument.project_id == project_id, GovernanceDocument.doc_type == ROADMAP_DOC
-        )
-        return (await self.session.execute(stmt)).scalars().first()
+        host = await public.host_for(self.session, project_id, hst.SUBJECT)
+        if host is None:
+            return None
+        documents = await public.project_documents(self.session, project_id)
+        return next((d for d in documents if d.code == host.doc_type), None)
 
     async def _mirror_binding(self, roadmap: PermitRoadmap) -> None:
         """Rule 18: ``agreed`` mirrors the governance binding state of the roadmap frame document."""
@@ -431,18 +436,15 @@ class PermitService:
         await self._mirror_binding(roadmap)
         if roadmap.status != "agreed":
             return None
-        from app.modules.project_governance.models import GovernanceChangeRequest
+        from app.modules.project_governance import public
 
         crid = _uuid(change_request_id)
-        if crid is None:
+        if crid is None or roadmap.governance_document_id is None:
             raise conflict("roadmap_binding_change_request_required")
-        cr = await self.session.get(GovernanceChangeRequest, crid)
-        if (
-            cr is None
-            or cr.project_id != roadmap.project_id
-            or cr.document_id != roadmap.governance_document_id
-            or cr.status != "approved"
-        ):
+        requests = await public.project_change_requests(
+            self.session, roadmap.project_id, roadmap.governance_document_id
+        )
+        if not any(r.id == crid and r.status == "approved" for r in requests):
             raise conflict("roadmap_binding_change_request_required")
         used = list(roadmap.consumed_change_request_ids or [])
         if str(crid) in used:
@@ -476,6 +478,14 @@ class PermitService:
         country = getattr(project, "country_code", None)
         juris = (jurisdiction or (roadmap.jurisdiction if roadmap else "") or _project_jurisdiction(project)).upper()
         source = catalogue_source or (roadmap.catalogue_source if roadmap else "shipped")
+        if roadmap is None and catalogue_id is None and catalogue_source is None:
+            # A new roadmap: the active pack's default for this country first, the module's own after.
+            from app.modules.project_governance.public import default_catalogue_pin
+
+            pin = default_catalogue_pin(PERMIT_TYPE_KIND, country)
+            if pin is not None:
+                source, catalogue_id = pin.source, pin.catalogue_id
+                catalogue_version = catalogue_version or pin.version
         cid = catalogue_id or (roadmap.catalogue_id if roadmap else default_catalogue_id(country, juris))
         repin = roadmap is None or any(v is not None for v in (catalogue_source, catalogue_id, catalogue_version))
         if repin:
@@ -2503,7 +2513,7 @@ class PermitService:
         no owner yet (or whose governance model does not say which area hosts permits) stays due
         for escalation and is picked up by a later sweep.
         """
-        from app.modules.project_governance.models import GovernanceArea
+        from app.modules.project_governance import public
         from app.modules.projects.models import Project
 
         out = {"notified": False, "escalated": False, "unescalated": False}
@@ -2525,10 +2535,8 @@ class PermitService:
             hosting = await self.hosting(project_id, roadmap)
             hse = cnd.hse_relevant(c.topic, c.hse_override)
             area_code = hosting.conditions_area if hse else hosting.roadmap_area
-            stmt = select(GovernanceArea).where(
-                GovernanceArea.project_id == project_id, GovernanceArea.code == (area_code or "")
-            )
-            area = (await self.session.execute(stmt)).scalars().first() if area_code else None
+            areas = await public.project_areas(self.session, project_id) if area_code else ()
+            area = next((a for a in areas if a.code == area_code), None)
             if area is not None and area.owner_user_id:
                 await self._notify(area.owner_user_id, "condition_escalated", "permit_condition", c.id, ctx)
                 c.escalated_at = now
@@ -2617,30 +2625,26 @@ class PermitService:
         raise PermitError("register_invalid", 422)
 
     async def publish_frame_document(
-        self, project_id: uuid.UUID, doc_type: str, *, actor_id: uuid.UUID, locale: str = "en"
+        self, project_id: uuid.UUID, register: str, *, actor_id: uuid.UUID, locale: str = "en"
     ) -> dict[str, Any]:
-        """Rule 18: store the export of a register as a new CDE revision of its governance frame document.
+        """Rule 18: store the export of a register as a new CDE revision of the governance frame document.
 
-        The frame documents of the permit roadmap, the special permits and the permit
-        conditions are this module's exports. The revision lands in the container the
-        governance document already has, with the hash of the very bytes stored, so the gate
-        binds what was exported and a change request can propose it.
+        Which frame document that is, the governance model says (the document hosting
+        permits); this module names none. The revision lands in the container that
+        document already has, with the hash of the very bytes stored, so the gate binds
+        what was exported and a change request can propose it.
         """
         from app.core.storage import get_storage_backend
         from app.modules.cde.schemas import RevisionCreate
         from app.modules.cde.service import CDEService
         from app.modules.permits.export import render
-        from app.modules.project_governance.models import GovernanceDocument
 
-        register = FRAME_DOCUMENTS.get(doc_type)
-        if register is None:
-            raise PermitError("frame_document_type_invalid", 422)
+        if register not in REGISTERS:
+            raise PermitError("register_invalid", 422)
         project = await self._project(project_id)
         await self.require_roadmap(project_id)
-        stmt = select(GovernanceDocument).where(
-            GovernanceDocument.project_id == project_id, GovernanceDocument.doc_type == doc_type
-        )
-        doc = (await self.session.execute(stmt)).scalars().first()
+        doc = await self._roadmap_document(project_id)
+        doc_type = doc.code if doc is not None else None
         if doc is None:
             raise not_found("frame_document_not_found")
         if doc.container_id is None:

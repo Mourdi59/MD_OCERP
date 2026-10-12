@@ -1,21 +1,28 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Where permits live in a project's governance model, read from catalogue tags at read time.
+"""Where permits live in a project's governance model, asked of module 1's read port at read time.
 
-Governance models name their areas and phases differently, so this module never
-matches a code. The pinned governance catalogue says which area hosts the permit
-roadmap (``hosts: ["permits"]``) and which hosts the condition register
-(``hosts: ["permit_conditions"]``, falling back to the roadmap area when no area
-carries that tag), and each phase says what entering it enables
-(``enables: ["construction_start"]``, ``["handover"]``, ``["operation"]``).
+Governance models name their areas, documents and phases differently, so this
+module never matches a code. The port (:mod:`app.modules.project_governance.public`)
+answers two questions from the tags of the pinned catalogue:
+
+* which frame document hosts the subject ``permits`` (and with it which area);
+* which phases, once entered, enable a capability: ``construction_start``,
+  ``handover``, ``operation``.
+
+The capability names are governance vocabulary. What a permit type enables
+(``site_start``, ``construction``, ``occupation``, ``operation``) is the permit
+catalogue's own vocabulary; :data:`PHASE_ROLES` maps the one to the other
+explicitly and nothing assumes the strings match.
 
 Nothing resolved here is stored: a project that pins or re-pins its governance
 model later is read correctly the next time a gate asks. A project may name its
 areas itself (``roadmap_area_code`` / ``conditions_area_code`` on the roadmap);
-that is project data and wins over the tag.
+that is project data and wins over the tag. The condition register lives in the
+roadmap's area unless the project says otherwise.
 
-A catalogue without the tags resolves to ``None`` / no tags, and the callers
-report ``unknown`` instead of staying silent.
+A model that hosts permits nowhere resolves to ``None``, one that tags no phase
+to no gates, and the callers report ``unknown`` instead of staying silent.
 """
 
 from __future__ import annotations
@@ -24,19 +31,18 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-ROADMAP_TAG = "permits"
-CONDITIONS_TAG = "permit_conditions"
+SUBJECT = "permits"
 
 
 @dataclass(frozen=True)
 class PhaseRole:
-    """What a phase tag means for permits: the readiness check it calls for and the permit rights it needs."""
+    """What a phase capability means for permits: the readiness check and the permit rights it needs."""
 
     gate: str  # start | handover
     enables: tuple[str, ...]
 
 
-# Phase tag (module 1 vocabulary) -> the readiness gate and the ``enables`` values of permit types it needs.
+# Governance phase capability -> the readiness gate and the ``enables`` values of permit types it needs.
 PHASE_ROLES: dict[str, PhaseRole] = {
     "construction_start": PhaseRole("start", ("site_start", "construction")),
     "handover": PhaseRole("handover", ("occupation",)),
@@ -46,41 +52,15 @@ PHASE_ROLES: dict[str, PhaseRole] = {
 DEFAULT_ENABLES: tuple[str, ...] = PHASE_ROLES["construction_start"].enables
 
 
-def _tags(obj: Any, name: str) -> tuple[str, ...]:
-    """Tags of one catalogue area or phase. The one place that reads the tag off the catalogue object."""
-    raw = obj.get(name) if isinstance(obj, dict) else getattr(obj, name, None)
-    return tuple(raw or ())
-
-
-def _items(catalogue: Any, name: str) -> tuple[Any, ...]:
-    raw = catalogue.get(name) if isinstance(catalogue, dict) else getattr(catalogue, name, None)
-    return tuple(raw or ())
-
-
-def _code(obj: Any) -> str:
-    return str(obj.get("code") if isinstance(obj, dict) else getattr(obj, "code", ""))
-
-
-def area_hosting(catalogue: Any, tag: str) -> str | None:
-    """The code of the area tagged ``hosts: [tag]``, or ``None`` when the catalogue tags none."""
-    if catalogue is None:
-        return None
-    return next((_code(a) for a in _items(catalogue, "areas") if tag in _tags(a, "hosts")), None)
-
-
-def phase_tags(catalogue: Any) -> dict[str, tuple[str, ...]]:
-    """Per phase code, the ``enables`` tags this module understands."""
-    if catalogue is None:
-        return {}
-    return {_code(p): tuple(t for t in _tags(p, "enables") if t in PHASE_ROLES) for p in _items(catalogue, "phases")}
-
-
 @dataclass(frozen=True)
 class Hosting:
     """The resolved place of permits in one project's governance model."""
 
     roadmap_area: str | None = None
     conditions_area: str | None = None
+    # The frame document type the roadmap is written into; ``None`` when the model hosts permits nowhere.
+    doc_type: str | None = None
+    # Phase code -> the capabilities entering it enables (only those this module understands).
     phases: dict[str, tuple[str, ...]] = field(default_factory=dict)
     has_model: bool = False
 
@@ -105,29 +85,48 @@ class Hosting:
         return tuple(out)
 
 
+def _build(
+    host: Any,
+    by_capability: dict[str, tuple[str, ...]],
+    has_model: bool,
+    roadmap_override: str,
+    conditions_override: str,
+) -> Hosting:
+    phases: dict[str, tuple[str, ...]] = {}
+    for capability in PHASE_ROLES:
+        for code in by_capability.get(capability, ()):
+            phases[code] = (*phases.get(code, ()), capability)
+    road = roadmap_override or (host.area_code if host is not None else "")
+    return Hosting(
+        roadmap_area=road or None,
+        conditions_area=(conditions_override or road) or None,
+        doc_type=host.doc_type if host is not None else None,
+        phases=phases,
+        has_model=has_model,
+    )
+
+
 def resolve(catalogue: Any, roadmap_override: str = "", conditions_override: str = "") -> Hosting:
-    """Pure resolution from one governance catalogue and the project's own overrides."""
-    road = roadmap_override or area_hosting(catalogue, ROADMAP_TAG)
-    cond = conditions_override or area_hosting(catalogue, CONDITIONS_TAG) or road
-    return Hosting(road or None, cond or None, phase_tags(catalogue), catalogue is not None)
+    """Pure resolution from one parsed governance catalogue and the project's own overrides."""
+    from app.modules.project_governance import public
 
-
-async def governance_catalogue(session: Any, project_id: uuid.UUID) -> Any | None:
-    """The project's pinned governance catalogue, or ``None`` when the project has no governance model."""
-    from app.modules.project_governance.repository import GovernanceRepository
-    from app.modules.project_governance.service import GovernanceService
-
-    model = await GovernanceRepository(session).get_model(project_id)
-    if model is None:
-        return None
-    return await GovernanceService(session).catalogue_for(model)
+    if catalogue is None:
+        return _build(None, {}, False, roadmap_override, conditions_override)
+    return _build(
+        public.host_in(catalogue, SUBJECT),
+        {c: public.phases_enabling_in(catalogue, c) for c in PHASE_ROLES},
+        True,
+        roadmap_override,
+        conditions_override,
+    )
 
 
 async def project_hosting(session: Any, project_id: uuid.UUID, roadmap: Any = None) -> Hosting:
     """Resolve now, from the catalogue pinned now. Never cached on a row."""
-    catalogue = await governance_catalogue(session, project_id)
+    from app.modules.project_governance import public
+
     return resolve(
-        catalogue,
+        await public.project_catalogue(session, project_id),
         getattr(roadmap, "roadmap_area_code", "") or "",
         getattr(roadmap, "conditions_area_code", "") or "",
     )

@@ -14,7 +14,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.permits import evidence as permits_evidence
-from app.modules.permits import hosting as hst
 from app.modules.permits.errors import PermitError
 from app.modules.permits.models import ConditionDischarge, PermitRoadmap
 from app.modules.permits.service import PermitService
@@ -82,66 +81,96 @@ async def _certify(w: World, cid: uuid.UUID, by: uuid.UUID, can_manage: bool) ->
 # ── findings 1 and 2: the blocking provider never answers with silence, at risk is not met ──
 
 
-async def _governed(w: World) -> tuple[object, list]:
-    """Pin the neutral governance model; return its gate into construction and its areas."""
-    from app.modules.project_governance.models import GovernanceGate
+async def _governed(w: World, catalogue_id: str = "neutral") -> tuple[object, object, object]:
+    """Pin a shipped governance model; return its gate into the start of construction, the area that
+    hosts permits and one that does not, all found through module 1's read port."""
+    from app.modules.project_governance import public
     from app.modules.project_governance.service import GovernanceService
 
     async with w.factory() as s:
-        svc = GovernanceService(s)
-        await svc.set_model(
+        await GovernanceService(s).set_model(
             w.project_id,
             source="shipped",
-            catalogue_id="neutral",
+            catalogue_id=catalogue_id,
             version=None,
             four_eyes=True,
             actor_id=w.manager,
             tenant_id=str(w.manager),
         )
         await s.commit()
-        gates = (await s.execute(select(GovernanceGate).where(GovernanceGate.project_id == w.project_id))).scalars()
-        gate = next(g for g in gates if g.to_phase == "construction")
-        return gate, list(await svc.repo.list_areas(w.project_id))
+        host = await public.host_for(s, w.project_id, "permits")
+        phases = await public.phases_enabling(s, w.project_id, "construction_start")
+        gate = next(g for g in await public.project_gates(s, w.project_id) if g.to_phase in phases)
+        areas = await public.project_areas(s, w.project_id)
+        return (
+            gate,
+            next(a for a in areas if a.code == host.area_code),
+            next(a for a in areas if a.code != host.area_code),
+        )
 
 
-async def test_a_model_that_does_not_say_where_permits_live_gets_unknown_not_silence(world: World) -> None:
+async def test_a_project_without_a_governance_model_gets_unknown_not_silence(world: World) -> None:
+    from types import SimpleNamespace
+
     await _granted(world, cond("1", "suspensive"))
-    gate, areas = await _governed(world)
-    attempt = GateAttempt(gate.id, gate.code, 1)
+    attempt = GateAttempt(uuid.uuid4(), "any_gate", 1)
     async with world.factory() as s:
         for provider in (permits_evidence.start_and_handover, permits_evidence.roadmap_and_register):
-            items = await provider(s, world.project_id, attempt, areas[0])
+            items = await provider(s, world.project_id, attempt, SimpleNamespace(code="any_area"))
             assert [i.state for i in items] == ["unknown"], provider.__name__
             assert items[0].detail == "no_area_hosts_permits"
 
 
-async def test_tagged_model_blocks_the_gate_on_an_open_suspensive_condition(world: World, monkeypatch) -> None:
+async def test_a_model_without_the_frame_document_row_gets_unknown(world: World) -> None:
+    from sqlalchemy import delete
+
+    from app.modules.project_governance import public
+    from app.modules.project_governance.models import GovernanceDocument
+
+    await _granted(world, cond("1", "suspensive"))
+    gate, host, _other = await _governed(world)
+    async with world.factory() as s:
+        doc_type = (await public.host_for(s, world.project_id, "permits")).doc_type
+        await s.execute(
+            delete(GovernanceDocument).where(
+                GovernanceDocument.project_id == world.project_id, GovernanceDocument.doc_type == doc_type
+            )
+        )
+        await s.commit()
+    async with world.factory() as s:
+        (item,) = await permits_evidence.start_and_handover(
+            s, world.project_id, GateAttempt(gate.id, gate.code, 1), host
+        )
+    assert item.state == "unknown" and item.detail == "no_frame_document"
+
+
+@pytest.mark.parametrize("catalogue_id", ["neutral", "hoai_lph", "elf_module_framework"])
+async def test_the_start_gate_of_any_model_blocks_on_an_open_suspensive_condition(
+    world: World, catalogue_id: str
+) -> None:
     rid, permit, conds = await _granted(world, cond("1", "suspensive", owner_user_id=world.owner_user))
-    gate, areas = await _governed(world)
-    host, other = areas[0], areas[1]
-    tagged = {
-        "areas": [{"code": host.code, "hosts": ["permits"]}],
-        "phases": [{"code": gate.to_phase, "enables": ["construction_start"]}],
-    }
-
-    async def catalogue(_session, _project_id):
-        return tagged
-
-    monkeypatch.setattr(hst, "governance_catalogue", catalogue)
+    gate, host, other = await _governed(world, catalogue_id)
     attempt = GateAttempt(gate.id, gate.code, 1)
     async with world.factory() as s:
-        (item,) = await permits_evidence.start_and_handover(s, world.project_id, attempt, host)
-        assert item.state == "not_met" and "suspensive_condition_open" in item.detail
+        items = {
+            i.code.split(":")[0]: i
+            for i in await permits_evidence.start_and_handover(s, world.project_id, attempt, host)
+        }
+        assert items["permits_start"].state == "not_met"
+        assert "suspensive_condition_open" in items["permits_start"].detail
         assert await permits_evidence.start_and_handover(s, world.project_id, attempt, other) == []
-    # An early start in force is "start at risk": still not met, and the detail says so (rule 10).
+    # A revoked permit is no permit: the requirement is not granted any more (finding 8).
     async with world.factory() as s:
         await PermitService(s).transition_permit(
             world.project_id, permit.id, "revoked", actor_id=world.manager, reason="Revoked on appeal"
         )
         await s.commit()
     async with world.factory() as s:
-        (item,) = await permits_evidence.start_and_handover(s, world.project_id, attempt, host)
-    assert item.state == "not_met" and "permit_missing" in item.detail
+        items = {
+            i.code.split(":")[0]: i
+            for i in await permits_evidence.start_and_handover(s, world.project_id, attempt, host)
+        }
+    assert items["permits_start"].state == "not_met" and "permit_missing" in items["permits_start"].detail
     assert await state(world, rid) == "not_in_force"
 
 
@@ -476,3 +505,49 @@ async def test_a_dependency_on_a_revoked_permit_is_unmet_again(world: World) -> 
         await s.commit()
     assert await state(world, pre) == "not_in_force"
     assert await state(world, rid) == "blocked"
+
+
+# ── module 1 port: a company catalogue resolves for its own tenant only, a stored pin for everyone ──
+
+
+async def test_a_company_catalogue_of_another_tenant_cannot_be_pinned(world: World) -> None:
+    from app.modules.project_governance.catalogue_store import CatalogueStore
+
+    async with world.factory() as s:
+        PermitService(s)  # registers the catalogue kind
+        store = CatalogueStore(s)
+        row = await store.create(
+            "tenant-a",
+            code="own_permits",
+            name="Own permit types",
+            based_on_source="shipped",
+            based_on_id="neutral",
+            based_on_version=None,
+            actor_id=world.manager,
+            kind="permit_type",
+        )
+        await store.publish("tenant-a", row.id, actor_id=world.manager)
+        await s.commit()
+        own = str(row.id)
+
+    async def put(tenant: str | None) -> PermitRoadmap:
+        async with world.factory() as s:
+            roadmap = await PermitService(s).set_roadmap(
+                world.project_id,
+                tenant_id=tenant,
+                actor_id=world.manager,
+                catalogue_source="tenant",
+                catalogue_id=own,
+            )
+            await s.commit()
+            return roadmap
+
+    assert await _code(put("tenant-b")) == (404, "unknown_catalogue")
+    assert await _code(put(None)) == (404, "unknown_catalogue")
+    pinned = await put("tenant-a")
+    assert (pinned.catalogue_source, pinned.catalogue_id) == ("tenant", own)
+    # The stored pin keeps resolving for every project member, whatever tenant the reader is in.
+    async with world.factory() as s:
+        svc = PermitService(s)
+        types = await svc._types(await svc.repo.get_roadmap(world.project_id))
+    assert "building_permit" in types

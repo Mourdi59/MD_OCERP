@@ -67,7 +67,7 @@ class PermitRoadmap(Base):
         ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_permits_roadmap_governance_document"),
         nullable=True,
     )
-    # draft | agreed (mirrors the governance binding state of dev_permit_roadmap, rule 18)
+    # draft | agreed (mirrors the binding state of the governance frame document hosting permits, rule 18)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
     # Governance area codes the roadmap and the condition register report to (resolved on create).
     roadmap_area_code: Mapped[str] = mapped_column(String(64), nullable=False, default="")

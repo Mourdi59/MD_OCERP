@@ -10,7 +10,6 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.permits import jobs
@@ -51,26 +50,24 @@ async def _code(coro) -> tuple[int, str]:
     return exc.value.status_code, exc.value.code
 
 
-async def _frame_model(w: World) -> dict[str, object]:
-    """Pin a governance model that carries the permit frame documents; return them by type."""
-    from app.modules.project_governance.models import GovernanceDocument
+async def _frame_model(w: World, catalogue_id: str = "elf_module_framework") -> uuid.UUID:
+    """Pin a shipped governance model; return the id of the frame document it hosts permits in."""
+    from app.modules.project_governance import public
     from app.modules.project_governance.service import GovernanceService
 
     async with w.factory() as s:
         await GovernanceService(s).set_model(
             w.project_id,
             source="shipped",
-            catalogue_id="elf_module_framework",
+            catalogue_id=catalogue_id,
             version=None,
             four_eyes=True,
             actor_id=w.manager,
             tenant_id=str(w.manager),
         )
         await s.commit()
-        rows = (
-            await s.execute(select(GovernanceDocument).where(GovernanceDocument.project_id == w.project_id))
-        ).scalars()
-        return {d.doc_type: d for d in rows}
+        host = await public.host_for(s, w.project_id, "permits")
+        return next(d.id for d in await public.project_documents(s, w.project_id) if d.code == host.doc_type)
 
 
 # ── finding 17: one approved change request licenses one structural change ──
@@ -79,8 +76,7 @@ async def _frame_model(w: World) -> dict[str, object]:
 async def test_an_approved_change_request_is_spent_by_the_change_it_licenses(world: World) -> None:
     from app.modules.project_governance.models import GovernanceChangeRequest, GovernanceDocument
 
-    docs = await _frame_model(world)
-    doc_id = docs["dev_permit_roadmap"].id
+    doc_id = await _frame_model(world)
     async with world.factory() as s:
         doc = await s.get(GovernanceDocument, doc_id)
         doc.status = "binding"
@@ -127,25 +123,25 @@ async def test_the_register_export_is_stored_as_a_revision_of_its_frame_document
     from app.modules.project_governance.models import GovernanceDocument
 
     await requirement(world, BUILDING)
-    docs = await _frame_model(world)
+    doc_id = await _frame_model(world, "neutral")
     p = world.project_id
     async with world.factory() as s:
         svc = PermitService(s)
-        assert await _code(svc.publish_frame_document(p, "business_case", actor_id=world.manager)) == (
+        assert await _code(svc.publish_frame_document(p, "everything", actor_id=world.manager)) == (
             422,
-            "frame_document_type_invalid",
+            "register_invalid",
         )
-        assert await _code(svc.publish_frame_document(p, "dev_permit_roadmap", actor_id=world.manager)) == (
+        assert await _code(svc.publish_frame_document(p, "roadmap", actor_id=world.manager)) == (
             409,
             "frame_document_without_container",
         )
     async with world.factory() as s:
         container = await add_container(s, p, "permit_roadmap")
-        doc = await s.get(GovernanceDocument, docs["dev_permit_roadmap"].id)
+        doc = await s.get(GovernanceDocument, doc_id)
         doc.container_id = container
         await s.commit()
     async with world.factory() as s:
-        out = await PermitService(s).publish_frame_document(p, "dev_permit_roadmap", actor_id=world.manager)
+        out = await PermitService(s).publish_frame_document(p, "roadmap", actor_id=world.manager)
         await s.commit()
     async with world.factory() as s:
         revision = await s.get(DocumentRevision, uuid.UUID(out["revision_id"]))
@@ -325,7 +321,7 @@ async def test_the_sweep_handles_each_row_in_its_own_transaction(world: World, m
         assert (await s.get(Permit, out["permit"].id)).status == "lapsed"
         one, two = await s.get(PermitCondition, ids["1"]), await s.get(PermitCondition, ids["2"])
         assert one.overdue_notified_at is None and two.overdue_notified_at is not None
-        # No area hosts permits in this project, so nobody could be told: it stays due for escalation.
+        # The project has no governance model, so nobody could be told: it stays due for escalation.
         assert two.escalated_at is None
     assert counts["notified"] + counts["unescalated"] >= 1
 

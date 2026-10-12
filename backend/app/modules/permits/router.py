@@ -982,15 +982,15 @@ async def export(
     )
 
 
-@router.post("/projects/{project_id}/frame-documents/{doc_type}/publish", status_code=201, dependencies=[MANAGE])
+@router.post("/projects/{project_id}/frame-document/publish", status_code=201, dependencies=[MANAGE])
 async def publish_frame_document(
     project_id: uuid.UUID,
-    doc_type: Literal["dev_permit_roadmap", "dev_special_permits", "dev_permit_conditions"],
     session: SessionDep,
     user_id: CurrentUserId,
+    register: Literal["roadmap", "permits", "conditions"] = "roadmap",
 ) -> dict[str, Any]:
-    """Rule 18: store the register export as a new CDE revision of its governance frame document."""
+    """Rule 18: store a register export as a new CDE revision of the frame document that hosts permits."""
     svc = await _svc(project_id, user_id, session)
     return await _run(
-        svc.publish_frame_document(project_id, doc_type, actor_id=_uid(user_id), locale=get_locale() or "en")
+        svc.publish_frame_document(project_id, register, actor_id=_uid(user_id), locale=get_locale() or "en")
     )

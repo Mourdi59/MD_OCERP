@@ -34,38 +34,57 @@ from app.modules.permits.schemas import (
 )
 from app.modules.project_governance.evidence import EVIDENCE_STATES, GateAttempt
 
-# A governance model that names nothing the way the neutral one does.
-FOREIGN = {
-    "areas": [{"code": "zulassung", "hosts": ["permits"]}, {"code": "auflagen", "hosts": ["permit_conditions"]}],
-    "phases": [
-        {"code": "lph4"},
-        {"code": "lph8", "enables": ["construction_start"]},
-        {"code": "lph9", "enables": ["handover", "operation"]},
-    ],
-}
+
+def _model(catalogue_id: str):
+    """One shipped governance catalogue, parsed by module 1's own loader."""
+    from app.modules.project_governance.catalogue_kinds import PHASE_MODEL_KIND, get_catalogue_kind
+
+    return get_catalogue_kind(PHASE_MODEL_KIND).get_shipped(catalogue_id)
+
 
 # ── finding 1: hosting comes from catalogue tags, at read time ─────────────
 
 
-def test_areas_and_gates_resolve_from_tags_whatever_the_codes_are() -> None:
-    h = hst.resolve(FOREIGN)
-    assert (h.roadmap_area, h.conditions_area) == ("zulassung", "auflagen")
-    assert h.gates("lph8") == ("start",) and h.enables("lph8") == ("site_start", "construction")
-    assert h.gates("lph9") == ("handover",) and h.enables("lph9") == ("occupation", "operation")
-    assert h.gates("lph4") == () and h.gates(None) == ()
+@pytest.mark.parametrize(
+    ("catalogue_id", "area", "start_phase", "handover_phase"),
+    [
+        ("neutral", "scope", "construction", "handover"),
+        ("hoai_lph", "scope", "lph8", "lph8"),
+        ("riba_2020", "scope", "stage5", "stage6"),
+        ("aho_heft9", "b", "stufe4", "stufe5"),
+        ("elf_module_framework", "m02_contract_management", "execution", "execution"),
+    ],
+)
+def test_areas_and_gates_resolve_from_tags_whatever_the_codes_are(
+    catalogue_id: str, area: str, start_phase: str, handover_phase: str
+) -> None:
+    h = hst.resolve(_model(catalogue_id))
+    assert h.has_model and h.roadmap_area == area and h.conditions_area == area and h.doc_type
+    assert "start" in h.gates(start_phase) and {"site_start", "construction"} <= set(h.enables(start_phase))
+    assert "handover" in h.gates(handover_phase) and "occupation" in h.enables(handover_phase)
+    first = _model(catalogue_id).phases[0].code
+    assert h.gates(first) == () and h.gates(None) == ()
 
 
-def test_the_register_falls_back_to_the_roadmap_area_and_a_project_override_wins() -> None:
-    one_area = {"areas": [{"code": "consents", "hosts": ["permits"]}], "phases": []}
-    assert hst.resolve(one_area).conditions_area == "consents"
-    assert hst.resolve(one_area, "mine", "").roadmap_area == "mine"
+def test_one_phase_may_be_both_the_start_and_the_handover() -> None:
+    h = hst.resolve(_model("hoai_lph"))
+    assert h.gates("lph8") == ("start", "handover")
+    assert h.enables("lph9") == ("operation",)
 
 
-def test_an_untagged_model_resolves_to_nothing_instead_of_guessing() -> None:
-    untagged = {"areas": [{"code": "permits"}, {"code": "dev_permits"}], "phases": [{"code": "construction"}]}
-    h = hst.resolve(untagged)
-    assert h.roadmap_area is None and h.conditions_area is None and not h.phases_tagged and h.has_model
-    assert hst.resolve(None).has_model is False
+def test_a_project_override_wins_over_the_tag_and_no_model_resolves_to_nothing() -> None:
+    h = hst.resolve(_model("neutral"), "mine", "theirs")
+    assert (h.roadmap_area, h.conditions_area) == ("mine", "theirs")
+    none = hst.resolve(None)
+    assert none.roadmap_area is None and none.doc_type is None and not none.phases_tagged and not none.has_model
+
+
+def test_the_capability_and_the_permit_vocabulary_are_mapped_not_assumed_equal() -> None:
+    from app.modules.project_governance.public import host_subjects, phase_capabilities
+
+    assert set(hst.PHASE_ROLES) <= set(phase_capabilities())
+    assert hst.SUBJECT in host_subjects()
+    assert hst.PHASE_ROLES["handover"].enables == ("occupation",)
 
 
 def test_an_unresolved_provider_answers_unknown_with_the_reason() -> None:

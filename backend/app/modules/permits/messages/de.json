@@ -152,7 +152,6 @@
       "field_not_nullable": "Dieses Feld darf nicht leer sein.",
       "frame_document_not_found": "Das Governance-Modell des Projekts kennt dieses Rahmendokument nicht.",
       "frame_document_read_only": "Das Rahmendokument ist verbindlich und erhält ohne Änderungsantrag keine neue Fassung.",
-      "frame_document_type_invalid": "Unbekannte Art von Rahmendokument.",
       "frame_document_without_container": "Das Rahmendokument hat noch keinen Dokumentencontainer.",
       "gate_condition_not_found": "Gate-Bedingung in diesem Projekt nicht gefunden.",
       "gate_invalid": "Unbekannte Bereitschaftsprüfung.",
@@ -222,6 +221,7 @@
       "start": "Keine offenen Nebenbestimmungen vor Baubeginn",
       "unresolved": {
         "no_area_hosts_permits": "Genehmigungsstand unbekannt: kein Bereich des Governance-Modells führt die Genehmigungen",
+        "no_frame_document": "Genehmigungsstand unbekannt: das Projekt hat noch kein Rahmendokument für Genehmigungen",
         "no_phase_enables_tag": "Genehmigungsstand unbekannt: keine Phase des Governance-Modells sagt, was sie freigibt"
       }
     },
