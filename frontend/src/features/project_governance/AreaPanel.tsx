@@ -319,7 +319,8 @@ function AddDocument({
   const addToast = useToastStore((s) => s.addToast);
   const [docType, setDocType] = useState('');
   const have = new Set(tracked.map((d) => d.doc_type));
-  const offered = (area.document_types ?? []).filter((d) => !have.has(d.code));
+  // The server says which types are held; the list on screen covers a document added a moment ago.
+  const offered = (area.document_types ?? []).filter((d) => !d.tracked && !have.has(d.code));
   const add = useMutation({
     mutationFn: () => createDocument(projectId, { area_id: area.id, doc_type: docType }),
     onSuccess: () => {
