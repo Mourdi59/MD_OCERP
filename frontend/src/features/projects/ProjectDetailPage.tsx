@@ -38,6 +38,7 @@ import {
   Calendar,
   Image as ImageIcon,
   LayoutGrid,
+  Flag,
   Receipt,
   ChevronDown,
   MessagesSquare,
@@ -1814,6 +1815,15 @@ export function ProjectDetailPage() {
           data-testid="procurement-concept-link"
         >
           {t('procurement_concept.nav.title', { defaultValue: 'Procurement concept' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Flag size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/governance`)}
+          data-testid="project-governance-link"
+        >
+          {t('governance.project.title', { defaultValue: 'Project governance' })}
         </Button>
         <Button
           variant={customizing ? 'primary' : 'ghost'}

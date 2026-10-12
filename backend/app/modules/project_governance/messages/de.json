@@ -1,0 +1,142 @@
+{
+  "common": {
+    "ok": "OK"
+  },
+  "governance": {
+    "errors": {
+      "unknown_outcome": "Dieses Entscheidungsergebnis ist nicht bekannt",
+      "gate_not_in_review": "Das Gate ist nicht in Prüfung, daher kann keine Entscheidung erfasst werden",
+      "gate_not_decided": "Nur ein entschiedenes Gate kann wieder geöffnet werden",
+      "rationale_required": "Bitte die Begründung für diese Entscheidung angeben",
+      "required_document_not_approved": "Ein erforderliches Rahmendokument ist an diesem Gate noch nicht freigabereif",
+      "area_without_owner": "Dieser Managementbereich hat keinen Verantwortlichen, daher kann niemand seine Bereitschaft bestätigen",
+      "area_not_ready": "Dieser Managementbereich ist für das Gate nicht bereit",
+      "evidence_not_met": "Ein erforderlicher Bereitschaftsnachweis für diesen Bereich ist nicht erfüllt",
+      "check_stale": "Ein Dokument wurde nach der Bereitschaftsbestätigung geändert, der Bereich muss erneut bestätigt werden",
+      "condition_overdue": "Eine Auflage aus einem früheren Gate ist überfällig und muss zuerst erfüllt oder erlassen werden",
+      "conditions_required": "Ein Go mit Auflagen braucht mindestens eine Auflage",
+      "conditions_not_allowed": "Nur ein Go mit Auflagen kann Auflagen tragen",
+      "condition_text_required": "Jede Auflage braucht einen Text",
+      "condition_unknown_area": "Die Auflage nennt einen Bereich, der nicht zu diesem Projekt gehört",
+      "waiver_needs_rationale": "Ein Verzicht braucht eine schriftliche Begründung",
+      "not_applicable_needs_rationale": "Die Kennzeichnung als nicht zutreffend braucht eine schriftliche Begründung",
+      "not_applicable_not_accepted": "Der Entscheider hat diesen Bereich nicht als nicht zutreffend akzeptiert",
+      "decider_not_entitled": "Laut Freigabeweg sind Sie nicht berechtigt, über dieses Gate zu entscheiden",
+      "decider_is_area_owner": "Nach dem Vier-Augen-Prinzip darf ein Bereichsverantwortlicher oder seine Vertretung über dieses Gate nicht entscheiden",
+      "hold_needs_resume_date": "Ein Halt braucht ein Wiederaufnahmedatum in der Zukunft",
+      "proceed_at_risk_needs_conditions": "Ein Fortfahren auf Risiko ist nur mit einem Go mit Auflagen möglich",
+      "proceed_at_risk_area_not_blocking": "Dieser Bereich blockiert nicht und kann daher nicht als Fortfahren auf Risiko benannt werden",
+      "project_stopped": "Das Projekt wurde an einem Gate gestoppt",
+      "document_read_only": "Dieses Rahmendokument ist schreibgeschützt, weil das Projekt gestoppt wurde",
+      "binding_requires_change_request": "Dieses Rahmendokument ist verbindlich und ändert sich nur über einen Änderungsantrag",
+      "phase_mapping_missing": "Das neue Phasenmodell braucht eine Zuordnung für diese Phase",
+      "phase_mapping_unknown_target": "Die Zuordnung nennt eine Phase, die das neue Modell nicht hat",
+      "no_decision_route": "Für dieses Projekt ist kein aktiver Freigabeweg für Phasen-Gates eingerichtet",
+      "route_not_at_final_step": "Der Freigabeweg hat seinen letzten Schritt noch nicht erreicht",
+      "route_not_pending": "Der Freigabeweg dieses Gates ist nicht mehr offen",
+      "concurrent_decision": "Jemand anderes hat gerade über dieses Gate entschieden; bitte neu laden und die Entscheidung prüfen",
+      "gate_out_of_order": "Das Projekt befindet sich nicht in der Phase, die dieses Gate abschließt",
+      "model_missing": "Für dieses Projekt ist kein Steuerungsmodell festgelegt",
+      "model_exists": "Ein Steuerungsmodell ist bereits festgelegt; ändern Sie es mit einer Phasenzuordnung",
+      "unknown_catalogue": "Dieser Katalog ist nicht bekannt",
+      "area_not_found": "Managementbereich nicht gefunden",
+      "gate_not_found": "Gate nicht gefunden",
+      "document_not_found": "Rahmendokument nicht gefunden",
+      "condition_not_found": "Auflage nicht gefunden",
+      "change_request_not_found": "Änderungsantrag nicht gefunden",
+      "check_not_found": "Bereitschaftsprüfung nicht gefunden",
+      "not_area_owner": "Nur der Verantwortliche oder die Vertretung dieses Bereichs darf das tun",
+      "owner_not_project_member": "Der Verantwortliche muss Zugriff auf dieses Projekt haben",
+      "unknown_document_type": "Dieser Dokumenttyp gehört im Katalog nicht zu diesem Bereich",
+      "container_not_in_project": "Der CDE-Container gehört nicht zu diesem Projekt",
+      "invalid_transition": "Dieser Statuswechsel ist nicht zulässig",
+      "condition_not_open": "Nur eine offene Auflage kann erfüllt oder erlassen werden",
+      "document_not_binding": "Nur ein verbindliches Rahmendokument kann über einen Änderungsantrag geändert werden",
+      "no_pending_revision": "Es gibt keine neuere Revision, die verbindlich werden könnte",
+      "change_request_not_open": "Dieser Änderungsantrag ist nicht mehr offen",
+      "invalid_status": "Dieser Status ist hier nicht zulässig",
+      "decision_immutable": "Eine Gate-Entscheidung kann nicht geändert oder gelöscht werden",
+      "document_exists": "Dieses Rahmendokument wird für den Bereich bereits geführt",
+      "catalogue_code_taken": "Ein Katalog mit diesem Code existiert bereits",
+      "catalogue_retired": "Dieser Katalog ist zurückgezogen und kann nicht mehr bearbeitet oder festgelegt werden",
+      "catalogue_invalid": "Der Katalogentwurf verletzt eine Katalogregel und kann nicht veröffentlicht werden"
+    },
+    "outcome": {
+      "go": "Go",
+      "go_with_conditions": "Go mit Auflagen",
+      "hold": "Halt",
+      "recycle": "Überarbeiten",
+      "stop": "Stopp"
+    },
+    "gate_state": {
+      "not_started": "Nicht begonnen",
+      "in_preparation": "In Vorbereitung",
+      "in_review": "In Prüfung",
+      "on_hold": "Angehalten",
+      "decided": "Entschieden"
+    },
+    "document_state": {
+      "draft": "Entwurf",
+      "in_review": "In Prüfung",
+      "approved_at_gate": "Am Gate freigegeben",
+      "binding": "Verbindlich",
+      "superseded": "Ersetzt"
+    },
+    "check_status": {
+      "not_assessed": "Nicht bewertet",
+      "ready": "Bereit",
+      "ready_with_risks": "Bereit mit Risiken",
+      "not_ready": "Nicht bereit",
+      "not_applicable": "Nicht zutreffend"
+    },
+    "condition_status": {
+      "open": "Offen",
+      "cleared": "Erfüllt",
+      "waived": "Erlassen",
+      "overdue": "Überfällig"
+    },
+    "export": {
+      "title": "Entscheidungsprotokoll der Projektsteuerung",
+      "col_gate": "Gate",
+      "col_attempt": "Versuch",
+      "col_outcome": "Ergebnis",
+      "col_decided_by": "Entschieden von",
+      "col_decided_at": "Entschieden am",
+      "col_rationale": "Begründung",
+      "col_conditions": "Auflagen",
+      "col_at_risk": "Fortfahren auf Risiko",
+      "project": "Projekt",
+      "empty": "Es wurde noch keine Gate-Entscheidung erfasst"
+    },
+    "rules": {
+      "area_has_owner": {
+        "fail": "Managementbereich {area} hat keinen Verantwortlichen",
+        "suggestion": "Benennen Sie einen Verantwortlichen, damit die Bereitschaft des Bereichs bestätigt werden kann"
+      },
+      "required_documents_defined": {
+        "fail": "Gate {gate} hat zutreffende Bereiche ohne erforderliches Rahmendokument",
+        "suggestion": "Hängen Sie die vom Katalog für dieses Gate geforderten Rahmendokumente an oder kennzeichnen Sie den Bereich begründet als nicht zutreffend"
+      },
+      "binding_document_unchanged": {
+        "fail": "Das verbindliche Rahmendokument {document} hat eine neuere Revision ohne genehmigten Änderungsantrag",
+        "suggestion": "Stellen Sie einen Änderungsantrag, damit die neue Revision vor der Verwendung genehmigt wird"
+      },
+      "conditions_not_overdue": {
+        "fail": "Auflage {condition} ist seit {due} überfällig",
+        "suggestion": "Erfüllen Sie die Auflage mit Nachweis oder lassen Sie sie vom Entscheider begründet erlassen"
+      },
+      "gate_date_after_previous": {
+        "fail": "Gate {gate} ist für {date} geplant, vor dem vorherigen Gate am {previous}",
+        "suggestion": "Verschieben Sie das Gate-Datum, sodass die Gates der Phasenfolge entsprechen"
+      },
+      "decision_by_entitled_user": {
+        "fail": "Die Entscheidung über Gate {gate} wurde von einem Verantwortlichen eines seiner Bereiche erfasst",
+        "suggestion": "Nach dem Vier-Augen-Prinzip muss eine andere Person entscheiden"
+      },
+      "not_applicable_has_rationale": {
+        "fail": "Bereich {area} ist ohne Begründung als nicht zutreffend gekennzeichnet",
+        "suggestion": "Schreiben Sie auf, warum der Bereich nicht zutrifft"
+      }
+    }
+  }
+}

@@ -173,3 +173,31 @@ async def test_an_editor_who_does_not_own_the_area_cannot_attest_it(world: World
     assert r.status_code == 403
     assert r.json()["detail"]["code"] == "not_area_owner"
     assert stranger_editor is not None
+
+
+async def test_a_gate_is_not_linked_to_a_schedule_activity_of_another_project(world: World) -> None:
+    """The link is a soft id, so the service has to prove the activity is this project's."""
+    from tests.pg.governance_fixtures import add_activity
+
+    other = await build_world(world.factory)
+    async with world.factory() as s:
+        foreign = await add_activity(s, other.project_id, "Their milestone", "2027-05-15")
+        await s.commit()
+    mine = await gate(world, G1)
+    theirs = await gate(other, G1)
+    async with client_as(world, world.manager, "manager") as c:
+        linked = await c.patch(
+            f"{BASE}/projects/{world.project_id}/gates/{mine.id}", json={"schedule_activity_id": str(foreign)}
+        )
+        unknown = await c.patch(
+            f"{BASE}/projects/{world.project_id}/gates/{mine.id}", json={"schedule_activity_id": str(uuid.uuid4())}
+        )
+        foreign_gate = await c.patch(
+            f"{BASE}/projects/{world.project_id}/gates/{theirs.id}", json={"target_date": "2027-01-01"}
+        )
+    assert linked.status_code == 422 and linked.json()["detail"]["code"] == "activity_not_in_project"
+    assert unknown.status_code == 422 and unknown.json()["detail"]["code"] == "activity_not_in_project"
+    assert foreign_gate.status_code == 404
+    after = await gate(world, G1)
+    assert after.schedule_activity_id is None and after.target_date == ""
+    assert (await gate(other, G1)).target_date == ""
