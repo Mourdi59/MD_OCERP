@@ -2116,6 +2116,19 @@ class DesignService:
                 violations=[_violation(c, "revision", r, "", revision_id=str(r)) for r, c in errors],
             )
 
+    async def _recipient_label(self, project_id: uuid.UUID, key: str) -> str:
+        """What a person calls a matrix recipient: the role's title or the list's name; empty when it is gone."""
+        from app.modules.file_distribution.models import FileDistributionList
+
+        kind, _, raw = key.partition(":")
+        if kind == "list":
+            lst = await self.session.get(FileDistributionList, uuid.UUID(raw))
+            return lst.name if lst is not None else ""
+        role = await self.session.get(DesignRole, uuid.UUID(raw))
+        if role is None or role.project_id != project_id:
+            return ""
+        return role.title or role.code
+
     async def _recipients_for(self, project_id: uuid.UUID, key: str) -> list[dict[str, Any]]:
         """The people behind a matrix recipient; empty when the list has no member or the role is gone."""
         from app.modules.file_distribution.models import FileDistributionMember
@@ -2168,8 +2181,13 @@ class DesignService:
         if not any(p.revision_ids for p in plans):
             raise DesignError("release_no_recipients", 422)
         views = {v.revision_id: v for v in await self._revision_views(project_id, row.revision_ids)}
+        names = {p.recipient_key: await self._recipient_label(project_id, p.recipient_key) for p in plans}
+
+        def about(code: str, key: str, **extra: Any) -> dict[str, Any]:
+            return _violation(code, "recipient", key.partition(":")[2], names[key], recipient=key, **extra)
+
         sent_errors = [
-            {"code": code, "revision_id": str(rev), "recipient": p.recipient_key}
+            about(code, p.recipient_key, revision_id=str(rev))
             for p in plans
             for rev, code in dr.release_content_errors([views[r] for r in p.revision_ids], p.purpose)
         ]
@@ -2180,9 +2198,7 @@ class DesignService:
                 "duplicate_issue",
                 409,
                 violations=[
-                    {"code": "duplicate_issue", "recipient": p.recipient_key, "revision_id": str(r)}
-                    for p in plans
-                    for r in p.duplicates
+                    about("duplicate_issue", p.recipient_key, revision_id=str(r)) for p in plans for r in p.duplicates
                 ],
             )
         people = {p.recipient_key: await self._recipients_for(project_id, p.recipient_key) for p in plans}
@@ -2192,7 +2208,7 @@ class DesignService:
             raise DesignError(
                 "release_recipient_empty",
                 422,
-                violations=[{"code": "release_recipient_empty", "recipient": k} for k in empty],
+                violations=[about("release_recipient_empty", k) for k in empty],
             )
         svc = TransmittalService(self.session)
         today = _now().date().isoformat()

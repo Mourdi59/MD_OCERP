@@ -426,6 +426,24 @@ async def test_a_drawing_originator_must_belong_to_an_appointed_or_active_role(w
 # ── demo seed (finding 21) ──
 
 
+async def _pin_default_model(s: AsyncSession, pid: uuid.UUID, owner: uuid.UUID) -> None:
+    """What the governance demo seed does before the design seed runs: pin the default phase model."""
+    from app.modules.project_governance.public import default_catalogue_pin
+    from app.modules.project_governance.service import GovernanceService
+
+    # No country: the neutral model, whose construction phase is the one that enables the start on site.
+    pin = default_catalogue_pin()
+    await GovernanceService(s).set_model(
+        pid,
+        source=pin.source,
+        catalogue_id=pin.catalogue_id,
+        version=pin.version,
+        four_eyes=True,
+        actor_id=owner,
+        tenant_id=str(owner),
+    )
+
+
 async def test_the_demo_seed_lets_the_demo_user_approve_issue_and_submit(world: DesignWorld) -> None:
     """Every list is filled, the release waits for the demo user and an approval point can be submitted."""
     from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, SHOWCASE_OWNER_EMAIL
@@ -443,6 +461,11 @@ async def test_the_demo_seed_lets_the_demo_user_approve_issue_and_submit(world: 
         project = await s.get(Project, pid)
         project.country_code = "DE"
         project.metadata_ = {**(project.metadata_ or {}), "demo_id": "design-seed-test"}
+        await s.commit()
+    async with world.factory() as s:
+        # No phase model yet: the governance seed runs first, and without it design has no phases to plan along.
+        assert (await seed.seed_design_management_demo(s, [pid]))["projects"] == 0
+        await _pin_default_model(s, pid, owner)
         await s.commit()
     async with world.factory() as s:
         from app.core.demo_marker import demo_id_of
@@ -524,3 +547,88 @@ async def test_a_frame_document_follows_the_governance_write_rule(world: DesignW
             await s.execute(select(DocumentContainer.id).where(DocumentContainer.project_id == world.project_id))
         ).all()
         assert left == [], "a refused request leaves no container behind"
+
+
+# ── demo seed: one moment before construction, read from the project's state ──
+
+
+async def _demo_project(world: DesignWorld) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
+    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, SHOWCASE_OWNER_EMAIL
+    from app.modules.projects.models import Project
+    from app.modules.users.models import User
+    from tests.pg.governance_fixtures import add_project, add_user
+
+    async with world.factory() as s:
+        owner, second = await add_user(s, "admin"), await add_user(s, "manager")
+        (await s.get(User, owner)).email = SHOWCASE_OWNER_EMAIL
+        (await s.get(User, second)).email = sorted(DEMO_ACCOUNT_EMAILS - {SHOWCASE_OWNER_EMAIL})[0]
+        pid = await add_project(s, owner, [second])
+        project = await s.get(Project, pid)
+        project.country_code = "DE"
+        project.metadata_ = {**(project.metadata_ or {}), "demo_id": "design-seed-story"}
+        await _pin_default_model(s, pid, owner)
+        await s.commit()
+    return pid, owner, second
+
+
+async def test_before_construction_the_seed_leaves_one_report_between_the_project_and_its_gate(
+    world: DesignWorld,
+) -> None:
+    """The gate into construction is undecided: one submitted report blocks its phase, one move clears it."""
+    from app.modules.design_management import seed
+    from app.modules.design_management.models import DesignRelease, DesignReport
+    from app.modules.project_governance.public import phases_enabling, project_gates
+
+    pid, owner, second = await _demo_project(world)
+    async with world.factory() as s:
+        enabling = set(await phases_enabling(s, pid, "construction_start"))
+        gate = next(g for g in await project_gates(s, pid) if g.to_phase in enabling)
+        assert gate.status != "decided"
+        assert await seed._pre_construction(s, pid) == (gate.from_phase, gate.to_phase)
+        assert (await seed.seed_design_management_demo(s, [pid]))["projects"] == 1
+        await s.commit()
+    async with world.factory() as s:
+        svc = DesignService(s)
+        blockers = await svc.readiness(pid, gate.from_phase)
+        assert (blockers.deliverables, blockers.major_comments) == ([], 0), blockers
+        assert len(blockers.reports) == 1, blockers
+        reports = await svc._list(DesignReport, pid, DesignReport.code)
+        open_now = [r for r in reports if r.phase_code == gate.from_phase and r.status != "accepted"]
+        assert [r.status for r in open_now] == ["submitted"]
+        later = [r for r in reports if r.phase_code == gate.to_phase]
+        assert later and all(r.status in ("required", "commissioned") for r in later)
+        for phase in {p["code"] for p in await svc.phases(pid)} - {gate.from_phase}:
+            early = await svc.readiness(pid, phase)
+            if phase != gate.to_phase:
+                assert (early.deliverables, early.reports, early.major_comments) == ([], [], 0), (phase, early)
+        releases = {r.code: r for r in await svc._list(DesignRelease, pid)}
+        assert (releases["REL-001"].status, releases["REL-001"].approval_status) == ("ready", "pending")
+        assert releases["REL-001"].content_changed_by == second
+        assert releases["REL-002"].status == "issued" and releases["REL-002"].transmittal_ids
+        assert releases["REL-002"].approved_by == owner
+        # The single step the film takes: the demo user accepts the report, the phase is clear.
+        await svc.report_transition(pid, open_now[0].id, "accepted", actor_id=owner)
+        cleared = await svc.readiness(pid, gate.from_phase)
+        assert (cleared.deliverables, cleared.reports, cleared.major_comments) == ([], [], 0)
+
+
+async def test_past_the_construction_gate_the_seed_tells_its_running_story(world: DesignWorld, monkeypatch) -> None:
+    """A project past that gate, or with a model that has none, keeps reports and lines in progress."""
+    from app.modules.design_management import seed
+    from app.modules.design_management.models import DesignRelease, DesignReport
+
+    pid, _owner, _second = await _demo_project(world)
+
+    async def decided(_session, _project_id):
+        return None
+
+    monkeypatch.setattr(seed, "_pre_construction", decided)
+    async with world.factory() as s:
+        assert (await seed.seed_design_management_demo(s, [pid]))["projects"] == 1
+        await s.commit()
+    async with world.factory() as s:
+        svc = DesignService(s)
+        states = sorted(r.status for r in await svc._list(DesignReport, pid))
+        assert states == ["accepted", "commissioned", "in_progress", "required", "required"]
+        releases = {r.code: r.status for r in await svc._list(DesignRelease, pid)}
+        assert releases == {"REL-001": "ready", "REL-002": "draft"}

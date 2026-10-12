@@ -7,7 +7,10 @@ first weeks: the numbering scheme its country resolves to, a small WBS (only
 when the project has none), the design team as roles with originator codes,
 approval points and a design schedule along the phases of the project's
 pinned governance model (the governance seed runs first and is the only one
-that pins; a project without a model is left alone), drawings numbered by the generator with
+that pins; a project without a model is left alone). While the gate into construction is
+undecided the seed describes that one moment: the phase the gate closes is done except a single
+submitted report, nothing of the next phase has happened. Past that gate it tells a running
+project. Drawings are numbered by the generator with
 revisions at different suitability, a distribution matrix, the two approval
 routes, a release a second person prepared and that waits for the demo user's
 approval, a draft release, an internal review with comments, the expert reports the catalogue lists and
@@ -62,6 +65,39 @@ async def seed_design_management_demo(session: AsyncSession, project_ids: Iterab
         for k, v in counts.items():
             totals[k] += v
     return totals
+
+
+async def _pre_construction(session: AsyncSession, project_id: uuid.UUID) -> tuple[str, str] | None:
+    """``(phase the gate closes, phase it opens)`` while the gate into construction is undecided, else ``None``.
+
+    Read from the project's own state through module 1's port: the gate whose
+    target phase enables the start of construction exists and carries no
+    decision. Never from a catalogue id, a name or the source of the pin.
+    """
+    from app.modules.project_governance.public import phases_enabling, project_gates
+
+    enabling = set(await phases_enabling(session, project_id, "construction_start"))
+    gate = next((g for g in await project_gates(session, project_id) if g.to_phase in enabling), None)
+    if gate is None or gate.status == "decided":
+        return None
+    return gate.from_phase, gate.to_phase
+
+
+async def _approve(session: AsyncSession, instance_id: uuid.UUID, approver: uuid.UUID) -> None:
+    """Decide an approval instance through approval_routes, the way its own screen does."""
+    from app.modules.approval_routes.models import Instance, Step
+    from app.modules.approval_routes.schemas import DecisionSubmit
+    from app.modules.approval_routes.service import ApprovalRouteService
+
+    instance = await session.get(Instance, instance_id)
+    step = (
+        await session.execute(
+            select(Step).where(Step.route_id == instance.route_id, Step.ordinal == instance.current_step_ordinal)
+        )
+    ).scalar_one()
+    await ApprovalRouteService(session).submit_decision(
+        instance_id, DecisionSubmit(step_id=step.id, decision="approved"), approver_id=approver
+    )
 
 
 def _example(scheme: Any, field: str, meaning: str) -> str | None:
@@ -130,6 +166,14 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     p_early = design_phases[0]["code"]
     p_mid = design_phases[min(1, len(design_phases) - 1)]["code"]
     p_late = design_phases[-1]["code"]
+    # Before construction is released the story is one moment: everything of the phase the gate
+    # closes is done except a single report, and nothing of the phase it opens has happened.
+    pre = await _pre_construction(session, project_id)
+    if pre is not None:
+        p_mid, p_late = pre
+        closes = next((p["order"] for p in phases if p["code"] == p_mid), None)
+        earlier = [p for p in design_phases if closes is not None and p["order"] <= closes]
+        p_early = earlier[0]["code"] if earlier else p_mid
 
     # WBS: only when the project has none (never touch a WBS someone built).
     wbs = await svc.wbs_rows(project_id)
@@ -192,7 +236,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     for code, title, phase, role, count in (
         ("DL-001", "Concept plans and sections", p_early, "arch", 2),
         ("DL-002", "Structural concept", p_early, "struct", 1),
-        ("DL-003", "Permit drawings", p_mid, "arch", 3),
+        ("DL-003", "Permit drawings", p_mid, "arch", 2 if pre else 3),
         ("DL-004", "Building services layouts", p_late, "mep", 2),
     ):
         deliverables[code] = await svc.create_deliverable(
@@ -211,13 +255,16 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
 
     cde = CDEService(session)
     drawing_rows = []
+    # Before construction: the drawings of the closing phase are published, so their schedule lines
+    # are accepted; the one drawing of the next phase is work in progress and counts for no line yet.
+    done = "A4" if pre else None
     for title, role, dl, phase, form, spatial, sheet_type, suit in (
-        ("Ground floor plan", "arch", "DL-001", p_early, "plan", "ground", "plan", "S3"),
-        ("Section A-A", "arch", "DL-001", p_early, "section", "whole", "section", "S4"),
-        ("Foundation layout", "struct", "DL-002", p_early, "plan", "basement", "plan", "S2"),
+        ("Ground floor plan", "arch", "DL-001", p_early, "plan", "ground", "plan", done or "S3"),
+        ("Section A-A", "arch", "DL-001", p_early, "section", "whole", "section", done or "S4"),
+        ("Foundation layout", "struct", "DL-002", p_early, "plan", "basement", "plan", done or "S2"),
         ("Site plan for the permit", "arch", "DL-003", p_mid, "site_plan", "whole", "general", "A4"),
-        ("Elevations for the permit", "arch", "DL-003", p_mid, "elevation", "whole", "elevation", "S0"),
-        ("Ventilation ground floor", "mep", "DL-004", p_late, "plan", "ground", "plan", "S0"),
+        ("Elevations for the permit", "arch", "DL-003", p_mid, "elevation", "whole", "elevation", done or "S0"),
+        ("Ventilation ground floor", "mep", None if pre else "DL-004", p_late, "plan", "ground", "plan", "S0"),
     ):
         project_code = re.sub(r"[^A-Z0-9]", "", (project.project_code or "").upper())[:6]
         values = {
@@ -234,7 +281,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             {
                 "title": title,
                 "role_id": roles[role].id,
-                "deliverable_id": deliverables[dl].id,
+                "deliverable_id": deliverables[dl].id if dl else None,
                 "phase_code": phase,
                 "fields": fields,
                 "scale": "1:100",
@@ -288,9 +335,17 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             project_id, {"code": "REL-001", "title": "Concept issue", "revision_ids": shared[:3]}, actor_id=actor
         )
         await svc.release_transition(project_id, concept.id, "ready", actor_id=actor)
-    await svc.create_release(
-        project_id, {"code": "REL-002", "title": "Permit drawings", "revision_ids": shared[3:]}, actor_id=actor
+    preparer = (second or actor) if pre else actor
+    permit_set = await svc.create_release(
+        project_id, {"code": "REL-002", "title": "Permit drawings", "revision_ids": shared[3:]}, actor_id=preparer
     )
+    if pre is not None:
+        # Released before the gate: prepared by one person, approved on the route and issued by the other.
+        ready = await svc.release_transition(project_id, permit_set.id, "ready", actor_id=preparer)
+        if ready.approval_instance_id is not None:
+            await _approve(session, ready.approval_instance_id, actor)
+            await svc.catch_up_approvals(project_id)
+        await svc.issue_release(project_id, permit_set.id, actor_id=actor)
 
     review = await svc.create_review(
         project_id,
@@ -308,21 +363,43 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         ("Stair width to be checked against the escape route", "minor", 1),
         ("Foundation level differs from the ground report", "minor", 2),
     ):
-        await svc.add_comment(
+        comment = await svc.add_comment(
             project_id,
             review.id,
             {"text": text, "severity": severity, "revision_id": drawing_rows[idx][2].id},
             actor_id=actor,
         )
+        if pre is not None and severity != "minor":
+            # An open major comment blocks the phase; before the gate it has been answered and closed.
+            await svc.comment_transition(
+                project_id,
+                comment.id,
+                "answered",
+                actor_id=actor,
+                answer="Plant room enlarged to match the ventilation concept.",
+                role_id=roles["arch"].id,
+            )
+            await svc.comment_transition(project_id, comment.id, "closed", actor_id=actor)
 
     count_reports = 0
-    for code, kind, phase, status, author, checker in (
-        ("RPT-001", "geotechnical", p_early, "accepted", "struct", None),
-        ("RPT-002", "fire_safety_concept", p_mid, "in_progress", "fire", None),
-        ("RPT-003", "structural_design", p_mid, "commissioned", "struct", None),
-        ("RPT-004", "structural_proof_check", p_mid, "required", "struct", "checker"),
-        ("RPT-005", "thermal_energy", p_mid, "required", "mep", None),
-    ):
+    if pre is not None:
+        # Exactly one report of the closing phase is not accepted yet, and it stands one step before it.
+        report_plan = (
+            ("RPT-001", "geotechnical", p_early, "accepted", "struct", None),
+            ("RPT-002", "fire_safety_concept", p_mid, "accepted", "fire", None),
+            ("RPT-003", "structural_design", p_mid, "accepted", "struct", None),
+            ("RPT-004", "structural_proof_check", p_late, "required", "struct", "checker"),
+            ("RPT-005", "thermal_energy", p_mid, "submitted", "mep", None),
+        )
+    else:
+        report_plan = (
+            ("RPT-001", "geotechnical", p_early, "accepted", "struct", None),
+            ("RPT-002", "fire_safety_concept", p_mid, "in_progress", "fire", None),
+            ("RPT-003", "structural_design", p_mid, "commissioned", "struct", None),
+            ("RPT-004", "structural_proof_check", p_mid, "required", "struct", "checker"),
+            ("RPT-005", "thermal_energy", p_mid, "required", "mep", None),
+        )
+    for code, kind, phase, status, author, checker in report_plan:
         report = await svc.create_report(
             project_id,
             {
@@ -338,6 +415,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         )
         for step in {
             "accepted": ("commissioned", "in_progress", "submitted", "accepted"),
+            "submitted": ("commissioned", "in_progress", "submitted"),
             "in_progress": ("commissioned", "in_progress"),
             "commissioned": ("commissioned",),
         }.get(status, ()):
