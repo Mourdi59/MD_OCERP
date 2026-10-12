@@ -238,7 +238,8 @@ export type ItemAction =
   | 'hold'
   | 'resume'
   | 'transfer'
-  | 'defer';
+  | 'defer'
+  | 'edit_gate_fields';
 
 /** What is left to do by hand after an abort was decided: the module ends no contract or order itself. */
 export interface AbortFollowUp {
@@ -398,7 +399,7 @@ export interface TransferredTo {
   project_id: string;
   item_id: string;
   same_project: boolean;
-  readable: boolean;
+  can_open: boolean;
   project_name: string | null;
   code: string | null;
   title: string | null;

@@ -285,13 +285,13 @@ export function ItemPanel({
   // that project. Without the names nothing is linked.
   const takenBy = item.transferred_to ?? null;
   const successor = takenBy
-    ? takenBy.same_project && takenBy.readable
+    ? takenBy.same_project && takenBy.can_open
       ? { id: takenBy.item_id, code: takenBy.code ?? '', title: takenBy.title ?? '' }
       : null
     : item.transferred_to_item_id
       ? otherItems.find((x) => x.id === item.transferred_to_item_id) ?? null
       : null;
-  const elsewhere = takenBy && !takenBy.same_project && takenBy.readable ? takenBy : null;
+  const elsewhere = takenBy && !takenBy.same_project && takenBy.can_open ? takenBy : null;
 
   const remaining = remainingToRelease(item);
   const over = overRelease(item);

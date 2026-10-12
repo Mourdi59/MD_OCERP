@@ -49,9 +49,9 @@ export function ItemDialog({ open, onClose, projectId, matrix, item, labels, per
 
   // The gate and the area are the project's own governance rows. What a
   // readiness gate reads may only change while the item is planned, and by a
-  // manager: the server says so with the same flag that guards deferring.
+  // manager: the server says so with its own flag for these fields.
   const refsQ = useReferences(projectId, open);
-  const gateVerdict = item ? itemVerdict(item, 'defer') : null;
+  const gateVerdict = item ? itemVerdict(item, 'edit_gate_fields') : null;
   const gates = withCurrent(gateOptions(refsQ.data, labels), draft.gateCode, labels);
   const areas = withCurrent(areaOptions(refsQ.data, labels), draft.areaCode, labels);
   const tiedToGate = !!draft.gateCode || !!draft.areaCode;

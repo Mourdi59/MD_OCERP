@@ -125,6 +125,7 @@ const ACTIONS: ItemAction[] = [
   'resume',
   'transfer',
   'defer',
+  'edit_gate_fields',
 ];
 
 /**

@@ -639,7 +639,7 @@ describe('ItemPanel', () => {
     project_id: 'p2',
     item_id: 'j1',
     same_project: false,
-    readable: true,
+    can_open: true,
     project_name: 'Harbour depot',
     code: 'CR-101',
     title: 'Depot lifts',
@@ -659,7 +659,7 @@ describe('ItemPanel', () => {
     panel({
       status: 'transferred',
       transferred_to_item_id: 'j1',
-      transferred_to: takenBy({ readable: false, project_name: null, code: null, title: null }),
+      transferred_to: takenBy({ can_open: false, project_name: null, code: null, title: null }),
     });
     expect(screen.getByTestId('item-transferred')).toHaveTextContent(enT('commitment.item.transferred_elsewhere'));
     expect(screen.queryByTestId('item-successor-elsewhere')).toBeNull();

@@ -286,7 +286,7 @@ describe('gate and area of an item', () => {
 
   it('follows the server flag on an existing item and keeps a gate the list no longer carries', async () => {
     mocked.updateItem.mockResolvedValue(item());
-    dialog({ gate_code: 'old_gate', governance_area_code: 'design', can: can({ defer: 'manage_required' }) });
+    dialog({ gate_code: 'old_gate', governance_area_code: 'design', can: can({ edit_gate_fields: 'manage_required' }) });
     await waitFor(() => expect(byId('item-gate')).not.toBeNull());
     expect(byId<HTMLSelectElement>('item-gate')).toBeDisabled();
     expect(byId<HTMLSelectElement>('item-area')).toBeDisabled();
