@@ -714,3 +714,58 @@ async def test_gates_areas_and_documents_come_from_the_governance_port(world: Wo
         assert await svc._document_state(world.project_id, str(documents[0].id)) == "open"
         assert await svc._document_state(world.project_id, str(uuid.uuid4())) == "open"
         assert await svc._document_state(world.project_id, "not-a-uuid") == "open"
+
+
+async def test_a_handed_over_item_names_its_successor_only_to_a_reader_of_the_receiving_project(
+    world: World,
+) -> None:
+    async with world.factory() as s:
+        other = await add_project(s, world.manager, [])
+        await CommitmentService(s).set_matrix(
+            other, actor_id=world.manager, tenant_id=str(world.manager), schedule_id="neutral"
+        )
+        target = await CommitmentService(s).create_item(
+            other,
+            {
+                "code": "CR-T",
+                "title": "Receiving item",
+                "commitment_type": "design",
+                "planned_source": "manual",
+                "planned_manual_amount": "10000",
+                "currency": "EUR",
+            },
+            actor_id=world.manager,
+        )
+        await s.commit()
+    iid = await item(world, code="CR-S", amount="10000")
+    async with world.factory() as s:
+        await CommitmentService(s).transfer_item(
+            world.project_id,
+            iid,
+            target_project_id=other,
+            target_item_id=target.id,
+            reason="Package moved",
+            actor_id=world.manager,
+            manage=True,
+        )
+        await s.commit()
+
+    async def successor(actor: uuid.UUID) -> dict:
+        async with world.factory() as s:
+            data = await CommitmentService(s).item_views(world.project_id, today=TODAY, item_ids=[iid], actor_id=actor)
+        return data["items"][0]["transferred_to"]
+
+    seen = await successor(world.manager)
+    assert seen == {
+        "project_id": str(other),
+        "item_id": str(target.id),
+        "same_project": False,
+        "readable": True,
+        "project_name": seen["project_name"],
+        "code": "CR-T",
+        "title": "Receiving item",
+    }
+    assert seen["project_name"]
+    hidden = await successor(world.requester)
+    assert (hidden["project_id"], hidden["item_id"], hidden["readable"]) == (str(other), str(target.id), False)
+    assert (hidden["project_name"], hidden["code"], hidden["title"]) == (None, None, None)

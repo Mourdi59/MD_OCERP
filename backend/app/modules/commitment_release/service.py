@@ -379,13 +379,12 @@ class CommitmentService:
         self, project_id: uuid.UUID, rows: list[dict[str, Any]], *, actor_id: uuid.UUID, today: date
     ) -> list[AuthorityAssignment]:
         """Replace the project's assignments; then regenerate untouched tier routes."""
-        from app.modules.project_governance.service import GovernanceService
+        from app.modules.project_governance.public import user_can_access_project
 
         await self.require_matrix(project_id, lock=True)
-        gov = GovernanceService(self.session)
         for r in rows:
             for key in ("user_id", "deputy_user_id"):
-                if r.get(key) and not await gov.user_can_access_project(project_id, _uuid(r[key])):
+                if r.get(key) and not await user_can_access_project(self.session, project_id, _uuid(r[key])):
                     raise CommitmentError("assignee_not_project_member", 422)
             vf, vt = _day(r.get("valid_from")), _day(r.get("valid_to"))
             if vf and vt and vt < vf:
@@ -1138,6 +1137,31 @@ class CommitmentService:
             )
         return out
 
+    async def _successor(self, item: CommitmentItem, actor_id: uuid.UUID | None) -> dict[str, Any] | None:
+        """Where a handed-over item went. The ids always; the names only for a reader who may open
+        the receiving project, so a hand-over does not publish another project's titles."""
+        from app.modules.project_governance.public import user_can_access_project
+
+        if item.transferred_to_item_id is None:
+            return None
+        target = await self.session.get(CommitmentItem, item.transferred_to_item_id)
+        if target is None:
+            return None
+        same = target.project_id == item.project_id
+        readable = same or (
+            actor_id is not None and await user_can_access_project(self.session, target.project_id, actor_id)
+        )
+        project = await self._project(target.project_id) if readable else None
+        return {
+            "project_id": str(target.project_id),
+            "item_id": str(target.id),
+            "same_project": same,
+            "readable": readable,
+            "project_name": project.name if project is not None else None,
+            "code": target.code if readable else None,
+            "title": target.title if readable else None,
+        }
+
     async def _gate_state(self, project_id: uuid.UUID, gate_code: str | None) -> str:
         from app.modules.project_governance.public import project_gates
 
@@ -1328,6 +1352,7 @@ class CommitmentService:
                 "pending_release_id": next((str(r.id) for r in rel if r.outcome == "pending"), None),
                 "pending_purpose": next((r.purpose for r in rel if r.outcome == "pending"), None),
                 "transferred_to_item_id": _s(item.transferred_to_item_id),
+                "transferred_to": await self._successor(item, actor_id),
                 "abort": self._abort_out(rel, per_item.get(item.id, [])),
                 "can": await self._can(
                     item, next((r for r in rel if r.outcome == "pending"), None), actor_id, manage, today
