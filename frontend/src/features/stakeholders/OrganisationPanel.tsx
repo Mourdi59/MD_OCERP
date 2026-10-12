@@ -8,10 +8,11 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Pencil, Plus, Trash2, UserCog } from 'lucide-react';
+import { AlertTriangle, Network, Pencil, Plus, Settings2, Trash2, UserCog, Users } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
+import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { getErrorMessage } from '@/shared/lib/api';
@@ -34,7 +35,13 @@ type Dialog =
   | { kind: 'delete-body'; body: GovernanceBody }
   | null;
 
-export function OrganisationPanel({ screen }: { screen: Screen }) {
+export interface OrganisationPanelProps {
+  screen: Screen;
+  /** Opens the settings, where the framework that brings the roles is chosen. */
+  onOpenSettings?: () => void;
+}
+
+export function OrganisationPanel({ screen, onOpenSettings }: OrganisationPanelProps) {
   const { t } = useTranslation();
   const { projectId, settings, labels, personName, onChanged } = screen;
   const can = settings.can.manage_organisation;
@@ -88,6 +95,20 @@ export function OrganisationPanel({ screen }: { screen: Screen }) {
       ? columnName(labels, { kind: 'role', code: m.role_code }, { screen, roles, bodies })
       : (personName(m.user_id) ?? t('stakeholders.ui.body.member_external', { defaultValue: 'External member' }));
 
+  const addBody = (
+    <GatedButton
+      allowed={can}
+      capability="organisation"
+      variant="secondary"
+      size="sm"
+      icon={<Plus size={13} />}
+      onClick={() => setDialog({ kind: 'body', body: null })}
+      data-testid="body-add"
+    >
+      {t('stakeholders.ui.body.add_title', { defaultValue: 'Add a governance body' })}
+    </GatedButton>
+  );
+
   return (
     <div className="space-y-8" data-testid="organisation-panel">
       <section className="space-y-2">
@@ -98,9 +119,22 @@ export function OrganisationPanel({ screen }: { screen: Screen }) {
           })}
         />
         {roles.roles.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border-light p-4 text-sm text-content-secondary">
-            {t('stakeholders.ui.role.none_defined', { defaultValue: 'The pinned framework defines no roles.' })}
-          </p>
+          <div data-testid="roles-empty">
+            <EmptyState
+              icon={<Users size={28} />}
+              title={t('stakeholders.ui.role.empty_title', { defaultValue: 'This framework brings no roles' })}
+              description={t('stakeholders.ui.role.empty_body', {
+                defaultValue: 'Roles come with the framework the project works with. Choose one that names them in the settings, then say here who holds each.',
+              })}
+              action={
+                onOpenSettings && (
+                  <Button variant="secondary" icon={<Settings2 size={14} />} onClick={onOpenSettings} data-testid="roles-open-settings">
+                    {t('stakeholders.ui.role.open_settings', { defaultValue: 'Open the settings' })}
+                  </Button>
+                )
+              }
+            />
+          </div>
         ) : (
           <ul className="divide-y divide-border-light rounded-lg border border-border-light" data-testid="role-list">
             {roles.roles.map((role) => {
@@ -158,26 +192,19 @@ export function OrganisationPanel({ screen }: { screen: Screen }) {
         <SectionHead
           title={t('stakeholders.ui.body.title', { defaultValue: 'Bodies' })}
           hint={t('stakeholders.ui.body.hint', { defaultValue: 'Groups that decide together, with the members they need present.' })}
-          action={
-            <GatedButton
-              allowed={can}
-              capability="organisation"
-              variant="secondary"
-              size="sm"
-              icon={<Plus size={13} />}
-              onClick={() => setDialog({ kind: 'body', body: null })}
-              data-testid="body-add"
-            >
-              {t('stakeholders.ui.body.add_title', { defaultValue: 'Add a governance body' })}
-            </GatedButton>
-          }
+          action={bodies.length > 0 ? addBody : undefined}
         />
         {bodies.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border-light p-4 text-sm text-content-secondary" data-testid="bodies-empty">
-            {t('stakeholders.ui.body.empty', {
-              defaultValue: 'No bodies yet. Add one when a group, not one person, decides: a steering committee, a change board.',
-            })}
-          </p>
+          <div data-testid="bodies-empty">
+            <EmptyState
+              icon={<Network size={28} />}
+              title={t('stakeholders.ui.body.empty_title', { defaultValue: 'No bodies yet' })}
+              description={t('stakeholders.ui.body.empty_body', {
+                defaultValue: 'Add one when a group, not one person, decides: a steering committee, a change board. Its members and its quorum say when it can decide.',
+              })}
+              action={addBody}
+            />
+          </div>
         ) : (
           <ul className="grid gap-2 md:grid-cols-2" data-testid="body-list">
             {bodies.map((b) => (

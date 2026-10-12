@@ -23,9 +23,16 @@ export function openFindings(findings: readonly ValidationFinding[]): Validation
 export function ChecksPanel({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const query = useValidation(projectId);
-  if (query.isLoading) return null;
-
   const title = t('stakeholders.ui.checks.title', { defaultValue: 'Checks' });
+  if (query.isLoading) {
+    return (
+      <section aria-label={title} aria-busy className="rounded-lg border border-border-light p-3" data-testid="checks-loading">
+        <p className="animate-pulse text-sm text-content-tertiary">
+          {t('stakeholders.ui.checks.loading', { defaultValue: 'Running the checks on the register, the plan, the commitments and the mandates.' })}
+        </p>
+      </section>
+    );
+  }
   if (query.isError || !query.data) {
     return (
       <section aria-label={title} className="rounded-lg border border-border-light p-3" data-testid="checks-panel" data-state="failed">

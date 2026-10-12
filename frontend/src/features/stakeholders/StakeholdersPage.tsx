@@ -197,7 +197,7 @@ export function StakeholdersPage() {
   } else if (tab === 'organisation') {
     body = (
       <div className="space-y-6">
-        <OrganisationPanel screen={screen} />
+        <OrganisationPanel screen={screen} onOpenSettings={() => go({ tab: 'settings' })} />
         <ExportBar projectId={projectId} settings={screen.settings} document="organisation" />
       </div>
     );

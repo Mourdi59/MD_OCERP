@@ -170,6 +170,13 @@ describe('the stakeholders page', () => {
     expect(findings[1]?.textContent).toBe('The required role Client has no holder');
   });
 
+  it('says the checks are running until they answer', async () => {
+    mocked.listValidation.mockReturnValue(new Promise(() => undefined));
+    open();
+    expect(await page.findByTestId('checks-loading')).toBeTruthy();
+    expect(page.queryByTestId('checks-panel')).toBeNull();
+  });
+
   it('says that every check passes when none is open, and that the checks could not run when they fail', async () => {
     const first = open();
     expect((await page.findByTestId('checks-panel')).getAttribute('data-state')).toBe('clear');

@@ -448,7 +448,19 @@ describe('the organisation tab', () => {
     mocked.listBodies.mockResolvedValue(pageOf([]));
     mount(<OrganisationPanel screen={screen()} />);
     expect((await page.findByTestId('bodies-empty')).textContent).toContain('No bodies yet');
+    expect(page.getAllByTestId('body-add')).toHaveLength(1);
     expect((page.getByTestId('body-add') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(page.getByTestId('body-add'));
+    expect(page.getByTestId('body-dialog')).toBeTruthy();
+  });
+
+  it('sends the reader to the settings when the framework brings no roles', async () => {
+    mocked.getRoles.mockResolvedValue(rolesView({ roles: [], holders: [] }));
+    const onOpenSettings = vi.fn();
+    mount(<OrganisationPanel screen={screen()} onOpenSettings={onOpenSettings} />);
+    expect((await page.findByTestId('roles-empty')).textContent).toContain('This framework brings no roles');
+    fireEvent.click(page.getByTestId('roles-open-settings'));
+    expect(onOpenSettings).toHaveBeenCalled();
   });
 
   it('a reader without the organisation flag sees everything and can change nothing', async () => {
