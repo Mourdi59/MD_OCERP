@@ -41640,6 +41640,7 @@ const resource = {
     "commitment.errors.unknown_catalogue": "Catalogue not found",
     "commitment.evidence.items_released_by_gate": "Commitments due at this gate are released or deferred",
     "commitment.evidence.items_without_area": "Commitment items of this gate name a management area the project no longer has",
+    "commitment.evidence.no_items_for_gate": "No commitment item names this gate, so it is not known whether money has to be released by it",
     "commitment.export.as_of": "As of",
     "commitment.export.col_code": "Code",
     "commitment.export.col_committed": "Committed",

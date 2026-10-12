@@ -113,18 +113,18 @@ describe('contract figures of an abort basis', () => {
   it('shows no figure before a basis is chosen, and then the figures of that basis by name', () => {
     open();
     expect(screen.queryByTestId('abort-parameters')).toBeNull();
-    choose('with_fee');
+    choose('shipped:with_fee');
     expect(screen.getByLabelText(enT('commitment.abort_parameter.fee_pct'))).toBe(input('abort-parameter-fee_pct'));
     expect(input('abort-parameter-profit_pct')).not.toBeNull();
     // The standard value of the basis is shown as the percentage it is.
     expect(input('abort-parameter-fee_pct')!.placeholder).toBe('5');
-    choose('no_figures');
+    choose('shipped:no_figures');
     expect(screen.queryByTestId('abort-parameters')).toBeNull();
   });
 
   it('will not save without a figure the basis has no standard value for', () => {
     open();
-    choose('with_fee');
+    choose('shipped:with_fee');
     save();
     expect(screen.getByTestId('abort-terms-problems').textContent).toContain(
       enT('commitment.abort_form.problem.parameter_missing'),
@@ -134,7 +134,7 @@ describe('contract figures of an abort basis', () => {
 
   it('sends what was typed in per cent as fractions, and leaves an empty figure to the basis', async () => {
     open();
-    choose('with_fee');
+    choose('shipped:with_fee');
     fireEvent.change(input('abort-parameter-profit_pct')!, { target: { value: '7.5' } });
     save();
     await waitFor(() => expect(mocked.putAbortTerms).toHaveBeenCalledTimes(1));
@@ -152,7 +152,7 @@ describe('contract figures of an abort basis', () => {
 
   it('a change of basis takes the figures of the old basis out of the form and out of the request', async () => {
     open({ basis_code: 'with_fee', basis_source: 'shipped', parameters: { fee_pct: '0.05', profit_pct: '0.1' } });
-    choose('profit_only');
+    choose('shipped:profit_only');
     expect(input('abort-parameter-fee_pct')).toBeNull();
     expect(input('abort-parameter-profit_pct')!.value).toBe('10');
     save();
@@ -168,9 +168,36 @@ describe('contract figures of an abort basis', () => {
     expect(sentParameters()).toEqual({});
   });
 
+  it('tells a basis of a pack from a shipped one with the same id, and sends the source of the row chosen', async () => {
+    mocked.putAbortTerms.mockResolvedValue({} as AbortTerms);
+    const fromPack: AbortBasis = { ...basis('with_fee', []), source: 'pack' };
+    wrap(
+      <AbortTermsDialog
+        open
+        onClose={() => undefined}
+        projectId="p1"
+        item={item()}
+        terms={null}
+        bases={[WITH_FEE, fromPack]}
+        labels={labels}
+        onSaved={() => undefined}
+      />,
+    );
+    fireEvent.change(input('abort-basis')!, { target: { value: 'pack:with_fee' } });
+    // The basis of the pack has no figures, the shipped one of the same id has two.
+    expect(screen.queryByTestId('abort-parameters')).toBeNull();
+    fireEvent.click(screen.getByTestId('abort-terms-save'));
+    await waitFor(() => expect(mocked.putAbortTerms).toHaveBeenCalledTimes(1));
+    expect(mocked.putAbortTerms.mock.calls[0]![2]).toMatchObject({
+      basis_code: 'with_fee',
+      basis_source: 'pack',
+      parameters: {},
+    });
+  });
+
   it('a figure above one hundred per cent is a problem of the form', () => {
     open();
-    choose('profit_only');
+    choose('shipped:profit_only');
     fireEvent.change(input('abort-parameter-profit_pct')!, { target: { value: '120' } });
     save();
     expect(screen.getByTestId('abort-terms-problems').textContent).toContain(

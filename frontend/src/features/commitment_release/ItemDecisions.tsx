@@ -16,6 +16,7 @@ import { fmtDate } from '@/shared/lib/formatters';
 
 import { UNAVAILABLE, itemVerdict } from './access';
 import {
+  commitmentErrorCode,
   commitmentKeys,
   decideRelease,
   listTransferTargets,
@@ -365,6 +366,11 @@ export function EndItem({ projectId, item, onChanged }: EndItemProps) {
   const [reason, setReason] = useState('');
   const [targetProject, setTargetProject] = useState('');
   const [target, setTarget] = useState('');
+  // Whether the loss is above every tier is the server's answer to the
+  // request itself: an abort has no preview. The reference is asked for once
+  // the server said so, and is not sent before.
+  const [outside, setOutside] = useState(false);
+  const [externalRef, setExternalRef] = useState('');
   const abortV = itemVerdict(item, 'request_abort');
   const transferV = itemVerdict(item, 'transfer');
 
@@ -384,7 +390,7 @@ export function EndItem({ projectId, item, onChanged }: EndItemProps) {
   const run = useMutation({
     mutationFn: (): Promise<unknown> =>
       ending === 'abort'
-        ? requestAbort(projectId, item.id, reason.trim())
+        ? requestAbort(projectId, item.id, reason.trim(), outside ? externalRef.trim() : '')
         : transferItem(projectId, item.id, {
             target_item_id: target,
             reason: reason.trim(),
@@ -395,15 +401,25 @@ export function EndItem({ projectId, item, onChanged }: EndItemProps) {
       setReason('');
       setTarget('');
       setTargetProject('');
+      setOutside(false);
+      setExternalRef('');
       onChanged();
+    },
+    onError: (err) => {
+      const code = commitmentErrorCode(err);
+      if (code === 'external_approval_required') setOutside(true);
+      if (code === 'external_approval_not_required') setOutside(false);
     },
   });
   const start = (next: NonNullable<Ending>) => {
     run.reset();
     setReason('');
+    setOutside(false);
+    setExternalRef('');
     setEnding(next);
   };
-  const ready = !!reason.trim() && (ending !== 'transfer' || !!target);
+  const needsRef = ending === 'abort' && outside;
+  const ready = !!reason.trim() && (ending !== 'transfer' || !!target) && (!needsRef || !!externalRef.trim());
 
   return (
     <section data-testid="end-item">
@@ -506,6 +522,24 @@ export function EndItem({ projectId, item, onChanged }: EndItemProps) {
               onChange={(e) => setReason(e.target.value)}
             />
           </Field>
+          {needsRef && (
+            <Field
+              id="end-external-ref"
+              label={t('commitment.release.external_ref', { defaultValue: 'External approval reference' })}
+              hint={t('commitment.release.external_ref_hint', {
+                defaultValue: 'The file number or date of the approval given by the body above the schedule.',
+              })}
+              required
+            >
+              <input
+                id="end-external-ref"
+                maxLength={255}
+                className={FIELD_CLASS}
+                value={externalRef}
+                onChange={(e) => setExternalRef(e.target.value)}
+              />
+            </Field>
+          )}
           <div className="flex gap-2">
             <Button size="sm" loading={run.isPending} disabled={!ready} onClick={() => run.mutate()} data-testid="end-send">
               {ending === 'abort'

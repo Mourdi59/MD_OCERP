@@ -49145,6 +49145,7 @@ const resource = {
     "commitment.errors.unknown_catalogue": "Katalog nicht gefunden",
     "commitment.evidence.items_released_by_gate": "Zu diesem Meilenstein fällige Verpflichtungen sind freigegeben oder zurückgestellt",
     "commitment.evidence.items_without_area": "Positionen dieses Gates nennen einen Bereich, den das Projekt nicht mehr hat",
+    "commitment.evidence.no_items_for_gate": "Keine Verpflichtungsposition nennt dieses Gate; ob bis dahin Mittel freizugeben sind, ist nicht bekannt",
     "commitment.export.as_of": "Stand",
     "commitment.export.col_code": "Nr.",
     "commitment.export.col_committed": "Gebunden",

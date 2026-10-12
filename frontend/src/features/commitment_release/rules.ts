@@ -13,6 +13,7 @@ import { isDecimalString, subtractDecimalStrings } from '@/shared/lib/exactDecim
 
 import type {
   AbortParameterField,
+  CatalogueSource,
   AbortTermsInput,
   CheckResult,
   CommitmentItem,
@@ -297,7 +298,7 @@ export interface StepDraft {
 
 export interface AbortTermsDraft {
   basisCode: string;
-  basisSource: 'shipped' | 'tenant';
+  basisSource: CatalogueSource;
   /** How far the work has come, typed as a percentage. */
   progressPercent: string;
   /** Contract figures the chosen basis asks for, by name, typed as percentages. */

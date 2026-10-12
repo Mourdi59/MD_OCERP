@@ -32,7 +32,8 @@ export interface Page<T> {
 export type Enforcement = 'off' | 'warn' | 'block';
 export type FxPolicy = 'fx_service_rate_set' | 'project_rates';
 export type PlannedSource = 'budget_line' | 'cost_line' | 'boq_position' | 'manual';
-export type CatalogueSource = 'shipped' | 'tenant';
+/** Where a catalogue row comes from. Sent back as the row carries it, never mapped. */
+export type CatalogueSource = 'shipped' | 'tenant' | 'pack';
 export type ItemStatus =
   | 'planned'
   | 'release_requested'
@@ -808,8 +809,15 @@ export function decideRelease(projectId: string, itemId: string, body: DecisionI
 }
 
 /** Ask to stop the item. It is decided like a release, on the tier its residual loss calls for. */
-export function requestAbort(projectId: string, itemId: string, reason: string): Promise<Release> {
-  return apiPost<Release>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/abort`, { reason });
+/**
+ * Ask to stop the item. The external reference travels only after the server
+ * said the loss is above every tier; on any other loss it refuses one.
+ */
+export function requestAbort(projectId: string, itemId: string, reason: string, externalRef = ''): Promise<Release> {
+  return apiPost<Release>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/abort`, {
+    reason,
+    external_approval_ref: externalRef,
+  });
 }
 
 /**

@@ -231,7 +231,12 @@ export function ReleaseHistory({
               <td className="py-2 text-content-secondary">
                 {r.tranche_note && <p>{r.tranche_note}</p>}
                 {r.rationale && <p className="text-xs text-content-tertiary">{rationaleText(t, r.rationale)}</p>}
-                {r.conditions && <p className="text-xs text-content-tertiary">{r.conditions}</p>}
+                {/* One line per approver of a multi-step tier. */}
+                {r.conditions && (
+                  <p className="whitespace-pre-line text-xs text-content-tertiary" data-testid="history-conditions">
+                    {r.conditions}
+                  </p>
+                )}
                 {r.valid_until && (
                   <p className="text-xs text-content-tertiary" data-testid="history-valid-until">
                     {t('commitment.history.valid_until', {

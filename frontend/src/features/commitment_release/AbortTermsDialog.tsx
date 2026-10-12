@@ -83,7 +83,10 @@ export function AbortTermsDialog({ open, onClose, projectId, item, terms, bases,
   const set = (patch: Partial<AbortTermsDraft>) => setDraft((d) => ({ ...d, ...patch }));
   const patchStep = (rowId: string, patch: Partial<StepDraft>) =>
     set({ steps: draft.steps.map((s) => (s.rowId === rowId ? { ...s, ...patch } : s)) });
-  const basis = bases.find((b) => b.id === draft.basisCode) ?? null;
+  // Two sources may carry a basis under one id, so a basis is told apart by both.
+  const basisKey = (b: Pick<AbortBasis, 'source' | 'id'>) => `${b.source}:${b.id}`;
+  const picked = draft.basisCode ? `${draft.basisSource}:${draft.basisCode}` : '';
+  const basis = bases.find((b) => basisKey(b) === picked) ?? null;
   // The contract figures the chosen basis works with. Another basis has other figures or none.
   const fields = basis?.parameter_fields ?? [];
   const problems = abortTermsProblems(draft, fields);
@@ -161,11 +164,11 @@ export function AbortTermsDialog({ open, onClose, projectId, item, terms, bases,
           <select
             id="abort-basis"
             className={FIELD_CLASS}
-            value={draft.basisCode}
+            value={picked}
             onChange={(e) => {
-              const next = bases.find((b) => b.id === e.target.value);
+              const next = bases.find((b) => basisKey(b) === e.target.value);
               set({
-                basisCode: e.target.value,
+                basisCode: next?.id ?? '',
                 basisSource: next?.source ?? 'shipped',
                 parameters: parametersFor(draft.parameters, next?.parameter_fields ?? []),
               });
@@ -173,7 +176,7 @@ export function AbortTermsDialog({ open, onClose, projectId, item, terms, bases,
           >
             <option value="">{t('commitment.abort_form.basis_none', { defaultValue: 'Not known yet' })}</option>
             {bases.map((b) => (
-              <option key={`${b.source}:${b.id}`} value={b.id}>
+              <option key={basisKey(b)} value={basisKey(b)}>
                 {catalogueName(labels, b.id, b.name)}
               </option>
             ))}

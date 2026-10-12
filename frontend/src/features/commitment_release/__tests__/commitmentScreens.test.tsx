@@ -553,7 +553,29 @@ describe('ItemPanel', () => {
     fireEvent.change(document.getElementById('end-reason')!, { target: { value: ' Client cancelled the wing ' } });
     fireEvent.click(screen.getByTestId('end-send'));
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
-    expect(mocked.requestAbort).toHaveBeenCalledWith('p1', 'i1', 'Client cancelled the wing');
+    expect(mocked.requestAbort).toHaveBeenCalledWith('p1', 'i1', 'Client cancelled the wing', '');
+  });
+
+  it('an abort above every tier asks for the external reference once the server says so, and sends it', async () => {
+    mocked.requestAbort.mockRejectedValueOnce(
+      new ApiError(422, 'Unprocessable', {
+        detail: { code: 'external_approval_required', message: 'The amount is above every tier' },
+      }),
+    );
+    mocked.requestAbort.mockResolvedValueOnce(release({ purpose: 'abort' }));
+    const { onChanged } = panel();
+    fireEvent.click(screen.getByTestId('item-abort'));
+    expect(document.getElementById('end-external-ref')).toBeNull();
+    fireEvent.change(document.getElementById('end-reason')!, { target: { value: 'Client cancelled the wing' } });
+    fireEvent.click(screen.getByTestId('end-send'));
+    const alert = await within(screen.getByTestId('end-form')).findByRole('alert');
+    expect(alert.textContent).toContain(enT('commitment.errors.external_approval_required'));
+    // The reference is now required: the request cannot go again without it.
+    expect(screen.getByTestId('end-send')).toBeDisabled();
+    fireEvent.change(document.getElementById('end-external-ref')!, { target: { value: ' Board 2026-14 ' } });
+    fireEvent.click(screen.getByTestId('end-send'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(mocked.requestAbort).toHaveBeenLastCalledWith('p1', 'i1', 'Client cancelled the wing', 'Board 2026-14');
   });
 
   it('an abort the server cannot size is refused in words that say what to do', async () => {
