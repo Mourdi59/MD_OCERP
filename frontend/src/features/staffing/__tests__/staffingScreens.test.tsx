@@ -221,6 +221,14 @@ describe('PlanPanel', () => {
     expect(screen.getByTestId('plan-change-catalogue')).toBeEnabled();
   });
 
+  it('says how many people the checks leave out, and nothing when it is nobody', () => {
+    renderPlan({ restrictedPeople: 3 });
+    expect(screen.getByTestId('findings-restricted')).toHaveTextContent('3 people are not included in these checks');
+    cleanup();
+    renderPlan();
+    expect(screen.queryByTestId('findings-restricted')).toBeNull();
+  });
+
   it('keeps every blocker of a refused submission on screen', async () => {
     mocked.submitPlan.mockRejectedValue(
       new ApiError(422, 'Unprocessable', {
@@ -413,6 +421,12 @@ describe('read views', () => {
     ]);
   });
 
+  it('shows no summary table when the server sends none', () => {
+    wrap(<ComplianceView projectId="p1" catalogue={catalogue()} labels={labels} compliance={compliance()} onOpenFile={() => undefined} />);
+    expect(screen.queryByTestId('compliance-summary')).toBeNull();
+    expect(screen.getAllByTestId('compliance-row')).toHaveLength(2);
+  });
+
   it('puts the project summary above the matrix of people', () => {
     wrap(<ComplianceView projectId="p1" catalogue={catalogue()} labels={labels} compliance={complianceForViewer()} onOpenFile={() => undefined} />);
     const summary = screen.getByTestId('compliance-summary');
@@ -436,6 +450,9 @@ describe('read views', () => {
     expect(within(summary[0]!).getByText('Employment contract')).toBeInTheDocument();
     expect([...summary[0]!.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['1', '0', '0', '1', '0']);
     expect(screen.getByTestId('compliance-summary')).not.toHaveTextContent('Health certificate');
+    // The counts are of the people held back, never presented as project totals.
+    expect(screen.getByTestId('compliance-summary')).toHaveTextContent(en.translation['staffing.compliance.summary_title']!);
+    expect(screen.getByTestId('compliance-summary')).toHaveTextContent('at least 5 of them');
   });
 
   it('hides the cells of one person only and says why, beside the rows the caller may see', () => {

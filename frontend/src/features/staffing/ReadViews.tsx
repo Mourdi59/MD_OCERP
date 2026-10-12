@@ -146,10 +146,13 @@ export function ComplianceView({
       {compliance.summary.length > 0 && (
         <section className="space-y-2" data-testid="compliance-summary">
           <h2 className="text-sm font-semibold text-content-primary">
-            {t('staffing.compliance.summary_title', { defaultValue: 'Whole project, by document' })}
+            {t('staffing.compliance.summary_title', { defaultValue: 'People whose file you cannot open, by document' })}
           </h2>
           <p className="text-xs text-content-tertiary">
-            {t('staffing.compliance.summary_hint', { defaultValue: 'Counts of people only. Health documents are left out.' })}
+            {t('staffing.compliance.summary_hint', {
+              defaultValue: 'Counts of people only, and only for a document at least {{min}} of them must hold. Health documents are left out.',
+              min: fmtNumber(compliance.summary_min_group, 0),
+            })}
           </p>
           <div className="overflow-x-auto rounded-lg border border-border-light">
             <table className="w-full min-w-[560px] text-sm">

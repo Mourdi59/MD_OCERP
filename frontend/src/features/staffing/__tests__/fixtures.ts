@@ -324,10 +324,9 @@ export function compliance(over: Partial<Compliance> = {}): Compliance {
       },
     ],
     total: 2,
-    summary: [
-      { document_kind: 'employment_contract', required: 2, valid: 1, expiring: 0, expired: 0, missing: 1, waived: 0 },
-      { document_kind: 'work_permit', required: 1, valid: 0, expiring: 1, expired: 0, missing: 0, waived: 0 },
-    ],
+    // A reader who sees every row gets no summary: it counts only the rows held back.
+    summary: [],
+    summary_min_group: 5,
     ...over,
   };
 }
@@ -338,6 +337,10 @@ export function complianceForViewer(): Compliance {
   return {
     ...full,
     document_kinds: [],
+    summary: [
+      { document_kind: 'employment_contract', required: 2, valid: 1, expiring: 0, expired: 0, missing: 1, waived: 0 },
+      { document_kind: 'work_permit', required: 1, valid: 0, expiring: 1, expired: 0, missing: 0, waived: 0 },
+    ],
     items: full.items.map((row) => ({ ...row, file_id: null, cells: {}, can: { see_documents: no('no_relationship_to_person') } })),
   };
 }

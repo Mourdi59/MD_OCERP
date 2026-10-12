@@ -70,7 +70,7 @@ export function usePinnedCatalogue(projectId: string, enabled = true) {
 export function usePlanFindings(projectId: string, enabled = true) {
   return useQuery({
     queryKey: staffingKeys.findings(projectId),
-    queryFn: () => listPlanFindings(projectId).then((page) => page.items),
+    queryFn: () => listPlanFindings(projectId).then((page) => ({ findings: page.items, restrictedPeople: page.restricted_people ?? 0 })),
     enabled: !!projectId && enabled,
   });
 }

@@ -285,7 +285,13 @@ export interface Compliance {
   document_kinds: string[];
   items: ComplianceRow[];
   total: number;
+  /**
+   * Counts over the people whose rows this caller does NOT see, never project
+   * totals, and only for a kind at least `summary_min_group` of them must hold.
+   * Often empty on a small project.
+   */
   summary: ComplianceSummaryRow[];
+  summary_min_group: number;
 }
 
 export interface PlannedVsActualRow {
@@ -558,8 +564,13 @@ export function returnPlan(projectId: string): Promise<StaffingPlan> {
   return apiPost<StaffingPlan>(`/v1/staffing/projects/${projectId}/plan/return`, {});
 }
 
-export function listPlanFindings(projectId: string): Promise<Page<Finding>> {
-  return apiGet<Page<Finding>>(`/v1/staffing/projects/${projectId}/plan/findings`);
+/** Findings cover only the people whose file the caller may open; `restricted_people` counts the rest. */
+export interface FindingsPage extends Page<Finding> {
+  restricted_people?: number;
+}
+
+export function listPlanFindings(projectId: string): Promise<FindingsPage> {
+  return apiGet<FindingsPage>(`/v1/staffing/projects/${projectId}/plan/findings`);
 }
 
 /* ── Positions, fills, handovers ──────────────────────────────────────── */

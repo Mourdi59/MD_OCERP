@@ -210,7 +210,8 @@ export function ProjectStaffingPage() {
         catalogue={catalogue}
         positions={positionsQ.data ?? []}
         handovers={handoversQ.data ?? []}
-        findings={findingsQ.data ?? []}
+        findings={findingsQ.data?.findings ?? []}
+        restrictedPeople={findingsQ.data?.restrictedPeople ?? 0}
         labels={labels}
         personName={personName}
         onChanged={invalidate}

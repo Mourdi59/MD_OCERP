@@ -78,6 +78,8 @@ export interface PlanPanelProps {
   positions: Position[];
   handovers: Handover[];
   findings: Finding[];
+  /** People the findings leave out because the reader may not open their file. */
+  restrictedPeople?: number;
   labels: LabelContext;
   personName: (userId: string | null | undefined) => string | null;
   onChanged: () => void;
@@ -129,6 +131,7 @@ export function PlanPanel({
   positions,
   handovers,
   findings,
+  restrictedPeople = 0,
   labels,
   personName,
   onChanged,
@@ -311,6 +314,14 @@ export function PlanPanel({
             </h3>
             <FindingList findings={blockers} catalogue={catalogue} labels={labels} />
           </div>
+        )}
+        {submittable && restrictedPeople > 0 && (
+          <p className="mt-3 text-xs text-content-tertiary" role="status" data-testid="findings-restricted">
+            {t('staffing.plan.findings_restricted', {
+              defaultValue: '{{count}} people are not included in these checks, because you may not open their personnel files.',
+              count: restrictedPeople,
+            })}
+          </p>
         )}
       </section>
 
