@@ -218,6 +218,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _json("confirmed_revisions"),
             _bool("stale", False),
             _text("na_rationale"),
+            _json("criteria"),
             sa.UniqueConstraint("gate_id", "attempt_no", "area_id", name="uq_oe_gov_check_attempt_area"),
         ],
         [("ix_oe_gov_check_project", ["project_id"])],

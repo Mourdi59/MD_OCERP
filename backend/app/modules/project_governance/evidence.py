@@ -10,11 +10,17 @@ area, shows it, and treats ``not_met`` from a provider registered with
 ``blocking=True`` as a blocker (``evidence_not_met``). A provider that raises is
 logged and shown as one ``unknown`` item; it never breaks the gate page and never
 blocks. Areas the project marked not applicable are not asked at all.
+
+An item may carry ``link=(kind, id)``. The module that owns the kind says once
+where it opens, ``register_evidence_link(kind, "/projects/{project_id}/...")``,
+and the gate page gets the finished path with the item. The screen holds no
+table of kinds; a kind nobody registered is shown without a link.
 """
 
 from __future__ import annotations
 
 import logging
+import string
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -22,7 +28,9 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-EVIDENCE_STATES = ("met", "not_met", "unknown")
+# ``warning``: by the provider's own rule the gate may pass, and something is still outstanding.
+# It never blocks; a go has to name it, exactly like an unknown item of a blocking provider.
+EVIDENCE_STATES = ("met", "not_met", "unknown", "warning")
 ANY_AREA = "*"
 
 
@@ -70,13 +78,17 @@ class CollectedEvidence:
     item: EvidenceItem
     error: bool = False
 
-    def as_dict(self) -> dict[str, Any]:
+    def as_dict(self, project_id: uuid.UUID | str | None = None) -> dict[str, Any]:
         i = self.item
         return {
             "code": i.code,
             "state": i.state,
             "label": {"key": i.label_key, "text": i.labels},
-            "link": {"kind": i.link[0], "id": i.link[1]} if i.link else None,
+            "link": (
+                {"kind": i.link[0], "id": i.link[1], "href": evidence_link_href(i.link[0], i.link[1], project_id)}
+                if i.link
+                else None
+            ),
             "detail": i.detail,
             "provider": self.provider,
             "blocking": self.blocking,
@@ -85,6 +97,37 @@ class CollectedEvidence:
 
 
 _REGISTRY: dict[str, RegisteredProvider] = {}
+
+_LINK_FIELDS = frozenset({"id", "project_id"})
+_LINK_ROUTES: dict[str, str] = {}
+
+
+def register_evidence_link(kind: str, route: str) -> None:
+    """Say where evidence links of ``kind`` open: a path of the web app.
+
+    ``route`` starts with ``/`` and may use ``{project_id}`` (the project of
+    the gate) and ``{id}`` (the second half of the item's link). Registering a
+    kind again replaces its route. Raises ``ValueError`` on anything else, at
+    import time of the module that registers it.
+    """
+    fields = {name for _, name, _, _ in string.Formatter().parse(route) if name is not None}
+    if not kind or not route.startswith("/") or route.startswith("//") or not fields <= _LINK_FIELDS:
+        raise ValueError(
+            f"evidence link route for {kind!r} must be a path using only {sorted(_LINK_FIELDS)}: {route!r}"
+        )
+    _LINK_ROUTES[kind] = route
+
+
+def unregister_evidence_link(kind: str) -> None:
+    _LINK_ROUTES.pop(kind, None)
+
+
+def evidence_link_href(kind: str, link_id: str, project_id: uuid.UUID | str | None) -> str | None:
+    """The path a link of ``kind`` opens, or ``None`` when no module registered the kind."""
+    route = _LINK_ROUTES.get(kind)
+    if route is None or (project_id is None and "{project_id}" in route):
+        return None
+    return route.format(id=link_id, project_id=project_id)
 
 
 def register_evidence_provider(
@@ -124,6 +167,18 @@ async def collect_evidence(
                     items = await reg.provider(session, project_id, attempt, area)
                 for item in items or []:
                     out.append(CollectedEvidence(area.code, reg.name, reg.blocking, item))
+                if not items and reg.blocking and reg.key == area.code:
+                    # Registered for exactly this area and silent about it: shown as unknown, so the
+                    # gate does not read as covered. A provider registered for every area answers
+                    # only for its own, and its silence elsewhere is not a missing answer.
+                    out.append(
+                        CollectedEvidence(
+                            area.code,
+                            reg.name,
+                            reg.blocking,
+                            EvidenceItem(code=f"{reg.name}:no_answer", state="unknown"),
+                        )
+                    )
             except Exception:
                 logger.exception("governance evidence provider %s failed for area %s", reg.name, area.code)
                 out.append(

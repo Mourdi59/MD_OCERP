@@ -94,6 +94,33 @@ def _parse_day(value: str) -> date | None:
         return None
 
 
+def approval_would_clear(step: Any, states: Any, entitled: Any, decider_id: Any) -> bool:
+    """Whether one more approval, by ``decider_id``, clears the final step of a pending route.
+
+    The rule is the approval engine's own (``simulate.step_cleared``), fed with
+    the recorded decisions of that step plus the one the caller would add, so
+    what the screen offers cannot drift from what ``decide`` then accepts.
+    ``entitled`` is the engine's set of named deciders, ``None`` for a
+    role-based step.
+    """
+    from app.modules.approval_routes.simulate import step_cleared
+
+    mine = [s for s in states if s.step_id == step.id]
+    approvers = {s.approver_user_id for s in mine if s.decision == "approved"}
+    added = 0 if decider_id in approvers else 1
+    approvers = approvers | {decider_id}
+    return step_cleared(
+        mode=step.mode,
+        user_pinned=entitled is not None,
+        pinned_user_approved=bool(set(entitled or ()) & approvers),
+        approvals=sum(1 for s in mine if s.decision == "approved") + added,
+        distinct_approvers=len(approvers),
+        rejections=sum(1 for s in mine if s.decision == "rejected"),
+        total_acted=sum(1 for s in mine if s.decision != "pending") + added,
+        quorum=step.required_approver_count,
+    )
+
+
 def server_today() -> date:
     """The date every write is judged against. A client never supplies it."""
     return datetime.now(UTC).date()
@@ -148,6 +175,10 @@ class GovernanceService:
         self.session = session
         self.repo = GovernanceRepository(session)
         self.last_evidence: list[CollectedEvidence] = []
+        # A caller that works inside a savepoint it may roll back sets a list here and
+        # publishes it after the release: a deferred event survives a rolled-back
+        # savepoint and would otherwise fire for rows that do not exist.
+        self.outbox: list[tuple[str, dict[str, Any]]] | None = None
 
     # ── helpers ────────────────────────────────────────────────────────────
 
@@ -188,7 +219,11 @@ class GovernanceService:
         )
 
     def _publish(self, name: str, data: dict[str, Any]) -> None:
-        publish_after_commit(self.session, f"{MODULE}.{name}", data, source_module=MODULE)
+        # ``name`` is the full event name: subscribers and the dead-subscription guard match the literal.
+        if self.outbox is not None:
+            self.outbox.append((name, data))
+            return
+        publish_after_commit(self.session, name, data, source_module=MODULE)
 
     async def _notify(self, user_id: Any, kind: str, entity_type: str, entity_id: Any, ctx: dict[str, Any]) -> None:
         """Best effort, inside a savepoint so a failure never poisons the decision."""
@@ -345,6 +380,7 @@ class GovernanceService:
                     rag=c.rag,
                     note=c.note,
                     confirmed_at=c.confirmed_at.isoformat() if c.confirmed_at else None,
+                    criteria=dict(c.criteria or {}),
                 )
                 for c in checks
                 if c.area_id in by_id
@@ -417,7 +453,10 @@ class GovernanceService:
             "created",
             metadata={"catalogue": catalogue_key(source, catalogue_id, pinned)},
         )
-        self._publish("model.set", {"project_id": str(project_id), "catalogue_id": catalogue_id, "version": pinned})
+        self._publish(
+            "project_governance.model.set",
+            {"project_id": str(project_id), "catalogue_id": catalogue_id, "version": pinned},
+        )
         return model
 
     async def _materialise(
@@ -562,7 +601,7 @@ class GovernanceService:
             to_status=catalogue_key(source, catalogue_id, pinned),
             metadata={"mapping": mapping, "kept_gates": sorted(kept)},
         )
-        self._publish("model.changed", {"project_id": str(project_id), "mapping": mapping})
+        self._publish("project_governance.model.changed", {"project_id": str(project_id), "mapping": mapping})
         return model
 
     async def update_settings(
@@ -585,7 +624,10 @@ class GovernanceService:
             }
 
         before = _state()
-        if four_eyes is not None:
+        if "four_eyes" in fields_set and four_eyes is None:
+            raise GovernanceError("null_not_allowed", 422)
+        if four_eyes is not None and four_eyes != model.four_eyes:
+            await self._refuse_while_under_decision(project_id)
             model.four_eyes = four_eyes
         for field, kind, value in (
             ("decision_route_id", GATE_TARGET_KIND, decision_route_id),
@@ -607,6 +649,12 @@ class GovernanceService:
         )
         return model
 
+    async def _refuse_while_under_decision(self, project_id: uuid.UUID) -> None:
+        """409 while any gate of the project is in review or on hold."""
+        code = ev.settings_freeze_violation(g.status for g in await self.repo.list_gates(project_id))
+        if code:
+            raise conflict(code)
+
     # ── areas ──────────────────────────────────────────────────────────────
 
     async def update_area(
@@ -627,6 +675,13 @@ class GovernanceService:
             "deputy_user_id": _s(area.deputy_user_id),
             "applicable": area.applicable,
         }
+        for field in ("applicable", "na_rationale", "name_override"):
+            if field in changes and changes[field] is None:
+                # These columns hold no null; a name override is cleared with an empty string.
+                raise GovernanceError("null_not_allowed", 422)
+        if "applicable" in changes and changes["applicable"] != area.applicable:
+            # Taking an area out of a gate that is being decided would remove its blockers unseen.
+            await self._refuse_while_under_decision(project_id)
         for field in ("owner_user_id", "deputy_user_id"):
             if field in changes and changes[field] is not None:
                 if not await self.user_can_access_project(project_id, changes[field]):
@@ -808,7 +863,7 @@ class GovernanceService:
             raise _route_error(exc) from exc
         gate.approval_instance_id = instance.id
         await self._fsm(GATE_FSM, gate, "in_review", actor_id, attempt_no=gate.attempt_no)
-        self._publish("gate.submitted", {"project_id": str(project_id), "gate_id": str(gate.id)})
+        self._publish("project_governance.gate.submitted", {"project_id": str(project_id), "gate_id": str(gate.id)})
         return gate
 
     async def start_preparation(
@@ -912,6 +967,16 @@ class GovernanceService:
             raise GovernanceError(code, status, violations=[v.as_dict() for v in violations])
         return instance, final_step, ctx, areas, docs
 
+    async def _one_approval_clears(self, instance: Any, final_step: Any, decider_id: uuid.UUID) -> bool:
+        """Whether this caller's approval would complete the pending route of a gate."""
+        if instance.status != "pending":
+            return True
+        from app.modules.approval_routes.service import ApprovalRouteService
+
+        svc = ApprovalRouteService(self.session)
+        entitled = await svc.entitled_deciders(instance, final_step, now=datetime.now(UTC))
+        return approval_would_clear(final_step, await svc.list_step_states(instance.id), entitled, decider_id)
+
     async def decide_capability(
         self, project_id: uuid.UUID, gate_id: uuid.UUID, *, decider_id: uuid.UUID, role: str | None, today: date
     ) -> dict[str, Any]:
@@ -934,11 +999,16 @@ class GovernanceService:
         for members in (_POSITIVE, _NEGATIVE):
             reason: str | None = None
             try:
-                await self._admit_actor(model, gate, outcome=members[-1], decider_id=decider_id, role=role)
+                instance, final_step = await self._admit_actor(
+                    model, gate, outcome=members[-1], decider_id=decider_id, role=role
+                )
                 if ctx is None:
                     ctx, _, _ = await self.gate_context(model, gate, today)
                 if ev.four_eyes_violation(ctx, str(decider_id)):
                     reason = "decider_is_area_owner"
+                elif members is _POSITIVE and not await self._one_approval_clears(instance, final_step, decider_id):
+                    # A role step in mode all or majority: decide would answer 409 after this approval.
+                    reason = "route_needs_more_approvals"
             except GovernanceError as exc:
                 reason = exc.code
             for outcome in members:
@@ -947,14 +1017,38 @@ class GovernanceService:
         if not out["decide"]:
             out["decide_reason"] = outcomes["stop"]["reason"]
         go_reason = outcomes["go"]["reason"]
+        # What a go has to name. It is content of the request, as a rationale is, and not a
+        # reason the go is closed, so the probe below names all of it.
+        pending = ev.evidence_to_acknowledge(ctx) if ctx is not None else []
+        out["acknowledge"] = [
+            {"area_code": e.area_code, "code": e.code, "provider": e.provider, "state": e.state} for e in pending
+        ]
         if go_reason is None and ctx is not None:
-            probe = ev.DecisionRequest(outcome="go", rationale="", decider_id=str(decider_id))
+            probe = ev.DecisionRequest(
+                outcome="go",
+                rationale="",
+                decider_id=str(decider_id),
+                acknowledged_evidence=tuple((e.area_code, e.code) for e in pending),
+            )
             violations = ev.validate_decision(ctx, probe)
             go_reason = ev.decision_refusal(violations)[0] if violations else None
         out["go"] = go_reason is None
         if go_reason is not None:
             out["go_reason"] = go_reason
         return out
+
+    async def unknown_evidence(
+        self, project_id: uuid.UUID, gate_id: uuid.UUID, *, today: date
+    ) -> tuple[tuple[str, str], ...]:
+        """``(area_code, code)`` of the unknown evidence a go on this gate has to name now.
+
+        For a caller that decides without a screen, such as the demo seed: it
+        reads the list the dialog shows and hands it to :meth:`decide`.
+        """
+        model = await self.require_model(project_id)
+        gate = await self.get_gate(project_id, gate_id)
+        ctx, _, _ = await self.gate_context(model, gate, today)
+        return tuple((e.area_code, e.code) for e in ev.evidence_to_acknowledge(ctx))
 
     async def gate_capability(
         self, project_id: uuid.UUID, gate_id: uuid.UUID, *, actor_id: uuid.UUID, role: str | None
@@ -1114,7 +1208,7 @@ class GovernanceService:
                     await self._fsm(DOCUMENT_FSM, doc, "approved_at_gate", decider_id, gate_id=str(gate.id))
                     await self._fsm(DOCUMENT_FSM, doc, "binding", decider_id, gate_id=str(gate.id))
                     self._publish(
-                        "frame_document.state_changed",
+                        "project_governance.frame_document.state_changed",
                         {"project_id": str(project_id), "document_id": str(doc.id), "status": "binding"},
                     )
         if effects.advance_phase:
@@ -1122,7 +1216,7 @@ class GovernanceService:
             model.current_phase = gate.to_phase
             await self._mirror_project_phase(project_id, catalogue, gate.to_phase)
             self._publish(
-                "phase.changed",
+                "project_governance.phase.changed",
                 {"project_id": str(project_id), "from_phase": before, "to_phase": gate.to_phase},
             )
         if effects.stop_project:
@@ -1157,7 +1251,7 @@ class GovernanceService:
             metadata={"attempt_no": decision.attempt_no, "proceed_at_risk_areas": list(request.proceed_at_risk_areas)},
         )
         self._publish(
-            "gate.decided",
+            "project_governance.gate.decided",
             {
                 "project_id": str(project_id),
                 "gate_id": str(gate.id),
@@ -1195,6 +1289,7 @@ class GovernanceService:
                     confirmed_revisions=dict(c.confirmed_revisions or {}),
                     stale=True if carry_stale else c.stale,
                     na_rationale=c.na_rationale,
+                    criteria=dict(c.criteria or {}),
                 )
             )
         await self.session.flush()
@@ -1257,13 +1352,14 @@ class GovernanceService:
             model.current_phase = gate.from_phase
             await self._mirror_project_phase(project_id, await self.catalogue_for(model), gate.from_phase)
             self._publish(
-                "phase.changed",
+                "project_governance.phase.changed",
                 {"project_id": str(project_id), "from_phase": before, "to_phase": gate.from_phase},
             )
         await self._fsm(GATE_FSM, gate, "in_preparation", actor_id, reason=rationale, reopened=True)
         await self._next_attempt(gate, carry_stale=True)
         self._publish(
-            "gate.reopened", {"project_id": str(project_id), "gate_id": str(gate.id), "attempt_no": gate.attempt_no}
+            "project_governance.gate.reopened",
+            {"project_id": str(project_id), "gate_id": str(gate.id), "attempt_no": gate.attempt_no},
         )
         return gate
 
@@ -1436,6 +1532,44 @@ class GovernanceService:
             from_status=before,
             to_status=status,
             metadata={"gate": gate.code, "area": area.code, "revisions": confirmed},
+        )
+        return check
+
+    async def tick_criterion(
+        self,
+        project_id: uuid.UUID,
+        gate_id: uuid.UUID,
+        area_id: uuid.UUID,
+        code: str,
+        *,
+        met: bool,
+        note: str,
+        actor_id: uuid.UUID,
+    ) -> GovernanceCheck:
+        """The area owner (or deputy) ticks one readiness criterion of the catalogue.
+
+        The checklist is what the owner works through before attesting; it does
+        not attest and does not block. Readiness is still the check's status.
+        """
+        model = await self.require_model(project_id)
+        gate = await self.get_gate(project_id, gate_id, lock=True)
+        if gate.status not in _UNDECIDED or gate.historic:
+            raise conflict("invalid_transition")
+        area = await self._area_for_owner(project_id, area_id, actor_id)
+        catalogue = await self.catalogue_for(model)
+        if code not in {c.code for c in catalogue.criteria_for(gate.code, area.code)}:
+            raise GovernanceError("unknown_criterion", 422)
+        check = await self._current_check(gate, area)
+        check.criteria = ev.criterion_tick(
+            check.criteria or {}, code, met=met, note=note, actor_id=str(actor_id), at=datetime.now(UTC).isoformat()
+        )
+        await self.session.flush()
+        await self._audit(
+            actor_id,
+            "governance_check",
+            check.id,
+            "criterion_ticked" if met else "criterion_unticked",
+            metadata={"gate": gate.code, "area": area.code, "criterion": code},
         )
         return check
 
@@ -1702,7 +1836,7 @@ class GovernanceService:
             raise GovernanceError("no_pending_revision", 422)
         await self._fsm(DOCUMENT_FSM, doc, "in_review", actor_id)
         self._publish(
-            "frame_document.state_changed",
+            "project_governance.frame_document.state_changed",
             {"project_id": str(project_id), "document_id": str(doc.id), "status": doc.status},
         )
         return doc
@@ -1948,7 +2082,9 @@ class GovernanceService:
                 c.id,
                 {"project_id": str(project_id), "gate": c.gate_code},
             )
-            self._publish("condition.overdue", {"project_id": str(project_id), "condition_id": str(c.id)})
+            self._publish(
+                "project_governance.condition.overdue", {"project_id": str(project_id), "condition_id": str(c.id)}
+            )
         await self.session.flush()
         return out
 
@@ -2058,7 +2194,7 @@ class GovernanceService:
                 after_state={"bound_revision_id": str(cr.proposed_revision_id)},
             )
             self._publish(
-                "frame_document.state_changed",
+                "project_governance.frame_document.state_changed",
                 {
                     "project_id": str(cr.project_id),
                     "document_id": str(doc.id),
@@ -2084,6 +2220,19 @@ class GovernanceService:
         decisions = await self.repo.list_decisions(project_id, gate.id)
         checks = {c.area_code: c for c in ctx.checks}
         doc_states = {d.id: d for d in ctx.documents}
+        unseen = {(e.area_code, e.code) for e in ev.evidence_to_acknowledge(ctx)}
+        try:
+            catalogue: Catalogue | None = await self.catalogue_for(model)
+        except GovernanceError:
+            # A pin that no longer resolves: the gate still reads, without a checklist.
+            catalogue = None
+
+        def _criteria(area_code: str) -> list[dict[str, Any]]:
+            if catalogue is None:
+                return []
+            ticks = checks[area_code].criteria if area_code in checks else {}
+            return ev.criteria_rows([c.code for c in catalogue.criteria_for(gate.code, area_code)], ticks)
+
         return {
             "gate": gate,
             "blockers": [b.as_dict() for b in ev.gate_blockers(ctx)],
@@ -2094,7 +2243,11 @@ class GovernanceService:
                     "owner_user_id": _s(a.owner_user_id),
                     "deputy_user_id": _s(a.deputy_user_id),
                     "applicable": a.applicable,
-                    "evidence": [e.as_dict() for e in self.last_evidence if e.area_code == a.code],
+                    "evidence": [
+                        e.as_dict(project_id) | {"needs_acknowledgement": (e.area_code, e.item.code) in unseen}
+                        for e in self.last_evidence
+                        if e.area_code == a.code
+                    ],
                     "check": (
                         {
                             "status": checks[a.code].status,
@@ -2108,6 +2261,7 @@ class GovernanceService:
                         if a.code in checks
                         else None
                     ),
+                    "criteria": _criteria(a.code),
                     "documents": [
                         {
                             "document_id": str(d.id),

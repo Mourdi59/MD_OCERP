@@ -215,9 +215,51 @@ def test_the_port_exports_its_second_round() -> None:
         assert hasattr(public, name), name
 
 
-def test_the_membership_read_is_the_rule_governance_itself_applies() -> None:
-    import inspect
+def test_the_membership_read_is_the_rule_governance_itself_applies(monkeypatch: pytest.MonkeyPatch) -> None:
+    import asyncio
 
+    from app.modules.project_governance.service import GovernanceService
+
+    asked: list[tuple] = []
+
+    async def _rule(self, project_id, user_id):
+        asked.append((self.session, project_id, user_id))
+        return "the answer of the service"
+
+    monkeypatch.setattr(GovernanceService, "user_can_access_project", _rule)
+    session, project_id, user_id = object(), uuid.uuid4(), uuid.uuid4()
     assert "user_can_access_project" in public.__all__
-    source = inspect.getsource(public.user_can_access_project)
-    assert "GovernanceService(session).user_can_access_project(project_id, user_id)" in source
+    answer = asyncio.run(public.user_can_access_project(session, project_id, user_id))
+    assert answer == "the answer of the service"
+    assert asked == [(session, project_id, user_id)]
+
+
+# ── control settings and the bound content hash ──
+
+
+def test_control_settings_of_a_project_with_a_model() -> None:
+    row = SimpleNamespace(four_eyes=False, current_phase="design", stopped=True)
+    assert public.control_settings(row) == public.ControlSettings(
+        has_model=True, four_eyes=False, current_phase="design", stopped=True
+    )
+
+
+def test_a_project_without_a_model_is_under_four_eyes() -> None:
+    """The control is on until somebody with the authority switches it off; no model is not that."""
+    assert public.control_settings(None) == public.ControlSettings(
+        has_model=False, four_eyes=True, current_phase=None, stopped=False
+    )
+
+
+def test_the_document_view_carries_the_hash_of_the_bound_revision() -> None:
+    neutral = cat.get_catalogue("neutral")
+    areas = public.area_views(neutral, [_area(2, "scope", 2)])
+    bound = _doc(11, "scope_statement", 2, status="binding", bound_content_hash="ab" * 32)
+    draft = _doc(12, "requirements_brief", 2)
+    views = {v.code: v for v in public.document_views(neutral, [bound, draft], areas)}
+    assert views["scope_statement"].bound_content_hash == "ab" * 32
+    assert views["requirements_brief"].bound_content_hash is None
+
+
+def test_the_control_read_is_exported() -> None:
+    assert {"ControlSettings", "control_settings", "project_controls"} <= set(public.__all__)

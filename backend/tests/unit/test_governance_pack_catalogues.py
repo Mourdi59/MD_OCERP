@@ -359,14 +359,15 @@ def _clone(based_on_id: str, version: int | None = None) -> Any:
 def test_a_company_starts_its_own_catalogue_from_the_packs(installed: Packs) -> None:
     installed.install(_pack("acme", _entry("acme_model", 1), _entry("acme_model", 2)), active=True)
     row = _clone("acme_model")
-    assert (row.tenant_id, row.code, row.state, row.based_on) == ("tenant-1", "ours", "draft", "pack:acme_model@2")
+    assert (row.tenant_id, row.code, row.state, row.based_on) == ("tenant-1", "ours", "draft", "pack:acme/acme_model@2")
     assert (row.draft_body["id"], row.draft_body["version"]) == ("ours", 1)
     # The pack's structure came along, and the draft is a catalogue the tenant rules accept.
     draft = cat.catalogue_from_body(row.draft_body, source="tenant", origin="clone")
     source = _resolve("acme_model")
     assert [p.code for p in draft.phases] == [p.code for p in source.phases]
     assert draft.host_of("permits") == source.host_of("permits")
-    assert _clone("acme_model", 1).based_on == "pack:acme_model@1"
+    # The pack is named too: two packs may carry the same catalogue id.
+    assert _clone("acme_model", 1).based_on == "pack:acme/acme_model@1"
 
 
 def test_only_the_active_packs_catalogue_can_be_cloned(installed: Packs) -> None:
@@ -382,3 +383,57 @@ def test_a_broken_pack_file_cannot_be_cloned(installed: Packs) -> None:
     with pytest.raises(GovernanceError) as caught:
         _clone("acme_model")
     assert caught.value.code == "pack_catalogue_invalid"
+
+
+# --------------------------------------------------------------------- second review: manifest rules and defaults
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        {"kind": "no_such_kind", "id": "x", "version": 1, "path": "x.json"},
+        {"kind": "phase_model", "id": "Bad-Id", "version": 1, "path": "x.json"},
+        {"kind": "phase_model", "id": "1starts_with_a_digit", "version": 1, "path": "x.json"},
+        {"kind": "phase_model", "id": "x" * 65, "version": 1, "path": "x.json"},
+        {"kind": "phase_model", "id": "x", "version": 1, "path": "x.json", "default_for_countries": ["DEU"]},
+        {"kind": "phase_model", "id": "x", "version": 1, "path": "x.json", "default_for_countries": ["D1"]},
+    ],
+)
+def test_an_entry_that_breaks_a_manifest_rule_is_left_out(installed: Packs, entry: Any) -> None:
+    pack = _pack("acme", entry, _entry("acme_model"))
+    assert [c.id for c in packs.declared_catalogues(pack)] == ["acme_model"]
+
+
+def test_a_repeated_declaration_counts_once(installed: Packs) -> None:
+    first = _entry("acme_model", 1)
+    again = {**_entry("acme_model", 1), "path": "catalogues/phase_model/another_file.json"}
+    declared = packs.declared_catalogues(_pack("acme", first, again, _entry("acme_model", 2)))
+    assert [(c.id, c.version, c.path) for c in declared] == [
+        ("acme_model", 1, first["path"]),
+        ("acme_model", 2, "catalogues/phase_model/acme_model_v2.json"),
+    ]
+
+
+def test_a_default_of_a_kind_nobody_registered_is_no_default(installed: Packs) -> None:
+    entry = {"kind": "no_such_kind", "id": "x", "version": 1, "path": "x.json", "default_for_new_projects": True}
+    installed.install(_pack("acme", entry), active=True, with_files=False)
+    assert public.default_catalogue_pin("no_such_kind", "DE") is None
+
+
+def test_a_broken_country_default_falls_through_to_the_general_default(installed: Packs) -> None:
+    pack = installed.install(
+        _pack(
+            "acme",
+            _entry("acme_german", default_for_countries=["DE"]),
+            _entry("acme_general", default_for_new_projects=True),
+        ),
+        active=True,
+    )
+    assert public.default_catalogue_pin("phase_model", "DE") == packs.CataloguePin("pack", "acme_german", 1)
+    installed.files[("acme", pack.metadata["catalogues"][0]["path"])] = b"{ not json"
+    # The pack's own general default comes before the shipped catalogue of the country.
+    assert public.default_catalogue_pin("phase_model", "DE") == packs.CataloguePin("pack", "acme_general", 1)
+    assert packs.pack_default_candidates("phase_model", "DE") == (
+        packs.CataloguePin("pack", "acme_german", 1),
+        packs.CataloguePin("pack", "acme_general", 1),
+    )

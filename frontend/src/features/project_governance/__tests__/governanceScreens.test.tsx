@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
 vi.mock('react-i18next', async () => (await import('./i18nMock')).i18nMockModule);
+vi.mock('@/features/approval-routes/ApprovalInstanceDetailDrawer', () => ({ ApprovalInstanceDetailDrawer: () => null }));
 vi.mock('@/shared/ui/ProjectPeopleSelect', () => ({
   ProjectPeopleSelect: ({ placeholder }: { placeholder?: string }) => <input aria-label={placeholder} readOnly />,
 }));
@@ -28,7 +29,7 @@ import type { GateDetail } from '../api';
 import { blocker, condition, detail, gate, gateDocument, matrixArea, matrixResponse, model } from './fixtures';
 
 const labels: LabelContext = { t: enT, language: 'en', exists: () => false };
-const names = (id: string | null | undefined) => (id === 'u-owner' ? 'Dana Weber' : null);
+const names = (id: string | null | undefined) => (id === 'u-owner' ? 'Area owner one' : null);
 
 function wrap(node: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -74,7 +75,7 @@ describe('GovernanceMatrix', () => {
     expect(rows).toHaveLength(2);
     expect(within(rows[0]!).getByText('Go')).toBeInTheDocument();
     expect(within(rows[0]!).getByText('Ready with risks')).toBeInTheDocument();
-    expect(within(rows[0]!).getByText('Dana Weber')).toBeInTheDocument();
+    expect(within(rows[0]!).getByText('Area owner one')).toBeInTheDocument();
     // the second area has no owner, which the row must say rather than leave blank
     expect(within(rows[1]!).getByTestId('owner-missing')).toHaveTextContent('No owner');
     expect(screen.getByTestId('next-gate-blockers')).toHaveTextContent('2 blockers');

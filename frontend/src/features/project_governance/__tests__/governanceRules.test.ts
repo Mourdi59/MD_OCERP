@@ -21,6 +21,7 @@ import {
   canResume,
   canSubmitGate,
   canWaiveCondition,
+  frozenInReview,
   documentVerdict,
   outcomeVerdict,
   reasonOfCode,
@@ -40,12 +41,14 @@ import {
   reopenRewind,
   toConditionInput,
   toDecisionInput,
+  evidenceKey,
+  evidenceToAcknowledge,
   waiverProblem,
   type DecisionDraft,
 } from '../decisionRules';
 import { frameContainerCode } from '../documentFiles';
 import { buildMatrix } from '../matrix';
-import { catalogueIdOf, catalogueName, humanizeCode, type LabelContext } from '../labels';
+import { catalogueIdOf, catalogueName, evidenceText, humanizeCode, type LabelContext } from '../labels';
 import { area, blocker, condition, detail, frameDocument, gate, gateDocument, matrixArea, matrixResponse, model } from './fixtures';
 
 const editor: Viewer = { userId: 'u-editor' };
@@ -142,8 +145,8 @@ describe('other verdicts', () => {
     expect(canSubmitGate(model(), d('in_preparation', false))).toBe('role_edit');
   });
   it('manage follows the model flag', () => {
-    expect(canManage(model({ can: { manage: true, edit: true } }))).toBeNull();
-    expect(canManage(model({ can: { manage: false, edit: true } }))).toBe('role_manage');
+    expect(canManage(model({ can: { manage: true } }))).toBeNull();
+    expect(canManage(model({ can: { manage: false } }))).toBe('role_manage');
   });
   it('adding a document follows the flag of the area', () => {
     expect(canAddDocument(area({ can: { add_document: true } }))).toBeNull();
@@ -390,6 +393,17 @@ describe('conditions on a document', () => {
   });
 });
 
+describe('settings frozen while a gate is with its deciders', () => {
+  it.each(['in_review', 'on_hold'] as const)('a gate %s freezes them', (status) => {
+    expect(frozenInReview([gate({ status: 'decided' }), gate({ status })])).toEqual({ server: 'settings_frozen_in_review' });
+  });
+  it('other states, and gates of an earlier model, do not', () => {
+    expect(frozenInReview([gate({ status: 'in_preparation' }), gate({ status: 'decided' })])).toBeNull();
+    expect(frozenInReview([gate({ status: 'in_review', historic: true })])).toBeNull();
+    expect(frozenInReview([])).toBeNull();
+  });
+});
+
 describe('the first day a hold may end', () => {
   it('is the day after today, across a month end', () => {
     expect(dayAfter('2026-10-11')).toBe('2026-10-12');
@@ -469,6 +483,42 @@ describe('decisionProblems', () => {
     });
     expect(body).toMatchObject({ outcome: 'stop', rationale: 'Funding withdrawn', conditions: [], proceed_at_risk_areas: [] });
     expect(body.conditions[0]).toBeUndefined();
+  });
+  describe('unknown evidence of a blocking provider', () => {
+    const pending = [
+      { area_code: 'cost_finance', code: 'budget:no_answer', provider: 'budget' },
+      { area_code: 'organisation', code: 'staffing_plan', provider: 'staffing' },
+    ];
+    const asked = detail({
+      gate: gate({ status: 'in_review' }),
+      can: { edit: true, decide: true, go: true, acknowledge: pending },
+    });
+    const all = pending.map(evidenceKey);
+    it('the list is the one the server sent, and empty when it sent none', () => {
+      expect(evidenceToAcknowledge(asked)).toEqual(pending);
+      expect(evidenceToAcknowledge(d)).toEqual([]);
+    });
+    it.each(['go', 'go_with_conditions'] as const)('a %s is held back until every item is ticked', (outcome) => {
+      const draft = { ...base, outcome, rationale: 'r', conditions: [{ rowId: 'a', text: 'x', severity: 'critical' as const }] };
+      expect(decisionProblems(draft, asked, '2026-10-11')).toEqual(['evidence_not_acknowledged']);
+      expect(decisionProblems({ ...draft, acknowledged: [all[0]!] }, asked, '2026-10-11')).toEqual([
+        'evidence_not_acknowledged',
+      ]);
+      expect(decisionProblems({ ...draft, acknowledged: all }, asked, '2026-10-11')).toEqual([]);
+    });
+    it('an outcome that does not let the gate pass asks for nothing', () => {
+      expect(decisionProblems({ ...base, outcome: 'stop', rationale: 'r' }, asked, '2026-10-11')).toEqual([]);
+      const body = toDecisionInput({ ...base, outcome: 'stop', rationale: 'r', acknowledged: all }, asked);
+      expect(body).not.toHaveProperty('acknowledged_evidence');
+    });
+    it('sends the pairs the server matches on, and only the ticked ones it asked for', () => {
+      const body = toDecisionInput({ ...base, outcome: 'go', acknowledged: [...all, 'risk made_up'] }, asked);
+      expect(body.acknowledged_evidence).toEqual([
+        { area_code: 'cost_finance', code: 'budget:no_answer' },
+        { area_code: 'organisation', code: 'staffing_plan' },
+      ]);
+      expect(toDecisionInput({ ...base, outcome: 'go' }, d)).not.toHaveProperty('acknowledged_evidence');
+    });
   });
   it('a waiver without rationale is refused', () => {
     expect(waiverProblem('  ')).toBe('waiver_needs_rationale');
@@ -551,6 +601,34 @@ describe('labels', () => {
     // hoai borrows its areas from neutral, so the neutral key must still be found
     expect(catalogueName(ctx(known), { kind: 'area', code: 'cost_finance', catalogueId: 'hoai_lph' })).toBe('Kosten und Finanzen');
     expect(catalogueName(ctx({}), { kind: 'area', code: 'cost_finance', catalogueId: 'hoai_lph' })).toBe('Cost finance');
+  });
+  describe('the text of an evidence item', () => {
+    const key = 'stakeholders.evidence.commitment_overdue';
+    const known = { [key]: 'Zusage {code} war am {due} f\u00e4llig' };
+    const text = { en: 'Commitment C-7 was due on 2026-10-01', de: 'Zusage C-7 war am 01.10.2026 f\u00e4llig' };
+    const say = (c: LabelContext, label: { key: string | null; text: Record<string, string> | null }) =>
+      evidenceText(c.t, c, { code: 'commitment_overdue', label });
+    it('is the sentence the server filled, so a sentence with values never shows its placeholders', () => {
+      const said = say(ctx(known), { key, text });
+      expect(said).toBe('Zusage C-7 war am 01.10.2026 f\u00e4llig');
+      expect(said).not.toMatch(/[{}]/);
+    });
+    it('falls back to the English the server filled when the reader has another language', () => {
+      expect(say(ctx(known), { key, text: { en: text.en } })).toBe('Commitment C-7 was due on 2026-10-01');
+      expect(say({ ...ctx(known), language: 'de-AT' }, { key, text })).toBe('Zusage C-7 war am 01.10.2026 f\u00e4llig');
+    });
+    it('reads the key only when the server filled no text', () => {
+      const plain = { 'plant.evidence.inspection_due': 'Pr\u00fcfung f\u00e4llig' };
+      expect(say(ctx(plain), { key: 'plant.evidence.inspection_due', text: null })).toBe('Pr\u00fcfung f\u00e4llig');
+      expect(say(ctx(plain), { key: 'plant.evidence.inspection_due', text: {} })).toBe('Pr\u00fcfung f\u00e4llig');
+      expect(say(ctx({}), { key: null, text: null })).toBe('Commitment overdue');
+    });
+    it('a source that failed or gave no answer keeps its own sentence', () => {
+      expect(evidenceText((k) => k, ctx({}), { code: 'x', error: true, label: { key, text } })).toBe(
+        'governance.evidence.provider_failed',
+      );
+      expect(evidenceText((k) => k, ctx({}), { code: 'budget:no_answer' })).toBe('governance.evidence.no_answer');
+    });
   });
   it('never returns a raw key', () => {
     expect(humanizeCode('schedule_logistics')).toBe('Schedule logistics');
