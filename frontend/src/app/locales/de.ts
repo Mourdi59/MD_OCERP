@@ -49221,6 +49221,7 @@ const resource = {
     "commitment.item.resume_reason": "Warum die Position wieder aufgenommen wird",
     "commitment.item.transferred_elsewhere": "Diese Position wurde an eine Position übertragen, die nicht in der Matrix dieses Projekts steht.",
     "commitment.item.transferred_notice": "Diese Position wurde übertragen. Ihre verknüpften Dokumente zählen jetzt in der Position, die übernommen hat.",
+    "commitment.item.transferred_to_project": "Diese Position wurde an das Projekt {{project}} übertragen.",
     "commitment.item.undefer": "Vertagung beenden",
     "commitment.item.withdraw_reason": "Warum der Antrag zurückgezogen wird",
     "commitment.item_form.add": "Position hinzufügen",

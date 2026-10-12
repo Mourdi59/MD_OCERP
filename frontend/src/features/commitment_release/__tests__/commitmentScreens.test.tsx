@@ -635,6 +635,50 @@ describe('ItemPanel', () => {
     expect(screen.queryByTestId('item-successor')).toBeNull();
   });
 
+  const takenBy = (over: Partial<NonNullable<ReturnType<typeof item>['transferred_to']>> = {}) => ({
+    project_id: 'p2',
+    item_id: 'j1',
+    same_project: false,
+    readable: true,
+    project_name: 'Harbour depot',
+    code: 'CR-101',
+    title: 'Depot lifts',
+    ...over,
+  });
+
+  it('an item handed to another project names that project and links the item there', () => {
+    panel({ status: 'transferred', transferred_to_item_id: 'j1', transferred_to: takenBy() });
+    expect(screen.getByTestId('item-transferred')).toHaveTextContent('Harbour depot');
+    const there = screen.getByTestId('item-successor-elsewhere');
+    expect(there).toHaveAttribute('href', '/projects/p2/commitments?item=j1');
+    expect(there).toHaveTextContent('CR-101 Depot lifts');
+    expect(screen.queryByTestId('item-successor')).toBeNull();
+  });
+
+  it('a receiving project the reader may not open is neither named nor linked', () => {
+    panel({
+      status: 'transferred',
+      transferred_to_item_id: 'j1',
+      transferred_to: takenBy({ readable: false, project_name: null, code: null, title: null }),
+    });
+    expect(screen.getByTestId('item-transferred')).toHaveTextContent(enT('commitment.item.transferred_elsewhere'));
+    expect(screen.queryByTestId('item-successor-elsewhere')).toBeNull();
+    expect(screen.queryByTestId('item-successor')).toBeNull();
+  });
+
+  it('the successor the server names opens here even when the grid has not loaded it', () => {
+    const { onOpenItem } = panel(
+      {
+        status: 'transferred',
+        transferred_to_item_id: 'i9',
+        transferred_to: takenBy({ project_id: 'p1', item_id: 'i9', same_project: true, code: 'CR-009', title: 'Lift order' }),
+      },
+      [],
+    );
+    fireEvent.click(screen.getByTestId('item-successor'));
+    expect(onOpenItem).toHaveBeenCalledWith('i9');
+  });
+
   it('warns when more is bound than released, with the difference', () => {
     panel({ status: 'committed', committed: '1700000.00', released: '1500000.00', over_release: true });
     const warning = screen.getByTestId('item-over-release');

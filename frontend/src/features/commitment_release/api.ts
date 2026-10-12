@@ -296,6 +296,8 @@ export interface CommitmentItem {
   pending_release_id: string | null;
   pending_purpose: ReleasePurpose | null;
   transferred_to_item_id: string | null;
+  /** The item that took this one over; null unless it was handed over. */
+  transferred_to?: TransferredTo | null;
   /** Set once an abort was decided. */
   abort: AbortRecord | null;
   can: Partial<Record<ItemAction, CanFlag>>;
@@ -386,6 +388,20 @@ export interface References {
   areas: ReferenceArea[];
   frame_documents: ReferenceFrameDocument[];
   funding_applications: ReferenceFunding[];
+}
+
+/**
+ * The item that took a handed-over item over. The ids are always there; the
+ * names are null when the reader may not open the receiving project.
+ */
+export interface TransferredTo {
+  project_id: string;
+  item_id: string;
+  same_project: boolean;
+  readable: boolean;
+  project_name: string | null;
+  code: string | null;
+  title: string | null;
 }
 
 /** A project an item may be handed over to, with the open items that can take it. */

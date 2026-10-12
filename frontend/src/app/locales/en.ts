@@ -41716,6 +41716,7 @@ const resource = {
     "commitment.item.resume_reason": "Why the item is resumed",
     "commitment.item.transferred_elsewhere": "This item was handed over to an item that is not in the matrix of this project.",
     "commitment.item.transferred_notice": "This item was handed over. Its linked documents now count in the item that took over.",
+    "commitment.item.transferred_to_project": "This item was handed over to the project {{project}}.",
     "commitment.item.undefer": "End deferral",
     "commitment.item.withdraw_reason": "Why the request is withdrawn",
     "commitment.item_form.add": "Add item",

@@ -280,9 +280,18 @@ export function ItemPanel({
   const withdrawV = itemVerdict(item, 'withdraw');
   const pending = (historyQ.data ?? []).find((r) => r.outcome === 'pending') ?? null;
   const ended = item.status === 'aborted' || item.status === 'transferred';
-  const successor = item.transferred_to_item_id
-    ? otherItems.find((x) => x.id === item.transferred_to_item_id) ?? null
-    : null;
+  // The server names the item that took over. Inside this project it opens
+  // here; in another project it is a link, and only when the reader may open
+  // that project. Without the names nothing is linked.
+  const takenBy = item.transferred_to ?? null;
+  const successor = takenBy
+    ? takenBy.same_project && takenBy.readable
+      ? { id: takenBy.item_id, code: takenBy.code ?? '', title: takenBy.title ?? '' }
+      : null
+    : item.transferred_to_item_id
+      ? otherItems.find((x) => x.id === item.transferred_to_item_id) ?? null
+      : null;
+  const elsewhere = takenBy && !takenBy.same_project && takenBy.readable ? takenBy : null;
 
   const remaining = remainingToRelease(item);
   const over = overRelease(item);
@@ -414,10 +423,28 @@ export function ItemPanel({
               ? t('commitment.item.transferred_notice', {
                   defaultValue: 'This item was handed over. Its linked documents now count in the item that took over.',
                 })
-              : t('commitment.item.transferred_elsewhere', {
-                  defaultValue: 'This item was handed over to an item that is not in the matrix of this project.',
-                })}
+              : elsewhere
+                ? t('commitment.item.transferred_to_project', {
+                    defaultValue: 'This item was handed over to the project {{project}}.',
+                    project: elsewhere.project_name ?? '',
+                  })
+                : t('commitment.item.transferred_elsewhere', {
+                    defaultValue: 'This item was handed over to an item that is not in the matrix of this project.',
+                  })}
           </span>
+          {elsewhere && (
+            <a
+              href={`/projects/${elsewhere.project_id}/commitments?item=${elsewhere.item_id}`}
+              className="font-medium text-oe-blue hover:underline"
+              data-testid="item-successor-elsewhere"
+            >
+              {t('commitment.end.target_option', {
+                defaultValue: '{{code}} {{title}}',
+                code: elsewhere.code ?? '',
+                title: elsewhere.title ?? '',
+              })}
+            </a>
+          )}
           {successor && (
             <Button size="sm" variant="ghost" onClick={() => onOpenItem(successor.id)} data-testid="item-successor">
               {t('commitment.end.target_option', { defaultValue: '{{code}} {{title}}', code: successor.code, title: successor.title })}
