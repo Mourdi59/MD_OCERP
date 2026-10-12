@@ -3195,7 +3195,7 @@ class LogisticsPlanService:
                 passed_by_permit.append({"transport_id": str(t.id), "title": name, **view["gate_passed_by_permit"]})
         items.append(
             _item(
-                "heavy_transports_applied",
+                "heavy_transports_permitted",
                 not any(waiting.values()),
                 "; ".join(f"{reason}: {','.join(names)}" for reason, names in waiting.items() if names),
             )

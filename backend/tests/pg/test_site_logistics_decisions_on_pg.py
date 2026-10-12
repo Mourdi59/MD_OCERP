@@ -212,7 +212,7 @@ async def test_an_applied_permit_does_not_make_a_heavy_transport_ready(world: Wo
 
     async def item(svc: LogisticsPlanService) -> tuple[str, str]:
         readiness = await svc.readiness(pid)
-        found = next(i for i in readiness["items"] if i["code"] == "heavy_transports_applied")
+        found = next(i for i in readiness["items"] if i["code"] == "heavy_transports_permitted")
         return found["state"], found["detail"]
 
     async with world.factory() as s:

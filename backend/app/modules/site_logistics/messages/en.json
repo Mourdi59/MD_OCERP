@@ -194,7 +194,7 @@
       "concept_saved_and_exported": "Logistics concept saved and filed",
       "first_stage_media_contracted": "Utilities for the first stage contracted",
       "gate_loads_admitted": "Every load admitted by its gate or covered by an oversize permit",
-      "heavy_transports_applied": "Permit granted for every heavy transport",
+      "heavy_transports_permitted": "Permit granted for every heavy transport",
       "neighbourhood_limit_source": "Noise limit source set",
       "no_errors": "No open logistics errors",
       "unresolved": "Logistics plan could not be placed in the governance model"
