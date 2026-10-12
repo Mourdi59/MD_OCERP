@@ -173,6 +173,8 @@ class BookingCreate(BaseModel):
 
     occupant_contact_id: UUID | None = None
     occupant_name: str | None = Field(default=None, max_length=255)
+    # Project roster member staying here; links the stay to the staffing personnel file.
+    roster_member_id: UUID | None = None
     check_in: date
     check_out: date | None = None
     status: str = Field(default="reserved", pattern=_BOOKING_STATUS_PATTERN)
@@ -232,6 +234,7 @@ class BookingResponse(BaseModel):
     room_label: str | None = None
     occupant_contact_id: UUID | None = None
     occupant_name: str | None = None
+    roster_member_id: UUID | None = None
     check_in: date
     check_out: date | None = None
     status: str

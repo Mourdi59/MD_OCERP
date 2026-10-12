@@ -472,9 +472,18 @@ async def create_booking(
         payload.check_in,
         payload.check_out,
     )
+    if payload.roster_member_id is not None:
+        # The occupant must be on THIS accommodation's project roster; a
+        # roster id from another project answers like a missing one.
+        from app.modules.teams.models import RosterMember
+
+        member = await session.get(RosterMember, payload.roster_member_id)
+        if member is None or member.project_id != _accom.project_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Roster member not found")
 
     booking = Booking(
         room_id=room.id,
+        roster_member_id=payload.roster_member_id,
         occupant_contact_id=payload.occupant_contact_id,
         occupant_name=payload.occupant_name,
         check_in=payload.check_in,

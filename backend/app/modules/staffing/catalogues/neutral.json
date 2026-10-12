@@ -1,0 +1,576 @@
+{
+  "id": "neutral",
+  "version": 1,
+  "name_key": "staffing.catalogue.neutral.name",
+  "review_status": "unconfirmed",
+  "source_url": "https://gdpr-info.eu/art-5-gdpr/",
+  "source_title": "GDPR principles; national retention sources on each rule",
+  "jurisdiction_countries": [],
+  "governance_area": "m05_personnel",
+  "default_retention_rule": "neutral_assignment_24m",
+  "organisations": [
+    {
+      "code": "owner_project_lead",
+      "name_key": "staffing.organisation.owner_project_lead"
+    },
+    {
+      "code": "owner_project_controls",
+      "name_key": "staffing.organisation.owner_project_controls"
+    },
+    {
+      "code": "owner_site_supervision",
+      "name_key": "staffing.organisation.owner_site_supervision"
+    },
+    {
+      "code": "owner_development",
+      "name_key": "staffing.organisation.owner_development"
+    },
+    {
+      "code": "external_consultant",
+      "name_key": "staffing.organisation.external_consultant"
+    },
+    {
+      "code": "operator",
+      "name_key": "staffing.organisation.operator"
+    },
+    {
+      "code": "contractor_key_staff",
+      "name_key": "staffing.organisation.contractor_key_staff"
+    }
+  ],
+  "roles": [
+    {
+      "code": "project_director",
+      "name_key": "staffing.role.project_director",
+      "organisation": "owner_project_lead",
+      "phases": [
+        "development",
+        "execution"
+      ],
+      "default_fte": "0.5",
+      "key_role": true,
+      "required_by_gate": "development_to_execution",
+      "required_document_kinds": [
+        "employment_contract"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "project_manager",
+      "name_key": "staffing.role.project_manager",
+      "organisation": "owner_project_lead",
+      "phases": [
+        "development",
+        "execution"
+      ],
+      "default_fte": "1",
+      "key_role": true,
+      "required_by_gate": "development_to_execution",
+      "required_document_kinds": [
+        "employment_contract"
+      ],
+      "handover_role": true,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "design_manager",
+      "name_key": "staffing.role.design_manager",
+      "organisation": "owner_development",
+      "phases": [
+        "development",
+        "execution"
+      ],
+      "default_fte": "1",
+      "key_role": true,
+      "required_by_gate": "development_to_execution",
+      "required_document_kinds": [
+        "employment_contract",
+        "qualification"
+      ],
+      "handover_role": true,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "cost_manager",
+      "name_key": "staffing.role.cost_manager",
+      "organisation": "owner_project_controls",
+      "phases": [
+        "development",
+        "execution"
+      ],
+      "default_fte": "1",
+      "key_role": true,
+      "required_by_gate": "development_to_execution",
+      "required_document_kinds": [
+        "employment_contract",
+        "qualification"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "scheduler",
+      "name_key": "staffing.role.scheduler",
+      "organisation": "owner_project_controls",
+      "phases": [
+        "development",
+        "execution"
+      ],
+      "default_fte": "1",
+      "key_role": false,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "employment_contract"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "contract_manager",
+      "name_key": "staffing.role.contract_manager",
+      "organisation": "owner_project_controls",
+      "phases": [
+        "development",
+        "execution"
+      ],
+      "default_fte": "1",
+      "key_role": true,
+      "required_by_gate": "development_to_execution",
+      "required_document_kinds": [
+        "employment_contract"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "document_controller",
+      "name_key": "staffing.role.document_controller",
+      "organisation": "owner_project_controls",
+      "phases": [
+        "development",
+        "execution"
+      ],
+      "default_fte": "1",
+      "key_role": false,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "employment_contract"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "hse_manager",
+      "name_key": "staffing.role.hse_manager",
+      "organisation": "owner_site_supervision",
+      "phases": [
+        "execution"
+      ],
+      "default_fte": "1",
+      "key_role": true,
+      "required_by_gate": "development_to_execution",
+      "required_document_kinds": [
+        "employment_contract",
+        "site_induction",
+        "safety_training",
+        "occupational_health_certificate",
+        "qualification"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "quality_manager",
+      "name_key": "staffing.role.quality_manager",
+      "organisation": "owner_site_supervision",
+      "phases": [
+        "execution"
+      ],
+      "default_fte": "1",
+      "key_role": false,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "employment_contract",
+        "site_induction",
+        "safety_training",
+        "occupational_health_certificate"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "site_manager",
+      "name_key": "staffing.role.site_manager",
+      "organisation": "owner_site_supervision",
+      "phases": [
+        "execution"
+      ],
+      "default_fte": "1",
+      "key_role": true,
+      "required_by_gate": "development_to_execution",
+      "required_document_kinds": [
+        "employment_contract",
+        "site_induction",
+        "safety_training",
+        "occupational_health_certificate",
+        "professional_licence"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": "site_management"
+    },
+    {
+      "code": "site_supervisor_civil",
+      "name_key": "staffing.role.site_supervisor_civil",
+      "organisation": "owner_site_supervision",
+      "phases": [
+        "execution"
+      ],
+      "default_fte": "1",
+      "key_role": false,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "employment_contract",
+        "site_induction",
+        "safety_training",
+        "occupational_health_certificate"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": "civil"
+    },
+    {
+      "code": "site_supervisor_mep",
+      "name_key": "staffing.role.site_supervisor_mep",
+      "organisation": "owner_site_supervision",
+      "phases": [
+        "execution"
+      ],
+      "default_fte": "1",
+      "key_role": false,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "employment_contract",
+        "site_induction",
+        "safety_training",
+        "occupational_health_certificate"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": "mep"
+    },
+    {
+      "code": "commissioning_manager",
+      "name_key": "staffing.role.commissioning_manager",
+      "organisation": "owner_site_supervision",
+      "phases": [
+        "execution",
+        "operation"
+      ],
+      "default_fte": "1",
+      "key_role": true,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "employment_contract",
+        "site_induction",
+        "safety_training",
+        "occupational_health_certificate",
+        "qualification"
+      ],
+      "handover_role": true,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "operator_plant_manager",
+      "name_key": "staffing.role.operator_plant_manager",
+      "organisation": "operator",
+      "phases": [
+        "operation"
+      ],
+      "default_fte": "1",
+      "key_role": true,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "employment_contract",
+        "site_induction",
+        "safety_training",
+        "occupational_health_certificate",
+        "qualification"
+      ],
+      "handover_role": true,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "operator_shift_lead",
+      "name_key": "staffing.role.operator_shift_lead",
+      "organisation": "operator",
+      "phases": [
+        "operation"
+      ],
+      "default_fte": "1",
+      "key_role": false,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "employment_contract",
+        "site_induction",
+        "safety_training",
+        "occupational_health_certificate",
+        "qualification"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "operator_technician",
+      "name_key": "staffing.role.operator_technician",
+      "organisation": "operator",
+      "phases": [
+        "operation"
+      ],
+      "default_fte": "1",
+      "key_role": false,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "employment_contract",
+        "site_induction",
+        "safety_training",
+        "occupational_health_certificate",
+        "qualification"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "consultant_legal",
+      "name_key": "staffing.role.consultant_legal",
+      "organisation": "external_consultant",
+      "phases": [
+        "development",
+        "execution"
+      ],
+      "default_fte": "0.2",
+      "key_role": false,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "professional_licence"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "consultant_permit",
+      "name_key": "staffing.role.consultant_permit",
+      "organisation": "external_consultant",
+      "phases": [
+        "development"
+      ],
+      "default_fte": "0.5",
+      "key_role": false,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "qualification"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "consultant_geotech",
+      "name_key": "staffing.role.consultant_geotech",
+      "organisation": "external_consultant",
+      "phases": [
+        "development",
+        "execution"
+      ],
+      "default_fte": "0.3",
+      "key_role": false,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "professional_licence",
+        "site_induction"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    },
+    {
+      "code": "consultant_cost",
+      "name_key": "staffing.role.consultant_cost",
+      "organisation": "external_consultant",
+      "phases": [
+        "development",
+        "execution"
+      ],
+      "default_fte": "0.3",
+      "key_role": false,
+      "required_by_gate": null,
+      "required_document_kinds": [
+        "qualification"
+      ],
+      "handover_role": false,
+      "labor_rate_trade": null
+    }
+  ],
+  "document_kinds": [
+    {
+      "code": "employment_contract",
+      "name_key": "staffing.document_kind.employment_contract",
+      "credential_type": "employment_contract",
+      "special_category": false,
+      "default_notify_days_before": 30,
+      "store_number": false,
+      "retention_rule": "neutral_assignment_24m"
+    },
+    {
+      "code": "work_permit",
+      "name_key": "staffing.document_kind.work_permit",
+      "credential_type": "work_permit",
+      "special_category": false,
+      "default_notify_days_before": 60,
+      "store_number": true,
+      "retention_rule": "neutral_assignment_24m"
+    },
+    {
+      "code": "residence_permit",
+      "name_key": "staffing.document_kind.residence_permit",
+      "credential_type": "residence_permit",
+      "special_category": false,
+      "default_notify_days_before": 60,
+      "store_number": true,
+      "retention_rule": "neutral_assignment_24m"
+    },
+    {
+      "code": "passport",
+      "name_key": "staffing.document_kind.passport",
+      "credential_type": "identity_document",
+      "special_category": false,
+      "default_notify_days_before": 90,
+      "store_number": true,
+      "retention_rule": "neutral_document_expiry_12m"
+    },
+    {
+      "code": "visa",
+      "name_key": "staffing.document_kind.visa",
+      "credential_type": "visa",
+      "special_category": false,
+      "default_notify_days_before": 30,
+      "store_number": true,
+      "retention_rule": "neutral_document_expiry_12m"
+    },
+    {
+      "code": "qualification",
+      "name_key": "staffing.document_kind.qualification",
+      "credential_type": "certification",
+      "special_category": false,
+      "default_notify_days_before": 60,
+      "store_number": false,
+      "retention_rule": "neutral_assignment_24m"
+    },
+    {
+      "code": "professional_licence",
+      "name_key": "staffing.document_kind.professional_licence",
+      "credential_type": "professional_license",
+      "special_category": false,
+      "default_notify_days_before": 60,
+      "store_number": true,
+      "retention_rule": "neutral_assignment_24m"
+    },
+    {
+      "code": "occupational_health_certificate",
+      "name_key": "staffing.document_kind.occupational_health_certificate",
+      "credential_type": "occupational_health",
+      "special_category": true,
+      "default_notify_days_before": 30,
+      "store_number": false,
+      "retention_rule": "neutral_assignment_24m"
+    },
+    {
+      "code": "site_induction",
+      "name_key": "staffing.document_kind.site_induction",
+      "credential_type": "training",
+      "special_category": false,
+      "default_notify_days_before": 14,
+      "store_number": false,
+      "retention_rule": "neutral_assignment_24m"
+    },
+    {
+      "code": "safety_training",
+      "name_key": "staffing.document_kind.safety_training",
+      "credential_type": "training",
+      "special_category": false,
+      "default_notify_days_before": 30,
+      "store_number": false,
+      "retention_rule": "neutral_assignment_24m"
+    },
+    {
+      "code": "right_to_work_check",
+      "name_key": "staffing.document_kind.right_to_work_check",
+      "credential_type": "right_to_work_check",
+      "special_category": false,
+      "default_notify_days_before": 30,
+      "store_number": false,
+      "retention_rule": "neutral_assignment_24m"
+    },
+    {
+      "code": "a1_posting_certificate",
+      "name_key": "staffing.document_kind.a1_posting_certificate",
+      "credential_type": "posting_certificate",
+      "special_category": false,
+      "default_notify_days_before": 30,
+      "store_number": true,
+      "retention_rule": "neutral_assignment_24m"
+    }
+  ],
+  "retention_rules": [
+    {
+      "code": "neutral_assignment_24m",
+      "name_key": "staffing.retention.neutral_assignment_24m.name",
+      "basis_text_key": "staffing.retention.neutral_assignment_24m.basis",
+      "trigger": "end_of_assignment",
+      "period_months": 24,
+      "action": "delete",
+      "legal_obligation": false,
+      "source_url": "https://gdpr-info.eu/art-5-gdpr/",
+      "review_status": "unconfirmed",
+      "country": ""
+    },
+    {
+      "code": "neutral_document_expiry_12m",
+      "name_key": "staffing.retention.neutral_document_expiry_12m.name",
+      "basis_text_key": "staffing.retention.neutral_document_expiry_12m.basis",
+      "trigger": "document_expiry",
+      "period_months": 12,
+      "action": "delete",
+      "legal_obligation": false,
+      "source_url": "https://gdpr-info.eu/art-5-gdpr/",
+      "review_status": "unconfirmed",
+      "country": ""
+    }
+  ],
+  "leave_types": [
+    {
+      "code": "annual",
+      "name_key": "staffing.leave_type.annual"
+    },
+    {
+      "code": "public_holiday",
+      "name_key": "staffing.leave_type.public_holiday"
+    },
+    {
+      "code": "rotation_off",
+      "name_key": "staffing.leave_type.rotation_off"
+    },
+    {
+      "code": "sick",
+      "name_key": "staffing.leave_type.sick"
+    },
+    {
+      "code": "training",
+      "name_key": "staffing.leave_type.training"
+    },
+    {
+      "code": "unpaid",
+      "name_key": "staffing.leave_type.unpaid"
+    },
+    {
+      "code": "other",
+      "name_key": "staffing.leave_type.other"
+    }
+  ]
+}

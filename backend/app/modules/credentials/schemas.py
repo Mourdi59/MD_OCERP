@@ -29,6 +29,17 @@ CREDENTIAL_TYPES: tuple[str, ...] = (
     "wsib_clearance",  # CA ON Workplace Safety and Insurance Board
     "wcb_clearance",  # CA provincial Workers Compensation Board
     "attestation_revenu_quebec",  # CA QC tax compliance attestation
+    # Personnel documents tracked for people on a project (staffing module).
+    # The registry holds only the validity window; the staffing file keeps at
+    # most the last four characters of a document number.
+    "employment_contract",  # employment or service contract of the assignment
+    "work_permit",  # permission to work issued by an immigration authority
+    "residence_permit",  # residence title
+    "identity_document",  # passport or national identity card
+    "visa",  # entry or business visa
+    "occupational_health",  # occupational health certificate: date and fitness only, never findings
+    "right_to_work_check",  # employer's documented right to work check
+    "posting_certificate",  # social security posting certificate (e.g. EU A1)
     "other",
 )
 

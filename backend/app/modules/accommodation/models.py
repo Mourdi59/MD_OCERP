@@ -26,7 +26,7 @@ Differences are configuration on the parent asset, not different tables.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime  # noqa: F401 - used in Mapped[datetime]
+from datetime import date, datetime  # noqa: F401 - used in Mapped[...]
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -178,6 +178,7 @@ class Booking(Base):
             "ix_oe_accommodation_booking_occupant_contact_id",
             "occupant_contact_id",
         ),
+        Index("ix_oe_accommodation_booking_roster_member_id", "roster_member_id"),
     )
 
     room_id: Mapped[uuid.UUID] = mapped_column(
@@ -192,9 +193,13 @@ class Booking(Base):
         nullable=True,
     )
     occupant_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    check_in: Mapped[datetime] = mapped_column(Date, nullable=False)
+    # The project roster member staying here (``teams.RosterMember``), so the
+    # staffing personnel file can show the person's bed. Plain UUID, no FK:
+    # the roster lives in another module and a booking outlives a roster edit.
+    roster_member_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    check_in: Mapped[date] = mapped_column(Date, nullable=False)
     # Open-ended bookings (worker-camp residency) carry NULL check_out.
-    check_out: Mapped[datetime | None] = mapped_column(Date, nullable=True)
+    check_out: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,

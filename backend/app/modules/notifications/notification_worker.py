@@ -96,6 +96,18 @@ async def flush_webhook_digest_periodic() -> int:
     return count
 
 
+async def _credential_expiry_sweep() -> int:
+    from app.modules.staffing.sweep import credential_expiry_sweep
+
+    return await credential_expiry_sweep()
+
+
+async def _staffing_retention_sweep() -> int:
+    from app.modules.staffing.sweep import staffing_retention_sweep
+
+    return await staffing_retention_sweep()
+
+
 async def cleanup_old_notifications(retention_days: int = _CLEANUP_RETENTION_DAYS) -> int:
     """Drop notifications older than ``retention_days``."""
     from app.database import async_session_factory
@@ -216,6 +228,11 @@ def start_scheduler() -> None:
         ("inapp_digest", flush_inapp_digest_periodic, _INAPP_DIGEST_INTERVAL_SEC),
         ("webhook_digest", flush_webhook_digest_periodic, _EMAIL_DIGEST_INTERVAL_SEC),
         ("cleanup", cleanup_old_notifications, _CLEANUP_INTERVAL_SEC),
+        # Credentials only refresh their stored status on a write; the daily
+        # sweep makes a credential that lapses unattended still fire its
+        # expiry alert. Then personnel files past retention are anonymised.
+        ("credential_expiry_sweep", _credential_expiry_sweep, _CLEANUP_INTERVAL_SEC),
+        ("staffing_retention_sweep", _staffing_retention_sweep, _CLEANUP_INTERVAL_SEC),
     ]
     for name, factory, interval in schedule:
         task = loop.create_task(

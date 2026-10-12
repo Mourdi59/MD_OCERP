@@ -1,0 +1,147 @@
+# DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+# Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+"""Printable staffing registers (PDF and XLSX), SPEC rule 20.
+
+Three project documents on :mod:`app.core.register_export`: the staffing plan
+(names, roles, FTE, dates and status only), the organisation chart, and the
+compliance matrix (role x document kind, status only, no number, no date of a
+health check). Personnel files are not exportable in bulk; one person's own
+file is exportable to that person (GDPR Art. 15 and 20) via ``own_file_document``.
+"""
+
+from __future__ import annotations
+
+import io
+from datetime import UTC, datetime
+from typing import Any
+
+from app.core.register_export import RegisterColumn, RegisterDocument, build_register_pdf, build_register_xlsx
+from app.modules.staffing.messages import translate
+
+KINDS = ("plan", "org_chart", "compliance")
+
+
+def _t(key: str, locale: str) -> str:
+    return translate(f"staffing.export.{key}", locale=locale)
+
+
+def _role(code: str, custom: str, locale: str) -> str:
+    return custom if code == "custom" else translate(f"staffing.role.{code}", locale=locale)
+
+
+def plan_document(positions: list[dict[str, Any]], *, project_name: str, locale: str) -> RegisterDocument:
+    rows = [
+        [
+            _role(p["role_code"], p["custom_label"], locale),
+            translate(f"staffing.organisation.{p['organisation']}", locale=locale),
+            translate(f"staffing.phase.{p['phase']}", locale=locale),
+            p["fte"],
+            p["headcount"],
+            p["entry_date"] or "",
+            p["exit_date"] or "",
+            translate(f"staffing.position_status.{p['status']}", locale=locale),
+            ", ".join(f["name"] or "" for f in p["fills"] if f["status"] != "ended"),
+        ]
+        for p in positions
+    ]
+    columns = [
+        RegisterColumn(_t("col_role", locale), weight=2, wrap=True, xlsx_width=30),
+        RegisterColumn(_t("col_organisation", locale), wrap=True),
+        RegisterColumn(_t("col_phase", locale)),
+        RegisterColumn(_t("col_fte", locale)),
+        RegisterColumn(_t("col_headcount", locale), kind="count"),
+        RegisterColumn(_t("col_entry", locale), kind="date"),
+        RegisterColumn(_t("col_exit", locale), kind="date"),
+        RegisterColumn(_t("col_status", locale)),
+        RegisterColumn(_t("col_people", locale), weight=2, wrap=True, xlsx_width=36),
+    ]
+    return _doc(_t("plan_title", locale), columns, rows, [(_t("project", locale), project_name)], locale)
+
+
+def org_chart_document(chart: dict[str, Any], *, project_name: str, locale: str) -> RegisterDocument:
+    rows = []
+    for ph in chart["phases"]:
+        for org in ph["organisations"]:
+            for p in org["positions"]:
+                rows.append(
+                    [
+                        translate(f"staffing.phase.{ph['phase']}", locale=locale),
+                        translate(f"staffing.organisation.{org['organisation']}", locale=locale),
+                        _role(p["role_code"], p["custom_label"], locale),
+                        ", ".join(x["name"] or "" for x in p["people"]) or _t("vacant", locale),
+                    ]
+                )
+    columns = [
+        RegisterColumn(_t("col_phase", locale)),
+        RegisterColumn(_t("col_organisation", locale), wrap=True),
+        RegisterColumn(_t("col_role", locale), weight=2, wrap=True, xlsx_width=30),
+        RegisterColumn(_t("col_people", locale), weight=2, wrap=True, xlsx_width=36),
+    ]
+    return _doc(_t("org_chart_title", locale), columns, rows, [(_t("project", locale), project_name)], locale)
+
+
+def compliance_document(matrix: dict[str, Any], *, project_name: str, locale: str) -> RegisterDocument:
+    kinds = matrix["document_kinds"]
+    columns = [
+        RegisterColumn(_t("col_person", locale), weight=2, wrap=True, xlsx_width=28),
+        RegisterColumn(_t("col_cleared", locale)),
+        *[RegisterColumn(translate(f"staffing.document_kind.{k}", locale=locale), wrap=True) for k in kinds],
+    ]
+    rows = [
+        [
+            r["name"] or "",
+            _t("yes" if r["cleared_to_work"] else "no", locale),
+            *[translate(f"staffing.cell.{r['cells'][k]['state']}", locale=locale) for k in kinds],
+        ]
+        for r in matrix["items"]
+    ]
+    return _doc(_t("compliance_title", locale), columns, rows, [(_t("project", locale), project_name)], locale)
+
+
+def own_file_document(view: dict[str, Any], *, locale: str) -> RegisterDocument:
+    """One person's own file: documents (status and dates), travel and leave."""
+    rows: list[list[Any]] = []
+    for d in view["documents"]:
+        rows.append(
+            [
+                _t("section_document", locale),
+                translate(f"staffing.document_kind.{d['document_kind']}", locale=locale),
+                d["valid_until"] or "",
+                d["status"] or "",
+            ]
+        )
+    for t in view["travel"]:
+        rows.append([_t("section_travel", locale), t["kind"], t["depart_date"], t["status"]])
+    for lv in view["leave"]:
+        rows.append([_t("section_leave", locale), lv["leave_type"], lv["from_date"], lv["status"]])
+    columns = [
+        RegisterColumn(_t("col_section", locale)),
+        RegisterColumn(_t("col_item", locale), weight=2, wrap=True, xlsx_width=30),
+        RegisterColumn(_t("col_date", locale), kind="date"),
+        RegisterColumn(_t("col_status", locale)),
+    ]
+    details = [(_t("col_person", locale), view["name"] or ""), (_t("col_status", locale), view["status"])]
+    return _doc(_t("own_file_title", locale), columns, rows, details, locale)
+
+
+def _doc(
+    title: str, columns: list[RegisterColumn], rows: list[list[Any]], details: list[tuple[str, Any]], locale: str
+) -> RegisterDocument:
+    return RegisterDocument(
+        title=title,
+        columns=columns,
+        rows=rows,
+        details=details,
+        locale=locale,
+        generated=datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
+        empty_text=_t("empty", locale),
+        sheet_title=title[:31],
+    )
+
+
+def render(doc: RegisterDocument, fmt: str) -> bytes:
+    """PDF or XLSX bytes of one register."""
+    if fmt == "xlsx":
+        buf: io.BytesIO = build_register_xlsx(doc)
+        return buf.getvalue()
+    return build_register_pdf(doc)
