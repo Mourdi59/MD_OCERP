@@ -153,7 +153,6 @@ export const PRECONDITION: KeyMap = {
   no_open_cx_issues: ['qualityConcept.precondition.no_open_cx_issues', 'No open commissioning issues'],
   hold_gates_released: ['qualityConcept.precondition.hold_gates_released', 'Hold points released'],
   plant_item_delivered: ['qualityConcept.precondition.plant_item_delivered', 'Equipment delivered'],
-  plant_item_released: ['qualityConcept.precondition.plant_item_released', 'Equipment released'],
   delivery_limit_agreed: ['qualityConcept.precondition.delivery_limit_agreed', 'Delivery limits agreed'],
   authority_acceptance_present: [
     'qualityConcept.precondition.authority_acceptance_present',
