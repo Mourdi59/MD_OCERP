@@ -49,6 +49,8 @@ import {
   overRelease,
   percentToFraction,
   releaseProblems,
+  releasedInForce,
+  releasedLapsed,
   shownExposureLines,
   remainingToRelease,
   toAbortTermsInput,
@@ -89,6 +91,20 @@ describe('amounts', () => {
 
   it('what is still to release is planned less released', () => {
     expect(remainingToRelease({ planned_in_schedule_currency: '260000.00', released: '40000.00' })).toBe('220000.00');
+  });
+
+  it('what lapsed with its date is not counted as released: the remainder is planned less what is in force', () => {
+    const renewed = { planned_in_schedule_currency: '1000.00', released: '800.00', released_in_force: '500.00', released_lapsed: '300.00' };
+    expect(releasedInForce(renewed)).toBe('500.00');
+    expect(releasedLapsed(renewed)).toBe('300.00');
+    expect(remainingToRelease(renewed)).toBe('500.00');
+    // An answer without the fields has nothing lapsed.
+    expect(releasedInForce({ released: '800.00' })).toBe('800.00');
+    expect(releasedLapsed({ released: '800.00' })).toBeNull();
+    expect(releasedLapsed({ released: '800.00', released_lapsed: '0.00' })).toBeNull();
+    // A sum the server could not convert stays unknown, here and in the remainder.
+    expect(releasedInForce({ released: '800.00', released_in_force: null })).toBeNull();
+    expect(remainingToRelease({ planned_in_schedule_currency: '1000.00', released: '800.00', released_in_force: null })).toBeNull();
   });
 
   it('an unknown planned amount leaves the remainder unknown, not zero', () => {

@@ -334,7 +334,10 @@ export interface CommitmentItem {
 export interface ItemTotals {
   currency: string;
   planned: string | null;
+  /** Everything ever released, lapsed or not. */
   released: string | null;
+  released_in_force?: string | null;
+  released_lapsed?: string | null;
   committed: string | null;
   mixed_currency: boolean;
   /** Which of the three totals leave out an item that could not be converted. */

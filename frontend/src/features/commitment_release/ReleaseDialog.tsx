@@ -32,6 +32,7 @@ import {
   isPositiveAmount,
   normalizeAmount,
   releaseProblems,
+  releasedInForce,
   remainingToRelease,
   toReleaseInput,
   type ReleaseDraft,
@@ -189,7 +190,7 @@ export function ReleaseDialog({
           <div>
             <dt className="text-xs text-content-tertiary">{t('commitment.grid.released', { defaultValue: 'Released' })}</dt>
             <dd className="font-medium text-content-primary">
-              <Amount value={item.released} currency={item.schedule_currency} />
+              <Amount value={releasedInForce(item)} currency={item.schedule_currency} />
             </dd>
           </div>
           <div>

@@ -121,6 +121,28 @@ describe('CommitmentGrid', () => {
     expect(cells[1]!.textContent).toBe('Unknown: abort terms missing');
   });
 
+  it('the released column is what is in force, with the lapsed part as a second line, per row and in the totals', () => {
+    const renewed = item({ id: 'i9', released: '800000.00', released_in_force: '500000.00', released_lapsed: '300000.00' });
+    wrap(
+      <CommitmentGrid
+        items={[renewed, works]}
+        totals={totals({ released: '840000.00', released_in_force: '540000.00', released_lapsed: '300000.00' })}
+        matrix={matrix()}
+        labels={labels}
+        onOpenItem={() => undefined}
+      />,
+    );
+    const rows = screen.getAllByTestId('grid-row');
+    expect(rows[0]!.textContent).toMatch(/500[,.\s]?000/);
+    expect(rows[0]!.textContent).not.toMatch(/800[,.\s]?000/);
+    expect(within(rows[0]!).getByTestId('grid-released-lapsed').textContent).toMatch(/300[,.\s]?000/);
+    expect(within(rows[1]!).queryByTestId('grid-released-lapsed')).toBeNull();
+    const total = screen.getByTestId('grid-totals');
+    expect(total.textContent).toMatch(/540[,.\s]?000/);
+    expect(total.textContent).not.toMatch(/840[,.\s]?000/);
+    expect(within(total).getByTestId('grid-totals-lapsed').textContent).toMatch(/300[,.\s]?000/);
+  });
+
   it('names the column a total leaves an item out of', () => {
     wrap(
       <CommitmentGrid
@@ -752,13 +774,16 @@ describe('ItemPanel', () => {
       status: 'released',
       released: '500000.00',
       released_in_force: '200000.00',
+      released_lapsed: '300000.00',
       release_expired: true,
       expired_release_dates: ['2026-08-31', '2026-09-30'],
     });
     const notice = screen.getByTestId('item-release-expired');
     expect(notice.textContent).toContain('nothing new can be bound');
     expect(notice.textContent).not.toContain('{{date}}');
-    expect(screen.getByTestId('item-released-in-force').textContent).toMatch(/200[,.\s]?000/);
+    // The headline is what still authorises money; what lapsed is the line under it.
+    expect(screen.getByTestId('item-released').textContent).toMatch(/200[,.\s]?000/);
+    expect(screen.getByTestId('item-released-lapsed').textContent).toMatch(/300[,.\s]?000/);
   });
 
   it('after a renewal the lapsed part stays visible as a figure, without the warning', () => {
@@ -771,13 +796,15 @@ describe('ItemPanel', () => {
       expired_release_dates: ['2026-09-30'],
     });
     expect(screen.queryByTestId('item-release-expired')).toBeNull();
-    expect(screen.getByTestId('item-released-in-force').textContent).toMatch(/500[,.\s]?000/);
+    expect(screen.getByTestId('item-released').textContent).toMatch(/500[,.\s]?000/);
+    expect(screen.getByTestId('item-released-lapsed').textContent).toMatch(/300[,.\s]?000/);
   });
 
-  it('an item whose releases are all in date shows neither the notice nor a second released figure', () => {
+  it('an item whose releases are all in date shows neither the notice nor a lapsed line', () => {
     panel({ status: 'released', released: '500000.00', released_in_force: '500000.00', release_expired: false });
     expect(screen.queryByTestId('item-release-expired')).toBeNull();
-    expect(screen.queryByTestId('item-released-in-force')).toBeNull();
+    expect(screen.getByTestId('item-released').textContent).toMatch(/500[,.\s]?000/);
+    expect(screen.queryByTestId('item-released-lapsed')).toBeNull();
   });
 
   it('warns when more is bound than released, with the difference', () => {

@@ -19,7 +19,7 @@ import { fmtDate } from '@/shared/lib/formatters';
 import type { CommitmentItem, CommitmentMatrix, ItemTotals } from './api';
 import { Amount, ITEM_STATUS_TONE, ToneBadge } from './CommitmentBits';
 import { EXPOSURE_REASON, ITEM_STATUS, codeName, humanizeCode, vocab, type KeyText, type LabelContext } from './labels';
-import { groupItems, matrixCounts, nothingCommitted, type GroupBy } from './rules';
+import { groupItems, matrixCounts, nothingCommitted, releasedInForce, releasedLapsed, type GroupBy } from './rules';
 
 const GROUPINGS: GroupBy[] = ['none', 'type', 'gate'];
 
@@ -180,7 +180,12 @@ export function CommitmentGrid({ items, totals, matrix, labels, onOpenItem }: Co
                       <Amount value={item.planned.amount} currency={item.planned.currency} />
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      <Amount value={item.released} currency={item.schedule_currency} />
+                      <Amount value={releasedInForce(item)} currency={item.schedule_currency} />
+                      {releasedLapsed(item) && (
+                        <p className="text-xs font-normal text-content-tertiary" data-testid="grid-released-lapsed">
+                          {t('commitment.released_lapsed', { defaultValue: 'Lapsed, no longer available' })} <Amount value={releasedLapsed(item)} currency={item.schedule_currency} />
+                        </p>
+                      )}
                       {item.release_expired && (
                         <p className="text-xs font-normal text-semantic-warning" data-testid="grid-release-expired">
                           {t('commitment.grid.release_expired', { defaultValue: 'Release expired' })}
@@ -246,7 +251,12 @@ export function CommitmentGrid({ items, totals, matrix, labels, onOpenItem }: Co
                 <Amount value={totals.planned} currency={totals.currency} />
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
-                <Amount value={totals.released} currency={totals.currency} />
+                <Amount value={releasedInForce(totals)} currency={totals.currency} />
+                {releasedLapsed(totals) && (
+                  <p className="text-xs font-normal text-content-tertiary" data-testid="grid-totals-lapsed">
+                    {t('commitment.released_lapsed', { defaultValue: 'Lapsed, no longer available' })} <Amount value={releasedLapsed(totals)} currency={totals.currency} />
+                  </p>
+                )}
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
                 <Amount value={totals.committed} currency={totals.currency} />

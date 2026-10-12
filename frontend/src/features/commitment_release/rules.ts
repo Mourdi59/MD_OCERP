@@ -49,15 +49,37 @@ export function isPositiveAmount(value: string | null | undefined): boolean {
   return compareAmounts(value, '0') === 1;
 }
 
+/** The sums a release leaves behind, as an item and the totals row both carry them. */
+type ReleasedSums = { released: string | null; released_in_force?: string | null; released_lapsed?: string | null };
+
 /**
- * What is still to release on an item: planned less released, in the schedule
- * currency. Null when the planned amount is unknown. A negative result is
- * returned as it is, because "released more than planned" is a finding the
- * reader has to see and a clamp to zero would hide how large it is.
+ * The released sum that still authorises money: what the server says is in
+ * force. A release past its validity date is left out of it, and that part
+ * is never shown as available. An answer without the field has nothing
+ * lapsed, so everything released is in force. Null stays null: the server
+ * could not convert the sum, and "unknown" must not turn into a figure.
  */
-export function remainingToRelease(item: Pick<CommitmentItem, 'planned_in_schedule_currency' | 'released'>): string | null {
+export function releasedInForce(sums: ReleasedSums): string | null {
+  return sums.released_in_force !== undefined ? sums.released_in_force : sums.released;
+}
+
+/** The part of the released sum that lapsed with its date, or null when nothing did. */
+export function releasedLapsed(sums: ReleasedSums): string | null {
+  return isPositiveAmount(sums.released_lapsed) ? (sums.released_lapsed as string) : null;
+}
+
+/**
+ * What is still to release on an item: planned less what is released and in
+ * force, in the schedule currency. Null when either is unknown. A negative
+ * result is returned as it is, because "released more than planned" is a
+ * finding the reader has to see and a clamp to zero would hide how large it is.
+ */
+export function remainingToRelease(
+  item: Pick<CommitmentItem, 'planned_in_schedule_currency' | 'released' | 'released_in_force'>,
+): string | null {
   if (item.planned_in_schedule_currency == null) return null;
-  return subtractDecimalStrings(item.planned_in_schedule_currency, item.released ?? '0');
+  if (item.released_in_force === null) return null;
+  return subtractDecimalStrings(item.planned_in_schedule_currency, releasedInForce(item) ?? '0');
 }
 
 /** How far the linked documents bind beyond the release; null when not over or not known. */
