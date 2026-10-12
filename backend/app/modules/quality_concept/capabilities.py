@@ -176,13 +176,16 @@ def release_request_refusal(state: str, gate_status: str | None) -> str | None:
     return None
 
 
-def stage_progress(caller: Caller, *, state: str, computed_state: str, gate_status: str | None) -> dict[str, Any]:
+def stage_progress(
+    caller: Caller, *, state: str, computed_state: str, gate_status: str | None, pass_refusal: str | None = None
+) -> dict[str, Any]:
     """``computed_state`` is the state after the preconditions were read; opening a test refreshes to it."""
     edit, manage = caller.needs("edit"), caller.needs("manage")
     return flags(
         {
             "open_test": first(edit, transition_refusal("stage", computed_state, "open_test")),
-            "record_pass": first(edit, transition_refusal("stage", state, "pass")),
+            # ``pass_refusal`` is the service's answer for a row in test: missing evidence is known beforehand.
+            "record_pass": first(edit, transition_refusal("stage", state, "pass"), pass_refusal),
             "record_fail": first(edit, transition_refusal("stage", state, "fail")),
             "request_release": first(edit, release_request_refusal(state, gate_status)),
             "link_evidence": edit,

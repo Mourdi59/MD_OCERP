@@ -178,10 +178,10 @@ async def _svc(
     svc = QualityConceptService(session)
     svc.caller_id = str(user_id)
     if payload is not None:
-        concept = await svc.concept(project_id)
         svc.ctx = _Ctx(
             await _caller(project_id, user_id, payload, session),
-            concept.state if concept is not None else None,
+            # Only the state: a row loaded here would be handed back unrefreshed by a later locked read.
+            await svc.concept_state(project_id),
             await svc._four_eyes(project_id),
         )
     return svc
@@ -911,7 +911,13 @@ async def delete_stage(
     return Response(status_code=204)
 
 
-def _progress_out(row: Any, gates: dict[str, dict[str, Any]], ctx: _Ctx, computed: str | None = None) -> dict:
+def _progress_out(
+    row: Any,
+    gates: dict[str, dict[str, Any]],
+    ctx: _Ctx,
+    computed: str | None = None,
+    pass_refusal: str | None = None,
+) -> dict:
     """One system at one stage: the hold gate to open in construction control, and the caller's actions."""
     gate = gates.get(str(row.hold_gate_id)) if row.hold_gate_id else None
     state = computed or row.state
@@ -920,14 +926,18 @@ def _progress_out(row: Any, gates: dict[str, dict[str, Any]], ctx: _Ctx, compute
         "computed_state": state,
         "hold_gate": gate,
         **caps.stage_progress(
-            ctx.caller, state=row.state, computed_state=state, gate_status=gate["status"] if gate else None
+            ctx.caller,
+            state=row.state,
+            computed_state=state,
+            gate_status=gate["status"] if gate else None,
+            pass_refusal=pass_refusal,
         ),
     }
 
 
 async def _one_progress(svc: QualityConceptService, project_id: uuid.UUID, row: Any) -> dict[str, Any]:
     gates = await references.hold_gates(svc.session, project_id, [row.hold_gate_id])
-    return _progress_out(row, gates, svc.ctx)
+    return _progress_out(row, gates, svc.ctx, None, await svc.pass_refusal(project_id, row))
 
 
 async def _matrix(svc: QualityConceptService, project_id: uuid.UUID) -> dict[str, Any]:
@@ -938,9 +948,11 @@ async def _matrix(svc: QualityConceptService, project_id: uuid.UUID) -> dict[str
     systems = list((await svc.session.execute(select(CxSystem).where(CxSystem.project_id == project_id))).scalars())
     evaluated = await svc.evaluate_progress(project_id)
     gates = await references.hold_gates(svc.session, project_id, [r.hold_gate_id for r, _x in evaluated])
+    # Evidence is read only for the rows a pass could be recorded on.
+    refusals = {r.id: await svc.pass_refusal(project_id, r) for r, _x in evaluated if r.state == "in_test"}
     items = [
         {
-            **_progress_out(r, gates, svc.ctx, ev.computed_stage_state(r.state, results)),
+            **_progress_out(r, gates, svc.ctx, ev.computed_stage_state(r.state, results), refusals.get(r.id)),
             "preconditions": [x.as_dict() for x in results],
         }
         for r, results in evaluated

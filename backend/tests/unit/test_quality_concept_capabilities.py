@@ -82,6 +82,11 @@ def test_stage_flags_follow_the_state_machine_and_the_hold_gate() -> None:
     assert flags("blocked", "ready")["can"]["open_test"] is True
     assert flags("blocked")["can_reason"]["open_test"] == "invalid_transition"
     assert flags("in_test")["can"]["record_pass"] is True and flags("in_test")["can"]["record_fail"] is True
+    # A pass the service would refuse for missing evidence is not offered either.
+    unproven = caps.stage_progress(
+        EDITOR, state="in_test", computed_state="in_test", gate_status=None, pass_refusal="stage_evidence_missing"
+    )
+    assert unproven["can_reason"]["record_pass"] == "stage_evidence_missing" and unproven["can"]["record_fail"] is True
     assert flags("ready")["can_reason"]["request_release"] == "stage_not_passed"
     assert flags("passed")["can"]["request_release"] is True
     assert flags("passed", gate="pending")["can_reason"]["request_release"] == "release_already_requested"

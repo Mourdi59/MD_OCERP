@@ -160,6 +160,11 @@ class QualityConceptService:
     async def concept(self, project_id: uuid.UUID) -> QualityConcept | None:
         return await self.repo.concept(project_id)
 
+    async def concept_state(self, project_id: uuid.UUID) -> str | None:
+        """The state alone. Loads no row, so a later locked read still sees what the lock returns."""
+        stmt = select(QualityConcept.state).where(QualityConcept.project_id == project_id)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
     async def require_concept(self, project_id: uuid.UUID, *, lock: bool = False) -> QualityConcept:
         row = await self.repo.concept(project_id, lock=lock)
         if row is None:
@@ -1340,6 +1345,30 @@ class QualityConceptService:
                 r.hold_gate_id = None
         await self.session.flush()
 
+    async def pass_refusal(self, project_id: uuid.UUID, row: StageProgress) -> str | None:
+        """Why this row cannot be recorded as passed now; also the reason behind its ``record_pass`` flag.
+
+        A stage that names evidence types needs one linked record of a fulfilling kind that
+        passed with a valid calibration.
+        """
+        code = caps.transition_refusal("stage", row.state, "pass")
+        if code is not None:
+            return code
+        stage = next(
+            (s for s in await self.repo.list(CommissioningStageDef, project_id) if s.code == row.stage_code), None
+        )
+        required = set(stage.evidence_types or []) if stage else set()
+        if not required:
+            return None
+        concept = await self.require_concept(project_id)
+        cat = await self.catalogue_for(concept)
+        kinds_ok = {lk for code in required if (et := cat.evidence_type(code)) for lk in et.fulfilled_by}
+        for link in await self.repo.links_for("stage_progress", [row.id]):
+            fact = await links.resolve(self.session, project_id, link.link_kind, link.link_id)
+            if fact and fact.outcome == "pass" and not fact.calibration_expired and link.link_kind in kinds_ok:
+                return None
+        return "stage_evidence_missing"
+
     async def record_result(
         self, project_id: uuid.UUID, progress_id: uuid.UUID, data: Any, actor: uuid.UUID
     ) -> StageProgress:
@@ -1347,21 +1376,7 @@ class QualityConceptService:
 
         row = await self._progress(project_id, progress_id)
         if data.result == "pass":
-            stage = next(
-                (s for s in await self.repo.list(CommissioningStageDef, project_id) if s.code == row.stage_code), None
-            )
-            required = set(stage.evidence_types or []) if stage else set()
-            if required:
-                concept = await self.require_concept(project_id)
-                cat = await self.catalogue_for(concept)
-                kinds_ok = {lk for code in required if (et := cat.evidence_type(code)) for lk in et.fulfilled_by}
-                passing = []
-                for link in await self.repo.links_for("stage_progress", [row.id]):
-                    fact = await links.resolve(self.session, project_id, link.link_kind, link.link_id)
-                    if fact and fact.outcome == "pass" and not fact.calibration_expired and link.link_kind in kinds_ok:
-                        passing.append(link)
-                if not passing:
-                    raise QualityConceptError("stage_evidence_missing")
+            _refuse(await self.pass_refusal(project_id, row))
             row.state = _transition("stage", row.state, "pass")
         else:
             row.state = _transition("stage", row.state, "fail")
