@@ -577,6 +577,13 @@ describe('DecisionRecordPanel', () => {
     expect(screen.queryByTestId('reopening')).toBeNull();
   });
 
+  it.each([null, undefined, true])('a record that cannot be compared or that matches (%s) shows no mismatch mark', (matches) => {
+    const approved = decision({ status: 'approved', record_matches_bound_revision: matches });
+    wrap(<DecisionRecordPanel {...props} model={model({ status: 'binding' })} decisions={[approved]} />);
+    expect(screen.getByTestId('current-decision')).toBeInTheDocument();
+    expect(screen.queryByTestId('record-differs')).toBeNull();
+  });
+
   it('without any decision it sends the reader to the comparison', () => {
     const onOpenComparison = vi.fn();
     wrap(<DecisionRecordPanel {...props} onOpenComparison={onOpenComparison} model={model()} decisions={[]} />);
