@@ -17,6 +17,7 @@ import { WideModal } from '@/shared/ui/WideModal';
 import { fmtDate } from '@/shared/lib/formatters';
 
 import {
+  errorText,
   putPackage,
   type EvaluationMethod,
   type Framework,
@@ -94,7 +95,9 @@ export function PackageDialog({
   const check = thresholdQ.data ?? null;
   // The acts of the release gate, asked for only once the package is marked as an advance package.
   const releasesQ = useAdvanceReleases(projectId, draft.is_advance);
-  const releases = releasesQ.data ?? [];
+  const releases = releasesQ.data?.items ?? [];
+  // Set when the commitment matrix is not connected, so released commitments are missing from the list for a reason.
+  const commitmentsOff = releasesQ.data?.commitments?.available === false ? (releasesQ.data.commitments.reason ?? 'commitment_release_unavailable') : null;
   const sectionsQ = useCostSections(projectId);
   const sections = sectionsQ.data ?? [];
   const setWeight = (index: number, patch: Partial<WeightRow>) =>
@@ -587,10 +590,10 @@ export function PackageDialog({
               hint={
                 releases.length === 0 && !releasesQ.isLoading
                   ? t('procurement_concept.ui.package.advance_release_none', {
-                      defaultValue: 'The release gate has no decision and no condition yet. Until one releases this package it cannot go to tender early.',
+                      defaultValue: 'Nothing can release this package yet: the release gate has no decision and no condition, and no commitment is listed. Until something releases it, it cannot go to tender early.',
                     })
                   : t('procurement_concept.ui.package.advance_release_hint', {
-                      defaultValue: 'A decision of the release gate, or a condition it set. An open condition can be named; the package is released once it is cleared.',
+                      defaultValue: 'A decision of the release gate, a condition it set, or a released commitment. An open condition or a commitment not released yet can be named; the package is released once it is.',
                     })
               }
             >
@@ -608,13 +611,24 @@ export function PackageDialog({
                 )}
                 {releases.map((r) => (
                   <option key={`${r.kind}:${r.id}`} value={`${r.kind}:${r.id}`}>
-                    {r.releases
+                    {r.kind === 'commitment'
+                      ? t('procurement_concept.ui.package.advance_release_commitment', {
+                          defaultValue: 'Commitment {{label}} ({{status}})',
+                          label: r.label,
+                          status: r.status,
+                        })
+                      : r.releases
                       ? r.label
                       : t('procurement_concept.ui.package.advance_release_open', { defaultValue: '{{label}} (still open)', label: r.label })}
                   </option>
                 ))}
               </select>
             </Field>
+          )}
+          {draft.is_advance && commitmentsOff && (
+            <p className="mt-1 text-xs text-content-tertiary" role="note" data-testid="commitments-unavailable">
+              {errorText(labels.t, commitmentsOff)}
+            </p>
           )}
           <Field className="mt-3" label={t('procurement_concept.ui.package.notes', { defaultValue: 'Notes' })} htmlFor="pk-notes">
             <textarea id="pk-notes" rows={2} className={FIELD_CLASS} value={draft.notes} onChange={(e) => set('notes', e.target.value)} />

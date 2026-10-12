@@ -47,7 +47,7 @@ export type SoundingMethod = 'survey' | 'meeting' | 'rfi' | 'notice';
 export type CallOffMode = 'direct' | 'mini_competition';
 export type PackageAction = 'hold' | 'resume' | 'cancel';
 export type ConceptAction = 'submit' | 'return';
-export type AdvanceReleaseKind = 'gate_decision' | 'condition';
+export type AdvanceReleaseKind = 'gate_decision' | 'condition' | 'commitment';
 export type EvaluationMethod = 'lowest_price' | 'best_value';
 export type CostRefKind = 'boq_section';
 export type ExportPart = 'concept' | 'packages' | 'shortlist' | 'schedule';
@@ -204,7 +204,8 @@ export interface GateOption {
 export interface AdvanceRelease {
   kind: AdvanceReleaseKind;
   id: string;
-  gate_code: string;
+  /** Null for a commitment: it is released in the commitment matrix, not at a gate. */
+  gate_code: string | null;
   label: string;
   status: string;
   date: string | null;
@@ -755,8 +756,13 @@ export function listGates(projectId: string): Promise<Page<GateOption>> {
   return apiGet<Page<GateOption>>(`/v1/procurement-concept/projects/${projectId}/gates`);
 }
 
-export function listAdvanceReleases(projectId: string): Promise<Page<AdvanceRelease>> {
-  return apiGet<Page<AdvanceRelease>>(`/v1/procurement-concept/projects/${projectId}/advance-releases`);
+/** The acts that can release an advance package, and whether released commitments could be read at all. */
+export type AdvanceReleasePage = Page<AdvanceRelease> & {
+  commitments?: { available: boolean; reason: string | null };
+};
+
+export function listAdvanceReleases(projectId: string): Promise<AdvanceReleasePage> {
+  return apiGet<AdvanceReleasePage>(`/v1/procurement-concept/projects/${projectId}/advance-releases`);
 }
 
 /* ── Prequalification ─────────────────────────────────────────────────── */

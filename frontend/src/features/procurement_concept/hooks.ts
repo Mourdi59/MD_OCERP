@@ -158,7 +158,8 @@ export function useGates(projectId: string, enabled = true) {
 export function useAdvanceReleases(projectId: string, enabled = true) {
   return useQuery({
     queryKey: procurementKeys.advanceReleases(projectId),
-    queryFn: () => listAdvanceReleases(projectId).then((p) => p.items),
+    // The whole answer: besides the items it says whether released commitments could be read.
+    queryFn: () => listAdvanceReleases(projectId),
     enabled: !!projectId && enabled,
   });
 }

@@ -460,6 +460,38 @@ describe('PackageDialog', () => {
     expect(mocked.putPackage).toHaveBeenCalledWith('p1', 'k1', { estimated_value: '2500000.50' });
   });
 
+  it('offers a commitment with its own status word, and says so when the commitment matrix is not connected', async () => {
+    mocked.getThreshold.mockResolvedValue(thresholdCheck);
+    mocked.listAdvanceReleases.mockResolvedValue({
+      items: [{ kind: 'commitment', id: 'cm1', gate_code: null, label: 'CR-1 Long lead steel', status: 'partly released', date: null, releases: false }],
+      total: 1,
+      offset: 0,
+      limit: 1,
+      commitments: { available: true, reason: null },
+    });
+    dialog();
+    fireEvent.click(screen.getByTestId('package-advance'));
+    await waitFor(() => expect((document.getElementById('pk-advance-release') as HTMLSelectElement).options.length).toBe(2));
+    const select = document.getElementById('pk-advance-release') as HTMLSelectElement;
+    expect(select.options[1]!.value).toBe('commitment:cm1');
+    expect(select.options[1]!.textContent).toBe('Commitment CR-1 Long lead steel (partly released)');
+    expect(screen.queryByTestId('commitments-unavailable')).toBeNull();
+    cleanup();
+
+    mocked.listAdvanceReleases.mockResolvedValue({
+      items: [],
+      total: 0,
+      offset: 0,
+      limit: 0,
+      commitments: { available: false, reason: 'commitment_release_unavailable' },
+    });
+    dialog();
+    fireEvent.click(screen.getByTestId('package-advance'));
+    expect(await screen.findByTestId('commitments-unavailable')).toHaveTextContent(
+      en.translation['procurement_concept.errors.commitment_release_unavailable']!,
+    );
+  });
+
   it('names what releases an advance package from the acts of the release gate', async () => {
     mocked.getThreshold.mockResolvedValue(thresholdCheck);
     mocked.putPackage.mockResolvedValue(packageView() as never);

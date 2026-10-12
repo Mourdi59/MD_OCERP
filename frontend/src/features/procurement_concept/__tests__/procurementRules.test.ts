@@ -393,6 +393,11 @@ describe('package moves follow the flags of the row', () => {
     const released = packageDraft(packageView({}, { is_advance: true, advance_release_kind: 'condition', advance_release_id: 'c9' }));
     expect(released.advance_release).toBe('condition:c9');
     expect(toPackageInput(released, released)).toEqual({});
+    // A released commitment is named the same way: its kind and its id.
+    expect(toPackageInput({ ...original, advance_release: 'commitment:cm1' }, original)).toMatchObject({
+      advance_release_kind: 'commitment',
+      advance_release_id: 'cm1',
+    });
     expect(toPackageInput({ ...released, is_advance: false }, released)).toMatchObject({
       is_advance: false,
       advance_release_kind: null,
