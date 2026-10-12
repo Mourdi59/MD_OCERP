@@ -152,7 +152,14 @@ async def _prepare_and_decide(w: World) -> None:
 
 
 async def test_a_draft_concept_blocks_the_release_gate(world: World) -> None:
+    from app.modules.project_governance.evidence import evidence_link_href
+
     register_gate_evidence()
+    # The gate screen can open the item: the link kind is registered with the module's own page.
+    assert (
+        evidence_link_href("procurement_concept", str(world.project_id), world.project_id)
+        == f"/projects/{world.project_id}/procurement-concept"
+    )
     await _concept(world, release_gate_code=G1, governance_document_id=(await documents(world))[FRAME_DOC].id)
     with pytest.raises(GovernanceError):
         await _prepare_and_decide(world)

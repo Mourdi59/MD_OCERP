@@ -22,7 +22,12 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, register_evidence_provider
+from app.modules.project_governance.evidence import (
+    EvidenceItem,
+    GateAttempt,
+    register_evidence_link,
+    register_evidence_provider,
+)
 from app.modules.project_governance.public import project_areas
 
 PROVIDER_NAME = "procurement_concept.concept_ready"
@@ -30,6 +35,9 @@ LABEL_KEY = "procurement_concept.evidence.concept_ready"
 # An ``unknown`` item has a code of its own and a sentence that says what to do: the decider of the gate has
 # to acknowledge it by name.
 UNKNOWN_KEY = "procurement_concept.evidence.unknown"
+# Every item links to the concept of its project; the gate screen opens it on the module's own page.
+LINK_KIND = "procurement_concept"
+LINK_ROUTE = "/projects/{project_id}/procurement-concept"
 
 
 async def _anchor_area_code(session: Any, project_id: uuid.UUID, tagged: str | None) -> str | None:
@@ -48,7 +56,7 @@ async def concept_ready(session: Any, project_id: uuid.UUID, attempt: GateAttemp
     if concept is None:
         return []
     hosting = await svc.hosting(project_id)
-    link = ("procurement_concept", str(project_id))
+    link = (LINK_KIND, str(project_id))
     anchor = await _anchor_area_code(session, project_id, hosting.area_code)
     if anchor is None:
         # Governance lists no applicable area for the project (it pinned no phase model, or every area is
@@ -104,3 +112,4 @@ async def concept_ready(session: Any, project_id: uuid.UUID, attempt: GateAttemp
 
 def register_gate_evidence() -> None:
     register_evidence_provider("*", concept_ready, name=PROVIDER_NAME, blocking=True)
+    register_evidence_link(LINK_KIND, LINK_ROUTE)
