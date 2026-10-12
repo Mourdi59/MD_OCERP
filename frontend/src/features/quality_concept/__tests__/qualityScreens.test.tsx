@@ -627,3 +627,77 @@ describe('what the server names', () => {
     expect((await screen.findByTestId('concept-frame-document')).textContent).toContain('Quality frame');
   });
 });
+
+describe('gate, retests and names', () => {
+  it('says why the governance gate cannot read the concept and what to do', async () => {
+    mocked.getReadiness.mockResolvedValue({
+      concept: true,
+      approved: false,
+      errors: [],
+      preservation_unplanned: [],
+      gate_detail: 'quality_frame_document_missing',
+    });
+    renderPage();
+    const note = await screen.findByTestId('gate-detail');
+    expect(note.textContent).toContain('add the quality concept to the frame documents');
+    expect(note.textContent).not.toContain('quality_frame_document_missing');
+  });
+
+  it('links a record as the retest of an earlier one', async () => {
+    mocked.listProofs.mockResolvedValue(page([proof()]));
+    mocked.listLinks.mockResolvedValue(
+      page([
+        {
+          id: 'l1',
+          owner_kind: 'proof',
+          owner_id: 'pr1',
+          link_kind: 'cc_test_result',
+          link_id: 't1',
+          retest_of: null,
+          note: '',
+          label: 'Pressure test 12',
+          exists: true,
+        },
+        {
+          id: 'l2',
+          owner_kind: 'proof',
+          owner_id: 'pr1',
+          link_kind: 'cc_test_result',
+          link_id: 't2',
+          retest_of: 'l1',
+          note: '',
+          label: 'Pressure test 13',
+          exists: true,
+        },
+      ]),
+    );
+    mocked.listCandidates.mockResolvedValue(page([{ id: 't3', label: 'Pressure test 14' }]));
+    mocked.addLink.mockResolvedValue({
+      id: 'l3',
+      owner_kind: 'proof',
+      owner_id: 'pr1',
+      link_kind: 'cc_test_result',
+      link_id: 't3',
+      retest_of: 'l2',
+      note: '',
+    });
+    renderPage('proofs');
+    fireEvent.click(await screen.findByTestId('proof-links-toggle'));
+    expect((await screen.findByTestId('evidence-retest')).textContent).toBe('Retest of Pressure test 12');
+    await screen.findByText('Pressure test 14');
+    fireEvent.change(screen.getByTestId('evidence-candidate'), { target: { value: 't3' } });
+    fireEvent.change(screen.getByTestId('evidence-retest-of'), { target: { value: 'l2' } });
+    fireEvent.click(screen.getByTestId('evidence-add'));
+    await waitFor(() => expect(mocked.addLink).toHaveBeenCalled());
+    expect(mocked.addLink.mock.calls[0]![1]).toMatchObject({ link_id: 't3', retest_of: 'l2' });
+  });
+
+  it('names who asked for a waiver', async () => {
+    mocked.listProofs.mockResolvedValue(
+      page([proof({ requested_by: 'u2', requested_by_name: 'Site manager one', decision_rationale: 'Out of scope' })]),
+    );
+    renderPage('proofs');
+    const line = await screen.findByTestId('waiver-pending');
+    expect(line.textContent).toBe('Waiver requested by Site manager one: Out of scope');
+  });
+});

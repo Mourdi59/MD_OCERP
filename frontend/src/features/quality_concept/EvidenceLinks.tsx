@@ -42,6 +42,12 @@ export function EvidenceLinks({ projectId, ownerKind, ownerId, allowedKinds, row
   const kind = kinds.includes(pickedKind) ? pickedKind : (kinds[0] ?? '');
   const [q, setQ] = useState('');
   const [linkId, setLinkId] = useState('');
+  const [retestOf, setRetestOf] = useState('');
+  const all = links.data ?? [];
+  const linkName = (id: string | null) => {
+    const hit = all.find((x) => x.id === id);
+    return hit ? hit.label || vocab(t as TFn, LINK_KIND, hit.link_kind) : '';
+  };
   const candidates = useLinkCandidates(projectId, kind, q);
   const linked = new Set((links.data ?? []).filter((l) => l.link_kind === kind).map((l) => l.link_id));
   const offered = (candidates.data ?? []).filter((c) => !linked.has(c.id));
@@ -82,6 +88,13 @@ export function EvidenceLinks({ projectId, ownerKind, ownerId, allowedKinds, row
               {(l.fact === null || l.exists === false) && (
                 <span className="text-xs text-content-tertiary">
                   {t('qualityConcept.evidence.record_gone', { defaultValue: 'The record is no longer there' })}
+                </span>
+              )}
+              {l.retest_of && (
+                <span className="text-xs text-content-secondary" data-testid="evidence-retest">
+                  {linkName(l.retest_of)
+                    ? t('qualityConcept.evidence.retest_of', { defaultValue: 'Retest of {{name}}', name: linkName(l.retest_of) })
+                    : t('qualityConcept.evidence.retest', { defaultValue: 'Retest' })}
                 </span>
               )}
               {l.note && <span className="text-xs text-content-secondary">{l.note}</span>}
@@ -145,6 +158,22 @@ export function EvidenceLinks({ projectId, ownerKind, ownerId, allowedKinds, row
             </option>
           ))}
         </select>
+        {all.length > 0 && (
+          <select
+            className={`${inputCls} md:col-span-10`}
+            value={retestOf}
+            aria-label={t('qualityConcept.evidence.retest_pick', { defaultValue: 'Repeats an earlier record' })}
+            onChange={(e) => setRetestOf(e.target.value)}
+            data-testid="evidence-retest-of"
+          >
+            <option value="">{t('qualityConcept.evidence.not_a_retest', { defaultValue: 'Not a retest' })}</option>
+            {all.map((l) => (
+              <option key={l.id} value={l.id}>
+                {t('qualityConcept.evidence.retest_of', { defaultValue: 'Retest of {{name}}', name: linkName(l.id) })}
+              </option>
+            ))}
+          </select>
+        )}
         <Button
           size="sm"
           variant="secondary"
@@ -154,8 +183,18 @@ export function EvidenceLinks({ projectId, ownerKind, ownerId, allowedKinds, row
           loading={write.pending}
           onClick={() =>
             write.send(
-              () => addLink(projectId, { owner_kind: ownerKind, owner_id: ownerId, link_kind: kind, link_id: linkId }),
-              () => setLinkId(''),
+              () =>
+                addLink(projectId, {
+                  owner_kind: ownerKind,
+                  owner_id: ownerId,
+                  link_kind: kind,
+                  link_id: linkId,
+                  ...(retestOf ? { retest_of: retestOf } : {}),
+                }),
+              () => {
+                setLinkId('');
+                setRetestOf('');
+              },
             )
           }
           data-testid="evidence-add"

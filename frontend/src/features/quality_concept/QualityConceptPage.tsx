@@ -35,6 +35,7 @@ import {
   useReadiness,
   useValidation,
 } from './hooks';
+import { GATE_DETAIL, humanizeCode, vocab, type TFn } from './labels';
 import { QC_TABS, type PanelProps, type QcTab } from './panel';
 import { PreservationPanel } from './PreservationPanel';
 import { ProofsPanel } from './ProofsPanel';
@@ -97,6 +98,16 @@ function ReadinessStrip({ projectId }: { projectId: string }) {
           </Button>
         )}
       </div>
+      {r.gate_detail && (
+        <p className="mt-2 text-sm text-content-primary" data-testid="gate-detail">
+          {GATE_DETAIL[r.gate_detail]
+            ? vocab(t as TFn, GATE_DETAIL, r.gate_detail)
+            : t('qualityConcept.gate.other', {
+                defaultValue: 'The governance gate cannot read this concept yet: {{reason}}',
+                reason: humanizeCode(r.gate_detail),
+              })}
+        </p>
+      )}
       {r.preservation_unplanned.length > 0 && (
         <p className="mt-2 text-sm text-content-primary" data-testid="unplanned-subjects">
           {t('qualityConcept.readiness.preservation_refs', {
@@ -215,7 +226,7 @@ export function QualityConceptPage() {
           title={t('qualityConcept.missing_title', { defaultValue: 'This project has no quality concept yet' })}
           description={t('qualityConcept.missing_body', {
             defaultValue:
-              'The quality concept says which standards apply, which proofs each work package owes, how the technical systems are commissioned and how the works are accepted. Create it, then start with the standards and the work packages.',
+              'The quality concept says which standards apply, which proofs each work package owes, how the technical systems are commissioned and how the works are accepted. Create it, then start with the standards and the work packages. Until it exists, the governance gate counts the quality concept as not met.',
           })}
           action={{
             label: t('qualityConcept.create', { defaultValue: 'Create quality concept' }),

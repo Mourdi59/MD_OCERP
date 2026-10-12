@@ -71,7 +71,7 @@ function QuantityRuleText({ rule }: { rule: QuantityRule | null | undefined }) {
 }
 
 export function ProofsPanel(props: PanelProps) {
-  const { projectId, concept, catalogue, labels, editable, openTab } = props;
+  const { projectId, concept, catalogue, labels, personName, editable, openTab } = props;
   const { t } = useTranslation();
   const write = useQcWrite(projectId);
   const proofs = useProofs(projectId);
@@ -294,18 +294,30 @@ export function ProofsPanel(props: PanelProps) {
                 </p>
                 {waiverPending(p) && (
                   <p className="mt-1 text-xs text-content-primary" data-testid="waiver-pending">
-                    {t('qualityConcept.proofs.waiver_pending', {
-                      defaultValue: 'Waiver requested: {{reason}}',
-                      reason: p.decision_rationale,
-                    })}
+                    {(p.requested_by_name ?? personName(p.requested_by))
+                      ? t('qualityConcept.proofs.waiver_pending_by', {
+                          defaultValue: 'Waiver requested by {{name}}: {{reason}}',
+                          name: p.requested_by_name ?? personName(p.requested_by),
+                          reason: p.decision_rationale,
+                        })
+                      : t('qualityConcept.proofs.waiver_pending', {
+                          defaultValue: 'Waiver requested: {{reason}}',
+                          reason: p.decision_rationale,
+                        })}
                   </p>
                 )}
                 {p.decision === 'waived' && p.decision_rationale && (
                   <p className="mt-1 text-xs text-content-secondary">
-                    {t('qualityConcept.proofs.waived_because', {
-                      defaultValue: 'Waived because: {{reason}}',
-                      reason: p.decision_rationale,
-                    })}
+                    {(p.decided_by_name ?? personName(p.decided_by))
+                      ? t('qualityConcept.proofs.waived_by', {
+                          defaultValue: 'Waiver approved by {{name}}: {{reason}}',
+                          name: p.decided_by_name ?? personName(p.decided_by),
+                          reason: p.decision_rationale,
+                        })
+                      : t('qualityConcept.proofs.waived_because', {
+                          defaultValue: 'Waived because: {{reason}}',
+                          reason: p.decision_rationale,
+                        })}
                   </p>
                 )}
                 <FindingList findings={p.findings} className="mt-1" />

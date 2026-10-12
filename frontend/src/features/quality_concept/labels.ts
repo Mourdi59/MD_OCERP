@@ -532,6 +532,22 @@ export function vocab(t: TFn, map: KeyMap, code: string | null | undefined, para
 }
 
 /** A code written for a reader: `pressure_test` becomes "Pressure test". Never a raw key. */
+/** Why the governance gate cannot read the concept, each with what to do about it. */
+export const GATE_DETAIL: Record<string, KeyText> = {
+  quality_frame_document_missing: [
+    'qualityConcept.gate.quality_frame_document_missing',
+    'The governance gate cannot read this concept, because the project has no frame document for the quality concept. In project governance, add the quality concept to the frame documents of the project.',
+  ],
+  governance_catalogue_has_no_quality_area: [
+    'qualityConcept.gate.governance_catalogue_has_no_quality_area',
+    'The governance gate cannot read this concept, because the governance catalogue of the project has no quality area. Choose a governance catalogue that has one.',
+  ],
+  no_phase_enables_construction: [
+    'qualityConcept.gate.no_phase_enables_construction',
+    'The governance gate cannot read this concept, because no phase of the governance catalogue opens construction. Check the phases of the governance catalogue.',
+  ],
+};
+
 export const CATALOGUE_SOURCE: Record<string, KeyText> = {
   shipped: ['qualityConcept.catalogues.source_shipped', 'Shipped with the product'],
   tenant: ['qualityConcept.catalogues.source_tenant', 'Kept by your organisation'],

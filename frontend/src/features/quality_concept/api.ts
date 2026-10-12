@@ -386,7 +386,9 @@ export interface Proof extends Capable {
   decision: ProofDecision;
   decision_rationale: string;
   requested_by: string | null;
+  requested_by_name?: string | null;
   decided_by: string | null;
+  decided_by_name?: string | null;
   decided_at: string | null;
   derived_state: string;
   state: ProofState;
@@ -527,6 +529,7 @@ export interface StageProgress extends Capable {
   hold_gate_id: string | null;
   released_at: string | null;
   released_by: string | null;
+  released_by_name?: string | null;
   computed_state: StageState;
   preconditions: PreconditionResult[];
   hold_gate?: HoldGateRef | null;
@@ -763,6 +766,8 @@ export interface Readiness {
   errors: Finding[];
   /** References of the subjects that have no before survey yet. */
   preservation_unplanned: string[];
+  /** Why the governance gate cannot read the concept, when it cannot. */
+  gate_detail?: string | null;
 }
 
 export interface ValidationItem {
@@ -961,7 +966,15 @@ export const listLinks = (projectId: string, ownerKind: LinkOwnerKind, ownerId: 
 
 export const addLink = (
   projectId: string,
-  body: { owner_kind: LinkOwnerKind; owner_id: string; link_kind: string; link_id: string; note?: string },
+  body: {
+    owner_kind: LinkOwnerKind;
+    owner_id: string;
+    link_kind: string;
+    link_id: string;
+    note?: string;
+    /** The earlier link of the same record this one repeats. */
+    retest_of?: string;
+  },
 ) => apiPost<EvidenceLink>(`/v1/quality-concept/projects/${projectId}/evidence-links`, body);
 
 export const removeLink = (projectId: string, id: string) => apiDelete(`/v1/quality-concept/projects/${projectId}/evidence-links/${id}`);

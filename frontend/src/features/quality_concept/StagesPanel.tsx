@@ -340,8 +340,14 @@ export function StagesPanel(props: PanelProps) {
           </ul>
           {current.rationale && <p className="mt-2 text-sm text-content-secondary">{current.rationale}</p>}
           {current.released_at && (
-            <p className="mt-2 text-sm text-content-secondary">
-              {t('qualityConcept.stages.released_on', { defaultValue: 'Released on {{date}}', date: fmtDate(current.released_at) })}
+            <p className="mt-2 text-sm text-content-secondary" data-testid="stage-released">
+              {(current.released_by_name ?? personName(current.released_by))
+                ? t('qualityConcept.stages.released_on_by', {
+                    defaultValue: 'Released on {{date}} by {{name}}',
+                    date: fmtDate(current.released_at),
+                    name: current.released_by_name ?? personName(current.released_by),
+                  })
+                : t('qualityConcept.stages.released_on', { defaultValue: 'Released on {{date}}', date: fmtDate(current.released_at) })}
             </p>
           )}
           {current.hold_gate_id && current.computed_state !== 'released' && (
