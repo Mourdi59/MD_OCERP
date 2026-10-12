@@ -1929,6 +1929,7 @@ class ProcurementService:
                 detail=f"Cannot approve PO in status '{prior_status}'",
             )
         await self._validate_po_or_raise(po, operation="approve")
+        await self._check_commitment_release(po, actor_id=approver_id)
         await self.po_repo.update(po_id, status="approved")
 
         try:
@@ -1975,6 +1976,32 @@ class ProcurementService:
         logger.info("PO approved: %s", updated.po_number)
         return updated
 
+    async def _check_commitment_release(self, po: PurchaseOrder, *, actor_id: str | None) -> None:
+        """The commitment matrix's release check at PO approval and issue, before the status write.
+
+        ``ok`` when no matrix is installed or the PO is not linked to an item;
+        ``block`` raises 409; ``warn`` proceeds and is on the audit trail. Net
+        is the amount checked, gross goes along for a schedule that counts gross.
+        """
+        from app.core import commitment_guard
+
+        def _amount(raw: object) -> Decimal:
+            try:
+                return Decimal(str(raw or 0))
+            except (InvalidOperation, ValueError):
+                return Decimal("0")
+
+        await commitment_guard.enforce(
+            self.session,
+            project_id=po.project_id,
+            kind="purchase_order",
+            document_id=po.id,
+            new_amount=_amount(po.amount_subtotal),
+            gross_amount=_amount(po.amount_total),
+            currency=(po.currency_code or "").strip().upper(),
+            actor_id=actor_id,
+        )
+
     async def issue_po(self, po_id: uuid.UUID) -> PurchaseOrder:
         """Transition PO to issued status (requires prior approval - TOP-30 #10)."""
         po = await self.get_po(po_id)
@@ -1996,6 +2023,7 @@ class ProcurementService:
         # the warning on the issue response so the buyer sees it at the moment
         # the PO actually goes out, not only at create time.
         vendor_warnings = await self._enforce_vendor_gate(po.vendor_contact_id)
+        await self._check_commitment_release(po, actor_id=None)
         await self.po_repo.update(po_id, status="issued")
 
         # FSM audit row - PO lifecycle is closely tied to the RFQ FSM (see

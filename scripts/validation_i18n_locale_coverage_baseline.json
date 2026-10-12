@@ -48,6 +48,10 @@
       "it",
       "ru"
     ],
+    "backend/app/modules/commitment_release/messages": [
+      "de",
+      "en"
+    ],
     "backend/app/modules/compliance/messages": [
       "de",
       "en",

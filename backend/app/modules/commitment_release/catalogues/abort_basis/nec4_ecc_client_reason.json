@@ -1,0 +1,19 @@
+{
+  "id": "nec4_ecc_client_reason",
+  "version": 1,
+  "name_key": "commitment.catalogue.nec4_ecc_client_reason.name",
+  "description_key": "commitment.catalogue.nec4_ecc_client_reason.description",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [],
+  "method": "fee_on_unperformed",
+  "parameters": {
+    "fee_pct": {
+      "value": null,
+      "statutory": true,
+      "source_url": "https://www.neccontract.com/news/termination-in-an-nec4-engineering-and-construction-contract",
+      "review_status": "unconfirmed",
+      "note_key": "commitment.catalogue.nec4_ecc_client_reason.fee_from_contract_data"
+    }
+  },
+  "source_url": "https://www.neccontract.com/news/termination-in-an-nec4-engineering-and-construction-contract"
+}

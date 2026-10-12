@@ -2406,6 +2406,25 @@ class ContractsService:
         if target_status == "active" and contract.status == "draft":
             from datetime import UTC, datetime
 
+            # ── Commitment release gate ──────────────────────────────
+            # Signing binds a subcontract's value: the release check of the
+            # commitment matrix runs before the compliance gate and before any
+            # write or event (``ok`` when no matrix is installed or the contract
+            # is not linked; ``block`` raises 409; ``warn`` is audited). A
+            # client contract is revenue, not a commitment, and is not checked.
+            if contract.counterparty_type == "subcontractor":
+                from app.core import commitment_guard
+
+                await commitment_guard.enforce(
+                    self.session,
+                    project_id=contract.project_id,
+                    kind="contract",
+                    document_id=contract.id,
+                    new_amount=Decimal(str(contract.total_value or 0)),
+                    currency=(contract.currency or "").strip().upper(),
+                    actor_id=actor_id,
+                )
+
             # ── Compliance gate ──────────────────────────────────────
             audit_entry, report, pack_ids = await self.enforce_compliance_gate(
                 contract,

@@ -1,0 +1,293 @@
+{
+  "commitment": {
+    "abort_parameter": {
+      "fee_pct": "Zuschlag auf den nicht erbrachten Teil",
+      "presumed_unperformed_pct": "Vermuteter Anteil am nicht erbrachten Teil",
+      "profit_pct": "Gewinn auf den erbrachten Teil"
+    },
+    "catalogue": {
+      "custom": {
+        "description": "Ein für diese Position erfasster Betrag",
+        "name": "Individuelle Bedingungen"
+      },
+      "de_bgb_648": {
+        "description": "Vereinbarte Vergütung abzüglich ersparter Aufwendungen; 5 % des nicht erbrachten Teils vermutet, wenn ersparte Aufwendungen nicht belegt sind",
+        "name": "Freie Kündigung durch den Besteller (§ 648 BGB)",
+        "presumption": "Vermuteter Anteil am nicht erbrachten Teil"
+      },
+      "de_public_owner": {
+        "description": "Beispielhafte Zuständigkeitsordnung eines öffentlichen Bauherrn: EU-Schwellenwert für Bauleistungen als oberste Grenze, überjährige Verpflichtungen bei der Behördenleitung",
+        "eu_works_threshold": "EU-Schwellenwert Bauleistungen 2026-27 (Delegierte Verordnung (EU) 2025/2152), nicht bestätigt",
+        "name": "Öffentlicher Bauherr (Deutschland), Beispiel"
+      },
+      "de_vob_b_8_1": {
+        "description": "Abrechnung wie § 648 BGB, auf den die Klausel verweist",
+        "name": "Freie Kündigung nach § 8 Abs. 1 VOB/B",
+        "refers_to_bgb_648": "Verweist auf § 648 BGB"
+      },
+      "far_49_convenience": {
+        "description": "Angefallene Kosten zuzüglich Gewinn auf erbrachte Leistung und Abwicklungskosten",
+        "name": "Kündigung aus Zweckmäßigkeit (FAR 49)",
+        "profit_negotiated": "Gewinnsatz wie verhandelt"
+      },
+      "nec4_ecc_client_reason": {
+        "description": "Erbrachte Leistung zuzüglich eines Zuschlags auf den nicht erbrachten Teil laut Vertragsdaten",
+        "fee_from_contract_data": "Prozentsatz aus den Vertragsdaten",
+        "name": "Kündigung aus eigenem Grund des Auftraggebers (NEC4 ECC)"
+      },
+      "neutral": {
+        "description": "Projektleitung, Auftraggebervertretung und Vorstand mit Beispielgrenzen in Projektwährung; keine gesetzlichen Werte",
+        "name": "Neutrale dreistufige Freigabeordnung"
+      },
+      "none_free_cancellation": {
+        "description": "Keine Kosten bei Stornierung",
+        "name": "Kostenfreie Stornierung"
+      },
+      "supply_cancellation_schedule": {
+        "description": "Stornokosten nach Datum oder Fertigungsfortschritt wie mit dem Lieferanten vereinbart",
+        "name": "Stornostaffel des Lieferanten"
+      },
+      "uk_public_body": {
+        "description": "Beispielhafte Delegation nach Betrag und Neuartigkeit nach Managing Public Money",
+        "name": "Öffentliche Stelle (Vereinigtes Königreich), Beispiel"
+      },
+      "us_federal_owner": {
+        "description": "Beispielstufen ab der Schwelle für vereinfachte Beschaffung",
+        "name": "Bundesbehörde als Bauherr (USA), Beispiel",
+        "sat": "Schwelle vereinfachte Beschaffung 350.000 USD ab 01.10.2025 (FAR 2.101)"
+      }
+    },
+    "errors": {
+      "abort_basis_unknown": "Unbekannte Abbruchgrundlage",
+      "abort_exposure_unknown": "Der Restschaden ist unbekannt. Bitte zuerst die Abbruchbedingungen vervollständigen.",
+      "abort_parameter_invalid": "Ein Abbruchparameter ist ein Anteil zwischen 0 und 1",
+      "abort_parameter_not_in_basis": "Die gewählte Abbruchgrundlage kennt diesen Parameter nicht",
+      "abort_type_not_in_schedule": "Die Freigabeordnung kennt keine Stufe für eine Kündigungsabrechnung",
+      "activity_not_found": "Der Vorgang wurde in diesem Projekt nicht gefunden",
+      "amount_invalid": "Der Betrag ist keine gültige Zahl",
+      "amount_not_positive": "Der Betrag muss größer als null sein",
+      "assignee_not_project_member": "Die Person ist kein Mitglied dieses Projekts",
+      "assignment_expired": "Die Zuordnung der genehmigenden Person ist abgelaufen; aktualisieren Sie die Zuordnungen",
+      "assignment_needs_approver": "Benennen Sie die freigebende Person dieser Stufe, bevor Sie Vertretung oder Gültigkeit angeben",
+      "assignment_window_inverted": "Die Zuordnung endet vor ihrem Beginn",
+      "cancellation_schedule_invalid": "Jede Stufe braucht einen Meilenstein, ein Datum oder einen Fortschritt und genau einen Betrag",
+      "catalogue_code_taken": "Ein anderer Katalog verwendet diese Kennung bereits",
+      "catalogue_invalid": "Der Katalog ist nicht gültig",
+      "catalogue_retired": "Dieser Katalog ist stillgelegt",
+      "change_belongs_to_contract_item": "Ein Nachtrag und sein Vertrag werden an derselben Position verknüpft",
+      "commitment_guard_unavailable": "Die Freigabeprüfung war nicht möglich, daher wurde der Vorgang nicht zugelassen",
+      "commitment_not_in_matrix": "Dieses Dokument ist nicht in der Verpflichtungsmatrix",
+      "commitment_not_released": "Diese Verpflichtung ist für diesen Betrag nicht freigegeben",
+      "commitment_type_unknown": "Diese Verpflichtungsart ist nicht in der Freigabeordnung",
+      "contingency_insufficient": "Der Reservebestand deckt diese Inanspruchnahme nicht",
+      "contingency_line_required": "Eine Reserve-Inanspruchnahme braucht die Budgetzeile mit der Reserve",
+      "date_invalid": "Das ist kein Datum",
+      "decider_not_tier_holder": "Freigegeben von jemandem, der nicht zur Stufe gehört",
+      "decision_invalid": "Bitte freigeben oder ablehnen wählen",
+      "deferral_needs_reason": "Begründen Sie die Zurückstellung",
+      "document_linked_elsewhere": "Dieses Dokument wird bereits in einer anderen Position gezählt",
+      "document_not_found": "Dokument in diesem Projekt nicht gefunden",
+      "drawdown_released_by_commitment": "Diese Entnahme ist eine freigegebene Verpflichtungsposition. Brechen Sie diese Position ab, um die Mittel zurückzunehmen.",
+      "edit_required": "Ihre Rolle darf keine Positionen bearbeiten",
+      "enforcement_invalid": "Durchsetzung muss aus, warnen oder sperren sein",
+      "external_approval_not_required": "Über diesen Betrag entscheidet eine Stufe der Freigabeordnung: entfernen Sie den Bezug der externen Zustimmung",
+      "external_approval_required": "Der Betrag liegt über allen Stufen: geben Sie den Bezug der externen Zustimmung an",
+      "field_frozen": "Dieses Feld kann für diese Position nicht mehr geändert werden",
+      "field_required": "Dieses Feld darf nicht leer sein",
+      "flag_unknown": "Dieses Merkmal ist nicht in der Freigabeordnung",
+      "four_eyes_no_approver": "Nach dem Vier-Augen-Prinzip darf niemand auf dieser Stufe über diesen Antrag entscheiden",
+      "four_eyes_requester_is_approver": "Vier-Augen-Prinzip: Sie können keine Freigabe beantragen, die Sie selbst genehmigen würden",
+      "four_eyes_violation": "Wer beantragt, die Position verantwortet oder bestätigt hat, darf nicht entscheiden",
+      "fx_policy_invalid": "Unbekannte Wechselkursregel",
+      "fx_rate_missing": "Kein Wechselkurs für dieses Datum: die Freigabe kann nicht bewertet werden",
+      "gate_unknown": "Dieses Phasentor ist nicht im Governance-Modell des Projekts",
+      "governance_area_required": "Eine Position mit Phasentor braucht einen Managementbereich",
+      "governance_area_unknown": "Dieser Managementbereich ist nicht im Governance-Modell des Projekts",
+      "invalid_transition": "Dieser Schritt ist im aktuellen Zustand nicht möglich",
+      "item_changed": "Die Position wurde inzwischen geändert. Bitte erneut versuchen.",
+      "item_closed": "Die Position ist abgeschlossen",
+      "item_code_taken": "Eine andere Position verwendet diese Nummer bereits",
+      "item_not_found": "Verpflichtung nicht gefunden",
+      "link_kind_invalid": "Unbekannte Dokumentart",
+      "link_kind_not_supported": "Diese Dokumentart kann noch nicht verknüpft werden",
+      "link_not_found": "Verknüpfung nicht gefunden",
+      "manage_required": "Das darf nur, wer die Freigabematrix verwaltet",
+      "manual_amount_needs_currency": "Eine manuelle Schätzung braucht Betrag und Währung",
+      "matrix_missing": "Dieses Projekt hat noch keine Verpflichtungsmatrix",
+      "no_pending_release": "Es gibt keinen offenen Freigabeantrag",
+      "no_route_for_tier": "Der erforderlichen Stufe ist noch niemand zugeordnet",
+      "not_entitled_decider": "Sie gehören nicht zur Stufe, auf der über diesen Antrag entschieden wird",
+      "not_item_owner": "Nur die verantwortliche Person oder die Leitung kann diese Position ändern",
+      "not_requester": "Nur die antragstellende Person oder die Leitung kann den Antrag zurückziehen",
+      "planned_source_invalid": "Unbekannte Quelle für den geplanten Betrag",
+      "planned_source_not_found": "Budgetzeile, Kostenzeile oder Position in diesem Projekt nicht gefunden",
+      "precondition_is_computed": "Diese Voraussetzung wird aus ihrem Modul gelesen und kann nicht abgehakt werden",
+      "precondition_kind_invalid": "Unbekannte Art der Voraussetzung",
+      "precondition_needs_evidence": "Geben Sie den Nachweis an",
+      "precondition_needs_ref": "Diese Voraussetzung braucht einen Bezug",
+      "precondition_not_found": "Voraussetzung nicht gefunden",
+      "preconditions_open": "Offene Voraussetzungen sperren diese Freigabe",
+      "project_not_found": "Projekt nicht gefunden",
+      "rationale_required": "Bitte eine Begründung angeben",
+      "release_decided": "Dieser Freigabeantrag ist bereits entschieden",
+      "release_expired": "Die Freigabe dieser Position ist abgelaufen: beantragen Sie eine erneute Freigabe, bevor Sie mehr binden",
+      "release_pending": "Für diese Position läuft bereits ein Freigabeantrag",
+      "requisition_not_found": "Die Bedarfsanforderung wurde in diesem Projekt nicht gefunden",
+      "route_changed_since_accepted": "Der Freigabeweg dieser Stufe wurde bearbeitet. Er muss erneut festgelegt werden.",
+      "route_must_belong_to_project": "Es kann nur ein Freigabeweg dieses Projekts festgelegt werden",
+      "route_not_found": "Genehmigungsweg nicht gefunden",
+      "schedule_currency_mismatch": "Diese Freigabeordnung hat eine andere Währung als die bereits erfassten Freigaben",
+      "schedule_not_in_force": "Die festgelegte Freigabeordnung gilt heute nicht. Bitte die gültige Fassung festlegen.",
+      "schedule_type_mismatch": "Diese Freigabeordnung kennt die Verpflichtungsart einer vorhandenen Position nicht",
+      "tier_unknown": "Diese Stufe ist nicht in der Freigabeordnung",
+      "transfer_links_stay_in_project": "Verknüpfte Dokumente gehören zu diesem Projekt. Vor der Übertragung in ein anderes Projekt lösen.",
+      "transfer_target_invalid": "Eine Position kann nicht auf sich selbst übertragen werden",
+      "transfer_target_not_open": "Die Zielposition ist abgeschlossen oder wartet auf eine Entscheidung",
+      "transferable_invalid": "Unbekannte Übertragungsoption",
+      "type_fixed_after_release": "Die Art ist nach einem Freigabeantrag nicht mehr änderbar",
+      "unknown_catalogue": "Katalog nicht gefunden"
+    },
+    "evidence": {
+      "decision_overdue": "Der späteste Entscheidungstermin dieser Position ist verstrichen und nichts ist freigegeben: entscheiden, mit Begründung zurückstellen oder die Kosten der Verzögerung festhalten",
+      "items_released_by_gate": "Zu diesem Meilenstein fällige Verpflichtungen sind freigegeben oder zurückgestellt",
+      "items_without_area": "Positionen dieses Gates nennen einen Bereich, den das Projekt nicht mehr hat",
+      "no_items_for_gate": "Keine Verpflichtungsposition nennt dieses Gate; ob bis dahin Mittel freizugeben sind, ist nicht bekannt"
+    },
+    "export": {
+      "as_of": "Stand",
+      "col_code": "Nr.",
+      "col_committed": "Gebunden",
+      "col_currency": "Währung",
+      "col_decision_date": "Spätester Entscheidungstermin",
+      "col_open_preconditions": "Offene Voraussetzungen",
+      "col_overdue": "Entscheidung überfällig",
+      "col_planned": "Geplant",
+      "col_released": "Freigegeben",
+      "col_residual_loss": "Restverlust bei Abbruch",
+      "col_status": "Status",
+      "col_tier": "Erforderliche Stufe",
+      "col_title": "Verpflichtung",
+      "col_type": "Art",
+      "empty": "Noch keine Verpflichtungen",
+      "overdue": "Überfällig",
+      "project": "Projekt",
+      "title": "Verpflichtungs- und Freigabematrix"
+    },
+    "exposure": {
+      "nothing_committed": "Nichts gebunden, nichts ausgegeben"
+    },
+    "flag": {
+      "multi_year_commitment": "Belastet spätere Haushaltsjahre",
+      "novel_contentious": "Neuartig oder strittig"
+    },
+    "rules": {
+      "abort_terms_present_for_committed": {
+        "fail": "Position {item} ist gebunden, aber ihre Abbruchbedingungen sind unbekannt",
+        "suggestion": "Erfassen Sie die Abbruchgrundlage oder eine Stornostaffel"
+      },
+      "authority_schedule_bands_monotonic": {
+        "fail": "Die Grenzen der Ordnung {schedule} steigen nicht mit der Stufe",
+        "suggestion": "Korrigieren Sie die Grenzen und veröffentlichen Sie eine neue Version"
+      },
+      "committed_within_release": {
+        "fail": "Position {item} bindet mehr als freigegeben",
+        "suggestion": "Beantragen Sie eine weitere Freigabe oder reduzieren Sie die Dokumente"
+      },
+      "decision_date_not_passed": {
+        "fail": "Der späteste Entscheidungstermin {date} von Position {item} ist überschritten",
+        "suggestion": "Entscheiden, mit Begründung zurückstellen oder die Kosten der Verzögerung festhalten"
+      },
+      "document_linked_once": {
+        "fail": "Dokument {document} wird in mehr als einer Position gezählt",
+        "suggestion": "Entfernen Sie die zweite Verknüpfung"
+      },
+      "fx_rate_available": {
+        "fail": "Ein verknüpfter Betrag von Position {item} hat keinen Wechselkurs",
+        "suggestion": "Ergänzen Sie einen Kurs im Kursregister oder im Projekt"
+      },
+      "item_has_cost_code": {
+        "fail": "Position {item} hat keine Kostenzeile",
+        "suggestion": "Ordnen Sie die Kostenzeile zu, auf die gebucht wird"
+      },
+      "item_has_planned_amount_source": {
+        "fail": "Der geplante Betrag von Position {item} kann nicht gelesen werden",
+        "suggestion": "Verweisen Sie auf eine Budgetzeile, Kostenzeile oder Position oder erfassen Sie eine Schätzung"
+      },
+      "release_in_date": {
+        "fail": "Eine Freigabe von Position {item} galt bis {date}: darunter kann nichts Neues gebunden werden",
+        "suggestion": "Beantragen Sie eine erneute Freigabe für das noch zu Bindende"
+      },
+      "release_within_authority": {
+        "fail": "Freigabe {release} wurde unterhalb der erforderlichen Stufe {tier} entschieden",
+        "suggestion": "Beantragen Sie eine neue Freigabe nach der geltenden Ordnung"
+      },
+      "split_group_not_bypassing_tier": {
+        "fail": "Die Positionen der Gruppe {group} wurden unterhalb der Stufe freigegeben, die ihre Summe braucht",
+        "suggestion": "Beantragen Sie die nächste Freigabe auf der Stufe der Gruppensumme"
+      }
+    },
+    "status": {
+      "aborted": "Abgebrochen",
+      "closed": "Abgeschlossen",
+      "committed": "Gebunden",
+      "on_hold": "Zurückgestellt",
+      "partially_released": "Teilweise freigegeben",
+      "planned": "Geplant",
+      "re_release_required": "Neue Freigabe nötig",
+      "release_requested": "Freigabe beantragt",
+      "released": "Freigegeben",
+      "transferred": "Übertragen"
+    },
+    "tier": {
+      "accounting_officer": "Haushaltsbeauftragte Person",
+      "authority_head": "Behördenleitung",
+      "board": "Vorstand",
+      "contracting_officer": "Vergabebeauftragte Person",
+      "department_head": "Fachbereichsleitung",
+      "head_of_contracting_activity": "Leitung der Vergabestelle",
+      "project_director": "Projektdirektor",
+      "project_lead": "Projektleitung",
+      "project_manager": "Projektleitung",
+      "senior_responsible_owner": "Verantwortliche Führungskraft",
+      "simplified_acquisition": "Vereinfachte Beschaffung",
+      "sponsor": "Auftraggebervertretung"
+    },
+    "type": {
+      "change": "Nachtrag",
+      "claim_settlement": "Vergleich über Forderungen",
+      "contingency_drawdown": "Inanspruchnahme der Reserve",
+      "design": "Planung",
+      "services": "Dienstleistungen",
+      "supplies": "Lieferungen",
+      "termination_settlement": "Abrechnung nach Kündigung",
+      "works": "Bauleistungen"
+    }
+  },
+  "common": {
+    "ok": "OK"
+  },
+  "notifications": {
+    "commitment": {
+      "decision_overdue": {
+        "body": "{code} hätte bis {latest_decision_date} entschieden sein sollen.",
+        "title": "Freigabeentscheidung überfällig"
+      },
+      "re_release_required": {
+        "body": "Verknüpfte Dokumente von {code} binden jetzt {committed}, mehr als die Freigabe von {released}.",
+        "title": "Neue Freigabe nötig"
+      },
+      "release_aborted": {
+        "body": "{code} wurde gestoppt.",
+        "title": "Abbruch genehmigt"
+      },
+      "release_rejected": {
+        "body": "Die Freigabe von {code} wurde abgelehnt.",
+        "title": "Freigabe abgelehnt"
+      },
+      "release_released": {
+        "body": "{code} wurde freigegeben.",
+        "title": "Freigabe erteilt"
+      }
+    }
+  }
+}

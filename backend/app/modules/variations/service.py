@@ -94,6 +94,10 @@ logger = logging.getLogger(__name__)
 # the contractual unit, so FX-normalising here would let a "small approval"
 # silently authorise a large amount once FX drifted.
 HIGH_VALUE_APPROVAL_THRESHOLD: Decimal = Decimal("100000")
+# A project enrolled in the commitment matrix replaces this constant with its
+# delegation of authority: above the most the lowest tier may approve for a
+# change, the change is high value (``core.commitment_guard.change_threshold``,
+# SPEC rule 20 of commitment_release). Without a matrix the constant stays.
 
 # Bulk-endpoint cap - single POST cannot push more rows than this. Prevents
 # allowlist-gap DoS on ``bulk_cost_impacts`` / ``bulk_daywork_lines`` where
@@ -1216,19 +1220,32 @@ async def _log_ownership_change(
     )
 
 
-def is_high_value(amount: Decimal | float | int | str | None) -> bool:
+def is_high_value(amount: Decimal | float | int | str | None, threshold: Decimal | None = None) -> bool:
     """R5 audit: True when ``amount`` exceeds the high-value approval bar.
 
     Pure. Used to decide whether ``variations.approve_high_value`` is
     additionally required on top of ``variations.approve_request``.
+    ``threshold`` is the project's own bar when it has one (see
+    :func:`project_high_value_threshold`); None keeps the constant.
     """
-    return abs(_to_decimal(amount)) > HIGH_VALUE_APPROVAL_THRESHOLD
+    bar = HIGH_VALUE_APPROVAL_THRESHOLD if threshold is None else threshold
+    return abs(_to_decimal(amount)) > bar
+
+
+async def project_high_value_threshold(session: Any, project_id: Any, currency: str | None) -> Decimal | None:
+    """The project's high-value bar from its delegation of authority, or None for the constant."""
+    from app.core import commitment_guard
+
+    return await commitment_guard.change_threshold(
+        session, project_id=project_id, currency=(currency or "").strip().upper()
+    )
 
 
 def ensure_high_value_authorised(
     amount: Decimal | float | int | str | None,
     *,
     payload: dict[str, Any] | None,
+    threshold: Decimal | None = None,
 ) -> None:
     """R5 audit: raise 403 if ``amount`` exceeds threshold and caller lacks
     ``variations.approve_high_value``.
@@ -1238,7 +1255,7 @@ def ensure_high_value_authorised(
     the dependency is bypassed - treat that as "skip" so unit-level tests
     stay self-contained.
     """
-    if not is_high_value(amount):
+    if not is_high_value(amount, threshold):
         return
     if payload is None:
         return
@@ -2789,6 +2806,24 @@ class VariationsService:
             fields["implementation_started_at"] = now
         if to_status == "completed":
             fields["implementation_completed_at"] = now
+            # Completing posts the final figure into the contract sum: the
+            # commitment matrix's release check runs before that write. A VO
+            # linked to its own item is checked as its own document; otherwise
+            # as an addition to its contract's item. ``ok`` without a matrix or
+            # a link; ``block`` raises 409; ``warn`` is audited.
+            from app.core import commitment_guard
+
+            await commitment_guard.enforce(
+                self.session,
+                project_id=vo.project_id,
+                kind="variation_order",
+                document_id=vo.id,
+                new_amount=_to_decimal(vo.final_cost_impact),
+                currency=(vo.currency or "").strip().upper(),
+                actor_id=user_id,
+                parent_kind="contract" if vo.affected_contract_id else None,
+                parent_id=vo.affected_contract_id,
+            )
         await self.vo_repo.update_fields(vo_id, **fields)
         await self.session.refresh(vo)
         event_name = {
@@ -2943,6 +2978,25 @@ class VariationsService:
         if "currency" not in named:
             payload_dict["currency"] = vr.currency or ""
         forced = VariationOrderCreate(**payload_dict)
+        if forced.affected_contract_id is not None:
+            # The order is about to add to a contract: the commitment matrix is asked whether the
+            # contract's item is released for that much more. The request stands in as the document,
+            # the order does not exist yet. An order naming no contract has no item to be asked on
+            # here and is checked when it completes. ``block`` raises 409 and the caller's
+            # transaction (the status flip above included) is rolled back.
+            from app.core import commitment_guard
+
+            await commitment_guard.enforce(
+                self.session,
+                project_id=vr.project_id,
+                kind="variation_order",
+                document_id=vr_id,
+                new_amount=_to_decimal(forced.final_cost_impact),
+                currency=(forced.currency or "").strip().upper(),
+                actor_id=user_id,
+                parent_kind="contract",
+                parent_id=forced.affected_contract_id,
+            )
         vo = await self.create_order(forced, user_id=user_id)
 
         # R7 audit: mirror into oe_changeorders inside the same txn. Both

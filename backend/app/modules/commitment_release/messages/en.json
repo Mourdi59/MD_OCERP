@@ -1,0 +1,293 @@
+{
+  "commitment": {
+    "abort_parameter": {
+      "fee_pct": "Fee on the unperformed part",
+      "presumed_unperformed_pct": "Presumed share of the unperformed part",
+      "profit_pct": "Profit on the performed part"
+    },
+    "catalogue": {
+      "custom": {
+        "description": "A charge entered for this item",
+        "name": "Custom terms"
+      },
+      "de_bgb_648": {
+        "description": "Agreed price less saved costs; 5 % of the unperformed part presumed when saved costs are not documented",
+        "name": "Free termination by the owner (§ 648 BGB)",
+        "presumption": "Presumed share of the unperformed part"
+      },
+      "de_public_owner": {
+        "description": "Example delegation for a public owner: EU works threshold as the top works band, multi-year commitments to the head of authority",
+        "eu_works_threshold": "EU works threshold 2026-27 (Delegated Regulation (EU) 2025/2152), unconfirmed",
+        "name": "Public owner (Germany), example"
+      },
+      "de_vob_b_8_1": {
+        "description": "Same settlement as § 648 BGB, to which the clause refers",
+        "name": "Free termination under § 8 (1) VOB/B",
+        "refers_to_bgb_648": "Refers to § 648 BGB"
+      },
+      "far_49_convenience": {
+        "description": "Costs incurred plus profit on work done plus settlement expenses",
+        "name": "Termination for convenience (FAR 49)",
+        "profit_negotiated": "Profit rate as negotiated"
+      },
+      "nec4_ecc_client_reason": {
+        "description": "Work done plus a fee percentage on the unperformed part, as stated in the contract data",
+        "fee_from_contract_data": "Percentage from the contract data",
+        "name": "Termination for the client's own reason (NEC4 ECC)"
+      },
+      "neutral": {
+        "description": "Project manager, sponsor and board with example ceilings in the project currency; no statutory figures",
+        "name": "Neutral three-tier schedule"
+      },
+      "none_free_cancellation": {
+        "description": "No charge on cancellation",
+        "name": "Free cancellation"
+      },
+      "supply_cancellation_schedule": {
+        "description": "Charges by date or fabrication progress as agreed with the supplier",
+        "name": "Supplier cancellation schedule"
+      },
+      "uk_public_body": {
+        "description": "Example delegated authority by amount and novelty after Managing Public Money",
+        "name": "Public body (United Kingdom), example"
+      },
+      "us_federal_owner": {
+        "description": "Example tiers starting at the simplified acquisition threshold",
+        "name": "Federal owner (United States), example",
+        "sat": "Simplified acquisition threshold USD 350,000 from 2025-10-01 (FAR 2.101)"
+      }
+    },
+    "errors": {
+      "abort_basis_unknown": "Unknown abort basis",
+      "abort_exposure_unknown": "The residual loss is unknown. Complete the abort terms first.",
+      "abort_parameter_invalid": "An abort parameter is a share between 0 and 1",
+      "abort_parameter_not_in_basis": "The chosen abort basis does not have this parameter",
+      "abort_type_not_in_schedule": "The schedule has no tier for a termination settlement",
+      "activity_not_found": "The schedule activity was not found in this project",
+      "amount_invalid": "The amount is not a valid number",
+      "amount_not_positive": "The amount must be greater than zero",
+      "assignee_not_project_member": "The person is not a member of this project",
+      "assignment_expired": "The approver's assignment has expired; update the assignments",
+      "assignment_needs_approver": "Name the approver of this tier before a deputy or a validity period",
+      "assignment_window_inverted": "The assignment ends before it starts",
+      "cancellation_schedule_invalid": "Each step needs a milestone, a date or progress, and exactly one charge",
+      "catalogue_code_taken": "Another catalogue already uses this code",
+      "catalogue_invalid": "The catalogue is not valid",
+      "catalogue_retired": "This catalogue is retired",
+      "change_belongs_to_contract_item": "A change and its contract are linked on the same item",
+      "commitment_guard_unavailable": "The release check could not be made, so this was not allowed",
+      "commitment_not_in_matrix": "This document is not in the commitment matrix",
+      "commitment_not_released": "This commitment is not released for this amount",
+      "commitment_type_unknown": "This commitment type is not in the authority schedule",
+      "contingency_insufficient": "The contingency balance does not cover this drawdown",
+      "contingency_line_required": "A contingency drawdown needs the budget line that holds the contingency",
+      "date_invalid": "This is not a date",
+      "decider_not_tier_holder": "Approved by someone who does not hold the tier",
+      "decision_invalid": "Choose approve or reject",
+      "deferral_needs_reason": "Write down why the item is deferred",
+      "document_linked_elsewhere": "This document is already counted in another item",
+      "document_not_found": "Document not found in this project",
+      "drawdown_released_by_commitment": "This drawdown is a released commitment item. Abort that item to take the money back.",
+      "edit_required": "Your role cannot edit commitment items",
+      "enforcement_invalid": "Enforcement must be off, warn or block",
+      "external_approval_not_required": "This amount is decided by a tier of the schedule: remove the external approval reference",
+      "external_approval_required": "The amount is above every tier: attach the external approval reference",
+      "field_frozen": "This field can no longer be changed for this item",
+      "field_required": "This field cannot be empty",
+      "flag_unknown": "This flag is not in the authority schedule",
+      "four_eyes_no_approver": "Nobody on this tier may decide this request under the four-eyes rule",
+      "four_eyes_requester_is_approver": "Four-eyes: you cannot request a release you would approve yourself",
+      "four_eyes_violation": "Whoever requested, owns or confirmed for this item cannot decide it",
+      "fx_policy_invalid": "Unknown exchange rate policy",
+      "fx_rate_missing": "No exchange rate for this date: the release cannot be evaluated",
+      "gate_unknown": "This gate is not in the project's governance model",
+      "governance_area_required": "An item tied to a gate needs a management area",
+      "governance_area_unknown": "This management area is not in the project's governance model",
+      "invalid_transition": "This step is not possible in the current state",
+      "item_changed": "The item changed in the meantime. Try again.",
+      "item_closed": "The item is closed",
+      "item_code_taken": "Another item already uses this code",
+      "item_not_found": "Commitment item not found",
+      "link_kind_invalid": "Unknown document kind",
+      "link_kind_not_supported": "This document kind cannot be linked yet",
+      "link_not_found": "Link not found",
+      "manage_required": "Only someone who manages the matrix can do this",
+      "manual_amount_needs_currency": "A manual estimate needs an amount and a currency",
+      "matrix_missing": "This project has no commitment matrix yet",
+      "no_pending_release": "There is no pending release request",
+      "no_route_for_tier": "Nobody is assigned to the required tier yet",
+      "not_entitled_decider": "You do not hold the tier this request is decided on",
+      "not_item_owner": "Only the item owner or a manager can change this item",
+      "not_requester": "Only the requester or a manager can withdraw this request",
+      "planned_source_invalid": "Unknown source for the planned amount",
+      "planned_source_not_found": "The budget line, cost line or position was not found in this project",
+      "precondition_is_computed": "This precondition is read from its module and cannot be ticked",
+      "precondition_kind_invalid": "Unknown precondition kind",
+      "precondition_needs_evidence": "Attach the evidence reference",
+      "precondition_needs_ref": "This precondition needs a reference",
+      "precondition_not_found": "Precondition not found",
+      "preconditions_open": "Open preconditions block this release",
+      "project_not_found": "Project not found",
+      "rationale_required": "Give a reason",
+      "release_decided": "This release request is already decided",
+      "release_expired": "The release of this item is past its validity date: request a renewed release before binding more",
+      "release_pending": "A release request for this item is already running",
+      "requisition_not_found": "The requisition was not found in this project",
+      "route_changed_since_accepted": "The approval route of this tier was edited. A manager must pin it again.",
+      "route_must_belong_to_project": "Only an approval route of this project can be pinned",
+      "route_not_found": "Approval route not found",
+      "schedule_currency_mismatch": "This schedule uses another currency than the releases already recorded",
+      "schedule_not_in_force": "The pinned schedule is not in force today. Pin the version that is.",
+      "schedule_type_mismatch": "This schedule does not know the commitment type of an existing item",
+      "tier_unknown": "This tier is not in the authority schedule",
+      "transfer_links_stay_in_project": "Linked documents belong to this project. Unlink them before transferring to another project.",
+      "transfer_target_invalid": "An item cannot be transferred to itself",
+      "transfer_target_not_open": "The target item is closed or waiting for a decision",
+      "transferable_invalid": "Unknown transfer option",
+      "type_fixed_after_release": "The type cannot change once a release was requested",
+      "unknown_catalogue": "Catalogue not found"
+    },
+    "evidence": {
+      "decision_overdue": "The latest decision date of this commitment item has passed and nothing is released: decide, defer with a reason, or record the cost of the delay",
+      "items_released_by_gate": "Commitments due at this gate are released or deferred",
+      "items_without_area": "Commitment items of this gate name a management area the project no longer has",
+      "no_items_for_gate": "No commitment item names this gate, so it is not known whether money has to be released by it"
+    },
+    "export": {
+      "as_of": "As of",
+      "col_code": "Code",
+      "col_committed": "Committed",
+      "col_currency": "Currency",
+      "col_decision_date": "Latest decision date",
+      "col_open_preconditions": "Open preconditions",
+      "col_overdue": "Decision overdue",
+      "col_planned": "Planned",
+      "col_released": "Released",
+      "col_residual_loss": "Residual loss on abort",
+      "col_status": "Status",
+      "col_tier": "Required tier",
+      "col_title": "Commitment",
+      "col_type": "Type",
+      "empty": "No commitment items yet",
+      "overdue": "Overdue",
+      "project": "Project",
+      "title": "Commitment and release matrix"
+    },
+    "exposure": {
+      "nothing_committed": "Nothing committed, nothing spent"
+    },
+    "flag": {
+      "multi_year_commitment": "Binds later budget years",
+      "novel_contentious": "Novel or contentious"
+    },
+    "rules": {
+      "abort_terms_present_for_committed": {
+        "fail": "Item {item} is committed but its abort terms are unknown",
+        "suggestion": "Enter the abort basis or a cancellation schedule"
+      },
+      "authority_schedule_bands_monotonic": {
+        "fail": "The ceilings of schedule {schedule} do not rise with the tier",
+        "suggestion": "Correct the bands and publish a new version"
+      },
+      "committed_within_release": {
+        "fail": "Item {item} binds more than was released",
+        "suggestion": "Request a further release or reduce the linked documents"
+      },
+      "decision_date_not_passed": {
+        "fail": "The latest decision date {date} of item {item} has passed",
+        "suggestion": "Decide, defer with a reason, or record the cost of the delay"
+      },
+      "document_linked_once": {
+        "fail": "Document {document} is counted in more than one item",
+        "suggestion": "Remove the second link"
+      },
+      "fx_rate_available": {
+        "fail": "A linked amount of item {item} has no exchange rate",
+        "suggestion": "Add a rate for the date in the exchange rate register or the project"
+      },
+      "item_has_cost_code": {
+        "fail": "Item {item} has no cost line",
+        "suggestion": "Assign the cost line the item is booked against"
+      },
+      "item_has_planned_amount_source": {
+        "fail": "The planned amount of item {item} cannot be read",
+        "suggestion": "Point the item at a budget line, cost line or position, or enter a manual estimate"
+      },
+      "release_in_date": {
+        "fail": "A release of item {item} was valid until {date}: nothing new can be bound under it",
+        "suggestion": "Request a renewed release for what is still to be bound"
+      },
+      "release_within_authority": {
+        "fail": "Release {release} was decided below the required tier {tier}",
+        "suggestion": "Request a new release under the current schedule"
+      },
+      "split_group_not_bypassing_tier": {
+        "fail": "The items of group {group} were released below the tier their sum needs",
+        "suggestion": "Request the next release at the tier of the group total"
+      }
+    },
+    "status": {
+      "aborted": "Aborted",
+      "closed": "Closed",
+      "committed": "Committed",
+      "on_hold": "On hold",
+      "partially_released": "Partially released",
+      "planned": "Planned",
+      "re_release_required": "Re-release required",
+      "release_requested": "Release requested",
+      "released": "Released",
+      "transferred": "Transferred"
+    },
+    "tier": {
+      "accounting_officer": "Accounting officer",
+      "authority_head": "Head of authority",
+      "board": "Board",
+      "contracting_officer": "Contracting officer",
+      "department_head": "Head of department",
+      "head_of_contracting_activity": "Head of contracting activity",
+      "project_director": "Project director",
+      "project_lead": "Project lead",
+      "project_manager": "Project manager",
+      "senior_responsible_owner": "Senior responsible owner",
+      "simplified_acquisition": "Simplified acquisition",
+      "sponsor": "Sponsor"
+    },
+    "type": {
+      "change": "Change",
+      "claim_settlement": "Claim settlement",
+      "contingency_drawdown": "Contingency drawdown",
+      "design": "Design",
+      "services": "Services",
+      "supplies": "Supplies",
+      "termination_settlement": "Termination settlement",
+      "works": "Works"
+    }
+  },
+  "common": {
+    "ok": "OK"
+  },
+  "notifications": {
+    "commitment": {
+      "decision_overdue": {
+        "body": "{code} should have been decided by {latest_decision_date}.",
+        "title": "Release decision overdue"
+      },
+      "re_release_required": {
+        "body": "Linked documents of {code} now bind {committed}, above the release of {released}.",
+        "title": "Re-release required"
+      },
+      "release_aborted": {
+        "body": "{code} was stopped.",
+        "title": "Abort approved"
+      },
+      "release_rejected": {
+        "body": "The release of {code} was rejected.",
+        "title": "Release rejected"
+      },
+      "release_released": {
+        "body": "{code} was released.",
+        "title": "Release granted"
+      }
+    }
+  }
+}

@@ -1276,6 +1276,22 @@ class BidManagementService:
         awarded_submission = await select_awarded_submission(self.session, bidder_id=data.awarded_bidder_id)
         currency = data.currency or package.currency or (awarded_submission.currency if awarded_submission else "")
 
+        # The award is the owner's earliest legal commitment: the release check
+        # of the commitment matrix runs here, before any write (``ok`` when no
+        # matrix is installed or the package is not linked to an item; ``block``
+        # raises 409; ``warn`` proceeds and is on the audit trail).
+        from app.core import commitment_guard
+
+        await commitment_guard.enforce(
+            self.session,
+            project_id=package.project_id,
+            kind="bid_package",
+            document_id=package_id,
+            new_amount=Decimal(str(data.awarded_amount)),
+            currency=(currency or "").strip().upper(),
+            actor_id=user_id,
+        )
+
         award = BidAward(
             package_id=package_id,
             awarded_bidder_id=data.awarded_bidder_id,

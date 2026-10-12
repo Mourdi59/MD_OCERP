@@ -1037,6 +1037,23 @@ class TenderingService:
                     },
                 )
 
+        # The award is the owner's earliest legal commitment, so the release
+        # check runs here, before any write; the contract and PO the award
+        # subscribers draft inherit this check and are not checked again.
+        # ``ok`` when no commitment matrix is installed or the package is not
+        # linked to a commitment item; ``block`` raises 409.
+        from app.core import commitment_guard
+
+        guard_verdict = await commitment_guard.enforce(
+            self.session,
+            project_id=package.project_id,
+            kind="tender_package",
+            document_id=package_id,
+            new_amount=_to_decimal(bid.total_amount),
+            currency=(bid.currency or project_currency or "").strip().upper(),
+            actor_id=awarded_by,
+        )
+
         from sqlalchemy import select, update
 
         from app.modules.boq.models import BOQ, Position
@@ -1163,7 +1180,7 @@ class TenderingService:
             updated,
             awarded_by,
         )
-        return {
+        result = {
             "package_id": str(package_id),
             "bid_id": str(bid_id),
             "positions_updated": updated,
@@ -1171,6 +1188,9 @@ class TenderingService:
             "rates_skipped_reason": rates_skipped_reason,
             "boq_id": str(package.boq_id),
         }
+        if guard_verdict.result == "warn":
+            result["commitment_guard"] = guard_verdict.as_dict()
+        return result
 
     # ── Distribution to subcontractors ─────────────────────────────────────
     # The recipient list lives in the package ``metadata_`` JSON store under

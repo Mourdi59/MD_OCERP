@@ -945,6 +945,21 @@ class RiskService:
             # Same confirmation replayed: keep the original record untouched.
             return build_position(risks, lines, project_currency=project_currency, fx=fx)
 
+        # A drawdown binds contingency money: the commitment matrix is asked whether the item that
+        # names this risk is released for the amount. ``ok`` without a matrix; ``block`` raises 409
+        # before anything is written; ``warn`` is audited.
+        from app.core import commitment_guard
+
+        await commitment_guard.enforce(
+            self.session,
+            project_id=project_id,
+            kind="contingency_drawdown",
+            document_id=risk_id,
+            new_amount=amount,
+            currency=line_currency,
+            actor_id=user_id,
+        )
+
         record = {
             "amount": format(amount, "f"),
             "currency": line_currency,
@@ -1006,6 +1021,27 @@ class RiskService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No contingency drawdown is recorded for this risk",
+            )
+        # A released commitment item that names this risk wrote the same record: it is the released
+        # money, so it is taken back by aborting that item, not by reversing here.
+        try:
+            from app.modules.commitment_release.public import released_drawdown_for_risk
+        except ImportError:
+            released_item = None
+        else:
+            released_item = await released_drawdown_for_risk(self.session, project_id, risk_id)
+        if released_item is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "drawdown_released_by_commitment",
+                    "message_key": "commitment.errors.drawdown_released_by_commitment",
+                    "message": (
+                        f"This drawdown is the released commitment item {released_item}. "
+                        "Abort that item in the commitment matrix to take the money back."
+                    ),
+                    "item_code": released_item,
+                },
             )
         await FinanceService(self.session).set_contingency_drawdown(
             project_id=project_id,

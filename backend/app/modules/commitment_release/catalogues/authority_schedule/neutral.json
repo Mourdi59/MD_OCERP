@@ -1,0 +1,121 @@
+{
+  "id": "neutral",
+  "version": 1,
+  "name_key": "commitment.catalogue.neutral.name",
+  "description_key": "commitment.catalogue.neutral.description",
+  "review_status": "verified",
+  "jurisdiction_countries": [],
+  "currency": null,
+  "basis": "net",
+  "aggregation": "item_total",
+  "commitment_types": [
+    {
+      "code": "works",
+      "name_key": "commitment.type.works"
+    },
+    {
+      "code": "services",
+      "name_key": "commitment.type.services"
+    },
+    {
+      "code": "supplies",
+      "name_key": "commitment.type.supplies"
+    },
+    {
+      "code": "design",
+      "name_key": "commitment.type.design"
+    },
+    {
+      "code": "change",
+      "name_key": "commitment.type.change"
+    },
+    {
+      "code": "contingency_drawdown",
+      "name_key": "commitment.type.contingency_drawdown"
+    },
+    {
+      "code": "claim_settlement",
+      "name_key": "commitment.type.claim_settlement"
+    },
+    {
+      "code": "termination_settlement",
+      "name_key": "commitment.type.termination_settlement"
+    }
+  ],
+  "tiers": [
+    {
+      "code": "project_manager",
+      "name_key": "commitment.tier.project_manager",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_pm"
+      },
+      "steps_mode": "any",
+      "four_eyes": true,
+      "sla_hours": 72
+    },
+    {
+      "code": "sponsor",
+      "name_key": "commitment.tier.sponsor",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_sponsor"
+      },
+      "steps_mode": "any",
+      "four_eyes": true,
+      "sla_hours": 120
+    },
+    {
+      "code": "board",
+      "name_key": "commitment.tier.board",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_board_member"
+      },
+      "steps_mode": "all",
+      "four_eyes": true,
+      "sla_hours": 240
+    }
+  ],
+  "bands": [
+    {
+      "code": "any_project_manager",
+      "commitment_type": "*",
+      "tier": "project_manager",
+      "max_amount": "50000"
+    },
+    {
+      "code": "any_sponsor",
+      "commitment_type": "*",
+      "tier": "sponsor",
+      "max_amount": "500000"
+    },
+    {
+      "code": "any_board",
+      "commitment_type": "*",
+      "tier": "board",
+      "max_amount": "5000000"
+    }
+  ],
+  "novelty_flags": [
+    {
+      "code": "novel_contentious",
+      "name_key": "commitment.flag.novel_contentious",
+      "min_tier": "board"
+    },
+    {
+      "code": "claim_settlement",
+      "name_key": "commitment.type.claim_settlement",
+      "min_tier": "sponsor"
+    },
+    {
+      "code": "termination_settlement",
+      "name_key": "commitment.type.termination_settlement",
+      "min_tier": "sponsor"
+    }
+  ],
+  "variation_tolerance": {
+    "absolute": "0",
+    "percent": "0.02"
+  }
+}

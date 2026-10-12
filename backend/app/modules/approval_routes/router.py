@@ -599,22 +599,32 @@ async def reassign_instance(
     payload: ReassignInstance,
     session: SessionDep,
     user_id: CurrentUserId,
+    user_payload: CurrentUserPayload,
     service: ApprovalRouteService = Depends(_get_service),
 ) -> InstanceResponse:
     """Reassign the current step of a pending instance to another user.
 
     A one-tap hand-off that pins the chosen user as the sole eligible decider
-    for the current step without editing the shared route template.
+    for the current step without editing the shared route template. Only the
+    step's current approver or a holder of ``approval_routes.manage`` may do
+    it (403), and never to the person who started the approval (422).
     """
+    from app.core.permissions import permission_registry
+
     instance = await service.get_instance(instance_id)
     route = await service.get_route(instance.route_id)
     if route.project_id is not None:
         await verify_project_access(route.project_id, user_id, session)
+    role = str(user_payload.get("role") or "")
     updated = await service.reassign_current_step(
         instance_id,
         to_user_id=payload.to_user_id,
         actor_id=_safe_user_uuid(user_id),
         reason=payload.reason,
+        manage=role == "admin"
+        or "approval_routes.manage" in (user_payload.get("permissions") or [])
+        or permission_registry.role_has_permission(role, "approval_routes.manage"),
+        caller_role=role or None,
     )
     return await _instance_to_response(updated, service)
 

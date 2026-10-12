@@ -40,6 +40,7 @@ import {
   LayoutGrid,
   Flag,
   Receipt,
+  Stamp,
   ChevronDown,
   MessagesSquare,
   MapPin,
@@ -1807,6 +1808,15 @@ export function ProjectDetailPage() {
           ]}
         />
         <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Stamp size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/commitments`)}
+          data-testid="project-commitments-link"
+        >
+          {t('commitment.page.title', { defaultValue: 'Commitments and releases' })}
+        </Button>
         <Button
           variant="ghost"
           size="sm"
