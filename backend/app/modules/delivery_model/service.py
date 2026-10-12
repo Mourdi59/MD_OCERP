@@ -128,6 +128,18 @@ def snapshot_hash(snapshot: dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def record_matches_bound_revision(record_hash: str | None, bound_hash: str | None) -> bool | None:
+    """Is the revision governance bound the decision record itself? ``None`` when it cannot be compared.
+
+    Comparable only when both hashes exist: the decision has been approved and
+    the bound revision carries a content hash. Equal means the bound file is
+    byte for byte the canonical JSON of the snapshot.
+    """
+    if not record_hash or not bound_hash:
+        return None
+    return record_hash == bound_hash
+
+
 def _model_cls(spec: tuple[str, str]) -> Any:
     import importlib
 
@@ -1617,6 +1629,7 @@ def _decision_view(d: DeliveryDecision, model: DeliveryModel | None) -> dict[str
         "bound_content_hash": d.bound_content_hash,
         "supersedes_id": _s(d.supersedes_id),
         "snapshot_hash": d.snapshot_hash,
+        "record_matches_bound_revision": record_matches_bound_revision(d.snapshot_hash, d.bound_content_hash),
         # Rule 2: the setting as it stood at approval. Under it the proposer is never the approver; a decision
         # approved before the rule was enforced still shows here when it breaks it.
         "four_eyes": d.four_eyes,

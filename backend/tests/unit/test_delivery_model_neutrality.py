@@ -29,7 +29,7 @@ from app.modules.delivery_model.catalogue import (
 )
 from app.modules.delivery_model.errors import DeliveryModelError
 from app.modules.delivery_model.schemas import ModelPatch, OfiPatch, OptionPatch, PackagePatch
-from app.modules.delivery_model.service import _weight, snapshot_hash
+from app.modules.delivery_model.service import _weight, record_matches_bound_revision, snapshot_hash
 from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
 
 
@@ -440,3 +440,12 @@ async def test_without_an_isolated_postgres_session_the_handlers_stand_down(monk
     assert await events.handle_frame_document({**ids, "status": "binding"}) is False
     assert await events.handle_frame_document({**ids, "status": "approved"}, session_factory=never) is False
     assert await events.handle_risk_deleted({**ids, "risk_id": "r"}) == 0
+
+
+def test_the_record_is_compared_with_the_bound_revision_only_when_both_hashes_exist() -> None:
+    record = snapshot_hash({"form": {"code": "design_build"}})
+    assert record_matches_bound_revision(record, record) is True
+    assert record_matches_bound_revision(record, "0" * 64) is False
+    assert record_matches_bound_revision(record, None) is None
+    assert record_matches_bound_revision(None, record) is None
+    assert record_matches_bound_revision("", "") is None

@@ -154,7 +154,8 @@ async def test_the_decision_is_approved_by_the_gate_and_records_the_carrier(worl
     assert d["governance_document_id"] == str(doc.id)
     assert d["four_eyes"] is True and d["four_eyes_violated"] is False
     # Finding 6: the approved record carries the matrix and the plan it was approved with.
-    assert len(d["snapshot"]["allocations"]) == 20
+    matrix = await call(w, "allocation_matrix")
+    assert len(d["snapshot"]["allocations"]) == len(matrix["items"]) > 0
     assert [p["code"] for p in d["snapshot"]["packages"]] != []
     assert d["snapshot_hash"] and len(d["snapshot_hash"]) == 64
 
