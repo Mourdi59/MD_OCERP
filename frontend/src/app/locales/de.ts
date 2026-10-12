@@ -50677,6 +50677,7 @@ const resource = {
     "permits.ui.propose.subtitle": "Aus dem bestätigten Verfahrensweg dieses Projekts gelesen. Nichts wird hinzugefügt, bevor Sie bestätigen.",
     "permits.ui.propose.title": "Genehmigungen, die der bestätigte Verfahrensweg braucht",
     "permits.ui.readiness.at_risk": "Gefährdet",
+    "permits.ui.readiness.checked_for": "Geprüft für den {{date}}. Eine Genehmigung, die erst danach nötig ist, steht als Hinweis in der Liste und blockiert nicht.",
     "permits.ui.readiness.load_failed": "Die Baufreigabe konnte nicht geladen werden",
     "permits.ui.readiness.no_roadmap": "Kein Genehmigungsfahrplan",
     "permits.ui.readiness.not_ready": "Nicht bereit",

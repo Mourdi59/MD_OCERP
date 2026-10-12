@@ -555,6 +555,24 @@ describe('ChecksPanel', () => {
     expect(items.map((i) => i.detail)).toEqual(['B', 'C', 'D', 'A']);
   });
 
+  it('says for which day the start was checked and lists a permit needed later without blocking', () => {
+    const start = readiness({
+      status: 'ready',
+      needed_from: '2026-11-02',
+      items: [{ code: 'permit_due_later', state: 'warning', detail: 'Crane road closure 2027-03-01', ref: 'r2' }],
+    });
+    renderIn(
+      <ChecksPanel
+        readiness={{ start: loaded(start), handover: loaded(readiness()), register: loaded(readiness()) }}
+        validation={loaded([])}
+      />,
+    );
+    expect(screen.getByTestId('readiness-start-status')).toHaveTextContent('Ready');
+    expect(screen.getByTestId('readiness-start-date')).toHaveTextContent('Checked for');
+    expect(screen.getByTestId('readiness-start')).toHaveTextContent('Crane road closure 2027-03-01: needed later, not granted yet');
+    expect(screen.queryByTestId('readiness-handover-date')).toBeNull();
+  });
+
   it('shows each gate with its status and names what is missing', () => {
     renderIn(
       <ChecksPanel

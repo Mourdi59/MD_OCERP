@@ -629,6 +629,8 @@ export interface Readiness {
   gate: string;
   status: ReadinessStatus;
   items: ReadinessItem[];
+  /** The day the start check was made for: the target date of the gate into construction, when it has one. */
+  needed_from?: string | null;
 }
 
 export interface Finding {

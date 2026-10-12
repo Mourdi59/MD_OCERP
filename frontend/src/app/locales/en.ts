@@ -42756,6 +42756,7 @@ const resource = {
     "permits.ui.propose.subtitle": "Read from the confirmed permit route of this project. Nothing is added until you confirm.",
     "permits.ui.propose.title": "Permits the confirmed route needs",
     "permits.ui.readiness.at_risk": "At risk",
+    "permits.ui.readiness.checked_for": "Checked for {{date}}. A permit needed only after that day is listed as a note and does not block.",
     "permits.ui.readiness.load_failed": "Readiness could not be loaded",
     "permits.ui.readiness.no_roadmap": "No roadmap",
     "permits.ui.readiness.not_ready": "Not ready",

@@ -14,7 +14,7 @@ import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import type { Finding, Readiness, ReadinessGate, ReadinessItem } from './api';
 import { refusalText } from './hooks';
 import { READINESS_ITEM, READINESS_STATUS, vocab, type KeyText, type TFn } from './labels';
-import { READINESS_TONE, ToneBadge } from './PermitBits';
+import { READINESS_TONE, ToneBadge, dateText } from './PermitBits';
 
 export const READINESS_GATE: Record<ReadinessGate, KeyText> = {
   start: ['permits.ui.gate.start', 'Start of works'],
@@ -55,6 +55,14 @@ export function ReadinessCard({ gate, readiness }: { gate: ReadinessGate; readin
         </ToneBadge>
       </div>
       <p className="text-xs text-content-tertiary">{vocab(t, READINESS_GATE_HINT, gate)}</p>
+      {readiness.needed_from && (
+        <p className="text-xs text-content-secondary" data-testid={`readiness-${gate}-date`}>
+          {t('permits.ui.readiness.checked_for', {
+            defaultValue: 'Checked for {{date}}. A permit needed only after that day is listed as a note and does not block.',
+            date: dateText(readiness.needed_from),
+          })}
+        </p>
+      )}
       {items.length === 0 ? (
         <p className="text-sm text-content-secondary">
           {t('permits.ui.readiness.nothing', { defaultValue: 'Nothing stands in the way.' })}
