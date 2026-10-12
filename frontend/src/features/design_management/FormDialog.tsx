@@ -16,7 +16,7 @@ import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 import { WideModal } from '@/shared/ui/WideModal';
 import { fmtList } from '@/shared/lib/formatters';
 
-import { designViolations, type NumberIssue } from './api';
+import { designViolations, type Violation } from './api';
 import { refusalText } from './hooks';
 import { errorText, humanizeCode, ui, type TFn } from './labels';
 
@@ -101,7 +101,7 @@ export function FormDialog({
   const baseId = useId();
   const [values, setValues] = useState<FormValues>(initial);
   const [tried, setTried] = useState(false);
-  const [refusal, setRefusal] = useState<{ text: string; violations: NumberIssue[] } | null>(null);
+  const [refusal, setRefusal] = useState<{ text: string; violations: Violation[] } | null>(null);
 
   const shown = fields.filter((f) => !f.showIf || f.showIf(values));
   const missing = shown.filter((f) => f.required && isEmpty(values[f.name])).map((f) => f.label);
@@ -218,10 +218,10 @@ export function FormDialog({
             {refusal.violations.length > 0 && (
               <ul className="ml-4 mt-1 list-disc text-xs text-content-secondary">
                 {refusal.violations.map((v, i) => (
-                  <li key={`${v.code}-${v.field ?? ''}-${i}`}>
+                  <li key={`${v.code ?? ''}-${v.field ?? ''}-${i}`}>
                     {v.field && <span className="font-medium">{violationField ? violationField(v.field) : humanizeCode(v.field)}: </span>}
-                    {errorText(t, v.code)}
-                    {v.value && <span className="ml-1 font-mono">{v.value}</span>}
+                    {v.code && errorText(t, v.code)}
+                    {(v.value || v.ref || v.recipient) && <span className="ml-1 font-mono">{v.value || v.ref || v.recipient}</span>}
                   </li>
                 ))}
               </ul>

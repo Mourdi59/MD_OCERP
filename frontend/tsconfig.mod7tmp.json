@@ -1,4 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "include": ["src/features/design_management", "src/vite-env.d.ts", "src/**/*.d.ts"]
-}

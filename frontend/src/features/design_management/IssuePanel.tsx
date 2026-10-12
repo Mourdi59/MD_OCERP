@@ -73,7 +73,7 @@ function ruleValues(rule: DistributionRule | null, purpose: string): FormValues 
     discipline_codes: rule?.discipline_codes ?? [],
     phase_codes: rule?.phase_codes ?? [],
     min_suitability: rule?.min_suitability ?? '',
-    purpose: rule?.purpose ?? purpose,
+    purpose: rule ? rule.purpose ?? '' : purpose,
     format: rule?.format ?? 'pdf',
     copies_paper: String(rule?.copies_paper ?? 0),
     ack_required: rule?.ack_required ?? false,
@@ -86,6 +86,14 @@ function ruleBody(values: Record<string, unknown>): DistributionRuleInput {
   if (typeof body.copies_paper === 'string') body.copies_paper = wholeNumber(body.copies_paper) ?? 0;
   return body as DistributionRuleInput;
 }
+
+/** How the approval of a ready release stands. Approving happens on the approval routes screen. */
+const APPROVAL_STATUS = {
+  pending: 'design.ui.issue.approval_pending',
+  approved: 'design.ui.issue.approval_approved',
+  rejected: 'design.ui.issue.approval_rejected',
+} as const;
+const APPROVAL_TONE = { pending: 'warning', approved: 'success', rejected: 'error' } as const;
 
 /** Who gets what if the release is issued now. The plan comes from the server; nothing is sent by looking. */
 function IssuePlan({ ctx, release, onDuplicates }: { ctx: DesignContext; release: Release; onDuplicates: (n: number) => void }) {
@@ -166,7 +174,7 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
   ];
   const ruleFields: FieldSpec[] = [
     { name: 'recipient_role_id', label: ui(t, 'design.ui.issue.recipient'), type: 'select', required: true, options: roleOptions(ctx) },
-    { name: 'purpose', label: ui(t, 'design.ui.issue.purpose'), type: 'select', required: true, options: vocabOptions(t, PURPOSE) },
+    { name: 'purpose', label: ui(t, 'design.ui.issue.purpose'), type: 'select', options: vocabOptions(t, PURPOSE), hint: ui(t, 'design.ui.issue.purpose_any_hint') },
     { name: 'format', label: ui(t, 'design.ui.issue.format'), type: 'select', required: true, options: vocabOptions(t, DIST_FORMAT) },
     { name: 'min_suitability', label: ui(t, 'design.ui.issue.min_status'), type: 'select', options: SUITABILITY_OPTIONS, hint: ui(t, 'design.ui.issue.min_status_hint') },
     { name: 'copies_paper', label: ui(t, 'design.ui.issue.paper_copies'), type: 'number' },
@@ -208,6 +216,11 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
                 <ToneBadge tone={RELEASE_TONE[release.state]}>{vocab(t, RELEASE_STATE, release.state)}</ToneBadge>
                 <span className="text-xs text-content-secondary">{vocab(t, PURPOSE, release.purpose)}</span>
                 <span className="text-xs text-content-secondary">{uiCount(t, 'design.ui.issue.revision_count', release.revision_ids.length)}</span>
+                {release.state === 'ready' && release.approval_status && release.approval_status !== 'none' && (
+                  <ToneBadge tone={APPROVAL_TONE[release.approval_status]} testId="release-approval">
+                    {ui(t, APPROVAL_STATUS[release.approval_status])}
+                  </ToneBadge>
+                )}
                 {release.issued_at && (
                   <span className="text-xs text-content-secondary">
                     {ui(t, 'design.ui.issue.issued_on', {
@@ -238,6 +251,7 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
                     <Button
                       size="sm"
                       variant="secondary"
+                      disabled={release.can ? !release.can.issue.allowed : false}
                       onClick={() => {
                         setDuplicates(0);
                         setDialog({ kind: 'issue', release });
@@ -249,6 +263,11 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
                   )}
                 </span>
               </div>
+              {release.state === 'ready' && release.can && !release.can.issue.allowed && release.can.issue.reason && (
+                <p className="mt-1 text-xs text-content-secondary" data-testid="release-blocked">
+                  {errorText(t, release.can.issue.reason)}
+                </p>
+              )}
             </li>
           ))}
         </ul>
@@ -289,7 +308,7 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
               <td className={CELL_MUTED}>{all(rule.discipline_codes, (c) => c)}</td>
               <td className={CELL_MUTED}>{all(rule.phase_codes, (c) => phaseName(ctx.labels, phases, c))}</td>
               <td className={`${CELL_MUTED} font-mono`}>{rule.min_suitability ?? ''}</td>
-              <td className={CELL_MUTED}>{vocab(t, PURPOSE, rule.purpose)}</td>
+              <td className={CELL_MUTED}>{rule.purpose ? vocab(t, PURPOSE, rule.purpose) : ui(t, 'design.ui.issue.any_purpose')}</td>
               <td className={CELL_MUTED}>
                 {vocab(t, DIST_FORMAT, rule.format)}
                 {rule.copies_paper > 0 && <p className="text-2xs">{uiCount(t, 'design.ui.issue.paper', rule.copies_paper)}</p>}
@@ -357,7 +376,7 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
           submitLabel={dialog.rule ? ui(t, 'design.ui.action.save') : ui(t, 'design.ui.issue.rule_add')}
           submit={(values) =>
             dialog.rule
-              ? updateDistributionRule(ctx.projectId, dialog.rule.id, ruleBody(changedFields(ruleValues(dialog.rule, purpose), values, ['min_suitability'])))
+              ? updateDistributionRule(ctx.projectId, dialog.rule.id, ruleBody(changedFields(ruleValues(dialog.rule, purpose), values, ['min_suitability', 'purpose'])))
               : createDistributionRule(
                   ctx.projectId,
                   ruleBody({ ...filledFields(values), ack_required: flag(values, 'ack_required'), discipline_codes: list(values, 'discipline_codes') }),

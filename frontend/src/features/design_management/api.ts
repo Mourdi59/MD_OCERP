@@ -294,6 +294,21 @@ export interface NumberIssue {
   value: string | null;
 }
 
+/** Whether the caller may take an action, and the refusal code when not. The server decides; the screen shows it. */
+export interface Allowed {
+  allowed: boolean;
+  reason: string | null;
+}
+
+/** One entry of `detail.violations`. A number problem carries `code`; other refusals name what stands in the way. */
+export interface Violation {
+  code?: string;
+  field?: string | null;
+  value?: string | null;
+  ref?: string | null;
+  recipient?: string | null;
+}
+
 export interface NumberCheck {
   valid: boolean;
   issues: NumberIssue[];
@@ -338,7 +353,8 @@ export interface DistributionRule {
   phase_codes: string[];
   wbs_node_ids: string[];
   min_suitability: string | null;
-  purpose: Purpose;
+  /** Empty or null: the rule applies to releases of any purpose. */
+  purpose: Purpose | '' | null;
   format: DistFormat;
   copies_paper: number;
   ack_required: boolean;
@@ -357,6 +373,11 @@ export interface Release {
   prepared_by: string | null;
   issued_by: string | null;
   issued_at: string | null;
+  content_changed_by?: string | null;
+  approval_status?: 'none' | 'pending' | 'approved' | 'rejected';
+  approved_by?: string | null;
+  approved_at?: string | null;
+  can?: { issue: Allowed; approve: Allowed };
 }
 
 export interface ReleasePlan {
@@ -412,6 +433,7 @@ export interface Report {
   rationale: string;
   state: ReportState;
   conditions_text: string;
+  can?: { edit_gate_fields: Allowed };
 }
 
 export interface ReportHint {
@@ -505,9 +527,9 @@ export function designErrorMessage(err: unknown): string | null {
 }
 
 /** The per-field problems a refusal listed, so a dialog can show all of them. */
-export function designViolations(err: unknown): NumberIssue[] {
+export function designViolations(err: unknown): Violation[] {
   const list = errorDetail(err)?.violations;
-  return Array.isArray(list) ? (list as NumberIssue[]) : [];
+  return Array.isArray(list) ? (list as Violation[]).filter((v) => !!v && typeof v === 'object') : [];
 }
 
 export const designKeys = {

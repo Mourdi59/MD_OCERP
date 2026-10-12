@@ -13,6 +13,7 @@ import type {
   Permit,
   PermitItem,
   PhaseReadiness,
+  Release,
   WbsNode,
 } from '../api';
 import type { DesignContext } from '../DesignBits';
@@ -213,6 +214,23 @@ export function permit(over: Partial<Permit> = {}): Permit {
     conditions: [],
     items: [],
     missing: [],
+    ...over,
+  };
+}
+
+export function release(over: Partial<Release> = {}): Release {
+  return {
+    id: 'rl1',
+    code: 'REL-001',
+    title: 'Permit set',
+    purpose: 'for_approval',
+    revision_ids: ['rev1'],
+    state: 'draft',
+    transmittal_ids: [],
+    duplicate_reason: '',
+    prepared_by: 'u1',
+    issued_by: null,
+    issued_at: null,
     ...over,
   };
 }

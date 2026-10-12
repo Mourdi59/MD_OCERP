@@ -107,8 +107,8 @@ export function NumberingTools({ ctx }: { ctx: DesignContext }) {
           type="text"
           autoComplete="off"
           className="w-72 rounded-md border border-border-light bg-surface-primary px-2 py-1.5 font-mono text-sm"
-          placeholder={ui(t, 'design.ui.numbering.check_one_placeholder')}
-          aria-label={ui(t, 'design.ui.numbering.check_one_placeholder')}
+          placeholder={ui(t, 'design.ui.numbering.check_placeholder')}
+          aria-label={ui(t, 'design.ui.numbering.check_placeholder')}
           value={number}
           onChange={(e) => {
             setNumber(e.target.value);
@@ -117,7 +117,7 @@ export function NumberingTools({ ctx }: { ctx: DesignContext }) {
           data-testid="number-input"
         />
         <Button variant="secondary" size="sm" disabled={!number.trim()} loading={one.isPending} onClick={() => one.mutate()} data-testid="number-check">
-          {ui(t, 'design.ui.numbering.check_one')}
+          {ui(t, 'design.ui.numbering.check_single')}
         </Button>
       </div>
       {one.data && (

@@ -39,7 +39,7 @@ import {
 } from './DesignBits';
 import { FormDialog, str, type FieldSpec, type FormValues } from './FormDialog';
 import { useDesignAction, useDesignList } from './hooks';
-import { INDEPENDENT_CHECK, REPORT_STATE, phaseName, reportKindName, ui, vocab, vocabOptions, type TFn } from './labels';
+import { INDEPENDENT_CHECK, REPORT_STATE, errorText, phaseName, reportKindName, ui, vocab, vocabOptions, type TFn } from './labels';
 import { REPORT_NEXT, STEP_LABEL, changedFields, filledFields, reportMoveNeedsReason } from './rules';
 
 type Dialog = { kind: 'report'; report: Report | null } | { kind: 'not-required'; report: Report } | null;
@@ -69,7 +69,7 @@ export function ReportsPanel({ ctx }: { ctx: DesignContext }) {
   const phases = ctx.setup.phases;
   const kindName = (code: string) => reportKindName(ctx.labels, catalogue, code);
 
-  const fields = (editing: boolean): FieldSpec[] => [
+  const fields = (editing: boolean, gate = true): FieldSpec[] => [
     ...(editing
       ? []
       : [
@@ -85,7 +85,8 @@ export function ReportsPanel({ ctx }: { ctx: DesignContext }) {
     phases.length > 0
       ? { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'select', options: phaseOptions(ctx) }
       : { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'text' },
-    { name: 'author_role_id', label: ui(t, 'design.ui.reports.author'), type: 'select', options: roleOptions(ctx) },
+    // Who writes and who checks a report are gate fields: the server says whether this user may still change them.
+    ...(gate ? [{ name: 'author_role_id', label: ui(t, 'design.ui.reports.author'), type: 'select' as const, options: roleOptions(ctx) }] : []),
     {
       name: 'independent_check',
       label: ui(t, 'design.ui.reports.check'),
@@ -93,7 +94,9 @@ export function ReportsPanel({ ctx }: { ctx: DesignContext }) {
       options: vocabOptions(t, INDEPENDENT_CHECK),
       hint: ui(t, 'design.ui.reports.check_hint'),
     },
-    { name: 'checker_role_id', label: ui(t, 'design.ui.reports.checker'), type: 'select', options: roleOptions(ctx), hint: ui(t, 'design.ui.reports.checker_hint') },
+    ...(gate
+      ? [{ name: 'checker_role_id', label: ui(t, 'design.ui.reports.checker'), type: 'select' as const, options: roleOptions(ctx), hint: ui(t, 'design.ui.reports.checker_hint') }]
+      : []),
     { name: 'rationale', label: ui(t, 'design.ui.reports.rationale'), type: 'textarea', hint: ui(t, 'design.ui.reports.rationale_hint') },
     ...(editing ? [{ name: 'conditions_text', label: ui(t, 'design.ui.reports.conditions'), type: 'textarea' as const }] : []),
     { name: 'code', label: ui(t, 'design.ui.field.code'), type: 'text', hint: ui(t, 'design.ui.field.code_hint') },
@@ -222,7 +225,12 @@ export function ReportsPanel({ ctx }: { ctx: DesignContext }) {
         <FormDialog
           projectId={ctx.projectId}
           title={dialog.report ? ui(t, 'design.ui.reports.edit') : ui(t, 'design.ui.reports.add')}
-          fields={fields(!!dialog.report)}
+          subtitle={
+            dialog.report?.can && !dialog.report.can.edit_gate_fields.allowed && dialog.report.can.edit_gate_fields.reason
+              ? errorText(t, dialog.report.can.edit_gate_fields.reason)
+              : undefined
+          }
+          fields={fields(!!dialog.report, dialog.report?.can?.edit_gate_fields.allowed ?? true)}
           initial={reportValues(dialog.report)}
           submitLabel={dialog.report ? ui(t, 'design.ui.action.save') : ui(t, 'design.ui.reports.add')}
           submit={(values) =>

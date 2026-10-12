@@ -22,6 +22,8 @@ vi.mock('../api', async (importOriginal) => {
     listApprovalPoints: vi.fn(),
     listUnresolvedWbs: vi.fn(),
     listPermits: vi.fn(),
+    listReleases: vi.fn(),
+    listDistributionRules: vi.fn(),
     listReports: vi.fn(),
     movePermit: vi.fn(),
   };
@@ -31,11 +33,12 @@ import { ApiError } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import * as api from '../api';
 import { DrawingsPanel } from '../DrawingsPanel';
+import { IssuePanel } from '../IssuePanel';
 import { PermitsPanel } from '../PermitsPanel';
 import { SchedulePanel } from '../SchedulePanel';
 import { TeamPanel } from '../TeamPanel';
 import { WbsPanel } from '../WbsPanel';
-import { context, deliverable, drawing, permit, permitItem, role, wbsNode } from './fixtures';
+import { context, deliverable, drawing, permit, permitItem, release, role, wbsNode } from './fixtures';
 
 const mocked = vi.mocked(api);
 
@@ -50,6 +53,8 @@ beforeEach(() => {
   mocked.listUnresolvedWbs.mockResolvedValue([]);
   mocked.listPermits.mockResolvedValue([]);
   mocked.listReports.mockResolvedValue([]);
+  mocked.listReleases.mockResolvedValue([]);
+  mocked.listDistributionRules.mockResolvedValue([]);
   useToastStore.setState({ toasts: [] });
 });
 afterEach(cleanup);
@@ -223,6 +228,65 @@ describe('WbsPanel', () => {
     const warning = await screen.findByTestId('wbs-unresolved');
     expect(warning).toHaveTextContent('1 record refers to a code that matches no node.');
     expect(warning).toHaveTextContent('Cost model refers to "9.9"');
+  });
+});
+
+describe('IssuePanel', () => {
+  it('an empty issue tab says what a release is and that recipients are needed', async () => {
+    wrap(<IssuePanel ctx={context()} />);
+    expect(await screen.findByText('No releases yet')).toBeInTheDocument();
+    expect(await screen.findByText(/Without a recipient a release cannot be issued/)).toBeInTheDocument();
+  });
+
+  it('the Issue button follows the answer of the server and shows its reason', async () => {
+    mocked.listReleases.mockResolvedValue([
+      release({
+        state: 'ready',
+        approval_status: 'pending',
+        can: { issue: { allowed: false, reason: 'release_not_approved' }, approve: { allowed: false, reason: 'release_four_eyes' } },
+      }),
+      release({
+        id: 'rl2',
+        code: 'REL-002',
+        title: 'Tender set',
+        state: 'ready',
+        approval_status: 'approved',
+        can: { issue: { allowed: true, reason: null }, approve: { allowed: false, reason: 'release_not_pending' } },
+      }),
+    ]);
+    wrap(<IssuePanel ctx={context()} />);
+    const rows = await screen.findAllByTestId('release-row');
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]!).getByTestId('release-approval')).toHaveTextContent('Waiting for approval');
+    expect(within(rows[0]!).getByTestId('release-issue')).toBeDisabled();
+    expect(within(rows[0]!).getByTestId('release-blocked')).toHaveTextContent('The release has not been approved on its approval route yet.');
+    expect(within(rows[1]!).getByTestId('release-approval')).toHaveTextContent('Approved for issue');
+    expect(within(rows[1]!).getByTestId('release-issue')).toBeEnabled();
+    expect(within(rows[1]!).queryByTestId('release-blocked')).toBeNull();
+  });
+
+  it('a recipient without a purpose receives releases of any purpose', async () => {
+    mocked.listDistributionRules.mockResolvedValue([
+      {
+        id: 'ru1',
+        recipient_list_id: null,
+        recipient_role_id: 'r1',
+        discipline_codes: [],
+        form_codes: [],
+        phase_codes: [],
+        wbs_node_ids: [],
+        min_suitability: null,
+        purpose: '',
+        format: 'pdf',
+        copies_paper: 0,
+        ack_required: false,
+        active: true,
+      },
+    ]);
+    wrap(<IssuePanel ctx={context({ roles: [role()] })} />);
+    const row = await screen.findByTestId('rule-row');
+    expect(row).toHaveTextContent('Architect');
+    expect(row).toHaveTextContent('Any purpose');
   });
 });
 
