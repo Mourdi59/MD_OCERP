@@ -658,3 +658,58 @@ def test_award_criterion_weights_are_percentages_that_sum_to_100() -> None:
     for bad in ({"price": "60", "quality": "30"}, {"price": "101", "quality": "-1"}, {"price": "abc"}, {"": "100"}):
         with pytest.raises(ValueError):
             PackagePut.model_validate({"evaluation_weights": bad})
+
+
+# ── State machines and the shipped catalogues (finding 18) ──────────────
+
+
+def test_package_states_a_person_may_set_exclude_what_execution_reads_back() -> None:
+    assert fsm.can_set_package_state_by_hand("procedure_set", "on_hold") is True
+    assert fsm.can_set_package_state_by_hand("on_hold", "procedure_set") is True
+    assert fsm.can_set_package_state_by_hand("procedure_set", "cancelled") is True
+    # Nobody types a package into tender or awards it by hand, and closed states stay closed.
+    for state in fsm.PACKAGE_STATES:
+        for target in fsm.READ_BACK_TARGETS:
+            assert fsm.can_set_package_state_by_hand(state, target) is False, (state, target)
+    assert fsm.can_set_package_state_by_hand("awarded", "cancelled") is False
+    assert fsm.can_set_package_state_by_hand("cancelled", "planned") is False
+    assert fsm.can_set_package_state_by_hand("planned", "planned") is False
+
+
+def test_read_back_is_monotone_and_idempotent() -> None:
+    assert fsm.read_back_target("procedure_set", "in_tender") == "in_tender"
+    assert fsm.read_back_target("shortlisted", "awarded") == "awarded"
+    assert fsm.read_back_target("in_tender", "awarded") == "awarded"
+    assert fsm.read_back_target("in_tender", "in_tender") is None  # a repeated event
+    assert fsm.read_back_target("awarded", "in_tender") is None  # a late event
+    assert fsm.read_back_target("cancelled", "awarded") is None
+    assert fsm.read_back_target("procedure_set", "cancelled") is None  # not a read-back target
+
+
+def test_concept_and_framework_machines_have_no_way_out_of_their_terminal_states() -> None:
+    assert fsm.CONCEPT_FSM["binding"] == ()
+    assert fsm.can_transition(fsm.CONCEPT_FSM, "draft", "in_review") is True
+    assert fsm.can_transition(fsm.CONCEPT_FSM, "draft", "approved") is False
+    assert fsm.can_transition(fsm.CONCEPT_FSM, "in_review", "in_review") is False
+    for terminal in ("expired", "terminated"):
+        assert fsm.FRAMEWORK_FSM[terminal] == ()
+    assert fsm.can_transition(fsm.FRAMEWORK_FSM, "draft", "active") is True
+    assert fsm.can_transition(fsm.FRAMEWORK_FSM, "active", "draft") is False
+
+
+def test_every_shipped_procurement_catalogue_loads_and_validates() -> None:
+    register_kind()
+    shipped = get_catalogue_kind(PROCUREMENT_KIND).shipped()
+    assert {c.id for c in shipped} >= {"neutral", "eu"}
+    for cat in shipped:
+        assert validate_procurement_catalogue(cat, "shipped") == [], cat.id
+        assert cat.jurisdictions, cat.id
+        codes = {p.code for p in cat.procedures}
+        for juris in cat.jurisdictions:
+            assert juris.private_client_type in juris.client_types, (cat.id, juris.code)
+            for t in juris.thresholds:
+                assert t.source_url and t.valid_from is not None, (cat.id, juris.code)
+                assert set(t.allowed_above) | set(t.allowed_below) <= codes, (cat.id, juris.code)
+        # Every package kind module 3 can plan maps onto a kind this catalogue knows.
+        kinds = {k.code for k in cat.package_kinds}
+        assert {v for v in CONTRACT_PACKAGE_KIND_MAP.values() if v} <= kinds, cat.id

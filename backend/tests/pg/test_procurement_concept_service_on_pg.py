@@ -439,6 +439,26 @@ async def test_execution_creates_exactly_one_bid_package_and_reads_back_idempote
     assert await _state(world, "W1") == "awarded"
 
 
+async def test_execution_events_reach_the_package_through_the_event_bus(world: World, monkeypatch) -> None:
+    """The subscription itself, not the handler called by hand: publish, and the package moves."""
+    import app.modules.procurement_concept.events as pc_events
+    from app.core.events import event_bus
+
+    monkeypatch.setattr(pc_events, "async_session_factory", world.factory)
+    pc_events.register_procurement_concept_subscribers()
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    await approve(world)
+    out = await execute(world, "W1")
+    await event_bus.publish("bid_management.package.published", {"package_id": out["id"]})
+    assert await _state(world, "W1") == "in_tender"
+    # An event about a vehicle this module did not create moves nothing.
+    await event_bus.publish("bid_management.package.awarded", {"package_id": str(uuid.uuid4())})
+    assert await _state(world, "W1") == "in_tender"
+    await event_bus.publish("bid_management.package.awarded", {"package_id": out["id"]})
+    assert await _state(world, "W1") == "awarded"
+
+
 async def test_supply_package_creates_an_rfq_never_a_bid_package(world: World) -> None:
     from app.modules.bid_management.models import BidPackage
     from app.modules.rfq_bidding.models import RFQ

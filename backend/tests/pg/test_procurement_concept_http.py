@@ -418,10 +418,11 @@ async def test_catalogues_carry_their_jurisdictions_and_client_types(world: Worl
         items = (await c.get(f"{BASE}/catalogues")).json()["items"]
     by_id = {i["id"]: i for i in items}
     assert {"eu", "neutral"} <= set(by_id)
-    eu = by_id["eu"]["jurisdictions"]
-    assert [j["code"] for j in eu] == ["eu"]
-    assert "sub_central" in eu[0]["client_types"]
-    assert eu[0]["private_client_type"] == "private"
+    eu = {j["code"]: j for j in by_id["eu"]["jurisdictions"]}
+    assert "sub_central" in eu["eu"]["client_types"]
+    assert eu["eu"]["private_client_type"] == "private"
+    # The neutral catalogue offers no public regime at all; the form can show that before anything is saved.
+    assert [j["client_types"] for j in by_id["neutral"]["jurisdictions"]] == [["private"]]
     assert all(i["jurisdictions"] for i in items if i["source"] == "shipped")
 
 
