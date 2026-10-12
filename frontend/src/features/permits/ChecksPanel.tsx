@@ -34,11 +34,12 @@ const ITEM_ICON = {
   met: <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-semantic-success" aria-hidden />,
   at_risk: <CircleAlert size={15} className="mt-0.5 shrink-0 text-semantic-warning" aria-hidden />,
   not_met: <CircleX size={15} className="mt-0.5 shrink-0 text-semantic-error" aria-hidden />,
+  warning: <CircleAlert size={15} className="mt-0.5 shrink-0 text-content-tertiary" aria-hidden />,
 };
 
 /** The items that need attention first, then the ones already met. */
 export function sortReadinessItems(items: ReadinessItem[]): ReadinessItem[] {
-  const rank = { not_met: 0, at_risk: 1, met: 2 };
+  const rank = { not_met: 0, at_risk: 1, warning: 2, met: 3 };
   return [...items].sort((a, b) => rank[a.state] - rank[b.state]);
 }
 

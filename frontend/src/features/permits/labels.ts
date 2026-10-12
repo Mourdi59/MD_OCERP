@@ -289,6 +289,7 @@ export const READINESS_STATUS: Record<ReadinessStatus, KeyText> = {
 /** One sentence per readiness finding; `{{detail}}` is the condition number or the roadmap row. */
 export const READINESS_ITEM: Record<string, KeyText> = {
   permit_missing: ['permits.ui.readiness_item.permit_missing', '{{detail}}: not granted yet'],
+  permit_due_later: ['permits.ui.readiness_item.permit_due_later', '{{detail}}: needed later, not granted yet'],
   permit_granted: ['permits.ui.readiness_item.permit_granted', '{{detail}}: granted'],
   permit_partial: ['permits.ui.readiness_item.permit_partial', '{{detail}}: granted in part only'],
   conditions_pending: [

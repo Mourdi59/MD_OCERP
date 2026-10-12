@@ -523,8 +523,9 @@ describe('ChecksPanel', () => {
       { code: 'permit_granted', state: 'met', detail: 'A', ref: null },
       { code: 'permit_missing', state: 'not_met', detail: 'B', ref: null },
       { code: 'permit_partial', state: 'at_risk', detail: 'C', ref: null },
+      { code: 'permit_due_later', state: 'warning', detail: 'D', ref: null },
     ]);
-    expect(items.map((i) => i.detail)).toEqual(['B', 'C', 'A']);
+    expect(items.map((i) => i.detail)).toEqual(['B', 'C', 'D', 'A']);
   });
 
   it('shows each gate with its status and names what is missing', () => {

@@ -615,7 +615,8 @@ export interface ConditionDetail extends Condition {
 
 export interface ReadinessItem {
   code: string;
-  state: 'met' | 'not_met' | 'at_risk';
+  /** `warning` is a note that never changes the status: a permit needed only after the date checked. */
+  state: 'met' | 'not_met' | 'at_risk' | 'warning';
   /** The condition number or the roadmap row title the item is about. */
   detail: string;
   ref: string | null;
