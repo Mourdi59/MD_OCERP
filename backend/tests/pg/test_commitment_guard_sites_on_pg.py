@@ -373,7 +373,7 @@ async def _vr_act(w: World, doc: uuid.UUID) -> None:
     async with w.factory() as s:
         cid = (
             await s.execute(
-                select(CommitmentLink.document_id).where(
+                select(CommitmentLink.target_id).where(
                     CommitmentLink.project_id == w.project_id, CommitmentLink.kind == "contract"
                 )
             )
