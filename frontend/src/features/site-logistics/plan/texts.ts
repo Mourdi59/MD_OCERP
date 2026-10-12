@@ -54,6 +54,7 @@ export const EN = {
   required: 'Required',
   number_invalid: 'Enter a number, for example 12.5',
   load_error: 'This part of the logistics plan could not be loaded',
+  'board.can_failed': 'What you may do here could not be loaded.',
   delete_title: 'Delete this entry?',
   delete_body: 'The entry is removed from the logistics plan. This cannot be undone.',
   blockers: 'What stands in the way',

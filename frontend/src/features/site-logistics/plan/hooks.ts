@@ -62,8 +62,8 @@ function usePlanList<T>(projectId: string, name: string, fetcher: () => Promise<
 /**
  * Whether a record may be added to a list, as the list's own answer says. Reads
  * the cache the list filled. Until the list has answered the verdict is WAITING,
- * so the button never invites a press the server may then refuse; a list that
- * failed to load gives no verdict and its panel shows the failure instead.
+ * so the button never invites a press the server may then refuse. A list that
+ * failed to load leaves it WAITING too; its panel says so and offers the retry.
  */
 export function useCreateVerdict(projectId: string, name: string): Verdict | undefined {
   const query = useQuery<PlanPage<unknown>, Error, Verdict | undefined>({
@@ -71,7 +71,7 @@ export function useCreateVerdict(projectId: string, name: string): Verdict | und
     enabled: false,
     select: (page) => page.can?.create,
   });
-  return query.isPending ? WAITING : query.data;
+  return query.isSuccess ? query.data : WAITING;
 }
 
 /** The list each kind of record is added to. */

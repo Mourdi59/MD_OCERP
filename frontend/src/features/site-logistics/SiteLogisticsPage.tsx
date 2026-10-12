@@ -50,7 +50,8 @@ import { LogisticsPlan, type PlanTab } from './plan/LogisticsPlan';
 import { FlowSelect } from './plan/FlowSelect';
 import { SiteClockNotice } from './plan/SiteClockNotice';
 import { GateLimits } from './plan/GateLimits';
-import { WAITING, denied, offered, reasonText, shown } from './plan/rules';
+import { BoardCanNotice, useBoardCreate } from './plan/boardCan';
+import { denied, offered, reasonText, shown } from './plan/rules';
 import type { TFn } from './plan/texts';
 import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
@@ -59,7 +60,6 @@ import { fetchProjectList } from '@/shared/lib/projectList';
 import { useActiveProjectId } from '@/shared/hooks/useActiveProjectId';
 import { useToastStore } from '@/stores/useToastStore';
 import {
-  fetchBoardCan,
   fetchGates,
   fetchLaydownZones,
   fetchDeliveries,
@@ -86,7 +86,6 @@ import {
   type UpdateDeliveryPayload,
   type UpdateGatePayload,
   type UpdateLaydownZonePayload,
-  type BoardKind,
 } from './api';
 import { getIntlLocale } from '@/shared/lib/formatters';
 
@@ -921,23 +920,6 @@ function BookDeliveryModal({
 }
 
 /* ── Delivery row ──────────────────────────────────────────────────────── */
-
-/**
- * What the server lets this reader create on the board. The lists are plain
- * arrays, so the answer is its own read. Until it arrives the verdict is
- * WAITING: a button is there but disabled, a form is not shown yet. Without a
- * project, or when the read failed, there is no verdict and the server decides
- * on the write.
- */
-function useBoardCreate(projectId: string, kind: BoardKind) {
-  const { data, isPending } = useQuery({
-    queryKey: ['site-logistics-can', projectId],
-    queryFn: () => fetchBoardCan(projectId),
-    enabled: !!projectId,
-  });
-  if (!projectId) return undefined;
-  return isPending ? WAITING : data?.[kind]?.create;
-}
 
 export function DeliveryRow({
   delivery,
@@ -3012,6 +2994,8 @@ export function SiteLogisticsPage() {
           </button>
         ))}
       </div>
+
+      {projectId && <BoardCanNotice projectId={projectId} />}
 
       {projectId && (tab === 'deliveries' || tab === 'timeline') && (
         <SiteClockNotice
