@@ -13,14 +13,15 @@ import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
 
 import { createRole, deleteRole, updateRole, type DesignRole, type PartyKind, type RoleInput } from './api';
-import { CELL, CELL_MUTED, PanelHeader, ROLE_TONE, Table, ToneBadge, type DesignContext } from './DesignBits';
+import { CELL, CELL_MUTED, PanelHeader, ROLE_TONE, Table, ToneBadge, pickerField, type DesignContext } from './DesignBits';
+import { useDesignOptions } from './hooks';
 import { FormDialog, str, type FieldSpec, type FormValues } from './FormDialog';
 import { PARTY_KIND, ROLE_STATE, ui, vocab, vocabOptions, type TFn } from './labels';
 import { changedFields, filledFields, roleStateChoices } from './rules';
 
 type Dialog = { kind: 'create' } | { kind: 'edit'; role: DesignRole } | { kind: 'delete'; role: DesignRole } | null;
 
-const NULLABLE = ['discipline_code', 'originator_code', 'user_id'] as const;
+const NULLABLE = ['discipline_code', 'originator_code', 'user_id', 'contact_id'] as const;
 
 function roleValues(role: DesignRole | null): FormValues {
   return {
@@ -30,6 +31,7 @@ function roleValues(role: DesignRole | null): FormValues {
     discipline_code: role?.discipline_code ?? '',
     originator_code: role?.originator_code ?? '',
     user_id: role?.user_id ?? '',
+    contact_id: role?.contact_id ?? '',
     state: role?.state ?? 'planned',
   };
 }
@@ -38,6 +40,7 @@ export function TeamPanel({ ctx }: { ctx: DesignContext }) {
   const { t: rawT } = useTranslation();
   const t = rawT as TFn;
   const [dialog, setDialog] = useState<Dialog>(null);
+  const contacts = useDesignOptions(ctx.projectId, 'contacts', ctx.labels);
 
   const fields = (role: DesignRole | null): FieldSpec[] => [
     { name: 'title', label: ui(t, 'design.ui.team.title_field'), type: 'text', required: true },
@@ -46,6 +49,7 @@ export function TeamPanel({ ctx }: { ctx: DesignContext }) {
     { name: 'discipline_code', label: ui(t, 'design.ui.field.discipline'), type: 'text' },
     { name: 'originator_code', label: ui(t, 'design.ui.team.originator'), type: 'text', hint: ui(t, 'design.ui.team.originator_hint') },
     { name: 'user_id', label: ui(t, 'design.ui.team.person'), type: 'person' },
+    ...pickerField('contact_id', ui(t, 'design.ui.team.contact'), contacts),
     ...(role
       ? [
           {
@@ -53,7 +57,7 @@ export function TeamPanel({ ctx }: { ctx: DesignContext }) {
             label: ui(t, 'design.ui.field.state'),
             type: 'select' as const,
             required: true,
-            options: roleStateChoices(role.state).map((s) => ({ value: s, label: vocab(t, ROLE_STATE, s) })),
+            options: roleStateChoices(role.state, role.can?.transitions).map((s) => ({ value: s, label: vocab(t, ROLE_STATE, s) })),
           },
         ]
       : []),

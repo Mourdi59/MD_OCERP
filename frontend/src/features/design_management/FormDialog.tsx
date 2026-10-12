@@ -221,7 +221,7 @@ export function FormDialog({
                   <li key={`${v.code ?? ''}-${v.field ?? ''}-${i}`}>
                     {v.field && <span className="font-medium">{violationField ? violationField(v.field) : humanizeCode(v.field)}: </span>}
                     {v.code && errorText(t, v.code)}
-                    {(v.value || v.ref || v.recipient) && <span className="ml-1 font-mono">{v.value || v.ref || v.recipient}</span>}
+                    {v.label ? <span className="ml-1">{v.label}</span> : (v.value || v.ref || v.recipient) && <span className="ml-1 font-mono">{v.value || v.ref || v.recipient}</span>}
                   </li>
                 ))}
               </ul>

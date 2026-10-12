@@ -222,6 +222,7 @@ export interface DesignRole {
   contract_package_id: string | null;
   responsible_wbs_ids: string[];
   state: RoleState;
+  can?: { transitions?: Transitions<RoleState> };
 }
 
 export interface ApprovalPoint {
@@ -237,6 +238,7 @@ export interface ApprovalPoint {
   decided_by: string | null;
   decided_at: string | null;
   note: string;
+  can?: { submit?: Flag; reopen?: Flag };
 }
 
 export interface Deliverable {
@@ -256,6 +258,7 @@ export interface Deliverable {
   waived: boolean;
   waived_rationale: string;
   state: DeliverableState;
+  can?: { waive?: Flag; unwaive?: Flag };
 }
 
 export interface Drawing {
@@ -291,11 +294,19 @@ export interface NumberIssue {
   value: string | null;
 }
 
-/** Whether the caller may take an action, and the refusal code when not. The server decides; the screen shows it. */
-export interface Allowed {
+/**
+ * Whether the caller may take an action. The server decides; the screen shows it.
+ * `applies: false` means the action does not exist for the row now, so it is
+ * left out; `allowed: false` shows it disabled with the sentence for `reason`.
+ */
+export interface Flag {
   allowed: boolean;
+  applies?: boolean;
   reason: string | null;
 }
+
+/** The moves a row has from its current state, each with its flag. */
+export type Transitions<S extends string> = Partial<Record<S, Flag>>;
 
 /** One entry of `detail.violations`. A number problem carries `code`; other refusals name what stands in the way. */
 export interface Violation {
@@ -304,6 +315,10 @@ export interface Violation {
   value?: string | null;
   ref?: string | null;
   recipient?: string | null;
+  kind?: string;
+  id?: string;
+  /** What stands in the way, named for a reader, such as "DL-001 Permit drawings". */
+  label?: string | null;
 }
 
 export interface NumberCheck {
@@ -374,7 +389,7 @@ export interface Release {
   approval_status?: 'none' | 'pending' | 'approved' | 'rejected';
   approved_by?: string | null;
   approved_at?: string | null;
-  can?: { issue: Allowed; approve: Allowed };
+  can?: { transitions?: Transitions<ReleaseState>; issue?: Flag; approve?: Flag };
 }
 
 export interface ReleasePlan {
@@ -398,6 +413,7 @@ export interface Review {
   concluded_at: string | null;
   comments_open: number;
   comments_major_open: number;
+  can?: { transitions?: Transitions<ReviewState>; conclude?: Flag };
 }
 
 export interface ReviewComment {
@@ -410,6 +426,7 @@ export interface ReviewComment {
   answer: string;
   answered_by_role_id: string | null;
   created_by: string | null;
+  can?: { transitions?: Transitions<CommentState> };
 }
 
 export interface Report {
@@ -430,7 +447,7 @@ export interface Report {
   rationale: string;
   state: ReportState;
   conditions_text: string;
-  can?: { edit_gate_fields: Allowed };
+  can?: { transitions?: Transitions<ReportState>; edit_gate_fields?: Flag };
 }
 
 export interface ReportHint {
@@ -481,6 +498,7 @@ export interface Permit {
   items: PermitItem[];
   /** Ids of the required items that are missing or not shared yet. */
   missing: string[];
+  can?: { transitions?: Transitions<PermitState> };
 }
 
 export interface PhaseReadiness {
@@ -500,6 +518,34 @@ export interface ValidationFinding {
   message: string;
   element_ref: string | null;
   suggestion: string | null;
+}
+
+/* ── Pickers ──────────────────────────────────────────────────────────── */
+
+export type OptionKind =
+  | 'contacts'
+  | 'contract_packages'
+  | 'governance_gates'
+  | 'recipient_lists'
+  | 'review_cycles'
+  | 'authority_submissions'
+  | 'forms'
+  | 'wbs_nodes';
+
+export interface DesignOption {
+  id: string;
+  label: string;
+  code: string | null;
+  label_key?: string | null;
+  label_text?: Record<string, string> | null;
+}
+
+/** The choices of a picker fed by another module. `available: false` means that source is not there. */
+export interface OptionList {
+  kind: string;
+  available: boolean;
+  reason: string | null;
+  items: DesignOption[];
 }
 
 /* ── Errors ───────────────────────────────────────────────────────────── */
@@ -631,6 +677,7 @@ export interface RoleInput {
   party_kind?: PartyKind;
   discipline_code?: string | null;
   user_id?: string | null;
+  contact_id?: string | null;
   originator_code?: string | null;
   state?: RoleState;
 }
@@ -659,6 +706,7 @@ export interface ApprovalPointInput {
   phase_code?: string | null;
   kind?: ApprovalPointKind;
   approver_role_id?: string | null;
+  governance_gate_id?: string | null;
   note?: string;
 }
 
@@ -672,6 +720,11 @@ export function updateApprovalPoint(projectId: string, id: string, body: Approva
 
 export function submitApprovalPoint(projectId: string, id: string): Promise<ApprovalPoint> {
   return apiPost<ApprovalPoint>(`/v1/design-management/projects/${projectId}/approval-points/${id}/submit`, {});
+}
+
+/** Puts a rejected approval point back to open, so it can be changed and sent again. */
+export function reopenApprovalPoint(projectId: string, id: string): Promise<ApprovalPoint> {
+  return apiPost<ApprovalPoint>(`/v1/design-management/projects/${projectId}/approval-points/${id}/reopen`, {});
 }
 
 export function listDeliverables(projectId: string): Promise<Deliverable[]> {
@@ -790,8 +843,11 @@ export function listDistributionRules(projectId: string): Promise<DistributionRu
 
 export interface DistributionRuleInput {
   recipient_role_id?: string | null;
+  recipient_list_id?: string | null;
   discipline_codes?: string[];
+  form_codes?: string[];
   phase_codes?: string[];
+  wbs_node_ids?: string[];
   min_suitability?: string | null;
   purpose?: Purpose | null;
   format?: DistFormat;
@@ -906,6 +962,8 @@ export interface ReportInput {
   phase_code?: string | null;
   author_role_id?: string | null;
   checker_role_id?: string | null;
+  external_check?: boolean;
+  review_cycle_id?: string | null;
   required?: boolean;
   independent_check?: IndependentCheck;
   rationale?: string;
@@ -944,6 +1002,8 @@ export interface PermitInput {
   title?: string;
   profile_code?: string;
   target_submission_date?: string | null;
+  authority_submission_id?: string | null;
+  review_cycle_id?: string | null;
 }
 
 export function createPermit(projectId: string, body: PermitInput): Promise<Permit> {
@@ -993,6 +1053,10 @@ export function decidePermitCondition(
   confirm: boolean,
 ): Promise<Permit> {
   return apiPost<Permit>(`/v1/design-management/projects/${projectId}/permits/${id}/conditions/${conditionId}`, { confirm });
+}
+
+export function listOptions(projectId: string, kind: OptionKind): Promise<OptionList> {
+  return apiGet<OptionList>(`/v1/design-management/projects/${projectId}/options/${kind}`);
 }
 
 /* ── Readiness, checks and exports ────────────────────────────────────── */

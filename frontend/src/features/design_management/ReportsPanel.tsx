@@ -36,11 +36,13 @@ import {
   roleOptions,
   roleTitle,
   type DesignContext,
+  StepButton,
+  pickerField,
 } from './DesignBits';
 import { FormDialog, str, type FieldSpec, type FormValues } from './FormDialog';
-import { useDesignAction, useDesignList } from './hooks';
+import { useDesignAction, useDesignList, useDesignOptions } from './hooks';
 import { INDEPENDENT_CHECK, REPORT_STATE, errorText, phaseName, reportKindName, ui, vocab, vocabOptions, type TFn } from './labels';
-import { REPORT_NEXT, STEP_LABEL, changedFields, filledFields, reportMoveNeedsReason } from './rules';
+import { STEP_LABEL, changedFields, filledFields, offered, reportMoveNeedsReason } from './rules';
 
 type Dialog = { kind: 'report'; report: Report | null } | { kind: 'not-required'; report: Report } | null;
 
@@ -51,6 +53,8 @@ function reportValues(report: Report | null): FormValues {
     phase_code: report?.phase_code ?? '',
     author_role_id: report?.author_role_id ?? '',
     checker_role_id: report?.checker_role_id ?? '',
+    external_check: report?.external_check ?? false,
+    review_cycle_id: report?.review_cycle_id ?? '',
     independent_check: report?.independent_check ?? '',
     rationale: report?.rationale ?? '',
     conditions_text: report?.conditions_text ?? '',
@@ -64,6 +68,7 @@ export function ReportsPanel({ ctx }: { ctx: DesignContext }) {
   const [dialog, setDialog] = useState<Dialog>(null);
   const action = useDesignAction(ctx.onChanged);
   const reports = useDesignList(ctx.projectId, 'reports', listReports);
+  const cycles = useDesignOptions(ctx.projectId, 'review_cycles', ctx.labels);
   const hints = useDesignList(ctx.projectId, 'report-hints', listReportHints);
   const catalogue = ctx.setup.reports_catalogue;
   const phases = ctx.setup.phases;
@@ -95,7 +100,11 @@ export function ReportsPanel({ ctx }: { ctx: DesignContext }) {
       hint: ui(t, 'design.ui.reports.check_hint'),
     },
     ...(gate
-      ? [{ name: 'checker_role_id', label: ui(t, 'design.ui.reports.checker'), type: 'select' as const, options: roleOptions(ctx), hint: ui(t, 'design.ui.reports.checker_hint') }]
+      ? [
+          { name: 'checker_role_id', label: ui(t, 'design.ui.reports.checker'), type: 'select' as const, options: roleOptions(ctx), hint: ui(t, 'design.ui.reports.checker_hint') },
+          { name: 'external_check', label: ui(t, 'design.ui.reports.external_check'), type: 'checkbox' as const },
+          ...pickerField('review_cycle_id', ui(t, 'design.ui.reports.review_cycle'), cycles),
+        ]
       : []),
     { name: 'rationale', label: ui(t, 'design.ui.reports.rationale'), type: 'textarea', hint: ui(t, 'design.ui.reports.rationale_hint') },
     ...(editing ? [{ name: 'conditions_text', label: ui(t, 'design.ui.reports.conditions'), type: 'textarea' as const }] : []),
@@ -201,17 +210,15 @@ export function ReportsPanel({ ctx }: { ctx: DesignContext }) {
                       {ui(t, 'design.ui.reports.sync')}
                     </Button>
                   ) : (
-                    REPORT_NEXT[report.state].map((target) => (
-                      <Button
+                    offered(report.can?.transitions).map(({ target, flag }) => (
+                      <StepButton
                         key={target}
-                        size="sm"
-                        variant="ghost"
-                        disabled={action.pending}
+                        flag={flag}
+                        label={ui(t, STEP_LABEL.report[target])}
+                        busy={action.pending}
                         onClick={() => move(report, target)}
-                        data-testid={`report-to-${target}`}
-                      >
-                        {ui(t, STEP_LABEL.report[target])}
-                      </Button>
+                        testId={`report-to-${target}`}
+                      />
                     ))
                   )}
                 </span>
@@ -226,11 +233,11 @@ export function ReportsPanel({ ctx }: { ctx: DesignContext }) {
           projectId={ctx.projectId}
           title={dialog.report ? ui(t, 'design.ui.reports.edit') : ui(t, 'design.ui.reports.add')}
           subtitle={
-            dialog.report?.can && !dialog.report.can.edit_gate_fields.allowed && dialog.report.can.edit_gate_fields.reason
+            dialog.report?.can?.edit_gate_fields && !dialog.report.can.edit_gate_fields.allowed && dialog.report.can.edit_gate_fields.reason
               ? errorText(t, dialog.report.can.edit_gate_fields.reason)
               : undefined
           }
-          fields={fields(!!dialog.report, dialog.report?.can?.edit_gate_fields.allowed ?? true)}
+          fields={fields(!!dialog.report, dialog.report?.can?.edit_gate_fields?.allowed ?? true)}
           initial={reportValues(dialog.report)}
           submitLabel={dialog.report ? ui(t, 'design.ui.action.save') : ui(t, 'design.ui.reports.add')}
           submit={(values) =>
@@ -238,7 +245,7 @@ export function ReportsPanel({ ctx }: { ctx: DesignContext }) {
               ? updateReport(
                   ctx.projectId,
                   dialog.report.id,
-                  changedFields<ReportInput>(reportValues(dialog.report), values, ['phase_code', 'author_role_id', 'checker_role_id']),
+                  changedFields<ReportInput>(reportValues(dialog.report), values, ['phase_code', 'author_role_id', 'checker_role_id', 'review_cycle_id']),
                 )
               : createReport(ctx.projectId, { ...filledFields<ReportInput>(values), from_catalogue: true })
           }

@@ -45,11 +45,14 @@ import {
   roleOptions,
   roleTitle,
   type DesignContext,
+  StepButton,
+  pickerField,
+  wbsOptions,
 } from './DesignBits';
 import { FormDialog, flag, list, str, type FieldOption, type FieldSpec, type FormValues } from './FormDialog';
-import { refusalText, useDesignAction, useDesignList } from './hooks';
+import { refusalText, useDesignAction, useDesignList, useDesignOptions } from './hooks';
 import { DIST_FORMAT, PURPOSE, RELEASE_STATE, errorText, phaseName, ui, uiCount, vocab, vocabOptions, type TFn } from './labels';
-import { RELEASE_NEXT, STEP_LABEL, changedFields, filledFields, recipientName, releasable, wholeNumber } from './rules';
+import { STEP_LABEL, offered, changedFields, filledFields, recipientName, releasable, wholeNumber } from './rules';
 
 type Dialog =
   | { kind: 'release'; release: Release | null }
@@ -70,7 +73,10 @@ function releaseValues(release: Release | null, purpose: string): FormValues {
 function ruleValues(rule: DistributionRule | null, purpose: string): FormValues {
   return {
     recipient_role_id: rule?.recipient_role_id ?? '',
+    recipient_list_id: rule?.recipient_list_id ?? '',
     discipline_codes: rule?.discipline_codes ?? [],
+    form_codes: rule?.form_codes ?? [],
+    wbs_node_ids: rule?.wbs_node_ids ?? [],
     phase_codes: rule?.phase_codes ?? [],
     min_suitability: rule?.min_suitability ?? '',
     purpose: rule ? rule.purpose ?? '' : purpose,
@@ -153,6 +159,8 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
   const action = useDesignAction(ctx.onChanged);
   const releases = useDesignList(ctx.projectId, 'releases', listReleases);
   const rules = useDesignList(ctx.projectId, 'distribution-rules', listDistributionRules);
+  const recipientLists = useDesignOptions(ctx.projectId, 'recipient_lists', ctx.labels);
+  const forms = useDesignOptions(ctx.projectId, 'forms', ctx.labels);
   const purpose = ctx.setup.default_distribution_purpose;
   const phases = ctx.setup.phases;
 
@@ -173,18 +181,30 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
     { name: 'code', label: ui(t, 'design.ui.field.code'), type: 'text', hint: ui(t, 'design.ui.field.code_hint') },
   ];
   const ruleFields: FieldSpec[] = [
-    { name: 'recipient_role_id', label: ui(t, 'design.ui.issue.recipient'), type: 'select', required: true, options: roleOptions(ctx) },
+    // A recipient is a design role or a distribution list; with no lists to choose from the role is required.
+    { name: 'recipient_role_id', label: ui(t, 'design.ui.issue.recipient'), type: 'select', required: !recipientLists, options: roleOptions(ctx) },
+    ...pickerField('recipient_list_id', ui(t, 'design.ui.issue.distribution_list'), recipientLists),
     { name: 'purpose', label: ui(t, 'design.ui.issue.purpose'), type: 'select', options: vocabOptions(t, PURPOSE), hint: ui(t, 'design.ui.issue.purpose_any_hint') },
     { name: 'format', label: ui(t, 'design.ui.issue.format'), type: 'select', required: true, options: vocabOptions(t, DIST_FORMAT) },
     { name: 'min_suitability', label: ui(t, 'design.ui.issue.min_status'), type: 'select', options: SUITABILITY_OPTIONS, hint: ui(t, 'design.ui.issue.min_status_hint') },
     { name: 'copies_paper', label: ui(t, 'design.ui.issue.paper_copies'), type: 'number' },
     { name: 'discipline_codes', label: ui(t, 'design.ui.issue.disciplines'), type: 'multi', options: disciplineChoices, hint: ui(t, 'design.ui.issue.all_when_empty') },
     { name: 'phase_codes', label: ui(t, 'design.ui.issue.phases'), type: 'multi', options: phaseOptions(ctx), hint: ui(t, 'design.ui.issue.all_when_empty') },
+    ...(forms ? [{ name: 'form_codes', label: ui(t, 'design.ui.issue.forms'), type: 'multi' as const, options: forms, hint: ui(t, 'design.ui.issue.all_when_empty') }] : []),
+    ...(ctx.wbs.length > 0
+      ? [{ name: 'wbs_node_ids', label: ui(t, 'design.ui.issue.wbs'), type: 'multi' as const, options: wbsOptions(ctx), hint: ui(t, 'design.ui.issue.all_when_empty') }]
+      : []),
     { name: 'ack_required', label: ui(t, 'design.ui.issue.ack_required'), type: 'checkbox' },
     { name: 'active', label: ui(t, 'design.ui.issue.active'), type: 'checkbox' },
   ];
   const all = (codes: string[], name: (code: string) => string) =>
     codes.length === 0 ? ui(t, 'design.ui.issue.all') : fmtList(codes.map(name));
+  const ruleProblems = (values: FormValues) =>
+    str(values, 'recipient_role_id') || str(values, 'recipient_list_id') ? [] : [ui(t, 'design.ui.issue.recipient_required')];
+  const recipientOf = (rule: DistributionRule) =>
+    rule.recipient_role_id
+      ? roleTitle(ctx, rule.recipient_role_id)
+      : (recipientLists ?? []).find((o) => o.value === rule.recipient_list_id)?.label ?? ui(t, 'design.ui.issue.distribution_list');
   const newRelease = () => setDialog({ kind: 'release', release: null });
 
   return (
@@ -235,39 +255,28 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
                       {ui(t, 'design.ui.action.edit')}
                     </Button>
                   )}
-                  {RELEASE_NEXT[release.state].map((target) => (
-                    <Button
+                  {offered(release.can?.transitions, ['issued']).map(({ target, flag }) => (
+                    <StepButton
                       key={target}
-                      size="sm"
-                      variant="ghost"
-                      disabled={action.pending}
+                      flag={flag}
+                      label={ui(t, STEP_LABEL.release[target])}
+                      busy={action.pending}
                       onClick={() => action.run(() => moveRelease(ctx.projectId, release.id, target))}
-                      data-testid={`release-to-${target}`}
-                    >
-                      {ui(t, STEP_LABEL.release[target])}
-                    </Button>
+                      testId={`release-to-${target}`}
+                    />
                   ))}
-                  {release.state === 'ready' && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={release.can ? !release.can.issue.allowed : false}
-                      onClick={() => {
-                        setDuplicates(0);
-                        setDialog({ kind: 'issue', release });
-                      }}
-                      data-testid="release-issue"
-                    >
-                      {ui(t, STEP_LABEL.release.issued)}
-                    </Button>
-                  )}
+                  <StepButton
+                    flag={release.can?.issue}
+                    label={ui(t, STEP_LABEL.release.issued)}
+                    variant="secondary"
+                    onClick={() => {
+                      setDuplicates(0);
+                      setDialog({ kind: 'issue', release });
+                    }}
+                    testId="release-issue"
+                  />
                 </span>
               </div>
-              {release.state === 'ready' && release.can && !release.can.issue.allowed && release.can.issue.reason && (
-                <p className="mt-1 text-xs text-content-secondary" data-testid="release-blocked">
-                  {errorText(t, release.can.issue.reason)}
-                </p>
-              )}
             </li>
           ))}
         </ul>
@@ -302,7 +311,7 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
           {(rules.data ?? []).map((rule) => (
             <tr key={rule.id} data-testid="rule-row" className={rule.active ? undefined : 'opacity-60'}>
               <td className={CELL}>
-                {roleTitle(ctx, rule.recipient_role_id) || ui(t, 'design.ui.issue.distribution_list')}
+                {recipientOf(rule)}
                 {!rule.active && <span className="ml-2 text-xs text-content-tertiary">{ui(t, 'design.ui.issue.inactive')}</span>}
               </td>
               <td className={CELL_MUTED}>{all(rule.discipline_codes, (c) => c)}</td>
@@ -372,11 +381,12 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
           projectId={ctx.projectId}
           title={dialog.rule ? ui(t, 'design.ui.issue.rule_edit') : ui(t, 'design.ui.issue.rule_add')}
           fields={ruleFields}
+          problems={recipientLists ? ruleProblems : undefined}
           initial={ruleValues(dialog.rule, purpose)}
           submitLabel={dialog.rule ? ui(t, 'design.ui.action.save') : ui(t, 'design.ui.issue.rule_add')}
           submit={(values) =>
             dialog.rule
-              ? updateDistributionRule(ctx.projectId, dialog.rule.id, ruleBody(changedFields(ruleValues(dialog.rule, purpose), values, ['min_suitability', 'purpose'])))
+              ? updateDistributionRule(ctx.projectId, dialog.rule.id, ruleBody(changedFields(ruleValues(dialog.rule, purpose), values, ['min_suitability', 'purpose', 'recipient_role_id', 'recipient_list_id'])))
               : createDistributionRule(
                   ctx.projectId,
                   ruleBody({ ...filledFields(values), ack_required: flag(values, 'ack_required'), discipline_codes: list(values, 'discipline_codes') }),

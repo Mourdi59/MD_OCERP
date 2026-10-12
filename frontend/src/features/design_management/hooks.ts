@@ -15,8 +15,9 @@ import { getErrorMessage } from '@/shared/lib/api';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
 
-import { designErrorCode, designErrorMessage, designKeys, getSetup } from './api';
-import { errorText, type LabelContext, type TFn } from './labels';
+import { designErrorCode, designErrorMessage, designKeys, getSetup, listOptions, type OptionKind } from './api';
+import type { FieldOption } from './FormDialog';
+import { errorText, optionLabel, type LabelContext, type TFn } from './labels';
 
 /** The setup, or null when the project has none yet (404 `setup_missing`), which is an empty state and not an error. */
 export function useDesignSetup(projectId: string) {
@@ -44,6 +45,24 @@ export function useDesignList<T>(projectId: string, name: string, load: (project
     queryFn: () => load(projectId),
     enabled: !!projectId && enabled,
   });
+}
+
+/**
+ * The choices of a picker that another module feeds (contacts, gates, review
+ * cycles and so on). Null while loading and when that source is not
+ * available, so the form leaves the field out instead of showing an empty list.
+ */
+export function useDesignOptions(projectId: string, kind: OptionKind, labels: LabelContext): FieldOption[] | null {
+  const { data } = useQuery({
+    queryKey: [...designKeys.list(projectId, 'options'), kind],
+    queryFn: () => listOptions(projectId, kind),
+    enabled: !!projectId,
+    staleTime: 60_000,
+  });
+  return useMemo(() => {
+    if (!data || !data.available) return null;
+    return data.items.map((item) => ({ value: item.id, label: optionLabel(labels, item) }));
+  }, [data, labels]);
 }
 
 /** Refetch everything design holds for the project after any write: a new drawing moves a schedule line and a phase. */

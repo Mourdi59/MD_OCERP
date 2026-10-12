@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Badge, type BadgeVariant } from '@/shared/ui/Badge';
+import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
@@ -24,6 +25,7 @@ import type {
   DesignRole,
   DesignSetup,
   Drawing,
+  Flag,
   PermitState,
   ReleaseState,
   ReportState,
@@ -31,8 +33,9 @@ import type {
   RoleState,
   WbsNode,
 } from './api';
-import type { FieldOption } from './FormDialog';
-import { phaseName, ui, type LabelContext, type TFn } from './labels';
+import type { FieldOption, FieldSpec } from './FormDialog';
+import { errorText, phaseName, ui, type LabelContext, type TFn } from './labels';
+import { applies } from './rules';
 import type { UiKey } from './text';
 
 /** What the page loads once and every panel reads. */
@@ -164,6 +167,48 @@ export function ToneBadge({ tone, children, testId }: { tone: BadgeVariant; chil
       </Badge>
     </span>
   );
+}
+
+/**
+ * A button for an action the server offers. It is left out when the action
+ * does not exist for the row, and greyed out with the server's reason as its
+ * tooltip when this user may not take it.
+ */
+export function StepButton({
+  flag,
+  label,
+  onClick,
+  busy = false,
+  variant = 'ghost',
+  testId,
+}: {
+  flag: Flag | null | undefined;
+  label: string;
+  onClick: () => void;
+  busy?: boolean;
+  variant?: 'ghost' | 'secondary';
+  testId?: string;
+}) {
+  const { t } = useTranslation();
+  if (!applies(flag)) return null;
+  const reason = !flag.allowed && flag.reason ? errorText(t as TFn, flag.reason) : undefined;
+  return (
+    <span className="inline-flex items-center gap-1" title={reason}>
+      <Button size="sm" variant={variant} disabled={busy || !flag.allowed} onClick={onClick} data-testid={testId}>
+        {label}
+      </Button>
+      {reason && (
+        <span className="text-xs text-content-tertiary" data-testid={testId ? `${testId}-reason` : undefined}>
+          {reason}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** One optional select fed by another module; no field when that source has nothing to offer. */
+export function pickerField(name: string, label: string, options: FieldOption[] | null): FieldSpec[] {
+  return options ? [{ name, label, type: 'select', options }] : [];
 }
 
 /** A section heading: what the list is, one sentence on what it is for, and its one action. */

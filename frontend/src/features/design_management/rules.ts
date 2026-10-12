@@ -6,15 +6,15 @@
 // reads as a tree, what a draft still lacks before it is worth sending, and
 // how a form's values become a request body.
 //
-// The step tables mirror backend/app/modules/design_management/fsm.py. They
-// only decide which buttons a record offers; whether the caller may press one
-// is the server's answer, shown as it comes back.
+// Which steps a record offers, and whether the caller may take one, is the
+// server's answer (`can` on every row). Nothing here re-derives it.
 
 import type {
   CommentState,
   Deliverable,
   DesignRole,
   Drawing,
+  Flag,
   NumberingField,
   NumberingScheme,
   PermitState,
@@ -22,64 +22,34 @@ import type {
   ReportState,
   ReviewState,
   RoleState,
+  Transitions,
   WbsNode,
 } from './api';
 import type { UiKey } from './text';
 
-export const ROLE_NEXT: Record<RoleState, RoleState[]> = {
-  planned: ['appointed', 'active'],
-  appointed: ['active', 'released'],
-  active: ['released'],
-  released: [],
-};
+/** A move the server offers from the current state, with its flag. */
+export interface Step<S extends string> {
+  target: S;
+  flag: Flag;
+}
 
-/** Issuing is its own step with its own dialog, so `issued` is not listed here. */
-export const RELEASE_NEXT: Record<ReleaseState, ReleaseState[]> = {
-  draft: ['ready', 'cancelled'],
-  ready: ['draft', 'cancelled'],
-  issued: [],
-  cancelled: [],
-};
+/** Whether an action exists for the row now. A row without the flag offers nothing. */
+export function applies(flag: Flag | null | undefined): flag is Flag {
+  return !!flag && flag.applies !== false;
+}
 
-/** Concluding records an outcome, so `concluded` is not listed here. */
-export const REVIEW_NEXT: Record<ReviewState, ReviewState[]> = {
-  planned: ['open'],
-  open: ['comments_closed'],
-  comments_closed: ['open'],
-  concluded: [],
-};
-
-export const COMMENT_NEXT: Record<CommentState, CommentState[]> = {
-  open: ['answered', 'rejected'],
-  answered: ['closed', 'open', 'rejected'],
-  closed: [],
-  rejected: [],
-};
-
-export const REPORT_NEXT: Record<ReportState, ReportState[]> = {
-  required: ['commissioned', 'not_required'],
-  commissioned: ['in_progress'],
-  in_progress: ['submitted'],
-  submitted: ['under_check', 'accepted'],
-  under_check: ['remarks', 'accepted', 'rejected'],
-  remarks: ['in_progress'],
-  rejected: ['in_progress'],
-  accepted: [],
-  not_required: ['required'],
-};
-
-/** Only the steps a person takes. From `submitted` on the state is read from the authority review. */
-export const PERMIT_NEXT: Record<PermitState, PermitState[]> = {
-  assembling: ['ready', 'withdrawn'],
-  ready: ['submitted', 'assembling', 'withdrawn'],
-  submitted: ['withdrawn'],
-  under_review: ['withdrawn'],
-  remarks: ['withdrawn'],
-  approved: [],
-  partially_approved: [],
-  refused: [],
-  withdrawn: [],
-};
+/**
+ * The moves to draw as buttons, in the order the server lists them. `skip`
+ * names the moves that have a button of their own (issuing a release,
+ * concluding a review).
+ */
+export function offered<S extends string>(transitions: Transitions<S> | null | undefined, skip: readonly S[] = []): Step<S>[] {
+  const steps: Step<S>[] = [];
+  for (const [target, flag] of Object.entries(transitions ?? {}) as Array<[S, Flag | undefined]>) {
+    if (applies(flag) && !skip.includes(target)) steps.push({ target, flag });
+  }
+  return steps;
+}
 
 /** The words on the button that moves a record to a state. */
 export const STEP_LABEL = {
@@ -116,11 +86,11 @@ export const STEP_LABEL = {
     assembling: 'design.ui.step.permit.assembling',
     ready: 'design.ui.step.permit.ready',
     submitted: 'design.ui.step.permit.submitted',
-    under_review: 'design.ui.step.permit.submitted',
-    remarks: 'design.ui.step.permit.submitted',
-    approved: 'design.ui.step.permit.submitted',
-    partially_approved: 'design.ui.step.permit.submitted',
-    refused: 'design.ui.step.permit.submitted',
+    under_review: 'design.ui.step.permit.under_review',
+    remarks: 'design.ui.step.permit.remarks',
+    approved: 'design.ui.step.permit.approved',
+    partially_approved: 'design.ui.step.permit.partially_approved',
+    refused: 'design.ui.step.permit.refused',
     withdrawn: 'design.ui.step.permit.withdrawn',
   },
 } as const satisfies {
@@ -131,9 +101,9 @@ export const STEP_LABEL = {
   permit: Record<PermitState, UiKey>;
 };
 
-/** The states a role's form may offer: where it is, and where it can go from there. */
-export function roleStateChoices(current: RoleState): RoleState[] {
-  return [current, ...ROLE_NEXT[current]];
+/** The states a role's form may offer: where it is, and the moves the server allows from there. */
+export function roleStateChoices(current: RoleState, transitions?: Transitions<RoleState> | null): RoleState[] {
+  return [current, ...offered(transitions).filter((s) => s.flag.allowed && s.target !== current).map((s) => s.target)];
 }
 
 export interface WbsRow {

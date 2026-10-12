@@ -18,6 +18,7 @@ import {
   createDeliverable,
   deleteDeliverable,
   listApprovalPoints,
+  reopenApprovalPoint,
   submitApprovalPoint,
   updateApprovalPoint,
   updateDeliverable,
@@ -40,11 +41,13 @@ import {
   roleTitle,
   wbsOptions,
   type DesignContext,
+  StepButton,
+  pickerField,
 } from './DesignBits';
 import { FormDialog, flag, str, type FieldSpec, type FormValues } from './FormDialog';
-import { useDesignAction, useDesignList } from './hooks';
+import { useDesignAction, useDesignList, useDesignOptions } from './hooks';
 import { APPROVAL_KIND, APPROVAL_STATE, DELIVERABLE_STATE, phaseName, ui, vocab, vocabOptions, type TFn } from './labels';
-import { DRAFT_PROBLEM, changedFields, deliverableProblems, deliverableProgress, filledFields, wholeNumber } from './rules';
+import { DRAFT_PROBLEM, applies, changedFields, deliverableProblems, deliverableProgress, filledFields, wholeNumber } from './rules';
 
 type Dialog =
   | { kind: 'line'; line: Deliverable | null }
@@ -59,6 +62,7 @@ function lineValues(line: Deliverable | null): FormValues {
     phase_code: line?.phase_code ?? '',
     role_id: line?.role_id ?? '',
     discipline_code: line?.discipline_code ?? '',
+    form_code: line?.form_code ?? '',
     wbs_node_id: line?.wbs_node_id ?? '',
     planned_count: String(line?.planned_count ?? 1),
     planned_count_rationale: line?.planned_count_rationale ?? '',
@@ -82,6 +86,7 @@ function pointValues(point: ApprovalPoint | null): FormValues {
     phase_code: point?.phase_code ?? '',
     kind: point?.kind ?? '',
     approver_role_id: point?.approver_role_id ?? '',
+    governance_gate_id: point?.governance_gate_id ?? '',
     note: point?.note ?? '',
   };
 }
@@ -92,22 +97,25 @@ export function SchedulePanel({ ctx }: { ctx: DesignContext }) {
   const [dialog, setDialog] = useState<Dialog>(null);
   const action = useDesignAction(ctx.onChanged);
   const points = useDesignList(ctx.projectId, 'approval-points', listApprovalPoints);
+  const forms = useDesignOptions(ctx.projectId, 'forms', ctx.labels);
+  const gates = useDesignOptions(ctx.projectId, 'governance_gates', ctx.labels);
   const phases = ctx.setup.phases;
   const phaseField: FieldSpec =
     phases.length > 0
       ? { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'select', required: true, options: phaseOptions(ctx) }
       : { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'text', required: true, hint: ui(t, 'design.ui.field.phase_free_hint') };
 
-  const lineFields = (editing: boolean): FieldSpec[] => [
+  const lineFields = (line: Deliverable | null): FieldSpec[] => [
     { name: 'title', label: ui(t, 'design.ui.schedule.line_title'), type: 'text', required: true },
     phaseField,
     { name: 'role_id', label: ui(t, 'design.ui.schedule.by'), type: 'select', options: roleOptions(ctx) },
     { name: 'planned_count', label: ui(t, 'design.ui.schedule.planned_count'), type: 'number', required: true },
-    ...(editing
+    ...(line
       ? [{ name: 'planned_count_rationale', label: ui(t, 'design.ui.schedule.count_reason'), type: 'textarea' as const }]
       : []),
     { name: 'code', label: ui(t, 'design.ui.field.code'), type: 'text', hint: ui(t, 'design.ui.field.code_hint') },
     { name: 'discipline_code', label: ui(t, 'design.ui.field.discipline'), type: 'text' },
+    ...pickerField('form_code', ui(t, 'design.ui.schedule.form'), forms),
     { name: 'wbs_node_id', label: ui(t, 'design.ui.field.wbs'), type: 'select', options: wbsOptions(ctx) },
     {
       name: 'target_suitability',
@@ -117,7 +125,8 @@ export function SchedulePanel({ ctx }: { ctx: DesignContext }) {
       hint: ui(t, 'design.ui.schedule.target_status_hint'),
     },
     { name: 'required', label: ui(t, 'design.ui.schedule.required'), type: 'checkbox' },
-    ...(editing
+    // Waiving a line, and taking a waiver back, are actions the server offers or not.
+    ...(line && applies(line.waived ? line.can?.unwaive : line.can?.waive)
       ? [
           { name: 'waived', label: ui(t, 'design.ui.schedule.waived'), type: 'checkbox' as const },
           {
@@ -150,6 +159,7 @@ export function SchedulePanel({ ctx }: { ctx: DesignContext }) {
     { name: 'kind', label: ui(t, 'design.ui.schedule.point_kind'), type: 'select', required: true, options: vocabOptions(t, APPROVAL_KIND) },
     { ...phaseField, required: false },
     { name: 'approver_role_id', label: ui(t, 'design.ui.schedule.approver'), type: 'select', options: roleOptions(ctx) },
+    ...pickerField('governance_gate_id', ui(t, 'design.ui.schedule.gate'), gates),
     { name: 'code', label: ui(t, 'design.ui.field.code'), type: 'text', hint: ui(t, 'design.ui.field.code_hint') },
     { name: 'note', label: ui(t, 'design.ui.field.note'), type: 'textarea' },
   ];
@@ -259,22 +269,28 @@ export function SchedulePanel({ ctx }: { ctx: DesignContext }) {
                 <ToneBadge tone={APPROVAL_TONE[point.state]}>{vocab(t, APPROVAL_STATE, point.state)}</ToneBadge>
               </td>
               <td className={`${CELL} whitespace-nowrap text-right`}>
-                {point.state === 'open' && (
-                  <>
+                <span className="inline-flex flex-wrap justify-end gap-1">
+                  {point.state === 'open' && (
                     <Button size="sm" variant="ghost" onClick={() => setDialog({ kind: 'point', point })}>
                       {ui(t, 'design.ui.action.edit')}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={action.pending}
-                      onClick={() => action.run(() => submitApprovalPoint(ctx.projectId, point.id))}
-                      data-testid="point-submit"
-                    >
-                      {ui(t, 'design.ui.schedule.point_submit')}
-                    </Button>
-                  </>
-                )}
+                  )}
+                  <StepButton
+                    flag={point.can?.reopen}
+                    label={ui(t, 'design.ui.schedule.point_reopen')}
+                    busy={action.pending}
+                    onClick={() => action.run(() => reopenApprovalPoint(ctx.projectId, point.id))}
+                    testId="point-reopen"
+                  />
+                  <StepButton
+                    flag={point.can?.submit}
+                    label={ui(t, 'design.ui.schedule.point_submit')}
+                    variant="secondary"
+                    busy={action.pending}
+                    onClick={() => action.run(() => submitApprovalPoint(ctx.projectId, point.id))}
+                    testId="point-submit"
+                  />
+                </span>
               </td>
             </tr>
           ))}
@@ -285,7 +301,7 @@ export function SchedulePanel({ ctx }: { ctx: DesignContext }) {
         <FormDialog
           projectId={ctx.projectId}
           title={dialog.line ? ui(t, 'design.ui.schedule.edit') : ui(t, 'design.ui.schedule.add')}
-          fields={lineFields(!!dialog.line)}
+          fields={lineFields(dialog.line)}
           initial={lineValues(dialog.line)}
           submitLabel={dialog.line ? ui(t, 'design.ui.action.save') : ui(t, 'design.ui.schedule.add')}
           problems={lineProblems(dialog.line)}
@@ -294,7 +310,7 @@ export function SchedulePanel({ ctx }: { ctx: DesignContext }) {
               ? updateDeliverable(
                   ctx.projectId,
                   dialog.line.id,
-                  lineBody(changedFields(lineValues(dialog.line), values, ['role_id', 'discipline_code', 'wbs_node_id', 'target_suitability'])),
+                  lineBody(changedFields(lineValues(dialog.line), values, ['role_id', 'discipline_code', 'form_code', 'wbs_node_id', 'target_suitability'])),
                 )
               : createDeliverable(ctx.projectId, lineBody(filledFields(values)))
           }
@@ -328,7 +344,7 @@ export function SchedulePanel({ ctx }: { ctx: DesignContext }) {
               ? updateApprovalPoint(
                   ctx.projectId,
                   dialog.point.id,
-                  changedFields<ApprovalPointInput>(pointValues(dialog.point), values, ['phase_code', 'approver_role_id']),
+                  changedFields<ApprovalPointInput>(pointValues(dialog.point), values, ['phase_code', 'approver_role_id', 'governance_gate_id']),
                 )
               : createApprovalPoint(ctx.projectId, filledFields<ApprovalPointInput>(values))
           }

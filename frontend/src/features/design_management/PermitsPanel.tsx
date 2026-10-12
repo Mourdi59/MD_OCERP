@@ -31,11 +31,11 @@ import {
   type PermitItem,
   type PermitItemKind,
 } from './api';
-import { ListState, PERMIT_TONE, PanelHeader, ToneBadge, hasRows, type DesignContext } from './DesignBits';
+import { ListState, PERMIT_TONE, PanelHeader, StepButton, ToneBadge, hasRows, pickerField, type DesignContext } from './DesignBits';
 import { FormDialog, flag, str, type FieldSpec, type FormValues } from './FormDialog';
-import { useDesignAction, useDesignList } from './hooks';
+import { useDesignAction, useDesignList, useDesignOptions } from './hooks';
 import { CONDITION_STATE, PERMIT_ITEM, PERMIT_STATE, permitProfileName, reportKindName, ui, uiCount, vocab, vocabOptions, type TFn } from './labels';
-import { PERMIT_NEXT, STEP_LABEL, changedFields, filledFields } from './rules';
+import { STEP_LABEL, changedFields, filledFields, offered } from './rules';
 
 type Dialog =
   | { kind: 'permit'; permit: Permit | null }
@@ -48,6 +48,8 @@ function permitValues(permit: Permit | null): FormValues {
     title: permit?.title ?? '',
     profile_code: permit?.profile_code ?? '',
     target_submission_date: permit?.target_submission_date ?? '',
+    authority_submission_id: permit?.authority_submission_id ?? '',
+    review_cycle_id: permit?.review_cycle_id ?? '',
     code: permit?.code ?? '',
   };
 }
@@ -64,6 +66,8 @@ export function PermitsPanel({ ctx }: { ctx: DesignContext }) {
   const action = useDesignAction(ctx.onChanged);
   const permits = useDesignList(ctx.projectId, 'permits', listPermits);
   const reports = useDesignList(ctx.projectId, 'reports', listReports);
+  const submissions = useDesignOptions(ctx.projectId, 'authority_submissions', ctx.labels);
+  const cycles = useDesignOptions(ctx.projectId, 'review_cycles', ctx.labels);
   const catalogue = ctx.setup.reports_catalogue;
   const profileName = (code: string) => permitProfileName(ctx.labels, catalogue, code);
 
@@ -82,6 +86,8 @@ export function PermitsPanel({ ctx }: { ctx: DesignContext }) {
           },
         ]),
     { name: 'target_submission_date', label: ui(t, 'design.ui.permit.target_date'), type: 'date' },
+    ...pickerField('authority_submission_id', ui(t, 'design.ui.permit.authority_submission'), submissions),
+    ...pickerField('review_cycle_id', ui(t, 'design.ui.permit.review_cycle'), cycles),
     { name: 'code', label: ui(t, 'design.ui.field.code'), type: 'text', hint: ui(t, 'design.ui.field.code_hint') },
   ];
   const itemFields: FieldSpec[] = [
@@ -177,17 +183,16 @@ export function PermitsPanel({ ctx }: { ctx: DesignContext }) {
                       {ui(t, 'design.ui.permit.sync')}
                     </Button>
                   )}
-                  {PERMIT_NEXT[permit.state].map((target) => (
-                    <Button
+                  {offered(permit.can?.transitions).map(({ target, flag }) => (
+                    <StepButton
                       key={target}
-                      size="sm"
+                      flag={flag}
+                      label={ui(t, STEP_LABEL.permit[target])}
                       variant={target === 'ready' || target === 'submitted' ? 'secondary' : 'ghost'}
-                      disabled={action.pending}
+                      busy={action.pending}
                       onClick={() => action.run(() => movePermit(ctx.projectId, permit.id, target))}
-                      data-testid={`permit-to-${target}`}
-                    >
-                      {ui(t, STEP_LABEL.permit[target])}
-                    </Button>
+                      testId={`permit-to-${target}`}
+                    />
                   ))}
                 </span>
               </div>
@@ -310,7 +315,7 @@ export function PermitsPanel({ ctx }: { ctx: DesignContext }) {
           submitLabel={dialog.permit ? ui(t, 'design.ui.action.save') : ui(t, 'design.ui.permit.add')}
           submit={(values) =>
             dialog.permit
-              ? updatePermit(ctx.projectId, dialog.permit.id, changedFields<PermitInput>(permitValues(dialog.permit), values, ['target_submission_date']))
+              ? updatePermit(ctx.projectId, dialog.permit.id, changedFields<PermitInput>(permitValues(dialog.permit), values, ['target_submission_date', 'authority_submission_id', 'review_cycle_id']))
               : createPermit(ctx.projectId, filledFields<PermitInput>(values))
           }
           onClose={() => setDialog(null)}

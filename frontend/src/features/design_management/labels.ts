@@ -16,6 +16,7 @@ import type {
   CommentState,
   DeliverableState,
   DesignLabel,
+  DesignOption,
   DesignPhase,
   DistFormat,
   IndependentCheck,
@@ -272,6 +273,12 @@ export function catalogueLabel(
 ): string {
   if (item.key && ctx.exists(item.key)) return ctx.t(item.key);
   return fromTexts(item.labels, ctx.language) || humanizeCode(item.code);
+}
+
+/** The name of a picker choice: its key in the locale, then the texts it carries, then its plain label. */
+export function optionLabel(ctx: LabelContext, item: DesignOption): string {
+  if (item.label_key && ctx.exists(item.label_key)) return ctx.t(item.label_key);
+  return fromTexts(item.label_text, ctx.language) || item.label || item.code || item.id;
 }
 
 export function labelOf(ctx: LabelContext, label: DesignLabel | null | undefined, code: string): string {

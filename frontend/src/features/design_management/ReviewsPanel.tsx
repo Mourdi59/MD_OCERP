@@ -42,11 +42,12 @@ import {
   roleOptions,
   roleTitle,
   type DesignContext,
+  StepButton,
 } from './DesignBits';
 import { FormDialog, list, str, type FieldSpec } from './FormDialog';
 import { useDesignAction, useDesignList } from './hooks';
 import { COMMENT_STATE, REVIEW_OUTCOME, REVIEW_STATE, SEVERITY, phaseName, ui, uiCount, vocab, vocabOptions, type TFn } from './labels';
-import { COMMENT_NEXT, REVIEW_NEXT, STEP_LABEL, commentMoveNeedsAnswer, releasable } from './rules';
+import { STEP_LABEL, commentMoveNeedsAnswer, offered, releasable } from './rules';
 
 type Dialog =
   | { kind: 'create' }
@@ -79,17 +80,15 @@ function Comments({ ctx, review, onAnswer }: { ctx: DesignContext; review: Revie
               <ToneBadge tone={COMMENT_TONE[comment.state]}>{vocab(t, COMMENT_STATE, comment.state)}</ToneBadge>
               {drawing && <span className="font-mono text-xs text-content-secondary">{drawing.number}</span>}
               <span className="ml-auto flex flex-wrap gap-1">
-                {COMMENT_NEXT[comment.state].map((target) => (
-                  <Button
+                {offered(comment.can?.transitions).map(({ target, flag }) => (
+                  <StepButton
                     key={target}
-                    size="sm"
-                    variant="ghost"
-                    disabled={action.pending}
+                    flag={flag}
+                    label={ui(t, STEP_LABEL.comment[target])}
+                    busy={action.pending}
                     onClick={() => move(comment, target)}
-                    data-testid={`comment-to-${target}`}
-                  >
-                    {ui(t, STEP_LABEL.comment[target])}
-                  </Button>
+                    testId={`comment-to-${target}`}
+                  />
                 ))}
               </span>
             </div>
@@ -180,23 +179,23 @@ export function ReviewsPanel({ ctx }: { ctx: DesignContext }) {
                         {ui(t, 'design.ui.reviews.comment_add')}
                       </Button>
                     )}
-                    {REVIEW_NEXT[review.state].map((target) => (
-                      <Button
+                    {offered(review.can?.transitions, ['concluded']).map(({ target, flag }) => (
+                      <StepButton
                         key={target}
-                        size="sm"
-                        variant="ghost"
-                        disabled={action.pending}
+                        flag={flag}
+                        label={ui(t, STEP_LABEL.review[target])}
+                        busy={action.pending}
                         onClick={() => action.run(() => moveReview(ctx.projectId, review.id, target))}
-                        data-testid={`review-to-${target}`}
-                      >
-                        {ui(t, STEP_LABEL.review[target])}
-                      </Button>
+                        testId={`review-to-${target}`}
+                      />
                     ))}
-                    {review.state === 'comments_closed' && (
-                      <Button size="sm" variant="secondary" onClick={() => setDialog({ kind: 'conclude', review })} data-testid="review-conclude">
-                        {ui(t, STEP_LABEL.review.concluded)}
-                      </Button>
-                    )}
+                    <StepButton
+                      flag={review.can?.conclude}
+                      label={ui(t, STEP_LABEL.review.concluded)}
+                      variant="secondary"
+                      onClick={() => setDialog({ kind: 'conclude', review })}
+                      testId="review-conclude"
+                    />
                   </span>
                 </div>
                 {(review.reviewer_role_ids.length > 0 || review.concluded_at) && (

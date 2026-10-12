@@ -22,6 +22,8 @@ vi.mock('../api', async (importOriginal) => {
     listApprovalPoints: vi.fn(),
     listUnresolvedWbs: vi.fn(),
     listPermits: vi.fn(),
+    listOptions: vi.fn(),
+    reopenApprovalPoint: vi.fn(),
     listReleases: vi.fn(),
     listDistributionRules: vi.fn(),
     listReports: vi.fn(),
@@ -32,6 +34,7 @@ vi.mock('../api', async (importOriginal) => {
 import { ApiError } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import * as api from '../api';
+import { ERROR_TEXT } from '../errors';
 import { DrawingsPanel } from '../DrawingsPanel';
 import { IssuePanel } from '../IssuePanel';
 import { PermitsPanel } from '../PermitsPanel';
@@ -41,6 +44,9 @@ import { WbsPanel } from '../WbsPanel';
 import { context, deliverable, drawing, permit, permitItem, release, role, wbsNode } from './fixtures';
 
 const mocked = vi.mocked(api);
+
+const yes = { allowed: true, applies: true, reason: null };
+const absent = { allowed: false, applies: false, reason: null };
 
 function wrap(node: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -53,6 +59,7 @@ beforeEach(() => {
   mocked.listUnresolvedWbs.mockResolvedValue([]);
   mocked.listPermits.mockResolvedValue([]);
   mocked.listReports.mockResolvedValue([]);
+  mocked.listOptions.mockImplementation(async (_project, kind) => ({ kind, available: false, reason: 'source_not_installed', items: [] }));
   mocked.listReleases.mockResolvedValue([]);
   mocked.listDistributionRules.mockResolvedValue([]);
   useToastStore.setState({ toasts: [] });
@@ -159,6 +166,58 @@ describe('SchedulePanel', () => {
   });
 });
 
+describe('approval points', () => {
+  const point = {
+    id: 'ap1',
+    code: 'AP-01',
+    title: 'Concept sign-off',
+    phase_code: 'concept',
+    kind: 'owner_approval' as const,
+    governance_gate_id: null,
+    approver_role_id: null,
+    state: 'rejected' as const,
+    approval_instance_id: null,
+    decided_by: null,
+    decided_at: null,
+    note: '',
+  };
+
+  it('offers reopen and submit as the server says, and reopens with one click', async () => {
+    mocked.listApprovalPoints.mockResolvedValue([
+      { ...point, can: { reopen: yes, submit: { allowed: false, applies: true, reason: 'no_approval_route' } } },
+      { ...point, id: 'ap2', code: 'AP-02', state: 'approved', can: { reopen: absent, submit: absent } },
+    ]);
+    mocked.reopenApprovalPoint.mockResolvedValue({ ...point, state: 'open' });
+    const onChanged = vi.fn();
+    wrap(<SchedulePanel ctx={context({ onChanged })} />);
+    const rows = await screen.findAllByTestId('point-row');
+    expect(rows[0]).toHaveTextContent('Rejected');
+    expect(within(rows[0]!).getByTestId('point-submit')).toBeDisabled();
+    expect(within(rows[0]!).getByTestId('point-submit-reason')).toHaveTextContent(ERROR_TEXT.no_approval_route!);
+    expect(within(rows[1]!).queryByTestId('point-reopen')).toBeNull();
+    expect(within(rows[1]!).queryByTestId('point-submit')).toBeNull();
+    fireEvent.click(within(rows[0]!).getByTestId('point-reopen'));
+    await waitFor(() => expect(mocked.reopenApprovalPoint).toHaveBeenCalledWith('p1', 'ap1'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  });
+
+  it('shows the gate picker only when project governance has gates to offer', async () => {
+    mocked.listOptions.mockImplementation(async (_project, kind) =>
+      kind === 'governance_gates'
+        ? { kind, available: true, reason: null, items: [{ id: 'g1', label: 'Brief to concept', code: 'brief_to_concept' }] }
+        : { kind, available: false, reason: 'scheme_has_no_form_list', items: [] },
+    );
+    wrap(<SchedulePanel ctx={context()} />);
+    await waitFor(() => expect(mocked.listOptions).toHaveBeenCalledWith('p1', 'governance_gates'));
+    fireEvent.click(screen.getByTestId('point-add'));
+    expect(await screen.findByTestId('field-governance_gate_id')).toHaveTextContent('Brief to concept');
+    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByTestId('line-add'));
+    // the pinned scheme has no form list, so the schedule line form has no such field
+    expect(screen.queryByTestId('field-form_code')).toBeNull();
+  });
+});
+
 describe('DrawingsPanel', () => {
   it('an empty register says where numbers and files come from', () => {
     wrap(<DrawingsPanel ctx={context()} />);
@@ -243,7 +302,11 @@ describe('IssuePanel', () => {
       release({
         state: 'ready',
         approval_status: 'pending',
-        can: { issue: { allowed: false, reason: 'release_not_approved' }, approve: { allowed: false, reason: 'release_four_eyes' } },
+        can: {
+          transitions: { draft: yes, cancelled: { allowed: false, applies: true, reason: 'forbidden' } },
+          issue: { allowed: false, applies: true, reason: 'release_not_approved' },
+          approve: { allowed: false, applies: true, reason: 'release_four_eyes' },
+        },
       }),
       release({
         id: 'rl2',
@@ -251,7 +314,7 @@ describe('IssuePanel', () => {
         title: 'Tender set',
         state: 'ready',
         approval_status: 'approved',
-        can: { issue: { allowed: true, reason: null }, approve: { allowed: false, reason: 'release_not_pending' } },
+        can: { transitions: { draft: yes }, issue: yes, approve: absent },
       }),
     ]);
     wrap(<IssuePanel ctx={context()} />);
@@ -259,10 +322,24 @@ describe('IssuePanel', () => {
     expect(rows).toHaveLength(2);
     expect(within(rows[0]!).getByTestId('release-approval')).toHaveTextContent('Waiting for approval');
     expect(within(rows[0]!).getByTestId('release-issue')).toBeDisabled();
-    expect(within(rows[0]!).getByTestId('release-blocked')).toHaveTextContent('The release has not been approved on its approval route yet.');
+    expect(within(rows[0]!).getByTestId('release-issue-reason')).toHaveTextContent('The release has not been approved on its approval route yet.');
     expect(within(rows[1]!).getByTestId('release-approval')).toHaveTextContent('Approved for issue');
     expect(within(rows[1]!).getByTestId('release-issue')).toBeEnabled();
-    expect(within(rows[1]!).queryByTestId('release-blocked')).toBeNull();
+    expect(within(rows[1]!).queryByTestId('release-issue-reason')).toBeNull();
+    // a step this user may not take is shown greyed out with the reason, not hidden
+    expect(within(rows[0]!).getByTestId('release-to-draft')).toBeEnabled();
+    expect(within(rows[0]!).getByTestId('release-to-cancelled')).toBeDisabled();
+    // the reason is words on the screen, not only a tooltip
+    expect(within(rows[0]!).getByTestId('release-to-cancelled-reason')).toHaveTextContent(ERROR_TEXT.forbidden!);
+    expect(within(rows[1]!).queryByTestId('release-to-cancelled')).toBeNull();
+  });
+
+  it('a draft release that is not ready shows no Issue button at all', async () => {
+    mocked.listReleases.mockResolvedValue([release({ can: { transitions: { ready: yes, cancelled: yes }, issue: absent, approve: absent } })]);
+    wrap(<IssuePanel ctx={context()} />);
+    const row = await screen.findByTestId('release-row');
+    expect(within(row).getByTestId('release-to-ready')).toHaveTextContent('Mark ready');
+    expect(within(row).queryByTestId('release-issue')).toBeNull();
   });
 
   it('a recipient without a purpose receives releases of any purpose', async () => {
@@ -307,6 +384,7 @@ describe('PermitsPanel', () => {
   it('shows what is missing, and a refused step shows the reason of the server', async () => {
     mocked.listPermits.mockResolvedValue([
       permit({
+        can: { transitions: { ready: yes, submitted: yes, withdrawn: yes } },
         missing: ['i2'],
         items: [
           permitItem(),
@@ -336,12 +414,19 @@ describe('PermitsPanel', () => {
   });
 
   it('a submitted package offers no editing and only the step a person takes', async () => {
-    mocked.listPermits.mockResolvedValue([permit({ state: 'submitted', items: [permitItem()], superseded_content: true })]);
+    mocked.listPermits.mockResolvedValue([permit({
+        state: 'submitted',
+        items: [permitItem()],
+        superseded_content: true,
+        can: { transitions: { withdrawn: yes, approved: { allowed: false, applies: false, reason: 'permit_state_read_from_cycle' } } },
+      }),
+    ]);
     wrap(<PermitsPanel ctx={context()} />);
     const card = await screen.findByTestId('permit-card');
     expect(within(card).getByTestId('permit-superseded')).toBeInTheDocument();
     expect(within(card).queryByTestId('permit-item-add')).toBeNull();
     expect(within(card).queryByTestId('permit-to-ready')).toBeNull();
     expect(within(card).getByTestId('permit-to-withdrawn')).toHaveTextContent('Withdraw');
+    expect(within(card).queryByTestId('permit-to-approved')).toBeNull();
   });
 });

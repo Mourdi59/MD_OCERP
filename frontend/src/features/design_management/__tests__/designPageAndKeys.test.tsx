@@ -21,6 +21,7 @@ vi.mock('../api', async (importOriginal) => {
     createSetup: vi.fn(),
     listSchemes: vi.fn(),
     listRoles: vi.fn(),
+    listOptions: vi.fn(),
     listWbs: vi.fn(),
     listDeliverables: vi.fn(),
     listDrawings: vi.fn(),
@@ -58,6 +59,7 @@ function renderPage(path = '/projects/p1/design') {
 function withSetup() {
   mocked.getSetup.mockResolvedValue(setup());
   mocked.listRoles.mockResolvedValue([]);
+  mocked.listOptions.mockImplementation(async (_project, kind) => ({ kind, available: false, reason: 'source_not_installed', items: [] }));
   mocked.listWbs.mockResolvedValue([]);
   mocked.listDeliverables.mockResolvedValue([]);
   mocked.listDrawings.mockResolvedValue([]);
