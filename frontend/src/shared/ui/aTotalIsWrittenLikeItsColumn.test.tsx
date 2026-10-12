@@ -726,6 +726,9 @@ const HAND_INSPECTED: Record<string, string> = {
     'CORRECT. Quantities and item counts only; the file names no currency anywhere.',
   'features/rebar-schedule/RebarSchedulePage.tsx':
     'CORRECT. Bar counts and total weight in kg; the footer sums physical quantities, not money.',
+  'features/delivery_model/ComparisonPanel.tsx':
+    'CORRECT. The sum of the criteria weights (must reach 100) and a weighted score from 1 to 5 ' +
+    'per compared form; the comparison holds no amount and the file names no currency anywhere.',
 };
 
 describe('no money footer in the product', () => {
