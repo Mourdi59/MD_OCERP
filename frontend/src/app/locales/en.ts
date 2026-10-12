@@ -42061,6 +42061,7 @@ const resource = {
     "schedule.calendar.holidays_missing": "Public holidays are not available for {{years}}. Check the calendar before relying on these dates.",
     "schedule.calendar.holidays_partial": "Public holiday coverage is incomplete for {{years}}. Check the calendar before relying on these dates.",
     // permits: begin
+    "modules.catalog.permits": "Authority permits",
     "permits.catalogue.de": "Germany (federal law, MBO fallback)",
     "permits.catalogue.de_bb": "Germany, Brandenburg (skeleton, MBO fallback)",
     "permits.catalogue.de_be": "Germany, Berlin (skeleton, MBO fallback)",

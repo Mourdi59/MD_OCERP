@@ -49982,6 +49982,7 @@ const resource = {
     "schedule.calendar.holidays_missing": "Für {{years}} sind keine gesetzlichen Feiertage verfügbar. Prüfen Sie den Kalender, bevor Sie sich auf diese Termine verlassen.",
     "schedule.calendar.holidays_partial": "Die gesetzlichen Feiertage für {{years}} sind nicht vollständig erfasst. Prüfen Sie den Kalender, bevor Sie sich auf diese Termine verlassen.",
     // permits: begin
+    "modules.catalog.permits": "Behördliche Genehmigungen",
     "permits.catalogue.de": "Deutschland (Bundesrecht, sonst MBO)",
     "permits.catalogue.de_bb": "Deutschland, Brandenburg (Grundgerüst, sonst MBO)",
     "permits.catalogue.de_be": "Deutschland, Berlin (Grundgerüst, sonst MBO)",
