@@ -217,13 +217,12 @@ class PlantService:
 
     async def _area(self, project_id: uuid.UUID) -> Any:
         """The governance area that hosts plant on this project, or ``None`` when its model tags none."""
-        from app.modules.project_governance.models import GovernanceArea
+        from app.modules.project_governance.public import project_areas
 
         code = (await self._host(project_id)).area_code
         if code is None:
             return None
-        stmt = select(GovernanceArea).where(GovernanceArea.project_id == project_id, GovernanceArea.code == code)
-        return (await self.session.execute(stmt)).scalar_one_or_none()
+        return next((a for a in await project_areas(self.session, project_id) if a.code == code), None)
 
     async def require_editor(self, project_id: uuid.UUID, user_id: uuid.UUID, *, can_manage: bool) -> None:
         """A holder of ``plant.manage`` (checked by the router), or the equipment area owner or deputy."""
@@ -1795,15 +1794,13 @@ class PlantService:
         }
 
     async def _gate_date(self, project_id: uuid.UUID) -> date | None:
-        from app.modules.project_governance.models import GovernanceGate
+        from app.modules.project_governance.public import project_gates
 
         codes = (await self._host(project_id)).gate_codes
         if not codes:
             return None
-        stmt = select(GovernanceGate.target_date).where(
-            GovernanceGate.project_id == project_id, GovernanceGate.code.in_(codes)
-        )
-        days = [d for d in (calc.parse_day(v) for v in (await self.session.execute(stmt)).scalars()) if d]
+        gates = await project_gates(self.session, project_id)
+        days = [g.target_date for g in gates if g.code in codes and g.target_date is not None]
         return min(days) if days else None
 
     async def readiness(self, project_id: uuid.UUID, *, today: date) -> dict[str, Any]:
@@ -1827,18 +1824,19 @@ class PlantService:
         }
 
     async def _frame_document(self, project_id: uuid.UUID) -> Any:
-        from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
+        from app.modules.project_governance.public import project_documents
 
         host = await self._host(project_id)
         if host.area_code is None or not host.document_types:
             return None
-        stmt = (
-            select(GovernanceDocument)
-            .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
-            .where(GovernanceDocument.project_id == project_id, GovernanceArea.code == host.area_code)
-            .where(GovernanceDocument.doc_type.in_(host.document_types))
+        return next(
+            (
+                d
+                for d in await project_documents(self.session, project_id)
+                if d.area_code == host.area_code and d.code in host.document_types
+            ),
+            None,
         )
-        return (await self.session.execute(stmt)).scalars().first()
 
     async def escalate(self, project_id: uuid.UUID, *, today: date) -> dict[str, Any]:
         """Rules 7 and 13 for one project: notify order dates that are due or overdue, expire slots."""
