@@ -40,12 +40,14 @@ from app.modules.commitment_release.catalogue import ABORT_BASIS_KIND, AUTHORITY
 from app.modules.commitment_release.errors import CommitmentError
 from app.modules.commitment_release.messages import translate
 from app.modules.commitment_release.schemas import (
+    AbortIn,
     AbortTermsOut,
     AbortTermsPut,
     AssignmentOut,
     AssignmentsPut,
     CheckIn,
     CheckOut,
+    DecideIn,
     EvaluateIn,
     FindingOut,
     HoldIn,
@@ -65,6 +67,7 @@ from app.modules.commitment_release.schemas import (
     ScheduleCreate,
     ScheduleUpdate,
     TierRoutePin,
+    TransferIn,
     WithdrawIn,
 )
 from app.modules.commitment_release.service import CommitmentService
@@ -96,11 +99,24 @@ def _uid(user_id: str) -> uuid.UUID:
     return uuid.UUID(str(user_id))
 
 
-def _role(payload: dict[str, Any]) -> str:
-    return str(payload.get("role") or "")
+def _may_manage(payload: dict[str, Any]) -> bool:
+    """Whether the caller holds ``commitment.manage``, by the same rule ``RequirePermission`` applies.
+
+    The service takes this as a boolean and never sees a role.
+    """
+    from app.core.permissions import permission_registry
+
+    role = str(payload.get("role") or "")
+    return (
+        role == "admin"
+        or "commitment.manage" in (payload.get("permissions") or [])
+        or permission_registry.role_has_permission(role, "commitment.manage")
+    )
 
 
 def _today(value: date | None) -> date:
+    """The server date, or the date a READ asked for. A write never passes a client date:
+    the FX date and the validity of an assignment are not the caller's to choose."""
     return value or datetime.now(UTC).date()
 
 
@@ -355,13 +371,13 @@ async def list_assignments(project_id: uuid.UUID, session: SessionDep, user_id: 
 
 @router.put("/projects/{project_id}/assignments", response_model=Page[AssignmentOut], dependencies=[MANAGE])
 async def put_assignments(
-    project_id: uuid.UUID, body: AssignmentsPut, session: SessionDep, user_id: CurrentUserId, today: date | None = None
+    project_id: uuid.UUID, body: AssignmentsPut, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
     """Replace who fills each project-role tier; untouched generated tier routes follow."""
     await verify_project_access(project_id, user_id, session)
     rows = await _run(
         CommitmentService(session).put_assignments(
-            project_id, [a.model_dump() for a in body.assignments], actor_id=_uid(user_id), today=_today(today)
+            project_id, [a.model_dump() for a in body.assignments], actor_id=_uid(user_id), today=_today(None)
         )
     )
     return _page([AssignmentOut.model_validate(r) for r in rows])
@@ -369,13 +385,13 @@ async def put_assignments(
 
 @router.post("/projects/{project_id}/routes/generate", dependencies=[MANAGE])
 async def generate_routes(
-    project_id: uuid.UUID, body: RoutesGenerate, session: SessionDep, user_id: CurrentUserId, today: date | None = None
+    project_id: uuid.UUID, body: RoutesGenerate, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
     """Generate one approval route per tier. Routes edited by a manager are kept unless ``force``."""
     await verify_project_access(project_id, user_id, session)
     report = await _run(
         CommitmentService(session).generate_routes(
-            project_id, actor_id=_uid(user_id), today=_today(today), force=body.force
+            project_id, actor_id=_uid(user_id), today=_today(None), force=body.force
         )
     )
     return {"tiers": report}
@@ -391,11 +407,38 @@ async def pin_tier_route(
     return await _run(_matrix_out(svc, matrix))
 
 
+@router.delete("/projects/{project_id}/routes/{tier_code}", response_model=MatrixOut, dependencies=[MANAGE])
+async def unpin_tier_route(
+    project_id: uuid.UUID, tier_code: str, session: SessionDep, user_id: CurrentUserId
+) -> MatrixOut:
+    """Give a tier back to its generated route. A pinned route is never replaced any other way."""
+    await verify_project_access(project_id, user_id, session)
+    svc = CommitmentService(session)
+    matrix = await _run(svc.unpin_tier_route(project_id, tier_code, actor_id=_uid(user_id), today=_today(None)))
+    return await _run(_matrix_out(svc, matrix))
+
+
 # ── items ──────────────────────────────────────────────────────────────────
 
 
-async def _view(svc: CommitmentService, project_id: uuid.UUID, item_id: uuid.UUID, today: date) -> dict[str, Any]:
-    data = await _run(svc.item_views(project_id, today=today, item_ids=[item_id], with_exposure=True))
+async def _view(
+    svc: CommitmentService,
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    today: date,
+    user_id: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    data = await _run(
+        svc.item_views(
+            project_id,
+            today=today,
+            item_ids=[item_id],
+            with_exposure=True,
+            actor_id=_uid(user_id),
+            manage=_may_manage(payload),
+        )
+    )
     if not data["items"]:
         raise HTTPException(status_code=404, detail={"code": "item_not_found"})
     return data["items"][0]
@@ -406,35 +449,54 @@ async def list_items(
     project_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
     today: date | None = None,
     with_exposure: bool = False,
 ) -> dict[str, Any]:
-    """Items with derived planned / released / committed, flags, decision dates; ``totals`` in base currency."""
+    """Items with derived planned / released / committed, flags, decision dates; ``totals`` in base currency.
+
+    Each item carries ``can``: what the caller may do to it now, with the refusal code when not.
+    """
     await verify_project_access(project_id, user_id, session)
     data = await _run(
-        CommitmentService(session).item_views(project_id, today=_today(today), with_exposure=with_exposure)
+        CommitmentService(session).item_views(
+            project_id,
+            today=_today(today),
+            with_exposure=with_exposure,
+            actor_id=_uid(user_id),
+            manage=_may_manage(payload),
+        )
     )
     return _page(data["items"], totals=data["totals"])
 
 
 @router.post("/projects/{project_id}/items", status_code=201, dependencies=[EDIT])
 async def create_item(
-    project_id: uuid.UUID, body: ItemCreate, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID, body: ItemCreate, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = CommitmentService(session)
-    item = await _run(svc.create_item(project_id, body.model_dump(exclude_none=True), actor_id=_uid(user_id)))
-    return await _view(svc, project_id, item.id, _today(None))
+    item = await _run(
+        svc.create_item(
+            project_id, body.model_dump(exclude_none=True), actor_id=_uid(user_id), manage=_may_manage(payload)
+        )
+    )
+    return await _view(svc, project_id, item.id, _today(None), user_id, payload)
 
 
 @router.get("/projects/{project_id}/items/{item_id}", dependencies=[READ])
 async def get_item(
-    project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    today: date | None = None,
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = CommitmentService(session)
     await _run(svc.get_item(project_id, item_id))
-    return await _view(svc, project_id, item_id, _today(today))
+    return await _view(svc, project_id, item_id, _today(today), user_id, payload)
 
 
 @router.patch("/projects/{project_id}/items/{item_id}", dependencies=[EDIT])
@@ -446,62 +508,103 @@ async def patch_item(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    """Owner of the item or a manager. ``commitment_type`` is fixed once a release was requested."""
+    """Owner of the item or a manager. ``commitment_type`` is fixed once a release was requested.
+
+    What a gate reads (``gate_code``, ``governance_area_code``, ``deferred``) and the owner need
+    ``commitment.manage`` and change only while the item is ``planned``; ``split_group`` and
+    ``flags`` are frozen once a release was requested.
+    """
     await verify_project_access(project_id, user_id, session)
     svc = CommitmentService(session)
     await _run(
         svc.update_item(
-            project_id, item_id, body.model_dump(exclude_unset=True), actor_id=_uid(user_id), role=_role(payload)
+            project_id,
+            item_id,
+            body.model_dump(exclude_unset=True),
+            actor_id=_uid(user_id),
+            manage=_may_manage(payload),
         )
     )
-    return await _view(svc, project_id, item_id, _today(None))
+    return await _view(svc, project_id, item_id, _today(None), user_id, payload)
 
 
 @router.post("/projects/{project_id}/items/{item_id}/hold", dependencies=[MANAGE])
 async def hold_item(
-    project_id: uuid.UUID, item_id: uuid.UUID, body: HoldIn, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: HoldIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = CommitmentService(session)
     await _run(svc.set_hold(project_id, item_id, hold=body.hold, actor_id=_uid(user_id), reason=body.reason))
-    return await _view(svc, project_id, item_id, _today(None))
+    return await _view(svc, project_id, item_id, _today(None), user_id, payload)
 
 
 @router.post(
     "/projects/{project_id}/items/{item_id}/links", response_model=LinkOut, status_code=201, dependencies=[EDIT]
 )
 async def add_link(
-    project_id: uuid.UUID, item_id: uuid.UUID, body: LinkIn, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: LinkIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> LinkOut:
-    """Count a document in this item. 404 when it is another project's; 409 when another item counts it."""
+    """Count a document in this item (owner or manager). 404 when it is another project's; 409 when another item counts it."""
     await verify_project_access(project_id, user_id, session)
     link = await _run(
-        CommitmentService(session).add_link(project_id, item_id, body.kind, body.document_id, actor_id=_uid(user_id))
+        CommitmentService(session).add_link(
+            project_id, item_id, body.kind, body.document_id, actor_id=_uid(user_id), manage=_may_manage(payload)
+        )
     )
     return LinkOut.model_validate(link)
 
 
 @router.delete("/projects/{project_id}/items/{item_id}/links/{link_id}", status_code=204, dependencies=[EDIT])
 async def remove_link(
-    project_id: uuid.UUID, item_id: uuid.UUID, link_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    link_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> Response:
     await verify_project_access(project_id, user_id, session)
-    await _run(CommitmentService(session).remove_link(project_id, item_id, link_id, actor_id=_uid(user_id)))
+    await _run(
+        CommitmentService(session).remove_link(
+            project_id, item_id, link_id, actor_id=_uid(user_id), manage=_may_manage(payload)
+        )
+    )
     return Response(status_code=204)
 
 
 @router.post("/projects/{project_id}/items/{item_id}/preconditions", status_code=201, dependencies=[EDIT])
 async def add_precondition(
-    project_id: uuid.UUID, item_id: uuid.UUID, body: PreconditionIn, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: PreconditionIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = CommitmentService(session)
     await _run(
         svc.add_precondition(
-            project_id, item_id, kind=body.kind, ref_id=body.ref_id, text=body.text, actor_id=_uid(user_id)
+            project_id,
+            item_id,
+            kind=body.kind,
+            ref_id=body.ref_id,
+            text=body.text,
+            actor_id=_uid(user_id),
+            manage=_may_manage(payload),
         )
     )
-    return await _view(svc, project_id, item_id, _today(None))
+    return await _view(svc, project_id, item_id, _today(None), user_id, payload)
 
 
 @router.post("/projects/{project_id}/items/{item_id}/preconditions/{precondition_id}/confirm", dependencies=[EDIT])
@@ -512,16 +615,26 @@ async def confirm_precondition(
     body: PreconditionConfirm,
     session: SessionDep,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    """Tick (or untick) a manual precondition; linked kinds are computed and refuse a tick."""
+    """Tick (or untick) a manual precondition; linked kinds are computed and refuse a tick.
+
+    Whoever confirms a precondition cannot approve the item's release under four eyes.
+    """
     await verify_project_access(project_id, user_id, session)
     svc = CommitmentService(session)
     await _run(
         svc.confirm_precondition(
-            project_id, item_id, precondition_id, met=body.met, evidence_ref=body.evidence_ref, actor_id=_uid(user_id)
+            project_id,
+            item_id,
+            precondition_id,
+            met=body.met,
+            evidence_ref=body.evidence_ref,
+            actor_id=_uid(user_id),
+            manage=_may_manage(payload),
         )
     )
-    return await _view(svc, project_id, item_id, _today(None))
+    return await _view(svc, project_id, item_id, _today(None), user_id, payload)
 
 
 # ── releases ───────────────────────────────────────────────────────────────
@@ -534,12 +647,11 @@ async def preview_release(
     body: ReleaseRequest,
     session: SessionDep,
     user_id: CurrentUserId,
-    today: date | None = None,
 ) -> dict[str, Any]:
     """The tier, its approvers and the FX rate a request would use; nothing is written."""
     await verify_project_access(project_id, user_id, session)
     svc = CommitmentService(session)
-    e = await _run(svc.preview_release(project_id, item_id, body.amount, body.currency, today=_today(today)))
+    e = await _run(svc.preview_release(project_id, item_id, body.amount, body.currency, today=_today(None)))
     return svc.evaluation_out(e)
 
 
@@ -552,9 +664,9 @@ async def request_release(
     body: ReleaseRequest,
     session: SessionDep,
     user_id: CurrentUserId,
-    today: date | None = None,
+    payload: CurrentUserPayload,
 ) -> ReleaseOut:
-    """Start the approval of the required tier. 409 ``release_pending`` when one is already running."""
+    """Start the approval of the required tier (owner or manager). 409 ``release_pending`` when one is running."""
     await verify_project_access(project_id, user_id, session)
     decision = await _run(
         CommitmentService(session).request_release(
@@ -565,7 +677,8 @@ async def request_release(
             tranche_note=body.tranche_note,
             external_approval_ref=body.external_approval_ref,
             actor_id=_uid(user_id),
-            today=_today(today),
+            today=_today(None),
+            manage=_may_manage(payload),
         )
     )
     return ReleaseOut.model_validate(decision)
@@ -583,10 +696,106 @@ async def withdraw_release(
     await verify_project_access(project_id, user_id, session)
     decision = await _run(
         CommitmentService(session).withdraw_release(
-            project_id, item_id, actor_id=_uid(user_id), role=_role(payload), reason=body.reason
+            project_id, item_id, actor_id=_uid(user_id), manage=_may_manage(payload), reason=body.reason
         )
     )
     return ReleaseOut.model_validate(decision)
+
+
+@router.post("/projects/{project_id}/items/{item_id}/releases/decide", response_model=ReleaseOut, dependencies=[READ])
+async def decide_release(
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: DecideIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> ReleaseOut:
+    """Approve or reject the pending request as a holder of its tier.
+
+    Release authority is not a permission: 403 ``not_entitled_decider`` unless the caller is the
+    step's approver, their delegate, another active assignee of an ``any`` tier, or a deputy.
+    403 ``four_eyes_violation`` for the requester, the owner and whoever confirmed a precondition.
+    A rejection without ``comment`` is 422 ``rationale_required``.
+    """
+    await verify_project_access(project_id, user_id, session)
+    decision = await _run(
+        CommitmentService(session).decide_release(
+            project_id,
+            item_id,
+            decision=body.decision,
+            comment=body.comment,
+            conditions=body.conditions,
+            valid_until=body.valid_until,
+            actor_id=_uid(user_id),
+            # Passed through to approval_routes, which checks a role step against it.
+            caller_role=str(payload.get("role") or "") or None,
+            today=_today(None),
+        )
+    )
+    return ReleaseOut.model_validate(decision)
+
+
+@router.post(
+    "/projects/{project_id}/items/{item_id}/abort", response_model=ReleaseOut, status_code=201, dependencies=[EDIT]
+)
+async def request_abort(
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: AbortIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> ReleaseOut:
+    """Ask to stop the item. Decided on the tier its residual loss calls for; then the item is ``aborted``.
+
+    422 ``abort_exposure_unknown`` while the abort terms do not give a residual loss.
+    """
+    await verify_project_access(project_id, user_id, session)
+    decision = await _run(
+        CommitmentService(session).request_abort(
+            project_id,
+            item_id,
+            reason=body.reason,
+            actor_id=_uid(user_id),
+            today=_today(None),
+            manage=_may_manage(payload),
+        )
+    )
+    return ReleaseOut.model_validate(decision)
+
+
+@router.post("/projects/{project_id}/items/{item_id}/transfer", dependencies=[MANAGE])
+async def transfer_item(
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: TransferIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> dict[str, Any]:
+    """End the item as ``transferred``: its links move to the target item, its decisions stay.
+
+    The target is an item of this project, or of another project the caller can see when the
+    source has no linked documents (409 ``transfer_links_stay_in_project`` otherwise).
+    """
+    await verify_project_access(project_id, user_id, session)
+    target_project = body.target_project_id or project_id
+    if target_project != project_id:
+        await verify_project_access(target_project, user_id, session)
+    svc = CommitmentService(session)
+    await _run(
+        svc.transfer_item(
+            project_id,
+            item_id,
+            target_project_id=target_project,
+            target_item_id=body.target_item_id,
+            reason=body.reason,
+            actor_id=_uid(user_id),
+            manage=True,
+        )
+    )
+    return await _view(svc, project_id, item_id, _today(None), user_id, payload)
 
 
 @router.get("/projects/{project_id}/items/{item_id}/releases", response_model=Page[ReleaseOut], dependencies=[READ])
@@ -628,7 +837,12 @@ async def put_abort_terms(
     data = body.model_dump(mode="json")
     row = await _run(
         CommitmentService(session).put_abort_terms(
-            project_id, item_id, data, actor_id=_uid(user_id), role=_role(payload)
+            project_id,
+            item_id,
+            data,
+            actor_id=_uid(user_id),
+            manage=_may_manage(payload),
+            tenant_id=resolve_tenant_id(payload),
         )
     )
     return AbortTermsOut.model_validate(row)

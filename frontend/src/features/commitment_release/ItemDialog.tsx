@@ -1,0 +1,278 @@
+// DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+// Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+//
+// Adding or editing a commitment item: what the project intends to commit,
+// how much, of which type, and by when the decision is needed. The type and
+// the amount decide who approves, so the type is fixed once a release was
+// requested and the dialog says so instead of offering a select that the
+// server would refuse.
+
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useMutation } from '@tanstack/react-query';
+
+import { Button } from '@/shared/ui/Button';
+import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
+import { WideModal } from '@/shared/ui/WideModal';
+
+import { createItem, updateItem, type CommitmentItem, type CommitmentMatrix } from './api';
+import { FIELD_CLASS, Field, RefusalBox, refusalText } from './CommitmentBits';
+import { PLANNED_SOURCE, codeName, vocab, type LabelContext } from './labels';
+import { ITEM_PROBLEM, draftOfItem, itemProblems, toItemInput, type ItemDraft } from './rules';
+
+export interface ItemDialogProps {
+  open: boolean;
+  onClose: () => void;
+  projectId: string;
+  matrix: CommitmentMatrix;
+  /** The item to edit, or null to add one. */
+  item: CommitmentItem | null;
+  labels: LabelContext;
+  personName: (userId: string | null | undefined) => string | null;
+  onSaved: (item: CommitmentItem) => void;
+}
+
+export function ItemDialog({ open, onClose, projectId, matrix, item, labels, personName, onSaved }: ItemDialogProps) {
+  const { t } = useTranslation();
+  const mode = item ? 'edit' : 'create';
+  const [draft, setDraft] = useState<ItemDraft>(() => draftOfItem(item, matrix.base_currency));
+  const [tried, setTried] = useState(false);
+  const problems = itemProblems(draft, mode);
+  const typeFixed = !!item && item.status !== 'planned';
+  // A planned amount read from a budget line, a cost line or a position is
+  // set where that record lives; this dialog only types an estimate.
+  const amountEditable = draft.plannedSource === 'manual';
+  const set = (patch: Partial<ItemDraft>) => setDraft((d) => ({ ...d, ...patch }));
+
+  const save = useMutation({
+    mutationFn: () => {
+      const input = toItemInput(draft, mode);
+      if (typeFixed) delete input.commitment_type;
+      return item ? updateItem(projectId, item.id, input) : createItem(projectId, input);
+    },
+    onSuccess: (saved) => {
+      onSaved(saved);
+      onClose();
+    },
+  });
+
+  const submit = () => {
+    setTried(true);
+    if (problems.length === 0) save.mutate();
+  };
+
+  return (
+    <WideModal
+      open={open}
+      onClose={onClose}
+      busy={save.isPending}
+      size="lg"
+      testId="item-dialog"
+      title={
+        item
+          ? t('commitment.item_form.edit_title', { defaultValue: 'Edit commitment item' })
+          : t('commitment.item_form.add_title', { defaultValue: 'Add commitment item' })
+      }
+      subtitle={t('commitment.item_form.subtitle', {
+        defaultValue: 'One line for one thing the project will commit money to: a works package, an order, a design appointment.',
+      })}
+      footer={
+        <div className="flex w-full flex-wrap items-center justify-end gap-3">
+          {tried && problems.length > 0 && (
+            <ul className="mr-auto space-y-0.5 text-xs text-semantic-error" data-testid="item-problems">
+              {problems.map((p) => (
+                <li key={p} data-problem={p}>
+                  {t(ITEM_PROBLEM[p][0], { defaultValue: ITEM_PROBLEM[p][1] })}
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button variant="ghost" onClick={onClose} disabled={save.isPending}>
+            {t('commitment.cancel', { defaultValue: 'Cancel' })}
+          </Button>
+          <Button variant="primary" loading={save.isPending} onClick={submit} data-testid="item-save">
+            {item
+              ? t('commitment.item_form.save', { defaultValue: 'Save item' })
+              : t('commitment.item_form.add', { defaultValue: 'Add item' })}
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        {save.isError && <RefusalBox message={refusalText(t, save.error)} />}
+
+        <div className="grid gap-3 sm:grid-cols-[1fr_3fr]">
+          <Field id="item-code" label={t('commitment.item_form.code', { defaultValue: 'Code' })} required={!item}>
+            <input
+              id="item-code"
+              className={FIELD_CLASS}
+              value={draft.code}
+              disabled={!!item}
+              onChange={(e) => set({ code: e.target.value })}
+            />
+          </Field>
+          <Field id="item-title" label={t('commitment.item_form.title', { defaultValue: 'What is committed' })} required>
+            <input
+              id="item-title"
+              className={FIELD_CLASS}
+              value={draft.title}
+              onChange={(e) => set({ title: e.target.value })}
+            />
+          </Field>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field
+            id="item-type"
+            label={t('commitment.grid.type', { defaultValue: 'Type' })}
+            hint={
+              typeFixed
+                ? t('commitment.item_form.type_fixed', {
+                    defaultValue: 'The type cannot change once a release was requested.',
+                  })
+                : t('commitment.item_form.type_hint', {
+                    defaultValue: 'With the amount, the type decides which tier approves.',
+                  })
+            }
+            required
+          >
+            <select
+              id="item-type"
+              className={FIELD_CLASS}
+              value={draft.commitmentType}
+              disabled={typeFixed}
+              onChange={(e) => set({ commitmentType: e.target.value })}
+            >
+              <option value="">{t('commitment.item_form.choose_type', { defaultValue: 'Choose a type' })}</option>
+              {matrix.commitment_types.map((ct) => (
+                <option key={ct.code} value={ct.code}>
+                  {codeName(labels, 'type', ct.code, ct.name)}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field id="item-owner" label={t('commitment.item_form.owner', { defaultValue: 'Owner' })}>
+            <ProjectPeopleSelect
+              id="item-owner"
+              projectId={projectId}
+              value={draft.ownerUserId}
+              displayValue={personName(draft.ownerUserId) ?? undefined}
+              onChange={(userId) => set({ ownerUserId: userId })}
+              placeholder={t('commitment.item_form.owner_placeholder', { defaultValue: 'Who looks after this item' })}
+            />
+          </Field>
+        </div>
+
+        {amountEditable ? (
+          <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
+            <Field
+              id="item-amount"
+              label={t('commitment.item_form.planned_amount', { defaultValue: 'Planned amount (estimate)' })}
+              required
+            >
+              <input
+                id="item-amount"
+                inputMode="decimal"
+                autoComplete="off"
+                className={FIELD_CLASS}
+                value={draft.plannedAmount}
+                onChange={(e) => set({ plannedAmount: e.target.value })}
+              />
+            </Field>
+            <Field id="item-currency" label={t('commitment.release.currency', { defaultValue: 'Currency' })} required>
+              <input
+                id="item-currency"
+                maxLength={3}
+                className={FIELD_CLASS}
+                value={draft.currency}
+                onChange={(e) => set({ currency: e.target.value.toUpperCase() })}
+              />
+            </Field>
+          </div>
+        ) : (
+          <p className="rounded-md bg-surface-secondary p-3 text-sm text-content-secondary" data-testid="item-amount-derived">
+            {t('commitment.item_form.amount_derived', {
+              defaultValue: 'The planned amount is read from: {{source}}. Change it there.',
+              source: vocab(t, PLANNED_SOURCE, draft.plannedSource),
+            })}
+          </p>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field
+            id="item-decision-date"
+            label={t('commitment.grid.latest_decision_date', { defaultValue: 'Latest decision date' })}
+            hint={t('commitment.item_form.decision_date_hint', {
+              defaultValue: 'The day the release has to be decided so the work or delivery starts on time.',
+            })}
+          >
+            <input
+              id="item-decision-date"
+              type="date"
+              className={FIELD_CLASS}
+              value={draft.latestDecisionDate}
+              onChange={(e) => set({ latestDecisionDate: e.target.value })}
+            />
+          </Field>
+          <Field id="item-lead" label={t('commitment.item_form.lead_time', { defaultValue: 'Lead time, days' })}>
+            <input
+              id="item-lead"
+              inputMode="numeric"
+              className={FIELD_CLASS}
+              value={draft.leadTimeDays}
+              onChange={(e) => set({ leadTimeDays: e.target.value })}
+            />
+          </Field>
+          <Field id="item-buffer" label={t('commitment.item_form.buffer', { defaultValue: 'Decision buffer, days' })}>
+            <input
+              id="item-buffer"
+              inputMode="numeric"
+              className={FIELD_CLASS}
+              value={draft.decisionBufferDays}
+              onChange={(e) => set({ decisionBufferDays: e.target.value })}
+            />
+          </Field>
+        </div>
+
+        {matrix.novelty_flags.length > 0 && (
+          <fieldset className="rounded-lg border border-border-light p-3">
+            <legend className="px-1 text-xs font-semibold text-content-secondary">
+              {t('commitment.item_form.flags', { defaultValue: 'Raises the approval tier' })}
+            </legend>
+            {matrix.novelty_flags.map((flag) => (
+              <label key={flag.code} className="mr-4 inline-flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={draft.flags.includes(flag.code)}
+                  onChange={() =>
+                    set({
+                      flags: draft.flags.includes(flag.code)
+                        ? draft.flags.filter((f) => f !== flag.code)
+                        : [...draft.flags, flag.code],
+                    })
+                  }
+                />
+                {codeName(labels, 'flag', flag.code, flag.name)}
+              </label>
+            ))}
+          </fieldset>
+        )}
+
+        <Field
+          id="item-split"
+          label={t('commitment.item_form.split_group', { defaultValue: 'Split group' })}
+          hint={t('commitment.item_form.split_group_hint', {
+            defaultValue: 'Give the same name to items that are parts of one purchase. Their amounts are added up when the tier is worked out.',
+          })}
+        >
+          <input
+            id="item-split"
+            className={FIELD_CLASS}
+            value={draft.splitGroup}
+            onChange={(e) => set({ splitGroup: e.target.value })}
+          />
+        </Field>
+      </div>
+    </WideModal>
+  );
+}

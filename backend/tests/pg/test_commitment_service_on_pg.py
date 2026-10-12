@@ -297,3 +297,45 @@ async def test_an_item_on_a_gate_names_its_management_area(world: World) -> None
     with pytest.raises(CommitmentError) as exc:
         await item(world, code="G-1", amount="1000", gate_code="strategy_to_brief")
     assert exc.value.code == "governance_area_required"
+
+
+async def test_a_drawdown_line_in_a_currency_without_a_rate_is_refused_with_a_code(world: World) -> None:
+    """Review finding 11: the missing rate is a coded refusal at request time, never an unhandled error."""
+    from app.modules.finance.models import ProjectBudget
+
+    async with world.factory() as s:
+        s.add(
+            ProjectBudget(
+                project_id=world.project_id,
+                category="contingency",
+                currency_code="XTS",
+                original_budget=Decimal("100000"),
+                revised_budget=Decimal("100000"),
+                metadata_={},
+            )
+        )
+        await s.commit()
+    iid = await item(world, code="CD-X", amount="10000", ctype="contingency_drawdown")
+    with pytest.raises(CommitmentError) as exc:
+        await request(world, iid, "10000")
+    assert (exc.value.code, exc.value.status_code) == ("fx_rate_missing", 422)
+    assert (await state(world, iid)).status == "planned"
+
+
+async def test_a_drawdown_whose_line_vanished_while_waiting_is_rejected_not_stranded(world: World) -> None:
+    """Review finding 11: an approval that cannot write its drawdown closes the request with the code."""
+    from app.modules.commitment_release.models import ReleaseDecision
+    from app.modules.finance.models import ProjectBudget
+
+    line = await _contingency_line(world, "100000")
+    iid = await item(world, code="CD-V", amount="10000", ctype="contingency_drawdown")
+    d = await request(world, iid, "10000")
+    async with world.factory() as s:
+        row = await s.get(ProjectBudget, line)
+        row.category = "works"
+        await s.commit()
+    await decide(world, d, world.pm)
+    async with world.factory() as s:
+        late = await s.get(ReleaseDecision, d.id)
+    assert (late.outcome, late.rationale) == ("rejected", "contingency_line_required")
+    assert (await state(world, iid)).status == "planned"

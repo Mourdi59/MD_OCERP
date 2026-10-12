@@ -1,0 +1,639 @@
+// DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+// Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+//
+// REST client for the commitment and release matrix: what the project plans
+// to commit, what was released in which tranche, who approves at which amount
+// and what an abort would cost.
+//
+// Backend module: backend/app/modules/commitment_release/router.py, mounted at
+// /api/v1/commitment-release/. Every project route lives under
+// /projects/{project_id}/ there.
+//
+// Money travels as decimal strings in both directions and is never turned
+// into a number here. Errors arrive as
+// `detail = {code, message_key, message, violations?, info?}`; the screens
+// read `code` to explain a refusal and fall back to `getErrorMessage`.
+
+import { API_BASE, ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
+
+const BASE = '/v1/commitment-release';
+
+/** A label as the API sends it: a message key for shipped items, texts per locale for tenant ones. */
+export interface CommitmentLabel {
+  key: string | null;
+  text: Record<string, string> | null;
+}
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export type Enforcement = 'off' | 'warn' | 'block';
+export type FxPolicy = 'fx_service_rate_set' | 'project_rates';
+export type PlannedSource = 'budget_line' | 'cost_line' | 'boq_position' | 'manual';
+export type CatalogueSource = 'shipped' | 'tenant';
+export type ItemStatus =
+  | 'planned'
+  | 'release_requested'
+  | 'released'
+  | 'partially_released'
+  | 'committed'
+  | 'closed'
+  | 're_release_required'
+  | 'on_hold'
+  | 'aborted'
+  | 'transferred';
+export type LinkKind =
+  | 'contract'
+  | 'contract_line'
+  | 'purchase_order'
+  | 'change_order'
+  | 'variation_order'
+  | 'tender_package'
+  | 'bid_package'
+  | 'rfq';
+export type PreconditionKind =
+  | 'manual'
+  | 'gate_decided'
+  | 'frame_document_binding'
+  | 'funding_approved'
+  | 'permit'
+  | 'budget_available'
+  | 'public_commitment_appropriation';
+export type ReleaseOutcome = 'pending' | 'released' | 'rejected' | 'withdrawn';
+export type DateBasis = 'fixed' | 'late_start' | 'start_date' | 'none';
+export type Transferable = 'no' | 'to_project' | 'resale';
+
+export interface Approver {
+  kind: 'role' | 'project_role' | 'user';
+  ref: string;
+}
+
+export interface MatrixTier {
+  code: string;
+  name: CommitmentLabel;
+  approver: Approver;
+  steps_mode: 'all' | 'any';
+  four_eyes: boolean;
+  route_id: string | null;
+}
+
+export interface MatrixCode {
+  code: string;
+  name: CommitmentLabel;
+  min_tier?: string | null;
+}
+
+export interface CommitmentMatrix {
+  id: string;
+  project_id: string;
+  schedule_source: CatalogueSource;
+  schedule_id: string;
+  schedule_version: number;
+  enforcement: Enforcement;
+  fx_policy: FxPolicy;
+  require_link: boolean;
+  tier_routes: Record<string, string>;
+  legal_entity_id: string | null;
+  base_currency: string;
+  schedule_currency: string;
+  tiers: MatrixTier[];
+  commitment_types: MatrixCode[];
+  novelty_flags: MatrixCode[];
+}
+
+export interface MatrixInput {
+  schedule_source?: CatalogueSource;
+  schedule_id?: string;
+  schedule_version?: number;
+  enforcement?: Enforcement;
+  fx_policy?: FxPolicy;
+  require_link?: boolean;
+}
+
+export interface CatalogueSummary {
+  kind: string;
+  source: CatalogueSource;
+  id: string;
+  code: string;
+  name: CommitmentLabel;
+  state: string;
+  versions: number[];
+  latest_version: number | null;
+  review_status: string;
+  jurisdiction_countries: string[];
+}
+
+export interface AbortBasis extends CatalogueSummary {
+  method?: string;
+  source_url?: string;
+}
+
+export interface Assignment {
+  id: string;
+  project_role: string;
+  user_id: string;
+  deputy_user_id: string | null;
+  valid_from: string | null;
+  valid_to: string | null;
+}
+
+export interface AssignmentInput {
+  project_role: string;
+  user_id: string;
+  deputy_user_id?: string | null;
+  valid_from?: string | null;
+  valid_to?: string | null;
+}
+
+/** What route generation did per tier. */
+export type RouteReport = 'created' | 'replaced' | 'unchanged' | 'edited' | 'unfilled';
+
+export interface Precondition {
+  id: string;
+  kind: PreconditionKind;
+  ref_id: string | null;
+  text: string;
+  state: string;
+  evidence_ref: string | null;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+}
+
+export interface ItemLink {
+  link_id: string;
+  kind: LinkKind;
+  document_id: string;
+  currency: string;
+  document_amount: string;
+  counted_amount: string;
+  counts: boolean;
+  closed: boolean;
+  status: string | null;
+  found: boolean;
+  notes: string[];
+}
+
+export interface ExposureLine {
+  code: string;
+  amount?: string;
+  pct?: string;
+  milestone?: string;
+}
+
+/** `residual_loss` null means unknown. It is never shown as zero. */
+export interface Exposure {
+  sunk?: string | null;
+  committed?: string | null;
+  committed_not_spent?: string | null;
+  cancellation_charge?: string | null;
+  recoverable?: string | null;
+  residual_loss: string | null;
+  reason?: string | null;
+  method?: string | null;
+  basis_review_status?: string | null;
+  lines?: ExposureLine[];
+  currency: string;
+  as_of?: string;
+  basis_code?: string | null;
+  transferable?: Transferable | null;
+  note?: string;
+}
+
+export interface CommitmentItem {
+  id: string;
+  code: string;
+  title: string;
+  commitment_type: string;
+  status: ItemStatus;
+  attempt_no: number;
+  flags: string[];
+  governance_area_code: string | null;
+  gate_code: string | null;
+  deferred: boolean;
+  deferred_reason: string | null;
+  split_group: string | null;
+  owner_user_id: string | null;
+  planned_source: PlannedSource;
+  lead_time_days: number | null;
+  decision_buffer_days: number | null;
+  latest_decision_date_fixed: string | null;
+  planned: { amount: string | null; currency: string; note: string | null };
+  schedule_currency: string;
+  planned_in_schedule_currency: string | null;
+  released: string | null;
+  /** null when a linked amount has no exchange rate, see `committed_reason`. */
+  committed: string | null;
+  committed_reason: string | null;
+  release_ceiling_with_tolerance: string | null;
+  over_release: boolean;
+  /** A tier code, or `escalate_outside` when the amount is above every tier. */
+  required_tier_for_planned: string | null;
+  latest_decision_date: string | null;
+  date_basis: DateBasis;
+  decision_overdue: boolean;
+  preconditions: Precondition[];
+  open_preconditions: number;
+  links: ItemLink[];
+  pending_release_id: string | null;
+  exposure?: Exposure;
+}
+
+export interface ItemTotals {
+  currency: string;
+  planned: string | null;
+  released: string | null;
+  committed: string | null;
+  mixed_currency: boolean;
+  /** Which of the three totals leave out an item that could not be converted. */
+  incomplete: string[];
+}
+
+export interface ItemsResponse extends Page<CommitmentItem> {
+  totals: ItemTotals;
+}
+
+export interface ItemInput {
+  code?: string;
+  title?: string;
+  commitment_type?: string;
+  planned_source?: PlannedSource;
+  planned_manual_amount?: string | null;
+  currency?: string | null;
+  owner_user_id?: string | null;
+  lead_time_days?: number | null;
+  decision_buffer_days?: number | null;
+  latest_decision_date_fixed?: string | null;
+  flags?: string[];
+  split_group?: string | null;
+  deferred?: boolean;
+  deferred_reason?: string | null;
+}
+
+export interface ReleaseInput {
+  amount: string;
+  currency?: string;
+  tranche_note: string;
+  external_approval_ref: string;
+}
+
+export interface FxQuote {
+  from: string;
+  to: string;
+  rate: string;
+  as_of: string | null;
+  source: string;
+  rate_set_id: string | null;
+}
+
+/** What a release request would need. The preview writes nothing. */
+export interface ReleasePreview {
+  amount: string;
+  currency: string;
+  schedule_currency: string;
+  amount_in_schedule_currency: string;
+  fx: FxQuote;
+  released_before: string;
+  group_released: string;
+  evaluated_amount: string;
+  required_tier: string | null;
+  escalate_outside: boolean;
+  band_code: string | null;
+  raised_by: string[];
+  route_tier: string | null;
+  route_id: string | null;
+  /** User ids, or `role:<name>` for a step a role decides. */
+  approvers: string[];
+  schedule: string;
+  open_preconditions: Precondition[];
+}
+
+export interface Release {
+  id: string;
+  item_id: string;
+  attempt: number;
+  requested_amount: string;
+  currency: string;
+  schedule_currency: string;
+  amount_in_schedule_currency: string;
+  fx_rate_used: string;
+  fx_rate_date: string | null;
+  fx_source: string;
+  evaluated_amount: string;
+  cumulative_after: string;
+  required_tier: string | null;
+  escalate_outside: boolean;
+  external_approval_ref: string;
+  approval_instance_id: string | null;
+  outcome: ReleaseOutcome;
+  requested_by: string | null;
+  decided_by: string | null;
+  on_behalf_of: string | null;
+  decided_at: string | null;
+  tranche_note: string;
+  conditions: string;
+  rationale: string;
+  valid_until: string | null;
+  created_at: string;
+}
+
+export interface ScheduleStep {
+  milestone: string;
+  from_date?: string | null;
+  progress_pct?: string | null;
+  charge_amount?: string | null;
+  charge_pct?: string | null;
+}
+
+export interface AbortTerms {
+  id: string;
+  item_id: string;
+  scope: string;
+  basis_code: string | null;
+  basis_source: CatalogueSource;
+  cancellation_schedule: ScheduleStep[];
+  parameters: Record<string, string>;
+  transferable: Transferable;
+  transfer_value_estimate: string | null;
+  salvage_value_estimate: string | null;
+  saved_cost_estimate: string | null;
+  other_charge_estimate: string | null;
+  progress_pct: string | null;
+  notice_days: number | null;
+  source_note: string;
+  entered_by: string | null;
+  entered_at: string | null;
+}
+
+export interface AbortTermsInput {
+  link_id: string | null;
+  basis_code: string | null;
+  basis_source: CatalogueSource;
+  cancellation_schedule: ScheduleStep[];
+  transferable: Transferable;
+  transfer_value_estimate: string | null;
+  salvage_value_estimate: string | null;
+  saved_cost_estimate: string | null;
+  other_charge_estimate: string | null;
+  /** How far the work has come, as a fraction; cancellation steps by progress read it. */
+  progress_pct: string | null;
+  /** Contract figures a basis asks for, kept as they were entered. */
+  parameters: Record<string, string>;
+  notice_days: number | null;
+  source_note: string;
+}
+
+export interface ExposureRow extends Exposure {
+  item_id: string;
+  code: string;
+  status: ItemStatus;
+}
+
+export interface ExposureResponse {
+  as_of: string;
+  currency: string;
+  items: ExposureRow[];
+  total_residual_loss: string;
+  unknown_count: number;
+}
+
+export interface Scenario {
+  id: string;
+  as_of: string;
+  label: string;
+  payload: ExposureResponse;
+}
+
+export interface EvaluateInput {
+  schedule_source: CatalogueSource;
+  schedule_id: string;
+  schedule_version?: number;
+  commitment_type: string;
+  amount: string;
+  flags: string[];
+}
+
+export interface EvaluateResult {
+  required_tier: string | null;
+  escalate_outside: boolean;
+  band_code: string | null;
+  raised_by: string[];
+  currency: string;
+  approver: Approver | null;
+}
+
+export interface Finding {
+  rule_id: string;
+  passed: boolean;
+  severity: string;
+  message: string;
+  element_ref: string | null;
+  suggestion: string | null;
+}
+
+/** One entry of `detail.violations`: the backend sends at least a code. */
+export interface CommitmentViolation {
+  code: string;
+  message?: string;
+  /** The precondition id for `precondition_open`. */
+  ref?: string;
+  kind?: string;
+}
+
+function detailOf(err: unknown): Record<string, unknown> | null {
+  if (!(err instanceof ApiError)) return null;
+  const body = err.body as { detail?: unknown } | null;
+  const detail = body && typeof body === 'object' ? body.detail : null;
+  return detail && typeof detail === 'object' && !Array.isArray(detail) ? (detail as Record<string, unknown>) : null;
+}
+
+/** The error code the backend put in `detail.code`, or null for any other failure. */
+export function commitmentErrorCode(err: unknown): string | null {
+  const code = detailOf(err)?.code;
+  return typeof code === 'string' ? code : null;
+}
+
+/** The sentence the server wrote for the refusal, already in the reader's language. */
+export function commitmentErrorMessage(err: unknown): string | null {
+  const message = detailOf(err)?.message;
+  return typeof message === 'string' && message.trim() ? message : null;
+}
+
+/** What a refusal listed (open preconditions, catalogue rule breaks), so the dialog shows all of them. */
+export function commitmentViolations(err: unknown): CommitmentViolation[] {
+  const list = detailOf(err)?.violations;
+  if (!Array.isArray(list)) return [];
+  return list.filter((v): v is CommitmentViolation => !!v && typeof v === 'object');
+}
+
+/** Today as the calendar day the reader is living in, not UTC. */
+export function localToday(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+export const commitmentKeys = {
+  all: ['commitment-release'] as const,
+  project: (projectId: string) => ['commitment-release', projectId] as const,
+  matrix: (projectId: string) => ['commitment-release', projectId, 'matrix'] as const,
+  items: (projectId: string) => ['commitment-release', projectId, 'items'] as const,
+  item: (projectId: string, itemId: string) => ['commitment-release', projectId, 'item', itemId] as const,
+  releases: (projectId: string, itemId: string) => ['commitment-release', projectId, 'releases', itemId] as const,
+  abortTerms: (projectId: string, itemId: string) => ['commitment-release', projectId, 'abort-terms', itemId] as const,
+  assignments: (projectId: string) => ['commitment-release', projectId, 'assignments'] as const,
+  exposure: (projectId: string, asOf: string) => ['commitment-release', projectId, 'exposure', asOf] as const,
+  scenarios: (projectId: string) => ['commitment-release', projectId, 'scenarios'] as const,
+  findings: (projectId: string) => ['commitment-release', projectId, 'findings'] as const,
+  documents: (projectId: string, kind: string) => ['commitment-release', projectId, 'documents', kind] as const,
+  schedules: ['commitment-release', 'schedules'] as const,
+  abortBases: ['commitment-release', 'abort-bases'] as const,
+};
+
+const p = (projectId: string) => `${BASE}/projects/${projectId}`;
+
+/* ── Catalogues ───────────────────────────────────────────────────────── */
+
+export function listSchedules(): Promise<Page<CatalogueSummary>> {
+  return apiGet<Page<CatalogueSummary>>(`${BASE}/authority-schedules`);
+}
+
+export function listAbortBases(): Promise<Page<AbortBasis>> {
+  return apiGet<Page<AbortBasis>>(`${BASE}/abort-bases`);
+}
+
+export function evaluateSchedule(body: EvaluateInput): Promise<EvaluateResult> {
+  return apiPost<EvaluateResult>(`${BASE}/authority-schedules/evaluate`, body);
+}
+
+/* ── Matrix, assignments and routes ───────────────────────────────────── */
+
+export function getMatrix(projectId: string): Promise<CommitmentMatrix> {
+  return apiGet<CommitmentMatrix>(`${p(projectId)}/matrix`);
+}
+
+export function setMatrix(projectId: string, body: MatrixInput): Promise<CommitmentMatrix> {
+  return apiPut<CommitmentMatrix>(`${p(projectId)}/matrix`, body);
+}
+
+export function listAssignments(projectId: string): Promise<Page<Assignment>> {
+  return apiGet<Page<Assignment>>(`${p(projectId)}/assignments`);
+}
+
+export function putAssignments(projectId: string, assignments: AssignmentInput[]): Promise<Page<Assignment>> {
+  return apiPut<Page<Assignment>>(`${p(projectId)}/assignments?today=${localToday()}`, { assignments });
+}
+
+export function generateRoutes(projectId: string, force: boolean): Promise<{ tiers: Record<string, RouteReport> }> {
+  return apiPost<{ tiers: Record<string, RouteReport> }>(`${p(projectId)}/routes/generate?today=${localToday()}`, {
+    force,
+  });
+}
+
+export function pinTierRoute(projectId: string, tierCode: string, routeId: string): Promise<CommitmentMatrix> {
+  return apiPut<CommitmentMatrix>(`${p(projectId)}/routes/${encodeURIComponent(tierCode)}`, { route_id: routeId });
+}
+
+/* ── Items ────────────────────────────────────────────────────────────── */
+
+export function listItems(projectId: string): Promise<ItemsResponse> {
+  return apiGet<ItemsResponse>(`${p(projectId)}/items?today=${localToday()}&with_exposure=true`);
+}
+
+export function getItem(projectId: string, itemId: string): Promise<CommitmentItem> {
+  return apiGet<CommitmentItem>(`${p(projectId)}/items/${itemId}?today=${localToday()}`);
+}
+
+export function createItem(projectId: string, body: ItemInput): Promise<CommitmentItem> {
+  return apiPost<CommitmentItem>(`${p(projectId)}/items`, body);
+}
+
+export function updateItem(projectId: string, itemId: string, body: ItemInput): Promise<CommitmentItem> {
+  return apiPatch<CommitmentItem>(`${p(projectId)}/items/${itemId}`, body);
+}
+
+export function holdItem(projectId: string, itemId: string, hold: boolean, reason: string): Promise<CommitmentItem> {
+  return apiPost<CommitmentItem>(`${p(projectId)}/items/${itemId}/hold`, { hold, reason });
+}
+
+export function addLink(projectId: string, itemId: string, kind: LinkKind, documentId: string): Promise<unknown> {
+  return apiPost<unknown>(`${p(projectId)}/items/${itemId}/links`, { kind, document_id: documentId });
+}
+
+export function removeLink(projectId: string, itemId: string, linkId: string): Promise<void> {
+  return apiDelete(`${p(projectId)}/items/${itemId}/links/${linkId}`);
+}
+
+export function addPrecondition(
+  projectId: string,
+  itemId: string,
+  body: { kind: PreconditionKind; ref_id?: string | null; text: string },
+): Promise<CommitmentItem> {
+  return apiPost<CommitmentItem>(`${p(projectId)}/items/${itemId}/preconditions`, body);
+}
+
+export function confirmPrecondition(
+  projectId: string,
+  itemId: string,
+  preconditionId: string,
+  body: { met: boolean; evidence_ref: string },
+): Promise<CommitmentItem> {
+  return apiPost<CommitmentItem>(`${p(projectId)}/items/${itemId}/preconditions/${preconditionId}/confirm`, body);
+}
+
+/* ── Releases ─────────────────────────────────────────────────────────── */
+
+export function previewRelease(projectId: string, itemId: string, body: ReleaseInput): Promise<ReleasePreview> {
+  return apiPost<ReleasePreview>(`${p(projectId)}/items/${itemId}/releases/preview?today=${localToday()}`, body);
+}
+
+export function requestRelease(projectId: string, itemId: string, body: ReleaseInput): Promise<Release> {
+  return apiPost<Release>(`${p(projectId)}/items/${itemId}/releases?today=${localToday()}`, body);
+}
+
+export function withdrawRelease(projectId: string, itemId: string, reason: string): Promise<Release> {
+  return apiPost<Release>(`${p(projectId)}/items/${itemId}/releases/withdraw`, { reason });
+}
+
+export function listReleases(projectId: string, itemId: string): Promise<Page<Release>> {
+  return apiGet<Page<Release>>(`${p(projectId)}/items/${itemId}/releases`);
+}
+
+/* ── Abort terms and exposure ─────────────────────────────────────────── */
+
+export function listAbortTerms(projectId: string, itemId: string): Promise<Page<AbortTerms>> {
+  return apiGet<Page<AbortTerms>>(`${p(projectId)}/items/${itemId}/abort-terms`);
+}
+
+export function putAbortTerms(projectId: string, itemId: string, body: AbortTermsInput): Promise<AbortTerms> {
+  return apiPut<AbortTerms>(`${p(projectId)}/items/${itemId}/abort-terms`, body);
+}
+
+export function getExposure(projectId: string, asOf: string): Promise<ExposureResponse> {
+  return apiGet<ExposureResponse>(`${p(projectId)}/exposure?as_of=${asOf}`);
+}
+
+export function listScenarios(projectId: string): Promise<Page<Scenario>> {
+  return apiGet<Page<Scenario>>(`${p(projectId)}/scenarios`);
+}
+
+export function saveScenario(projectId: string, body: { as_of: string; label: string }): Promise<Scenario> {
+  return apiPost<Scenario>(`${p(projectId)}/scenarios`, body);
+}
+
+/* ── Checks and export ────────────────────────────────────────────────── */
+
+export function listFindings(projectId: string): Promise<Page<Finding>> {
+  return apiGet<Page<Finding>>(`${p(projectId)}/validation?today=${localToday()}`);
+}
+
+export function downloadMatrix(projectId: string, format: 'pdf' | 'xlsx'): Promise<void> {
+  return downloadWithAuth(
+    `${API_BASE}${p(projectId)}/export?format=${format}&as_of=${localToday()}`,
+    `commitment_matrix.${format}`,
+  );
+}

@@ -51,6 +51,11 @@ def schedule_in_force(schedules: Iterable[AuthoritySchedule], on_date: date) -> 
     return max(covering, key=lambda s: s.version) if covering else None
 
 
+def in_force(schedule: AuthoritySchedule, on_date: date) -> bool:
+    """Whether ``on_date`` lies inside the schedule's own validity window (open on a side without a date)."""
+    return schedule_in_force([schedule], on_date) is not None
+
+
 def evaluated_amount(
     *,
     request: Decimal,

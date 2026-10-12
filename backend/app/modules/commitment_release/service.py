@@ -29,6 +29,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,9 +49,10 @@ from app.modules.commitment_release.catalogue import (
     register_kinds,
 )
 from app.modules.commitment_release.errors import CommitmentError, conflict, forbidden, not_found
-from app.modules.commitment_release.exposure import ScheduleEntry, TermsInput, compute_exposure
-from app.modules.commitment_release.fsm import ITEM_FSM, REQUESTABLE, WORKING
+from app.modules.commitment_release.exposure import ScheduleEntry, TermsInput, combine_exposures, compute_exposure
+from app.modules.commitment_release.fsm import ITEM_FSM, RECOMPUTED, REQUESTABLE, WORKING
 from app.modules.commitment_release.fx import FxQuote, FxRateMissing, norm, resolve_quote
+from app.modules.commitment_release.preconditions import precondition_reader
 from app.modules.commitment_release.models import (
     AbortScenario,
     AbortTerms,
@@ -81,8 +83,16 @@ PRECONDITION_KINDS = (
     "public_commitment_appropriation",
 )
 STORED_PRECONDITIONS = ("manual", "permit", "public_commitment_appropriation")
-_MANAGER_ROLES = frozenset({"admin", "manager"})
-_RELEASED_OR_LATER = ("released", "partially_released", "committed", "closed", "re_release_required")
+# What a readiness gate reads from an item. Changing one needs ``commitment.manage`` and is only
+# possible while the item is still ``planned``.
+GATE_FIELDS = ("gate_code", "governance_area_code", "deferred", "deferred_reason")
+# What decides the tier a request is judged on. Frozen once a release was ever requested.
+SPLIT_FIELDS = ("split_group", "flags")
+# Who owns the item decides who may NOT approve it (four eyes): manage only, ``planned`` only.
+OWNER_FIELDS = ("owner_user_id",)
+ENDED = ("aborted", "transferred")
+# The commitment type an abort is judged as (SPEC rule 15); a schedule without it cannot decide one.
+ABORT_TYPE = "termination_settlement"
 
 
 def _s(value: Any) -> str | None:
@@ -104,6 +114,16 @@ def _day(value: Any) -> date | None:
         return date.fromisoformat(str(value)[:10])
     except ValueError:
         return None
+
+
+def _iso_day(value: Any) -> str | None:
+    """A date as the ISO text its ``String(40)`` column stores; asyncpg refuses a ``date`` bound to VARCHAR."""
+    if value is None or value == "":
+        return None
+    day = _day(value)
+    if day is None:
+        raise CommitmentError("date_invalid", 422)
+    return day.isoformat()
 
 
 def _money_str(value: Decimal | None) -> str | None:
@@ -277,6 +297,12 @@ class CommitmentService:
                 raise CommitmentError(exc.code, exc.status_code) from exc
         else:
             version = matrix.schedule_version
+        if matrix is not None and (source, sid, version) != (
+            matrix.schedule_source,
+            matrix.schedule_id,
+            matrix.schedule_version,
+        ):
+            await self._refuse_incompatible_schedule(project, matrix, source, sid, version)
         if matrix is None:
             matrix = await self.repo.add(
                 CommitmentMatrix(
@@ -319,6 +345,27 @@ class CommitmentService:
         await self._audit(actor_id, "commitment_matrix", matrix.id, action, before_state=before or None, metadata=after)
         self._publish("matrix.set", {"project_id": str(project_id), **after})
         return matrix
+
+    async def _refuse_incompatible_schedule(
+        self, project: Any, matrix: CommitmentMatrix, source: str, sid: str, version: int
+    ) -> None:
+        """Review finding 8: a new schedule must be able to read what the matrix already holds.
+
+        Released amounts are stored in the schedule currency they were judged in and are summed as
+        such, so a schedule in another currency would add euros as pounds. An item whose type the
+        new schedule does not know could not be evaluated at all. Both are refused, by name.
+        """
+        from app.modules.project_governance.catalogue_store import resolve_catalogue
+
+        new = await resolve_catalogue(self.session, source, sid, version, kind=AUTHORITY_SCHEDULE_KIND)
+        new_ccy = self.schedule_currency(new, project)
+        held = sorted({r.schedule_currency for r in await self.repo.list_releases(matrix.project_id)} - {new_ccy})
+        if held:
+            raise conflict("schedule_currency_mismatch", detail=f"{', '.join(held)} -> {new_ccy}")
+        types = {i.commitment_type for i in await self.repo.list_items(matrix.project_id) if i.status not in ENDED}
+        missing = sorted(types - new.type_codes())
+        if missing:
+            raise conflict("schedule_type_mismatch", detail=", ".join(missing))
 
     # ── authority assignments and generated tier routes ────────────────────
 
@@ -426,6 +473,11 @@ class CommitmentService:
                 ]
             prev = generated.get(tier.code) or {}
             prev_id = _uuid(prev.get("route_id"))
+            current = tier_routes.get(tier.code)
+            if current and current != prev.get("route_id"):
+                # A manager pinned this tier by hand: it is theirs until they unpin it, forced or not.
+                report[tier.code] = "pinned"
+                continue
             if prev_id is not None:
                 try:
                     prev_route = await svc.get_route(prev_id)
@@ -480,7 +532,13 @@ class CommitmentService:
             route = await ApprovalRouteService(self.session).get_route(route_id)
         except Exception as exc:
             raise not_found("route_not_found") from exc
-        if route.target_kind != TARGET_KIND or route.project_id not in (None, project_id):
+        if route.target_kind != TARGET_KIND:
+            raise not_found("route_not_found")
+        if route.project_id is None:
+            # A route without a project is shared by every project of the install and has no
+            # tenant: pinning one would let people outside this project decide its releases.
+            raise CommitmentError("route_must_belong_to_project", 422)
+        if route.project_id != project_id:
             raise not_found("route_not_found")
         routes = dict(matrix.tier_routes or {})
         routes[tier_code] = str(route_id)
@@ -491,6 +549,24 @@ class CommitmentService:
         )
         return matrix
 
+    async def unpin_tier_route(
+        self, project_id: uuid.UUID, tier_code: str, *, actor_id: uuid.UUID, today: date
+    ) -> CommitmentMatrix:
+        """Give a tier back to the generated route (the only way a pinned route is ever replaced)."""
+        matrix = await self.require_matrix(project_id, lock=True)
+        schedule = await self.schedule_for(matrix)
+        if tier_code not in schedule.tier_order():
+            raise CommitmentError("tier_unknown", 422)
+        routes = dict(matrix.tier_routes or {})
+        routes.pop(tier_code, None)
+        generated = dict(matrix.generated_routes or {})
+        generated.pop(tier_code, None)
+        matrix.tier_routes, matrix.generated_routes = routes, generated
+        await self.session.flush()
+        await self._audit(actor_id, "commitment_matrix", matrix.id, "tier_route_unpinned", metadata={"tier": tier_code})
+        await self.generate_routes(project_id, actor_id=actor_id, today=today, force=False)
+        return matrix
+
     # ── items ──────────────────────────────────────────────────────────────
 
     async def get_item(self, project_id: uuid.UUID, item_id: uuid.UUID, *, lock: bool = False) -> CommitmentItem:
@@ -499,8 +575,18 @@ class CommitmentService:
             raise not_found("item_not_found")
         return item
 
-    def _may_edit(self, item: CommitmentItem, actor_id: uuid.UUID, role: str) -> bool:
-        return role in _MANAGER_ROLES or item.owner_user_id in (None, actor_id) or item.created_by == actor_id
+    @staticmethod
+    def may_edit(item: CommitmentItem, actor_id: uuid.UUID | None, manage: bool) -> bool:
+        """An item is worked on by its owner, the person who created it, or a manager.
+
+        ``manage`` is the router's ``commitment.manage`` permission check, passed down as a
+        boolean; the service never reads a role. The same function answers the ``can`` flags.
+        """
+        return manage or (actor_id is not None and actor_id in (item.owner_user_id, item.created_by))
+
+    def _require_edit(self, item: CommitmentItem, actor_id: uuid.UUID | None, manage: bool) -> None:
+        if not self.may_edit(item, actor_id, manage):
+            raise forbidden("not_item_owner")
 
     async def _check_item_fields(
         self, project_id: uuid.UUID, data: dict[str, Any], schedule: AuthoritySchedule
@@ -552,7 +638,12 @@ class CommitmentService:
         if gate and gate not in {g.code for g in await repo.list_gates(project_id)}:
             raise CommitmentError("gate_unknown", 422)
 
-    async def create_item(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID) -> CommitmentItem:
+    async def create_item(
+        self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID, manage: bool = False
+    ) -> CommitmentItem:
+        if data.get("owner_user_id") not in (None, actor_id) and not manage:
+            # The owner is barred from approving (four eyes): only a manager names somebody else.
+            raise forbidden("manage_required", detail="owner_user_id")
         matrix = await self.require_matrix(project_id)
         schedule = await self.schedule_for(matrix)
         await self._check_item_fields(project_id, data, schedule)
@@ -565,6 +656,8 @@ class CommitmentService:
             fields["planned_manual_amount"] = _amount(fields["planned_manual_amount"])
         if fields.get("currency"):
             fields["currency"] = norm(fields["currency"])
+        if "latest_decision_date_fixed" in fields:
+            fields["latest_decision_date_fixed"] = _iso_day(fields["latest_decision_date_fixed"])
         item = CommitmentItem(
             project_id=project_id,
             status="planned",
@@ -612,15 +705,37 @@ class CommitmentService:
     )
 
     async def update_item(
-        self, project_id: uuid.UUID, item_id: uuid.UUID, changes: dict[str, Any], *, actor_id: uuid.UUID, role: str
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        changes: dict[str, Any],
+        *,
+        actor_id: uuid.UUID,
+        manage: bool = False,
     ) -> CommitmentItem:
         item = await self.get_item(project_id, item_id, lock=True)
-        if not self._may_edit(item, actor_id, role):
-            raise forbidden("not_item_owner")
-        if item.status in ("aborted", "transferred"):
+        self._require_edit(item, actor_id, manage)
+        if item.status in ENDED:
             raise conflict("item_closed")
         if "commitment_type" in changes and item.status != "planned":
             raise conflict("type_fixed_after_release")
+        for key in ("title", "commitment_type", "planned_source", "deferred", "deferred_reason", "flags"):
+            # These columns are NOT NULL (``flags``: a list). An explicit null is invalid input, not a 500.
+            if key in changes and changes[key] is None:
+                raise CommitmentError("field_required", 422, detail=key)
+        changed = {k for k, v in changes.items() if k in self._PATCHABLE and _s(getattr(item, k)) != _s(v)}
+        if "flags" in changes and list(changes["flags"]) != list(item.flags or []):
+            changed.add("flags")
+        guarded = changed & {*GATE_FIELDS, *OWNER_FIELDS}
+        if guarded:
+            if not manage:
+                raise forbidden("manage_required", detail=", ".join(sorted(guarded)))
+            if item.status != "planned":
+                raise conflict("field_frozen", detail=", ".join(sorted(guarded)))
+        split = changed & set(SPLIT_FIELDS)
+        if split and await self.repo.has_release(item.id):
+            # Review finding 7: the group and the flags decide the tier; they cannot move after a request.
+            raise conflict("field_frozen", detail=", ".join(sorted(split)))
         merged = {**changes}
         if "planned_source" in changes or "planned_manual_amount" in changes or "currency" in changes:
             merged.setdefault("planned_source", item.planned_source)
@@ -642,6 +757,8 @@ class CommitmentService:
                 v = _amount(v)
             if k == "currency" and v:
                 v = norm(v)
+            if k == "latest_decision_date_fixed":
+                v = _iso_day(v)
             setattr(item, k, v)
         if item.planned_source != "manual":
             item.planned_manual_amount = None
@@ -657,17 +774,21 @@ class CommitmentService:
         return item
 
     async def set_hold(
-        self, project_id: uuid.UUID, item_id: uuid.UUID, *, hold: bool, actor_id: uuid.UUID, reason: str
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        *,
+        hold: bool,
+        actor_id: uuid.UUID,
+        reason: str,
+        manage: bool = True,
     ) -> CommitmentItem:
         item = await self.get_item(project_id, item_id, lock=True)
+        self._refuse(self.hold_refusal(item, manage, hold=hold))
         if hold:
-            if item.status not in WORKING:
-                raise conflict("invalid_transition")
             item.status_before = item.status
             await self._fsm(item, "on_hold", actor_id, reason)
         else:
-            if item.status != "on_hold":
-                raise conflict("invalid_transition")
             target = item.status_before or "planned"
             item.status_before = None
             await self._fsm(item, target, actor_id, reason)
@@ -676,17 +797,25 @@ class CommitmentService:
     # ── links ──────────────────────────────────────────────────────────────
 
     async def add_link(
-        self, project_id: uuid.UUID, item_id: uuid.UUID, kind: str, document_id: uuid.UUID, *, actor_id: uuid.UUID
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        kind: str,
+        document_id: uuid.UUID,
+        *,
+        actor_id: uuid.UUID | None,
+        manage: bool = False,
     ) -> CommitmentLink:
         """Count a document in this item. Another project's document is 404; a document counts once (409)."""
         item = await self.get_item(project_id, item_id, lock=True)
+        self._require_edit(item, actor_id, manage)
         if kind not in figures.LINK_KINDS:
             raise CommitmentError("link_kind_invalid", 422)
         if kind == "contingency_drawdown":
             raise CommitmentError("link_kind_not_supported", 422)
         if not await figures.document_in_project(self.session, project_id, kind, document_id):
             raise not_found("document_not_found")
-        if item.status in ("aborted", "transferred", "closed"):
+        if item.status in ENDED:
             raise conflict("item_closed")
         if await self.repo.find_link(project_id, kind, document_id) is not None:
             raise conflict("document_linked_elsewhere")
@@ -724,9 +853,18 @@ class CommitmentService:
             raise conflict("change_belongs_to_contract_item")
 
     async def remove_link(
-        self, project_id: uuid.UUID, item_id: uuid.UUID, link_id: uuid.UUID, *, actor_id: uuid.UUID
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        link_id: uuid.UUID,
+        *,
+        actor_id: uuid.UUID,
+        manage: bool = False,
     ) -> None:
         item = await self.get_item(project_id, item_id, lock=True)
+        self._require_edit(item, actor_id, manage)
+        if item.status in ENDED:
+            raise conflict("item_closed")
         links = [lk for lk in await self.repo.list_links(project_id, [item.id]) if lk.id == link_id]
         if not links:
             raise not_found("link_not_found")
@@ -752,8 +890,12 @@ class CommitmentService:
         ref_id: str | None,
         text: str,
         actor_id: uuid.UUID,
+        manage: bool = False,
     ) -> CommitmentPrecondition:
         item = await self.get_item(project_id, item_id)
+        self._require_edit(item, actor_id, manage)
+        if item.status in ENDED:
+            raise conflict("item_closed")
         if kind not in PRECONDITION_KINDS:
             raise CommitmentError("precondition_kind_invalid", 422)
         if kind in ("gate_decided", "frame_document_binding", "funding_approved") and not ref_id:
@@ -777,11 +919,16 @@ class CommitmentService:
         met: bool,
         evidence_ref: str,
         actor_id: uuid.UUID,
+        manage: bool = False,
     ) -> CommitmentPrecondition:
+        item = await self.get_item(project_id, item_id, lock=True)
+        self._require_edit(item, actor_id, manage)
+        if item.status in ENDED:
+            raise conflict("item_closed")
         row = await self.repo.get_precondition(project_id, item_id, precondition_id)
         if row is None:
             raise not_found("precondition_not_found")
-        if row.kind not in STORED_PRECONDITIONS:
+        if row.kind not in STORED_PRECONDITIONS or (precondition_reader(row.kind) is not None and row.ref_id):
             raise CommitmentError("precondition_is_computed", 422)
         if met and row.kind == "public_commitment_appropriation" and not evidence_ref.strip():
             raise CommitmentError("precondition_needs_evidence", 422)
@@ -814,6 +961,11 @@ class CommitmentService:
                 state = await self._funding_state(project_id, p.ref_id)
             elif p.kind == "budget_available":
                 state = "met" if planned is not None and cumulative <= planned else "open"
+            reader = precondition_reader(p.kind)
+            if reader is not None and p.ref_id:
+                # A module that owns this kind of record (a permit register) answers for it; the
+                # stored tick is only the answer while nothing does.
+                state = "met" if await reader(self.session, project_id, p.ref_id) else "open"
             out.append(
                 {
                     "id": str(p.id),
@@ -869,22 +1021,44 @@ class CommitmentService:
         committed: dict[uuid.UUID, Decimal | None] = {}
         reason: dict[uuid.UUID, str | None] = {}
         for item_id, fl in per_item.items():
-            total = ZERO
-            missing = None
-            for f in fl:
-                if not f.amount:
-                    continue
-                try:
-                    total += (await self.quote(matrix, project, f.currency, target, on_date)).apply(f.amount)
-                except FxRateMissing:
-                    missing = "fx_rate_missing"
-            committed[item_id] = None if missing else total
-            reason[item_id] = missing
+            try:
+                committed[item_id] = await self.item_committed(matrix, project, target, fl, on_date=on_date)
+                reason[item_id] = None
+            except FxRateMissing:
+                committed[item_id], reason[item_id] = None, "fx_rate_missing"
         return per_item, committed, reason
+
+    async def item_committed(
+        self,
+        matrix: CommitmentMatrix,
+        project: Any,
+        target_currency: str,
+        figs: list[figures.LinkFigure],
+        *,
+        on_date: date,
+        without_link: uuid.UUID | None = None,
+        plus: tuple[tuple[Decimal, str], ...] = (),
+    ) -> Decimal:
+        """What one item commits, in ``target_currency``. The ONE sum behind the matrix, recompute and the guard.
+
+        The guard asks the same question for a document that is about to change: ``without_link``
+        leaves that document's present figure out and ``plus`` adds what it would become.
+
+        Raises:
+            FxRateMissing: a figure has no rate into the target; never converted 1:1.
+        """
+        parts = [(f.amount, f.currency) for f in figs if f.amount and f.link_id != without_link]
+        total = ZERO
+        for amount, currency in [*parts, *plus]:
+            total += (await self.quote(matrix, project, currency, target_currency, on_date)).apply(amount)
+        return total
 
     @staticmethod
     def released_in_schedule_currency(releases: list[ReleaseDecision]) -> Decimal:
-        return sum((r.amount_in_schedule_currency for r in releases if r.outcome == "released"), ZERO)
+        return sum(
+            (r.amount_in_schedule_currency for r in releases if r.purpose == "release" and r.outcome == "released"),
+            ZERO,
+        )
 
     async def item_views(
         self,
@@ -893,8 +1067,14 @@ class CommitmentService:
         today: date,
         item_ids: list[uuid.UUID] | None = None,
         with_exposure: bool = False,
+        actor_id: uuid.UUID | None = None,
+        manage: bool = False,
     ) -> dict[str, Any]:
-        """Items with every derived figure, flag and (optionally) abort exposure, plus base-currency totals."""
+        """Items with every derived figure, flag and (optionally) abort exposure, plus base-currency totals.
+
+        ``can`` on each item says what ``actor_id`` may do to it now, each with the refusal code when
+        not. It is answered by the very functions the writes enforce, so a button and its 4xx agree.
+        """
         matrix = await self.require_matrix(project_id)
         project = await self._project(project_id)
         schedule = await self.schedule_for(matrix)
@@ -988,10 +1168,22 @@ class CommitmentService:
                 "open_preconditions": sum(1 for p in pre_states if p["state"] != "met"),
                 "links": [f.as_dict() for f in per_item.get(item.id, [])],
                 "pending_release_id": next((str(r.id) for r in rel if r.outcome == "pending"), None),
+                "pending_purpose": next((r.purpose for r in rel if r.outcome == "pending"), None),
+                "transferred_to_item_id": _s(item.transferred_to_item_id),
+                "abort": self._abort_out(rel, per_item.get(item.id, [])),
+                "can": await self._can(
+                    item, next((r for r in rel if r.outcome == "pending"), None), actor_id, manage, today
+                ),
             }
             if with_exposure:
                 view["exposure"] = await self._exposure_for(
-                    item, per_item.get(item.id, []), [t for t in terms if t.item_id == item.id], matrix, project, today
+                    item,
+                    per_item.get(item.id, []),
+                    [t for t in terms if t.item_id == item.id],
+                    matrix,
+                    project,
+                    today,
+                    basis=schedule.basis,
                 )
             views.append(view)
             currencies.add(sched_ccy)
@@ -1014,7 +1206,85 @@ class CommitmentService:
             },
         }
 
+    @staticmethod
+    def _abort_out(releases: list[ReleaseDecision], figs: list[figures.LinkFigure]) -> dict[str, Any] | None:
+        """The decided abort of an item and the documents whose own termination follows it (rule 15).
+
+        This module ends the item, never a document: ``follow_up`` names each linked contract or
+        purchase order that still binds money, for the screen to link to that document's own action.
+        """
+        done = next((r for r in reversed(releases) if r.purpose == "abort" and r.outcome == "aborted"), None)
+        if done is None:
+            return None
+        follow_up = [
+            {
+                "kind": f.kind,
+                "document_id": str(f.document_id),
+                "action": "terminate" if f.kind == "contract" else "cancel",
+                "status": f.status,
+            }
+            for f in figs
+            if f.kind in ("contract", "purchase_order") and f.found and f.counts and not f.closed
+        ]
+        return {
+            "release_id": str(done.id),
+            "decided_at": done.decided_at.isoformat() if done.decided_at else None,
+            "decided_by": _s(done.decided_by),
+            "reason": done.tranche_note,
+            "residual_loss": str(done.requested_amount),
+            "currency": done.currency,
+            "follow_up": follow_up,
+        }
+
+    async def _can(
+        self,
+        item: CommitmentItem,
+        pending: ReleaseDecision | None,
+        actor_id: uuid.UUID | None,
+        manage: bool,
+        today: date,
+    ) -> dict[str, dict[str, Any]]:
+        def flag(code: str | None) -> dict[str, Any]:
+            return {"allowed": code is None, "reason": code}
+
+        decide = "no_pending_release"
+        if pending is not None:
+            decide = (await self._decide_check(item, pending, actor_id, today))[0]
+        request = self.request_refusal(item, actor_id, manage)
+        return {
+            "edit": flag(self.edit_refusal(item, actor_id, manage)),
+            "link": flag(self.edit_refusal(item, actor_id, manage)),
+            "request_release": flag(request),
+            "request_abort": flag(request),
+            "withdraw": flag(self.withdraw_refusal(pending, actor_id, manage)),
+            "decide": flag(decide),
+            "hold": flag(self.hold_refusal(item, manage, hold=True)),
+            "resume": flag(self.hold_refusal(item, manage, hold=False)),
+            "transfer": flag(self.transfer_refusal(item, manage)),
+        }
+
     # ── abort exposure ─────────────────────────────────────────────────────
+
+    async def _terms_input(self, row: AbortTerms) -> tuple[TermsInput, AbortBasis | None]:
+        from app.modules.project_governance.errors import GovernanceError
+
+        basis = None
+        if row.basis_code:
+            try:
+                basis = await self.abort_basis(row.basis_source, row.basis_code, row.basis_version)
+            except GovernanceError:
+                # The pinned basis no longer resolves: the exposure says so (``abort_basis_unknown``).
+                basis = None
+        terms = TermsInput(
+            basis_code=row.basis_code,
+            cancellation_schedule=tuple(_schedule_entry(e) for e in row.cancellation_schedule or []),
+            transfer_value=row.transfer_value_estimate,
+            salvage_value=row.salvage_value_estimate,
+            saved_cost=row.saved_cost_estimate,
+            other_charge=row.other_charge_estimate,
+            parameters={k: str(v) for k, v in (row.parameters or {}).items()},
+        )
+        return terms, basis
 
     async def _exposure_for(
         self,
@@ -1024,54 +1294,55 @@ class CommitmentService:
         matrix: CommitmentMatrix,
         project: Any,
         as_of: date,
+        basis: str = "net",
     ) -> dict[str, Any]:
+        """Abort exposure of one item in base currency (SPEC rule 14). ``basis`` is the schedule's net or gross.
+
+        Terms entered for one linked document apply to that document's committed and sunk money;
+        the item's own terms apply to everything else. Each part is computed on its own and the
+        parts are added, and one unknown part makes the item's residual unknown, never a partial sum.
+        """
         base = norm(project.currency)
-        committed = ZERO
+        by_scope = {t.scope: t for t in terms_rows}
+        # scope -> [committed, sunk parts] in base currency; "item" takes every link without own terms.
+        groups: dict[str, list[Any]] = {}
         try:
+            raw_sunk = await figures.sunk_by_link(self.session, item.project_id, figs, basis=basis)
             for f in figs:
+                scope = str(f.link_id) if str(f.link_id) in by_scope else "item"
+                group = groups.setdefault(scope, [ZERO, dict.fromkeys(figures.SUNK_PARTS, ZERO)])
                 if f.amount:
-                    committed += (await self.quote(matrix, project, f.currency, base, as_of)).apply(f.amount)
-            raw_sunk = await figures.sunk_parts(self.session, figs)
-            ccy = next((f.currency for f in figs if f.kind == "contract" and f.found), base)
-            q = await self.quote(matrix, project, ccy or base, base, as_of)
-            sunk = {k: q.apply(v) for k, v in raw_sunk.items()}
+                    group[0] += (await self.quote(matrix, project, f.currency, base, as_of)).apply(f.amount)
+                for part, amount, ccy in raw_sunk.get(f.link_id, []):
+                    group[1][part] += (await self.quote(matrix, project, ccy or base, base, as_of)).apply(amount)
         except FxRateMissing:
             return {"residual_loss": None, "reason": "fx_rate_missing", "currency": base}
-        row = next((t for t in terms_rows if t.scope == "item"), None) or (terms_rows[0] if terms_rows else None)
-        basis = None
-        terms = None
-        if row is not None:
-            if row.basis_code:
-                try:
-                    basis = await self.abort_basis(row.basis_source, row.basis_code, row.basis_version)
-                except CommitmentError:
-                    basis = None
-                except Exception:
-                    basis = None
-            terms = TermsInput(
-                basis_code=row.basis_code,
-                cancellation_schedule=tuple(_schedule_entry(e) for e in row.cancellation_schedule or []),
-                transfer_value=row.transfer_value_estimate,
-                salvage_value=row.salvage_value_estimate,
-                saved_cost=row.saved_cost_estimate,
-                other_charge=row.other_charge_estimate,
-                parameters={k: str(v) for k, v in (row.parameters or {}).items()},
+        if "item" not in groups and ("item" in by_scope or not groups):
+            groups["item"] = [ZERO, dict.fromkeys(figures.SUNK_PARTS, ZERO)]
+        parts: list[tuple[str, Any, AbortTerms | None]] = []
+        for scope, (committed, sunk) in groups.items():
+            row = by_scope.get(scope)
+            terms, basis = await self._terms_input(row) if row is not None else (None, None)
+            e = compute_exposure(
+                committed=committed,
+                sunk_parts=sunk,
+                terms=terms,
+                basis=basis,
+                as_of=as_of,
+                progress_pct=row.progress_pct if row is not None else None,
             )
-        e = compute_exposure(
-            committed=committed,
-            sunk_parts=sunk,
-            terms=terms,
-            basis=basis,
-            as_of=as_of,
-            progress_pct=row.progress_pct if row is not None else None,
-        )
-        out = e.as_dict()
+            parts.append((scope, e, row))
+        if len(parts) == 1:
+            scope, e, row = parts[0]
+            out = e.as_dict()
+        else:
+            out = combine_exposures([e for _s, e, _r in parts]).as_dict()
+            out["parts"] = [{"scope": scope, **e.as_dict()} for scope, e, _r in parts]
+            row = by_scope.get("item")
         out["currency"] = base
         out["as_of"] = as_of.isoformat()
         out["basis_code"] = row.basis_code if row is not None else None
         out["transferable"] = row.transferable if row is not None else None
-        if item.status in ("planned", "release_requested") and not committed:
-            out["note"] = "nothing_committed"
         return out
 
     async def exposure(self, project_id: uuid.UUID, *, as_of: date) -> dict[str, Any]:
@@ -1110,11 +1381,17 @@ class CommitmentService:
         return row
 
     async def put_abort_terms(
-        self, project_id: uuid.UUID, item_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID, role: str
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        data: dict[str, Any],
+        *,
+        actor_id: uuid.UUID,
+        manage: bool = False,
+        tenant_id: str | None = None,
     ) -> AbortTerms:
         item = await self.get_item(project_id, item_id, lock=True)
-        if not self._may_edit(item, actor_id, role):
-            raise forbidden("not_item_owner")
+        self._require_edit(item, actor_id, manage)
         scope = "item"
         if data.get("link_id"):
             link_id = _uuid(data["link_id"])
@@ -1122,13 +1399,19 @@ class CommitmentService:
                 raise not_found("link_not_found")
             scope = str(link_id)
         if data.get("basis_code"):
+            from app.modules.project_governance.catalogue_store import CatalogueStore
+            from app.modules.project_governance.errors import GovernanceError
+
+            source = data.get("basis_source") or "shipped"
             try:
-                basis = await self.abort_basis(
-                    data.get("basis_source") or "shipped", data["basis_code"], data.get("basis_version")
+                # Review finding 5: the store checks the catalogue against the CALLER's tenant; a
+                # basis of another tenant does not resolve, exactly like one that does not exist.
+                version = await CatalogueStore(self.session).assert_pinnable(
+                    tenant_id, source, data["basis_code"], data.get("basis_version"), kind=ABORT_BASIS_KIND
                 )
-            except Exception as exc:
+            except GovernanceError as exc:
                 raise CommitmentError("abort_basis_unknown", 422) from exc
-            data = {**data, "basis_version": basis.version}
+            data = {**data, "basis_source": source, "basis_version": version}
         for entry in data.get("cancellation_schedule") or []:
             try:
                 _schedule_entry(entry)
@@ -1185,11 +1468,35 @@ class CommitmentService:
 
     # ── releases ───────────────────────────────────────────────────────────
 
-    async def _group_released(self, item: CommitmentItem) -> Decimal:
+    async def _group_others(self, item: CommitmentItem) -> Decimal:
+        """What the other items of the split group already hold: released AND still pending.
+
+        A pending request counts in full. Otherwise two items of one group could each ask for an
+        amount just under a band at the same time and both be judged on their own request.
+        """
         if not item.split_group:
             return ZERO
         others = [i.id for i in await self.repo.items_in_group(item.project_id, item.split_group) if i.id != item.id]
-        return self.released_in_schedule_currency(await self.repo.list_releases(item.project_id, others))
+        rows = await self.repo.list_releases(item.project_id, others)
+        return sum(
+            (
+                r.amount_in_schedule_currency
+                for r in rows
+                if r.purpose == "release" and r.outcome in ("released", "pending")
+            ),
+            ZERO,
+        )
+
+    async def _lock_for_request(self, project_id: uuid.UUID, item_id: uuid.UUID) -> CommitmentItem:
+        """Lock the item, and with it every item of its split group, always in id order."""
+        seen = await self.get_item(project_id, item_id)
+        if seen.split_group:
+            await self.repo.items_in_group(project_id, seen.split_group, lock=True)
+        item = await self.get_item(project_id, item_id, lock=True)
+        if item.split_group != seen.split_group:
+            # The group changed between the read and the lock; the caller tries again on fresh data.
+            raise conflict("item_changed")
+        return item
 
     async def preview_release(
         self, project_id: uuid.UUID, item_id: uuid.UUID, amount: Any, currency: str | None, *, today: date
@@ -1201,13 +1508,16 @@ class CommitmentService:
     async def _evaluate(
         self, item: CommitmentItem, amount: Decimal, currency: str | None, *, today: date
     ) -> dict[str, Any]:
-        from app.modules.approval_routes.service import ApprovalRouteService
-
         if amount <= 0:
             raise CommitmentError("amount_not_positive", 422)
         matrix = await self.require_matrix(item.project_id)
         project = await self._project(item.project_id)
         schedule = await self.schedule_for(matrix)
+        if not ev.in_force(schedule, today):
+            # The pinned version's own validity window has passed (or not begun): pin the one in force.
+            raise conflict("schedule_not_in_force")
+        if item.commitment_type not in schedule.type_codes():
+            raise CommitmentError("commitment_type_unknown", 422)
         sched_ccy = self.schedule_currency(schedule, project)
         ccy = norm(currency) or norm(item.currency) or norm(project.currency)
         try:
@@ -1217,7 +1527,7 @@ class CommitmentService:
         converted = q.apply(amount)
         releases = await self.repo.list_releases(item.project_id, [item.id])
         released = self.released_in_schedule_currency(releases)
-        group = await self._group_released(item)
+        group = await self._group_others(item)
         evaluated = ev.evaluated_amount(
             request=converted,
             released_on_item=released,
@@ -1225,20 +1535,7 @@ class CommitmentService:
             aggregation=schedule.aggregation,
         )
         tier = ev.required_tier(schedule, item.commitment_type, evaluated, item.flags or [])
-        route_tier = tier.tier_code or (schedule.tiers[-1].code if tier.escalate_outside else None)
-        route_id = _uuid((matrix.tier_routes or {}).get(route_tier)) if route_tier else None
-        approvers: list[str] = []
-        if route_id is not None:
-            # A generated route is an ordinary route: a manager may delete or
-            # deactivate it. Either reads as "no route for this tier", never a 500.
-            routes = ApprovalRouteService(self.session)
-            route = await routes.repo.get_route(route_id)
-            if route is None or not route.is_active or route.project_id not in (None, item.project_id):
-                route_id = None
-            else:
-                approvers = [
-                    _s(s.approver_user_id) or f"role:{s.approver_role}" for s in await routes.list_steps(route_id)
-                ]
+        route = await self._route_for(matrix, schedule, item.project_id, tier, today)
         planned, planned_ccy, _note = await figures.planned_amount(self.session, item, norm(project.currency))
         planned_sched = None
         if planned is not None:
@@ -1264,13 +1561,70 @@ class CommitmentService:
             "group_released": group,
             "evaluated": evaluated,
             "tier": tier,
-            "route_tier": route_tier,
-            "route_id": route_id,
-            "approvers": approvers,
+            **route,
             "planned_in_schedule_currency": planned_sched,
             "preconditions": pre,
             "open_preconditions": [p for p in pre if p["state"] != "met"],
         }
+
+    async def _route_for(
+        self, matrix: CommitmentMatrix, schedule: AuthoritySchedule, project_id: uuid.UUID, tier: Any, today: date
+    ) -> dict[str, Any]:
+        """The route of the required tier and everyone who may decide on it.
+
+        ``approvers`` lists the users (or ``role:<name>``) the route's steps name, followed by the
+        other holders of the tier: every active assignee of an ``any`` tier and every deputy. A
+        route has one step per ordinal, so those others decide by taking the step over
+        (:meth:`decide_release`), not by a step of their own.
+        """
+        from app.modules.approval_routes.service import ApprovalRouteService
+
+        route_tier = tier.tier_code or (schedule.tiers[-1].code if tier.escalate_outside else None)
+        route_id = _uuid((matrix.tier_routes or {}).get(route_tier)) if route_tier else None
+        approvers: list[str] = []
+        holders: dict[uuid.UUID, uuid.UUID] = {}
+        if route_id is not None:
+            # A generated route is an ordinary route: a manager may delete or deactivate it. Either
+            # reads as "no route for this tier", never a 500. A route of no project is never used.
+            routes = ApprovalRouteService(self.session)
+            route = await routes.repo.get_route(route_id)
+            if route is None or not route.is_active or route.project_id != project_id:
+                route_id = None
+            else:
+                approvers = [
+                    _s(s.approver_user_id) or f"role:{s.approver_role}" for s in await routes.list_steps(route_id)
+                ]
+                holders = await self.tier_holders(matrix, schedule, route_tier, route_id, today)
+                approvers += [str(u) for u in holders if str(u) not in approvers]
+        return {"route_tier": route_tier, "route_id": route_id, "approvers": approvers, "holders": holders}
+
+    async def tier_holders(
+        self,
+        matrix: CommitmentMatrix,
+        schedule: AuthoritySchedule,
+        tier_code: str | None,
+        route_id: uuid.UUID | None,
+        today: date,
+    ) -> dict[uuid.UUID, uuid.UUID]:
+        """``{who may decide: the assignee they decide for}`` on the generated route of a project-role tier.
+
+        Every active assignee of the tier's role (themselves) and each deputy (for their assignee).
+        Empty for a hand-pinned route: its author named the deciders, and nobody else is added.
+        """
+        if tier_code is None or route_id is None or tier_code not in schedule.tier_order():
+            return {}
+        tier = schedule.tier(tier_code)
+        generated = (matrix.generated_routes or {}).get(tier_code) or {}
+        if tier.approver.kind != "project_role" or generated.get("route_id") != str(route_id):
+            return {}
+        out: dict[uuid.UUID, uuid.UUID] = {}
+        for a in await self.repo.list_assignments(matrix.project_id):
+            if a.project_role != tier.approver.ref or not self._active(a, today):
+                continue
+            out.setdefault(a.user_id, a.user_id)
+            if a.deputy_user_id is not None:
+                out.setdefault(a.deputy_user_id, a.user_id)
+        return out
 
     @staticmethod
     def evaluation_out(e: dict[str, Any]) -> dict[str, Any]:
@@ -1315,6 +1669,130 @@ class CommitmentService:
         steps = await ApprovalRouteService(self.session).list_steps(route_id)
         return any(s.approver_user_id is not None and s.approver_user_id not in valid for s in steps)
 
+    # Refusals shared by the write that enforces them and the ``can`` flags the screens read.
+    _REFUSAL_STATUS = {
+        "not_item_owner": 403,
+        "manage_required": 403,
+        "not_requester": 403,
+        "not_entitled_decider": 403,
+        "four_eyes_violation": 403,
+    }
+
+    @classmethod
+    def _refuse(cls, code: str | None) -> None:
+        if code:
+            raise CommitmentError(code, cls._REFUSAL_STATUS.get(code, 409))
+
+    @classmethod
+    def edit_refusal(cls, item: CommitmentItem, actor_id: uuid.UUID | None, manage: bool) -> str | None:
+        if not cls.may_edit(item, actor_id, manage):
+            return "not_item_owner"
+        return "item_closed" if item.status in ENDED else None
+
+    @classmethod
+    def request_refusal(cls, item: CommitmentItem, actor_id: uuid.UUID | None, manage: bool) -> str | None:
+        """Why this person may not ask for a release (or an abort) of the item now; None when they may."""
+        if not cls.may_edit(item, actor_id, manage):
+            return "not_item_owner"
+        if item.status == "release_requested":
+            return "release_pending"
+        return None if item.status in REQUESTABLE else "invalid_transition"
+
+    @staticmethod
+    def withdraw_refusal(pending: ReleaseDecision | None, actor_id: uuid.UUID | None, manage: bool) -> str | None:
+        if pending is None:
+            return "no_pending_release"
+        return None if manage or pending.requested_by == actor_id else "not_requester"
+
+    @staticmethod
+    def transfer_refusal(item: CommitmentItem, manage: bool) -> str | None:
+        if not manage:
+            return "manage_required"
+        if item.status == "release_requested":
+            return "release_pending"
+        return None if item.status in WORKING else "invalid_transition"
+
+    @staticmethod
+    def hold_refusal(item: CommitmentItem, manage: bool, *, hold: bool) -> str | None:
+        if not manage:
+            return "manage_required"
+        if hold:
+            return None if item.status in WORKING else "invalid_transition"
+        return None if item.status == "on_hold" else "invalid_transition"
+
+    async def barred_from_deciding(self, item: CommitmentItem, requested_by: uuid.UUID | None) -> set[uuid.UUID]:
+        """Four eyes: whoever asked, owns the item or confirmed one of its preconditions does not decide it."""
+        pre = await self.repo.list_preconditions(item.project_id, [item.id])
+        return {u for u in (requested_by, item.owner_user_id, *(p.confirmed_by for p in pre)) if u is not None}
+
+    async def _require_route(self, e: dict[str, Any], item: CommitmentItem, actor_id: uuid.UUID, today: date) -> Any:
+        """The tier whose route decides, after the checks every request passes (route, assignment, four eyes)."""
+        matrix, schedule = e["matrix"], e["schedule"]
+        if e["route_id"] is None:
+            raise conflict("no_route_for_tier", detail=e["route_tier"])
+        if await self._expired_assignment_in_route(matrix, schedule, e["route_tier"], e["route_id"], today):
+            raise conflict("assignment_expired")
+        route_tier = schedule.tier(e["route_tier"])
+        if route_tier.four_eyes:
+            barred = {str(u) for u in await self.barred_from_deciding(item, actor_id)}
+            # A role step names nobody in particular, so somebody eligible may always hold the role.
+            if not [a for a in e["approvers"] if a.startswith("role:") or a not in barred]:
+                code = "four_eyes_requester_is_approver" if str(actor_id) in e["approvers"] else "four_eyes_no_approver"
+                raise forbidden(code)
+        return route_tier
+
+    async def _open_decision(
+        self, item: CommitmentItem, decision: ReleaseDecision, route_id: uuid.UUID, actor_id: uuid.UUID, **meta: Any
+    ) -> ReleaseDecision:
+        """Store the request, start its approval instance and move the item to ``release_requested``."""
+        from app.modules.approval_routes.schemas import InstanceCreate
+        from app.modules.approval_routes.service import ApprovalRouteService
+
+        try:
+            async with self.session.begin_nested():
+                await self.repo.add(decision)
+        except IntegrityError as exc:
+            raise conflict("release_pending") from exc
+        instance = await ApprovalRouteService(self.session).start_instance(
+            InstanceCreate(route_id=route_id, target_kind=TARGET_KIND, target_id=decision.id), started_by=actor_id
+        )
+        decision.approval_instance_id = instance.id
+        item.status_before = item.status
+        await self._fsm(item, "release_requested", actor_id, attempt=item.attempt_no, release_id=str(decision.id))
+        await self._audit(
+            actor_id,
+            "commitment_release",
+            decision.id,
+            "abort_requested" if decision.purpose == "abort" else "requested",
+            metadata={"item_id": str(item.id), "tier": decision.required_tier, **meta},
+        )
+        self._publish(
+            "release.requested",
+            {
+                "project_id": str(item.project_id),
+                "item_id": str(item.id),
+                "release_id": str(decision.id),
+                "purpose": decision.purpose,
+            },
+        )
+        return decision
+
+    async def _snapshot(self, item: CommitmentItem, e: dict[str, Any], four_eyes: bool, today: date) -> dict[str, Any]:
+        """What the decider is shown, frozen: the evaluation, every linked document with its amount, the
+        preconditions, and a hash of exactly that content so a later reader can tell it was not edited."""
+        project = await self._project(item.project_id)
+        per_item, committed, reason = await self.committed_for_items(e["matrix"], project, e["schedule"], on_date=today)
+        content = {
+            "evaluation": self.evaluation_out(e),
+            "links": [f.as_dict() for f in per_item.get(item.id, [])],
+            "committed": _money_str(committed.get(item.id, ZERO)),
+            "committed_reason": reason.get(item.id),
+            "preconditions": e["preconditions"],
+            "four_eyes": four_eyes,
+        }
+        digest = hashlib.sha256(json.dumps(content, sort_keys=True, default=str).encode()).hexdigest()
+        return {**content, "content_hash": digest, "requested_at": datetime.now(UTC).isoformat()}
+
     async def request_release(
         self,
         project_id: uuid.UUID,
@@ -1326,54 +1804,34 @@ class CommitmentService:
         external_approval_ref: str,
         actor_id: uuid.UUID,
         today: date,
+        manage: bool = False,
     ) -> ReleaseDecision:
         """Rule 2 with rules 4, 18 and 19: evaluate the authority and start the tier's approval."""
-        from app.modules.approval_routes.schemas import InstanceCreate
-        from app.modules.approval_routes.service import ApprovalRouteService
-
-        item = await self.get_item(project_id, item_id, lock=True)
-        if item.status == "release_requested":
-            raise conflict("release_pending")
-        if item.status not in REQUESTABLE:
-            raise conflict("invalid_transition")
-        pending = [r for r in await self.repo.list_releases(project_id, [item.id]) if r.outcome == "pending"]
-        if pending:
+        item = await self._lock_for_request(project_id, item_id)
+        self._refuse(self.request_refusal(item, actor_id, manage))
+        if [r for r in await self.repo.list_releases(project_id, [item.id]) if r.outcome == "pending"]:
             raise conflict("release_pending")
         e = await self._evaluate(item, _amount(amount), currency, today=today)
-        matrix, schedule, tier = e["matrix"], e["schedule"], e["tier"]
+        matrix, tier = e["matrix"], e["tier"]
         if tier.escalate_outside and not external_approval_ref.strip():
             raise CommitmentError("external_approval_required", 422)
         if e["open_preconditions"] and matrix.enforcement == "block":
-            raise CommitmentError(
+            raise conflict(
                 "preconditions_open",
-                422,
                 violations=[
                     {"code": "precondition_open", "ref": p["id"], "kind": p["kind"]} for p in e["open_preconditions"]
                 ],
             )
-        if e["route_id"] is None:
-            raise CommitmentError("no_route_for_tier", 422, detail=e["route_tier"])
-        if await self._expired_assignment_in_route(matrix, schedule, e["route_tier"], e["route_id"], today):
-            raise conflict("assignment_expired")
-        route_tier = schedule.tier(e["route_tier"])
-        if route_tier.four_eyes and str(actor_id) in set(e["approvers"]):
-            raise forbidden("four_eyes_requester_is_approver")
+        route_tier = await self._require_route(e, item, actor_id, today)
         if item.commitment_type == drawdown.ITEM_TYPE:
             await self._drawdown_cover(
                 item, matrix, e["released_before"] + e["converted"], e["schedule_currency"], today
             )
-        links = await self.repo.list_links(project_id, [item.id])
-        snapshot = {
-            "evaluation": self.evaluation_out(e),
-            "links": [{"kind": lk.kind, "document_id": str(lk.document_id)} for lk in links],
-            "preconditions": e["preconditions"],
-            "four_eyes": route_tier.four_eyes,
-            "requested_at": datetime.now(UTC).isoformat(),
-        }
         decision = ReleaseDecision(
             project_id=project_id,
             item_id=item.id,
             attempt=item.attempt_no,
+            purpose="release",
             requested_amount=e["amount"],
             currency=e["currency"],
             schedule_currency=e["schedule_currency"],
@@ -1391,58 +1849,129 @@ class CommitmentService:
             schedule_version=matrix.schedule_version,
             outcome="pending",
             requested_by=actor_id,
-            snapshot=snapshot,
+            snapshot=await self._snapshot(item, e, route_tier.four_eyes, today),
             tranche_note=tranche_note,
         )
-        try:
-            async with self.session.begin_nested():
-                await self.repo.add(decision)
-        except IntegrityError as exc:
-            raise conflict("release_pending") from exc
-        instance = await ApprovalRouteService(self.session).start_instance(
-            InstanceCreate(route_id=e["route_id"], target_kind=TARGET_KIND, target_id=decision.id), started_by=actor_id
-        )
-        decision.approval_instance_id = instance.id
-        item.status_before = item.status
-        await self._fsm(item, "release_requested", actor_id, attempt=item.attempt_no, release_id=str(decision.id))
-        await self._audit(
+        return await self._open_decision(
+            item,
+            decision,
+            e["route_id"],
             actor_id,
-            "commitment_release",
-            decision.id,
-            "requested",
-            metadata={
-                "item_id": str(item.id),
-                "tier": tier.tier_code,
-                "amount": str(e["converted"]),
-                "warnings": [p["kind"] for p in e["open_preconditions"]],
-            },
+            amount=str(e["converted"]),
+            warnings=[p["kind"] for p in e["open_preconditions"]],
         )
-        self._publish(
-            "release.requested",
-            {"project_id": str(project_id), "item_id": str(item.id), "release_id": str(decision.id)},
+
+    async def request_abort(
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        *,
+        reason: str,
+        actor_id: uuid.UUID,
+        today: date,
+        manage: bool = False,
+    ) -> ReleaseDecision:
+        """SPEC rule 15: stopping an item is decided on the tier its residual loss calls for.
+
+        The loss is the item's abort exposure today, in the schedule currency, judged as a
+        ``termination_settlement``. Unknown exposure is refused: the tier cannot be named without
+        it, and guessing one would be deciding the authority by accident. This module never
+        terminates a document; the aborted item names the documents whose own termination follows.
+        """
+        item = await self._lock_for_request(project_id, item_id)
+        self._refuse(self.request_refusal(item, actor_id, manage))
+        if not reason.strip():
+            raise CommitmentError("rationale_required", 422)
+        if [r for r in await self.repo.list_releases(project_id, [item.id]) if r.outcome == "pending"]:
+            raise conflict("release_pending")
+        matrix = await self.require_matrix(project_id)
+        project = await self._project(project_id)
+        schedule = await self.schedule_for(matrix)
+        if not ev.in_force(schedule, today):
+            raise conflict("schedule_not_in_force")
+        if ABORT_TYPE not in schedule.type_codes():
+            raise CommitmentError("abort_type_not_in_schedule", 422)
+        view = (await self.item_views(project_id, today=today, item_ids=[item.id], with_exposure=True))["items"][0]
+        exposure = view["exposure"]
+        if exposure.get("residual_loss") is None:
+            raise CommitmentError("abort_exposure_unknown", 422, detail=exposure.get("reason"))
+        loss = Decimal(exposure["residual_loss"])
+        base, sched_ccy = norm(project.currency), self.schedule_currency(schedule, project)
+        try:
+            q = await self.quote(matrix, project, base, sched_ccy, today)
+        except FxRateMissing as exc:
+            raise CommitmentError("fx_rate_missing", 422, detail=f"{exc.from_currency}->{exc.to_currency}") from exc
+        loss_sched = q.apply(loss)
+        # A stop that loses nothing (or recovers more than it cost) is judged like a loss of zero: it
+        # needs the lowest tier that may settle a termination. The decision keeps the signed figure.
+        judged = loss_sched if loss_sched > ZERO else ZERO
+        tier = ev.required_tier(schedule, ABORT_TYPE, judged, item.flags or [])
+        e: dict[str, Any] = {
+            "matrix": matrix,
+            "schedule": schedule,
+            "quote": q,
+            "amount": loss,
+            "currency": base,
+            "schedule_currency": sched_ccy,
+            "converted": loss_sched,
+            "released_before": self.released_in_schedule_currency(await self.repo.list_releases(project_id, [item.id])),
+            "group_released": ZERO,
+            "evaluated": judged,
+            "tier": tier,
+            **await self._route_for(matrix, schedule, project_id, tier, today),
+            "preconditions": [],
+            "open_preconditions": [],
+        }
+        route_tier = await self._require_route(e, item, actor_id, today)
+        snapshot = await self._snapshot(item, e, route_tier.four_eyes, today)
+        snapshot["exposure"] = exposure
+        decision = ReleaseDecision(
+            project_id=project_id,
+            item_id=item.id,
+            attempt=item.attempt_no,
+            purpose="abort",
+            requested_amount=loss,
+            currency=base,
+            schedule_currency=sched_ccy,
+            amount_in_schedule_currency=loss_sched,
+            fx_rate_used=str(q.rate),
+            fx_rate_date=q.as_of.isoformat() if q.as_of else None,
+            fx_source=q.source,
+            evaluated_amount=judged,
+            cumulative_after=e["released_before"],
+            required_tier=tier.tier_code,
+            escalate_outside=tier.escalate_outside,
+            external_approval_ref="",
+            schedule_source=matrix.schedule_source,
+            schedule_id=matrix.schedule_id,
+            schedule_version=matrix.schedule_version,
+            outcome="pending",
+            requested_by=actor_id,
+            snapshot=snapshot,
+            tranche_note=reason,
         )
-        return decision
+        return await self._open_decision(item, decision, e["route_id"], actor_id, residual_loss=str(loss_sched))
 
     async def withdraw_release(
-        self, project_id: uuid.UUID, item_id: uuid.UUID, *, actor_id: uuid.UUID, role: str, reason: str
+        self, project_id: uuid.UUID, item_id: uuid.UUID, *, actor_id: uuid.UUID, manage: bool = False, reason: str
     ) -> ReleaseDecision:
         """Rule 12: the requester (or a manager) withdraws a pending request; the instance is cancelled."""
         from app.modules.approval_routes.service import ApprovalRouteService
 
         item = await self.get_item(project_id, item_id, lock=True)
         pending = [r for r in await self.repo.list_releases(project_id, [item.id]) if r.outcome == "pending"]
-        if not pending:
-            raise conflict("no_pending_release")
-        decision = pending[0]
-        if decision.requested_by != actor_id and role not in _MANAGER_ROLES:
-            raise forbidden("not_requester")
+        decision = pending[0] if pending else None
+        self._refuse(self.withdraw_refusal(decision, actor_id, manage))
+        assert decision is not None
         if decision.approval_instance_id is not None:
             try:
-                await ApprovalRouteService(self.session).cancel_instance(
-                    decision.approval_instance_id, actor_id=actor_id, reason=reason or "withdrawn"
-                )
-            except Exception:
-                logger.debug("commitment: instance %s already closed", decision.approval_instance_id, exc_info=True)
+                async with self.session.begin_nested():
+                    await ApprovalRouteService(self.session).cancel_instance(
+                        decision.approval_instance_id, actor_id=actor_id, reason=reason or "withdrawn"
+                    )
+            except HTTPException as exc:
+                # The instance was decided or cancelled in the meantime: there is nothing left to cancel.
+                logger.info("commitment: instance %s already closed (%s)", decision.approval_instance_id, exc.detail)
         await self._close_decision(item, decision, "withdrawn", decided_by=actor_id, rationale=reason)
         return decision
 
@@ -1458,6 +1987,9 @@ class CommitmentService:
     ) -> None:
         if decision.outcome != "pending":
             raise conflict("release_decided")
+        abort = decision.purpose == "abort"
+        if abort and outcome == "released":
+            outcome = "aborted"
         balance: drawdown.LineBalance | None = None
         if outcome == "released" and item.commitment_type == drawdown.ITEM_TYPE:
             # Rule 17, checked again at approval: money another drawdown took while this request
@@ -1472,9 +2004,12 @@ class CommitmentService:
                     datetime.now(UTC).date(),
                 )
             except CommitmentError as exc:
-                if exc.code != "contingency_insufficient":
+                # Insufficient cover, a line that is gone or a rate that is missing: the approval
+                # cannot write the drawdown, so the request is closed as rejected with the code.
+                # Leaving it pending would strand it, since its approval instance is already decided.
+                if exc.code not in drawdown.REFUSALS:
                     raise
-                outcome, rationale = "rejected", "contingency_insufficient"
+                outcome, rationale = "rejected", exc.code
         decision.outcome = outcome
         decision.decided_by = decided_by
         decision.on_behalf_of = on_behalf_of
@@ -1482,6 +2017,8 @@ class CommitmentService:
         decision.rationale = rationale or ""
         if outcome == "released":
             target = await self._released_state(item, decision)
+        elif outcome == "aborted":
+            target = "aborted"
         else:
             target = item.status_before or "planned"
         # Every closed decision frees the next attempt number: a second tranche after a release is a new
@@ -1494,13 +2031,13 @@ class CommitmentService:
             "commitment_release",
             decision.id,
             outcome,
-            metadata={"item_id": str(item.id), "on_behalf_of": _s(on_behalf_of)},
+            metadata={"item_id": str(item.id), "on_behalf_of": _s(on_behalf_of), "purpose": decision.purpose},
         )
         self._publish(
-            f"release.{outcome}",
+            "item.aborted" if outcome == "aborted" else f"release.{outcome}",
             {"project_id": str(item.project_id), "item_id": str(item.id), "release_id": str(decision.id)},
         )
-        if outcome in ("released", "rejected"):
+        if outcome in ("released", "rejected", "aborted"):
             await self._notify(
                 decision.requested_by,
                 f"release_{outcome}",
@@ -1518,7 +2055,10 @@ class CommitmentService:
         """Rule 17: the line must still hold the cumulative drawdown, in its own currency."""
         project = await self._project(item.project_id)
         balance = await drawdown.line_for(self.session, project, item)
-        quote = await self.quote(matrix, project, sched_ccy, balance.currency, today)
+        try:
+            quote = await self.quote(matrix, project, sched_ccy, balance.currency, today)
+        except FxRateMissing as exc:
+            raise CommitmentError("fx_rate_missing", 422, detail=f"{exc.from_currency}->{exc.to_currency}") from exc
         drawdown.require_cover(balance, quote.apply(cumulative))
         return balance
 
@@ -1580,10 +2120,12 @@ class CommitmentService:
 
         Returns True when the decision was applied.
         """
-        decision = await self.repo.get_release(release_id)
-        if decision is None:
+        seen = await self.repo.get_release(release_id)
+        if seen is None:
             return False
-        item = await self.get_item(decision.project_id, decision.item_id, lock=True)
+        # Item first, then the request, both read afresh under their locks: a withdrawal that
+        # committed while this waited has already closed the request, and must not be undone.
+        item = await self.get_item(seen.project_id, seen.item_id, lock=True)
         decision = await self.repo.get_release(release_id, lock=True)
         if decision is None or decision.outcome != "pending":
             return False
@@ -1591,7 +2133,9 @@ class CommitmentService:
             return False
         decider = _uuid(decided_by)
         if verdict == "approved":
-            if decision.snapshot.get("four_eyes") and decider is not None and decider == decision.requested_by:
+            if decision.snapshot.get("four_eyes") and decider in await self.barred_from_deciding(
+                item, decision.requested_by
+            ):
                 await self._close_decision(
                     item, decision, "rejected", decided_by=decider, rationale="four_eyes_violation"
                 )
@@ -1611,21 +2155,171 @@ class CommitmentService:
         return True
 
     async def _on_behalf_of(self, decision: ReleaseDecision, decider: uuid.UUID | None) -> uuid.UUID | None:
-        """Rule 9: when a delegate decided, name the approver the step was pinned to."""
+        """Rule 9: when a deputy or a delegate decided, name the approver they decided for."""
         from app.modules.approval_routes.service import ApprovalRouteService
 
         if decision.approval_instance_id is None or decider is None:
             return None
-        try:
-            svc = ApprovalRouteService(self.session)
-            instance = await svc.get_instance(decision.approval_instance_id)
-            steps = await svc.list_steps(instance.route_id)
-        except Exception:
-            return None
+        svc = ApprovalRouteService(self.session)
+        instance = await svc.get_instance(decision.approval_instance_id)
+        steps = await svc.list_steps(instance.route_id)
         pinned = {s.approver_user_id for s in steps if s.approver_user_id is not None}
         if not pinned or decider in pinned:
             return None
+        matrix = await self.require_matrix(decision.project_id)
+        holders = await self.tier_holders(
+            matrix,
+            await self.schedule_for(matrix),
+            (decision.snapshot.get("evaluation") or {}).get("route_tier"),
+            instance.route_id,
+            (decision.decided_at or datetime.now(UTC)).date(),
+        )
+        if decider in holders:
+            # An assignee of the tier decides in their own right; a deputy decides for their assignee.
+            return None if holders[decider] == decider else holders[decider]
         return sorted(pinned, key=str)[0] if len(pinned) == 1 else None
+
+    async def _decide_check(
+        self, item: CommitmentItem, decision: ReleaseDecision | None, actor_id: uuid.UUID | None, today: date
+    ) -> tuple[str | None, bool, Any, Any]:
+        """``(refusal code or None, takes the step over, instance, current step)`` for one person and one request."""
+        from app.modules.approval_routes.service import ApprovalRouteService
+
+        if decision is None or decision.approval_instance_id is None:
+            return "no_pending_release", False, None, None
+        routes = ApprovalRouteService(self.session)
+        instance = await routes.get_instance(decision.approval_instance_id)
+        steps = [s for s in await routes.list_steps(instance.route_id) if s.ordinal == instance.current_step_ordinal]
+        if instance.status != "pending" or not steps:
+            return "no_pending_release", False, instance, None
+        step = steps[0]
+        if actor_id is None:
+            return "not_entitled_decider", False, instance, step
+        if decision.snapshot.get("four_eyes") and actor_id in await self.barred_from_deciding(
+            item, decision.requested_by
+        ):
+            return "four_eyes_violation", False, instance, step
+        entitled = await routes.entitled_deciders(instance, step, now=datetime.now(UTC))
+        if entitled is None or actor_id in entitled:
+            # A role step is checked by approval_routes against the caller's own role.
+            return None, False, instance, step
+        matrix = await self.require_matrix(item.project_id)
+        schedule = await self.schedule_for(matrix)
+        tier_code = (decision.snapshot.get("evaluation") or {}).get("route_tier")
+        holders = await self.tier_holders(matrix, schedule, tier_code, instance.route_id, today)
+        principal = holders.get(actor_id)
+        if principal is None:
+            return "not_entitled_decider", False, instance, step
+        if schedule.tier(tier_code).steps_mode != "any" and step.approver_user_id != principal:
+            # Every assignee of an ``all`` tier must decide: only that assignee's own deputy stands in.
+            return "not_entitled_decider", False, instance, step
+        return None, True, instance, step
+
+    async def decide_release(
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        *,
+        decision: str,
+        comment: str,
+        conditions: str,
+        valid_until: Any,
+        actor_id: uuid.UUID,
+        caller_role: str | None,
+        today: date,
+    ) -> ReleaseDecision:
+        """Decide the pending request as a holder of its tier (review finding 13).
+
+        The approval route keeps one step per ordinal, pinned to one person. Any other active
+        assignee of an ``any`` tier, and a deputy, decide by taking that step over first; the
+        decision itself is still an approval_routes decision, so its history and its events are the
+        usual ones. A rejection needs its reason (SPEC rule 11).
+        """
+        from app.modules.approval_routes.schemas import DecisionSubmit
+        from app.modules.approval_routes.service import ApprovalRouteService
+
+        item = await self.get_item(project_id, item_id, lock=True)
+        pending = [r for r in await self.repo.list_releases(project_id, [item.id]) if r.outcome == "pending"]
+        row = pending[0] if pending else None
+        code, takeover, instance, step = await self._decide_check(item, row, actor_id, today)
+        self._refuse(code)
+        assert row is not None
+        if decision not in ("approved", "rejected"):
+            raise CommitmentError("decision_invalid", 422)
+        if decision == "rejected" and not comment.strip():
+            raise CommitmentError("rationale_required", 422)
+        routes = ApprovalRouteService(self.session)
+        if takeover:
+            await routes.reassign_current_step(
+                instance.id, to_user_id=actor_id, actor_id=actor_id, reason="commitment tier holder"
+            )
+        if decision == "approved":
+            row.conditions = conditions or ""
+            row.valid_until = _iso_day(valid_until)
+        await routes.submit_decision(
+            instance.id,
+            DecisionSubmit(step_id=step.id, decision=decision, comment=comment or None),
+            approver_id=actor_id,
+            caller_role=caller_role,
+        )
+        await self.session.flush()
+        instance = await routes.get_instance(instance.id)
+        if instance.status in ("approved", "rejected"):
+            # Applied here, in the caller's transaction; the route's own event then finds the request
+            # closed and does nothing.
+            await self.apply_route_verdict(
+                row.id, instance_id=instance.id, verdict=instance.status, decided_by=actor_id, comment=comment
+            )
+        return row
+
+    async def transfer_item(
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        *,
+        target_project_id: uuid.UUID,
+        target_item_id: uuid.UUID,
+        reason: str,
+        actor_id: uuid.UUID,
+        manage: bool,
+    ) -> CommitmentItem:
+        """SPEC rule 16: the item ends as ``transferred``; its links move to the target, its decisions stay.
+
+        A linked document belongs to its project, so links can only follow into an item of the same
+        project. An item that still has links is not transferred to another project (409): the
+        documents are moved or closed in their own modules first.
+        """
+        if (target_project_id, target_item_id) == (project_id, item_id):
+            raise CommitmentError("transfer_target_invalid", 422)
+        if not reason.strip():
+            raise CommitmentError("rationale_required", 422)
+        # Both rows are locked in id order, whatever the direction of the transfer.
+        rows: dict[uuid.UUID, CommitmentItem] = {}
+        for pid, iid in sorted([(project_id, item_id), (target_project_id, target_item_id)], key=lambda p: str(p[1])):
+            rows[iid] = await self.get_item(pid, iid, lock=True)
+        item, target = rows[item_id], rows[target_item_id]
+        self._refuse(self.transfer_refusal(item, manage))
+        if target.status not in WORKING:
+            raise conflict("transfer_target_not_open")
+        links = await self.repo.list_links(project_id, [item.id])
+        if links and target_project_id != project_id:
+            raise conflict("transfer_links_stay_in_project")
+        moved = {str(lk.id) for lk in links}
+        for lk in links:
+            lk.item_id = target.id
+        for terms in await self.repo.list_abort_terms(project_id, [item.id]):
+            if terms.scope in moved:
+                terms.item_id = target.id
+        item.transferred_to_item_id = target.id
+        await self.session.flush()
+        await self._fsm(item, "transferred", actor_id, reason, target_item_id=str(target.id))
+        meta = {"from_item_id": str(item.id), "to_item_id": str(target.id), "links": len(links)}
+        await self._audit(actor_id, "commitment_item", item.id, "transferred", metadata={**meta, "reason": reason})
+        await self._audit(actor_id, "commitment_item", target.id, "transfer_received", metadata=meta)
+        self._publish("item.transferred", {"project_id": str(project_id), "item_id": str(item.id), **meta})
+        if links:
+            await self.recompute_item(target.project_id, target.id, actor_id=actor_id, locked=target)
+        return item
 
     async def history(self, project_id: uuid.UUID, item_id: uuid.UUID) -> list[ReleaseDecision]:
         item = await self.get_item(project_id, item_id)
@@ -1638,7 +2332,7 @@ class CommitmentService:
     ) -> CommitmentItem:
         """Move ``released / committed / closed / re_release_required`` from the linked documents. Only writer of those."""
         item = locked or await self.get_item(project_id, item_id, lock=True)
-        if item.status not in ("released", "partially_released", "committed", "closed", "re_release_required"):
+        if item.status not in RECOMPUTED:
             return item
         matrix = await self.require_matrix(project_id)
         project = await self._project(project_id)
@@ -1662,9 +2356,6 @@ class CommitmentService:
         else:
             target = await self._released_state_from_amount(item, released, matrix, project, schedule, today)
         if target != item.status:
-            before = item.status
-            if before == "closed" and target == "released":
-                return item
             await self._fsm(item, target, actor_id, "recomputed from linked documents", committed=str(comm))
             if target == "re_release_required":
                 await self._notify(
@@ -1717,8 +2408,13 @@ class CommitmentService:
     ) -> dict[str, Any]:
         """Would binding ``new_amount`` on this document stay within its item's release (plus tolerance)?
 
-        A linked document replaces its own figure (``new_amount`` is its new total). An unlinked change
-        whose ``parent`` is linked adds to the parent's item (``new_amount`` is the change's own amount).
+        A linked document replaces its own figure (``new_amount`` is its new total). A change order or
+        variation is asked on the item of its contract when that contract is in the matrix, because
+        that is where its money counts once the contract header carries it (``new_amount`` is the
+        change's own amount). A contingency drawdown confirmed for a risk (``document_id`` is the
+        risk) is asked on the drawdown item that names that risk.
+
+        The committed sum is :meth:`item_committed`, the same one the matrix and recompute read.
 
         Pure: writes nothing. The guard (:mod:`.guard`) records a ``warn`` or ``block``; the
         ``/check`` preview records nothing.
@@ -1727,52 +2423,74 @@ class CommitmentService:
         if matrix is None or matrix.enforcement == "off":
             return {"result": "ok", "reasons": [], "item_id": None}
         severity = "block" if matrix.enforcement == "block" else "warn"
-        link = await self.repo.find_link(project_id, kind, document_id) if document_id else None
-        additive = False
-        if link is None and parent_kind and parent_id:
-            link = await self.repo.find_link(project_id, parent_kind, parent_id)
-            additive = link is not None
-        if link is None:
-            if matrix.require_link:
-                out = {"result": severity, "reasons": [{"code": "commitment_not_in_matrix"}], "item_id": None}
-                return out
-            return {"result": "ok", "reasons": [], "item_id": None}
         project = await self._project(project_id)
         schedule = await self.schedule_for(matrix)
         today = datetime.now(UTC).date()
         sched_ccy = self.schedule_currency(schedule, project)
-        reasons: list[dict[str, Any]] = []
         if schedule.basis == "gross" and gross_amount is not None:
             new_amount = gross_amount
+        new = (_amount(new_amount), norm(currency))
+        not_in_matrix = {
+            "result": severity if matrix.require_link else "ok",
+            "reasons": [{"code": "commitment_not_in_matrix"}] if matrix.require_link else [],
+            "item_id": None,
+        }
+        item_ids: list[uuid.UUID]
         try:
-            new_sched = (await self.quote(matrix, project, currency, sched_ccy, today)).apply(_amount(new_amount))
-            per_item, _committed, _r = await self.committed_for_items(matrix, project, schedule, on_date=today)
-            others = ZERO
-            for f in per_item.get(link.item_id, []):
-                if (f.link_id == link.id and not additive) or not f.amount:
-                    continue
-                others += (await self.quote(matrix, project, f.currency, sched_ccy, today)).apply(f.amount)
+            if kind == "contingency_drawdown":
+                rows = await self.repo.items_by_risk(project_id, document_id, drawdown.ITEM_TYPE) if document_id else []
+                item_ids = [i.id for i in rows if i.status not in ENDED]
+                if not item_ids:
+                    return not_in_matrix
+                would_commit = (await self.quote(matrix, project, new[1], sched_ccy, today)).apply(new[0])
+            else:
+                link = await self.repo.find_link(project_id, kind, document_id) if document_id else None
+                own_link_id = link.id if link is not None else None
+                adds = True
+                if kind in figures.CHANGE_KINDS:
+                    host = None
+                    if document_id is not None:
+                        host = await figures.change_host(self.session, project_id, kind, document_id)
+                        if host.contract_id is not None:
+                            parent_kind, parent_id = "contract", host.contract_id
+                    parent = None
+                    if parent_kind and parent_id:
+                        parent = await self.repo.find_link(project_id, parent_kind, parent_id)
+                    if parent is not None:
+                        link = parent
+                        # Already inside the header: the contract's figure carries it, nothing is added twice.
+                        adds = not (host is not None and host.posted)
+                elif link is None and parent_kind and parent_id:
+                    link = await self.repo.find_link(project_id, parent_kind, parent_id)
+                if link is None:
+                    return not_in_matrix
+                item_ids = [link.item_id]
+                per_item, _committed, _r = await self.committed_for_items(matrix, project, schedule, on_date=today)
+                would_commit = await self.item_committed(
+                    matrix,
+                    project,
+                    sched_ccy,
+                    per_item.get(link.item_id, []),
+                    on_date=today,
+                    # The document's present figure is replaced by its new amount.
+                    without_link=own_link_id,
+                    plus=(new,) if adds else (),
+                )
         except FxRateMissing:
-            reasons.append({"code": "fx_rate_missing"})
-            out = {"result": severity, "reasons": reasons, "item_id": str(link.item_id)}
-            return out
-        released = self.released_in_schedule_currency(await self.repo.list_releases(project_id, [link.item_id]))
+            return {"result": severity, "reasons": [{"code": "fx_rate_missing"}], "item_id": str(item_ids[0])}
+        released = self.released_in_schedule_currency(await self.repo.list_releases(project_id, item_ids))
         tol = schedule.variation_tolerance
         ceiling = ev.tolerance_ceiling(released, parse_amount(tol.absolute), parse_amount(tol.percent))
-        if released <= 0 or others + new_sched > ceiling:
-            reasons.append(
-                {
-                    "code": "commitment_not_released",
-                    "released": str(released),
-                    "ceiling": str(ceiling),
-                    "would_commit": str(others + new_sched),
-                    "currency": sched_ccy,
-                }
-            )
-        if not reasons:
-            return {"result": "ok", "reasons": [], "item_id": str(link.item_id)}
-        out = {"result": severity, "reasons": reasons, "item_id": str(link.item_id)}
-        return out
+        if released > 0 and would_commit <= ceiling:
+            return {"result": "ok", "reasons": [], "item_id": str(item_ids[0])}
+        reason = {
+            "code": "commitment_not_released",
+            "released": str(released),
+            "ceiling": str(ceiling),
+            "would_commit": str(would_commit),
+            "currency": sched_ccy,
+        }
+        return {"result": severity, "reasons": [reason], "item_id": str(item_ids[0])}
 
     # ── gate evidence, validation payload, export rows ─────────────────────
 

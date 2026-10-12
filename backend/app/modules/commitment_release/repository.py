@@ -54,13 +54,20 @@ class CommitmentRepository:
     async def get_item(self, project_id: uuid.UUID, item_id: uuid.UUID, *, lock: bool = False) -> CommitmentItem | None:
         stmt = select(CommitmentItem).where(CommitmentItem.project_id == project_id, CommitmentItem.id == item_id)
         if lock:
-            stmt = stmt.with_for_update()
+            # After the wait for the lock the row may have changed: never serve the identity-map copy.
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
-    async def items_in_group(self, project_id: uuid.UUID, group: str) -> list[CommitmentItem]:
-        stmt = select(CommitmentItem).where(
-            CommitmentItem.project_id == project_id, CommitmentItem.split_group == group
+    async def items_in_group(self, project_id: uuid.UUID, group: str, *, lock: bool = False) -> list[CommitmentItem]:
+        """The items of one split group, in id order. ``lock`` row-locks them in that same order, so two
+        requests in one group queue up instead of deadlocking, and reads the rows afresh."""
+        stmt = (
+            select(CommitmentItem)
+            .where(CommitmentItem.project_id == project_id, CommitmentItem.split_group == group)
+            .order_by(CommitmentItem.id)
         )
+        if lock:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def list_links(self, project_id: uuid.UUID, item_ids: list[uuid.UUID] | None = None) -> list[CommitmentLink]:
@@ -118,8 +125,24 @@ class CommitmentRepository:
     async def get_release(self, release_id: uuid.UUID, *, lock: bool = False) -> ReleaseDecision | None:
         stmt = select(ReleaseDecision).where(ReleaseDecision.id == release_id)
         if lock:
-            stmt = stmt.with_for_update()
+            # Same reason as ``get_item``: a withdrawal that committed while this waited must be seen.
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
         return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def has_release(self, item_id: uuid.UUID) -> bool:
+        """Whether any release was ever requested on the item, whatever became of it."""
+        stmt = select(ReleaseDecision.id).where(ReleaseDecision.item_id == item_id).limit(1)
+        return (await self.session.execute(stmt)).first() is not None
+
+    async def items_by_risk(
+        self, project_id: uuid.UUID, risk_id: uuid.UUID, commitment_type: str
+    ) -> list[CommitmentItem]:
+        stmt = select(CommitmentItem).where(
+            CommitmentItem.project_id == project_id,
+            CommitmentItem.risk_id == risk_id,
+            CommitmentItem.commitment_type == commitment_type,
+        )
+        return list((await self.session.execute(stmt.order_by(CommitmentItem.code))).scalars().all())
 
     async def list_abort_terms(
         self, project_id: uuid.UUID, item_ids: list[uuid.UUID] | None = None

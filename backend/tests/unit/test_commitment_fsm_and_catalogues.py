@@ -28,29 +28,101 @@ from app.modules.commitment_release.catalogue import (
 from app.modules.commitment_release.fsm import ITEM_FSM, ITEM_STATES
 from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
 
-WORKING = ("planned", "released", "partially_released", "committed", "re_release_required")
+# The table, written out pair by pair. It is deliberately NOT built from the module's own tuples:
+# a table derived from the code can only agree with the code.
 ALLOWED: set[tuple[str, str]] = {
-    *[(s, "release_requested") for s in WORKING],
-    *[("release_requested", s) for s in WORKING],
+    # a release is requested (first release, next tranche, renewal)
+    ("planned", "release_requested"),
+    ("partially_released", "release_requested"),
+    ("released", "release_requested"),
+    ("committed", "release_requested"),
+    ("re_release_required", "release_requested"),
+    # decided, rejected or withdrawn
+    ("release_requested", "planned"),
+    ("release_requested", "partially_released"),
+    ("release_requested", "released"),
+    ("release_requested", "committed"),
+    ("release_requested", "re_release_required"),
+    # recompute from the linked documents: every pair of the five recomputed states
+    ("released", "partially_released"),
     ("released", "committed"),
+    ("released", "closed"),
+    ("released", "re_release_required"),
+    ("partially_released", "released"),
     ("partially_released", "committed"),
-    ("re_release_required", "committed"),
+    ("partially_released", "closed"),
+    ("partially_released", "re_release_required"),
     ("committed", "released"),
     ("committed", "partially_released"),
     ("committed", "closed"),
-    ("closed", "committed"),
-    ("released", "re_release_required"),
-    ("partially_released", "re_release_required"),
     ("committed", "re_release_required"),
-    *[(s, "on_hold") for s in WORKING],
-    *[("on_hold", s) for s in WORKING],
-    *[(s, "aborted") for s in WORKING],
-    *[(s, "transferred") for s in WORKING],
+    ("closed", "released"),
+    ("closed", "partially_released"),
+    ("closed", "committed"),
+    ("closed", "re_release_required"),
+    ("re_release_required", "released"),
+    ("re_release_required", "partially_released"),
+    ("re_release_required", "committed"),
+    ("re_release_required", "closed"),
+    # hold and resume
+    ("planned", "on_hold"),
+    ("released", "on_hold"),
+    ("partially_released", "on_hold"),
+    ("committed", "on_hold"),
+    ("re_release_required", "on_hold"),
+    ("on_hold", "planned"),
+    ("on_hold", "released"),
+    ("on_hold", "partially_released"),
+    ("on_hold", "committed"),
+    ("on_hold", "re_release_required"),
+    # abort
+    ("planned", "aborted"),
+    ("released", "aborted"),
+    ("partially_released", "aborted"),
+    ("committed", "aborted"),
+    ("re_release_required", "aborted"),
     ("on_hold", "aborted"),
+    # transfer
+    ("planned", "transferred"),
+    ("released", "transferred"),
+    ("partially_released", "transferred"),
+    ("committed", "transferred"),
+    ("re_release_required", "transferred"),
 }
+ALL_STATES = (
+    "planned",
+    "release_requested",
+    "released",
+    "partially_released",
+    "committed",
+    "closed",
+    "re_release_required",
+    "on_hold",
+    "aborted",
+    "transferred",
+)
 
 
-@pytest.mark.parametrize(("src", "dst"), sorted(itertools.product(ITEM_STATES, ITEM_STATES)))
+def test_the_literal_table_covers_exactly_the_declared_states() -> None:
+    assert set(ALL_STATES) == set(ITEM_STATES)
+    assert len(ALLOWED) == 51
+
+
+def test_recompute_can_reach_every_recomputed_state_from_every_other() -> None:
+    """Review finding 6: linking a completed contract to a released item, or removing the link that
+    forced a re-release, must be a legal move and not a 409 on the user's own write."""
+    for src, dst in (
+        ("released", "closed"),
+        ("partially_released", "closed"),
+        ("re_release_required", "released"),
+        ("re_release_required", "partially_released"),
+        ("closed", "partially_released"),
+        ("closed", "re_release_required"),
+    ):
+        assert ITEM_FSM.has_transition(src, dst), (src, dst)
+
+
+@pytest.mark.parametrize(("src", "dst"), sorted(itertools.product(ALL_STATES, ALL_STATES)))
 def test_item_transition_table(src: str, dst: str) -> None:
     assert ITEM_FSM.has_transition(src, dst) is ((src, dst) in ALLOWED)
 

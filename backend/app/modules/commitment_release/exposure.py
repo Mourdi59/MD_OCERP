@@ -140,6 +140,11 @@ def compute_exposure(
     sunk = sunk_total(sunk_parts)
     lines: list[dict[str, Any]] = [{"code": k, "amount": str(v)} for k, v in sunk_parts.items()]
     not_spent = committed - sunk
+    if committed == ZERO and sunk == ZERO:
+        # Nothing is bound and nothing was spent: stopping costs nothing, whatever the terms say,
+        # and there is nothing to resell either. Salvage of goods never bought is not a gain.
+        lines.append({"code": "nothing_committed", "amount": "0"})
+        return Exposure(ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, None, None, None, tuple(lines))
     if terms is None or (terms.basis_code is None and not terms.cancellation_schedule):
         return Exposure(sunk, committed, not_spent, None, ZERO, None, "abort_terms_missing", None, None, tuple(lines))
     recoverable = (terms.transfer_value or ZERO) + (terms.salvage_value or ZERO)
@@ -174,6 +179,28 @@ def compute_exposure(
         charge = charge_or_none
     residual = sunk + charge - recoverable
     return Exposure(sunk, committed, not_spent, charge, recoverable, residual, None, method, review, tuple(lines))
+
+
+def combine_exposures(parts: list[Exposure]) -> Exposure:
+    """The exposure of an item whose linked documents carry terms of their own: the parts added up.
+
+    One part with an unknown residual makes the whole unknown, with that part's reason; adding
+    only the known parts would show a loss that leaves a document out.
+    """
+    unknown = next((p for p in parts if p.residual_loss is None), None)
+    charges = [p.cancellation_charge for p in parts]
+    return Exposure(
+        sunk=sum((p.sunk for p in parts), ZERO),
+        committed=sum((p.committed for p in parts), ZERO),
+        committed_not_spent=sum((p.committed_not_spent for p in parts), ZERO),
+        cancellation_charge=None if any(c is None for c in charges) else sum((c for c in charges if c), ZERO),
+        recoverable=sum((p.recoverable for p in parts), ZERO),
+        residual_loss=None if unknown is not None else sum((p.residual_loss or ZERO for p in parts), ZERO),
+        reason=unknown.reason if unknown is not None else None,
+        method="combined",
+        basis_review_status=next((p.basis_review_status for p in parts if p.basis_review_status), None),
+        lines=tuple(line for p in parts for line in p.lines),
+    )
 
 
 def _basis_charge(

@@ -39,6 +39,7 @@ import {
   Image as ImageIcon,
   LayoutGrid,
   Receipt,
+  Stamp,
   ChevronDown,
   MessagesSquare,
   MapPin,
@@ -1805,6 +1806,16 @@ export function ProjectDetailPage() {
             { label: project.name },
           ]}
         />
+        <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Stamp size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/commitments`)}
+          data-testid="project-commitments-link"
+        >
+          {t('commitment.page.title', { defaultValue: 'Commitments and releases' })}
+        </Button>
         <Button
           variant={customizing ? 'primary' : 'ghost'}
           size="sm"
@@ -1820,6 +1831,7 @@ export function ProjectDetailPage() {
             ? t('project.layout.done', { defaultValue: 'Done' })
             : t('project.layout.customize', { defaultValue: 'Customize' })}
         </Button>
+        </div>
       </div>
 
       <DismissibleInfo

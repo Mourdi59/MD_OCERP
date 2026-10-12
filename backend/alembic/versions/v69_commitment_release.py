@@ -213,6 +213,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _str("schedule_id", 64, None),
             _int("schedule_version"),
             _guid("approval_instance_id"),
+            _str("purpose", 12, "release"),
             _str("outcome", 12, "pending"),
             _guid("requested_by"),
             _guid("decided_by"),

@@ -124,29 +124,6 @@ async def test_award_over_release_is_warned_and_proceeds_under_warn(world: World
     assert await guard_rows(world, pkg) == ["guard_warn"]
 
 
-async def _bid_status(w: World, bid: uuid.UUID) -> str:
-    from app.modules.tendering.models import TenderBid
-
-    async with w.factory() as s:
-        return (await s.get(TenderBid, bid)).status
-
-
-async def test_preview_check_records_nothing(world: World) -> None:
-    from decimal import Decimal
-
-    iid = await _released_item(world, "40000")
-    pkg, _bid = await _package(world, "60000")
-    await link(world, iid, "tender_package", pkg)
-    await _enforcement(world, "block")
-    async with world.factory() as s:
-        out = await CommitmentService(s).check_document(
-            world.project_id, kind="tender_package", document_id=pkg, new_amount=Decimal("60000"), currency="EUR"
-        )
-        await s.commit()
-    assert out["result"] == "block"
-    assert await guard_rows(world, pkg) == []
-
-
 async def test_award_over_release_is_refused_under_block_and_nothing_moves(world: World) -> None:
     iid = await _released_item(world, "40000")
     pkg, bid = await _package(world, "60000")

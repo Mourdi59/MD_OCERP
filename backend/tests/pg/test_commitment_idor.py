@@ -129,3 +129,42 @@ async def test_list_envelope_and_coded_validation_errors(world: World) -> None:
     assert body["total"] == 1
     assert bad.status_code == 422
     assert float_amount.status_code == 422
+
+
+async def test_a_fixed_decision_date_travels_over_http_and_is_stored_as_text(world: World) -> None:
+    """A ``date`` in the body must reach the VARCHAR column as ISO text: asyncpg refuses a date object there."""
+    p = f"{BASE}/projects/{world.project_id}"
+    body = {
+        "code": "CR-D",
+        "title": "Dated",
+        "commitment_type": "design",
+        "planned_source": "manual",
+        "planned_manual_amount": "1000",
+        "currency": "EUR",
+        "latest_decision_date_fixed": "2026-12-01",
+    }
+    async with client_as(world, world.requester, "editor") as c:
+        created = await c.post(f"{p}/items", json=body)
+        assert created.status_code == 201, created.text
+        iid = created.json()["id"]
+        assert created.json()["latest_decision_date_fixed"] == "2026-12-01"
+        patched = await c.patch(f"{p}/items/{iid}", json={"latest_decision_date_fixed": "2027-01-15"})
+        assert patched.status_code == 200, patched.text
+        cleared = await c.patch(f"{p}/items/{iid}", json={"latest_decision_date_fixed": None})
+    assert patched.json()["latest_decision_date_fixed"] == "2027-01-15"
+    assert patched.json()["latest_decision_date"] == "2027-01-15"
+    assert cleared.status_code == 200, cleared.text
+    assert (await state(world, uuid.UUID(iid))).latest_decision_date_fixed is None
+
+
+async def test_a_release_request_ignores_a_date_in_the_query(world: World) -> None:
+    """``?today=`` on a write is not a parameter: the decision freezes the server day, not the caller's."""
+    from datetime import UTC, datetime
+
+    iid = await item(world, code="CR-T", amount="10000", currency="GBP")
+    p = f"{BASE}/projects/{world.project_id}"
+    async with client_as(world, world.requester, "editor") as c:
+        r = await c.post(f"{p}/items/{iid}/releases?today=2020-01-01", json={"amount": "1000", "currency": "GBP"})
+    assert r.status_code == 201, r.text
+    assert r.json()["fx_rate_date"] != "2020-01-01"
+    assert r.json()["fx_rate_date"] in (None, datetime.now(UTC).date().isoformat())

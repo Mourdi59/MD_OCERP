@@ -231,7 +231,10 @@ class ReleaseDecision(Base):
     schedule_id: Mapped[str] = mapped_column(String(64), nullable=False)
     schedule_version: Mapped[int] = mapped_column(Integer, nullable=False)
     approval_instance_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
-    # pending | released | rejected | withdrawn
+    # release = money may be bound; abort = the item may be stopped (SPEC rule 15). An abort is decided
+    # on the same routes and never counts as released money.
+    purpose: Mapped[str] = mapped_column(String(12), nullable=False, default="release")
+    # pending | released | aborted | rejected | withdrawn
     outcome: Mapped[str] = mapped_column(String(12), nullable=False, default="pending")
     requested_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     decided_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)

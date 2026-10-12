@@ -221,10 +221,36 @@ class WithdrawIn(BaseModel):
     reason: str = Field(default="", max_length=4000)
 
 
+class DecideIn(BaseModel):
+    """A tier holder decides the pending request. A rejection needs ``comment`` (the rationale)."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    decision: Literal["approved", "rejected"]
+    comment: str = Field(default="", max_length=2000)
+    conditions: str = Field(default="", max_length=4000)
+    valid_until: date | None = None
+
+
+class AbortIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    reason: str = Field(min_length=1, max_length=4000)
+
+
+class TransferIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    target_item_id: UUID
+    target_project_id: UUID | None = None
+    reason: str = Field(min_length=1, max_length=4000)
+
+
 class ReleaseOut(_Out):
     id: UUID
     item_id: UUID
     attempt: int
+    purpose: str
     requested_amount: str
     currency: str
     schedule_currency: str

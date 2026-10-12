@@ -28,6 +28,8 @@ from typing import Any
 from app.modules.commitment_release.errors import CommitmentError
 
 ITEM_TYPE = "contingency_drawdown"
+# The coded reasons a drawdown cannot be covered; at approval each closes the request as rejected.
+REFUSALS = ("contingency_insufficient", "contingency_line_required", "fx_rate_missing")
 
 
 def source_of(item_id: uuid.UUID) -> str:

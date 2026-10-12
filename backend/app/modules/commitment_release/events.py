@@ -83,7 +83,7 @@ async def handle_route_event(data: dict, *, verdict: str, session_factory=None) 
             )
             await session.commit()
     except Exception:
-        logger.debug("commitment: route %s wiring failed for %s", verdict, release_id, exc_info=True)
+        logger.error("commitment: route %s verdict was not applied to release %s", verdict, release_id, exc_info=True)
 
 
 async def handle_document_event(name: str, data: dict, *, session_factory=None) -> int:
@@ -106,12 +106,23 @@ async def handle_document_event(name: str, data: dict, *, session_factory=None) 
             svc = CommitmentService(session)
             links = await svc.repo.links_for_documents(kind, [doc_id])
             for project_id in {lk.project_id for lk in links}:
-                for item in await svc.repo.list_items(project_id):
-                    await svc.recompute_item(project_id, item.id)
-                    touched += 1
+                for item_id in [i.id for i in await svc.repo.list_items(project_id)]:
+                    # One savepoint per item: an item that cannot be recomputed must not undo its siblings.
+                    try:
+                        async with session.begin_nested():
+                            await svc.recompute_item(project_id, item_id)
+                        touched += 1
+                    except Exception:
+                        logger.error(
+                            "commitment: recompute of item %s after %s (%s) failed",
+                            item_id,
+                            name,
+                            doc_id,
+                            exc_info=True,
+                        )
             await session.commit()
     except Exception:
-        logger.debug("commitment: recompute after %s failed for %s", name, doc_id, exc_info=True)
+        logger.error("commitment: recompute after %s failed for %s", name, doc_id, exc_info=True)
     return touched
 
 

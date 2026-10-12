@@ -43,6 +43,9 @@ REQUESTABLE: tuple[str, ...] = ("planned", "partially_released", "released", "co
 # Working states an item may be paused, aborted or transferred from.
 WORKING: tuple[str, ...] = ("planned", "released", "partially_released", "committed", "re_release_required")
 
+# States the module's own recompute moves an item between (never a user action).
+RECOMPUTED: tuple[str, ...] = ("released", "partially_released", "committed", "closed", "re_release_required")
+
 _T: list[StateTransition] = []
 
 
@@ -54,21 +57,21 @@ for _src in REQUESTABLE:
     _t(_src, "release_requested", "release requested")
 for _dst in ("planned", "partially_released", "released", "committed", "re_release_required"):
     _t("release_requested", _dst, "request decided or withdrawn")
-_t("released", "committed", "a linked document counts as committed")
-_t("partially_released", "committed", "a linked document counts as committed")
-_t("re_release_required", "committed", "linked amount back within the release")
-_t("committed", "released", "linked documents no longer count")
-_t("committed", "partially_released", "linked documents no longer count")
-_t("committed", "closed", "all linked documents completed or closed")
-_t("closed", "committed", "a linked document reopened")
-for _src in ("released", "partially_released", "committed"):
-    _t(_src, "re_release_required", "linked amount above release plus tolerance")
+# Recompute reads the linked documents and may find any of these five from any other: a link is
+# added or removed, a contract is amended up or back down, completed or reopened, a planned amount
+# changes. Every ordered pair is therefore an edge; a missing one would refuse the user's own write.
+for _src in RECOMPUTED:
+    for _dst in RECOMPUTED:
+        if _src != _dst:
+            _t(_src, _dst, "recomputed from the linked documents")
 for _src in WORKING:
     _t(_src, "on_hold", "put on hold")
     _t("on_hold", _src, "resumed")
     _t(_src, "aborted", "abort decided")
     _t(_src, "transferred", "transferred to another project or item")
 _t("on_hold", "aborted", "abort decided")
+# An abort is asked for like a release and decided on the tier route (SPEC rule 15).
+_t("release_requested", "aborted", "abort decided on the tier route")
 
 ITEM_FSM = register_fsm(
     EntityFSM(
@@ -79,4 +82,4 @@ ITEM_FSM = register_fsm(
     )
 )
 
-__all__ = ["ITEM_FSM", "ITEM_STATES", "REQUESTABLE", "WORKING"]
+__all__ = ["ITEM_FSM", "ITEM_STATES", "RECOMPUTED", "REQUESTABLE", "WORKING"]
