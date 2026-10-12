@@ -193,7 +193,15 @@ async def add_contract(
         await s.flush()
         s.add(
             ContractLine(
-                contract_id=c.id, code="1", description="Works", total_value=Decimal(value), cost_line_id=cost_line_id
+                # A lump-sum line, so the signing compliance gate sees a complete position.
+                contract_id=c.id,
+                code="1",
+                description="Works",
+                unit="lsum",
+                quantity=Decimal("1"),
+                unit_rate=Decimal(value),
+                total_value=Decimal(value),
+                cost_line_id=cost_line_id,
             )
         )
         await s.commit()
@@ -209,6 +217,7 @@ async def set_contract_value(w: World, contract_id: uuid.UUID, value: str) -> No
         c = await s.get(Contract, contract_id)
         c.total_value = Decimal(value)
         line = (await s.execute(select(ContractLine).where(ContractLine.contract_id == contract_id))).scalar_one()
+        line.unit_rate = Decimal(value)
         line.total_value = Decimal(value)
         await s.commit()
 
