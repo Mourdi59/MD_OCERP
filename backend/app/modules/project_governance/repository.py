@@ -10,9 +10,10 @@ row that exists elsewhere, which it answers 404 like a missing one.
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Any, TypeVar
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.project_governance.models import (
@@ -150,16 +151,53 @@ class GovernanceRepository:
         return {gid: int(n) for gid, n in (await self.session.execute(stmt)).all()}
 
     async def list_conditions(
-        self, project_id: uuid.UUID, *, status: str | None = None, offset: int = 0, limit: int | None = None
+        self,
+        project_id: uuid.UUID,
+        *,
+        status: str | None = None,
+        today: date | None = None,
+        offset: int = 0,
+        limit: int | None = None,
     ) -> tuple[list[GovernanceCondition], int]:
+        """Conditions of a project, optionally of one status.
+
+        With ``today`` the filter is on the effective status: an open condition
+        past its due date counts as overdue whether or not the escalation sweep
+        has reached it. Without it the filter is on the stored value. Due dates
+        are ISO strings, so they order as dates.
+        """
         base = select(GovernanceCondition).where(GovernanceCondition.project_id == project_id)
-        if status:
+        if status and today is not None and status in ("open", "overdue"):
+            late = and_(GovernanceCondition.due_date != "", GovernanceCondition.due_date < today.isoformat())
+            if status == "overdue":
+                base = base.where(
+                    or_(
+                        GovernanceCondition.status == "overdue",
+                        and_(GovernanceCondition.status == "open", late),
+                    )
+                )
+            else:
+                base = base.where(GovernanceCondition.status == "open", ~late)
+        elif status:
             base = base.where(GovernanceCondition.status == status)
         total = (await self.session.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
         stmt = base.order_by(GovernanceCondition.due_date, GovernanceCondition.created_at).offset(offset)
         if limit is not None:
             stmt = stmt.limit(limit)
         return list((await self.session.execute(stmt)).scalars()), int(total)
+
+    async def projects_with_late_conditions(self, today: date) -> list[uuid.UUID]:
+        """Projects holding an open condition past its due date that no sweep has escalated yet."""
+        stmt = (
+            select(GovernanceCondition.project_id)
+            .where(
+                GovernanceCondition.status == "open",
+                GovernanceCondition.due_date != "",
+                GovernanceCondition.due_date < today.isoformat(),
+            )
+            .distinct()
+        )
+        return list((await self.session.execute(stmt)).scalars())
 
     async def get_condition(
         self, project_id: uuid.UUID, condition_id: uuid.UUID, *, lock: bool = False

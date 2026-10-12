@@ -285,7 +285,7 @@ async def test_matrix_query_count_does_not_grow_with_documents(world: World) -> 
         for doc_type in ("risk_register", "quality_management_plan", "hse_plan"):
             container_id = await add_container(s, world.project_id, f"extra-{doc_type}")
             await svc.attach_container(
-                world.project_id, docs[doc_type].id, container_id=container_id, actor_id=world.owner, role="editor"
+                world.project_id, docs[doc_type].id, container_id=container_id, actor_id=world.owner
             )
         await s.commit()
     assert await _measure() == before

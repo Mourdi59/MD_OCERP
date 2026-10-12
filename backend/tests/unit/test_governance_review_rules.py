@@ -295,3 +295,54 @@ def test_the_migration_declares_the_same_indexes_as_the_models() -> None:
         for ix in t.indexes
     }
     assert declared == in_models
+
+
+# ── document capabilities: the flag and the write share one refusal ──
+
+
+def _doc_refusal(status: str, action: str, *, actor: str = "owner", is_manager: bool = False, read_only: bool = False):
+    import uuid as _uuid
+    from types import SimpleNamespace
+
+    from app.modules.project_governance.service import GovernanceService
+
+    owner, other = _uuid.UUID(int=1), _uuid.UUID(int=2)
+    doc = SimpleNamespace(
+        id=_uuid.UUID(int=9),
+        doc_type="business_case",
+        status=status,
+        container_id=None,
+        bound_revision_id=None,
+        read_only=read_only,
+    )
+    area = SimpleNamespace(code="cost_finance", owner_user_id=owner, deputy_user_id=None)
+    refusal = GovernanceService._document_refusal(doc, area, owner if actor == "owner" else other, is_manager, action)
+    return None if refusal is None else (refusal.code, refusal.status_code)
+
+
+@pytest.mark.parametrize(
+    ("status", "action", "kwargs", "expected"),
+    [
+        ("draft", "attach", {}, None),
+        ("draft", "submit", {}, None),
+        ("draft", "return", {}, ("invalid_transition", 409)),
+        ("in_review", "return", {}, None),
+        ("in_review", "submit", {}, ("invalid_transition", 409)),
+        ("binding", "attach", {}, ("binding_requires_change_request", 409)),
+        ("binding", "submit", {}, ("binding_requires_change_request", 409)),
+        ("draft", "attach", {"read_only": True}, ("document_read_only", 409)),
+        ("draft", "attach", {"actor": "other"}, ("not_area_owner", 403)),
+        ("draft", "submit", {"actor": "other", "is_manager": True}, None),
+    ],
+)
+def test_document_refusal(status: str, action: str, kwargs: dict, expected) -> None:
+    assert _doc_refusal(status, action, **kwargs) == expected
+
+
+def test_document_writes_and_flags_share_the_refusal() -> None:
+    import inspect
+
+    from app.modules.project_governance.service import GovernanceService
+
+    assert "_document_refusal(" in inspect.getsource(GovernanceService._document_for_edit)
+    assert "_document_refusal(" in inspect.getsource(GovernanceService.document_capabilities)

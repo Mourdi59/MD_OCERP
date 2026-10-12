@@ -141,6 +141,9 @@ class AreaOut(_Out):
     na_rationale: str
     retired: bool
     name: dict[str, Any] = _NO_LABEL
+    # Document types the phase model defines for this area: [{code, name, required_at_gates, tracked}];
+    # ``tracked`` says the project already has that document.
+    document_types: list[dict[str, Any]] = []
 
 
 # ── gates ──
@@ -187,9 +190,17 @@ class DecisionIn(BaseModel):
     hold_resume_date: date | None = None
 
 
+class GatePlan(BaseModel):
+    """When a gate is planned. Only the fields sent are changed; null unlinks or clears."""
+
+    target_date: date | None = None
+    schedule_activity_id: UUID | None = None
+
+
 class ReopenIn(BaseModel):
     rationale: str = Field(max_length=8000)
-    rewind_phase: bool = False
+    # Accepted and ignored: the server rewinds the phase whenever the reopened decision had advanced it.
+    rewind_phase: bool | None = None
 
 
 class DecisionOut(_Out):
@@ -213,7 +224,10 @@ class GateDetailOut(BaseModel):
     blockers: list[dict[str, Any]]
     areas: list[dict[str, Any]]
     decisions: list[DecisionOut]
-    # What the caller may do: {edit, decide, decide_reason?, go, go_reason?}; reasons are error codes.
+    # What the caller may do. Reasons are error codes and are present only when the flag is false:
+    # {edit, decide, decide_reason?, go, go_reason?,
+    #  outcomes: {<outcome>: {allowed, reason}}, resume, resume_reason?, reopen, reopen_reason?,
+    #  add_condition, add_condition_reason?}
     can: dict[str, Any] = {}
 
 
@@ -275,6 +289,9 @@ class DocumentOut(_Out):
     approved_gate_id: UUID | None
     read_only: bool
     name: dict[str, Any] = _NO_LABEL
+    # What the caller may do with this document: {attach, attach_reason, submit, submit_reason,
+    # return, return_reason}; reasons are error codes or null.
+    can: dict[str, Any] = {}
 
 
 class ChangeRequestIn(BaseModel):
@@ -327,6 +344,9 @@ class ConditionOut(_Out):
     waived_by: UUID | None
     waived_at: datetime | None
     escalated_at: datetime | None
+    # What the caller may do with this row: {clear, clear_reason, waive, waive_reason}; reasons are
+    # error codes or null.
+    can: dict[str, Any] = {}
 
 
 class ClearIn(BaseModel):

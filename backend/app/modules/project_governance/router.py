@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Awaitable
-from datetime import UTC, date, datetime
+from datetime import date
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -56,6 +56,7 @@ from app.modules.project_governance.schemas import (
     FindingOut,
     GateDetailOut,
     GateOut,
+    GatePlan,
     MatrixOut,
     ModelChange,
     ModelOut,
@@ -67,7 +68,7 @@ from app.modules.project_governance.schemas import (
     TenantCatalogueOut,
     WaiveIn,
 )
-from app.modules.project_governance.service import GovernanceService
+from app.modules.project_governance.service import GovernanceService, effective_condition_status, server_today
 
 router = APIRouter(tags=["project_governance"])
 
@@ -78,13 +79,20 @@ MANAGE = Depends(RequirePermission("governance.manage"))
 DECIDE = Depends(RequirePermission("governance.decide"))
 
 
-async def _run[T](awaitable: Awaitable[T]) -> T:
-    """Turn a :class:`GovernanceError` into the HTTP error the module documents."""
+async def _run[T](awaitable: Awaitable[T], *, can: dict[str, bool] | None = None) -> T:
+    """Turn a :class:`GovernanceError` into the HTTP error the module documents.
+
+    ``can`` rides along in the error body where the screen needs to know what
+    the caller may do about the refusal (pin a model when there is none).
+    """
     try:
         return await awaitable
     except GovernanceError as exc:
         message = translate(f"governance.errors.{exc.code}", locale=get_locale() or "en")
-        raise HTTPException(status_code=exc.status_code, detail=exc.as_detail(message)) from exc
+        detail = exc.as_detail(message)
+        if can is not None:
+            detail["can"] = can
+        raise HTTPException(status_code=exc.status_code, detail=detail) from exc
 
 
 def _uid(user_id: str) -> uuid.UUID:
@@ -96,7 +104,8 @@ def _role(payload: dict[str, Any]) -> str:
 
 
 def _today(value: date | None) -> date:
-    return value or datetime.now(UTC).date()
+    """The day a READ is shown for. Writes never take one from the client: see ``server_today``."""
+    return value or server_today()
 
 
 async def _has(payload: dict[str, Any], permission: str) -> bool:
@@ -134,6 +143,48 @@ def _named[O: AreaOut | GateOut | DocumentOut](
 ) -> O:
     out = out_cls.model_validate(row)
     out.name = _label(catalogue, kind, code)
+    return out
+
+
+async def _gates_out(svc: GovernanceService, rows: list[Any], catalogue: Any | None) -> list[GateOut]:
+    """Gates with their label and planned date; a linked gate's date is the schedule's."""
+    planned = await svc.gate_target_dates(rows)
+    out = []
+    for row in rows:
+        gate = _named(GateOut, row, catalogue, "gate", row.code)
+        gate.target_date = planned[row.id]
+        out.append(gate)
+    return out
+
+
+async def _gate_out(session: Any, row: Any) -> GateOut:
+    return (await _gates_out(GovernanceService(session), [row], await _catalogue(session, row.project_id)))[0]
+
+
+async def _conditions_out(
+    svc: GovernanceService, project_id: uuid.UUID, rows: list[Any], payload: dict[str, Any], user_id: str
+) -> list[ConditionOut]:
+    """Conditions as the caller sees them today: effective status and what they may do with each.
+
+    The values are set on the response objects only. The session commits after
+    a GET, so nothing computed here may be written to a row.
+    """
+    can = await svc.condition_capabilities(
+        project_id,
+        rows,
+        actor_id=_uid(user_id),
+        role=_role(payload),
+        can_edit=await _has(payload, "governance.edit"),
+        can_decide=await _has(payload, "governance.decide"),
+        is_manager=await _has(payload, "governance.manage"),
+    )
+    today = server_today()
+    out = []
+    for row in rows:
+        item = ConditionOut.model_validate(row)
+        item.status = effective_condition_status(row, today)
+        item.can = can[row.id]
+        out.append(item)
     return out
 
 
@@ -267,7 +318,9 @@ async def get_model(
 ) -> ModelOut:
     await verify_project_access(project_id, user_id, session)
     svc = GovernanceService(session)
-    return await _run(_model_out(svc, await _run(svc.require_model(project_id)), payload))
+    # Without a model the screen offers "choose a phase model" only to someone who may.
+    can = {"manage": await _has(payload, "governance.manage")}
+    return await _run(_model_out(svc, await _run(svc.require_model(project_id), can=can), payload))
 
 
 @router.put("/projects/{project_id}/model", response_model=ModelOut, status_code=201, dependencies=[MANAGE])
@@ -339,11 +392,12 @@ async def get_matrix(
 ) -> MatrixOut:
     """Areas x gates: per cell the check status and the documents required there; next gate with blocker count."""
     await verify_project_access(project_id, user_id, session)
-    m = await _run(GovernanceService(session).matrix(project_id, today=_today(today)))
+    svc = GovernanceService(session)
+    m = await _run(svc.matrix(project_id, today=_today(today)))
     cat = m["catalogue"]
     nxt = m["next_gate"]
     return MatrixOut(
-        gates=[_named(GateOut, g, cat, "gate", g.code) for g in m["gates"]],
+        gates=await _gates_out(svc, m["gates"], cat),
         next_gate=(
             None
             if nxt is None
@@ -373,9 +427,25 @@ async def list_areas(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, include_retired: bool = False
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
-    rows = await GovernanceService(session).repo.list_areas(project_id, include_retired=include_retired)
+    svc = GovernanceService(session)
+    rows = await svc.repo.list_areas(project_id, include_retired=include_retired)
     cat = await _catalogue(session, project_id)
-    return _page([_named(AreaOut, r, cat, "area", r.code) for r in rows])
+    tracked = {(d.area_id, d.doc_type) for d in await svc.repo.list_documents(project_id)}
+    out = []
+    for row in rows:
+        area = _named(AreaOut, row, cat, "area", row.code)
+        area.document_types = [
+            {
+                "code": d.code,
+                "name": label_of(d.name_key, d.labels),
+                "required_at_gates": list(d.required_at_gates),
+                "tracked": (row.id, d.code) in tracked,
+            }
+            for d in (cat.document_types if cat is not None else ())
+            if d.area == row.code
+        ]
+        out.append(area)
+    return _page(out)
 
 
 @router.patch("/projects/{project_id}/areas/{area_id}", response_model=AreaOut, dependencies=[MANAGE])
@@ -402,9 +472,9 @@ async def list_gates(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, include_historic: bool = False
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
-    rows = await GovernanceService(session).repo.list_gates(project_id, include_historic=include_historic)
-    cat = await _catalogue(session, project_id)
-    return _page([_named(GateOut, r, cat, "gate", r.code) for r in rows])
+    svc = GovernanceService(session)
+    rows = await svc.repo.list_gates(project_id, include_historic=include_historic)
+    return _page(await _gates_out(svc, rows, await _catalogue(session, project_id)))
 
 
 @router.get("/projects/{project_id}/gates/{gate_id}", response_model=GateDetailOut, dependencies=[READ])
@@ -426,15 +496,20 @@ async def get_gate(
             doc["name"] = _label(cat, "doc", doc["doc_type"])
     can: dict[str, Any] = {"edit": await _has(payload, "governance.edit")}
     if await _has(payload, "governance.decide"):
+        # Always the server date: ``can`` has to agree with the write routes, which take no date.
         can |= await _run(
             svc.decide_capability(
-                project_id, gate_id, decider_id=_uid(user_id), role=_role(payload), today=_today(today)
+                project_id, gate_id, decider_id=_uid(user_id), role=_role(payload), today=server_today()
             )
         )
+        can |= await _run(svc.gate_capability(project_id, gate_id, actor_id=_uid(user_id), role=_role(payload)))
     else:
-        can |= {"decide": False, "decide_reason": "missing_permission", "go": False, "go_reason": "missing_permission"}
+        missing = "missing_permission"
+        can |= {"outcomes": {o: {"allowed": False, "reason": missing} for o in ev.OUTCOMES}}
+        for key in ("decide", "go", "resume", "reopen", "add_condition"):
+            can |= {key: False, f"{key}_reason": missing}
     return GateDetailOut(
-        gate=_named(GateOut, detail["gate"], cat, "gate", detail["gate"].code),
+        gate=(await _gates_out(svc, [detail["gate"]], cat))[0],
         blockers=detail["blockers"],
         areas=detail["areas"],
         decisions=[DecisionOut.model_validate(d) for d in detail["decisions"]],
@@ -448,8 +523,7 @@ async def prepare_gate(
 ) -> GateOut:
     await verify_project_access(project_id, user_id, session)
     gate = await _run(GovernanceService(session).start_preparation(project_id, gate_id, actor_id=_uid(user_id)))
-    cat = await _catalogue(session, project_id)
-    return _named(GateOut, gate, cat, "gate", gate.code)
+    return await _gate_out(session, gate)
 
 
 @router.post("/projects/{project_id}/gates/{gate_id}/submit", response_model=GateOut, dependencies=[EDIT])
@@ -458,8 +532,7 @@ async def submit_gate(
 ) -> GateOut:
     await verify_project_access(project_id, user_id, session)
     gate = await _run(GovernanceService(session).submit_gate(project_id, gate_id, actor_id=_uid(user_id)))
-    cat = await _catalogue(session, project_id)
-    return _named(GateOut, gate, cat, "gate", gate.code)
+    return await _gate_out(session, gate)
 
 
 @router.post(
@@ -472,8 +545,8 @@ async def decide_gate(
     session: SessionDep,
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
-    today: date | None = None,
 ) -> DecisionOut:
+    """Record a decision. It is judged on the server date; the client cannot supply one."""
     await verify_project_access(project_id, user_id, session)
     request = ev.DecisionRequest(
         outcome=body.outcome,
@@ -496,7 +569,7 @@ async def decide_gate(
     )
     decision = await _run(
         GovernanceService(session).decide(
-            project_id, gate_id, request=request, decider_id=_uid(user_id), role=_role(payload), today=_today(today)
+            project_id, gate_id, request=request, decider_id=_uid(user_id), role=_role(payload), today=server_today()
         )
     )
     return DecisionOut.model_validate(decision)
@@ -504,26 +577,44 @@ async def decide_gate(
 
 @router.post("/projects/{project_id}/gates/{gate_id}/reopen", response_model=GateOut, dependencies=[DECIDE])
 async def reopen_gate(
-    project_id: uuid.UUID, gate_id: uuid.UUID, body: ReopenIn, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    gate_id: uuid.UUID,
+    body: ReopenIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> GateOut:
     await verify_project_access(project_id, user_id, session)
     gate = await _run(
         GovernanceService(session).reopen(
-            project_id, gate_id, rationale=body.rationale, rewind_phase=body.rewind_phase, actor_id=_uid(user_id)
+            project_id, gate_id, rationale=body.rationale, actor_id=_uid(user_id), role=_role(payload)
         )
     )
-    cat = await _catalogue(session, project_id)
-    return _named(GateOut, gate, cat, "gate", gate.code)
+    return await _gate_out(session, gate)
 
 
 @router.post("/projects/{project_id}/gates/{gate_id}/resume", response_model=GateOut, dependencies=[DECIDE])
 async def resume_gate(
-    project_id: uuid.UUID, gate_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID, gate_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> GateOut:
     await verify_project_access(project_id, user_id, session)
-    gate = await _run(GovernanceService(session).resume(project_id, gate_id, actor_id=_uid(user_id)))
-    cat = await _catalogue(session, project_id)
-    return _named(GateOut, gate, cat, "gate", gate.code)
+    gate = await _run(
+        GovernanceService(session).resume(project_id, gate_id, actor_id=_uid(user_id), role=_role(payload))
+    )
+    return await _gate_out(session, gate)
+
+
+@router.patch("/projects/{project_id}/gates/{gate_id}", response_model=GateOut, dependencies=[MANAGE])
+async def plan_gate(
+    project_id: uuid.UUID, gate_id: uuid.UUID, body: GatePlan, session: SessionDep, user_id: CurrentUserId
+) -> GateOut:
+    """Plan a gate: link it to a schedule activity, which then owns the date, or give it a date of its own."""
+    await verify_project_access(project_id, user_id, session)
+    changes = {k: getattr(body, k) for k in body.model_fields_set}
+    gate = await _run(
+        GovernanceService(session).plan_gate(project_id, gate_id, changes=changes, actor_id=_uid(user_id))
+    )
+    return await _gate_out(session, gate)
 
 
 @router.get("/projects/{project_id}/gates/{gate_id}/decisions", response_model=Page[DecisionOut], dependencies=[READ])
@@ -584,7 +675,12 @@ async def check_not_applicable(
     dependencies=[DECIDE],
 )
 async def add_condition(
-    project_id: uuid.UUID, gate_id: uuid.UUID, body: ConditionIn, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    gate_id: uuid.UUID,
+    body: ConditionIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> ConditionOut:
     await verify_project_access(project_id, user_id, session)
     cond = ev.ProposedCondition(
@@ -595,19 +691,35 @@ async def add_condition(
         due_date=body.due_date,
         severity=body.severity,
     )
-    row = await _run(GovernanceService(session).add_condition(project_id, gate_id, cond=cond, actor_id=_uid(user_id)))
-    return ConditionOut.model_validate(row)
+    svc = GovernanceService(session)
+    row = await _run(svc.add_condition(project_id, gate_id, cond=cond, actor_id=_uid(user_id), role=_role(payload)))
+    return (await _conditions_out(svc, project_id, [row], payload, user_id))[0]
 
 
 # ── documents ──────────────────────────────────────────────────────────────
 
 
 @router.get("/projects/{project_id}/documents", response_model=Page[DocumentOut], dependencies=[READ])
-async def list_documents(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+async def list_documents(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
-    rows = await GovernanceService(session).repo.list_documents(project_id)
+    svc = GovernanceService(session)
+    rows = await svc.repo.list_documents(project_id)
     cat = await _catalogue(session, project_id)
-    return _page([_named(DocumentOut, r, cat, "doc", r.doc_type) for r in rows])
+    can = await svc.document_capabilities(
+        project_id,
+        rows,
+        actor_id=_uid(user_id),
+        can_edit=await _has(payload, "governance.edit"),
+        is_manager=await _has(payload, "governance.manage"),
+    )
+    out = []
+    for row in rows:
+        doc = _named(DocumentOut, row, cat, "doc", row.doc_type)
+        doc.can = can[row.id]
+        out.append(doc)
+    return _page(out)
 
 
 @router.post("/projects/{project_id}/documents", response_model=DocumentOut, status_code=201, dependencies=[EDIT])
@@ -636,7 +748,11 @@ async def attach_document(
     await verify_project_access(project_id, user_id, session)
     doc = await _run(
         GovernanceService(session).attach_container(
-            project_id, document_id, container_id=body.container_id, actor_id=_uid(user_id), role=_role(payload)
+            project_id,
+            document_id,
+            container_id=body.container_id,
+            actor_id=_uid(user_id),
+            is_manager=await _has(payload, "governance.manage"),
         )
     )
     cat = await _catalogue(session, project_id)
@@ -653,7 +769,9 @@ async def submit_document(
 ) -> DocumentOut:
     await verify_project_access(project_id, user_id, session)
     doc = await _run(
-        GovernanceService(session).submit_document(project_id, document_id, actor_id=_uid(user_id), role=_role(payload))
+        GovernanceService(session).submit_document(
+            project_id, document_id, actor_id=_uid(user_id), is_manager=await _has(payload, "governance.manage")
+        )
     )
     cat = await _catalogue(session, project_id)
     return _named(DocumentOut, doc, cat, "doc", doc.doc_type)
@@ -669,7 +787,9 @@ async def return_document(
 ) -> DocumentOut:
     await verify_project_access(project_id, user_id, session)
     doc = await _run(
-        GovernanceService(session).return_document(project_id, document_id, actor_id=_uid(user_id), role=_role(payload))
+        GovernanceService(session).return_document(
+            project_id, document_id, actor_id=_uid(user_id), is_manager=await _has(payload, "governance.manage")
+        )
     )
     cat = await _catalogue(session, project_id)
     return _named(DocumentOut, doc, cat, "doc", doc.doc_type)
@@ -713,7 +833,7 @@ async def create_change_request(
             impact=body.impact,
             proposed_revision_id=body.proposed_revision_id,
             actor_id=_uid(user_id),
-            role=_role(payload),
+            is_manager=await _has(payload, "governance.manage"),
         )
     )
     return ChangeRequestOut.model_validate(cr)
@@ -734,24 +854,29 @@ async def list_conditions(
     project_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
     status: Literal["open", "cleared", "waived", "overdue"] | None = None,
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
 ) -> dict[str, Any]:
+    """Conditions with their status as of today: one past its due date is overdue whether or not the sweep ran."""
     await verify_project_access(project_id, user_id, session)
-    rows, total = await GovernanceService(session).repo.list_conditions(
-        project_id, status=status, offset=offset, limit=limit
+    svc = GovernanceService(session)
+    rows, total = await svc.repo.list_conditions(
+        project_id, status=status, today=server_today(), offset=offset, limit=limit
     )
-    return _page([ConditionOut.model_validate(r) for r in rows], total, offset, limit)
+    return _page(await _conditions_out(svc, project_id, rows, payload, user_id), total, offset, limit)
 
 
 @router.post("/projects/{project_id}/conditions/escalate", response_model=Page[ConditionOut], dependencies=[DECIDE])
 async def escalate_conditions(
-    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
+    """Escalate this project's late conditions now, without waiting for the hourly sweep."""
     await verify_project_access(project_id, user_id, session)
-    rows = await _run(GovernanceService(session).escalate_overdue(project_id, today=_today(today)))
-    return _page([ConditionOut.model_validate(r) for r in rows])
+    svc = GovernanceService(session)
+    rows = await _run(svc.escalate_overdue(project_id, today=server_today()))
+    return _page(await _conditions_out(svc, project_id, rows, payload, user_id))
 
 
 @router.post("/projects/{project_id}/conditions/{condition_id}/clear", response_model=ConditionOut, dependencies=[EDIT])
@@ -764,27 +889,38 @@ async def clear_condition(
     payload: CurrentUserPayload,
 ) -> ConditionOut:
     await verify_project_access(project_id, user_id, session)
+    svc = GovernanceService(session)
     row = await _run(
-        GovernanceService(session).clear_condition(
-            project_id, condition_id, evidence=body.evidence, actor_id=_uid(user_id), role=_role(payload)
+        svc.clear_condition(
+            project_id,
+            condition_id,
+            evidence=body.evidence,
+            actor_id=_uid(user_id),
+            is_manager=await _has(payload, "governance.manage"),
         )
     )
-    return ConditionOut.model_validate(row)
+    return (await _conditions_out(svc, project_id, [row], payload, user_id))[0]
 
 
 @router.post(
     "/projects/{project_id}/conditions/{condition_id}/waive", response_model=ConditionOut, dependencies=[DECIDE]
 )
 async def waive_condition(
-    project_id: uuid.UUID, condition_id: uuid.UUID, body: WaiveIn, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    condition_id: uuid.UUID,
+    body: WaiveIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> ConditionOut:
     await verify_project_access(project_id, user_id, session)
+    svc = GovernanceService(session)
     row = await _run(
-        GovernanceService(session).waive_condition(
-            project_id, condition_id, rationale=body.rationale, actor_id=_uid(user_id)
+        svc.waive_condition(
+            project_id, condition_id, rationale=body.rationale, actor_id=_uid(user_id), role=_role(payload)
         )
     )
-    return ConditionOut.model_validate(row)
+    return (await _conditions_out(svc, project_id, [row], payload, user_id))[0]
 
 
 # ── validation and export ──────────────────────────────────────────────────
