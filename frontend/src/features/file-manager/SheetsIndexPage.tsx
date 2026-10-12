@@ -503,7 +503,7 @@ export function SheetsIndexPage() {
                         : 'bg-surface-secondary text-content-secondary hover:bg-surface-tertiary',
                     )}
                   >
-                    {d}
+                    {t(`sheets.discipline_name.${d.toLowerCase()}`, { defaultValue: d })}
                     <span className="ms-1.5 tabular-nums opacity-70">{count}</span>
                   </button>
                 );
@@ -820,7 +820,7 @@ export function SheetsIndexPage() {
                         <td className="px-4 py-3">
                           {s.discipline ? (
                             <Badge variant={disciplineVariant(s.discipline)} size="sm">
-                              {s.discipline}
+                              {t(`sheets.discipline_name.${s.discipline.toLowerCase()}`, { defaultValue: s.discipline })}
                             </Badge>
                           ) : (
                             <span className="text-content-quaternary">&mdash;</span>

@@ -648,7 +648,9 @@ export function BaseCatalogBrowser({
                       </span>
                     )}
                   </div>
-                  <div className="truncate text-xs text-content-tertiary">{family.description}</div>
+                  <div className="truncate text-xs text-content-tertiary">
+                    {t(`costs.base_family_desc.${family.key}`, { defaultValue: family.description })}
+                  </div>
                   {family.attribution && (
                     <div className="truncate text-[11px] text-content-tertiary" data-testid="base-family-attribution">
                       {t('costs.base_source_attribution', {

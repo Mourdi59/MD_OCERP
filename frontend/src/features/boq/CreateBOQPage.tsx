@@ -297,7 +297,7 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
       <div className="absolute inset-0 bg-black/70 backdrop-blur-lg animate-fade-in" onClick={busy ? undefined : onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 rounded-2xl bg-surface-elevated border border-border-light shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-lg mx-4 rounded-2xl bg-surface-elevated border border-border-light shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto overscroll-contain">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4">
           <div className="flex items-center gap-3">
@@ -511,7 +511,12 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
           )}
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-2">
+          {/* Pinned: with the import panel open the form is taller than a
+              768px window and the submit row sat below the fold. */}
+          <div
+            data-testid="create-boq-actions"
+            className="sticky bottom-0 -mx-6 -mb-6 flex items-center justify-end gap-3 border-t border-border-light bg-surface-elevated px-6 pb-6 pt-3"
+          >
             <Button variant="secondary" type="button" onClick={onClose} disabled={busy}>
               {t('common.cancel')}
             </Button>
