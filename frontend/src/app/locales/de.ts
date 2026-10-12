@@ -50217,7 +50217,6 @@ const resource = {
     "stakeholders.errors.unknown_role": "Die Rolle ist im festgelegten Rahmenwerk nicht enthalten",
     "stakeholders.errors.user_not_project_member": "Die Person ist kein Mitglied dieses Projekts",
     "stakeholders.errors.verification_needs_loop_closed": "Für die Bestätigung braucht es das Datum der Rückmeldung an den Stakeholder oder eine Begründung, warum sie entfällt",
-    "stakeholders.evidence.commitment_overdue": "Die Zusage {code} an Stakeholder war am {due} fällig und ist noch nicht eingehalten. Haken Sie nach oder vereinbaren Sie einen neuen Termin, bevor Sie entscheiden.",
     "stakeholders.evidence.commitments_tracked": "Keine Zusage ist ohne Begründung gebrochen",
     "stakeholders.evidence.document_organisation": "Dieses Projekt hat noch kein Rahmendokument für die Projektorganisation, daher lässt sich ihre Bereitschaft hier nicht zeigen. Prüfen Sie Rollen und Mandate auf der Stakeholder-Seite, bevor Sie entscheiden.",
     "stakeholders.evidence.document_stakeholders": "Dieses Projekt hat noch kein Rahmendokument für das Stakeholderregister, daher lässt sich seine Bereitschaft hier nicht zeigen. Prüfen Sie das Register auf der Stakeholder-Seite, bevor Sie entscheiden.",

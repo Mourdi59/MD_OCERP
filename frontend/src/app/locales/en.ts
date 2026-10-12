@@ -42296,7 +42296,6 @@ const resource = {
     "stakeholders.errors.unknown_role": "The role is not in the pinned framework",
     "stakeholders.errors.user_not_project_member": "The person is not a member of this project",
     "stakeholders.errors.verification_needs_loop_closed": "Verification needs the date the stakeholder was told, or a reason why that is not required",
-    "stakeholders.evidence.commitment_overdue": "Promise {code} to stakeholders was due on {due} and is not kept yet. Follow it up or agree a new date with them before you decide.",
     "stakeholders.evidence.commitments_tracked": "No commitment is breached without a rationale",
     "stakeholders.evidence.document_organisation": "This project has no frame document for the project organisation yet, so its readiness cannot be shown here. Check roles and mandates on the stakeholders page before you decide.",
     "stakeholders.evidence.document_stakeholders": "This project has no frame document for the stakeholder register yet, so its readiness cannot be shown here. Check the register on the stakeholders page before you decide.",
