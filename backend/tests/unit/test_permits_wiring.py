@@ -159,3 +159,29 @@ async def test_rule_set_runs_on_a_payload() -> None:
         "permits.condition_has_trigger_and_owner",
         "permits.suspensive_condition_blocks_start",
     } <= failed
+
+
+def test_no_write_route_takes_a_date_from_the_client() -> None:
+    """Review finding 5: only reads may be asked "as of"; a write happens on the server's date."""
+    for route in permits_router.router.routes:
+        if route.methods <= {"GET", "HEAD"}:
+            continue
+        assert "today" not in inspect.signature(route.endpoint).parameters, route.path
+
+
+def test_the_service_is_told_what_the_caller_may_do_never_a_role() -> None:
+    """Lead decision: permission checks live in the router and reach the service as booleans."""
+    from app.modules.permits import service
+
+    assert not re.search(r"\bactor_role\b|\brole: str", inspect.getsource(service.PermitService))
+    assert not re.search(r"[\"'](admin|manager|editor|viewer)[\"']", inspect.getsource(service))
+    assert "permission_registry.role_has_permission" in inspect.getsource(permits_router._can)
+
+
+def test_the_sweep_is_a_registered_periodic_process() -> None:
+    """Review finding 10, rule 17: escalation does not depend on somebody pressing a button."""
+    from app.core.processes import builtin
+
+    src = inspect.getsource(builtin.register_builtin_processes)
+    assert '"permits_sweep"' in src and "permits_tick" in src
+    assert "run_sweep_once" in inspect.getsource(builtin.permits_tick)

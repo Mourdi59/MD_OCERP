@@ -48,7 +48,9 @@ async def test_foreign_ids_answer_404(pair: tuple[World, World]) -> None:
         svc = PermitService(s)
         p = a.project_id
         assert await svc.repo.get_requirement(p, rid) is None
-        assert (await _code(svc.update_requirement(p, rid, {"title": "x"}, actor_id=a.manager)))[0] == 404
+        assert (await _code(svc.update_requirement(p, rid, {"title": "x"}, actor_id=a.manager, can_manage=True)))[
+            0
+        ] == 404
         assert (await _code(svc.create_application(p, {"requirement_id": rid}, actor_id=a.manager)))[0] == 404
         assert (
             await _code(
