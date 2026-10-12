@@ -14,19 +14,23 @@ import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 import { WideModal, WideModalField, WideModalSection } from '@/shared/ui/WideModal';
 
 import { createStakeholder, updateStakeholder, type Stakeholder, type StakeholderInput } from './api';
-import { FIELD_CLASS, RefusalBox, useWrite } from './StakeholderBits';
-import { STAKEHOLDER_STATUS, itemName, vocab } from './labels';
-import type { Screen } from './screen';
+import { FIELD_CLASS, LinkSelect, RefusalBox, useWrite } from './StakeholderBits';
+import { STAKEHOLDER_STATUS, itemName, vocab, type TFn } from './labels';
+import { useRiskOptions } from './links';
+import { withDescendants } from './rules';
+import { stakeholderName, type Screen } from './screen';
 
 export interface StakeholderDialogProps {
   screen: Screen;
   /** The stakeholder to edit, or null to add one. */
   stakeholder: Stakeholder | null;
+  /** The register, to pick the group or organisation this one belongs to. */
+  stakeholders: Stakeholder[];
   onClose: () => void;
   onSaved: (saved: Stakeholder) => void;
 }
 
-export function StakeholderDialog({ screen, stakeholder, onClose, onSaved }: StakeholderDialogProps) {
+export function StakeholderDialog({ screen, stakeholder, stakeholders, onClose, onSaved }: StakeholderDialogProps) {
   const { t } = useTranslation();
   const { projectId, settings, labels, personName } = screen;
   const fw = settings.framework;
@@ -42,7 +46,17 @@ export function StakeholderDialog({ screen, stakeholder, onClose, onSaved }: Sta
     owner: stakeholder?.relationship_owner_user_id ?? '',
     is_confidential: stakeholder?.is_confidential ?? false,
     status: stakeholder?.status ?? 'active',
+    parent: stakeholder?.parent_stakeholder_id ?? '',
+    risk: stakeholder?.risk_id ?? '',
   });
+  // A private person the reader may not name arrives without the name. Sending
+  // the empty field back would erase what is stored, so it is left out.
+  const masked = !!stakeholder?.masked;
+  const risks = useRiskOptions(projectId, t as TFn).options;
+  const below = stakeholder ? withDescendants(stakeholders, stakeholder.id) : new Set<string>();
+  const parents = stakeholders
+    .filter((s) => !below.has(s.id) && (s.status !== 'archived' || s.id === draft.parent))
+    .map((s) => ({ id: s.id, label: stakeholderName(t, s) }));
   const [confidentialTouched, setConfidentialTouched] = useState(false);
   const set = <K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
@@ -50,12 +64,11 @@ export function StakeholderDialog({ screen, stakeholder, onClose, onSaved }: Sta
     return stakeholder ? updateStakeholder(projectId, stakeholder.id, body) : createStakeholder(projectId, body);
   }, onSaved);
 
-  const nameMissing = !draft.display_name.trim() && !draft.contact_id;
+  const nameMissing = !masked && !draft.display_name.trim() && !draft.contact_id;
   const ready = !!draft.category && !nameMissing;
 
   const submit = () => {
     const body: StakeholderInput = {
-      display_name: draft.display_name.trim(),
       category: draft.category,
       contact_id: draft.contact_id || null,
       is_group: draft.is_group,
@@ -68,6 +81,9 @@ export function StakeholderDialog({ screen, stakeholder, onClose, onSaved }: Sta
     // Left alone, the server marks private persons confidential by their category.
     if (stakeholder || confidentialTouched) body.is_confidential = draft.is_confidential;
     if (stakeholder) body.status = draft.status;
+    if (!masked) body.display_name = draft.display_name.trim();
+    if ((draft.parent || null) !== (stakeholder?.parent_stakeholder_id ?? null)) body.parent_stakeholder_id = draft.parent || null;
+    if ((draft.risk || null) !== (stakeholder?.risk_id ?? null)) body.risk_id = draft.risk || null;
     write.run(body);
   };
 
@@ -102,9 +118,13 @@ export function StakeholderDialog({ screen, stakeholder, onClose, onSaved }: Sta
         <WideModalSection columns={2}>
           <WideModalField
             label={t('stakeholders.ui.stakeholder.name', { defaultValue: 'Name' })}
-            hint={t('stakeholders.ui.stakeholder.name_hint', {
-              defaultValue: 'Required unless you pick a contact below.',
-            })}
+            hint={
+              masked
+                ? t('stakeholders.ui.stakeholder.name_hidden_hint', {
+                    defaultValue: 'The name is hidden from you and stays as it is.',
+                  })
+                : t('stakeholders.ui.stakeholder.name_hint', { defaultValue: 'Required unless you pick a contact below.' })
+            }
             htmlFor="stakeholder-name"
           >
             <input
@@ -112,6 +132,7 @@ export function StakeholderDialog({ screen, stakeholder, onClose, onSaved }: Sta
               className={FIELD_CLASS}
               value={draft.display_name}
               maxLength={255}
+              disabled={masked}
               onChange={(e) => set('display_name', e.target.value)}
             />
           </WideModalField>
@@ -158,6 +179,36 @@ export function StakeholderDialog({ screen, stakeholder, onClose, onSaved }: Sta
               value={draft.owner}
               displayValue={personName(draft.owner) ?? ''}
               onChange={(id) => set('owner', id)}
+            />
+          </WideModalField>
+          <WideModalField
+            label={t('stakeholders.ui.stakeholder.parent', { defaultValue: 'Belongs to' })}
+            hint={t('stakeholders.ui.stakeholder.parent_hint', {
+              defaultValue: 'Optional. The group or organisation this stakeholder is part of.',
+            })}
+            htmlFor="stakeholder-parent"
+          >
+            <LinkSelect
+              id="stakeholder-parent"
+              value={draft.parent}
+              onChange={(id) => set('parent', id)}
+              options={parents}
+              emptyText={t('stakeholders.ui.stakeholder.parent_none', { defaultValue: 'The register has nobody else yet.' })}
+            />
+          </WideModalField>
+          <WideModalField
+            label={t('stakeholders.ui.stakeholder.risk', { defaultValue: 'Risk in the risk register' })}
+            hint={t('stakeholders.ui.stakeholder.risk_hint', {
+              defaultValue: 'Optional. The risk this stakeholder stands for, if the project tracks one.',
+            })}
+            htmlFor="stakeholder-risk"
+          >
+            <LinkSelect
+              id="stakeholder-risk"
+              value={draft.risk}
+              onChange={(id) => set('risk', id)}
+              options={risks}
+              emptyText={t('stakeholders.ui.link.no_risks', { defaultValue: 'The risk register of this project is empty.' })}
             />
           </WideModalField>
         </WideModalSection>

@@ -12,9 +12,10 @@ import { useQuery } from '@tanstack/react-query';
 
 import { fetchCorrespondence } from '@/features/correspondence/api';
 import { fetchMeetings } from '@/features/meetings/api';
+import { fetchTasks } from '@/features/tasks/api';
 import { fmtDate } from '@/shared/lib/formatters';
 
-import { stakeholderKeys } from './api';
+import { listProjectRisks, stakeholderKeys } from './api';
 import type { TickOption } from './StakeholderBits';
 import type { TFn } from './labels';
 
@@ -56,6 +57,44 @@ export function useCorrespondenceOptions(projectId: string, t: TFn, enabled = tr
   });
   const options = useMemo(
     () => (query.data ?? []).map((c) => ({ id: c.id, label: datedName(t, c.subject, c.date_received ?? c.date_sent) })),
+    [query.data, t],
+  );
+  return { options, loading: query.isLoading };
+}
+
+/** The risk register of the project, each entry by its code and title. */
+export function useRiskOptions(projectId: string, t: TFn, enabled = true): LinkOptions {
+  const query = useQuery({
+    queryKey: [...stakeholderKeys.project(projectId), 'link-risks'],
+    queryFn: () => listProjectRisks(projectId).then((page) => page.items),
+    enabled: !!projectId && enabled,
+    retry: false,
+    staleTime: 60_000,
+  });
+  const options = useMemo(
+    () =>
+      (query.data ?? []).map((r) => ({
+        id: r.id,
+        label: r.code
+          ? t('stakeholders.ui.link.coded', { defaultValue: '{{code}}: {{title}}', code: r.code, title: r.title })
+          : r.title,
+      })),
+    [query.data, t],
+  );
+  return { options, loading: query.isLoading };
+}
+
+/** The tasks of the project. */
+export function useTaskOptions(projectId: string, t: TFn, enabled = true): LinkOptions {
+  const query = useQuery({
+    queryKey: [...stakeholderKeys.project(projectId), 'link-tasks'],
+    queryFn: () => fetchTasks({ project_id: projectId }).then((page) => page.items),
+    enabled: !!projectId && enabled,
+    retry: false,
+    staleTime: 60_000,
+  });
+  const options = useMemo(
+    () => (query.data ?? []).map((task) => ({ id: task.id, label: datedName(t, task.title, task.due_date) })),
     [query.data, t],
   );
   return { options, loading: query.isLoading };

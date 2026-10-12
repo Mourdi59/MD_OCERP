@@ -29,10 +29,12 @@ import { stakeholderName, type Screen } from './screen';
 export interface StakeholderDetailProps {
   screen: Screen;
   stakeholder: Stakeholder;
+  /** The register, for the group this stakeholder belongs to and what belongs to it. */
+  stakeholders: Stakeholder[];
   onBack: () => void;
 }
 
-export function StakeholderDetail({ screen, stakeholder, onBack }: StakeholderDetailProps) {
+export function StakeholderDetail({ screen, stakeholder, stakeholders, onBack }: StakeholderDetailProps) {
   const { t } = useTranslation();
   const { projectId, settings, labels, personName, onChanged } = screen;
   const fw = settings.framework;
@@ -49,6 +51,8 @@ export function StakeholderDetail({ screen, stakeholder, onBack }: StakeholderDe
   );
 
   const assessments = assessmentsQ.data ?? [];
+  const parent = stakeholders.find((s) => s.id === stakeholder.parent_stakeholder_id) ?? null;
+  const members = stakeholders.filter((s) => s.parent_stakeholder_id === stakeholder.id && s.status !== 'archived');
   const facts: Array<[string, string]> = [
     [t('stakeholders.ui.stakeholder.interests', { defaultValue: 'What they care about' }), stakeholder.interests],
     [
@@ -81,7 +85,23 @@ export function StakeholderDetail({ screen, stakeholder, onBack }: StakeholderDe
                   : t('stakeholders.ui.stakeholder.group', { defaultValue: 'Group' })}
               </span>
             )}
+            {parent && (
+              <span data-testid="stakeholder-parent-line">
+                {t('stakeholders.ui.stakeholder.part_of', {
+                  defaultValue: 'Part of {{name}}',
+                  name: stakeholderName(t, parent),
+                })}
+              </span>
+            )}
           </div>
+          {members.length > 0 && (
+            <p className="mt-1 text-xs text-content-secondary" data-testid="stakeholder-members-line">
+              {t('stakeholders.ui.stakeholder.includes', {
+                defaultValue: 'Includes {{names}}',
+                names: fmtList(members.map((m) => stakeholderName(t, m))),
+              })}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <GatedButton
@@ -211,6 +231,7 @@ export function StakeholderDetail({ screen, stakeholder, onBack }: StakeholderDe
         <StakeholderDialog
           screen={screen}
           stakeholder={stakeholder}
+          stakeholders={stakeholders}
           onClose={() => setDialog(null)}
           onSaved={() => {
             setDialog(null);

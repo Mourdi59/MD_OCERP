@@ -28,8 +28,12 @@ vi.mock('@/features/correspondence/api', () => ({
     limit: 100,
   })),
 }));
+vi.mock('@/features/tasks/api', () => ({
+  fetchTasks: vi.fn(async () => ({ items: [], total: 0, offset: 0, limit: 50 })),
+}));
 vi.mock('../api', async (original) => ({
   ...(await original<typeof import('../api')>()),
+  listProjectRisks: vi.fn(async () => ({ items: [], total: 0, offset: 0, limit: 100 })),
   createPlanItem: vi.fn(),
   updatePlanItem: vi.fn(),
   deletePlanItem: vi.fn(),

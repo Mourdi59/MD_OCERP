@@ -169,12 +169,18 @@ export interface Stakeholder {
   contact_id: string | null;
   is_group: boolean;
   group_size_estimate: number | null;
+  /** The group or organisation this stakeholder belongs to. */
+  parent_stakeholder_id: string | null;
   interests: string;
   expectations: string;
   concerns: string;
   relationship_owner_user_id: string | null;
+  /** Where the stakeholder sits, for neighbours. Null on a masked row, whatever is stored. */
+  geo: Record<string, string> | null;
   is_confidential: boolean;
   status: StakeholderStatus;
+  /** The risk register entry that follows this stakeholder. */
+  risk_id: string | null;
   classification: string;
   method_code: string;
   engagement_current: string | null;
@@ -199,6 +205,9 @@ export interface StakeholderInput {
   relationship_owner_user_id?: string | null;
   is_confidential?: boolean;
   status?: StakeholderStatus;
+  parent_stakeholder_id?: string | null;
+  geo?: Record<string, string> | null;
+  risk_id?: string | null;
 }
 
 export type Scores = Record<string, number | boolean>;
@@ -382,6 +391,9 @@ export interface Commitment {
   cost_estimate: string | null;
   currency: string;
   risk_id: string | null;
+  task_id: string | null;
+  requirement_id: string | null;
+  release_item_id: string | null;
   status: CommitmentStatus;
   overdue: boolean;
   approval_instance_id: string | null;
@@ -407,6 +419,8 @@ export interface CommitmentInput {
   verification?: string;
   cost_estimate?: string | null;
   currency?: string;
+  risk_id?: string | null;
+  task_id?: string | null;
 }
 
 export interface TransitionInput {
@@ -665,6 +679,20 @@ export function putSettings(projectId: string, body: SettingsInput): Promise<Sta
 
 export function listStakeholders(projectId: string): Promise<Page<Stakeholder>> {
   return apiGet<Page<Stakeholder>>(`${p(projectId)}/stakeholders?include_archived=true&limit=1000&${day()}`);
+}
+
+/** A risk register entry, as far as a picker needs it. The risk module owns the rest. */
+export interface ProjectRisk {
+  id: string;
+  code: string;
+  title: string;
+}
+
+/** The risk module serves at most this many entries per request. */
+const RISK_PAGE = 100;
+
+export function listProjectRisks(projectId: string): Promise<Page<ProjectRisk>> {
+  return apiGet<Page<ProjectRisk>>(`/v1/risk/?project_id=${projectId}&limit=${RISK_PAGE}`);
 }
 
 export function createStakeholder(projectId: string, body: StakeholderInput): Promise<Stakeholder> {

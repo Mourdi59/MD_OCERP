@@ -172,7 +172,7 @@ export function StakeholdersPage() {
   if (stakeholderId && registerQ.isLoading) {
     body = <SkeletonTable rows={4} columns={4} />;
   } else if (stakeholderId && selected) {
-    body = <StakeholderDetail key={selected.id} screen={screen} stakeholder={selected} onBack={() => go({ stakeholder: null })} />;
+    body = <StakeholderDetail key={selected.id} screen={screen} stakeholder={selected} stakeholders={stakeholders} onBack={() => go({ stakeholder: null })} />;
   } else if (tab === 'settings') {
     body = <FrameworkSettings projectId={projectId} settings={screen.settings} labels={labels} onSaved={invalidate} />;
   } else if (tab === 'organisation') {
@@ -288,6 +288,7 @@ export function StakeholdersPage() {
         <StakeholderDialog
           screen={screen}
           stakeholder={null}
+          stakeholders={registerQ.data ?? []}
           onClose={() => setAdding(false)}
           onSaved={(saved) => {
             setAdding(false);

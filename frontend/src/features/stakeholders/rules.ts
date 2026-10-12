@@ -140,6 +140,22 @@ export const PLAN_MOVES: Record<PlanStatus, PlanStatus[]> = {
   cancelled: [],
 };
 
+/** A stakeholder and everything filed under it, however deep. None of them can become its parent. */
+export function withDescendants(rows: ReadonlyArray<{ id: string; parent_stakeholder_id: string | null }>, id: string): Set<string> {
+  const found = new Set([id]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const row of rows) {
+      if (row.parent_stakeholder_id && found.has(row.parent_stakeholder_id) && !found.has(row.id)) {
+        found.add(row.id);
+        grew = true;
+      }
+    }
+  }
+  return found;
+}
+
 /** The states the status field offers: the two a new item may start in, or the current one and its moves. */
 export function planStatusOptions(current: PlanStatus | null): PlanStatus[] {
   return current ? [current, ...PLAN_MOVES[current]] : ['planned', 'active'];

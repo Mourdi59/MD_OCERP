@@ -190,6 +190,44 @@ export function TickList({
   );
 }
 
+/**
+ * One record of another register, or none. A link that is stored but no
+ * longer offered (the other list is longer than one page, or its module is
+ * off) stays selected under a neutral name, so saving never drops it.
+ */
+export function LinkSelect({
+  id,
+  value,
+  onChange,
+  options,
+  emptyText,
+}: {
+  id: string;
+  value: string;
+  onChange: (next: string) => void;
+  options: TickOption[];
+  emptyText: string;
+}) {
+  const { t } = useTranslation();
+  const listed = options.some((o) => o.id === value);
+  return (
+    <>
+      <select id={id} className={FIELD_CLASS} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{t('stakeholders.ui.link.none', { defaultValue: 'None' })}</option>
+        {value && !listed && (
+          <option value={value}>{t('stakeholders.ui.link.kept', { defaultValue: 'Linked record (kept as it is)' })}</option>
+        )}
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {options.length === 0 && <p className="mt-1 text-xs text-content-tertiary">{emptyText}</p>}
+    </>
+  );
+}
+
 export const STAKEHOLDER_TONE: Record<StakeholderStatus, BadgeVariant> = {
   active: 'success',
   dormant: 'neutral',

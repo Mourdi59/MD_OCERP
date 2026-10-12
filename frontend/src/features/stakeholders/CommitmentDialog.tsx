@@ -24,9 +24,9 @@ import {
   type EngagementEvent,
   type Stakeholder,
 } from './api';
-import { FIELD_CLASS, RefusalBox, TickList, useWrite, type TickOption } from './StakeholderBits';
+import { FIELD_CLASS, LinkSelect, RefusalBox, TickList, useWrite, type TickOption } from './StakeholderBits';
 import { COMMITMENT_ACTION, COMMITMENT_CATEGORY, COMMITMENT_SOURCE, vocab, type KeyText, type TFn } from './labels';
-import { datedName, useCorrespondenceOptions, useMeetingOptions } from './links';
+import { datedName, useCorrespondenceOptions, useMeetingOptions, useRiskOptions, useTaskOptions } from './links';
 import { TRANSITION_PROBLEM, toTransitionInput, transitionProblems, type TransitionDraft } from './rules';
 import { stakeholderName, type Screen } from './screen';
 
@@ -53,7 +53,11 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
     currency: commitment?.currency ?? '',
     source: 'manual' as CommitmentSource,
     sourceRef: '',
+    risk: commitment?.risk_id ?? '',
+    task: commitment?.task_id ?? '',
   });
+  const risks = useRiskOptions(projectId, t as TFn).options;
+  const tasks = useTaskOptions(projectId, t as TFn).options;
   const adding = !commitment;
   const meetings = useMeetingOptions(projectId, t as TFn, adding).options;
   const letters = useCorrespondenceOptions(projectId, t as TFn, adding).options;
@@ -94,6 +98,9 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
       if (draft.currency.trim()) body.currency = draft.currency.trim().toUpperCase();
     }
     if (!frozen || (draft.owner || null) !== (commitment?.owner_user_id ?? null)) body.owner_user_id = draft.owner || null;
+    // A link is sent only when the reader changed it, so one that is not listed here is never touched.
+    if ((draft.risk || null) !== (commitment?.risk_id ?? null)) body.risk_id = draft.risk || null;
+    if ((draft.task || null) !== (commitment?.task_id ?? null)) body.task_id = draft.task || null;
     // The source is fixed once the commitment exists; the server ignores it on an edit.
     if (!commitment) {
       body.source_kind = draft.source;
@@ -305,6 +312,34 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
             onChange={(e) => set('verification', e.target.value)}
           />
         </WideModalField>
+        <WideModalSection columns={2}>
+          <WideModalField
+            label={t('stakeholders.ui.commitment.task', { defaultValue: 'Task that delivers it' })}
+            hint={t('stakeholders.ui.commitment.task_hint', { defaultValue: 'Optional. The task in the task list where the work is followed.' })}
+            htmlFor="commitment-task"
+          >
+            <LinkSelect
+              id="commitment-task"
+              value={draft.task}
+              onChange={(id) => set('task', id)}
+              options={tasks}
+              emptyText={t('stakeholders.ui.link.no_tasks', { defaultValue: 'This project has no tasks yet.' })}
+            />
+          </WideModalField>
+          <WideModalField
+            label={t('stakeholders.ui.commitment.risk', { defaultValue: 'Risk if it is not kept' })}
+            hint={t('stakeholders.ui.commitment.risk_hint', { defaultValue: 'Optional. The entry in the risk register.' })}
+            htmlFor="commitment-risk"
+          >
+            <LinkSelect
+              id="commitment-risk"
+              value={draft.risk}
+              onChange={(id) => set('risk', id)}
+              options={risks}
+              emptyText={t('stakeholders.ui.link.no_risks', { defaultValue: 'The risk register of this project is empty.' })}
+            />
+          </WideModalField>
+        </WideModalSection>
       </div>
     </WideModal>
   );
