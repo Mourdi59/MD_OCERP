@@ -230,6 +230,8 @@ export const overdueComplaint: Complaint = {
 
 export const notReady: Readiness = {
   ready: false,
+  governance: null,
+  passed_by_permit: [],
   items: [
     { code: 'no_errors', state: 'not_met', detail: 'heavy_without_permit' },
     { code: 'balance_closed', state: 'met', detail: '' },

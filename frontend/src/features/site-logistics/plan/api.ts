@@ -373,6 +373,8 @@ export interface CustomsLine {
   unit: string;
   net_mass_kg: string | null;
   value: string | null;
+  /** Hidden together with the value. */
+  currency: string | null;
   origin_country: string;
   preferential_origin: boolean;
   sort_order: number;
@@ -453,7 +455,12 @@ export interface Finding {
 
 export interface Readiness {
   ready: boolean;
-  items: { code: string; state: 'met' | 'not_met'; detail: string }[];
+  /** Why the plan could not be placed in the governance model; null when it could. */
+  governance: string | null;
+  /** `unknown` is a check the server could not evaluate, which is not the same as failed. */
+  items: { code: string; state: 'met' | 'not_met' | 'unknown'; detail: string }[];
+  /** Loads above an entrance limit that a granted permit lets through. */
+  passed_by_permit: { transport_id: string; title: string; id: string; permit_kind: string; reference: string }[];
   findings: Finding[];
 }
 

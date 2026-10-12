@@ -46,7 +46,8 @@ import {
 import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { IssueHubLink } from '@/features/issues/IssueHubLink';
-import { LogisticsPlan } from './plan/LogisticsPlan';
+import { LogisticsPlan, type PlanTab } from './plan/LogisticsPlan';
+import { SiteClockNotice } from './plan/SiteClockNotice';
 import { GateLimits } from './plan/GateLimits';
 import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
@@ -2714,6 +2715,7 @@ export function SiteLogisticsPage() {
   const activeProjectId = useActiveProjectId();
 
   const [tab, setTab] = useState<TabKey>('deliveries');
+  const [planTab, setPlanTab] = useState<PlanTab>('balance');
   const [showBook, setShowBook] = useState(false);
   // The delivery being edited (shared by the board and the gate timeline so a
   // marshal can fix a booking from whichever view they are looking at).
@@ -2980,6 +2982,16 @@ export function SiteLogisticsPage() {
         ))}
       </div>
 
+      {projectId && (tab === 'deliveries' || tab === 'timeline') && (
+        <SiteClockNotice
+          projectId={projectId}
+          onOpen={() => {
+            setPlanTab('concept');
+            setTab('plan');
+          }}
+        />
+      )}
+
       {/* Content */}
       {!projectId ? (
         <RequiresProject>{null}</RequiresProject>
@@ -3002,7 +3014,7 @@ export function SiteLogisticsPage() {
       ) : tab === 'gates' ? (
         <GatesPanel projectId={projectId} />
       ) : tab === 'plan' ? (
-        <LogisticsPlan projectId={projectId} />
+        <LogisticsPlan projectId={projectId} initialTab={planTab} />
       ) : (
         <LaydownPanel projectId={projectId} />
       )}

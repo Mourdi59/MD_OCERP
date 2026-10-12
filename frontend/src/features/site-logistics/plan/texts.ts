@@ -203,6 +203,15 @@ export const EN = {
   'readiness.met': 'Met',
   'readiness.not_met': 'Not met',
   'readiness.findings': 'Open findings',
+  'readiness.unknown': 'Not checked',
+  'readiness.passed_title': 'Above an entrance limit, covered by a permit',
+  'readiness.passed_item': '{{title}}: permit {{reference}}',
+  'readiness.governance.no_governance_model':
+    'This project has no governance model, so the checks below are not tied to a gate.',
+  'readiness.governance.no_area_hosts_logistics':
+    'No area of the governance model holds site logistics, so the checks below are not tied to a gate.',
+  'readiness.governance.no_gate_for_logistics':
+    'No gate of the governance model asks for the logistics plan, so the checks below are not tied to a gate.',
   'readiness.error': 'Error',
   'readiness.warning': 'Warning',
   'readiness.sweep': 'Check permits and complaints now',

@@ -38,7 +38,13 @@ function CaseDetails({ projectId, record, catalogue }: { projectId: string; reco
     { name: 'unit', label: 'f.unit', kind: 'text' },
     { name: 'net_mass_kg', label: 'f.net_mass_kg', kind: 'decimal' },
     // A reader who may not see values may not write them either; the field is left out.
-    ...(record.values_hidden ? [] : [{ name: 'value', label: 'f.value', kind: 'decimal' } as Field]),
+    ...(record.values_hidden
+      ? []
+      : ([
+          { name: 'value', label: 'f.value', kind: 'decimal' },
+          // The server refuses a value that names no currency.
+          { name: 'currency', label: 'f.currency', hint: 'f.currency_hint', kind: 'text' },
+        ] as Field[])),
     { name: 'preferential_origin', label: 'f.preferential_origin', kind: 'checkbox' },
   ];
   // A listed document only takes a reference; a new one only says which document it is.
@@ -76,7 +82,7 @@ function CaseDetails({ projectId, record, catalogue }: { projectId: string; reco
                     <span className="text-content-primary">{l.description}</span>
                     <span className="text-content-secondary">{withUnit(t, l.quantity, l.unit)}</span>
                     {l.value !== null && (
-                      <span className="tabular-nums text-content-secondary">{fmtCurrency(l.value, record.currency)}</span>
+                      <span className="tabular-nums text-content-secondary">{fmtCurrency(l.value, l.currency ?? record.currency)}</span>
                     )}
                     {l.origin_country && <span className="text-xs text-content-tertiary">{l.origin_country}</span>}
                     {l.preferential_origin && (
@@ -134,6 +140,7 @@ function CaseDetails({ projectId, record, catalogue }: { projectId: string; reco
           title="edit_title.line"
           fields={lineFields}
           record={lineRes.editing.record}
+          defaults={record.currency ? { currency: record.currency } : undefined}
           projectId={projectId}
           catalogue={catalogue}
           onSubmit={lineRes.save}

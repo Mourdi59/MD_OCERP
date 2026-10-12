@@ -439,6 +439,23 @@ describe('gate readiness', () => {
     expect(await screen.findByTestId('plan-catalogue-unconfirmed')).toBeInTheDocument();
   });
 
+  it('a check the server could not evaluate reads as not checked, and the reason is said', async () => {
+    mocked.getReadiness.mockResolvedValue({
+      ...notReady,
+      governance: 'no_governance_model',
+      items: [{ code: 'concept_saved_and_exported', state: 'unknown', detail: 'no_frame_document' }],
+      passed_by_permit: [
+        { transport_id: 't1', title: 'Roof girder', id: 'p1', permit_kind: 'oversize_permit', reference: 'OS-2026-044' },
+      ],
+    });
+    renderPlan('readiness');
+    const item = await screen.findByTestId('plan-ready-item');
+    expect(item).toHaveAttribute('data-state', 'unknown');
+    expect(item).toHaveTextContent('Not checked');
+    expect(screen.getByTestId('plan-ready-governance')).toHaveTextContent('This project has no governance model');
+    expect(screen.getByTestId('plan-ready-passed')).toHaveTextContent('Roof girder: permit OS-2026-044');
+  });
+
   it('the sweep reports what it changed, and each register can be exported', async () => {
     mocked.runSweep.mockResolvedValue({ permits: { expired: 1, expiring: 2 }, complaints_overdue: 1, transports_arrived: 0 });
     mocked.exportRegister.mockResolvedValue();

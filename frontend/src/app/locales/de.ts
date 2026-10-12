@@ -49769,6 +49769,12 @@ const resource = {
     "site_logistics.plan.f.site_timezone": "Zeitzone der Baustelle",
     "site_logistics.plan.f.site_timezone_hint": "Der Name der Zone, in der die Baustelle liegt, zum Beispiel Europe/Berlin.",
     "site_logistics.plan.f.load_class": "Lastklasse",
+    "site_logistics.plan.readiness.unknown": "Nicht geprüft",
+    "site_logistics.plan.readiness.passed_title": "Über einem Grenzwert der Zufahrt, durch Genehmigung gedeckt",
+    "site_logistics.plan.readiness.passed_item": "{{title}}: Genehmigung {{reference}}",
+    "site_logistics.plan.readiness.governance.no_governance_model": "Dieses Projekt hat kein Governance-Modell, daher sind die Prüfungen unten keinem Gate zugeordnet.",
+    "site_logistics.plan.readiness.governance.no_area_hosts_logistics": "Kein Bereich des Governance-Modells enthält die Baustellenlogistik, daher sind die Prüfungen unten keinem Gate zugeordnet.",
+    "site_logistics.plan.readiness.governance.no_gate_for_logistics": "Kein Gate des Governance-Modells verlangt den Logistikplan, daher sind die Prüfungen unten keinem Gate zugeordnet.",
   }
 } as { translation: Record<string, string> };
 

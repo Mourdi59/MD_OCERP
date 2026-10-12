@@ -95,6 +95,13 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
         <Loaded query={readiness}>
           {(r) => (
             <>
+              {r.governance && (
+                <p className="text-sm text-content-secondary" data-testid="plan-ready-governance">
+                  {isTextKey(`readiness.governance.${r.governance}`)
+                    ? tx(t, `readiness.governance.${r.governance}`)
+                    : humanise(r.governance)}
+                </p>
+              )}
               <div
                 className="flex items-center gap-2 text-base font-semibold text-content-primary"
                 data-testid="plan-ready-verdict"
@@ -112,14 +119,32 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
                   <li key={item.code} className="flex items-start gap-2 text-sm" data-testid="plan-ready-item" data-state={item.state}>
                     {item.state === 'met' ? (
                       <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-semantic-success" aria-hidden />
+                    ) : item.state === 'unknown' ? (
+                      <CircleAlert size={15} className="mt-0.5 shrink-0 text-semantic-warning" aria-hidden />
                     ) : (
                       <XCircle size={15} className="mt-0.5 shrink-0 text-semantic-error" aria-hidden />
                     )}
                     <span className="text-content-primary">{evidence(item.code)}</span>
-                    <span className="sr-only">{tx(t, item.state === 'met' ? 'readiness.met' : 'readiness.not_met')}</span>
+                    {item.state === 'unknown' ? (
+                      <span className="text-content-tertiary">{tx(t, 'readiness.unknown')}</span>
+                    ) : (
+                      <span className="sr-only">{tx(t, item.state === 'met' ? 'readiness.met' : 'readiness.not_met')}</span>
+                    )}
                   </li>
                 ))}
               </ul>
+              {r.passed_by_permit.length > 0 && (
+                <div data-testid="plan-ready-passed">
+                  <h4 className="text-sm font-semibold text-content-primary">{tx(t, 'readiness.passed_title')}</h4>
+                  <ul className="mt-1 space-y-1 text-sm text-content-secondary">
+                    {r.passed_by_permit.map((x) => (
+                      <li key={`${x.transport_id}-${x.id}`}>
+                        {tx(t, 'readiness.passed_item', { title: x.title, reference: x.reference })}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div>
                 <h4 className="text-sm font-semibold text-content-primary">{tx(t, 'readiness.findings')}</h4>
                 {r.findings.length === 0 ? (
