@@ -130,6 +130,7 @@
       "project_not_found": "Projekt nicht gefunden",
       "rationale_required": "Bitte eine Begründung angeben",
       "release_decided": "Dieser Freigabeantrag ist bereits entschieden",
+      "release_expired": "Die Freigabe dieser Position ist abgelaufen: beantragen Sie eine erneute Freigabe, bevor Sie mehr binden",
       "release_pending": "Für diese Position läuft bereits ein Freigabeantrag",
       "requisition_not_found": "Die Bedarfsanforderung wurde in diesem Projekt nicht gefunden",
       "route_changed_since_accepted": "Der Freigabeweg dieser Stufe wurde bearbeitet. Er muss erneut festgelegt werden.",
@@ -210,6 +211,10 @@
       "item_has_planned_amount_source": {
         "fail": "Der geplante Betrag von Position {item} kann nicht gelesen werden",
         "suggestion": "Verweisen Sie auf eine Budgetzeile, Kostenzeile oder Position oder erfassen Sie eine Schätzung"
+      },
+      "release_in_date": {
+        "fail": "Eine Freigabe von Position {item} galt bis {date}: darunter kann nichts Neues gebunden werden",
+        "suggestion": "Beantragen Sie eine erneute Freigabe für das noch zu Bindende"
       },
       "release_within_authority": {
         "fail": "Freigabe {release} wurde unterhalb der erforderlichen Stufe {tier} entschieden",

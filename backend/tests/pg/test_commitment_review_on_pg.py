@@ -1287,3 +1287,76 @@ async def test_the_abort_preview_names_the_tier_and_the_reference_the_request_wi
     assert await refusal(big, "") == ("external_approval_required" if above["external_approval_required"] else None)
     async with world.factory() as s:
         assert (await s.execute(select(ReleaseDecision))).scalars().all() == []
+
+
+# ── a release past its validity date ───────────────────────────────────────────────────────
+
+
+async def test_a_release_past_its_date_keeps_what_is_bound_and_authorises_nothing_new(world: World) -> None:
+    from app.modules.commitment_release.validators import ReleaseInDate
+    from tests.pg.commitment_fixtures import set_enforcement
+
+    iid = await released_item(world, "40000")
+    cid = await add_contract(world, "30000")
+    await link(world, iid, "contract", cid)
+    await set_enforcement(world, "block")
+
+    async def check(kind: str, document_id: uuid.UUID | None, amount: str) -> dict:
+        async with world.factory() as s:
+            return await CommitmentService(s).check_document(
+                world.project_id, kind=kind, document_id=document_id, new_amount=amount, currency="EUR"
+            )
+
+    async def view() -> dict:
+        async with world.factory() as s:
+            svc = CommitmentService(s)
+            return (await svc.item_views(world.project_id, today=TODAY, item_ids=[iid], actor_id=world.manager))[
+                "items"
+            ][0]
+
+    # In date: the contract may grow to the release.
+    assert (await check("contract", cid, "40000"))["result"] == "ok"
+    before = await view()
+    assert (before["release_expired"], before["can"]["commit_new"]) == (False, {"allowed": True, "reason": None})
+
+    async with world.factory() as s:
+        row = (await s.execute(select(ReleaseDecision).where(ReleaseDecision.item_id == iid))).scalar_one()
+        row.valid_until = "2020-01-31"
+        await s.commit()
+
+    after = await view()
+    # What is bound stays released and committed: no new state, no re-release demanded.
+    assert after["status"] == before["status"]
+    assert (D(after["released"]), D(after["committed"]), D(after["released_in_force"])) == (
+        D("40000"),
+        D("30000"),
+        D("30000"),
+    )
+    assert after["release_expired"] is True
+    assert after["expired_release_dates"] == ["2020-01-31"]
+    assert after["can"]["commit_new"] == {"allowed": False, "reason": "release_expired"}
+    # The bound contract as it stands is still covered; growing it is new money and is refused by name.
+    assert (await check("contract", cid, "30000"))["result"] == "ok"
+    grown = await check("contract", cid, "40000")
+    assert (grown["result"], grown["reasons"][0]["code"]) == ("block", "release_expired")
+    # Beyond what was ever released the reason is the old one, not the date.
+    beyond = await check("contract", cid, "90000")
+    assert beyond["reasons"][0]["code"] == "commitment_not_released"
+
+    # The validation rule warns on the item and does not fail it as an error.
+    async with world.factory() as s:
+        payload = await CommitmentService(s).validation_payload(world.project_id, today=TODAY)
+    from app.core.validation.engine import ValidationContext
+
+    results = await ReleaseInDate().validate(ValidationContext(data=payload, metadata={"locale": "en"}))
+    assert [(r.passed, r.element_ref, str(r.severity.value)) for r in results] == [(False, "CR-G", "warning")]
+    assert "2020-01-31" in results[0].message
+
+    # A renewed release for the rest goes the usual route and is judged on what is in force.
+    d = await request(world, iid, "10000")
+    assert D(str(d.cumulative_after)) == D("40000")
+    await decide(world, d, world.pm)
+    renewed = await view()
+    assert D(renewed["released_in_force"]) == D("40000")
+    assert renewed["can"]["commit_new"] == {"allowed": True, "reason": None}
+    assert (await check("contract", cid, "40000"))["result"] == "ok"

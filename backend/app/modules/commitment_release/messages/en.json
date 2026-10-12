@@ -130,6 +130,7 @@
       "project_not_found": "Project not found",
       "rationale_required": "Give a reason",
       "release_decided": "This release request is already decided",
+      "release_expired": "The release of this item is past its validity date: request a renewed release before binding more",
       "release_pending": "A release request for this item is already running",
       "requisition_not_found": "The requisition was not found in this project",
       "route_changed_since_accepted": "The approval route of this tier was edited. A manager must pin it again.",
@@ -210,6 +211,10 @@
       "item_has_planned_amount_source": {
         "fail": "The planned amount of item {item} cannot be read",
         "suggestion": "Point the item at a budget line, cost line or position, or enter a manual estimate"
+      },
+      "release_in_date": {
+        "fail": "A release of item {item} was valid until {date}: nothing new can be bound under it",
+        "suggestion": "Request a renewed release for what is still to be bound"
       },
       "release_within_authority": {
         "fail": "Release {release} was decided below the required tier {tier}",

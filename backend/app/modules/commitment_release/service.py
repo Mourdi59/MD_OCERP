@@ -1274,6 +1274,21 @@ class CommitmentService:
             ZERO,
         )
 
+    @staticmethod
+    def expired_in_schedule_currency(releases: list[ReleaseDecision], day: date) -> Decimal:
+        """The released money whose ``valid_until`` lies before ``day`` (the server day, never a caller's)."""
+        return sum(
+            (
+                r.amount_in_schedule_currency
+                for r in releases
+                if r.purpose == "release"
+                and r.outcome == "released"
+                and r.valid_until
+                and r.valid_until < day.isoformat()
+            ),
+            ZERO,
+        )
+
     async def item_views(
         self,
         project_id: uuid.UUID,
@@ -1340,7 +1355,28 @@ class CommitmentService:
                 planned=planned_sched,
                 cumulative=released,
             )
+            expired = self.expired_in_schedule_currency(rel, today)
+            in_force = ev.release_in_force(released, expired, comm) if comm is not None else None
+            if comm is None:
+                new_money = "fx_rate_missing"
+            elif in_force > comm:
+                new_money = None
+            else:
+                # Nothing left to bind: because a release ran out of date, or because none covers more.
+                new_money = "release_expired" if in_force < released else "commitment_not_released"
             view = {
+                "released_in_force": _money_str(in_force),
+                "release_expired": expired > 0 and (in_force is None or in_force < released),
+                "expired_release_dates": sorted(
+                    {
+                        r.valid_until
+                        for r in rel
+                        if r.purpose == "release"
+                        and r.outcome == "released"
+                        and r.valid_until
+                        and r.valid_until < today.isoformat()
+                    }
+                ),
                 "id": str(item.id),
                 "code": item.code,
                 "title": item.title,
@@ -1386,9 +1422,13 @@ class CommitmentService:
                 "transferred_to_item_id": _s(item.transferred_to_item_id),
                 "transferred_to": await self._successor(item, actor_id),
                 "abort": self._abort_out(rel, per_item.get(item.id, [])),
-                "can": await self._can(
-                    item, next((r for r in rel if r.outcome == "pending"), None), actor_id, manage, today
-                ),
+                "can": {
+                    **await self._can(
+                        item, next((r for r in rel if r.outcome == "pending"), None), actor_id, manage, today
+                    ),
+                    # Whether a further contract, order or change could be bound under this item now.
+                    "commit_new": {"allowed": new_money is None, "reason": new_money},
+                },
             }
             if with_exposure:
                 view["exposure"] = await self._exposure_for(
@@ -1765,6 +1805,15 @@ class CommitmentService:
         converted = q.apply(amount)
         releases = await self.repo.list_releases(item.project_id, [item.id])
         released = self.released_in_schedule_currency(releases)
+        expired = self.expired_in_schedule_currency(releases, today)
+        if expired > 0:
+            # A renewed release goes the same route as a first one. It adds to what is still in force:
+            # the expired part counts only as far as money is committed under it.
+            _figs, bound_by_item, _why = await self.committed_for_items(matrix, project, schedule, on_date=today)
+            bound = bound_by_item.get(item.id, ZERO)
+            if bound is None:
+                raise CommitmentError("fx_rate_missing", 422)
+            released = ev.release_in_force(released, expired, bound)
         group = await self._group_others(item)
         evaluated = ev.evaluated_amount(
             request=converted,
@@ -2929,6 +2978,9 @@ class CommitmentService:
                 if not item_ids:
                     return not_in_matrix
                 would_commit = (await self.quote(matrix, project, new[1], sched_ccy, today)).apply(new[0])
+                # The drawdown record is written when the release is approved, so the released
+                # money is already drawn: a passed date takes nothing back from it.
+                bound_now = self.released_in_schedule_currency(await self.repo.list_releases(project_id, item_ids))
             else:
                 link = await self.repo.find_link(project_id, kind, document_id) if document_id else None
                 own_link_id = link.id if link is not None else None
@@ -2952,6 +3004,9 @@ class CommitmentService:
                     return not_in_matrix
                 item_ids = [link.item_id]
                 per_item, _committed, _r = await self.committed_for_items(matrix, project, schedule, on_date=today)
+                bound_now = await self.item_committed(
+                    matrix, project, sched_ccy, per_item.get(link.item_id, []), on_date=today
+                )
                 would_commit = await self.item_committed(
                     matrix,
                     project,
@@ -2964,13 +3019,21 @@ class CommitmentService:
                 )
         except FxRateMissing:
             return {"result": severity, "reasons": [{"code": "fx_rate_missing"}], "item_id": str(item_ids[0])}
-        released = self.released_in_schedule_currency(await self.repo.list_releases(project_id, item_ids))
+        releases = await self.repo.list_releases(project_id, item_ids)
+        decided = self.released_in_schedule_currency(releases)
+        expired = self.expired_in_schedule_currency(releases, today)
+        # A release past its date covers what is bound under it today and nothing new (bound_now).
+        released = ev.release_in_force(decided, expired, bound_now)
         tol = schedule.variation_tolerance
         ceiling = ev.tolerance_ceiling(released, parse_amount(tol.absolute), parse_amount(tol.percent))
         if released > 0 and would_commit <= ceiling:
             return {"result": "ok", "reasons": [], "item_id": str(item_ids[0])}
+        would_fit_in_date = decided > 0 and would_commit <= ev.tolerance_ceiling(
+            decided, parse_amount(tol.absolute), parse_amount(tol.percent)
+        )
         reason = {
-            "code": "commitment_not_released",
+            # Only the passed date stands in the way: say so, a renewed release is what is needed.
+            "code": "release_expired" if released < decided and would_fit_in_date else "commitment_not_released",
             "released": str(released),
             "ceiling": str(ceiling),
             "would_commit": str(would_commit),

@@ -208,3 +208,18 @@ def decision_overdue(latest: date | None, today: date, status: str, released_amo
     if status in ("aborted", "transferred", "closed", "on_hold"):
         return False
     return released_amount <= 0 and status not in RELEASED_STATES
+
+
+def release_in_force(released: Decimal, expired: Decimal, committed: Decimal) -> Decimal:
+    """How much of an item's released money still authorises a commitment.
+
+    ``expired`` is the part of ``released`` whose ``valid_until`` has passed. It keeps covering
+    what is committed today, so nothing already bound loses its release, and it authorises nothing
+    beyond that: the uncommitted rest of an expired release is gone until a new release is decided.
+    Committed money is set against the expired part first, which is the reading that takes the
+    least away from a release still in date.
+    """
+    if expired <= 0:
+        return released
+    kept = min(expired, committed) if committed > 0 else Decimal("0")
+    return released - expired + kept

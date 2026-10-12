@@ -238,3 +238,24 @@ async def test_same_currency_needs_no_rate() -> None:
         policy="project_rates",
     )
     assert (q.rate, q.source) == (D("1"), fx.SOURCE_SAME)
+
+
+def test_an_expired_release_covers_what_is_bound_and_nothing_new() -> None:
+    from decimal import Decimal as D
+
+    from app.modules.commitment_release.evaluator import release_in_force
+
+    # Nothing expired: the released sum stands whatever is bound.
+    assert release_in_force(D("100000"), D("0"), D("40000")) == D("100000")
+    # All of it expired with 40,000 bound: those 40,000 stay covered, the other 60,000 are gone.
+    assert release_in_force(D("100000"), D("100000"), D("40000")) == D("40000")
+    # Expired and nothing bound: nothing is in force.
+    assert release_in_force(D("100000"), D("100000"), D("0")) == D("0")
+    # More bound than the expired release ever covered: it still covers only its own amount.
+    assert release_in_force(D("100000"), D("100000"), D("130000")) == D("100000")
+    # A tranche still in date keeps its full amount beside an expired one that is fully bound.
+    assert release_in_force(D("150000"), D("100000"), D("100000")) == D("150000")
+    # A renewal of 60,000 beside the expired 100,000 of which 40,000 are bound: 100,000 in force again.
+    assert release_in_force(D("160000"), D("100000"), D("40000")) == D("100000")
+    # A credit never turns an expired release into authority.
+    assert release_in_force(D("100000"), D("100000"), D("-500")) == D("0")

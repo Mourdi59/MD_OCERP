@@ -173,6 +173,27 @@ class DecisionDateNotPassed(_CommitmentRule):
         ]
 
 
+class ReleaseInDate(_CommitmentRule):
+    key = "release_in_date"
+    rule_id = "commitment_release.release_in_date"
+    name = "Release In Date"
+    severity = Severity.WARNING
+    description = "A release past its validity date authorises nothing new until it is renewed."
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        loc = _locale(context)
+        return [
+            self._result(
+                loc,
+                not i.get("release_expired"),
+                i["code"],
+                item=i["code"],
+                date=", ".join(i.get("expired_release_dates") or []),
+            )
+            for i in self._items(context)
+        ]
+
+
 class AbortTermsPresentForCommitted(_CommitmentRule):
     key = "abort_terms_present_for_committed"
     rule_id = "commitment_release.abort_terms_present_for_committed"
@@ -277,6 +298,7 @@ COMMITMENT_RULES: tuple[type[ValidationRule], ...] = (
     ReleaseWithinAuthority,
     CommittedWithinRelease,
     DecisionDateNotPassed,
+    ReleaseInDate,
     AbortTermsPresentForCommitted,
     DocumentLinkedOnce,
     FxRateAvailable,
