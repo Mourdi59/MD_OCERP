@@ -90,7 +90,9 @@ def test_at_risk_reaches_the_gate_as_not_met_with_a_detail() -> None:
 def test_an_early_start_of_one_permit_does_not_cover_another_or_a_refusal() -> None:
     building = ReqView("r1", "baugenehmigung", "building", "full", ("site_start",), "refused", title="Building")
     water = ReqView("r3", "wasserrecht", "water", "full", ("site_start",), "in_progress", title="Water")
-    early = PermitView("p2", "r2", "wr_8a", "early_start", "early_start", "in_force", ("site_start",), (), ("wasserrecht",))
+    early = PermitView(
+        "p2", "r2", "wr_8a", "early_start", "early_start", "in_force", ("site_start",), (), ("wasserrecht",)
+    )
     items = {i.ref: i for i in start_readiness([building, water], [early], []).items}
     assert (items["r1"].code, items["r1"].state) == ("permit_missing", "not_met")
     assert (items["r3"].code, items["r3"].state) == ("start_at_risk_early_start", "at_risk")

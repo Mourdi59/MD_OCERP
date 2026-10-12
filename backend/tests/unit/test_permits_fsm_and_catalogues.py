@@ -4,6 +4,10 @@
 
 from __future__ import annotations
 
+import json
+import re
+from pathlib import Path
+
 import pytest
 
 from app.core.fsm import FSMError
@@ -160,9 +164,6 @@ def test_land_overlay_replaces_the_federal_type_by_code() -> None:
 
 def test_no_phase_or_area_code_of_a_governance_model_is_written_into_the_module() -> None:
     """Review finding 1: hosting comes from catalogue tags, so no shipped model's codes appear in the code."""
-    import json
-    import re
-    from pathlib import Path
 
     import app.modules.permits as pkg
 

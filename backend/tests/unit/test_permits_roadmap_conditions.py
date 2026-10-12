@@ -166,9 +166,7 @@ def test_roadmap_and_register_checks() -> None:
     assert roadmap_readiness([planned], ("occupation",)).status == "ready"
     filed = ReqView("r1", "x", "building", "full", ("site_start",), "in_progress", True, True, submitted=True)
     assert roadmap_readiness([filed], START).status == "not_ready"
-    accepted = ReqView(
-        "r1", "x", "building", "full", ("site_start",), "in_progress", True, True, True, submitted=True
-    )
+    accepted = ReqView("r1", "x", "building", "full", ("site_start",), "in_progress", True, True, True, submitted=True)
     assert roadmap_readiness([accepted], START).status == "ready"
     pending = ReqView("r1", "x", "building", "full", (), "granted", conditions_pending=True)
     assert register_readiness([pending], []).status == "not_ready"

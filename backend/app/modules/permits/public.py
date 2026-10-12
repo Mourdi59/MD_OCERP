@@ -10,6 +10,8 @@ answers for one project the caller has already checked access to.
 * ``closeout_entries``  -- the generated closeout slot ``permits_and_conditions`` (rule 21)
 * ``requirement_state`` -- commitment_release precondition kind ``permit`` (rule 22)
 * ``register_applicant_resolver`` -- delivery_model's allocation answers the default applicant (rule 2)
+* ``register_link_resolver`` -- the owner of a linked record kind (``delivery_model``, ...) proves that an id
+  belongs to the project; a kind nobody registered is refused, never stored unchecked
 """
 
 from __future__ import annotations
@@ -20,14 +22,21 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.permits.service import register_applicant_resolver, unregister_applicant_resolver
+from app.modules.permits.service import (
+    register_applicant_resolver,
+    register_link_resolver,
+    unregister_applicant_resolver,
+    unregister_link_resolver,
+)
 
 __all__ = [
     "closeout_entries",
     "register_applicant_resolver",
+    "register_link_resolver",
     "requirement_state",
     "start_readiness",
     "unregister_applicant_resolver",
+    "unregister_link_resolver",
 ]
 
 

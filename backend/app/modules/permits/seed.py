@@ -58,6 +58,30 @@ async def seed_permits_demo(session: AsyncSession, project_ids: Iterable[uuid.UU
     return totals
 
 
+def _early_start_conditions(owner: uuid.UUID) -> list[dict]:
+    """What every early start carries (rule 10): restore the site if the permit is refused, and give security."""
+    return [
+        {
+            "number": "1",
+            "text": "If the building permit is refused, the site is restored to its previous condition.",
+            "kind": "obligation",
+            "trigger": "ongoing",
+            "topic": "admin",
+            "purpose": "restoration",
+            "owner_user_id": owner,
+        },
+        {
+            "number": "2",
+            "text": "Security for the restoration is lodged with the authority before excavation starts.",
+            "kind": "obligation",
+            "trigger": "ongoing",
+            "topic": "admin",
+            "purpose": "security",
+            "owner_user_id": owner,
+        },
+    ]
+
+
 def _pick(types: dict, *, category: str | None = None, scope: str | None = None, route: str | None = None):
     for t in types.values():
         if category and t.category != category:
@@ -139,10 +163,10 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             actor_id=owner,
         )
         await svc.transition_application(
-            pid, app.id, "preparing", actor_id=owner, actor_role="manager", on_date=None, today=submitted
+            pid, app.id, "preparing", actor_id=owner, can_manage=True, on_date=None, today=submitted
         )
         await svc.transition_application(
-            pid, app.id, "submitted", actor_id=owner, actor_role="manager", on_date=submitted, today=submitted
+            pid, app.id, "submitted", actor_id=owner, can_manage=True, on_date=submitted, today=submitted
         )
         return app
 
@@ -156,6 +180,30 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             today=today,
         )
     a_bld = await file(r_bld, today - timedelta(days=190), "BP-2026-0112")
+    for kind, days, reason in (
+        ("stop", 160, "Authority asked for the revised drainage layout"),
+        ("resume", 141, "Revised drainage layout delivered"),
+    ):
+        await svc.add_clock_event(
+            pid, a_bld.id, {"kind": kind, "at": today - timedelta(days=days), "reason": reason}, actor_id=owner
+        )
+    if r_early is not None:
+        # Filed while the main application was pending and granted well before it: the site was
+        # cleared and excavated at the owner's risk until the building permit arrived.
+        a = await file(r_early, today - timedelta(days=150), "ES-2026-0031")
+        await svc.record_decision(
+            pid,
+            a.id,
+            {
+                "outcome": "granted_with_conditions",
+                "decision_date": today - timedelta(days=128),
+                "served_date": today - timedelta(days=126),
+                "reference": "ES-2026-0031",
+                "conditions": _early_start_conditions(owner),
+            },
+            actor_id=owner,
+            today=today,
+        )
     conditions = [
         {
             "number": "1",
@@ -201,7 +249,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             "topic": "admin",
         },
     ]
-    await svc.record_decision(
+    granted = await svc.record_decision(
         pid,
         a_bld.id,
         {
@@ -214,14 +262,49 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
         actor_id=owner,
         today=today,
     )
-    if r_early is not None:
-        a = await file(r_early, today - timedelta(days=12), "ES-2026-0031")
-        await svc.transition_application(
-            pid, a.id, "under_review", actor_id=owner, actor_role="manager", on_date=None, today=today
-        )
+    permit = granted["permit"]
+    by_number = {c.number: c for c in await svc.repo.conditions_of_permit(pid, permit.id)}
+    # The fence is up and photographed; the owner submitted the evidence and a second person has
+    # yet to verify it (four eyes), so the register shows one condition waiting for its verifier.
+    await svc.add_evidence(
+        pid,
+        by_number["3"].id,
+        {"kind": "photo", "note": "Tree protection fence along the northern boundary, photographed from the gate"},
+        actor_id=owner,
+        can_manage=True,
+    )
+    await svc.submit_evidence(pid, by_number["3"].id, actor_id=owner, can_manage=True)
+    # The structural calculations went to the authority, which discharged the condition itself.
+    dis = await svc.create_application(
+        pid,
+        {
+            "requirement_id": r_bld.id,
+            "kind": "discharge_of_conditions",
+            "parent_permit_id": permit.id,
+            "discharges_condition_ids": [by_number["1"].id],
+            "authority_name": "Local building authority",
+            "authority_reference": "BP-2026-0112/D1",
+        },
+        actor_id=owner,
+    )
+    filed_on = today - timedelta(days=20)
+    await svc.transition_application(pid, dis.id, "preparing", actor_id=owner, can_manage=True, today=filed_on)
+    await svc.transition_application(
+        pid, dis.id, "submitted", actor_id=owner, can_manage=True, on_date=filed_on, today=filed_on
+    )
+    await svc.record_decision(
+        pid,
+        dis.id,
+        {
+            "outcome": "granted",
+            "decision_date": today - timedelta(days=8),
+            "reference": "BP-2026-0112/D1",
+            "discharged_condition_ids": [by_number["1"].id],
+        },
+        actor_id=owner,
+        today=today,
+    )
     if r_road is not None:
         a = await svc.create_application(pid, {"requirement_id": r_road.id}, actor_id=owner)
-        await svc.transition_application(
-            pid, a.id, "preparing", actor_id=owner, actor_role="manager", on_date=None, today=today
-        )
+        await svc.transition_application(pid, a.id, "preparing", actor_id=owner, can_manage=True, today=today)
     return {"requirements": len(made), "conditions": len(conditions)}

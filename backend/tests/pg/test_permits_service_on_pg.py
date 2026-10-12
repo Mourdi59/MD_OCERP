@@ -110,9 +110,9 @@ async def test_self_certified_discharge_is_four_eyes(world: World) -> None:
             c.id,
             {"kind": "photo", "note": "Fence photographed"},
             actor_id=world.owner_user,
-            role="editor",
+            can_manage=False,
         )
-        await svc.submit_evidence(world.project_id, c.id, actor_id=world.owner_user, role="editor")
+        await svc.submit_evidence(world.project_id, c.id, actor_id=world.owner_user, can_manage=False)
         await s.commit()
     async with world.factory() as s:
         with pytest.raises(PermitError) as exc:

@@ -117,10 +117,10 @@ async def application(w: World, rid: uuid.UUID, **kw: Any) -> uuid.UUID:
         return row.id
 
 
-async def move(w: World, aid: uuid.UUID, target: str, on: date | None = None, role: str = "manager") -> Any:
+async def move(w: World, aid: uuid.UUID, target: str, on: date | None = None, can_manage: bool = True) -> Any:
     async with w.factory() as s:
         row = await PermitService(s).transition_application(
-            w.project_id, aid, target, actor_id=w.manager, actor_role=role, on_date=on, today=TODAY
+            w.project_id, aid, target, actor_id=w.manager, can_manage=can_manage, on_date=on, today=TODAY
         )
         await s.commit()
         return row
