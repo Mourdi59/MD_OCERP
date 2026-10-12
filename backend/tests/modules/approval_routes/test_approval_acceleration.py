@@ -128,7 +128,7 @@ async def test_reassign_pins_assignee_and_locks_out_original(session: AsyncSessi
     step = (await svc.list_steps((await svc.get_instance(inst.id)).route_id))[0]
 
     reassigned = await svc.reassign_current_step(
-        inst.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason="on leave"
+        inst.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason="on leave", manage=True
     )
     assert reassigned.current_assignee_user_id == stand_in_b.id
 
@@ -311,7 +311,7 @@ async def test_override_clears_when_instance_advances(session: AsyncSession) -> 
     steps = await svc.list_steps(route_id)
 
     # Reassign step 1 to B, B clears it -> instance advances to step 2.
-    await svc.reassign_current_step(inst.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None)
+    await svc.reassign_current_step(inst.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None, manage=True)
     advanced = await svc.submit_decision(
         inst.id,
         DecisionSubmit(step_id=steps[0].id, decision="approved"),
@@ -367,7 +367,9 @@ async def test_reassignment_refuses_a_gate_that_needs_several_approvers(session:
         [StepCreate(ordinal=1, approver_role="manager", mode="all", required_approver_count=3)],
     )
     with pytest.raises(HTTPException) as exc:
-        await svc.reassign_current_step(quorum.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None)
+        await svc.reassign_current_step(
+            quorum.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None, manage=True
+        )
     assert exc.value.status_code == 422
     assert "3 approvals" in exc.value.detail
     # The refusal left the instance alone instead of half-applying.
@@ -382,7 +384,9 @@ async def test_reassignment_refuses_a_gate_that_needs_several_approvers(session:
         [StepCreate(ordinal=1, approver_role="manager", mode="all")],
     )
     with pytest.raises(HTTPException) as exc:
-        await svc.reassign_current_step(implicit.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None)
+        await svc.reassign_current_step(
+            implicit.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None, manage=True
+        )
     assert exc.value.status_code == 422
     assert "2 approvals" in exc.value.detail
 
@@ -394,7 +398,9 @@ async def test_reassignment_refuses_a_gate_that_needs_several_approvers(session:
         owner.id,
         [StepCreate(ordinal=1, approver_role="manager", mode="any")],
     )
-    handed_any = await svc.reassign_current_step(any_gate.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None)
+    handed_any = await svc.reassign_current_step(
+        any_gate.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None, manage=True
+    )
     assert handed_any.current_assignee_user_id == stand_in_b.id
 
     # Allowed: a step the template already pins to one named approver.
@@ -405,7 +411,9 @@ async def test_reassignment_refuses_a_gate_that_needs_several_approvers(session:
         owner.id,
         [StepCreate(ordinal=1, approver_user_id=approver_a.id, mode="all")],
     )
-    handed_named = await svc.reassign_current_step(named.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None)
+    handed_named = await svc.reassign_current_step(
+        named.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None, manage=True
+    )
     assert handed_named.current_assignee_user_id == stand_in_b.id
 
 
@@ -465,7 +473,7 @@ async def test_reassigned_role_gate_clears_for_its_stand_in_only(session: AsyncS
         [StepCreate(ordinal=1, approver_role="manager", mode="any")],
     )
     step = (await svc.list_steps((await svc.get_instance(inst.id)).route_id))[0]
-    await svc.reassign_current_step(inst.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None)
+    await svc.reassign_current_step(inst.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None, manage=True)
     instance = await svc.get_instance(inst.id)
     now = datetime.now(UTC)
     entitled = await svc.entitled_deciders(instance, step, now=now)
@@ -583,7 +591,9 @@ async def test_stand_in_rejection_ends_the_workflow(session: AsyncSession) -> No
         ],
     )
     steps = await svc.list_steps((await svc.get_instance(reassigned.id)).route_id)
-    await svc.reassign_current_step(reassigned.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None)
+    await svc.reassign_current_step(
+        reassigned.id, to_user_id=stand_in_b.id, actor_id=owner.id, reason=None, manage=True
+    )
     refused = await svc.submit_decision(
         reassigned.id,
         DecisionSubmit(step_id=steps[0].id, decision="rejected", comment="scope unclear"),

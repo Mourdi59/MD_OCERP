@@ -988,6 +988,7 @@ class ApprovalRouteService:
                 "target_id": str(instance.target_id),
                 "reason": reason,
                 "status": "cancelled",
+                "cancelled_by": str(actor_id) if actor_id else None,
             },
         )
         return instance
@@ -1001,8 +1002,15 @@ class ApprovalRouteService:
         to_user_id: uuid.UUID,
         actor_id: uuid.UUID | None,
         reason: str | None = None,
+        manage: bool = False,
+        caller_role: str | None = None,
     ) -> Instance:
         """One-tap reassignment of the current step to another user.
+
+        Only whoever may decide the step now can hand it off, or a manager
+        (``manage``): the stand-in becomes the sole decider, so anyone else
+        handing it off would be choosing who approves. It never goes to the
+        person who started the approval, who would then decide their own request.
 
         Pins ``current_assignee_user_id`` so the chosen stand-in becomes the
         sole eligible decider for the instance's current step, without editing
@@ -1019,14 +1027,18 @@ class ApprovalRouteService:
             to_user_id: The stand-in who becomes the sole eligible decider.
             actor_id: Who performed the hand-off, for the audit row.
             reason: Optional free-text reason, recorded on the audit row.
+            manage: The caller holds ``approval_routes.manage``, or is a module
+                that resolved the actor as an approver of its own.
+            caller_role: The actor's role, checked against a role-based step.
 
         Returns:
             The updated :class:`Instance`.
 
         Raises:
-            HTTPException: 409 when the instance is not pending, 422 when the
-                current step needs more than one approval or the stand-in has
-                no access to the route's project.
+            HTTPException: 409 when the instance is not pending, 403 when the
+                actor may neither decide the step nor manage routes, 422 when
+                the current step needs more than one approval, the stand-in
+                started the approval or has no access to the route's project.
         """
         instance = await self._lock_instance(instance_id)
         if instance.status != "pending":
@@ -1055,6 +1067,30 @@ class ApprovalRouteService:
                     f"cannot be reassigned to a single stand-in"
                 ),
             )
+
+        if instance.started_by is not None and to_user_id == instance.started_by:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="A step cannot be reassigned to the person who started the approval",
+            )
+        if not manage:
+            entitled = (
+                await self.entitled_deciders(instance, current_step, now=datetime.now(UTC))
+                if current_step is not None
+                else set()
+            )
+            if entitled is None:
+                # A role-based step: the actor hands it off only when their own role would decide it.
+                allowed = bool(current_step.approver_role) and _caller_role_satisfies(
+                    caller_role, current_step.approver_role
+                )
+            else:
+                allowed = actor_id is not None and actor_id in entitled
+            if not allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only the current approver of this step or a manager can reassign it",
+                )
 
         # The chosen stand-in must actually belong to the route's project, or the
         # hand-off would pin a decider who can never legitimately see the target.

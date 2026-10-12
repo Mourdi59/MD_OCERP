@@ -151,11 +151,16 @@ async def test_a_step_handed_to_a_stand_in_says_assigned(session: AsyncSession) 
     instance, step = await _one_step_route(
         svc, project_id, owner_id, StepCreate(ordinal=1, approver_user_id=pinned, mode="all")
     )
-    # The project owner is the stand-in, because a hand-off is refused unless
-    # the person receiving it can reach the route's project. A freshly made
-    # user cannot, so reassigning to one fails at a different guard entirely
-    # and this test would never reach the sentence it is about.
-    await svc.reassign_current_step(instance.id, to_user_id=owner_id, actor_id=owner_id, reason="away")
+    # The stand-in is a second admin, because a hand-off is refused unless the
+    # person receiving it can reach the route's project, and it never goes to
+    # the person who started the approval (the owner here). The owner hands it
+    # off as a manager: they are not the step's approver.
+    stand_in = User(
+        email=f"standin-{uuid.uuid4().hex[:8]}@example.com", hashed_password="hashed", full_name="S", role="admin"
+    )
+    session.add(stand_in)
+    await session.flush()
+    await svc.reassign_current_step(instance.id, to_user_id=stand_in.id, actor_id=owner_id, reason="away", manage=True)
 
     with pytest.raises(HTTPException) as excinfo:
         await svc.submit_decision(
