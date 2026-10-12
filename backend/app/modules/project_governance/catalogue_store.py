@@ -268,7 +268,12 @@ class CatalogueStore:
                 raise conflict("catalogue_code_taken")
         if based_on_source:
             if based_on_source == "tenant":
-                await self.get(tenant_id, uuid.UUID(str(based_on_id)))
+                try:
+                    own_id = uuid.UUID(str(based_on_id))
+                except ValueError as exc:
+                    # A tenant catalogue is addressed by its uuid; anything else names nothing.
+                    raise not_found("unknown_catalogue") from exc
+                await self.get(tenant_id, own_id)
             # Ownership was checked just above; a retired catalogue may still be cloned
             # into its successor, so the retired refusal of a request id does not apply.
             source = await resolve_catalogue(
