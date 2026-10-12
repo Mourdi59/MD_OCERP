@@ -93,6 +93,54 @@ async def test_a_work_in_progress_revision_cannot_be_released(world: DesignWorld
     assert err.value.status_code == 422
 
 
+async def test_a_deleted_drawings_number_is_never_handed_out_again(world: DesignWorld) -> None:
+    """Rule 8: a number that was used stays used after its container is gone, typed or generated."""
+    from app.modules.cde.models import DocumentContainer
+
+    d, _rev = await drawing_with_revision(world, "ARCH")
+    async with world.factory() as s:
+        row = await s.get(DesignDrawing, d)
+        container = await s.get(DocumentContainer, row.container_id)
+        number = container.container_code
+        await s.delete(container)
+        await s.commit()
+    async with world.factory() as s:
+        svc = DesignService(s)
+        with pytest.raises(DesignError) as typed:
+            await svc.create_drawing(
+                world.project_id, {"role_id": str(world.roles["ARCH"]), "number": number}, actor_id=world.editor
+            )
+        assert typed.value.code == "number_taken"
+        await s.rollback()
+        _fresh, _c = await svc.create_drawing(
+            world.project_id, {"role_id": str(world.roles["ARCH"])}, actor_id=world.editor
+        )
+        await s.commit()
+        assert _c.container_code != number
+
+
+async def test_cde_refuses_a_reserved_number_on_a_container_made_outside_the_register(world: DesignWorld) -> None:
+    from fastapi import HTTPException
+
+    from app.modules.cde.models import DocumentContainer
+    from app.modules.cde.schemas import ContainerCreate
+    from app.modules.cde.service import CDEService
+
+    d, _rev = await drawing_with_revision(world, "ARCH")
+    async with world.factory() as s:
+        container = await s.get(DocumentContainer, (await s.get(DesignDrawing, d)).container_id)
+        number = container.container_code
+        await s.delete(container)
+        await s.commit()
+    async with world.factory() as s:
+        with pytest.raises(HTTPException) as exc:
+            await CDEService(s).create_container(
+                ContainerCreate(project_id=world.project_id, container_code=number, title="x", cde_state="wip"),
+                user_id=str(world.editor),
+            )
+    assert any(v["code"] == "number_reserved" for v in exc.value.detail["violations"])
+
+
 async def test_a_scheme_change_keeps_numbers_and_flags_them_legacy(world: DesignWorld) -> None:
     """Rule 9: no silent renumbering; numbers that miss the new scheme are flagged."""
     d, _rev = await drawing_with_revision(world, "ARCH")

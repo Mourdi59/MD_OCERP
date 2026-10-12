@@ -2379,6 +2379,9 @@ async def create_wbs_node(
     )
     session.add(node)
     await session.flush()
+    from app.core.wbs_rules import check_wbs_tree
+
+    await check_wbs_tree(session, project_id)
     return WBSResponse.model_validate(node)
 
 
@@ -2459,6 +2462,9 @@ async def update_wbs_node(
         stmt = update(ProjectWBS).where(ProjectWBS.id == wbs_id, ProjectWBS.project_id == project_id).values(**fields)
         await session.execute(stmt)
         await session.flush()
+        from app.core.wbs_rules import check_wbs_tree
+
+        await check_wbs_tree(session, project_id)
 
     # Confirm the node belongs to this project before returning it. Owning the
     # project only proves access to ``project_id``; without this scope check a

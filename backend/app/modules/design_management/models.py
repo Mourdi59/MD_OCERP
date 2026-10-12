@@ -202,6 +202,22 @@ class DesignNumberCounter(Base):
     next_value: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
 
+class DesignNumberReservation(Base):
+    """A drawing number once used in the project; outlives its container so it is never reused (rule 8).
+
+    No foreign keys on purpose: the row must survive the deletion of the
+    container and drawing it was written for.
+    """
+
+    __tablename__ = "oe_design_number_reservation"
+    __table_args__ = (UniqueConstraint("project_id", "number", name="uq_oe_dsg_reservation_number"),)
+
+    project_id: Mapped[uuid.UUID] = _project("fk_oe_dsg_reservation_project")
+    number: Mapped[str] = mapped_column(String(255), nullable=False)
+    container_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    reason: Mapped[str] = mapped_column(String(20), nullable=False, default="issued")
+
+
 class DesignDistributionRule(Base):
     """One row of the distribution matrix: who receives which drawings, for what, in which format."""
 
@@ -378,6 +394,7 @@ ALL_MODELS: tuple[type[Base], ...] = (
     DesignDeliverable,
     DesignDrawing,
     DesignNumberCounter,
+    DesignNumberReservation,
     DesignDistributionRule,
     DesignRelease,
     DesignReview,

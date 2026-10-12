@@ -90,6 +90,29 @@ def check_code(
             raise WbsRuleError("wbs_code_not_under_parent", f"{parent.code}{separator}")
 
 
+def tree_errors(nodes: Sequence[Node], *, hierarchical: bool = True, separator: str = ".") -> list[dict[str, str]]:
+    """Rules 1-3 over a whole tree written in one go (copy, backup restore); every violation, not the first.
+
+    Rule 3 is read as "a closed node has no children that are open"; a copied
+    subtree that was closed together stays valid.
+    """
+    out = [{"code": "wbs_code_duplicate", "value": code} for code in duplicate_codes(nodes)]
+    by_id = {n.id: n for n in nodes}
+    for n in nodes:
+        if not (n.code or "").strip():
+            out.append({"code": "wbs_code_required", "value": str(n.id)})
+            continue
+        parent = by_id.get(n.parent_id) if n.parent_id is not None else None
+        if parent is None:
+            continue
+        if parent.closed and not n.closed:
+            out.append({"code": "wbs_node_closed", "value": n.code})
+        prefix = parent.code + separator
+        if hierarchical and not (n.code.startswith(prefix) and len(n.code) > len(prefix)):
+            out.append({"code": "wbs_code_not_under_parent", "value": n.code})
+    return out
+
+
 def renumber_plan(
     nodes: Sequence[Node], node_id: uuid.UUID, new_code: str, *, separator: str = "."
 ) -> dict[uuid.UUID, str]:
@@ -128,6 +151,7 @@ __all__ = [
     "Node",
     "WbsRuleError",
     "check_code",
+    "tree_errors",
     "deletable",
     "descendants",
     "duplicate_codes",

@@ -90,5 +90,16 @@ async def numbering_checker(session: Any, project_id: uuid.UUID, code: str, part
 
 def register_numbering_hook() -> None:
     from app.core.cde_naming import register_container_code_checker
+    from app.core.wbs_rules import register_wbs_checker
 
     register_container_code_checker(CHECKER_NAME, numbering_checker)
+    register_wbs_checker(WBS_CHECKER_NAME, wbs_checker)
+
+
+WBS_CHECKER_NAME = "design_management.wbs"
+
+
+async def wbs_checker(session: Any, project_id: uuid.UUID, settings_project_id: uuid.UUID | None):
+    from app.modules.design_management.service import DesignService
+
+    return await DesignService(session).wbs_tree_violations(project_id, settings_project_id)

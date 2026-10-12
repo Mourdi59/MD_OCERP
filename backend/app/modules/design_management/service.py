@@ -52,6 +52,7 @@ from app.modules.design_management.models import (
     DesignDistributionRule,
     DesignDrawing,
     DesignNumberCounter,
+    DesignNumberReservation,
     DesignPermit,
     DesignPermitItem,
     DesignRelease,
@@ -388,6 +389,24 @@ class DesignService:
     async def _wbs_settings(self, project_id: uuid.UUID) -> tuple[bool, str]:
         setup = await self.get_setup(project_id)
         return (setup.hierarchical_codes, setup.wbs_separator) if setup else (True, ".")
+
+    async def wbs_tree_violations(
+        self, project_id: uuid.UUID, settings_project_id: uuid.UUID | None = None
+    ) -> list[dict[str, str]]:
+        """Rules 1-3 over the stored tree, for writes made outside this module (``core/wbs_rules``).
+
+        Settings come from the project's setup, else from ``settings_project_id``
+        (a copy's source). With no setup on either, only the rules that hold for
+        every project apply: unique codes and no open child under a closed node.
+        Hierarchical codes are a design setting and are not imposed on a project
+        that never chose them.
+        """
+        setup = await self.get_setup(project_id)
+        if setup is None and settings_project_id is not None:
+            setup = await self.get_setup(settings_project_id)
+        hierarchical, sep = (setup.hierarchical_codes, setup.wbs_separator) if setup else (False, ".")
+        rows = await self.wbs_rows(project_id)
+        return wr.tree_errors([self._node(r) for r in rows], hierarchical=hierarchical, separator=sep)
 
     async def wbs_tree(self, project_id: uuid.UUID) -> dict[str, Any]:
         rows = await self.wbs_rows(project_id)
@@ -967,6 +986,8 @@ class DesignService:
         setup = await self.get_setup(project_id)
         if setup is None:
             return []
+        if await self._reserved_elsewhere(project_id, code):
+            return [{"code": "number_reserved", "field": None, "value": code}]
         scheme = await self.scheme(setup)
         result = nb.validate(scheme, code)
         if not result.valid:
@@ -1051,12 +1072,17 @@ class DesignService:
                     )
                 )
             ).first()
-            if clash is not None or new_code in self._all_aliases(await self._drawings_flat(project_id)):
+            if (
+                clash is not None
+                or new_code in self._all_aliases(await self._drawings_flat(project_id))
+                or await self._reserved_elsewhere(project_id, new_code)
+            ):
                 raise conflict("number_taken", detail=new_code)
             await self.check_container_code(project_id, new_code, {})
             columns, extra = nb.container_parts(scheme, result.parts or {})
             drawing.aliases = [*(drawing.aliases or []), c.container_code]
             c.container_code = new_code
+            await self._reserve(project_id, new_code, c.id, reason="renumbered")
             for col, value in columns.items():
                 if scheme.field(next(k for k, v in nb.CONTAINER_PART.items() if v == col)) is not None:
                     setattr(c, col, value)
@@ -1067,6 +1093,34 @@ class DesignService:
         await self.session.flush()
         await self._audit(actor_id, "design_setup", setup.id, "renumbered", count=len(out))
         return out
+
+    async def _reserved_elsewhere(self, project_id: uuid.UUID, code: str) -> bool:
+        """Rule 8: the number was used once and no live container holds it now (its owner was deleted)."""
+        from app.modules.cde.models import DocumentContainer
+
+        reserved = (
+            await self.session.execute(
+                select(DesignNumberReservation.id).where(
+                    DesignNumberReservation.project_id == project_id, DesignNumberReservation.number == code
+                )
+            )
+        ).first()
+        if reserved is None:
+            return False
+        live = (
+            await self.session.execute(
+                select(DocumentContainer.id).where(
+                    DocumentContainer.project_id == project_id, DocumentContainer.container_code == code
+                )
+            )
+        ).first()
+        return live is None
+
+    async def _reserve(self, project_id: uuid.UUID, code: str, container_id: uuid.UUID, *, reason: str = "issued"):
+        """Record a number as used; the unique constraint turns a racing duplicate into an error at flush."""
+        await self._add(
+            DesignNumberReservation(project_id=project_id, number=code, container_id=container_id, reason=reason)
+        )
 
     @staticmethod
     def _all_aliases(drawings: list[DesignDrawing]) -> set[str]:
@@ -1167,7 +1221,9 @@ class DesignService:
         else:
             allocated = await self.allocate_number(project_id, data)
             code, parts = allocated["number"], allocated["parts"] or {}
-        if code in self._all_aliases(await self._drawings_flat(project_id)):
+        if code in self._all_aliases(await self._drawings_flat(project_id)) or await self._reserved_elsewhere(
+            project_id, code
+        ):
             raise conflict("number_taken", detail=code)
         originators = await self._active_originators(project_id)
         if parts.get("originator") and originators is not None and parts["originator"].upper() not in originators:
@@ -1184,6 +1240,7 @@ class DesignService:
             ),
             user_id=_s(actor_id),
         )
+        await self._reserve(project_id, code, container.id)
         drawing = await self._add(
             DesignDrawing(
                 project_id=project_id,

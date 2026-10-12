@@ -1291,6 +1291,9 @@ class ProjectService:
                 if src_parent_id is not None and src_parent_id in wbs_id_map:
                     new_node.parent_id = wbs_id_map[src_parent_id]
             await self.session.flush()
+            from app.core.wbs_rules import check_wbs_tree
+
+            await check_wbs_tree(self.session, new_project.id, settings_project_id=source.id)
 
         # 3b. Clone milestones. Flat list, no internal references.
         for src_ms in source.milestones:
@@ -1975,6 +1978,11 @@ class ProjectService:
         for node in wbs_nodes:
             self.session.add(node)
         wbs_count = len(wbs_nodes)
+        if wbs_nodes:
+            from app.core.wbs_rules import check_wbs_tree
+
+            await self.session.flush()
+            await check_wbs_tree(self.session, project.id)
 
         # Restore milestones
         for ms_data in data.milestones:

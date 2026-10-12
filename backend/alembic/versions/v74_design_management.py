@@ -219,6 +219,17 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
         [],
     ),
     (
+        "oe_design_number_reservation",
+        lambda: [
+            _project_fk("fk_oe_dsg_reservation_project"),
+            _str("number", 255, None),
+            _guid("container_id"),
+            _str("reason", 20, "issued"),
+            sa.UniqueConstraint("project_id", "number", name="uq_oe_dsg_reservation_number"),
+        ],
+        [],
+    ),
+    (
         "oe_design_dist_rule",
         lambda: [
             _project_fk("fk_oe_dsg_dist_rule_project"),
