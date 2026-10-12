@@ -297,7 +297,9 @@ describe('transports and permits', () => {
   });
 
   it('a decided permit does not offer the fields the server keeps', async () => {
-    mocked.listPermits.mockResolvedValue(page([{ ...permit, state: 'granted' }]));
+    mocked.listPermits.mockResolvedValue(
+      page([{ ...permit, state: 'granted', frozen_fields: ['permit_kind', 'valid_from', 'valid_to', 'allowed_windows'] }]),
+    );
     renderPlan('permits');
     const card = await screen.findByTestId('plan-permit');
     fireEvent.click(within(card).getByRole('button', { name: 'Edit' }));
@@ -312,6 +314,38 @@ describe('transports and permits', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Edit' }));
     expect(await screen.findByLabelText('Valid from')).toBeInTheDocument();
     expect(screen.queryByTestId('plan-form-note')).toBeNull();
+  });
+
+  it('a move the server refuses right now is shown but cannot be pressed, and one that does not exist is not shown', async () => {
+    const no = (reason: string, applies: boolean) => ({ allowed: false, applies, reason });
+    mocked.listPermits.mockResolvedValue(
+      page([
+        {
+          ...permit,
+          can: {
+            edit: no('permission_denied', true),
+            transitions: { granted: no('permission_denied', true), expired: no('invalid_transition', false) },
+          },
+        },
+      ]),
+    );
+    renderPlan('permits');
+    const card = await screen.findByTestId('plan-permit');
+    expect(within(card).getByRole('button', { name: 'Mark as granted' })).toBeDisabled();
+    expect(within(card).queryByTestId('plan-move-expired')).toBeNull();
+    expect(within(card).getByRole('button', { name: 'Edit' })).toBeDisabled();
+    // The record carries verdicts and none for delete: it cannot be deleted at all.
+    expect(within(card).queryByRole('button', { name: 'Delete' })).toBeNull();
+  });
+
+  it('a list the reader may not add to keeps its button disabled', async () => {
+    mocked.listPermits.mockResolvedValue({
+      ...page([permit]),
+      can: { create: { allowed: false, applies: true, reason: 'permission_denied' } },
+    });
+    renderPlan('permits');
+    await screen.findByTestId('plan-permit');
+    expect(screen.getByTestId('plan-add_permit')).toBeDisabled();
   });
 
   it('a permit lists its time windows by weekday', async () => {
@@ -394,6 +428,18 @@ describe('site plan drawing', () => {
         plan_origin_px: [0, 600],
       }),
     );
+  });
+
+  it('a reader who may change nothing gets the drawing without tools', async () => {
+    const no = { allowed: false, applies: true, reason: 'permission_denied' };
+    mocked.listAreas.mockResolvedValue(page([{ ...area, can: { edit: no } }]));
+    mocked.listTransports.mockResolvedValue(page([{ ...heavyTransport, can: { edit: no } }]));
+    mocked.listPermits.mockResolvedValue(page([{ ...permit, can: { edit: no } }]));
+    mocked.listMedia.mockResolvedValue(page([{ ...media, can: { edit: no } }]));
+    renderPlan('siteplan');
+    await screen.findByTestId('siteplan-sheet');
+    expect(screen.queryByTestId('siteplan-target')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Draw outline' })).toBeNull();
   });
 
   it('zooming changes the sheet and fit brings it back to the drawing', async () => {

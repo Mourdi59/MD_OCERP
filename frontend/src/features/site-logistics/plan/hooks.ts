@@ -39,6 +39,7 @@ import {
   type PlanCatalogue,
   type PlanPage,
   type ResourceKind,
+  type Verdict,
 } from './api';
 import { findingText, type Words } from './rules';
 import type { TFn } from './texts';
@@ -50,9 +51,47 @@ function items<T>(page: PlanPage<T>): T[] {
 function usePlanList<T>(projectId: string, name: string, fetcher: () => Promise<PlanPage<T>>, enabled = true) {
   return useQuery({
     queryKey: planKeys.of(projectId, name),
-    queryFn: () => fetcher().then(items),
+    queryFn: fetcher,
+    select: items<T>,
     enabled: !!projectId && enabled,
   });
+}
+
+/** Whether a record may be added to a list, as the list's own answer says. Reads the cache the list filled. */
+export function useCreateVerdict(projectId: string, name: string): Verdict | undefined {
+  return useQuery<PlanPage<unknown>, Error, Verdict | undefined>({
+    queryKey: planKeys.of(projectId, name),
+    enabled: false,
+    select: (page) => page.can?.create,
+  }).data;
+}
+
+/** The list each kind of record is added to. */
+function listOf(kind: ResourceKind, parentId = ''): string {
+  switch (kind) {
+    case 'stage':
+      return 'stages';
+    case 'area':
+      return 'areas';
+    case 'media':
+      return 'media';
+    case 'demand':
+      return `demands:${parentId}`;
+    case 'transport':
+      return 'transports';
+    case 'permit':
+      return 'permits';
+    case 'customs':
+      return 'customs';
+    case 'line':
+      return `lines:${parentId}`;
+    case 'document':
+      return `documents:${parentId}`;
+    case 'complaint':
+      return 'complaints';
+    case 'coordination':
+      return 'coordination';
+  }
 }
 
 export const useCatalogue = (projectId: string) =>
@@ -134,7 +173,8 @@ export interface Identified {
 /**
  * The writes of one list: the record open in the dialog, save (create or
  * change), move to another status and delete. A refusal is shown with the
- * server's reason; nothing here decides whether the reader may act.
+ * server's reason; nothing here decides whether the reader may act:
+ * `mayCreate` is the verdict the list itself answered.
  */
 export function useResource<T extends Identified>(
   projectId: string,
@@ -146,6 +186,7 @@ export function useResource<T extends Identified>(
   const report = useReportProblem(catalogue);
   const [editing, setEditing] = useState<{ record: T | null } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const mayCreate = useCreateVerdict(projectId, listOf(kind, parentId));
 
   const act = useCallback(
     async (id: string, fn: () => Promise<unknown>) => {
@@ -165,6 +206,7 @@ export function useResource<T extends Identified>(
   return {
     editing,
     busyId,
+    mayCreate,
     open: (record: T | null = null) => setEditing({ record }),
     close: () => setEditing(null),
     save: (body: Body) =>

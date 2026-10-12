@@ -16,7 +16,7 @@ import type { CustomsCase, CustomsDocument, CustomsLine, PlanCatalogue } from '.
 import { day, withUnit } from './format';
 import { useCustoms, useDocuments, useLines, useResource, useWords } from './hooks';
 import { Card, Fact, FormDialog, Loaded, PanelHead, PlanEmpty, RowActions, StateBadge } from './PlanBits';
-import { codeLabel, codeOptions, enumLabel, type Field } from './rules';
+import { codeLabel, codeOptions, enumLabel, type Field, denied } from './rules';
 import type { PanelProps } from './SitePanels';
 import { tx } from './texts';
 
@@ -66,7 +66,7 @@ function CaseDetails({ projectId, record, catalogue }: { projectId: string; reco
       <div>
         <div className="flex items-center justify-between gap-2">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">{tx(t, 'customs.lines')}</h4>
-          <Button size="sm" variant="secondary" onClick={() => lineRes.open()} data-testid="plan-add-line">
+          <Button size="sm" variant="secondary" disabled={denied(lineRes.mayCreate)} onClick={() => lineRes.open()} data-testid="plan-add-line">
             {tx(t, 'add_line')}
           </Button>
         </div>
@@ -105,7 +105,7 @@ function CaseDetails({ projectId, record, catalogue }: { projectId: string; reco
           <h4 className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">
             {tx(t, 'customs.documents')}
           </h4>
-          <Button size="sm" variant="secondary" onClick={() => docRes.open()} data-testid="plan-add-document">
+          <Button size="sm" variant="secondary" disabled={denied(docRes.mayCreate)} onClick={() => docRes.open()} data-testid="plan-add-document">
             {tx(t, 'add_document')}
           </Button>
         </div>
@@ -216,7 +216,7 @@ export function CustomsPanel({ projectId, catalogue }: PanelProps) {
 
   return (
     <section className="space-y-3" data-testid="plan-customs">
-      <PanelHead title="tab.customs" action="add_customs" onAction={() => resource.open()} />
+      <PanelHead title="tab.customs" action="add_customs" may={resource.mayCreate} onAction={() => resource.open()} />
       {valuesHidden && (
         <p className="flex items-center gap-1.5 text-xs text-content-secondary" data-testid="plan-values-hidden">
           <EyeOff size={13} aria-hidden />
@@ -231,6 +231,7 @@ export function CustomsPanel({ projectId, catalogue }: PanelProps) {
               title="empty.customs_title"
               body="empty.customs_body"
               action="add_customs"
+              may={resource.mayCreate}
               onAction={() => resource.open()}
             />
           ) : (

@@ -7,52 +7,27 @@
 
 import type { BadgeVariant } from '@/shared/ui/Badge';
 
-import type { CatalogueEntry, CatalogueGroup, Finding, PlanCatalogue, Violation } from './api';
+import type { CatalogueEntry, CatalogueGroup, Finding, PlanCatalogue, Verdict, Violation } from './api';
 import { isTextKey, tx, type TextKey, type TFn } from './texts';
 
 /* ── Status moves ─────────────────────────────────────────────────────── */
 
 export type Lifecycle = 'stage' | 'media' | 'transport' | 'permit' | 'customs' | 'document' | 'complaint';
 
-/**
- * The moves the server allows from each status (planning.py). The server
- * decides in the end and answers 409 with its reason; this table only keeps
- * the screen from offering moves that can never succeed.
- */
-export const NEXT: Record<Lifecycle, Record<string, readonly string[]>> = {
-  stage: { planned: ['active'], active: ['closed'], closed: [] },
-  media: {
-    identified: ['requested'],
-    requested: ['offered', 'identified'],
-    offered: ['contracted', 'requested'],
-    contracted: ['connected'],
-    connected: ['disconnected'],
-    disconnected: [],
-  },
-  transport: {
-    planned: ['permit_pending', 'scheduled', 'cancelled'],
-    permit_pending: ['scheduled', 'planned', 'cancelled'],
-    scheduled: ['in_transit', 'permit_pending', 'cancelled'],
-    in_transit: ['arrived'],
-    arrived: ['closed'],
-    closed: [],
-    cancelled: [],
-  },
-  permit: { draft: ['applied'], applied: ['granted', 'refused'], granted: ['expired'], refused: [], expired: [] },
-  customs: {
-    open: ['documents_complete'],
-    documents_complete: ['declared', 'open'],
-    declared: ['cleared', 'held'],
-    held: ['declared', 'cleared'],
-    cleared: ['closed'],
-    closed: [],
-  },
-  document: { missing: ['received'], received: ['verified', 'missing'], verified: ['received'] },
-  complaint: { received: ['acknowledged'], acknowledged: ['action_taken', 'closed'], action_taken: ['closed'], closed: [] },
-};
+/** The action exists but the server refuses it right now. Unknown counts as not refused. */
+export function denied(verdict: Verdict | undefined): boolean {
+  return !!verdict && !verdict.allowed;
+}
 
-export function nextStates(lifecycle: Lifecycle, state: string): readonly string[] {
-  return NEXT[lifecycle][state] ?? [];
+/** The action does not exist for this record in its state. Unknown counts as existing. */
+export function absent(verdict: Verdict | undefined): boolean {
+  return !!verdict && !verdict.applies;
+}
+
+/** Why the server refuses, in the reader's language; the code in plain words where no sentence is shipped. */
+export function reasonText(t: TFn, verdict: Verdict | undefined): string | undefined {
+  if (!verdict || verdict.allowed || !verdict.reason) return undefined;
+  return t(`site_logistics.errors.${verdict.reason}`, { defaultValue: humanise(verdict.reason) });
 }
 
 const TONES: Record<string, BadgeVariant> = {

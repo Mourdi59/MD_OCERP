@@ -15,7 +15,28 @@
 import { downloadDocumentBlob, fetchDocuments } from '@/features/documents/api';
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth, API_BASE } from '@/shared/lib/api';
 
+/**
+ * The server's answer to "may this reader do this now". `applies` is false
+ * when the action does not exist for the record in its state; `allowed` is
+ * false when it exists but is refused, and `reason` is then the error code
+ * the write would answer.
+ */
+export interface Verdict {
+  allowed: boolean;
+  applies: boolean;
+  reason: string | null;
+}
+
+export interface Can {
+  edit?: Verdict;
+  /** Only on records that can be deleted at all. */
+  delete?: Verdict;
+  /** One entry per state of the record's state machine. */
+  transitions?: Record<string, Verdict>;
+}
+
 export interface PlanPage<T> {
+  can?: { create?: Verdict };
   items: T[];
   total: number;
   offset: number;
@@ -115,6 +136,8 @@ export function pinCatalogue(projectId: string, body: Body): Promise<Concept> {
 /* ── Stages, areas, balance ───────────────────────────────────────────── */
 
 export interface Stage {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   id: string;
   code: string;
   title: string;
@@ -168,6 +191,8 @@ export interface Allocation {
 }
 
 export interface SiteArea {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   id: string;
   code: string;
   name: string;
@@ -227,6 +252,8 @@ export function putAllocations(projectId: string, areaId: string, items: Body[])
 /* ── Utilities ────────────────────────────────────────────────────────── */
 
 export interface MediaConnection {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   id: string;
   media_kind: string;
   phase: string;
@@ -246,6 +273,8 @@ export interface MediaConnection {
 }
 
 export interface MediaDemand {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   id: string;
   media_connection_id: string | null;
   media_kind: string;
@@ -283,6 +312,8 @@ export interface Flow {
 }
 
 export interface Concept {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   /** Null until the concept was saved once; reading never creates it. */
   id: string | null;
   catalogue_source: 'shipped' | 'tenant';
@@ -312,6 +343,8 @@ export interface TransportPermitRef {
 }
 
 export interface Transport {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   id: string;
   direction: string;
   transport_kind: string;
@@ -357,6 +390,8 @@ export interface PermitWindow {
 }
 
 export interface Permit {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   id: string;
   transport_id: string | null;
   covers_transport_ids: string[];
@@ -367,6 +402,8 @@ export interface Permit {
   valid_from: string | null;
   valid_to: string | null;
   allowed_windows: PermitWindow[];
+  /** The fields the server no longer changes; empty while the permit is a draft or applied for. */
+  frozen_fields?: string[];
   route_geojson?: unknown;
   conditions: string;
   document_ref: string;
@@ -379,6 +416,8 @@ export const listPermits = (projectId: string) => apiGet<PlanPage<Permit>>(`/v1/
 /* ── Customs ──────────────────────────────────────────────────────────── */
 
 export interface CustomsCase {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   id: string;
   direction: string;
   title: string;
@@ -399,6 +438,8 @@ export interface CustomsCase {
 }
 
 export interface CustomsLine {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   id: string;
   customs_case_id: string;
   description: string;
@@ -415,6 +456,8 @@ export interface CustomsLine {
 }
 
 export interface CustomsDocument {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   id: string;
   customs_case_id: string;
   kind: string;
@@ -432,6 +475,8 @@ export const listDocuments = (projectId: string, caseId: string) =>
 /* ── Neighbourhood ────────────────────────────────────────────────────── */
 
 export interface Neighbourhood {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   /** Null until the plan was saved once; the other fields are then the defaults. */
   id: string | null;
   zone_type: string | null;
@@ -444,6 +489,8 @@ export interface Neighbourhood {
 }
 
 export interface Complaint {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   id: string;
   kind: string;
   reported_on: string | null;
@@ -460,6 +507,8 @@ export interface Complaint {
 }
 
 export interface CoordinationEntry {
+  /** What the server lets this reader do with the record; absent when it does not say. */
+  can?: Can;
   id: string;
   entry_date: string | null;
   body: string;

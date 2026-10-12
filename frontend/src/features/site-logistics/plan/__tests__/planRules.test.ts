@@ -12,7 +12,6 @@ import { ApiError } from '@/shared/lib/api';
 
 import { planProblem, type PlanCatalogue } from '../api';
 import {
-  NEXT,
   codeLabel,
   decimalsOf,
   enumLabel,
@@ -20,7 +19,6 @@ import {
   formProblems,
   humanise,
   moveLabel,
-  nextStates,
   stateLabel,
   toBody,
   toFormValues,
@@ -34,7 +32,8 @@ import { enT } from './i18nMock';
 const words = { t: enT, language: 'en' };
 
 describe('status moves', () => {
-  it('mirror the state machines of the server, move for move', () => {
+  it('every state and every move of the server has its own words', () => {
+    // The moves themselves are the server's to offer (`can.transitions`); the screen only has to have a word for each.
     const planning = readFileSync(
       join(__dirname, '../../../../../../backend/app/modules/site_logistics/planning.py'),
       'utf-8',
@@ -50,27 +49,12 @@ describe('status moves', () => {
     };
     for (const [lifecycle, name] of Object.entries(names) as [Lifecycle, string][]) {
       const block = planning.slice(planning.indexOf(`${name}: dict`)).split('\n}')[0]!;
-      const server: Record<string, string[]> = {};
-      for (const m of block.matchAll(/"(\w+)": \(([^)]*)\)/g)) {
-        server[m[1]!] = [...m[2]!.matchAll(/"(\w+)"/g)].map((x) => x[1]!);
-      }
-      expect(Object.keys(server).length, name).toBeGreaterThan(2);
-      expect(NEXT[lifecycle], name).toEqual(server);
-    }
-  });
-
-  it('a final state offers nothing, an unknown one neither', () => {
-    expect(nextStates('transport', 'closed')).toEqual([]);
-    expect(nextStates('permit', 'not_a_state')).toEqual([]);
-    expect(nextStates('complaint', 'acknowledged')).toEqual(['action_taken', 'closed']);
-  });
-
-  it('every state and every move has its own words', () => {
-    for (const [lifecycle, table] of Object.entries(NEXT)) {
-      for (const [state, targets] of Object.entries(table)) {
-        expect(isTextKey(`state.${state}`), `state.${state}`).toBe(true);
-        for (const target of targets) {
-          expect(isTextKey(`move.${lifecycle}.${target}`), `move.${lifecycle}.${target}`).toBe(true);
+      const states = [...block.matchAll(/"(\w+)": \(([^)]*)\)/g)];
+      expect(states.length, name).toBeGreaterThan(2);
+      for (const m of states) {
+        expect(isTextKey(`state.${m[1]}`), `state.${m[1]}`).toBe(true);
+        for (const target of m[2]!.matchAll(/"(\w+)"/g)) {
+          expect(isTextKey(`move.${lifecycle}.${target[1]}`), `move.${lifecycle}.${target[1]}`).toBe(true);
         }
       }
     }

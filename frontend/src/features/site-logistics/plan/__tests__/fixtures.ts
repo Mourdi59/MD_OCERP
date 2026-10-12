@@ -4,6 +4,7 @@
 // Records in the shape the plan routes return them, for the screen tests.
 
 import type {
+  Can,
   Complaint,
   Concept,
   Neighbourhood,
@@ -49,8 +50,16 @@ export const catalogue: PlanCatalogue = {
   resolved_thresholds: {},
 };
 
+const YES = { allowed: true, applies: true, reason: null };
+
+/** The verdicts of a record the reader may edit, delete and move to the named states. */
+export function can(...moves: string[]): Can {
+  return { edit: YES, delete: YES, transitions: Object.fromEntries(moves.map((m) => [m, YES])) };
+}
+
 export const stage: Stage = {
   id: 's1',
+  can: can('active'),
   code: 'shell',
   title: 'Shell works',
   ordinal: 1,
@@ -146,6 +155,7 @@ export const officeDemand: MediaDemand = {
 };
 
 export const heavyTransport: Transport = {
+  can: can('permit_pending', 'scheduled', 'cancelled'),
   id: 't1',
   direction: 'inbound',
   transport_kind: 'heavy_oversize',
@@ -179,6 +189,7 @@ export const heavyTransport: Transport = {
 };
 
 export const permit: Permit = {
+  can: can('granted', 'refused'),
   id: 'p1',
   transport_id: null,
   covers_transport_ids: ['t1'],
@@ -214,6 +225,7 @@ export const hiddenCase: CustomsCase = {
 };
 
 export const overdueComplaint: Complaint = {
+  can: can('acknowledged'),
   id: 'n1',
   kind: 'noise',
   reported_on: '2026-10-01',

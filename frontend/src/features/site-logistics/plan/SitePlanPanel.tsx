@@ -48,7 +48,7 @@ import {
   useWords,
 } from './hooks';
 import { Loaded, PanelHead, PlanEmpty } from './PlanBits';
-import { codeLabel } from './rules';
+import { codeLabel, denied } from './rules';
 import { stageName, type PanelProps } from './SitePanels';
 import { PlanImageBar, provisionalCalibration, storedCalibration, usePlanImage } from './SitePlanBackdrop';
 import { tx } from './texts';
@@ -64,6 +64,8 @@ interface Target {
   id: string;
   label: string;
   points: Pt[];
+  /** The server refuses a change of this record to this reader. */
+  locked: boolean;
 }
 
 interface Draft {
@@ -114,13 +116,26 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
     () => [
       ...areaRows
         .filter((a) => a.frame === 'local')
-        .map((a) => ({ kind: 'area' as const, id: a.id, label: a.name || a.code, points: openRing(a.geometry) })),
-      ...transports.map((x) => ({ kind: 'transport' as const, id: x.id, label: x.title, points: linePoints(x.route_geojson) })),
+        .map((a) => ({
+          kind: 'area' as const,
+          id: a.id,
+          label: a.name || a.code,
+          points: openRing(a.geometry),
+          locked: denied(a.can?.edit),
+        })),
+      ...transports.map((x) => ({
+        kind: 'transport' as const,
+        id: x.id,
+        label: x.title,
+        points: linePoints(x.route_geojson),
+        locked: denied(x.can?.edit),
+      })),
       ...permits.map((p) => ({
         kind: 'permit' as const,
         id: p.id,
         label: p.reference || codeLabel(words, 'permit_kinds', p.permit_kind, catalogue),
         points: linePoints(p.route_geojson),
+        locked: denied(p.can?.edit),
       })),
       ...media.map((c) => {
         const at = pointOf(c.connection_point_geometry);
@@ -129,6 +144,7 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
           id: c.id,
           label: codeLabel(words, 'media_kinds', c.media_kind, catalogue),
           points: at ? [at] : [],
+          locked: denied(c.can?.edit),
         };
       }),
     ],
@@ -191,7 +207,9 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
   const at = (e: MouseEvent<SVGSVGElement> | PointerEvent<SVGSVGElement>): Pt =>
     screenToMetres([e.clientX, e.clientY], e.currentTarget.getBoundingClientRect(), view);
 
-  const editable = !readOnly && !!target;
+  // Read-only when told so, or when the server lets this reader change none of the things that can be drawn.
+  const locked = readOnly || (targets.length > 0 && targets.every((x) => x.locked));
+  const editable = !locked && !!target && !target.locked;
   const onSheet = (e: MouseEvent<SVGSVGElement>) => {
     // A click that ends a pan or a pinch is not a point.
     if (gesture.current?.moved) {
@@ -346,7 +364,7 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
                     ))}
                   </select>
                 </label>
-                {!readOnly && (
+                {!locked && (
                   <label className="text-xs font-medium text-content-secondary">
                     {tx(t, 'siteplan.draw')}
                     <select
@@ -357,7 +375,7 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
                     >
                       <option value="">{tx(t, 'siteplan.pick')}</option>
                       {(['area', 'transport', 'permit', 'media'] as const).map((kind) => {
-                        const rows = targets.filter((x) => x.kind === kind);
+                        const rows = targets.filter((x) => x.kind === kind && !x.locked);
                         return rows.length === 0 ? null : (
                           <optgroup key={kind} label={tx(t, `siteplan.kind.${kind}`)}>
                             {rows.map((x) => (
@@ -427,7 +445,7 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
                   projectId={projectId}
                   stage={stage}
                   catalogue={catalogue}
-                  readOnly={readOnly}
+                  readOnly={locked || denied(stage.can?.edit)}
                   image={image}
                   imageFailed={!!stage.plan_document_id && planImage.isError}
                   scaling={scaling}
@@ -579,7 +597,7 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
                               ? (m2(t, a.area_m2) ?? tx(t, 'siteplan.drawn'))
                               : tx(t, 'siteplan.no_outline')}
                         </span>
-                        {!readOnly && a.frame === 'local' && (
+                        {!locked && !denied(a.can?.edit) && a.frame === 'local' && (
                           <button
                             type="button"
                             className="ml-auto text-xs font-medium text-oe-blue hover:underline"

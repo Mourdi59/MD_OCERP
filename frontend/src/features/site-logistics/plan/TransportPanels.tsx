@@ -75,7 +75,7 @@ export function TransportsPanel({ projectId, catalogue }: PanelProps) {
 
   return (
     <section className="space-y-3" data-testid="plan-transports">
-      <PanelHead title="tab.transports" action="add_transport" onAction={() => resource.open()} />
+      <PanelHead title="tab.transports" action="add_transport" may={resource.mayCreate} onAction={() => resource.open()} />
       <Loaded query={transports}>
         {(rows) =>
           rows.length === 0 ? (
@@ -84,6 +84,7 @@ export function TransportsPanel({ projectId, catalogue }: PanelProps) {
               title="empty.transports_title"
               body="empty.transports_body"
               action="add_transport"
+              may={resource.mayCreate}
               onAction={() => resource.open()}
             />
           ) : (
@@ -193,9 +194,6 @@ export function TransportsPanel({ projectId, catalogue }: PanelProps) {
 
 /* ── Permits ──────────────────────────────────────────────────────────── */
 
-const PERMIT_OPEN_STATES = ['draft', 'applied'];
-const PERMIT_FROZEN_FIELDS = ['transport_id', 'permit_kind', 'valid_from', 'valid_to', 'allowed_windows', 'covers_transport_ids'];
-
 export function PermitsPanel({ projectId, catalogue }: PanelProps) {
   const words = useWords();
   const { t, language } = words;
@@ -235,14 +233,14 @@ export function PermitsPanel({ projectId, catalogue }: PanelProps) {
     { name: 'document_ref', label: 'f.document_ref', kind: 'text' },
   ];
 
-  // The server keeps these once a permit left draft or applied (409 permit_frozen); the form does not offer them.
-  const editingPermit = resource.editing?.record ?? null;
-  const frozen = !!editingPermit && !PERMIT_OPEN_STATES.includes(editingPermit.state);
-  const shownFields = frozen ? fields.filter((f) => !PERMIT_FROZEN_FIELDS.includes(f.name)) : fields;
+  // The server names the fields it keeps once a permit is decided (409 permit_frozen); the form does not offer them.
+  const frozenFields = resource.editing?.record?.frozen_fields ?? [];
+  const frozen = frozenFields.length > 0;
+  const shownFields = frozen ? fields.filter((f) => !frozenFields.includes(f.name)) : fields;
 
   return (
     <section className="space-y-3" data-testid="plan-permits">
-      <PanelHead title="tab.permits" action="add_permit" onAction={() => resource.open()} />
+      <PanelHead title="tab.permits" action="add_permit" may={resource.mayCreate} onAction={() => resource.open()} />
       <Loaded query={permits}>
         {(rows) =>
           rows.length === 0 ? (
@@ -251,6 +249,7 @@ export function PermitsPanel({ projectId, catalogue }: PanelProps) {
               title="empty.permits_title"
               body="empty.permits_body"
               action="add_permit"
+              may={resource.mayCreate}
               onAction={() => resource.open()}
             />
           ) : (

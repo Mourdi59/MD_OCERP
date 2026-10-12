@@ -42,7 +42,7 @@ export function StagesPanel({ projectId, catalogue }: PanelProps) {
   const resource = useResource<Stage>(projectId, 'stage', { catalogue });
   return (
     <section className="space-y-3" data-testid="plan-stages">
-      <PanelHead title="tab.stages" action="add_stage" onAction={() => resource.open()} />
+      <PanelHead title="tab.stages" action="add_stage" may={resource.mayCreate} onAction={() => resource.open()} />
       <Loaded query={stages}>
         {(rows) =>
           rows.length === 0 ? (
@@ -51,6 +51,7 @@ export function StagesPanel({ projectId, catalogue }: PanelProps) {
               title="empty.stages_title"
               body="empty.stages_body"
               action="add_stage"
+              may={resource.mayCreate}
               onAction={() => resource.open()}
             />
           ) : (
@@ -131,7 +132,7 @@ export function AreasPanel({ projectId, catalogue }: PanelProps) {
 
   return (
     <section className="space-y-3" data-testid="plan-areas">
-      <PanelHead title="tab.areas" action="add_area" onAction={() => resource.open()} />
+      <PanelHead title="tab.areas" action="add_area" may={resource.mayCreate} onAction={() => resource.open()} />
       <Loaded query={areas}>
         {(rows) =>
           rows.length === 0 ? (
@@ -140,6 +141,7 @@ export function AreasPanel({ projectId, catalogue }: PanelProps) {
               title="empty.areas_title"
               body="empty.areas_body"
               action="add_area"
+              may={resource.mayCreate}
               onAction={() => resource.open()}
             />
           ) : (
@@ -153,7 +155,13 @@ export function AreasPanel({ projectId, catalogue }: PanelProps) {
                       {codeLabel(words, 'area_kinds', a.area_kind, catalogue)}
                     </Badge>
                     <span className="ml-auto flex items-center gap-1.5">
-                      <Button size="sm" variant="secondary" onClick={() => setAllocating(a)} data-testid="plan-allocate">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={a.can?.edit ? !a.can.edit.allowed : false}
+                        onClick={() => setAllocating(a)}
+                        data-testid="plan-allocate"
+                      >
                         {tx(t, 'area.allocate')}
                       </Button>
                       <RowActions resource={resource} record={a} />

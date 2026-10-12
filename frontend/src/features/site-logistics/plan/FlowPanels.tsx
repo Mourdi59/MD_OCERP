@@ -24,7 +24,7 @@ import {
   useWords,
 } from './hooks';
 import { Card, Fact, FormDialog, Loaded, PanelHead, PlanEmpty, RowActions, StateBadge } from './PlanBits';
-import { codeLabel, codeOptions, enumLabel, type Field, type Option } from './rules';
+import { codeLabel, codeOptions, enumLabel, type Field, type Option, denied } from './rules';
 import { stageName, type PanelProps } from './SitePanels';
 import { tx, type TFn } from './texts';
 
@@ -58,7 +58,7 @@ function Demands({
     <div className="mt-3 border-t border-border-light pt-2">
       <div className="flex items-center justify-between gap-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">{tx(t, 'media.demands')}</h4>
-        <Button size="sm" variant="secondary" onClick={() => resource.open()} data-testid="plan-add-demand">
+        <Button size="sm" variant="secondary" disabled={denied(resource.mayCreate)} onClick={() => resource.open()} data-testid="plan-add-demand">
           {tx(t, 'add_demand')}
         </Button>
       </div>
@@ -139,7 +139,7 @@ export function UtilitiesPanel({ projectId, catalogue }: PanelProps) {
   ];
   return (
     <section className="space-y-3" data-testid="plan-media">
-      <PanelHead title="tab.media" action="add_media" onAction={() => resource.open()} />
+      <PanelHead title="tab.media" action="add_media" may={resource.mayCreate} onAction={() => resource.open()} />
       <Loaded query={media}>
         {(rows) =>
           rows.length === 0 ? (
@@ -148,6 +148,7 @@ export function UtilitiesPanel({ projectId, catalogue }: PanelProps) {
               title="empty.media_title"
               body="empty.media_body"
               action="add_media"
+              may={resource.mayCreate}
               onAction={() => resource.open()}
             />
           ) : (
@@ -243,7 +244,7 @@ export function ConceptPanel({ projectId, catalogue }: PanelProps) {
           <>
             <PanelHead title="tab.concept">
               {!conceptIsEmpty(c) && (
-                <Button size="sm" onClick={() => setEditing(true)} data-testid="plan-edit-concept">
+                <Button size="sm" disabled={denied(c.can?.edit)} onClick={() => setEditing(true)} data-testid="plan-edit-concept">
                   {tx(t, 'edit')}
                 </Button>
               )}
@@ -256,7 +257,7 @@ export function ConceptPanel({ projectId, catalogue }: PanelProps) {
               >
                 <AlertTriangle size={15} className="shrink-0 text-semantic-warning" aria-hidden />
                 <span className="flex-1">{tx(t, 'concept.timezone_missing')}</span>
-                <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+                <Button size="sm" variant="secondary" disabled={denied(c.can?.edit)} onClick={() => setEditing(true)}>
                   {tx(t, 'concept.set_timezone')}
                 </Button>
               </div>
@@ -267,6 +268,7 @@ export function ConceptPanel({ projectId, catalogue }: PanelProps) {
                 title="empty.concept_title"
                 body="empty.concept_body"
                 action="concept.write"
+                may={c.can?.edit}
                 onAction={() => setEditing(true)}
               />
             ) : (

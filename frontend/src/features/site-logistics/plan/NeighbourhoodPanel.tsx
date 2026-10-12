@@ -111,7 +111,13 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
             <>
               <PanelHead title="neighbourhood.plan">
                 {!planIsEmpty(p) && (
-                  <Button size="sm" variant="secondary" onClick={() => setEditingPlan(true)} data-testid="plan-edit-neighbourhood">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={p.can?.edit ? !p.can.edit.allowed : false}
+                    onClick={() => setEditingPlan(true)}
+                    data-testid="plan-edit-neighbourhood"
+                  >
                     {tx(t, 'edit')}
                   </Button>
                 )}
@@ -122,6 +128,7 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
                   title="empty.neighbourhood_title"
                   body="empty.neighbourhood_body"
                   action="neighbourhood.write"
+                  may={p.can?.edit}
                   onAction={() => setEditingPlan(true)}
                 />
               ) : (
@@ -173,7 +180,7 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
       </div>
 
       <div className="space-y-3">
-        <PanelHead title="neighbourhood.complaints" action="add_complaint" onAction={() => complaintRes.open()} />
+        <PanelHead title="neighbourhood.complaints" action="add_complaint" may={complaintRes.mayCreate} onAction={() => complaintRes.open()} />
         <Loaded query={complaints}>
           {(rows) =>
             rows.length === 0 ? (
@@ -182,6 +189,7 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
                 title="empty.complaints_title"
                 body="empty.complaints_body"
                 action="add_complaint"
+                may={complaintRes.mayCreate}
                 onAction={() => complaintRes.open()}
               />
             ) : (
@@ -229,7 +237,7 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
       </div>
 
       <div className="space-y-3">
-        <PanelHead title="neighbourhood.coordination" action="add_coordination" onAction={() => coordinationRes.open()} />
+        <PanelHead title="neighbourhood.coordination" action="add_coordination" may={coordinationRes.mayCreate} onAction={() => coordinationRes.open()} />
         <Loaded query={coordination}>
           {(rows) =>
             rows.length === 0 ? (
@@ -238,6 +246,7 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
                 title="empty.coordination_title"
                 body="empty.coordination_body"
                 action="add_coordination"
+                may={coordinationRes.mayCreate}
                 onAction={() => coordinationRes.open()}
               />
             ) : (

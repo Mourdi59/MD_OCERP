@@ -18,13 +18,15 @@ import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 import { WideModal, WideModalField } from '@/shared/ui/WideModal';
 import { getErrorMessage } from '@/shared/lib/api';
 
-import { planProblem, type Body, type PlanCatalogue, type PlanProblem } from './api';
+import { planProblem, type Body, type Can, type PlanCatalogue, type PlanProblem, type Verdict } from './api';
 import { useWords, type Identified, type Resource } from './hooks';
 import {
   findingText,
   formProblems,
   moveLabel,
-  nextStates,
+  absent,
+  denied,
+  reasonText,
   stateLabel,
   stateTone,
   toBody,
@@ -78,6 +80,8 @@ export function PlanEmpty({
   body: TextKey;
   action?: TextKey;
   onAction?: () => void;
+  /** The server's verdict on the action; the button is left out or disabled accordingly. */
+  may?: Verdict;
 }) {
   const { t } = useWords();
   return (
@@ -86,8 +90,8 @@ export function PlanEmpty({
       title={tx(t, title)}
       description={tx(t, body)}
       action={
-        action && onAction ? (
-          <Button size="sm" onClick={onAction}>
+        action && onAction && !absent(may) ? (
+          <Button size="sm" onClick={onAction} disabled={denied(may)} title={reasonText(t, may)}>
             <Plus size={14} className="mr-1" />
             {tx(t, action)}
           </Button>
@@ -98,15 +102,27 @@ export function PlanEmpty({
 }
 
 /** The heading of a panel with its one primary action. */
-export function PanelHead({ title, action, onAction, children }: { title: TextKey; action?: TextKey; onAction?: () => void; children?: ReactNode }) {
+export function PanelHead({
+  title,
+  action,
+  onAction,
+  may,
+  children,
+}: {
+  title: TextKey;
+  action?: TextKey;
+  onAction?: () => void;
+  may?: Verdict;
+  children?: ReactNode;
+}) {
   const { t } = useWords();
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h3 className="text-base font-semibold text-content-primary">{tx(t, title)}</h3>
       <div className="flex flex-wrap items-center gap-2">
         {children}
-        {action && onAction && (
-          <Button size="sm" onClick={onAction} data-testid={`plan-${action}`}>
+        {action && onAction && !absent(may) && (
+          <Button size="sm" onClick={onAction} disabled={denied(may)} title={reasonText(t, may)} data-testid={`plan-${action}`}>
             <Plus size={14} className="mr-1" />
             {tx(t, action)}
           </Button>
@@ -156,10 +172,12 @@ export function Card({ children, testId, alert }: { children: ReactNode; testId?
 /* ── Row buttons ──────────────────────────────────────────────────────── */
 
 /**
- * Edit, the status moves and delete of one record. Every button is offered;
- * when the server refuses, its reason is shown.
+ * Edit, the status moves and delete of one record, as the server's verdicts
+ * on that record say: a move that does not exist from the current status is
+ * not shown, one that is refused right now is shown disabled with the reason.
+ * A record without verdicts offers edit and delete and no move.
  */
-export function RowActions<T extends Identified & { state?: string }>({
+export function RowActions<T extends Identified & { state?: string; can?: Can }>({
   resource,
   record,
   lifecycle,
@@ -175,28 +193,46 @@ export function RowActions<T extends Identified & { state?: string }>({
   const { t } = useWords();
   const [confirm, setConfirm] = useState(false);
   const busy = resource.busyId === record.id;
-  const moves = lifecycle && record.state ? nextStates(lifecycle, record.state) : [];
+  const can = record.can;
+  const moves = Object.entries(can?.transitions ?? {}).filter(([, verdict]) => verdict.applies);
+  // A record that carries verdicts and none for delete cannot be deleted at all.
+  const deletable = !noDelete && (can ? !!can.delete && can.delete.applies : true);
   return (
     <div className="flex flex-wrap items-center justify-end gap-1.5">
-      {moves.map((target) => (
+      {moves.map(([target, verdict]) => (
         <Button
           key={target}
           size="sm"
           variant="secondary"
-          disabled={busy}
+          disabled={busy || !verdict.allowed}
+          title={reasonText(t, verdict)}
           data-testid={`plan-move-${target}`}
           onClick={() => void resource.move(record.id, target)}
         >
           {lifecycle ? moveLabel(t, lifecycle, target) : target}
         </Button>
       ))}
-      {!noEdit && (
-        <Button size="sm" variant="ghost" disabled={busy} aria-label={tx(t, 'edit')} title={tx(t, 'edit')} onClick={() => resource.open(record)}>
+      {!noEdit && !absent(can?.edit) && (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy || denied(can?.edit)}
+          aria-label={tx(t, 'edit')}
+          title={reasonText(t, can?.edit) ?? tx(t, 'edit')}
+          onClick={() => resource.open(record)}
+        >
           <Pencil size={14} />
         </Button>
       )}
-      {!noDelete && (
-        <Button size="sm" variant="ghost" disabled={busy} aria-label={tx(t, 'delete')} title={tx(t, 'delete')} onClick={() => setConfirm(true)}>
+      {deletable && (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy || denied(can?.delete)}
+          aria-label={tx(t, 'delete')}
+          title={reasonText(t, can?.delete) ?? tx(t, 'delete')}
+          onClick={() => setConfirm(true)}
+        >
           <Trash2 size={14} />
         </Button>
       )}
