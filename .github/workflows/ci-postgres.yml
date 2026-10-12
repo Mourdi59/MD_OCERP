@@ -129,7 +129,8 @@ jobs:
         # that hung instead of killing the job anonymously at the wall clock.
         # thread method because signal based timeouts are Unix-only and this
         # suite is expected to stay runnable on Windows developer machines.
-        run: pytest tests/pg -q -p no:cacheprovider --timeout=300 --timeout-method=thread
+        # -rs prints every skip with its reason, so a new module whose tests were skipped shows up by name.
+        run: pytest tests/pg -q -rs -p no:cacheprovider --timeout=300 --timeout-method=thread
       # Checks on what the demo seeder writes. Two families so far. Vocabulary:
       # the places where one list of allowed values is written down in a second
       # place that can drift from it. The seeder builds ORM rows directly, so
