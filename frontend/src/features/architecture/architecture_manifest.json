@@ -139083,6 +139083,11 @@
               "default": "0"
             },
             {
+              "name": "blocked_reason",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
               "name": "created_at",
               "type": "datetime"
             },
