@@ -42200,6 +42200,7 @@ const resource = {
     "design.errors.manage_required": "Changing this field needs the permission to manage design.",
     "design.errors.model_exists": "A phase model is already pinned.",
     "design.errors.no_approval_route": "No active approval route for design approval points in this project.",
+    "design.errors.not_area_owner": "Only the owner or deputy of the governance area, or a governance manager, may write its frame document.",
     "design.errors.not_required_needs_rationale": "Marking a report not required needs a rationale.",
     "design.errors.number_reserved": "This number belonged to a deleted drawing and is never reused.",
     "design.errors.number_taken": "This number is or was used in the project.",
@@ -42283,6 +42284,7 @@ const resource = {
     "design.evidence.deliverables": "Design schedule lines of the phase accepted",
     "design.evidence.major_comments": "No open major review comment",
     "design.evidence.no_host_area": "Design readiness unknown: the governance model names no area for design",
+    "design.evidence.no_host_document": "Design readiness unknown: the project has no design frame document yet",
     "design.evidence.no_phase": "Design readiness unknown: this gate closes no phase",
     "design.evidence.reports": "Required reports of the phase accepted",
     "design.independent_check.none": "None",
@@ -42770,8 +42772,6 @@ const resource = {
     "design.ui.dist_format.pdf": "PDF",
     "design.ui.dist_format.native": "Native file",
     "design.ui.dist_format.both": "PDF and native file",
-    "governance.catalogue.neutral.doc.design_frame": "Design frame document",
-    "governance.catalogue.aho_heft9.doc.design_frame": "Design frame document",
   }
 } as { translation: Record<string, string> };
 

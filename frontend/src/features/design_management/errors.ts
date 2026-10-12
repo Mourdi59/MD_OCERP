@@ -35,6 +35,7 @@ export const ERROR_TEXT: Record<string, string> = {
   manage_required: 'Changing this field needs the permission to manage design.',
   model_exists: 'A phase model is already pinned.',
   no_approval_route: 'No active approval route for design approval points in this project.',
+  not_area_owner: 'Only the owner or deputy of the governance area, or a governance manager, may write its frame document.',
   not_required_needs_rationale: 'Marking a report not required needs a rationale.',
   number_reserved: 'This number belonged to a deleted drawing and is never reused.',
   number_taken: 'This number is or was used in the project.',

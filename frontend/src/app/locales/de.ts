@@ -50121,6 +50121,7 @@ const resource = {
     "design.errors.manage_required": "Die Änderung dieses Feldes erfordert die Berechtigung zur Verwaltung der Planung.",
     "design.errors.model_exists": "Ein Phasenmodell ist bereits festgelegt.",
     "design.errors.no_approval_route": "Keine aktive Freigaberoute für Planungsfreigabepunkte in diesem Projekt.",
+    "design.errors.not_area_owner": "Nur Verantwortliche oder Vertretung des Steuerungsbereichs oder eine Person mit Steuerungsverwaltung dürfen das Rahmendokument schreiben.",
     "design.errors.not_required_needs_rationale": "Ein Gutachten als nicht erforderlich zu markieren braucht eine Begründung.",
     "design.errors.number_reserved": "Diese Nummer gehörte zu einer gelöschten Zeichnung und wird nie wiederverwendet.",
     "design.errors.number_taken": "Diese Nummer wird oder wurde im Projekt verwendet.",
@@ -50204,6 +50205,7 @@ const resource = {
     "design.evidence.deliverables": "Planungsleistungen der Phase abgenommen",
     "design.evidence.major_comments": "Kein offener wesentlicher Prüfkommentar",
     "design.evidence.no_host_area": "Planungsreife unbekannt: das Governance-Modell benennt keinen Bereich für die Planung",
+    "design.evidence.no_host_document": "Planungsreife unbekannt: das Projekt hat noch kein Rahmendokument Planung",
     "design.evidence.no_phase": "Planungsreife unbekannt: dieses Gate schließt keine Phase ab",
     "design.evidence.reports": "Erforderliche Gutachten der Phase abgenommen",
     "design.independent_check.none": "Keine",
@@ -50691,8 +50693,6 @@ const resource = {
     "design.ui.dist_format.pdf": "PDF",
     "design.ui.dist_format.native": "Originaldatei",
     "design.ui.dist_format.both": "PDF und Originaldatei",
-    "governance.catalogue.neutral.doc.design_frame": "Rahmendokument Planung",
-    "governance.catalogue.aho_heft9.doc.design_frame": "Rahmendokument Planung",
   }
 } as { translation: Record<string, string> };
 
