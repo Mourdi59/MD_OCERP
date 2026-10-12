@@ -381,3 +381,21 @@ def test_the_release_item_picker_says_when_nothing_provides_it() -> None:
     finally:
         authority.register_release_item_lister(None)
     assert authority.release_item_lister() is None
+
+
+# ── demo seed: the site runs only after the gate into construction ───────
+
+
+def test_the_seed_finds_the_undecided_gate_into_construction_by_capability() -> None:
+    from app.modules.stakeholders.seed import gate_before_construction
+
+    def gate(to_phase: str, status: str):
+        return SimpleNamespace(to_phase=to_phase, status=status)
+
+    gates = (gate("design", "decided"), gate("build", "in_preparation"), gate("use", "not_started"))
+    assert gate_before_construction(gates, ("build",)) is gates[1]
+    decided = (gate("design", "decided"), gate("build", "decided"))
+    assert gate_before_construction(decided, ("build",)) is None
+    # No phase model, or a model that names no construction start: the seed tells its usual story.
+    assert gate_before_construction((), ("build",)) is None
+    assert gate_before_construction(gates, ()) is None

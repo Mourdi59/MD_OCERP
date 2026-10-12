@@ -25,6 +25,7 @@ import logging
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -79,6 +80,23 @@ async def seed_stakeholders_demo(session: AsyncSession, project_ids: Iterable[uu
     return totals
 
 
+def gate_before_construction(gates: Any, enabling_phases: tuple[str, ...]) -> Any | None:
+    """The undecided gate that opens construction, or ``None`` when the site may already run.
+
+    ``gates`` are the governance port's gate views, ``enabling_phases`` the
+    phases whose entry enables the start of construction. A project without a
+    phase model, or with that gate decided, has no such gate.
+    """
+    return next((g for g in gates if g.to_phase in enabling_phases and g.status != "decided"), None)
+
+
+async def _gate_before_construction(session: AsyncSession, project_id: uuid.UUID) -> Any | None:
+    from app.modules.project_governance.public import phases_enabling, project_gates
+
+    enabling = await phases_enabling(session, project_id, "construction_start")
+    return gate_before_construction(await project_gates(session, project_id), enabling)
+
+
 async def _team(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID) -> list[uuid.UUID]:
     from app.modules.teams.models import Team, TeamMembership
 
@@ -130,6 +148,9 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     today = datetime.now(UTC).date()
     svc = StakeholderService(session)
     await svc.put_settings(project_id, {}, actor_id=owner)
+    # While the gate into construction is undecided the site does not run: promises about site operation
+    # are agreed and nothing more, and the committee briefing for that gate is still ahead.
+    gate = await _gate_before_construction(session, project_id)
 
     ids: dict[str, uuid.UUID] = {}
     for code, label, category, group, power, interest, cur, des, att, age in _STAKEHOLDERS:
@@ -193,7 +214,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         },
         actor_id=owner,
     )
-    evening_day = today - timedelta(days=21)
+    evening_day = today - timedelta(days=40 if gate is not None else 21)
     evening_plan = await svc.create_plan_item(
         project_id,
         {
@@ -226,7 +247,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         },
         actor_id=owner,
     )
-    await svc.create_plan_item(
+    briefing = await svc.create_plan_item(
         project_id,
         {
             "title": "Steering committee briefing before the gate",
@@ -251,9 +272,24 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             "stakeholder_ids": [str(ids["S-006"]), str(ids["S-007"]), str(ids["S-008"])],
             "attendance_count": 64,
             "outcome": "Main concerns: early deliveries, dust on the access road, blocked cycle lane",
+            # Forty days on, the answers have gone back to the residents; three weeks on, they are still due.
+            **({"feedback_summary": "Answers to all concerns sent with the following newsletter"} if gate else {}),
         },
         actor_id=comms,
     )
+    if gate is not None:
+        target = gate.target_date or today + timedelta(days=21)
+        await svc.create_event(
+            project_id,
+            {
+                "plan_item_id": str(briefing.id),
+                # A week before the gate, and never in the past.
+                "occurrence_date": max(target - timedelta(days=7), today + timedelta(days=1)),
+                "status": "planned",
+                "stakeholder_ids": [str(ids["S-012"])],
+            },
+            actor_id=pm,
+        )
     for days_ago in (70, 42):
         await svc.create_event(
             project_id,
@@ -382,13 +418,13 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     )
     for cid, steps in (
         (c1, ("agreed",)),
-        (c2, ("agreed", "in_progress")),
+        (c2, ("agreed",) if gate is not None else ("agreed", "in_progress")),
         (c3, ("agreed",)),
-        (c4, ("agreed", "fulfilled")),
+        (c4, ("agreed",) if gate is not None else ("agreed", "fulfilled")),
     ):
         for target in steps:
             await svc.transition_commitment(project_id, cid, target, actor_id=owner, today=today)
-    if pm != owner:
+    if pm != owner and gate is None:
         # Four eyes: the commitment's owner (the project manager) does not verify it; the client lead does.
         await svc.transition_commitment(
             project_id,

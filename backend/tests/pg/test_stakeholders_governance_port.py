@@ -270,3 +270,34 @@ async def test_a_binding_frame_document_changes_only_through_a_reasoned_change_r
     assert filed["change_request_id"] is not None
     assert filed["warnings"] == ["frame_document_binding"]
     assert (second.value.code, second.value.status_code) == ("change_request_not_open", 409)
+
+
+async def test_the_demo_seed_keeps_site_promises_agreed_until_the_gate_into_construction() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.modules.project_governance.public import phases_enabling, project_gates
+    from app.modules.stakeholders.seed import _seed_project, gate_before_construction
+
+    today = datetime.now(UTC).date()
+    async with isolated_engine() as engine:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        w = await gov.build_world(factory)
+        async with factory() as s:
+            gate = gate_before_construction(
+                await project_gates(s, w.project_id), await phases_enabling(s, w.project_id, "construction_start")
+            )
+            await _seed_project(s, w.project_id)
+            await s.commit()
+        async with factory() as s:
+            svc = StakeholderService(s)
+            commitments = await svc.repo.commitments(w.project_id)
+            events = await svc.repo.events(w.project_id)
+    assert gate is not None, "the shipped neutral model must name the phase that starts construction"
+    assert {c.status for c in commitments} == {"agreed", "proposed"}
+    overdue = [c for c in commitments if c.due_date < today]
+    assert [c.status for c in overdue] == ["agreed"]
+    planned = [e for e in events if e.status == "planned"]
+    assert len(planned) == 1 and planned[0].occurrence_date > today
+    held = [e for e in events if e.status == "held"]
+    assert held and all(e.held_on < today for e in held)
+    assert min(e.held_on for e in held if e.attendance_count == 64) == today - timedelta(days=40)
