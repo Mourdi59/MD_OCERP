@@ -29,7 +29,37 @@ CREDENTIAL_TYPES: tuple[str, ...] = (
     "wsib_clearance",  # CA ON Workplace Safety and Insurance Board
     "wcb_clearance",  # CA provincial Workers Compensation Board
     "attestation_revenu_quebec",  # CA QC tax compliance attestation
+    # Personnel documents tracked for people on a project (staffing module).
+    # The registry holds only the validity window; the staffing file keeps at
+    # most the last four characters of a document number.
+    "employment_contract",  # employment or service contract of the assignment
+    "work_permit",  # permission to work issued by an immigration authority
+    "residence_permit",  # residence title
+    "identity_document",  # passport or national identity card
+    "visa",  # entry or business visa
+    "occupational_health",  # occupational health certificate: date and fitness only, never findings
+    "right_to_work_check",  # employer's documented right to work check
+    "posting_certificate",  # social security posting certificate (e.g. EU A1)
     "other",
+)
+
+# Personnel documents: who holds a work permit, a passport or a health
+# certificate, and until when, is personal data of that person. These types use
+# the status and expiry engine of this module, but they are written and read
+# through the staffing personnel file only, which checks the caller's
+# relationship to the person and audits every read. The register (list, expiring
+# soon, summary, compliance, single read, update, delete, verify) does not show
+# them, a register request cannot create one or turn a credential into one, and
+# a row of these types never carries an identifier, notes or metadata.
+PERSONNEL_CREDENTIAL_TYPES: tuple[str, ...] = (
+    "employment_contract",
+    "work_permit",
+    "residence_permit",
+    "identity_document",
+    "visa",
+    "occupational_health",
+    "right_to_work_check",
+    "posting_certificate",
 )
 
 HOLDER_KINDS: tuple[str, ...] = ("person", "company")
@@ -370,6 +400,7 @@ class CredentialsValidationReport(BaseModel):
 __all__ = [
     "APPLIES_TO_ALL",
     "CREDENTIAL_TYPES",
+    "PERSONNEL_CREDENTIAL_TYPES",
     "GAP_REASONS",
     "HOLDER_KINDS",
     "STATUSES",

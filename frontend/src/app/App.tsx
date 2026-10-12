@@ -189,6 +189,9 @@ const SafetyPage = lazy(() =>
 const CredentialsPage = lazy(() =>
   import('@/features/credentials/CredentialsPage').then((m) => ({ default: m.CredentialsPage }))
 );
+const ProjectStaffingPage = lazy(() =>
+  import('@/features/staffing/ProjectStaffingPage').then((m) => ({ default: m.ProjectStaffingPage }))
+);
 const ModuleBuilderPage = lazy(() =>
   import('@/features/module-builder/ModuleBuilderPage').then((m) => ({ default: m.ModuleBuilderPage }))
 );
@@ -1436,6 +1439,8 @@ export default function App() {
         <Route path="/credentials" element={<P title="Credentials"><CredentialsPage /></P>} />
         <Route path="/projects/:projectId/credentials" element={<P title="Credentials"><CredentialsPage /></P>} />
         <Route path="/projects/:projectId/permits" element={<P title="Permits"><PermitsPage /></P>} />
+        <Route path="/projects/:projectId/staffing" element={<P title="Staffing"><ProjectStaffingPage /></P>} />
+        <Route path="/projects/:projectId/staffing/files/:fileId" element={<P title="Staffing"><ProjectStaffingPage /></P>} />
 
         {/* The register of modules built here, and the screen each one renders
             on. `:moduleKey` is the module's key, not its URL: the loader owns

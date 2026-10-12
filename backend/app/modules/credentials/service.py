@@ -46,6 +46,7 @@ from app.modules.credentials.models import Credential, CredentialRequirement
 from app.modules.credentials.repository import CredentialRepository, RequirementRepository
 from app.modules.credentials.schemas import (
     APPLIES_TO_ALL,
+    PERSONNEL_CREDENTIAL_TYPES,
     ComplianceGap,
     ComplianceHolderRow,
     ComplianceReport,
@@ -139,6 +140,7 @@ class CredentialService:
         except TypeError:  # pragma: no cover - defensive
             days = 0
 
+        personnel_document = credential.credential_type in PERSONNEL_CREDENTIAL_TYPES
         # Detached publish so a notifications subscriber opening its own session
         # can't contend with the request's write transaction.
         event_bus.publish_detached(
@@ -147,8 +149,11 @@ class CredentialService:
                 "credential_id": str(credential.id),
                 "project_id": str(credential.project_id),
                 "credential_type": credential.credential_type,
-                "holder_name": credential.holder_name,
-                "holder_user_id": (str(credential.holder_user_id) if credential.holder_user_id else None),
+                # A personnel document's alert names nobody: the staffing file knows whom to tell.
+                "holder_name": None if personnel_document else credential.holder_name,
+                "holder_user_id": (
+                    str(credential.holder_user_id) if credential.holder_user_id and not personnel_document else None
+                ),
                 "authority": credential.authority,
                 "status": credential.status,
                 "valid_until": (credential.valid_until.isoformat() if credential.valid_until else None),
@@ -161,12 +166,39 @@ class CredentialService:
 
     # ── CRUD ────────────────────────────────────────────────────────────
 
+    @staticmethod
+    def _guard_personnel(credential_type: str, *, personnel: bool, carries_detail: bool) -> None:
+        """Keep personnel documents out of the register, and details out of personnel documents.
+
+        ``personnel`` is passed by the staffing personnel file, the one caller
+        that has checked the relationship to the person. No route of this module
+        passes it.
+        """
+        if credential_type not in PERSONNEL_CREDENTIAL_TYPES:
+            return
+        if not personnel:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="This credential type is a personnel document and is recorded in the personnel file.",
+            )
+        if carries_detail:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="A personnel document holds its validity window only: no identifier, notes or metadata.",
+            )
+
     async def create_credential(
         self,
         data: CredentialCreate,
         *,
         user_id: str | None = None,
+        personnel: bool = False,
     ) -> Credential:
+        self._guard_personnel(
+            data.credential_type,
+            personnel=personnel,
+            carries_detail=bool(data.identifier or data.notes or data.metadata),
+        )
         derived_status = data.status or recompute_status(
             today=self._today(),
             valid_until=data.valid_until,
@@ -236,6 +268,9 @@ class CredentialService:
         withhold. Both now raise the same object.
         """
         credential = await self.get_credential(credential_id)
+        # A personnel document is not a register entry: the same 404 as an id that does not exist.
+        if credential.credential_type in PERSONNEL_CREDENTIAL_TYPES:
+            raise self._not_found()
         try:
             await verify_project_access(credential.project_id, str(actor_id), self.session)  # type: ignore[arg-type]
         except HTTPException:
@@ -272,11 +307,16 @@ class CredentialService:
         data: CredentialUpdate,
         *,
         user_id: str | None = None,
+        personnel: bool = False,
     ) -> Credential:
         credential = await self.get_credential(credential_id)
         previous_status = credential.status
 
         fields: dict[str, Any] = data.model_dump(exclude_unset=True)
+        carries_detail = bool(fields.get("identifier") or fields.get("notes") or fields.get("metadata"))
+        # Neither the row as it is nor the type it would become may be a personnel document here.
+        for kind in {credential.credential_type, fields.get("credential_type") or credential.credential_type}:
+            self._guard_personnel(kind, personnel=personnel, carries_detail=carries_detail)
 
         # Date ordering guard if either side moved.
         new_issued = fields.get("issued_at", credential.issued_at)
@@ -317,7 +357,7 @@ class CredentialService:
                 merged.update(incoming)
             fields["metadata_"] = merged
 
-        if user_id is not None:
+        if user_id is not None and credential.credential_type not in PERSONNEL_CREDENTIAL_TYPES:
             merged_meta = dict(fields.get("metadata_") or credential.metadata_ or {})
             merged_meta["updated_by"] = user_id
             merged_meta["updated_at"] = datetime.now(UTC).isoformat()
@@ -444,7 +484,7 @@ class CredentialService:
         """Counts for the register's dashboard tile, all on derived status."""
         today = self._today()
         by_status = await self.repo.count_by_effective_status(project_id, today=today)
-        drifted = await self.repo.list_drifted(project_id, today=today)
+        drifted = await self.repo.list_drifted(project_id, today=today, register_only=True)
 
         horizon = today + timedelta(days=30)
         expiring_30 = await self.repo.count_matching(
@@ -555,12 +595,23 @@ class RequirementService:
     ) -> list[CredentialRequirement]:
         return await self.repo.list_for_project(project_id, include_inactive=include_inactive)
 
+    @staticmethod
+    def _refuse_personnel_type(credential_type: str) -> None:
+        """A register requirement cannot ask for a personnel document: the register never sees those rows,
+        so the report would list every holder as missing it. The staffing catalogue states that requirement."""
+        if credential_type in PERSONNEL_CREDENTIAL_TYPES:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Personnel documents are required and checked in the personnel file, not in this register.",
+            )
+
     async def create_requirement(
         self,
         data: RequirementCreate,
         *,
         user_id: str | None = None,
     ) -> CredentialRequirement:
+        self._refuse_personnel_type(data.credential_type)
         clash = await self.repo.find_conflict(
             data.project_id,
             credential_type=data.credential_type,
@@ -603,6 +654,8 @@ class RequirementService:
     ) -> CredentialRequirement:
         requirement = await self.get_requirement(requirement_id)
         fields: dict[str, Any] = data.model_dump(exclude_unset=True)
+        if fields.get("credential_type"):
+            self._refuse_personnel_type(fields["credential_type"])
 
         # Re-check the uniqueness scope if any part of it moved.
         if {"credential_type", "applies_to", "holder_kind"} & fields.keys():

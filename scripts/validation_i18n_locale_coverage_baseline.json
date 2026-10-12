@@ -158,6 +158,10 @@
       "de",
       "en"
     ],
+    "backend/app/modules/staffing/messages": [
+      "de",
+      "en"
+    ],
     "backend/app/modules/subcontractors/messages": [
       "de",
       "en",

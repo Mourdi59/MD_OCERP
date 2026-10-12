@@ -144,6 +144,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         from app.modules.site_logistics.demo import seed_site_logistics_demo
         from app.modules.site_prep.seed import seed_site_prep_demo
         from app.modules.stakeholders.seed import seed_stakeholders_demo
+        from app.modules.staffing.seed import seed_staffing_demo
         from app.modules.supplier_catalogs.seed import seed_supplier_catalogs
         from app.modules.takeoff.seed import seed_takeoff_demo
         from app.modules.temporary_works.seed import seed_temporary_works_demo
@@ -384,6 +385,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             # one already closed out. Self-guards per project on an existing plan
             # or item.
             ("site_prep", None, lambda s: seed_site_prep_demo(s, _demo_pids)),
+            ("staffing", None, lambda s: seed_staffing_demo(s, _demo_pids)),
             # Gates, laydown zones and a working week of deliveries, each one
             # booked against a real position of the project's own bill - which is
             # what gives the delivery board its estimate coverage table something

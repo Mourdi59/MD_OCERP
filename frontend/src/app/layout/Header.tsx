@@ -315,6 +315,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Rebar Schedule': 'rebar_schedule.title',
   'RFQ Bidding': 'rfq_bidding.title',
   'Credentials': 'nav.credentials',
+  'Staffing': 'staffing.title',
   'Teams and Visibility': 'teams.title',
   'Permits': 'permits.ui.title',
 };
