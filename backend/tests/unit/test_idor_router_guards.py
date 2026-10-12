@@ -428,6 +428,8 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "ap_create",
         "ap_patch",
         "ap_submit",
+        "ap_reopen",
+        "reference_options",
         "dl_list",
         "dl_create",
         "dl_patch",

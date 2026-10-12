@@ -73,7 +73,7 @@ from app.modules.design_management.schemas import (
     WbsPatch,
     dump,
 )
-from app.modules.design_management.service import DesignService
+from app.modules.design_management.service import Caller, DesignService
 
 router = APIRouter(tags=["design_management"])
 
@@ -114,13 +114,23 @@ def _may(payload: dict[str, Any], permission: str) -> bool:
     return role == "admin" or bool(permission_registry.role_has_permission(role, permission))
 
 
+def _caller(user_id: str, payload: dict[str, Any]) -> Caller:
+    """The caller as the permission registry sees them; the only place a role becomes booleans."""
+    return Caller(
+        actor_id=_uid(user_id),
+        edit=_may(payload, "design.edit"),
+        manage=_may(payload, "design.manage"),
+        release=_may(payload, "design.release"),
+    )
+
+
+async def _row(svc: DesignService, caller: Caller, row: Any, **extra: Any) -> dict[str, Any]:
+    """A record with its ``can`` flags, computed by the functions the writes enforce with."""
+    return _out(row, can=await svc.capabilities(row, caller), **extra)
+
+
 async def _release_out(svc: DesignService, row: Any, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    can = await svc.release_can(row, actor_id=_uid(user_id), may_release=_may(payload, "design.release"))
-    return _out(row, can=can)
-
-
-def _report_out(svc: DesignService, row: Any, payload: dict[str, Any]) -> dict[str, Any]:
-    return _out(row, can=svc.report_can(row, may_manage=_may(payload, "design.manage")))
+    return await _row(svc, _caller(user_id, payload), row)
 
 
 def _page(items: list[Any], offset: int = 0, limit: int | None = None) -> dict[str, Any]:
@@ -320,28 +330,49 @@ async def wbs_unresolved(project_id: uuid.UUID, user_id: CurrentUserId, session:
 
 
 @router.get("/projects/{project_id}/roles", dependencies=[READ])
-async def roles_list(project_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep) -> dict[str, Any]:
+async def roles_list(
+    project_id: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _page([_out(r) for r in await svc.roles(project_id)])
+    return _page([await _row(svc, _caller(user_id, payload), r) for r in await svc.roles(project_id)])
 
 
 @router.post("/projects/{project_id}/roles", status_code=201, dependencies=[EDIT])
-async def roles_create(project_id: uuid.UUID, body: RoleIn, user_id: CurrentUserId, session: SessionDep):
+async def roles_create(
+    project_id: uuid.UUID, body: RoleIn, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
     data = dump(body)
     _require(data, "party_kind")
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.create_role(project_id, data, actor_id=_uid(user_id))))
+    return await _row(
+        svc,
+        _caller(user_id, payload),
+        await _run(svc.create_role(project_id, data, actor_id=_uid(user_id), tenant_id=resolve_tenant_id(payload))),
+    )
 
 
 @router.patch("/projects/{project_id}/roles/{role_id}", dependencies=[EDIT])
 async def roles_patch(
-    project_id: uuid.UUID, role_id: uuid.UUID, body: RoleIn, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    role_id: uuid.UUID,
+    body: RoleIn,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.patch_role(project_id, role_id, dump(body), actor_id=_uid(user_id))))
+    return await _row(
+        svc,
+        _caller(user_id, payload),
+        await _run(
+            svc.patch_role(
+                project_id, role_id, dump(body), actor_id=_uid(user_id), tenant_id=resolve_tenant_id(payload)
+            )
+        ),
+    )
 
 
 @router.delete("/projects/{project_id}/roles/{role_id}", status_code=204, dependencies=[EDIT])
@@ -353,37 +384,72 @@ async def roles_delete(project_id: uuid.UUID, role_id: uuid.UUID, user_id: Curre
 
 
 @router.get("/projects/{project_id}/approval-points", dependencies=[READ])
-async def ap_list(project_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep) -> dict[str, Any]:
+async def ap_list(
+    project_id: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     await _run(svc.catch_up_approvals(project_id))
     rows = await svc._list(DesignApprovalPoint, project_id, DesignApprovalPoint.code)
-    return _page([_out(r) for r in rows])
+    return _page([await _row(svc, _caller(user_id, payload), r) for r in rows])
 
 
 @router.post("/projects/{project_id}/approval-points", status_code=201, dependencies=[EDIT])
-async def ap_create(project_id: uuid.UUID, body: ApprovalPointIn, user_id: CurrentUserId, session: SessionDep):
+async def ap_create(
+    project_id: uuid.UUID,
+    body: ApprovalPointIn,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
+):
     data = dump(body)
     _require(data, "kind")
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.create_approval_point(project_id, data, actor_id=_uid(user_id))))
+    return await _row(
+        svc, _caller(user_id, payload), await _run(svc.create_approval_point(project_id, data, actor_id=_uid(user_id)))
+    )
 
 
 @router.patch("/projects/{project_id}/approval-points/{ap_id}", dependencies=[EDIT])
 async def ap_patch(
-    project_id: uuid.UUID, ap_id: uuid.UUID, body: ApprovalPointIn, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    ap_id: uuid.UUID,
+    body: ApprovalPointIn,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.patch_approval_point(project_id, ap_id, dump(body), actor_id=_uid(user_id))))
+    return await _row(
+        svc,
+        _caller(user_id, payload),
+        await _run(svc.patch_approval_point(project_id, ap_id, dump(body), actor_id=_uid(user_id))),
+    )
+
+
+@router.post("/projects/{project_id}/approval-points/{ap_id}/reopen", dependencies=[EDIT])
+async def ap_reopen(
+    project_id: uuid.UUID, ap_id: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
+    """Take a rejected approval point back to ``open``; 409 ``approval_point_not_rejected`` otherwise."""
+    await verify_project_access(project_id, user_id, session)
+    svc = DesignService(session)
+    return await _row(
+        svc, _caller(user_id, payload), await _run(svc.reopen_approval_point(project_id, ap_id, actor_id=_uid(user_id)))
+    )
 
 
 @router.post("/projects/{project_id}/approval-points/{ap_id}/submit", dependencies=[EDIT])
-async def ap_submit(project_id: uuid.UUID, ap_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep):
+async def ap_submit(
+    project_id: uuid.UUID, ap_id: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.submit_approval_point(project_id, ap_id, actor_id=_uid(user_id))))
+    return await _row(
+        svc, _caller(user_id, payload), await _run(svc.submit_approval_point(project_id, ap_id, actor_id=_uid(user_id)))
+    )
 
 
 # ── deliverables ───────────────────────────────────────────────────────────
@@ -391,30 +457,49 @@ async def ap_submit(project_id: uuid.UUID, ap_id: uuid.UUID, user_id: CurrentUse
 
 @router.get("/projects/{project_id}/deliverables", dependencies=[READ])
 async def dl_list(
-    project_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep, phase_code: str | None = None
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
+    phase_code: str | None = None,
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     rows = await _run(svc.deliverables(project_id))
-    return _page([_out(r) for r in rows if not phase_code or r.phase_code == phase_code])
+    return _page(
+        [await _row(svc, _caller(user_id, payload), r) for r in rows if not phase_code or r.phase_code == phase_code]
+    )
 
 
 @router.post("/projects/{project_id}/deliverables", status_code=201, dependencies=[EDIT])
-async def dl_create(project_id: uuid.UUID, body: DeliverableIn, user_id: CurrentUserId, session: SessionDep):
+async def dl_create(
+    project_id: uuid.UUID, body: DeliverableIn, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
     data = dump(body)
     _require(data, "phase_code")
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.create_deliverable(project_id, data, actor_id=_uid(user_id))))
+    return await _row(
+        svc, _caller(user_id, payload), await _run(svc.create_deliverable(project_id, data, actor_id=_uid(user_id)))
+    )
 
 
 @router.patch("/projects/{project_id}/deliverables/{did}", dependencies=[EDIT])
 async def dl_patch(
-    project_id: uuid.UUID, did: uuid.UUID, body: DeliverableIn, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    did: uuid.UUID,
+    body: DeliverableIn,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.patch_deliverable(project_id, did, dump(body), actor_id=_uid(user_id))))
+    return await _row(
+        svc,
+        _caller(user_id, payload),
+        await _run(svc.patch_deliverable(project_id, did, dump(body), actor_id=_uid(user_id))),
+    )
 
 
 @router.delete("/projects/{project_id}/deliverables/{did}", status_code=204, dependencies=[EDIT])
@@ -689,14 +774,18 @@ async def rel_issue(
 
 
 @router.get("/projects/{project_id}/reviews", dependencies=[READ])
-async def rev_list(project_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep) -> dict[str, Any]:
+async def rev_list(
+    project_id: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     out = []
     for r in await svc._list(DesignReview, project_id, DesignReview.code):
         comments = await svc.review_comments(project_id, r.id)
         out.append(
-            _out(
+            await _row(
+                svc,
+                _caller(user_id, payload),
                 r,
                 comments_open=sum(1 for c in comments if c.status in ("open", "answered")),
                 comments_major_open=sum(
@@ -708,52 +797,92 @@ async def rev_list(project_id: uuid.UUID, user_id: CurrentUserId, session: Sessi
 
 
 @router.post("/projects/{project_id}/reviews", status_code=201, dependencies=[EDIT])
-async def rev_create(project_id: uuid.UUID, body: ReviewIn, user_id: CurrentUserId, session: SessionDep):
+async def rev_create(
+    project_id: uuid.UUID, body: ReviewIn, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(
-        await _run(svc.create_review(project_id, dump(body) | {"phase_code": body.phase_code}, actor_id=_uid(user_id)))
+    return await _row(
+        svc,
+        _caller(user_id, payload),
+        await _run(svc.create_review(project_id, dump(body) | {"phase_code": body.phase_code}, actor_id=_uid(user_id))),
     )
 
 
 @router.post("/projects/{project_id}/reviews/{rid}/transition", dependencies=[EDIT])
 async def rev_transition(
-    project_id: uuid.UUID, rid: uuid.UUID, body: Transition, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    rid: uuid.UUID,
+    body: Transition,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.review_transition(project_id, rid, body.target, actor_id=_uid(user_id))))
+    return await _row(
+        svc,
+        _caller(user_id, payload),
+        await _run(svc.review_transition(project_id, rid, body.target, actor_id=_uid(user_id))),
+    )
 
 
 @router.post("/projects/{project_id}/reviews/{rid}/conclude", dependencies=[EDIT])
 async def rev_conclude(
-    project_id: uuid.UUID, rid: uuid.UUID, body: Conclude, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    rid: uuid.UUID,
+    body: Conclude,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.conclude_review(project_id, rid, body.outcome, actor_id=_uid(user_id))))
+    return await _row(
+        svc,
+        _caller(user_id, payload),
+        await _run(svc.conclude_review(project_id, rid, body.outcome, actor_id=_uid(user_id))),
+    )
 
 
 @router.get("/projects/{project_id}/reviews/{rid}/comments", dependencies=[READ])
-async def rev_comments(project_id: uuid.UUID, rid: uuid.UUID, user_id: CurrentUserId, session: SessionDep):
+async def rev_comments(
+    project_id: uuid.UUID, rid: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     review = await _run(svc._get(DesignReview, project_id, rid, "review_not_found"))
-    return _page([_out(c) for c in await svc.review_comments(project_id, review.id)])
+    return _page(
+        [await _row(svc, _caller(user_id, payload), c) for c in await svc.review_comments(project_id, review.id)]
+    )
 
 
 @router.post("/projects/{project_id}/reviews/{rid}/comments", status_code=201, dependencies=[EDIT])
 async def rev_comment_add(
-    project_id: uuid.UUID, rid: uuid.UUID, body: CommentIn, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    rid: uuid.UUID,
+    body: CommentIn,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.add_comment(project_id, rid, dump(body) | {"text": body.text}, actor_id=_uid(user_id))))
+    return await _row(
+        svc,
+        _caller(user_id, payload),
+        await _run(svc.add_comment(project_id, rid, dump(body) | {"text": body.text}, actor_id=_uid(user_id))),
+    )
 
 
 @router.post("/projects/{project_id}/comments/{cid}/transition", dependencies=[EDIT])
 async def comment_move(
-    project_id: uuid.UUID, cid: uuid.UUID, body: CommentMove, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    cid: uuid.UUID,
+    body: CommentMove,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
@@ -762,7 +891,7 @@ async def comment_move(
             project_id, cid, body.target, actor_id=_uid(user_id), answer=body.answer, role_id=body.role_id
         )
     )
-    return _out(row)
+    return await _row(svc, _caller(user_id, payload), row)
 
 
 # ── reports ────────────────────────────────────────────────────────────────
@@ -775,16 +904,20 @@ async def rpt_list(
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     rows = await svc._list(DesignReport, project_id, DesignReport.code)
-    return _page([_report_out(svc, r, payload) for r in rows])
+    return _page([await _row(svc, _caller(user_id, payload), r) for r in rows])
 
 
 @router.post("/projects/{project_id}/reports", status_code=201, dependencies=[EDIT])
-async def rpt_create(project_id: uuid.UUID, body: ReportIn, user_id: CurrentUserId, session: SessionDep):
+async def rpt_create(
+    project_id: uuid.UUID, body: ReportIn, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
     data = dump(body)
     _require(data, "kind_code")
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.create_report(project_id, data, actor_id=_uid(user_id))))
+    return await _row(
+        svc, _caller(user_id, payload), await _run(svc.create_report(project_id, data, actor_id=_uid(user_id)))
+    )
 
 
 @router.patch("/projects/{project_id}/reports/{rid}", dependencies=[EDIT])
@@ -801,64 +934,82 @@ async def rpt_patch(
     row = await _run(
         svc.patch_report(project_id, rid, dump(body), actor_id=_uid(user_id), may_manage=_may(payload, "design.manage"))
     )
-    return _report_out(svc, row, payload)
+    return await _row(svc, _caller(user_id, payload), row)
 
 
 @router.post("/projects/{project_id}/reports/{rid}/transition", dependencies=[EDIT])
 async def rpt_transition(
-    project_id: uuid.UUID, rid: uuid.UUID, body: Transition, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    rid: uuid.UUID,
+    body: Transition,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     row = await _run(
         svc.report_transition(project_id, rid, body.target, actor_id=_uid(user_id), rationale=body.rationale)
     )
-    return _out(row)
+    return await _row(svc, _caller(user_id, payload), row)
 
 
 @router.post("/projects/{project_id}/reports/{rid}/sync", dependencies=[EDIT])
-async def rpt_sync(project_id: uuid.UUID, rid: uuid.UUID, user_id: CurrentUserId, session: SessionDep):
+async def rpt_sync(
+    project_id: uuid.UUID, rid: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(await _run(svc.sync_report(project_id, rid, actor_id=_uid(user_id))))
+    return await _row(
+        svc, _caller(user_id, payload), await _run(svc.sync_report(project_id, rid, actor_id=_uid(user_id)))
+    )
 
 
 # ── permits ────────────────────────────────────────────────────────────────
 
 
-async def _permit_out(svc: DesignService, project_id: uuid.UUID, permit: DesignPermit) -> dict[str, Any]:
+async def _permit_out(
+    svc: DesignService, project_id: uuid.UUID, permit: DesignPermit, caller: Caller
+) -> dict[str, Any]:
     checks = await svc.permit_check(project_id, permit)
     items = [
         _out(c["item"], present=c["present"], state_ok=c["state_ok"], current_revision_id=c["current_revision_id"])
         for c in checks
     ]
-    return _out(permit, items=items, missing=[i["id"] for i in items if i["required"] and not i["state_ok"]])
+    missing = [i["id"] for i in items if i["required"] and not i["state_ok"]]
+    return await _row(svc, caller, permit, items=items, missing=missing)
 
 
 @router.get("/projects/{project_id}/permits", dependencies=[READ])
-async def permit_list(project_id: uuid.UUID, user_id: CurrentUserId, session: SessionDep) -> dict[str, Any]:
+async def permit_list(
+    project_id: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     rows = await svc._list(DesignPermit, project_id, DesignPermit.code)
-    return _page([await _permit_out(svc, project_id, p) for p in rows])
+    return _page([await _permit_out(svc, project_id, p, _caller(user_id, payload)) for p in rows])
 
 
 @router.post("/projects/{project_id}/permits", status_code=201, dependencies=[EDIT])
-async def permit_create(project_id: uuid.UUID, body: PermitIn, user_id: CurrentUserId, session: SessionDep):
+async def permit_create(
+    project_id: uuid.UUID, body: PermitIn, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
     data = dump(body)
     _require(data, "profile_code")
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     row = await _run(svc.create_permit(project_id, data, actor_id=_uid(user_id)))
-    return await _permit_out(svc, project_id, row)
+    return await _permit_out(svc, project_id, row, _caller(user_id, payload))
 
 
 @router.get("/projects/{project_id}/permits/{pid}", dependencies=[READ])
-async def permit_get(project_id: uuid.UUID, pid: uuid.UUID, user_id: CurrentUserId, session: SessionDep):
+async def permit_get(
+    project_id: uuid.UUID, pid: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     row = await _run(svc._get(DesignPermit, project_id, pid, "permit_not_found"))
-    return await _permit_out(svc, project_id, row)
+    return await _permit_out(svc, project_id, row, _caller(user_id, payload))
 
 
 @router.patch("/projects/{project_id}/permits/{pid}", dependencies=[EDIT])
@@ -875,17 +1026,24 @@ async def permit_patch(
     row = await _run(
         svc.patch_permit(project_id, pid, dump(body), actor_id=_uid(user_id), may_manage=_may(payload, "design.manage"))
     )
-    return await _permit_out(svc, project_id, row)
+    return await _permit_out(svc, project_id, row, _caller(user_id, payload))
 
 
 @router.post("/projects/{project_id}/permits/{pid}/items", status_code=201, dependencies=[EDIT])
 async def permit_item_add(
-    project_id: uuid.UUID, pid: uuid.UUID, body: PermitItemIn, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    pid: uuid.UUID,
+    body: PermitItemIn,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
-    return _out(
-        await _run(svc.add_permit_item(project_id, pid, dump(body) | {"kind": body.kind}, actor_id=_uid(user_id)))
+    return await _row(
+        svc,
+        _caller(user_id, payload),
+        await _run(svc.add_permit_item(project_id, pid, dump(body) | {"kind": body.kind}, actor_id=_uid(user_id))),
     )
 
 
@@ -915,26 +1073,33 @@ async def permit_transition(
             project_id, pid, body.target, actor_id=_uid(user_id), may_manage=_may(payload, "design.manage")
         )
     )
-    return await _permit_out(svc, project_id, row)
+    return await _permit_out(svc, project_id, row, _caller(user_id, payload))
 
 
 @router.post("/projects/{project_id}/permits/{pid}/sync", dependencies=[EDIT])
-async def permit_sync(project_id: uuid.UUID, pid: uuid.UUID, user_id: CurrentUserId, session: SessionDep):
+async def permit_sync(
+    project_id: uuid.UUID, pid: uuid.UUID, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
+):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     row = await _run(svc.sync_permit(project_id, pid, actor_id=_uid(user_id)))
-    return await _permit_out(svc, project_id, row)
+    return await _permit_out(svc, project_id, row, _caller(user_id, payload))
 
 
 @router.post("/projects/{project_id}/permits/{pid}/conditions", dependencies=[EDIT])
 async def permit_conditions(
-    project_id: uuid.UUID, pid: uuid.UUID, body: ConditionsIn, user_id: CurrentUserId, session: SessionDep
+    project_id: uuid.UUID,
+    pid: uuid.UUID,
+    body: ConditionsIn,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     texts = [c.model_dump(mode="json") for c in body.conditions]
     row = await _run(svc.propose_conditions(project_id, pid, texts, actor_id=_uid(user_id)))
-    return await _permit_out(svc, project_id, row)
+    return await _permit_out(svc, project_id, row, _caller(user_id, payload))
 
 
 @router.post("/projects/{project_id}/permits/{pid}/conditions/{condition_id}", dependencies=[MANAGE])
@@ -944,6 +1109,7 @@ async def permit_condition_decide(
     condition_id: uuid.UUID,
     body: ConditionDecision,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
     session: SessionDep,
 ):
     await verify_project_access(project_id, user_id, session)
@@ -951,7 +1117,30 @@ async def permit_condition_decide(
     row = await _run(
         svc.confirm_condition(project_id, pid, str(condition_id), confirm=body.confirm, actor_id=_uid(user_id))
     )
-    return await _permit_out(svc, project_id, row)
+    return await _permit_out(svc, project_id, row, _caller(user_id, payload))
+
+
+@router.get("/projects/{project_id}/options/{kind}", dependencies=[READ])
+async def reference_options(
+    project_id: uuid.UUID,
+    kind: Literal[
+        "contacts",
+        "contract_packages",
+        "governance_gates",
+        "recipient_lists",
+        "review_cycles",
+        "authority_submissions",
+        "forms",
+        "wbs_nodes",
+    ],
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
+) -> dict[str, Any]:
+    """What a reference field may point at, filtered the way the write checks it."""
+    await verify_project_access(project_id, user_id, session)
+    svc = DesignService(session)
+    return await _run(svc.options(project_id, kind, actor_id=_uid(user_id), tenant_id=resolve_tenant_id(payload)))
 
 
 # ── readiness, validation, export, frame documents ─────────────────────────

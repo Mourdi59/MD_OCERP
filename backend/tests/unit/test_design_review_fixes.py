@@ -387,3 +387,77 @@ def test_no_governance_area_or_phase_code_is_matched_in_module_code() -> None:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         literals = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
         assert not literals & codes, (path.name, sorted(literals & codes))
+
+
+# ── can flags ──
+
+
+def test_a_can_flag_says_whether_the_action_exists_and_why_it_is_refused() -> None:
+    from app.modules.design_management.errors import conflict
+    from app.modules.design_management.service import _flag
+
+    assert _flag() == {"allowed": True, "applies": True, "reason": None}
+    assert _flag(conflict("review_comments_open")) == {
+        "allowed": False,
+        "applies": True,
+        "reason": "review_comments_open",
+    }
+    assert _flag("forbidden") == {"allowed": False, "applies": True, "reason": "forbidden"}
+    assert _flag(applies=False) == {"allowed": False, "applies": False, "reason": None}
+
+
+@pytest.mark.asyncio
+async def test_rows_without_a_typed_state_list_no_transition() -> None:
+    """A schedule line's state is computed; a comment's moves are exactly those of its state machine."""
+    from app.modules.design_management import fsm
+    from app.modules.design_management.models import DesignDeliverable, DesignReviewComment
+    from app.modules.design_management.service import Caller
+
+    svc = DesignService(None)  # type: ignore[arg-type]
+    editor = Caller(actor_id=uuid.uuid4(), edit=True, manage=False, release=False)
+    viewer = Caller(actor_id=uuid.uuid4(), edit=False, manage=False, release=False)
+    line = await svc.capabilities(DesignDeliverable(waived=False), editor)
+    assert line["transitions"] == {} and line["waive"]["allowed"] and not line["unwaive"]["applies"]
+    for state in fsm.COMMENT_STATES:
+        can = await svc.capabilities(DesignReviewComment(status=state), editor)
+        assert sorted(can["transitions"]) == fsm.COMMENT_FSM.allowed_from(state), state
+        assert all(f["allowed"] for f in can["transitions"].values())
+        refused = await svc.capabilities(DesignReviewComment(status=state), viewer)
+        assert all(f["reason"] == "forbidden" and f["applies"] for f in refused["transitions"].values())
+    assert await svc.capabilities(object(), editor) == {}
+
+
+def test_the_caller_is_built_from_the_permission_registry_not_from_a_role_name() -> None:
+    from app.modules.design_management import router
+    from app.modules.design_management.permissions import register_design_permissions
+
+    register_design_permissions()
+    uid = str(uuid.uuid4())
+    viewer = router._caller(uid, {"role": "viewer"})
+    editor = router._caller(uid, {"role": "editor"})
+    manager = router._caller(uid, {"role": "manager"})
+    assert (viewer.edit, viewer.manage, viewer.release) == (False, False, False)
+    assert editor.edit and not editor.manage
+    assert manager.edit and manager.manage and manager.release
+    assert str(manager.actor_id) == uid
+
+
+def test_every_record_route_answers_through_the_function_that_adds_can() -> None:
+    """A route that returns a stateful record with the bare serializer would ship it without ``can``."""
+    import ast
+    from pathlib import Path
+
+    from app.modules.design_management import router
+
+    tree = ast.parse(Path(router.__file__).read_text(encoding="utf-8"))
+    bare = {
+        "roles", "ap", "dl", "rev", "comment", "rpt", "permit", "rel",
+    }  # fmt: skip
+    offenders = []
+    for fn in ast.walk(tree):
+        if not isinstance(fn, ast.AsyncFunctionDef) or fn.name.split("_")[0] not in bare:
+            continue
+        for call in ast.walk(fn):
+            if isinstance(call, ast.Call) and isinstance(call.func, ast.Name) and call.func.id == "_out":
+                offenders.append(fn.name)
+    assert offenders == [], offenders

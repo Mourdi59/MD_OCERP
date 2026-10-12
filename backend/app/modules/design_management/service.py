@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -116,11 +117,46 @@ def _uuids(values: Any) -> list[str]:
     return [str(_uuid(v)) for v in (values or [])]
 
 
+def _violation(code: str, kind: str, row_id: Any, label: str, **extra: Any) -> dict[str, Any]:
+    """One finding about a record: ``{code, kind, id, label}``; ``label`` is what a person calls the record."""
+    return {"code": code, "kind": kind, "id": _s(row_id), "label": label} | extra
+
+
+@dataclass(frozen=True)
+class Caller:
+    """Who asks, as the router's permission checks answered. The service never sees a role."""
+
+    actor_id: uuid.UUID
+    edit: bool
+    manage: bool
+    release: bool
+
+
+def _flag(refused: DesignError | str | None = None, *, applies: bool = True) -> dict[str, Any]:
+    """One ``can`` entry.
+
+    ``applies`` says whether the action exists for this row at all (a state a
+    person never types does not apply); ``allowed`` whether this caller may
+    take it now; ``reason`` is the code the write would answer with.
+    """
+    reason = refused.code if isinstance(refused, DesignError) else refused
+    return {"allowed": applies and reason is None, "applies": applies, "reason": reason}
+
+
+def _edge(machine: Any, row: Any, target: str) -> DesignError | None:
+    """The refusal of a move the state machine does not have, or ``None``."""
+    if machine.has_transition(row.status, target):
+        return None
+    return conflict("invalid_transition", detail=f"{row.status} -> {target}")
+
+
 class DesignService:
     """Business logic of design management."""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        # Read-side memo of :meth:`capabilities` only; no write decides from it.
+        self._cap_memo: dict[Any, Any] = {}
 
     # ── plumbing ──────────────────────────────────────────────────────────
 
@@ -270,14 +306,21 @@ class DesignService:
 
     async def assert_not_binding(self, project_id: uuid.UUID) -> None:
         """Rule 23: once the design frame document is binding, changes go through a governance change request."""
+        refused = await self.binding_refusal(project_id)
+        if refused is not None:
+            raise refused
+
+    async def binding_refusal(self, project_id: uuid.UUID) -> DesignError | None:
+        """The refusal while the design frame document is binding, or ``None``."""
         from app.modules.project_governance.public import project_documents
 
         host = await design_host(self.session, project_id)
         if host is None:
-            return
+            return None
         for d in await project_documents(self.session, project_id):
             if d.code == host.doc_type and d.area_code == host.area_code and d.status == "binding":
-                raise conflict("binding_requires_change_request")
+                return conflict("binding_requires_change_request")
+        return None
 
     async def set_setup(
         self,
@@ -607,10 +650,13 @@ class DesignService:
         if taken:
             raise conflict("originator_duplicate")
 
-    async def create_role(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID) -> DesignRole:
+    async def create_role(
+        self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID, tenant_id: str | None = None
+    ) -> DesignRole:
         if data.get("party_kind") not in PARTY_KINDS:
             raise DesignError("party_kind_invalid", 422)
         await self.assert_not_binding(project_id)
+        await self._contact_in_scope(tenant_id, data.get("contact_id"))
         wbs_ids = [str(await self.assert_wbs_usable(project_id, w)) for w in data.get("responsible_wbs_ids") or []]
         role = DesignRole(
             id=uuid.uuid4(),
@@ -640,10 +686,22 @@ class DesignService:
         if (await self.session.execute(stmt)).first() is not None:
             raise conflict("code_duplicate")
 
-    async def patch_role(self, project_id: uuid.UUID, role_id: Any, data: dict[str, Any], *, actor_id: uuid.UUID):
+    async def patch_role(
+        self,
+        project_id: uuid.UUID,
+        role_id: Any,
+        data: dict[str, Any],
+        *,
+        actor_id: uuid.UUID,
+        tenant_id: str | None = None,
+    ):
         await self.assert_not_binding(project_id)
+        await self._contact_in_scope(tenant_id, data.get("contact_id"))
         role = await self._get(DesignRole, project_id, role_id, "role_not_found", lock=True)
         if "state" in data and data["state"] != role.status:
+            refused = _edge(dfsm.ROLE_FSM, role, data["state"])
+            if refused is not None:
+                raise refused
             await self._fsm(dfsm.ROLE_FSM, role, data["state"], actor_id)
         for key in ("title", "discipline_code", "party_kind"):
             if key in data:
@@ -668,12 +726,15 @@ class DesignService:
         return role
 
     async def role_references(self, project_id: uuid.UUID, role_id: uuid.UUID) -> list[dict[str, Any]]:
-        """Everything in the project that still points at a role, as ``{kind, id, code}``."""
+        """Everything in the project that still points at a role, as ``{code, kind, id, label}``."""
         rid = str(role_id)
         out: list[dict[str, Any]] = []
 
         def hit(kind: str, row: Any) -> None:
-            out.append({"code": "role_in_use", "kind": kind, "id": str(row.id), "ref": getattr(row, "code", None)})
+            code = getattr(row, "code", None)
+            title = getattr(row, "title", None) or getattr(row, "text", None) or ""
+            label = " ".join(p for p in (code, title[:80]) if p)
+            out.append(_violation("role_in_use", kind, row.id, label, ref=code))
 
         for kind, model, columns in (
             ("drawing", DesignDrawing, ("role_id",)),
@@ -711,6 +772,7 @@ class DesignService:
         await self._check_phase(project_id, data.get("phase_code"))
         if data.get("approver_role_id"):
             await self._get(DesignRole, project_id, data["approver_role_id"], "role_not_found")
+        await self._gate_in_project(project_id, data.get("governance_gate_id"))
         code = data.get("code") or await self._next_code(DesignApprovalPoint, project_id, "AP")
         await self._unique_code(DesignApprovalPoint, project_id, code)
         row = await self._add(
@@ -740,11 +802,129 @@ class DesignService:
                 setattr(row, key, data[key])
         if data.get("approver_role_id"):
             await self._get(DesignRole, project_id, data["approver_role_id"], "role_not_found")
+        if "governance_gate_id" in data:
+            await self._gate_in_project(project_id, data["governance_gate_id"])
         for key in ("governance_gate_id", "approver_role_id"):
             if key in data:
                 setattr(row, key, _uuid(data[key]))
         await self.session.flush()
         return row
+
+    async def _gate_in_project(self, project_id: uuid.UUID, gate_id: Any) -> uuid.UUID | None:
+        """A gate of this project's current phase model, read through module 1's port."""
+        from app.modules.project_governance.public import project_gates
+
+        gid = _uuid(gate_id)
+        if gid is None:
+            return None
+        if gid not in {g.id for g in await project_gates(self.session, project_id)}:
+            raise not_found("governance_gate_not_found")
+        return gid
+
+    async def _contact_in_scope(self, tenant_id: str | None, contact_id: Any) -> uuid.UUID | None:
+        """A contact of the caller's tenant. Without a tenant nothing resolves (fails closed)."""
+        from app.modules.contacts.repository import ContactRepository
+
+        cid = _uuid(contact_id)
+        if cid is None:
+            return None
+        contact = await ContactRepository(self.session).get(cid)
+        owner = str(tenant_id) if tenant_id else None
+        if contact is None or owner is None or owner not in (contact.tenant_id, contact.created_by):
+            raise not_found("contact_not_found")
+        return cid
+
+    OPTION_KINDS = (
+        "contacts",
+        "contract_packages",
+        "governance_gates",
+        "recipient_lists",
+        "review_cycles",
+        "authority_submissions",
+        "forms",
+        "wbs_nodes",
+    )
+
+    async def options(
+        self, project_id: uuid.UUID, kind: str, *, actor_id: uuid.UUID, tenant_id: str | None
+    ) -> dict[str, Any]:
+        """What a reference field of this project may point at: ``{kind, available, reason, items}``.
+
+        Each item is ``{id, label, code}``. The filter is the one the write
+        applies, so nothing listed here is refused for not belonging to the
+        project. ``available`` is false with a ``reason`` when the source of
+        the list is not there (no scheme field, no module); that is not the
+        same as an empty list.
+        """
+        if kind not in self.OPTION_KINDS:
+            raise DesignError("option_kind_unknown", 422, detail=kind)
+        items: list[dict[str, Any]] = []
+        reason: str | None = None
+
+        def add(row_id: Any, label: str, code: str | None = None) -> None:
+            items.append({"id": _s(row_id), "label": label, "code": code})
+
+        if kind == "contacts":
+            from app.modules.contacts.repository import ContactRepository
+
+            if tenant_id:
+                rows, _total = await ContactRepository(self.session).list(owner_id=str(tenant_id), limit=500)
+                for c in rows:
+                    person = " ".join(p for p in (c.first_name, c.last_name) if p)
+                    add(c.id, ", ".join(p for p in (c.company_name, person) if p) or str(c.id))
+        elif kind == "contract_packages":
+            # Contract packages belong to the delivery model module; this module holds only the soft link.
+            reason = "source_not_installed"
+        elif kind == "governance_gates":
+            from app.modules.project_governance.public import project_gates
+
+            for g in await project_gates(self.session, project_id):
+                text = (g.label or {}).get("text") or {}
+                add(g.id, text.get("en") or g.code, g.code)
+                items[-1]["label_key"] = (g.label or {}).get("key")
+                items[-1]["label_text"] = text or None
+        elif kind == "recipient_lists":
+            from app.modules.file_distribution.models import FileDistributionList
+
+            stmt = (
+                select(FileDistributionList)
+                .where(
+                    (FileDistributionList.project_id == project_id)
+                    | (FileDistributionList.project_id.is_(None) & (FileDistributionList.owner_id == actor_id))
+                )
+                .order_by(FileDistributionList.name)
+            )
+            for lst in (await self.session.execute(stmt)).scalars():
+                add(lst.id, lst.name)
+        elif kind == "review_cycles":
+            from app.modules.review_authority.models import ReviewCycle
+
+            stmt = select(ReviewCycle).where(ReviewCycle.project_id == project_id).order_by(ReviewCycle.created_at)
+            for cycle in (await self.session.execute(stmt)).scalars():
+                add(cycle.id, " ".join(p for p in (cycle.authority_name, cycle.submission_ref) if p), cycle.status)
+        elif kind == "authority_submissions":
+            from app.modules.authority_submission.models import Submission
+
+            stmt = select(Submission).where(Submission.project_id == project_id).order_by(Submission.created_at)
+            for sub_row in (await self.session.execute(stmt)).scalars():
+                add(sub_row.id, sub_row.title, sub_row.status)
+        elif kind == "forms":
+            setup = await self.get_setup(project_id)
+            field = (await self.scheme(setup)).field("form") if setup is not None else None
+            if setup is None:
+                reason = "setup_missing"
+            elif field is None or field.code_list == "free":
+                reason = "scheme_has_no_form_list"
+            else:
+                for entry in field.code_list:
+                    add(entry.code, (entry.labels or {}).get("en") or entry.code, entry.code)
+                    items[-1]["label_key"] = entry.label_key or None
+                    items[-1]["label_text"] = entry.labels
+        elif kind == "wbs_nodes":
+            for node in await self.wbs_rows(project_id):
+                if not (node.metadata_ or {}).get("closed"):
+                    add(node.id, " ".join(p for p in (node.code, node.name) if p), node.code)
+        return {"kind": kind, "available": reason is None, "reason": reason, "items": items}
 
     async def _route(self, project_id: uuid.UUID, kind: str, pinned: uuid.UUID | None) -> Any:
         from app.modules.approval_routes.service import ApprovalRouteService
@@ -781,10 +961,10 @@ class DesignService:
 
     async def submit_approval_point(self, project_id: uuid.UUID, ap_id: Any, *, actor_id: uuid.UUID):
         row = await self._get(DesignApprovalPoint, project_id, ap_id, "approval_point_not_found", lock=True)
-        setup = await self.get_setup(project_id)
-        route = await self._route(project_id, APPROVAL_TARGET_KIND, setup.approval_route_id if setup else None)
-        if route is None:
-            raise DesignError("no_approval_route", 422)
+        refused = await self.approval_submit_refusal(row)
+        if refused is not None:
+            raise refused
+        route = await self._pinned_route(project_id, APPROVAL_TARGET_KIND)
         if row.status == "rejected":
             await self._fsm(dfsm.APPROVAL_POINT_FSM, row, "open", actor_id)
         await self._fsm(dfsm.APPROVAL_POINT_FSM, row, "in_review", actor_id)
@@ -792,6 +972,46 @@ class DesignService:
         row.submitted_by = actor_id
         await self.session.flush()
         self._publish("design_management.approval_point.submitted", project_id=project_id, approval_point_id=row.id)
+        return row
+
+    async def _pinned_route(self, project_id: uuid.UUID, kind: str) -> Any:
+        """The approval route of ``kind`` this project decides with: the one pinned on the setup, else its only one."""
+        setup = await self.get_setup(project_id)
+        pinned = None
+        if setup is not None:
+            pinned = setup.approval_route_id if kind == APPROVAL_TARGET_KIND else setup.release_route_id
+        return await self._route(project_id, kind, pinned)
+
+    async def approval_submit_refusal(self, row: DesignApprovalPoint) -> DesignError | None:
+        """Why this approval point cannot be submitted to its route now, or ``None``."""
+        if row.status not in ("open", "rejected"):
+            return conflict("invalid_transition", detail=f"{row.status} -> in_review")
+        if await self._pinned_route(row.project_id, APPROVAL_TARGET_KIND) is None:
+            return DesignError("no_approval_route", 422)
+        return None
+
+    @staticmethod
+    def approval_reopen_refusal(row: DesignApprovalPoint) -> DesignError | None:
+        """Why this approval point cannot be reopened, or ``None``. Only a rejected point is reopened."""
+        if row.status != "rejected":
+            return conflict("approval_point_not_rejected", detail=row.status)
+        return None
+
+    async def reopen_approval_point(self, project_id: uuid.UUID, ap_id: Any, *, actor_id: uuid.UUID):
+        """Take a rejected point back to ``open`` so it can be changed and submitted again.
+
+        The rejection stays in the transition log; the decision fields are
+        cleared because they describe a verdict that no longer stands.
+        """
+        row = await self._get(DesignApprovalPoint, project_id, ap_id, "approval_point_not_found", lock=True)
+        refused = self.approval_reopen_refusal(row)
+        if refused is not None:
+            raise refused
+        await self._fsm(dfsm.APPROVAL_POINT_FSM, row, "open", actor_id, reason="reopened after rejection")
+        row.approval_instance_id = None
+        row.decided_by = row.decided_at = None
+        await self.session.flush()
+        self._publish("design_management.approval_point.open", project_id=project_id, approval_point_id=row.id)
         return row
 
     async def apply_approval_verdict(
@@ -1590,7 +1810,7 @@ class DesignService:
             raise DesignError(
                 "revision_not_current",
                 422,
-                violations=[{"code": "revision_not_current", "revision_id": str(r)} for r in stale],
+                violations=[_violation("revision_not_current", "revision", r, "", revision_id=str(r)) for r in stale],
             )
         drawings = {
             d.container_id: d
@@ -1692,17 +1912,13 @@ class DesignService:
     async def release_transition(self, project_id: uuid.UUID, rid: Any, target: str, *, actor_id: uuid.UUID):
         """``ready`` starts the ``design_release`` approval route when four-eyes is on (decision 14)."""
         row = await self._get(DesignRelease, project_id, rid, "release_not_found", lock=True)
-        if target == "issued":
-            raise conflict("use_issue")
+        refused = await self.release_transition_refusal(row, target)
+        if refused is not None:
+            raise refused
         setup = await self.get_setup(project_id)
-        four_eyes = bool(setup and setup.four_eyes_release)
         route = None
-        if target == "ready":
-            await self._check_release_content(project_id, row)
-            if four_eyes:
-                route = await self._route(project_id, RELEASE_TARGET_KIND, setup.release_route_id)
-                if route is None:
-                    raise DesignError("no_approval_route", 422)
+        if target == "ready" and setup is not None and setup.four_eyes_release:
+            route = await self._pinned_route(project_id, RELEASE_TARGET_KIND)
         await self._fsm(dfsm.RELEASE_FSM, row, target, actor_id)
         if target == "ready":
             row.content_changed_by = actor_id
@@ -1716,6 +1932,24 @@ class DesignService:
             await self._drop_release_instance(row, actor_id)
         await self.session.flush()
         return row
+
+    async def release_transition_refusal(self, row: DesignRelease, target: str) -> DesignError | None:
+        """Why a release cannot move to ``target`` now, or ``None``."""
+        if target == "issued":
+            return conflict("use_issue")
+        refused = _edge(dfsm.RELEASE_FSM, row, target)
+        if refused is not None:
+            return refused
+        if target == "ready":
+            try:
+                await self._check_release_content(row.project_id, row)
+            except DesignError as exc:
+                return exc
+            setup = await self.get_setup(row.project_id)
+            four_eyes = setup is not None and setup.four_eyes_release
+            if four_eyes and await self._pinned_route(row.project_id, RELEASE_TARGET_KIND) is None:
+                return DesignError("no_approval_route", 422)
+        return None
 
     async def _drop_release_instance(self, row: DesignRelease, actor_id: uuid.UUID | None) -> None:
         from fastapi import HTTPException
@@ -1775,11 +2009,71 @@ class DesignService:
         """What the caller may do with a release, decided by the function ``issue_release`` enforces with."""
         setup = await self.get_setup(row.project_id)
         refused = self._approve_gate(row, actor_id)
+        live = row.status in ("draft", "ready")
         return {
-            "issue": self._issue_gate(row, setup, actor_id=actor_id, may_release=may_release),
+            "issue": self._issue_gate(row, setup, actor_id=actor_id, may_release=may_release) | {"applies": live},
             # Entitlement comes from the approval route; this only says what this module would refuse.
-            "approve": {"allowed": refused is None, "reason": refused},
+            "approve": _flag(refused, applies=row.status == "ready" and row.approval_status == "pending"),
         }
+
+    async def capabilities(self, row: Any, caller: Caller) -> dict[str, Any]:
+        """What this caller may do with one row: ``{"transitions": {target: flag}, <action>: flag}``.
+
+        Every flag is ``{allowed, applies, reason}`` and comes from the refusal
+        function the write itself raises from, so a button and its request
+        cannot disagree. ``transitions`` lists the moves the state machine has
+        from the row's current state and that a person may type; states that are
+        computed or read from elsewhere are not listed, or do not apply.
+        """
+
+        def edit(refused: DesignError | str | None = None, *, applies: bool = True) -> dict[str, Any]:
+            return _flag(refused if caller.edit else "forbidden", applies=applies)
+
+        if isinstance(row, DesignRole):
+            key = ("binding", row.project_id)
+            if key not in self._cap_memo:
+                self._cap_memo[key] = await self.binding_refusal(row.project_id)
+            bound = self._cap_memo[key]
+            return {"transitions": {t: edit(bound) for t in dfsm.ROLE_FSM.allowed_from(row.status)}}
+        if isinstance(row, DesignApprovalPoint):
+            submits = row.status in ("open", "rejected")
+            return {
+                "transitions": {},
+                "submit": edit(await self.approval_submit_refusal(row) if submits else None, applies=submits),
+                "reopen": edit(applies=self.approval_reopen_refusal(row) is None),
+            }
+        if isinstance(row, DesignDeliverable):
+            # The state is computed from the drawings; the one thing a person sets is the waiver.
+            return {"transitions": {}, "waive": edit(applies=not row.waived), "unwaive": edit(applies=row.waived)}
+        if isinstance(row, DesignRelease):
+            moves = [t for t in dfsm.RELEASE_FSM.allowed_from(row.status) if t != "issued"]
+            flags = await self.release_can(row, actor_id=caller.actor_id, may_release=caller.release)
+            return {"transitions": {t: edit(await self.release_transition_refusal(row, t)) for t in moves}} | flags
+        if isinstance(row, DesignReview):
+            moves = [t for t in dfsm.REVIEW_FSM.allowed_from(row.status) if t != "concluded"]
+            return {
+                "transitions": {t: edit(await self.review_transition_refusal(row, t)) for t in moves},
+                "conclude": edit(applies=_edge(dfsm.REVIEW_FSM, row, "concluded") is None),
+            }
+        if isinstance(row, DesignReviewComment):
+            return {"transitions": {t: edit() for t in dfsm.COMMENT_FSM.allowed_from(row.status)}}
+        if isinstance(row, DesignReport):
+            moves = dfsm.REPORT_FSM.allowed_from(row.status)
+            return {
+                "transitions": {t: edit(await self.report_transition_refusal(row, t)) for t in moves}
+            } | self.report_can(row, may_manage=caller.manage)
+        if isinstance(row, DesignPermit):
+            moves = dfsm.PERMIT_FSM.allowed_from(row.status)
+            if row.status == "assembling":
+                moves = [*moves, "submitted"]
+            out = {}
+            for t in moves:
+                refused = await self.permit_transition_refusal(row, t, may_manage=caller.manage)
+                # A state the linked review cycle decides is not a person's to type.
+                read = refused is not None and refused.code == "permit_state_read_from_cycle"
+                out[t] = edit(refused, applies=not read)
+            return {"transitions": out}
+        return {}
 
     @staticmethod
     def _approve_gate(row: DesignRelease, decider: uuid.UUID | None) -> str | None:
@@ -1797,7 +2091,7 @@ class DesignService:
             reason = "manage_required"
         elif row.status in self.REPORT_FROZEN_STATES:
             reason = "report_fields_frozen"
-        return {"edit_gate_fields": {"allowed": reason is None, "reason": reason}}
+        return {"edit_gate_fields": _flag(reason)}
 
     @staticmethod
     def _issue_gate(row: DesignRelease, setup: Any, *, actor_id: uuid.UUID, may_release: bool) -> dict[str, Any]:
@@ -1808,7 +2102,7 @@ class DesignService:
             reason = "release_not_ready"
         elif setup is not None and setup.four_eyes_release and row.approval_status != "approved":
             reason = "release_not_approved"
-        return {"allowed": reason is None, "reason": reason}
+        return _flag(reason)
 
     async def _check_release_content(self, project_id: uuid.UUID, row: DesignRelease) -> None:
         if not row.revision_ids:
@@ -1816,7 +2110,11 @@ class DesignService:
         views = await self._revision_views(project_id, row.revision_ids)
         errors = dr.release_content_errors(views, row.purpose)
         if errors:
-            raise DesignError(errors[0][1], 422, violations=[{"code": c, "revision_id": str(r)} for r, c in errors])
+            raise DesignError(
+                errors[0][1],
+                422,
+                violations=[_violation(c, "revision", r, "", revision_id=str(r)) for r, c in errors],
+            )
 
     async def _recipients_for(self, project_id: uuid.UUID, key: str) -> list[dict[str, Any]]:
         """The people behind a matrix recipient; empty when the list has no member or the role is gone."""
@@ -1998,20 +2296,33 @@ class DesignService:
 
     async def review_transition(self, project_id: uuid.UUID, rid: Any, target: str, *, actor_id: uuid.UUID):
         row = await self._get(DesignReview, project_id, rid, "review_not_found", lock=True)
-        if target == "comments_closed":
-            open_ = [c for c in await self.review_comments(project_id, row.id) if c.status in ("open", "answered")]
-            if open_:
-                raise conflict("review_comments_open")
-        if target == "concluded":
-            raise conflict("use_conclude")
+        refused = await self.review_transition_refusal(row, target)
+        if refused is not None:
+            raise refused
         await self._fsm(dfsm.REVIEW_FSM, row, target, actor_id)
         await self.session.flush()
         return row
+
+    async def review_transition_refusal(self, row: DesignReview, target: str) -> DesignError | None:
+        """Why a review cannot move to ``target`` now, or ``None``."""
+        if target == "concluded":
+            return conflict("use_conclude")
+        refused = _edge(dfsm.REVIEW_FSM, row, target)
+        if refused is not None:
+            return refused
+        if target == "comments_closed":
+            comments = await self.review_comments(row.project_id, row.id)
+            if any(c.status in ("open", "answered") for c in comments):
+                return conflict("review_comments_open")
+        return None
 
     async def conclude_review(self, project_id: uuid.UUID, rid: Any, outcome: str, *, actor_id: uuid.UUID):
         if outcome not in ("accepted", "accepted_with_comments", "rework"):
             raise DesignError("review_outcome_invalid", 422)
         row = await self._get(DesignReview, project_id, rid, "review_not_found", lock=True)
+        refused = _edge(dfsm.REVIEW_FSM, row, "concluded")
+        if refused is not None:
+            raise refused
         await self._fsm(dfsm.REVIEW_FSM, row, "concluded", actor_id)
         row.outcome, row.concluded_by, row.concluded_at = outcome, actor_id, _now()
         await self.session.flush()
@@ -2050,6 +2361,9 @@ class DesignService:
         self, project_id: uuid.UUID, cid: Any, target: str, *, actor_id: uuid.UUID, answer: str = "", role_id=None
     ):
         row = await self._get(DesignReviewComment, project_id, cid, "comment_not_found", lock=True)
+        refused = _edge(dfsm.COMMENT_FSM, row, target)
+        if refused is not None:
+            raise refused
         if target == "answered":
             if dr.rationale_error(answer):
                 raise DesignError("answer_required", 422)
@@ -2201,26 +2515,36 @@ class DesignService:
         self, project_id: uuid.UUID, rid: Any, target: str, *, actor_id: uuid.UUID, rationale: str = ""
     ) -> DesignReport:
         row = await self._get(DesignReport, project_id, rid, "report_not_found", lock=True)
+        refused = await self.report_transition_refusal(row, target)
+        if refused is not None:
+            raise refused
         if target == "not_required":
             if dr.rationale_error(rationale):
                 raise DesignError("not_required_needs_rationale", 422)
             row.rationale = rationale
-        if target == "accepted":
-            error = dr.report_acceptance_error(
-                independent_check=row.independent_check,
-                author_party=await self._party(project_id, row.author_role_id),
-                checker_party=await self._party(project_id, row.checker_role_id),
-                external=row.external_check,
-                cycle_state=await self._cycle_state(row.review_cycle_id),
-            )
-            if error:
-                raise DesignError(error, 422)
         await self._fsm(dfsm.REPORT_FSM, row, target, actor_id, reason=rationale or None)
         await self.session.flush()
         self._publish(
             "design_management.report.state_changed", project_id=project_id, report_id=row.id, state=row.status
         )
         return row
+
+    async def report_transition_refusal(self, row: DesignReport, target: str) -> DesignError | None:
+        """Why a report cannot move to ``target`` now, or ``None`` (rule 17 on acceptance)."""
+        refused = _edge(dfsm.REPORT_FSM, row, target)
+        if refused is not None:
+            return refused
+        if target == "accepted":
+            error = dr.report_acceptance_error(
+                independent_check=row.independent_check,
+                author_party=await self._party(row.project_id, row.author_role_id),
+                checker_party=await self._party(row.project_id, row.checker_role_id),
+                external=row.external_check,
+                cycle_state=await self._cycle_state(row.review_cycle_id),
+            )
+            if error:
+                return DesignError(error, 422)
+        return None
 
     async def sync_report(self, project_id: uuid.UUID, rid: Any, *, actor_id: uuid.UUID) -> DesignReport:
         """Follow the linked external check cycle (read, never typed)."""
@@ -2413,42 +2737,62 @@ class DesignService:
         self, project_id: uuid.UUID, pid: Any, target: str, *, actor_id: uuid.UUID, may_manage: bool = False
     ):
         permit = await self._get(DesignPermit, project_id, pid, "permit_not_found", lock=True)
-        if target in ("ready", "submitted"):
-            checks = await self.permit_check(project_id, permit)
-            missing = dr.permit_missing(
-                [
-                    dr.PermitItemView(c["item"].id, c["item"].kind, c["item"].required, c["present"], c["state_ok"])
-                    for c in checks
-                ]
-            )
-            if not checks:
-                raise DesignError("permit_empty", 422)
-            if missing:
-                raise DesignError(
-                    "permit_incomplete",
-                    422,
-                    violations=[{"code": "permit_item_missing", "item_id": str(m)} for m in missing],
-                )
-            if target == "submitted":
-                if permit.status == "assembling":
-                    await self._fsm(dfsm.PERMIT_FSM, permit, "ready", actor_id)
-                for c in checks:
-                    c["item"].included_revision_id = _uuid(c["current_revision_id"])
-                permit.submitted_by, permit.submitted_at = actor_id, _now()
-        elif target in self.PERMIT_DECISIONS:
-            refused = self.permit_decision_gate(permit, target, may_manage=may_manage)
-            if refused == "manage_required":
-                raise forbidden(refused)
-            if refused:
-                raise conflict(refused)
-        elif target not in ("assembling", "withdrawn"):
-            raise conflict("invalid_transition", detail=target)
+        refused = await self.permit_transition_refusal(permit, target, may_manage=may_manage)
+        if refused is not None:
+            raise refused
+        if target == "submitted":
+            if permit.status == "assembling":
+                await self._fsm(dfsm.PERMIT_FSM, permit, "ready", actor_id)
+            for c in await self.permit_check(project_id, permit):
+                c["item"].included_revision_id = _uuid(c["current_revision_id"])
+            permit.submitted_by, permit.submitted_at = actor_id, _now()
         await self._fsm(dfsm.PERMIT_FSM, permit, target, actor_id)
         await self.session.flush()
         self._publish(
             "design_management.permit.state_changed", project_id=project_id, permit_id=permit.id, state=permit.status
         )
         return permit
+
+    async def permit_transition_refusal(
+        self, permit: DesignPermit, target: str, *, may_manage: bool
+    ) -> DesignError | None:
+        """Why a permit package cannot move to ``target`` now, or ``None``.
+
+        ``submitted`` straight from ``assembling`` is one step for the user
+        (the package passes ``ready`` on the way), so it is checked as such.
+        """
+        via_ready = permit.status == "assembling" and target == "submitted"
+        if target not in dfsm.PERMIT_STATES:
+            return conflict("invalid_transition", detail=target)
+        refused = None if via_ready else _edge(dfsm.PERMIT_FSM, permit, target)
+        if refused is not None:
+            return refused
+        if target in ("ready", "submitted"):
+            checks = await self.permit_check(permit.project_id, permit)
+            if not checks:
+                return DesignError("permit_empty", 422)
+            missing = dr.permit_missing(
+                [
+                    dr.PermitItemView(c["item"].id, c["item"].kind, c["item"].required, c["present"], c["state_ok"])
+                    for c in checks
+                ]
+            )
+            if missing:
+                titles = {c["item"].id: c["item"].title for c in checks}
+                return DesignError(
+                    "permit_incomplete",
+                    422,
+                    violations=[
+                        _violation("permit_item_missing", "permit_item", m, titles.get(m) or "") for m in missing
+                    ],
+                )
+        elif target in self.PERMIT_DECISIONS:
+            gate = self.permit_decision_gate(permit, target, may_manage=may_manage)
+            if gate == "manage_required":
+                return forbidden(gate)
+            if gate:
+                return conflict(gate)
+        return None
 
     async def sync_permit(self, project_id: uuid.UUID, pid: Any, *, actor_id: uuid.UUID) -> DesignPermit:
         """States from ``submitted`` on are read from the linked review cycle; content drift is flagged."""
