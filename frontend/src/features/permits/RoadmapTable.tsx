@@ -8,17 +8,18 @@ import { useTranslation } from 'react-i18next';
 import { AlertTriangle, ClipboardList, Plus, Route, Settings2 } from 'lucide-react';
 import clsx from 'clsx';
 
-import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
 
 import { APPLICANT_ROLE, APPLICATION_STATE, REQUIREMENT_STATE, typeName, vocab, type LabelContext } from './labels';
-import { REQUIREMENT_TONE, ToneBadge, dateText } from './PermitBits';
-import { summariseRoadmap, type RoadmapRow } from './rules';
+import { GatedButton, REQUIREMENT_TONE, ToneBadge, dateText } from './PermitBits';
+import { gate, summariseRoadmap, type RoadmapRow } from './rules';
 
 export interface RoadmapTableProps {
   rows: RoadmapRow[];
   /** True once the roadmap frame document is binding: the list changes through a change request. */
   binding: boolean;
+  /** What the reader may do with the roadmap, as the server says; absent on an older answer. */
+  can?: RoadmapCan;
   labels: LabelContext;
   onOpen: (requirementId: string) => void;
   onAdd: () => void;
@@ -26,21 +27,21 @@ export interface RoadmapTableProps {
   onSettings: () => void;
 }
 
-export function RoadmapTable({ rows, binding, labels, onOpen, onAdd, onPropose, onSettings }: RoadmapTableProps) {
+export function RoadmapTable({ rows, binding, can, labels, onOpen, onAdd, onPropose, onSettings }: RoadmapTableProps) {
   const { t } = useTranslation();
   const summary = summariseRoadmap(rows);
 
   const toolbar = (
     <div className="flex flex-wrap items-center gap-2">
-      <Button size="sm" icon={<Plus size={14} />} onClick={onAdd} data-testid="roadmap-add">
+      <GatedButton gate={gate(can?.add_requirement, true)} size="sm" icon={<Plus size={14} />} onClick={onAdd} data-testid="roadmap-add">
         {t('permits.ui.roadmap.add', { defaultValue: 'Add permit' })}
-      </Button>
-      <Button size="sm" variant="secondary" icon={<Route size={14} />} onClick={onPropose} data-testid="roadmap-propose">
+      </GatedButton>
+      <GatedButton gate={gate(can?.accept_proposals, true)} size="sm" variant="secondary" icon={<Route size={14} />} onClick={onPropose} data-testid="roadmap-propose">
         {t('permits.ui.roadmap.propose', { defaultValue: 'Take from the permit route' })}
-      </Button>
-      <Button size="sm" variant="ghost" icon={<Settings2 size={14} />} onClick={onSettings} data-testid="roadmap-settings">
+      </GatedButton>
+      <GatedButton gate={gate(can?.edit, true)} size="sm" variant="ghost" icon={<Settings2 size={14} />} onClick={onSettings} data-testid="roadmap-settings">
         {t('permits.ui.roadmap.settings', { defaultValue: 'Settings' })}
-      </Button>
+      </GatedButton>
     </div>
   );
 
@@ -57,12 +58,12 @@ export function RoadmapTable({ rows, binding, labels, onOpen, onAdd, onPropose, 
           action={{ label: t('permits.ui.roadmap.add', { defaultValue: 'Add permit' }), onClick: onAdd }}
         />
         <div className="flex justify-center gap-2">
-          <Button size="sm" variant="secondary" icon={<Route size={14} />} onClick={onPropose} data-testid="roadmap-propose">
+          <GatedButton gate={gate(can?.accept_proposals, true)} size="sm" variant="secondary" icon={<Route size={14} />} onClick={onPropose} data-testid="roadmap-propose">
             {t('permits.ui.roadmap.propose', { defaultValue: 'Take from the permit route' })}
-          </Button>
-          <Button size="sm" variant="ghost" icon={<Settings2 size={14} />} onClick={onSettings} data-testid="roadmap-settings">
+          </GatedButton>
+          <GatedButton gate={gate(can?.edit, true)} size="sm" variant="ghost" icon={<Settings2 size={14} />} onClick={onSettings} data-testid="roadmap-settings">
             {t('permits.ui.roadmap.settings', { defaultValue: 'Settings' })}
-          </Button>
+          </GatedButton>
         </div>
       </div>
     );

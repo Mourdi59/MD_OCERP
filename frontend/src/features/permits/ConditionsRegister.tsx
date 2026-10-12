@@ -15,18 +15,20 @@ import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { useToastStore } from '@/stores/useToastStore';
 
-import { escalateConditions, type ConditionRow, type ConditionView } from './api';
+import { escalateConditions, type ConditionRow, type ConditionView, type RoadmapCan } from './api';
 import { AssignDialog } from './ConditionDialogs';
 import { usePermitAction } from './hooks';
 import { CONDITION_KIND, CONDITION_STATE, CONDITION_VIEW, TOPIC, TRIGGER, vocab } from './labels';
-import { CONDITION_TONE, PersonChip, Refusal, ToneBadge, dateText } from './PermitBits';
-import { inConditionView } from './rules';
+import { CONDITION_TONE, GatedButton, PersonChip, Refusal, ToneBadge, dateText } from './PermitBits';
+import { gate, inConditionView } from './rules';
 
 type View = ConditionView | 'all' | 'proposals';
 const VIEWS: View[] = ['all', 'before_start', 'before_occupation', 'ongoing_hse', 'overdue', 'mine', 'proposals'];
 
 export interface ConditionsRegisterProps {
   projectId: string;
+  /** What the reader may do across the roadmap, as the server says. */
+  can?: RoadmapCan;
   conditions: ConditionRow[];
   viewerId: string | null;
   personName: (userId: string | null | undefined) => string | null;
@@ -34,7 +36,7 @@ export interface ConditionsRegisterProps {
   onShowPermits: () => void;
 }
 
-export function ConditionsRegister({ projectId, conditions, viewerId, personName, onOpen, onShowPermits }: ConditionsRegisterProps) {
+export function ConditionsRegister({ projectId, can, conditions, viewerId, personName, onOpen, onShowPermits }: ConditionsRegisterProps) {
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
   const [view, setView] = useState<View>('all');
@@ -123,7 +125,7 @@ export function ConditionsRegister({ projectId, conditions, viewerId, personName
               {t('permits.ui.conditions.assign', { defaultValue: 'Assign owner to conditions without one' })}
             </Button>
           )}
-          <Button
+          <GatedButton gate={gate(can?.escalate, true)}
             size="sm"
             variant="secondary"
             icon={<BellRing size={14} />}
@@ -135,7 +137,7 @@ export function ConditionsRegister({ projectId, conditions, viewerId, personName
             data-testid="conditions-escalate"
           >
             {t('permits.ui.conditions.escalate', { defaultValue: 'Send overdue reminders' })}
-          </Button>
+          </GatedButton>
         </div>
       </div>
       {escalate.error && <Refusal>{escalate.error}</Refusal>}

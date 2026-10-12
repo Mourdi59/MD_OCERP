@@ -167,6 +167,7 @@ export interface CatalogueBody {
 }
 
 export interface Roadmap {
+  can?: RoadmapCan;
   id: string;
   project_id: string;
   catalogue_source: 'shipped' | 'tenant';
@@ -229,6 +230,7 @@ export interface Requirement {
 
 /** A roadmap row as the list sends it: the requirement plus what the server derived for it. */
 export interface RequirementRow extends Requirement {
+  can?: RequirementCan;
   state: RequirementState | null;
   category: string | null;
   name_key: string | null;
@@ -293,6 +295,7 @@ export interface TimelineRow {
 }
 
 export interface Application {
+  can?: ApplicationCan;
   id: string;
   requirement_id: string;
   attempt: number;
@@ -325,6 +328,7 @@ export interface ClockEvent {
 }
 
 export interface Decision {
+  can?: DecisionCan;
   id: string;
   application_id: string;
   revision: number;
@@ -466,6 +470,48 @@ export interface Permit {
   can?: PermitCan;
 }
 
+export interface RoadmapCan {
+  edit?: CanFlag;
+  add_requirement?: CanFlag;
+  accept_proposals?: CanFlag;
+  escalate?: CanFlag;
+  publish_frame_document?: CanFlag;
+}
+
+export interface RequirementCan {
+  edit?: CanFlag;
+  manage_fields?: CanFlag;
+  delete?: CanFlag;
+  set_dependencies?: CanFlag;
+  create_application?: CanFlag;
+  push_milestone?: CanFlag;
+}
+
+export interface ApplicationCan {
+  edit?: CanFlag;
+  clock?: CanFlag;
+  decide?: CanFlag;
+  transition?: Partial<Record<ApplicationTarget, CanFlag>>;
+}
+
+export interface DecisionCan {
+  correct?: CanFlag;
+  complete_register?: CanFlag;
+}
+
+export interface ConditionCan {
+  edit?: CanFlag;
+  manage_fields?: CanFlag;
+  assign?: CanFlag;
+  add_evidence?: CanFlag;
+  remove_evidence?: CanFlag;
+  submit_evidence?: CanFlag;
+  breach?: CanFlag;
+  in_compliance?: CanFlag;
+  confirm?: CanFlag;
+  discharge?: DischargeCan;
+}
+
 export interface PermitCan {
   start?: CanFlag;
   interrupt?: CanFlag;
@@ -516,6 +562,7 @@ export interface Condition {
   breach_ref_id: string | null;
   breach_note: string;
   evidence_submitted_by?: string | null;
+  can?: ConditionCan;
 }
 
 export interface ConditionRow extends Condition {
@@ -564,7 +611,6 @@ export type DischargeCan = Partial<Record<DischargeMode, DischargeGate>>;
 export interface ConditionDetail extends Condition {
   evidence: Evidence[];
   discharges: Discharge[];
-  can?: { discharge?: DischargeCan };
 }
 
 export interface ReadinessItem {

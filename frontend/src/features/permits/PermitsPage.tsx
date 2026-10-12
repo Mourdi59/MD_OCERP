@@ -45,12 +45,12 @@ import {
   useViewerId,
 } from './hooks';
 import { READINESS_STATUS, typeName, vocab, type TFn } from './labels';
-import { FormDialog, READINESS_TONE, ToneBadge } from './PermitBits';
+import { FormDialog, GatedButton, READINESS_TONE, ToneBadge } from './PermitBits';
 import { PermitsRegister } from './PermitsRegister';
 import { RequirementPanel } from './RequirementPanel';
 import { ProposeDialog, RequirementDialog, RoadmapSetupDialog } from './RoadmapDialogs';
 import { RoadmapTable } from './RoadmapTable';
-import { buildRoadmapRows } from './rules';
+import { buildRoadmapRows, gate } from './rules';
 
 type Tab = 'roadmap' | 'permits' | 'conditions' | 'checks';
 type Dialog = 'setup' | 'propose' | 'add' | 'file' | null;
@@ -273,6 +273,7 @@ export function PermitsPage() {
     ) : (
       <ConditionsRegister
         projectId={projectId}
+        can={roadmap?.can}
         conditions={conditions}
         viewerId={viewerId}
         personName={personName}
@@ -317,6 +318,7 @@ export function PermitsPage() {
       <RoadmapTable
         rows={rows}
         binding={isBinding(roadmap)}
+        can={roadmap?.can}
         labels={labels}
         onOpen={(id) => go({ requirement: id })}
         onAdd={() => setDialog('add')}
@@ -386,7 +388,7 @@ export function PermitsPage() {
                 >
                   {t('permits.ui.export_xlsx', { defaultValue: 'Spreadsheet (.xlsx)' })}
                 </Button>
-                <Button
+                <GatedButton gate={gate(roadmap?.can?.publish_frame_document, true)}
                   size="sm"
                   variant="ghost"
                   icon={<FileUp size={14} />}
@@ -397,7 +399,7 @@ export function PermitsPage() {
                   data-testid="file-register"
                 >
                   {t('permits.ui.file.open', { defaultValue: 'Store in project documents' })}
-                </Button>
+                </GatedButton>
               </span>
             )}
           </div>

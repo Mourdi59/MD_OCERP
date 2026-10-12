@@ -8,7 +8,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CalendarPlus, FilePlus2, GitBranch, Pencil, Trash2 } from 'lucide-react';
 
-import { Button } from '@/shared/ui/Button';
 import { fmtList } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 
@@ -31,6 +30,7 @@ import {
 import {
   APPLICATION_TONE,
   Fact,
+  GatedButton,
   FormDialog,
   PERMIT_TONE,
   PanelHeader,
@@ -41,7 +41,7 @@ import {
   dateText,
 } from './PermitBits';
 import { DependenciesDialog, RequirementDialog } from './RoadmapDialogs';
-import { canStartApplication, type RoadmapRow } from './rules';
+import { canStartApplication, gate, type RoadmapRow } from './rules';
 
 export interface RequirementPanelProps {
   projectId: string;
@@ -105,13 +105,13 @@ export function RequirementPanel({
         backLabel={t('permits.ui.back_to_roadmap', { defaultValue: 'Back to the roadmap' })}
         actions={
           <>
-            <Button size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setDialog('edit')} data-testid="requirement-edit">
+            <GatedButton gate={gate(r.can?.edit, true)} size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setDialog('edit')} data-testid="requirement-edit">
               {t('permits.ui.edit', { defaultValue: 'Edit' })}
-            </Button>
-            <Button size="sm" variant="secondary" icon={<GitBranch size={14} />} onClick={() => setDialog('dependencies')} data-testid="requirement-dependencies">
+            </GatedButton>
+            <GatedButton gate={gate(r.can?.set_dependencies, true)} size="sm" variant="secondary" icon={<GitBranch size={14} />} onClick={() => setDialog('dependencies')} data-testid="requirement-dependencies">
               {t('permits.ui.requirement.dependencies', { defaultValue: 'What comes first' })}
-            </Button>
-            <Button
+            </GatedButton>
+            <GatedButton gate={gate(r.can?.push_milestone, true)}
               size="sm"
               variant="ghost"
               icon={<CalendarPlus size={14} />}
@@ -123,8 +123,8 @@ export function RequirementPanel({
               data-testid="requirement-milestone"
             >
               {t('permits.ui.requirement.milestone', { defaultValue: 'Put in the schedule' })}
-            </Button>
-            <Button
+            </GatedButton>
+            <GatedButton gate={gate(r.can?.delete, true)}
               size="sm"
               variant="ghost"
               icon={<Trash2 size={14} />}
@@ -136,7 +136,7 @@ export function RequirementPanel({
               data-testid="requirement-delete"
             >
               {t('permits.ui.remove', { defaultValue: 'Remove' })}
-            </Button>
+            </GatedButton>
           </>
         }
       />
@@ -220,9 +220,9 @@ export function RequirementPanel({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-content-primary">{t('permits.ui.requirement.applications', { defaultValue: 'Applications' })}</h3>
           {r.applicable && (canOpenNew || ownPermits.length > 0) && (
-            <Button size="sm" icon={<FilePlus2 size={14} />} onClick={() => setDialog('application')} data-testid="application-open">
+            <GatedButton gate={gate(r.can?.create_application, true)} size="sm" icon={<FilePlus2 size={14} />} onClick={() => setDialog('application')} data-testid="application-open">
               {t('permits.ui.application.submit_new', { defaultValue: 'Open application' })}
-            </Button>
+            </GatedButton>
           )}
         </div>
         {applications.length === 0 ? (

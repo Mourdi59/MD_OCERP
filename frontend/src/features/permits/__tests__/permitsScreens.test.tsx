@@ -447,6 +447,25 @@ describe('ApplicationPanel', () => {
     fireEvent.click(screen.getByTestId('application-more'));
     expect(screen.getByTestId('application-step-info_requested')).toBeInTheDocument();
   });
+
+  it('follows the server flags: a refused step is disabled with its reason, an action that does not apply is left out', async () => {
+    const off = { allowed: false, applies: true, reason: 'edit_required' };
+    mocked.getApplication.mockResolvedValue({
+      ...application({ state: 'preparing', submitted_at: null }),
+      clock,
+      clock_events: [],
+      decisions: [],
+      allowed_targets: ['submitted', 'withdrawn'],
+      can: { transition: { submitted: off }, edit: off },
+    });
+    renderIn(<ApplicationPanel {...props} internalReview={false} />);
+    const step = await screen.findByTestId('application-step-submitted');
+    expect(step).toBeDisabled();
+    expect(step).toHaveAttribute('title', 'You need the right to edit permits for this.');
+    fireEvent.click(screen.getByTestId('application-more'));
+    expect(screen.getByTestId('application-edit')).toBeDisabled();
+    expect(screen.getByTestId('application-edit')).toHaveTextContent('You need the right to edit permits for this.');
+  });
 });
 
 describe('ConditionPanel', () => {

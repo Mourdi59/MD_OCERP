@@ -13,7 +13,7 @@ import { Button } from '@/shared/ui/Button';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 
-import { completeRegister, type ApplicationTarget, type ConditionRow, type Decision, type Permit } from './api';
+import { completeRegister, type ApplicationTarget, type CanFlag, type ConditionRow, type Decision, type Permit } from './api';
 import { CorrectDecisionDialog } from './CorrectDecisionDialog';
 import { ApplicationDialog, ClockEventDialog, TransitionDialog } from './ApplicationDialogs';
 import { DecisionDialog } from './DecisionDialog';
@@ -25,13 +25,14 @@ import {
   CLOCK_EVENT,
   CLOCK_REASON,
   OUTCOME,
+  errorText,
   periodText,
   vocab,
   type LabelContext,
   type TFn,
 } from './labels';
-import { APPLICATION_TONE, Fact, MoreActions, OUTCOME_TONE, PanelHeader, Refusal, ToneBadge, dateText } from './PermitBits';
-import { applicationSteps, clockEventKinds, isDecidable, isOpenApplication } from './rules';
+import { APPLICATION_TONE, Fact, GatedButton, MoreActions, OUTCOME_TONE, PanelHeader, Refusal, ToneBadge, dateText } from './PermitBits';
+import { applicationSteps, clockEventKinds, gate, isDecidable, isOpenApplication } from './rules';
 
 export interface ApplicationPanelProps {
   projectId: string;
@@ -89,6 +90,9 @@ export function ApplicationPanel({
   // One primary action: the decision once the application is with the authority, the next step before that.
   const { steps, primary: primaryStep } = applicationSteps(a, internalReview);
   const canWithdraw = a.allowed_targets.includes('withdrawn');
+  // A menu entry the server refuses for now stays visible, greyed, with the reason under it.
+  const refusedItem = (flag: CanFlag | undefined) =>
+    flag?.allowed === false ? { disabled: true, reason: flag.reason ? errorText(t as TFn, flag.reason, null) : undefined } : {};
   const clockKinds = open ? clockEventKinds(clock) : [];
   const stepLabel = (step: ApplicationTarget) =>
     step === 'preparing' && a.state === 'internal_review'
@@ -114,14 +118,19 @@ export function ApplicationPanel({
         actions={
           <>
             {decidable && (
-              <Button size="sm" icon={<Gavel size={14} />} onClick={() => setDialog('decision')} data-testid="application-decide">
+              <GatedButton gate={gate(a.can?.decide, true)} size="sm" icon={<Gavel size={14} />} onClick={() => setDialog('decision')} data-testid="application-decide">
                 {t('permits.ui.decision.submit', { defaultValue: 'Record decision' })}
-              </Button>
+              </GatedButton>
             )}
             {primaryStep && (
-              <Button size="sm" onClick={() => setTarget(primaryStep)} data-testid={`application-step-${primaryStep}`}>
+              <GatedButton
+                gate={gate(a.can?.transition?.[primaryStep], true)}
+                size="sm"
+                onClick={() => setTarget(primaryStep)}
+                data-testid={`application-step-${primaryStep}`}
+              >
                 {stepLabel(primaryStep)}
-              </Button>
+              </GatedButton>
             )}
             <MoreActions
               testId="application-more"
@@ -133,12 +142,14 @@ export function ApplicationPanel({
                     label: stepLabel(step),
                     onClick: () => setTarget(step),
                     testId: `application-step-${step}`,
+                    ...refusedItem(a.can?.transition?.[step]),
                   })),
                 {
                   id: 'edit',
                   label: t('permits.ui.application.edit', { defaultValue: 'Edit the application details' }),
                   onClick: () => setDialog('edit'),
                   testId: 'application-edit',
+                  ...refusedItem(a.can?.edit),
                 },
                 ...(canWithdraw
                   ? [
@@ -147,6 +158,7 @@ export function ApplicationPanel({
                         label: vocab(t, APPLICATION_STEP, 'withdrawn'),
                         onClick: () => setTarget('withdrawn'),
                         testId: 'application-step-withdrawn',
+                        ...refusedItem(a.can?.transition?.withdrawn),
                       },
                     ]
                   : []),
@@ -191,11 +203,11 @@ export function ApplicationPanel({
             {t('permits.ui.clock.title', { defaultValue: 'Decision period' })}
           </h3>
           {clockKinds.length > 0 && (
-            <Button size="sm" variant="secondary" icon={<TimerReset size={14} />} onClick={() => setDialog('clock')} data-testid="clock-record">
+            <GatedButton gate={gate(a.can?.clock, true)} size="sm" variant="secondary" icon={<TimerReset size={14} />} onClick={() => setDialog('clock')} data-testid="clock-record">
               {clock.stopped_now
                 ? t('permits.ui.clock.record_resume', { defaultValue: 'Record that the period runs again' })
                 : t('permits.ui.clock.record', { defaultValue: 'Record a stop or extension' })}
-            </Button>
+            </GatedButton>
           )}
         </div>
         {clock.stopped_now && (
@@ -284,9 +296,9 @@ export function ApplicationPanel({
                 </div>
                 {d.scope_note && <p className="text-content-secondary">{d.scope_note}</p>}
                 {!replaced && (
-                  <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setCorrecting(d)} data-testid="decision-correct">
+                  <GatedButton gate={gate(d.can?.correct, true)} size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setCorrecting(d)} data-testid="decision-correct">
                     {t('permits.ui.correct.open', { defaultValue: 'Correct a date or reference' })}
-                  </Button>
+                  </GatedButton>
                 )}
                 {d.conditions_pending && (
                   <div className="flex flex-wrap items-center gap-3 rounded-md bg-semantic-warning-bg px-3 py-2" data-testid="conditions-pending">
@@ -295,9 +307,9 @@ export function ApplicationPanel({
                         defaultValue: 'The conditions of this decision are not all entered yet. Readiness stays blocked until they are.',
                       })}
                     </span>
-                    <Button size="sm" variant="secondary" loading={complete.busy} onClick={() => complete.run(d.id)} data-testid="complete-register">
+                    <GatedButton gate={gate(d.can?.complete_register, true)} size="sm" variant="secondary" loading={complete.busy} onClick={() => complete.run(d.id)} data-testid="complete-register">
                       {t('permits.ui.decision.complete_register', { defaultValue: 'All conditions are entered' })}
-                    </Button>
+                    </GatedButton>
                   </div>
                 )}
               </li>

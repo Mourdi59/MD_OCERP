@@ -18,8 +18,8 @@ import { confirmProposal, removeEvidence, submitEvidence, type ConditionRow } fr
 import { ConditionDialog, DischargeDialog, EvidenceDialog, LinkRequirementDialog, OngoingDialog } from './ConditionDialogs';
 import { refusalText, useConditionDetail, useDocumentNames, usePermitAction } from './hooks';
 import { CONDITION_KIND, CONDITION_STATE, DISCHARGE_MODE, EVIDENCE_KIND, TOPIC, TRIGGER, errorText, vocab, type TFn } from './labels';
-import { CONDITION_TONE, Fact, PanelHeader, PersonChip, Refusal, ToneBadge, dateText } from './PermitBits';
-import { conditionActions, dischargeModes, type ConditionAction } from './rules';
+import { CONDITION_TONE, Fact, GatedButton, PanelHeader, PersonChip, Refusal, ToneBadge, dateText } from './PermitBits';
+import { conditionActions, dischargeModes, gate, type ConditionAction } from './rules';
 
 export interface ConditionPanelProps {
   projectId: string;
@@ -107,16 +107,16 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
           <>
             {can('confirm') && (
               <>
-                <Button size="sm" loading={confirm.busy} onClick={() => confirm.run(true)} data-testid="condition-confirm">
+                <GatedButton gate={gate(c.can?.confirm, true)} size="sm" loading={confirm.busy} onClick={() => confirm.run(true)} data-testid="condition-confirm">
                   {t('permits.ui.condition.confirm', { defaultValue: 'Confirm as a condition' })}
-                </Button>
-                <Button size="sm" variant="ghost" disabled={confirm.busy} onClick={() => confirm.run(false)} data-testid="condition-reject">
+                </GatedButton>
+                <GatedButton gate={gate(c.can?.confirm, true)} size="sm" variant="ghost" disabled={confirm.busy} onClick={() => confirm.run(false)} data-testid="condition-reject">
                   {t('permits.ui.condition.reject', { defaultValue: 'Discard the proposal' })}
-                </Button>
+                </GatedButton>
               </>
             )}
             {can('submit_evidence') && (
-              <Button
+              <GatedButton gate={gate(c.can?.submit_evidence, true)}
                 size="sm"
                 variant={c.evidence.length === 0 ? 'secondary' : 'primary'}
                 disabled={c.evidence.length === 0}
@@ -125,14 +125,14 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
                 data-testid="condition-submit-evidence"
               >
                 {t('permits.ui.condition.submit_evidence', { defaultValue: 'Submit the evidence for checking' })}
-              </Button>
+              </GatedButton>
             )}
             {can('in_compliance') && (
-              <Button size="sm" variant={c.state === 'breach' ? 'primary' : 'secondary'} onClick={() => setDialog('in_compliance')} data-testid="condition-in-compliance">
+              <GatedButton gate={gate(c.can?.in_compliance, true)} size="sm" variant={c.state === 'breach' ? 'primary' : 'secondary'} onClick={() => setDialog('in_compliance')} data-testid="condition-in-compliance">
                 {c.state === 'breach'
                   ? t('permits.ui.condition.remedied', { defaultValue: 'The breach is remedied' })
                   : t('permits.ui.ongoing.submit_compliance', { defaultValue: 'Record compliance' })}
-              </Button>
+              </GatedButton>
             )}
             {can('discharge') && (
               <Button size="sm" variant={c.state === 'evidence_submitted' ? 'primary' : 'secondary'} disabled={!!dischargeRefusal} onClick={() => setDialog('discharge')} data-testid="condition-discharge">
@@ -140,14 +140,14 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
               </Button>
             )}
             {can('breach') && (
-              <Button size="sm" variant="danger" onClick={() => setDialog('breach')} data-testid="condition-breach">
+              <GatedButton gate={gate(c.can?.breach, true)} size="sm" variant="danger" onClick={() => setDialog('breach')} data-testid="condition-breach">
                 {t('permits.ui.ongoing.submit_breach', { defaultValue: 'Raise breach' })}
-              </Button>
+              </GatedButton>
             )}
             {can('edit') && (
-              <Button size="sm" variant="ghost" onClick={() => setDialog('edit')} data-testid="condition-edit">
+              <GatedButton gate={gate(c.can?.edit, true)} size="sm" variant="ghost" onClick={() => setDialog('edit')} data-testid="condition-edit">
                 {t('permits.ui.edit', { defaultValue: 'Edit' })}
-              </Button>
+              </GatedButton>
             )}
             {can('link_requirement') && (
               <Button size="sm" variant="ghost" onClick={() => setDialog('link')} data-testid="condition-link">
@@ -222,9 +222,9 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-content-primary">{t('permits.ui.evidence.heading', { defaultValue: 'Evidence' })}</h3>
             {can('add_evidence') && (
-              <Button size="sm" variant={c.evidence.length === 0 ? 'primary' : 'secondary'} onClick={() => setDialog('evidence')} data-testid="condition-add-evidence">
+              <GatedButton gate={gate(c.can?.add_evidence, true)} size="sm" variant={c.evidence.length === 0 ? 'primary' : 'secondary'} onClick={() => setDialog('evidence')} data-testid="condition-add-evidence">
                 {t('permits.ui.evidence.submit', { defaultValue: 'Add evidence' })}
-              </Button>
+              </GatedButton>
             )}
           </div>
           {c.evidence.length === 0 ? (
@@ -251,7 +251,7 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
                     {fmtList([person(e.added_by) ?? '', e.added_at ? dateText(e.added_at) : ''])}
                   </span>
                   {canUnlink && (
-                    <Button
+                    <GatedButton gate={gate(c.can?.remove_evidence, true)}
                       size="sm"
                       variant="ghost"
                       icon={<Trash2 size={14} />}

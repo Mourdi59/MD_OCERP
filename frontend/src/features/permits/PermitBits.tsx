@@ -323,6 +323,9 @@ export interface MoreAction {
   label: string;
   onClick: () => void;
   testId?: string;
+  /** The server refuses the action for now; `reason` says why in a sentence. */
+  disabled?: boolean;
+  reason?: string;
 }
 
 /**
@@ -372,7 +375,8 @@ export function MoreActions({ items, testId }: { items: MoreAction[]; testId: st
               key={item.id}
               type="button"
               role="menuitem"
-              className="block w-full px-3 py-1.5 text-left text-sm text-content-primary hover:bg-surface-secondary"
+              className="block w-full px-3 py-1.5 text-left text-sm text-content-primary hover:bg-surface-secondary disabled:cursor-not-allowed disabled:text-content-tertiary disabled:hover:bg-transparent"
+              disabled={item.disabled}
               onClick={() => {
                 setOpen(false);
                 item.onClick();
@@ -380,6 +384,7 @@ export function MoreActions({ items, testId }: { items: MoreAction[]; testId: st
               data-testid={item.testId}
             >
               {item.label}
+              {item.disabled && item.reason && <span className="block text-xs">{item.reason}</span>}
             </button>
           ))}
         </div>
