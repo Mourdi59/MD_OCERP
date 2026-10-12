@@ -49,6 +49,7 @@ export type SoundingMethod = 'survey' | 'meeting' | 'rfi' | 'notice';
 export type CallOffMode = 'direct' | 'mini_competition';
 export type PackageAction = 'hold' | 'resume' | 'cancel';
 export type ConceptAction = 'submit' | 'return';
+export type AdvanceReleaseKind = 'gate_decision' | 'condition';
 export type ExportPart = 'concept' | 'packages' | 'shortlist' | 'schedule';
 export type ExportFormat = 'pdf' | 'xlsx';
 
@@ -118,6 +119,8 @@ export interface CatalogueSummary {
   versions: number[];
   latest_version: number | null;
   review_status: string;
+  /** The laws this catalogue brings. Empty for a company catalogue with no published version, which cannot be pinned. */
+  jurisdictions?: CatalogueJurisdiction[];
 }
 
 export interface Concept {
@@ -176,6 +179,45 @@ export interface Readiness {
   ready_for_gate: boolean;
 }
 
+/** A gate of the project, for choosing the one that releases procurement. */
+export interface GateOption {
+  code: string;
+  from_phase: string | null;
+  to_phase: string | null;
+  status: string;
+  target_date: string | null;
+  sort_order: number;
+  /** The gate the governance catalogue tags as the one that releases procurement. */
+  tagged_release_gate: boolean;
+  selected: boolean;
+}
+
+/** An act of the release gate that can release an advance package. */
+export interface AdvanceRelease {
+  kind: AdvanceReleaseKind;
+  id: string;
+  gate_code: string;
+  label: string;
+  status: string;
+  date: string | null;
+  /** False for an open condition: it may be named, but the package then stays unreleased. */
+  releases: boolean;
+}
+
+/** A tender package of the project that an award package can be linked to. */
+export interface TenderPackageOption {
+  id: string;
+  name: string;
+  status: string;
+  deadline: string | null;
+  linked_package_id: string | null;
+  linked_package_code: string | null;
+  can: { link: Capability };
+}
+
+/** A list that also says what the caller may do on it as a whole. */
+export type PageWithCan<T, K extends string> = Page<T> & { can: Record<K, Capability> };
+
 export interface ContractPackage {
   id: string;
   code: string;
@@ -211,6 +253,9 @@ export interface AwardPackage {
   award_activity_id: string | null;
   state: PackageState;
   notes: string;
+  /** The act of the release gate that releases this advance package (see `listAdvanceReleases`). */
+  advance_release_kind?: AdvanceReleaseKind | null;
+  advance_release_id?: string | null;
   /** Only on the board: the value the threshold is tested against when lots are added up. */
   aggregated_value?: string | null;
 }
@@ -243,6 +288,15 @@ export interface PackageView {
     aggregated_value: string | null;
   } | null;
   schedule: { award_date: string | null; start_date: string | null; procedure_days: number } | null;
+  /** What the caller may do with this package now. `create_execution` also answers for linking a tender package. */
+  can: {
+    edit: Capability;
+    hold: Capability;
+    resume: Capability;
+    cancel: Capability;
+    confirm_shortlist: Capability;
+    create_execution: Capability;
+  };
 }
 
 export interface PackageInput {
@@ -260,6 +314,9 @@ export interface PackageInput {
   lead_time_days?: number | null;
   prequal_profile_id?: string | null;
   notes?: string;
+  /** Set or cleared together, from one item of `listAdvanceReleases`. */
+  advance_release_kind?: AdvanceReleaseKind | null;
+  advance_release_id?: string | null;
 }
 
 export interface ProcedureOption {
@@ -301,6 +358,9 @@ export interface PrequalProfile {
   criteria: ProfileCriterion[];
   pass_mark: string;
   validity_months: number;
+  /** The concept or a package uses it, so it cannot be deleted. */
+  in_use: boolean;
+  can: { edit: Capability; delete: Capability };
 }
 
 export interface ProfileInput {
@@ -367,6 +427,16 @@ export interface CandidateMatrix {
   items: Candidate[];
   total: number;
   findings: Finding[];
+  package_state: PackageState;
+  can: {
+    add: Capability;
+    score: Capability;
+    reference: Capability;
+    /** Moving a company between the long, short and excluded lists. */
+    set_list: Capability;
+    delete: Capability;
+    confirm_shortlist: Capability;
+  };
 }
 
 export interface CandidateInput {
@@ -463,6 +533,8 @@ export interface Framework {
   call_off_mode: CallOffMode;
   source_procedure_ref: string;
   state: FrameworkState;
+  /** `transitions` lists the states this caller may move the agreement to; empty when none. */
+  can: { edit: Capability; transitions: FrameworkTarget[] };
 }
 
 export interface FrameworkInput {
@@ -555,6 +627,9 @@ export const procurementKeys = {
   soundings: (projectId: string) => ['procurement-concept', projectId, 'soundings'] as const,
   schedule: (projectId: string) => ['procurement-concept', projectId, 'schedule'] as const,
   projectFrameworks: (projectId: string) => ['procurement-concept', projectId, 'frameworks'] as const,
+  gates: (projectId: string) => ['procurement-concept', projectId, 'gates'] as const,
+  advanceReleases: (projectId: string) => ['procurement-concept', projectId, 'advance-releases'] as const,
+  tenderPackages: (projectId: string) => ['procurement-concept', projectId, 'tender-packages'] as const,
   catalogues: ['procurement-concept-company', 'catalogues'] as const,
   frameworks: ['procurement-concept-company', 'frameworks'] as const,
   ledger: (frameworkId: string) => ['procurement-concept-company', 'ledger', frameworkId] as const,
@@ -619,10 +694,27 @@ export function createExecution(
   return apiPost<ExecutionResult>(`${p(projectId)}/packages/${packageId}/execution`, body);
 }
 
+/** Link an existing tender package of the project as the vehicle of this award. Nothing is created. */
+export function linkExecution(projectId: string, packageId: string, tenderPackageId: string): Promise<ExecutionResult> {
+  return apiPost<ExecutionResult>(`${p(projectId)}/packages/${packageId}/execution/link`, { tender_package_id: tenderPackageId });
+}
+
+export function listTenderPackages(projectId: string): Promise<Page<TenderPackageOption>> {
+  return apiGet<Page<TenderPackageOption>>(`${p(projectId)}/tender-packages`);
+}
+
+export function listGates(projectId: string): Promise<Page<GateOption>> {
+  return apiGet<Page<GateOption>>(`${p(projectId)}/gates`);
+}
+
+export function listAdvanceReleases(projectId: string): Promise<Page<AdvanceRelease>> {
+  return apiGet<Page<AdvanceRelease>>(`${p(projectId)}/advance-releases`);
+}
+
 /* ── Prequalification ─────────────────────────────────────────────────── */
 
-export function listProfiles(projectId: string): Promise<Page<PrequalProfile>> {
-  return apiGet<Page<PrequalProfile>>(`${p(projectId)}/prequal-profiles`);
+export function listProfiles(projectId: string): Promise<PageWithCan<PrequalProfile, 'create'>> {
+  return apiGet<PageWithCan<PrequalProfile, 'create'>>(`${p(projectId)}/prequal-profiles`);
 }
 
 export function createProfile(projectId: string, body: ProfileInput): Promise<PrequalProfile> {
@@ -683,8 +775,8 @@ export function confirmShortlist(projectId: string, packageId: string): Promise<
 
 /* ── Market sounding ──────────────────────────────────────────────────── */
 
-export function listSoundings(projectId: string): Promise<Page<MarketSounding>> {
-  return apiGet<Page<MarketSounding>>(`${p(projectId)}/market-soundings`);
+export function listSoundings(projectId: string): Promise<PageWithCan<MarketSounding, 'create' | 'edit' | 'delete'>> {
+  return apiGet<PageWithCan<MarketSounding, 'create' | 'edit' | 'delete'>>(`${p(projectId)}/market-soundings`);
 }
 
 export function createSounding(projectId: string, body: SoundingInput): Promise<MarketSounding> {
@@ -739,8 +831,8 @@ export function listProjectFrameworks(projectId: string): Promise<Page<Framework
   return apiGet<Page<Framework>>(`${p(projectId)}/frameworks`);
 }
 
-export function listFrameworks(): Promise<Page<Framework>> {
-  return apiGet<Page<Framework>>(`${BASE}/frameworks`);
+export function listFrameworks(): Promise<PageWithCan<Framework, 'create'>> {
+  return apiGet<PageWithCan<Framework, 'create'>>(`${BASE}/frameworks`);
 }
 
 export function createFramework(body: FrameworkInput): Promise<Framework> {

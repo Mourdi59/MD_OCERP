@@ -22,6 +22,7 @@ import {
   patchFramework,
   setFrameworkState,
   type CallOffMode,
+  type Capability,
   type Framework,
   type FrameworkTarget,
   type PackageKind,
@@ -37,12 +38,12 @@ import {
   type KeyText,
   type LabelContext,
 } from './labels';
-import { FIELD_CLASS, FRAMEWORK_TONE, Field, Money, ProblemList, RefusalBox, ToneBadge } from './ProcurementBits';
+import { FIELD_CLASS, FRAMEWORK_TONE, Field, Money, ProblemList, ReasonedButton, RefusalBox, ToneBadge } from './ProcurementBits';
 import {
   FRAMEWORK_PROBLEM,
   calledOffShare,
+  capVerdict,
   frameworkProblems,
-  frameworkTargets,
   toFrameworkInput,
   toFrameworkPatch,
   type FrameworkDraft,
@@ -60,11 +61,13 @@ export const FRAMEWORK_MOVE: Record<FrameworkTarget, KeyText> = {
 
 export interface FrameworksProps {
   frameworks: Framework[];
+  /** Whether the reader may add an agreement, from the list. */
+  canCreate?: Capability;
   labels: LabelContext;
   onChanged: () => void;
 }
 
-export function Frameworks({ frameworks, labels, onChanged }: FrameworksProps) {
+export function Frameworks({ frameworks, canCreate, labels, onChanged }: FrameworksProps) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState<Framework | 'new' | null>(null);
   const [ledgerOf, setLedgerOf] = useState<string | null>(null);
@@ -85,9 +88,14 @@ export function Frameworks({ frameworks, labels, onChanged }: FrameworksProps) {
   };
 
   const addButton = (
-    <Button icon={<Plus size={14} />} onClick={() => setEditing('new')} data-testid="framework-add">
+    <ReasonedButton
+      verdict={capVerdict(canCreate, 'permission_denied')}
+      icon={<Plus size={14} />}
+      onClick={() => setEditing('new')}
+      data-testid="framework-add"
+    >
       {t('procurement_concept.ui.framework.add', { defaultValue: 'Add framework agreement' })}
-    </Button>
+    </ReasonedButton>
   );
 
   return (
@@ -171,10 +179,19 @@ export function Frameworks({ frameworks, labels, onChanged }: FrameworksProps) {
                     >
                       {t('procurement_concept.ui.framework.ledger', { defaultValue: 'Call-offs' })}
                     </Button>
-                    <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setEditing(f)} data-testid="framework-edit">
+                    <ReasonedButton
+                      quiet
+                      verdict={capVerdict(f.can?.edit, 'permission_denied')}
+                      size="sm"
+                      variant="ghost"
+                      icon={<Pencil size={14} />}
+                      onClick={() => setEditing(f)}
+                      data-testid="framework-edit"
+                    >
                       {t('procurement_concept.ui.prequal.edit', { defaultValue: 'Change' })}
-                    </Button>
-                    {frameworkTargets(f.state).map((target) => (
+                    </ReasonedButton>
+                    {/* The moves the server allows this reader from the state the agreement is in. */}
+                    {(f.can?.transitions ?? []).map((target) => (
                       <Button
                         key={target}
                         size="sm"

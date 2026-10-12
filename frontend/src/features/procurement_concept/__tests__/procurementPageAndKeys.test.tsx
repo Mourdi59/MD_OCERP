@@ -26,6 +26,9 @@ vi.mock('../api', async (importOriginal) => {
     listProfiles: vi.fn(),
     listFrameworks: vi.fn(),
     listProjectFrameworks: vi.fn(),
+    listGates: vi.fn(),
+    listTenderPackages: vi.fn(),
+    listAdvanceReleases: vi.fn(),
     listSoundings: vi.fn(),
     getSchedule: vi.fn(),
     listCandidates: vi.fn(),
@@ -47,6 +50,7 @@ import {
   blockingFinding,
   can,
   catalogue,
+  catalogueRow,
   concept,
   framework,
   matrix,
@@ -90,18 +94,11 @@ function loaded() {
 describe('ProcurementConceptPage states', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mocked.listCatalogues.mockResolvedValue(
+    mocked.listCatalogues.mockResolvedValue(page([catalogueRow]));
+    mocked.listGates.mockResolvedValue(
       page([
-        {
-          source: 'shipped' as const,
-          id: 'eu',
-          code: 'eu',
-          name: { key: 'procurement_concept.catalogue.eu.name', text: null },
-          state: 'published',
-          versions: [1],
-          latest_version: 1,
-          review_status: 'unconfirmed',
-        },
+        { code: 'g2', from_phase: 'p2', to_phase: 'p3', status: 'open', target_date: null, sort_order: 2, tagged_release_gate: false, selected: false },
+        { code: 'g3', from_phase: 'p3', to_phase: 'p4', status: 'open', target_date: null, sort_order: 3, tagged_release_gate: true, selected: true },
       ]),
     );
   });
@@ -119,25 +116,14 @@ describe('ProcurementConceptPage states', () => {
     expect(mocked.listFindings).not.toHaveBeenCalled();
   });
 
-  it('starts the concept with the catalogue, then asks for the law and the client it brings', async () => {
-    mocked.getConcept.mockRejectedValueOnce(new ApiError(404, 'Not Found', { detail: { code: 'concept_missing', message: 'none' } }));
-    loaded();
-    mocked.getConcept.mockResolvedValue(concept({ jurisdiction: 'none', client_type: 'private', public_client: false }));
+  it('starts the concept with the laws and client types the chosen catalogue brings', async () => {
+    mocked.getConcept.mockRejectedValue(new ApiError(404, 'Not Found', { detail: { code: 'concept_missing', message: 'none' } }));
     mocked.setConcept.mockResolvedValue(concept());
     renderPage();
     fireEvent.click(await screen.findByTestId('concept-start'));
-    const select = (await screen.findByLabelText('Rule catalogue')) as HTMLSelectElement;
-    await waitFor(() => expect(select.options.length).toBe(1));
-    // The laws are the catalogue's own, so they are not offered before it is pinned.
-    expect(screen.getByTestId('concept-rules-next')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Procurement law')).toBeNull();
-    fireEvent.click(screen.getByTestId('concept-save'));
-    await waitFor(() => expect(mocked.setConcept).toHaveBeenCalledTimes(1));
-    expect(mocked.setConcept.mock.calls[0]).toEqual(['p1', { catalogue_source: 'shipped', catalogue_id: 'eu', public_client: false }]);
-
-    // The dialog stays and now offers what the pinned catalogue knows.
     const law = (await screen.findByLabelText('Procurement law')) as HTMLSelectElement;
-    expect([...law.options].map((o) => o.value)).toEqual(['none', 'eu']);
+    await waitFor(() => expect([...law.options].map((o) => o.value)).toEqual(['none', 'eu']));
+    // Under no public procurement law there is no public client to choose.
     expect(screen.getByTestId('concept-public-client')).toBeDisabled();
     fireEvent.change(law, { target: { value: 'eu' } });
     fireEvent.click(screen.getByTestId('concept-public-client'));
@@ -145,13 +131,35 @@ describe('ProcurementConceptPage states', () => {
     expect([...kind.options].map((o) => o.value)).toEqual(['central', 'sub_central', 'utility']);
     fireEvent.change(kind, { target: { value: 'utility' } });
     fireEvent.change(screen.getByLabelText('VAT rate in percent'), { target: { value: '19' } });
+    // A new concept does not name the gate: who may is known only once the concept exists.
+    expect(screen.queryByLabelText('Gate that releases procurement')).toBeNull();
     fireEvent.click(screen.getByTestId('concept-save'));
-    await waitFor(() => expect(mocked.setConcept).toHaveBeenCalledTimes(2));
-    expect(mocked.setConcept.mock.calls[1]).toEqual([
+    await waitFor(() => expect(mocked.setConcept).toHaveBeenCalledTimes(1));
+    expect(mocked.setConcept.mock.calls[0]).toEqual([
       'p1',
-      { jurisdiction: 'eu', public_client: true, client_type: 'utility', vat_rate_pct: '19' },
+      { catalogue_source: 'shipped', catalogue_id: 'eu', jurisdiction: 'eu', public_client: true, client_type: 'utility', vat_rate_pct: '19' },
     ]);
-    await waitFor(() => expect(screen.queryByTestId('concept-dialog')).toBeNull());
+    expect(mocked.listGates).not.toHaveBeenCalled();
+  });
+
+  it('names the release gate from the gates of the project', async () => {
+    loaded();
+    mocked.setConcept.mockResolvedValue(concept());
+    renderPage('/projects/p1/procurement-concept?tab=record');
+    fireEvent.click(await screen.findByTestId('concept-edit'));
+    const gate = (await screen.findByLabelText('Gate that releases procurement')) as HTMLSelectElement;
+    await waitFor(() => expect([...gate.options].map((o) => o.value)).toEqual(['', 'g2', 'g3']));
+    expect(gate.options[0]!.textContent).toContain('g3');
+    fireEvent.change(gate, { target: { value: 'g2' } });
+    fireEvent.click(screen.getByTestId('concept-save'));
+    await waitFor(() => expect(mocked.setConcept).toHaveBeenCalledTimes(1));
+    expect(mocked.setConcept.mock.calls[0]![1]).toEqual({
+      jurisdiction: 'eu',
+      public_client: true,
+      client_type: 'sub_central',
+      vat_rate_pct: '0',
+      release_gate_code: 'g2',
+    });
   });
 
   it('keeps the release gate closed, with the reason, for who may not name it', async () => {

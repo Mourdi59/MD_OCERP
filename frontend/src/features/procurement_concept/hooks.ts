@@ -21,8 +21,11 @@ import {
   listCandidates,
   listCatalogues,
   listFindings,
+  listAdvanceReleases,
   listFrameworks,
+  listGates,
   listProjectFrameworks,
+  listTenderPackages,
   listPackages,
   listProfiles,
   listSoundings,
@@ -95,7 +98,7 @@ export function useThreshold(projectId: string, packageId: string | null) {
 export function useProfiles(projectId: string, enabled = true) {
   return useQuery({
     queryKey: procurementKeys.profiles(projectId),
-    queryFn: () => listProfiles(projectId).then((p) => p.items),
+    queryFn: () => listProfiles(projectId),
     enabled: !!projectId && enabled,
   });
 }
@@ -111,7 +114,7 @@ export function useCandidates(projectId: string, packageId: string | null) {
 export function useSoundings(projectId: string, enabled = true) {
   return useQuery({
     queryKey: procurementKeys.soundings(projectId),
-    queryFn: () => listSoundings(projectId).then((p) => p.items),
+    queryFn: () => listSoundings(projectId),
     enabled: !!projectId && enabled,
   });
 }
@@ -127,7 +130,7 @@ export function useSchedule(projectId: string, enabled = true) {
 export function useFrameworks(enabled = true) {
   return useQuery({
     queryKey: procurementKeys.frameworks,
-    queryFn: () => listFrameworks().then((p) => p.items),
+    queryFn: () => listFrameworks(),
     enabled,
   });
 }
@@ -137,6 +140,33 @@ export function useProjectFrameworks(projectId: string, enabled = true) {
   return useQuery({
     queryKey: procurementKeys.projectFrameworks(projectId),
     queryFn: () => listProjectFrameworks(projectId).then((p) => p.items),
+    enabled: !!projectId && enabled,
+  });
+}
+
+/** The gates of the project, for naming the one that releases procurement. */
+export function useGates(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: procurementKeys.gates(projectId),
+    queryFn: () => listGates(projectId).then((p) => p.items),
+    enabled: !!projectId && enabled,
+  });
+}
+
+/** The acts of the release gate that can release an advance package. */
+export function useAdvanceReleases(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: procurementKeys.advanceReleases(projectId),
+    queryFn: () => listAdvanceReleases(projectId).then((p) => p.items),
+    enabled: !!projectId && enabled,
+  });
+}
+
+/** The tender packages of the project an award package can be linked to. */
+export function useTenderPackages(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: procurementKeys.tenderPackages(projectId),
+    queryFn: () => listTenderPackages(projectId).then((p) => p.items),
     enabled: !!projectId && enabled,
   });
 }

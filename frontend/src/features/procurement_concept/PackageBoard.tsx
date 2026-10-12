@@ -13,9 +13,11 @@ import { Boxes, Info } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
+import { WideModal } from '@/shared/ui/WideModal';
 import { fmtDate } from '@/shared/lib/formatters';
 
-import { createExecution, setPackageState, type Concept, type PackageAction, type PackageView } from './api';
+import { createExecution, linkExecution, setPackageState, type Concept, type PackageAction, type PackageView } from './api';
+import { useTenderPackages } from './hooks';
 import {
   PACKAGE_KIND,
   PACKAGE_STATE,
@@ -25,9 +27,10 @@ import {
   vocab,
   type KeyText,
   type LabelContext,
+  type TFn,
 } from './labels';
 import { Money, PACKAGE_TONE, ReasonedButton, RefusalBox, THRESHOLD_TONE, ToneBadge } from './ProcurementBits';
-import { editVerdict, packageMoves, steerVerdict } from './rules';
+import { editVerdict, executionVehicle, packageMove } from './rules';
 
 type Pending = { id: string; kind: 'cancel' | 'bid_package' | 'rfq' } | null;
 
@@ -67,8 +70,8 @@ export interface PackageBoardProps {
 export function PackageBoard({ projectId, concept, packages, labels, onPlan, onCandidates, onChanged }: PackageBoardProps) {
   const { t } = useTranslation();
   const [pending, setPending] = useState<Pending>(null);
+  const [linking, setLinking] = useState<PackageView | null>(null);
   const edit = editVerdict(concept);
-  const steer = steerVerdict(concept);
 
   const move = useMutation({
     mutationFn: (m: { id: string; action: PackageAction | 'bid_package' | 'rfq' }) =>
@@ -125,7 +128,13 @@ export function PackageBoard({ projectId, concept, packages, labels, onPlan, onC
             {packages.map((view) => {
               const cp = view.contract_package;
               const a = view.award;
-              const moves = packageMoves(view);
+              // Which buttons a row carries, and why one is off, come from the flags the server sent with it.
+              const planMove = packageMove(view, 'edit');
+              const holdMove = packageMove(view, 'hold');
+              const resumeMove = packageMove(view, 'resume');
+              const cancelMove = packageMove(view, 'cancel');
+              const executionMove = packageMove(view, 'create_execution');
+              const vehicle = executionVehicle(view);
               const confirm = pending?.id === cp.id ? pending : null;
               return (
                 <tr key={cp.id} className="border-t border-border-light align-top" data-testid="package-row" data-package={cp.code}>
@@ -216,35 +225,40 @@ export function PackageBoard({ projectId, concept, packages, labels, onPlan, onC
                       </div>
                     ) : (
                       <div className="flex flex-wrap justify-end gap-1.5">
-                        {moves.edit && (
-                          <ReasonedButton quiet size="sm" variant={a ? 'secondary' : 'primary'} verdict={edit} onClick={() => onPlan(cp.id)} data-testid="package-plan">
+                        {planMove.show && (
+                          <ReasonedButton quiet size="sm" variant={a ? 'secondary' : 'primary'} verdict={planMove.verdict} onClick={() => onPlan(cp.id)} data-testid="package-plan">
                             {a
                               ? t('procurement_concept.ui.package.plan_edit', { defaultValue: 'Change plan' })
                               : t('procurement_concept.ui.package.plan_first', { defaultValue: 'Plan award' })}
                           </ReasonedButton>
                         )}
-                        {moves.candidates && (
+                        {a && (
                           <Button size="sm" variant="ghost" onClick={() => onCandidates(cp.id)} data-testid="package-candidates">
                             {t('procurement_concept.ui.package.candidates', { defaultValue: 'Candidates' })}
                           </Button>
                         )}
-                        {moves.execution && (
-                          <ReasonedButton quiet size="sm" variant="ghost" verdict={steer} onClick={() => start({ id: cp.id, kind: moves.execution as 'bid_package' | 'rfq' })} data-testid="package-execution">
-                            {vocab(labels.t, PACKAGE_ACTION, moves.execution)}
-                          </ReasonedButton>
+                        {executionMove.show && (
+                          <>
+                            <ReasonedButton quiet size="sm" variant="ghost" verdict={executionMove.verdict} onClick={() => start({ id: cp.id, kind: vehicle })} data-testid="package-execution">
+                              {vocab(labels.t, PACKAGE_ACTION, vehicle)}
+                            </ReasonedButton>
+                            <ReasonedButton quiet size="sm" variant="ghost" verdict={executionMove.verdict} onClick={() => setLinking(view)} data-testid="package-link">
+                              {t('procurement_concept.actions.link_tender_package', { defaultValue: 'Link existing tender package' })}
+                            </ReasonedButton>
+                          </>
                         )}
-                        {moves.hold && (
-                          <ReasonedButton quiet size="sm" variant="ghost" verdict={steer} loading={move.isPending && move.variables?.id === cp.id} onClick={() => move.mutate({ id: cp.id, action: 'hold' })} data-testid="package-hold">
+                        {holdMove.show && (
+                          <ReasonedButton quiet size="sm" variant="ghost" verdict={holdMove.verdict} loading={move.isPending && move.variables?.id === cp.id} onClick={() => move.mutate({ id: cp.id, action: 'hold' })} data-testid="package-hold">
                             {vocab(labels.t, PACKAGE_ACTION, 'hold')}
                           </ReasonedButton>
                         )}
-                        {moves.resume && (
-                          <ReasonedButton quiet size="sm" variant="secondary" verdict={steer} loading={move.isPending && move.variables?.id === cp.id} onClick={() => move.mutate({ id: cp.id, action: 'resume' })} data-testid="package-resume">
+                        {resumeMove.show && (
+                          <ReasonedButton quiet size="sm" variant="secondary" verdict={resumeMove.verdict} loading={move.isPending && move.variables?.id === cp.id} onClick={() => move.mutate({ id: cp.id, action: 'resume' })} data-testid="package-resume">
                             {vocab(labels.t, PACKAGE_ACTION, 'resume')}
                           </ReasonedButton>
                         )}
-                        {moves.cancel && (
-                          <ReasonedButton quiet size="sm" variant="ghost" verdict={steer} onClick={() => start({ id: cp.id, kind: 'cancel' })} data-testid="package-cancel">
+                        {cancelMove.show && (
+                          <ReasonedButton quiet size="sm" variant="ghost" verdict={cancelMove.verdict} onClick={() => start({ id: cp.id, kind: 'cancel' })} data-testid="package-cancel">
                             {vocab(labels.t, PACKAGE_ACTION, 'cancel')}
                           </ReasonedButton>
                         )}
@@ -264,6 +278,108 @@ export function PackageBoard({ projectId, concept, packages, labels, onPlan, onC
           </tbody>
         </table>
       </div>
+      {linking && (
+        <LinkTenderDialog projectId={projectId} view={linking} onClose={() => setLinking(null)} onLinked={onChanged} />
+      )}
     </div>
+  );
+}
+
+/** Link a tender package that already exists in the project, instead of creating a new vehicle. */
+function LinkTenderDialog({
+  projectId,
+  view,
+  onClose,
+  onLinked,
+}: {
+  projectId: string;
+  view: PackageView;
+  onClose: () => void;
+  onLinked: () => void;
+}) {
+  const { t } = useTranslation();
+  const optionsQ = useTenderPackages(projectId);
+  const [picked, setPicked] = useState('');
+  const cp = view.contract_package;
+  const options = optionsQ.data ?? [];
+
+  const link = useMutation({
+    mutationFn: () => linkExecution(projectId, cp.id, picked),
+    onSuccess: () => {
+      onLinked();
+      onClose();
+    },
+  });
+
+  return (
+    <WideModal
+      open
+      onClose={onClose}
+      busy={link.isPending}
+      size="lg"
+      testId="link-tender-dialog"
+      title={t('procurement_concept.ui.link.title', { defaultValue: 'Link a tender package to {{code}}', code: cp.code })}
+      subtitle={t('procurement_concept.ui.link.subtitle', {
+        defaultValue: 'Use this when the tender package already exists. Nothing is created and its data stays as it is.',
+      })}
+      footer={
+        <div className="flex w-full flex-wrap items-center justify-end gap-3">
+          <Button variant="ghost" onClick={onClose} disabled={link.isPending}>
+            {t('procurement_concept.ui.cancel', { defaultValue: 'Cancel' })}
+          </Button>
+          <Button loading={link.isPending} disabled={!picked} onClick={() => link.mutate()} data-testid="link-tender-save">
+            {t('procurement_concept.actions.link_tender_package', { defaultValue: 'Link existing tender package' })}
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <RefusalBox error={link.error ?? optionsQ.error} />
+        {optionsQ.isLoading ? (
+          <p className="text-sm text-content-tertiary">
+            {t('procurement_concept.ui.link.loading', { defaultValue: 'Looking up the tender packages of this project' })}
+          </p>
+        ) : options.length === 0 && !optionsQ.isError ? (
+          <p className="text-sm text-content-secondary" data-testid="link-tender-empty">
+            {t('procurement_concept.ui.link.empty', {
+              defaultValue: 'This project has no tender package yet. Create the bid package from the board instead.',
+            })}
+          </p>
+        ) : (
+          <ul className="space-y-1.5" role="radiogroup" aria-label={t('procurement_concept.ui.link.pick', { defaultValue: 'Tender package' })}>
+            {options.map((o) => {
+              const off = !o.can.link.allowed;
+              return (
+                <li key={o.id}>
+                  <label
+                    className="flex items-start gap-2 rounded-lg border border-border-light p-2.5 text-sm"
+                    data-testid="link-tender-option"
+                    data-allowed={off ? 'no' : 'yes'}
+                  >
+                    <input type="radio" name="tender-package" className="mt-1" disabled={off} checked={picked === o.id} onChange={() => setPicked(o.id)} />
+                    <span className="min-w-0">
+                      <span className="font-medium text-content-primary">{o.name}</span>
+                      {o.deadline && (
+                        <span className="ml-2 text-xs text-content-tertiary">
+                          {t('procurement_concept.ui.link.deadline', { defaultValue: 'due {{date}}', date: fmtDate(o.deadline) })}
+                        </span>
+                      )}
+                      {o.linked_package_code && (
+                        <span className="block text-xs text-content-tertiary">
+                          {t('procurement_concept.ui.link.taken', { defaultValue: 'Already serves {{code}}', code: o.linked_package_code })}
+                        </span>
+                      )}
+                      {off && !o.linked_package_code && (
+                        <span className="block text-xs text-content-tertiary">{errorText(t as TFn, o.can.link.reason ?? 'permission_denied')}</span>
+                      )}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </WideModal>
   );
 }

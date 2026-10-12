@@ -147,8 +147,6 @@ export function ProcurementConceptPage() {
   const concept = conceptQ.data ?? null;
   const conceptDialogNode = conceptDialog && (
     <ConceptDialog
-      // A newly pinned catalogue brings other laws, so the form starts over from what the server sent.
-      key={concept ? `${concept.catalogue_source}:${concept.catalogue_id}:${concept.catalogue_version}` : 'new'}
       open
       onClose={() => setConceptDialog(false)}
       projectId={projectId}
@@ -212,12 +210,12 @@ export function ProcurementConceptPage() {
   } else if (tab === 'frameworks') {
     body = loading(frameworksQ) ??
       failed(frameworksQ, t('procurement_concept.ui.page.frameworks_failed', { defaultValue: 'The framework agreements could not be loaded' })) ?? (
-        <Frameworks frameworks={frameworksQ.data ?? []} labels={labels} onChanged={invalidate} />
+        <Frameworks frameworks={frameworksQ.data?.items ?? []} canCreate={frameworksQ.data?.can?.create} labels={labels} onChanged={invalidate} />
       );
   } else if (tab === 'market') {
     body = loading(soundingsQ) ??
       failed(soundingsQ, t('procurement_concept.ui.page.soundings_failed', { defaultValue: 'The market soundings could not be loaded' })) ?? (
-        <MarketSoundings projectId={projectId} soundings={soundingsQ.data ?? []} packages={packages} labels={labels} onChanged={invalidate} />
+        <MarketSoundings projectId={projectId} soundings={soundingsQ.data?.items ?? []} can={soundingsQ.data?.can} packages={packages} labels={labels} onChanged={invalidate} />
       );
   } else if (tab === 'schedule') {
     body =
@@ -239,7 +237,8 @@ export function ProcurementConceptPage() {
         projectId={projectId}
         concept={concept}
         packages={packages}
-        profiles={profilesQ.data ?? []}
+        profiles={profilesQ.data?.items ?? []}
+        profileCreate={profilesQ.data?.can?.create}
         catalogue={catalogueQ.data ?? null}
         packageId={params.get('package')}
         labels={labels}
@@ -311,7 +310,7 @@ export function ProcurementConceptPage() {
           view={planningView}
           catalogue={catalogueQ.data ?? null}
           frameworks={callOffQ.data ?? []}
-          profiles={profilesQ.data ?? []}
+          profiles={profilesQ.data?.items ?? []}
           labels={labels}
           onSaved={(first) => {
             invalidate();

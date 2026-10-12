@@ -25,7 +25,7 @@ import {
   type SplitBasis,
   type TenderBasis,
 } from './api';
-import { useThreshold } from './hooks';
+import { useAdvanceReleases, useThreshold } from './hooks';
 import {
   PICKER_REASON,
   SPLIT_BASIS,
@@ -75,6 +75,9 @@ export function PackageDialog({
   // The check needs the package to exist on the server with its value.
   const thresholdQ = useThreshold(projectId, view.award ? cp.id : null);
   const check = thresholdQ.data ?? null;
+  // The acts of the release gate, asked for only once the package is marked as an advance package.
+  const releasesQ = useAdvanceReleases(projectId, draft.is_advance);
+  const releases = releasesQ.data ?? [];
 
   const options: ProcedureOption[] =
     check?.procedures ??
@@ -424,6 +427,43 @@ export function PackageDialog({
                 value={draft.advance_reason}
                 onChange={(e) => set('advance_reason', e.target.value)}
               />
+            </Field>
+          )}
+          {draft.is_advance && (
+            <Field
+              className="mt-2"
+              label={t('procurement_concept.ui.package.advance_release', { defaultValue: 'What releases it' })}
+              htmlFor="pk-advance-release"
+              hint={
+                releases.length === 0 && !releasesQ.isLoading
+                  ? t('procurement_concept.ui.package.advance_release_none', {
+                      defaultValue: 'The release gate has no decision and no condition yet. Until one releases this package it cannot go to tender early.',
+                    })
+                  : t('procurement_concept.ui.package.advance_release_hint', {
+                      defaultValue: 'A decision of the release gate, or a condition it set. An open condition can be named; the package is released once it is cleared.',
+                    })
+              }
+            >
+              <select
+                id="pk-advance-release"
+                className={FIELD_CLASS}
+                value={draft.advance_release}
+                onChange={(e) => set('advance_release', e.target.value)}
+              >
+                <option value="">{t('procurement_concept.ui.package.advance_release_unset', { defaultValue: 'Not released yet' })}</option>
+                {draft.advance_release && !releases.some((r) => `${r.kind}:${r.id}` === draft.advance_release) && (
+                  <option value={draft.advance_release}>
+                    {t('procurement_concept.ui.package.advance_release_kept', { defaultValue: 'The release named before' })}
+                  </option>
+                )}
+                {releases.map((r) => (
+                  <option key={`${r.kind}:${r.id}`} value={`${r.kind}:${r.id}`}>
+                    {r.releases
+                      ? r.label
+                      : t('procurement_concept.ui.package.advance_release_open', { defaultValue: '{{label}} (still open)', label: r.label })}
+                  </option>
+                ))}
+              </select>
             </Field>
           )}
           <Field className="mt-3" label={t('procurement_concept.ui.package.notes', { defaultValue: 'Notes' })} htmlFor="pk-notes">

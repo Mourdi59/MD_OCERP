@@ -22,6 +22,7 @@ import {
   deleteSounding,
   localToday,
   patchSounding,
+  type Capability,
   type CapacitySignal,
   type MarketSounding,
   type PackageView,
@@ -30,8 +31,8 @@ import {
 } from './api';
 import { useRefusalToast } from './hooks';
 import { CAPACITY, METHOD, PRICE, vocab, type LabelContext } from './labels';
-import { FIELD_CLASS, Field, RefusalBox, ToneBadge } from './ProcurementBits';
-import { soundingReady, soundingUnmitigated, toSoundingInput, type SoundingDraft } from './rules';
+import { FIELD_CLASS, Field, ReasonedButton, RefusalBox, ToneBadge } from './ProcurementBits';
+import { capVerdict, soundingReady, soundingUnmitigated, toSoundingInput, type SoundingDraft } from './rules';
 
 const METHODS: SoundingMethod[] = ['meeting', 'survey', 'rfi', 'notice'];
 const CAPACITIES: CapacitySignal[] = ['ample', 'adequate', 'tight', 'insufficient'];
@@ -47,12 +48,15 @@ const CAPACITY_TONE: Record<CapacitySignal, BadgeVariant> = {
 export interface MarketSoundingsProps {
   projectId: string;
   soundings: MarketSounding[];
+  /** What the reader may do on the list, as the server sent it. */
+  can?: Partial<Record<'create' | 'edit' | 'delete', Capability>>;
   packages: PackageView[];
   labels: LabelContext;
   onChanged: () => void;
 }
 
-export function MarketSoundings({ projectId, soundings, packages, labels, onChanged }: MarketSoundingsProps) {
+export function MarketSoundings({ projectId, soundings, can, packages, labels, onChanged }: MarketSoundingsProps) {
+  const v = (key: 'create' | 'edit' | 'delete') => capVerdict(can?.[key], 'permission_denied');
   const { t } = useTranslation();
   const toastRefusal = useRefusalToast();
   const [editing, setEditing] = useState<MarketSounding | 'new' | null>(null);
@@ -69,9 +73,9 @@ export function MarketSoundings({ projectId, soundings, packages, labels, onChan
   });
 
   const addButton = (
-    <Button icon={<Plus size={14} />} onClick={() => setEditing('new')} data-testid="sounding-add">
+    <ReasonedButton verdict={v('create')} icon={<Plus size={14} />} onClick={() => setEditing('new')} data-testid="sounding-add">
       {t('procurement_concept.ui.sounding.add', { defaultValue: 'Record a sounding' })}
-    </Button>
+    </ReasonedButton>
   );
 
   return (
@@ -107,17 +111,21 @@ export function MarketSoundings({ projectId, soundings, packages, labels, onChan
                     </span>
                     {pkgCodes.length > 0 && <span className="font-mono text-xs text-content-tertiary">{fmtList(pkgCodes)}</span>}
                     <span className="ml-auto flex items-center gap-1.5">
-                      <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setEditing(s)} data-testid="sounding-edit">
+                      <ReasonedButton quiet verdict={v('edit')} size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setEditing(s)} data-testid="sounding-edit">
                         {t('procurement_concept.ui.prequal.edit', { defaultValue: 'Change' })}
-                      </Button>
-                      <Button
+                      </ReasonedButton>
+                      <ReasonedButton
+                        quiet
+                        verdict={v('delete')}
                         size="sm"
                         variant="ghost"
                         icon={<Trash2 size={14} />}
                         aria-label={t('procurement_concept.ui.sounding.remove', { defaultValue: 'Remove this sounding' })}
                         onClick={() => setRemoving(s.id)}
                         data-testid="sounding-remove"
-                      />
+                      >
+                        {null}
+                      </ReasonedButton>
                     </span>
                   </div>
                   <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">

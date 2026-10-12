@@ -10,6 +10,7 @@
 // turns a `false` into the sentence that explains it.
 
 import type {
+  AdvanceReleaseKind,
   Capability,
   CandidateInput,
   CatalogueJurisdiction,
@@ -22,8 +23,6 @@ import type {
   FrameworkInput,
   FrameworkLedger,
   FrameworkPatch,
-  FrameworkState,
-  FrameworkTarget,
   PackageInput,
   PackageKind,
   PackageView,
@@ -91,26 +90,9 @@ export function publicClientTypes(law: CatalogueJurisdiction | undefined): strin
   return law.client_types.filter((c) => c !== (law.private_client_type ?? 'private'));
 }
 
-/**
- * Step one of the concept form: pin a catalogue (`source:id`).
- *
- * The laws of a catalogue are not known before it is pinned, so the project
- * starts as a private client. Changing the catalogue of an existing concept
- * also resets the law to `none`, the code every shipped catalogue carries,
- * because the law chosen before may not exist in the new one.
- */
-export function catalogueStepInput(catalogue: string, concept: Concept | null): ConceptInput {
-  const cut = catalogue.indexOf(':');
-  const body: ConceptInput = {
-    catalogue_source: catalogue.slice(0, cut) === 'tenant' ? 'tenant' : 'shipped',
-    catalogue_id: catalogue.slice(cut + 1),
-    public_client: false,
-  };
-  if (concept) body.jurisdiction = 'none';
-  return body;
-}
-
-export interface RulesDraft {
+export interface ConceptDraft {
+  /** The catalogue as `source:id`. */
+  catalogue: string;
   jurisdiction: string;
   public_client: boolean;
   client_type: string;
@@ -119,11 +101,22 @@ export interface RulesDraft {
   release_gate_code: string | null;
 }
 
-/** Step two: the law, the client and the gate. A private client sends no client type; the server sets the law's own. */
-export function rulesStepInput(concept: Concept, d: RulesDraft): ConceptInput {
+/**
+ * The request body of the concept form. The catalogue is sent only when it is
+ * new or changed, the gate only when the reader may set it and changed it. A
+ * private client sends no client type: the server sets the law's own.
+ */
+export function conceptInput(concept: Concept | null, d: ConceptDraft): ConceptInput {
+  const cut = d.catalogue.indexOf(':');
+  const source = d.catalogue.slice(0, cut) === 'tenant' ? 'tenant' : 'shipped';
+  const id = d.catalogue.slice(cut + 1);
   const body: ConceptInput = { jurisdiction: d.jurisdiction, public_client: d.public_client, vat_rate_pct: d.vat_rate_pct };
+  if (!concept || concept.catalogue_source !== source || concept.catalogue_id !== id) {
+    body.catalogue_source = source;
+    body.catalogue_id = id;
+  }
   if (d.public_client) body.client_type = d.client_type;
-  if (d.release_gate_code !== null && d.release_gate_code !== (concept.release_gate_code ?? '')) {
+  if (d.release_gate_code !== null && d.release_gate_code !== (concept?.release_gate_code ?? '')) {
     body.release_gate_code = d.release_gate_code;
   }
   return body;
@@ -179,6 +172,8 @@ export interface PackageDraft {
   small_lot_exemption: boolean;
   is_advance: boolean;
   advance_reason: string;
+  /** The act of the release gate that releases the advance package, as `kind:id`, or empty. */
+  advance_release: string;
   need_date: string;
   lead_time_days: string;
   framework_agreement_id: string;
@@ -198,6 +193,7 @@ export function packageDraft(view: PackageView): PackageDraft {
     small_lot_exemption: a?.small_lot_exemption ?? false,
     is_advance: a?.is_advance ?? false,
     advance_reason: a?.advance_reason ?? '',
+    advance_release: a?.advance_release_kind && a.advance_release_id ? `${a.advance_release_kind}:${a.advance_release_id}` : '',
     need_date: a?.need_date ?? '',
     lead_time_days: a?.lead_time_days == null ? '' : String(a.lead_time_days),
     framework_agreement_id: a?.framework_agreement_id ?? '',
@@ -250,6 +246,13 @@ export function toPackageInput(d: PackageDraft, original: PackageDraft): Package
   if (d.lot_group.trim() !== original.lot_group.trim()) out.lot_group = d.lot_group.trim();
   if (d.small_lot_exemption !== original.small_lot_exemption) out.small_lot_exemption = d.small_lot_exemption;
   if (d.is_advance !== original.is_advance) out.is_advance = d.is_advance;
+  // The release act is one item of the picker: its kind and its id travel together, and clear together.
+  const release = d.is_advance ? d.advance_release : '';
+  if (release !== original.advance_release) {
+    const cut = release.indexOf(':');
+    out.advance_release_kind = release ? (release.slice(0, cut) as AdvanceReleaseKind) : null;
+    out.advance_release_id = release ? release.slice(cut + 1) : null;
+  }
   if (d.advance_reason.trim() !== original.advance_reason.trim()) out.advance_reason = d.advance_reason.trim();
   if (d.need_date !== original.need_date) out.need_date = d.need_date || null;
   if (d.lead_time_days.trim() !== original.lead_time_days.trim()) {
@@ -263,38 +266,44 @@ export function toPackageInput(d: PackageDraft, original: PackageDraft): Package
   return out;
 }
 
-export interface PackageMoves {
-  /** False for a kind that is not procured, and once the package is in tender, awarded or cancelled. */
-  edit: boolean;
-  hold: boolean;
-  resume: boolean;
-  cancel: boolean;
-  /** The tender vehicle this package would get, or null when none can be created now. */
-  execution: 'bid_package' | 'rfq' | null;
-  /** The package has procurement attributes, so candidates can be kept for it. */
-  candidates: boolean;
+export type PackageMove = keyof PackageView['can'];
+
+/**
+ * Refusals that mean the move does not apply to the package as it stands
+ * (nothing to resume, already closed, a kind that is not procured). Such a
+ * button is left out. Every other refusal is about the reader or the concept,
+ * and that button stays visible with the reason.
+ */
+const NOT_APPLICABLE = new Set([
+  'package_not_found',
+  'package_not_on_hold',
+  'package_closed',
+  'package_kind_not_procured',
+  'invalid_transition',
+  'execution_exists',
+  'package_not_ready_for_execution',
+]);
+
+export interface MoveOffer {
+  /** Whether the button belongs on the row at all. */
+  show: boolean;
+  verdict: Verdict;
+}
+
+/** One move of a package, straight from the flag the server sent with the row. */
+export function packageMove(view: PackageView, move: PackageMove): MoveOffer {
+  const cap = view.can?.[move];
+  if (!cap) return { show: false, verdict: 'permission_denied' };
+  if (cap.allowed) return { show: true, verdict: null };
+  const reason = cap.reason ?? 'permission_denied';
+  return { show: !NOT_APPLICABLE.has(reason), verdict: reason };
 }
 
 const SUPPLY_KINDS: PackageKind[] = ['supply', 'supply_and_install'];
 
-/** What the state of a package offers. Who may do it is the server's call (`can`). */
-export function packageMoves(view: PackageView): PackageMoves {
-  const state = view.award?.state;
-  const procured = view.package_kind !== null;
-  const open = state === 'planned' || state === 'procedure_set' || state === 'shortlisted';
-  return {
-    edit: procured && state !== 'in_tender' && state !== 'awarded' && state !== 'cancelled',
-    hold: open,
-    resume: state === 'on_hold',
-    cancel: !!state && state !== 'awarded' && state !== 'cancelled',
-    execution:
-      procured && (state === 'procedure_set' || state === 'shortlisted') && !view.contract_package.execution_link
-        ? SUPPLY_KINDS.includes(view.package_kind as PackageKind)
-          ? 'rfq'
-          : 'bid_package'
-        : null,
-    candidates: !!view.award,
-  };
+/** The name of the tender vehicle a package gets: a request for quotation for supply, a bid package otherwise. */
+export function executionVehicle(view: PackageView): 'bid_package' | 'rfq' {
+  return SUPPLY_KINDS.includes(view.package_kind as PackageKind) ? 'rfq' : 'bid_package';
 }
 
 /* ── Prequalification ─────────────────────────────────────────────────── */
@@ -531,19 +540,6 @@ export function toFrameworkPatch(d: FrameworkDraft): FrameworkPatch {
     call_off_mode: full.call_off_mode,
     source_procedure_ref: full.source_procedure_ref,
   };
-}
-
-const FRAMEWORK_NEXT: Record<FrameworkState, FrameworkTarget[]> = {
-  draft: ['active', 'terminated'],
-  active: ['exhausted', 'expired', 'terminated'],
-  exhausted: ['active', 'terminated'],
-  expired: [],
-  terminated: [],
-};
-
-/** The states an agreement can move to from where it is. The server checks the same table. */
-export function frameworkTargets(state: FrameworkState): FrameworkTarget[] {
-  return FRAMEWORK_NEXT[state] ?? [];
 }
 
 /** How much of the agreement is called off, from 0 to 1, for the bar. Display only, never for a decision. */

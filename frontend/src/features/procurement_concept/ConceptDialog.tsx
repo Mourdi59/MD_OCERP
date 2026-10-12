@@ -1,10 +1,10 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
-// Starting or changing the concept, in two steps. First the rule catalogue
-// is pinned. The laws and the kinds of client are the catalogue's own, so
-// they can only be offered once it is pinned: the second step picks them
-// from what the server sends back with the concept.
+// Starting or changing the concept: which rule catalogue applies, under which
+// procurement law, for what kind of client, and which gate releases
+// procurement. The laws and the kinds of client are the catalogue's own, so
+// the form offers what the chosen catalogue brings, never a fixed list.
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,9 +14,10 @@ import { Button } from '@/shared/ui/Button';
 import { WideModal } from '@/shared/ui/WideModal';
 
 import { setConcept, type CatalogueSummary, type Concept } from './api';
+import { useGates } from './hooks';
 import { CLIENT_TYPE, JURISDICTION, catalogueName, errorText, vocab, type LabelContext } from './labels';
 import { FIELD_CLASS, Field, ProblemList, RefusalBox } from './ProcurementBits';
-import { catalogueStepInput, gateVerdict, parseAmount, publicClientTypes, rulesStepInput } from './rules';
+import { conceptInput, gateVerdict, parseAmount, publicClientTypes } from './rules';
 
 function catalogueLabel(labels: LabelContext, c: CatalogueSummary): string {
   if (c.name.key && labels.exists(c.name.key)) return labels.t(c.name.key);
@@ -39,44 +40,50 @@ export function ConceptDialog({ open, onClose, projectId, concept, catalogues, l
   const { t } = useTranslation();
   const pinned = concept ? `${concept.catalogue_source}:${concept.catalogue_id}` : null;
   const [picked, setPicked] = useState<string | null>(pinned);
+  // A catalogue without laws has no published version and cannot be pinned.
+  const usable = catalogues.filter((c) => (c.jurisdictions ?? []).length > 0 || `${c.source}:${c.id}` === pinned);
   // Until the reader picks one, a new concept shows the first catalogue the server lists.
-  const first = catalogues[0] ? `${catalogues[0].source}:${catalogues[0].id}` : '';
-  const catalogue = picked ?? first;
-  // The law and the client can be chosen only from the catalogue that is pinned now.
-  const rulesKnown = !!concept && catalogue === pinned;
+  const catalogue = picked ?? (usable[0] ? `${usable[0].source}:${usable[0].id}` : '');
+  const listed = usable.find((c) => `${c.source}:${c.id}` === catalogue);
+  // The laws of the chosen catalogue; for the pinned one the concept carries them too.
+  const laws = listed?.jurisdictions?.length ? listed.jurisdictions : catalogue === pinned ? (concept?.jurisdictions ?? []) : [];
 
-  const [jurisdiction, setJurisdiction] = useState(concept?.jurisdiction ?? '');
+  const [lawPick, setLawPick] = useState(concept?.jurisdiction ?? '');
   const [publicClient, setPublicClient] = useState(concept?.public_client ?? false);
   const [clientType, setClientType] = useState(concept?.client_type ?? '');
   const [vat, setVat] = useState(concept?.vat_rate_pct ?? '0');
   const [gate, setGate] = useState(concept?.release_gate_code ?? '');
 
-  const law = concept?.jurisdictions.find((j) => j.code === jurisdiction);
+  // A choice made under another catalogue falls back to the first law this one knows.
+  const law = laws.find((j) => j.code === lawPick) ?? laws[0];
   const publicTypes = publicClientTypes(law);
   const isPublic = publicClient && publicTypes.length > 0;
   const chosenType = publicTypes.includes(clientType) ? clientType : (publicTypes[0] ?? '');
   const vatAmount = parseAmount(vat || '0');
-  const vatBad = rulesKnown && (vatAmount === null || Number(vatAmount) > 100);
+  const vatBad = vatAmount === null || Number(vatAmount) > 100;
+
+  // The gate is named on an existing concept only: who may name it is the server's call, sent with the concept.
   const gateOff = concept ? gateVerdict(concept) : null;
+  const gatesQ = useGates(projectId, open && !!concept);
+  const gates = gatesQ.data ?? [];
+  const tagged = gates.find((g) => g.tagged_release_gate);
 
   const save = useMutation({
-    mutationFn: () => {
-      if (!rulesKnown || !concept) return setConcept(projectId, catalogueStepInput(catalogue, concept));
-      return setConcept(
+    mutationFn: () =>
+      setConcept(
         projectId,
-        rulesStepInput(concept, {
-          jurisdiction,
+        conceptInput(concept, {
+          catalogue,
+          jurisdiction: law?.code ?? '',
           public_client: isPublic,
           client_type: chosenType,
           vat_rate_pct: vatAmount ?? '0',
-          release_gate_code: gateOff ? null : gate.trim(),
+          release_gate_code: !concept || gateOff ? null : gate,
         }),
-      );
-    },
+      ),
     onSuccess: () => {
       onSaved();
-      // After the catalogue step the dialog stays: the law and the client come next.
-      if (rulesKnown) onClose();
+      onClose();
     },
   });
 
@@ -108,12 +115,10 @@ export function ConceptDialog({ open, onClose, projectId, concept, catalogues, l
           <Button variant="ghost" onClick={onClose} disabled={save.isPending}>
             {t('procurement_concept.ui.cancel', { defaultValue: 'Cancel' })}
           </Button>
-          <Button loading={save.isPending} disabled={vatBad || !catalogue} onClick={() => save.mutate()} data-testid="concept-save">
-            {rulesKnown
+          <Button loading={save.isPending} disabled={vatBad || !law} onClick={() => save.mutate()} data-testid="concept-save">
+            {concept
               ? t('procurement_concept.ui.save', { defaultValue: 'Save' })
-              : concept
-                ? t('procurement_concept.ui.concept.pin', { defaultValue: 'Use this catalogue' })
-                : t('procurement_concept.ui.concept.start', { defaultValue: 'Start concept' })}
+              : t('procurement_concept.ui.concept.start', { defaultValue: 'Start concept' })}
           </Button>
         </div>
       }
@@ -128,10 +133,8 @@ export function ConceptDialog({ open, onClose, projectId, concept, catalogues, l
           })}
         >
           <select id="pc-catalogue" className={FIELD_CLASS} value={catalogue} onChange={(e) => setPicked(e.target.value)}>
-            {pinned && concept && !catalogues.some((c) => `${c.source}:${c.id}` === pinned) && (
-              <option value={pinned}>{concept.catalogue_id}</option>
-            )}
-            {catalogues.map((c) => (
+            {pinned && concept && !listed && catalogue === pinned && <option value={pinned}>{concept.catalogue_id}</option>}
+            {usable.map((c) => (
               <option key={`${c.source}:${c.id}`} value={`${c.source}:${c.id}`}>
                 {catalogueLabel(labels, c)}
               </option>
@@ -139,89 +142,91 @@ export function ConceptDialog({ open, onClose, projectId, concept, catalogues, l
           </select>
         </Field>
 
-        {!rulesKnown || !concept ? (
-          <p className="rounded-md bg-surface-secondary px-3 py-2 text-sm text-content-secondary" data-testid="concept-rules-next">
-            {concept
-              ? t('procurement_concept.ui.concept.rules_after_pin', {
-                  defaultValue:
-                    'Another catalogue brings its own laws and kinds of client. Use it first; the project then starts under no public procurement law and you choose again.',
-                })
-              : t('procurement_concept.ui.concept.rules_next', {
-                  defaultValue: 'Next you choose the procurement law and the kind of client from this catalogue.',
-                })}
-          </p>
-        ) : (
-          <>
-            <Field label={t('procurement_concept.ui.concept.jurisdiction', { defaultValue: 'Procurement law' })} htmlFor="pc-jurisdiction">
-              <select id="pc-jurisdiction" className={FIELD_CLASS} value={jurisdiction} onChange={(e) => setJurisdiction(e.target.value)}>
-                {concept.jurisdictions.map((j) => (
-                  <option key={j.code} value={j.code}>
-                    {catalogueName(labels, 'jurisdiction', j) || vocab(labels.t, JURISDICTION, j.code)}
+        <Field label={t('procurement_concept.ui.concept.jurisdiction', { defaultValue: 'Procurement law' })} htmlFor="pc-jurisdiction">
+          <select id="pc-jurisdiction" className={FIELD_CLASS} value={law?.code ?? ''} onChange={(e) => setLawPick(e.target.value)}>
+            {laws.map((j) => (
+              <option key={j.code} value={j.code}>
+                {catalogueName(labels, 'jurisdiction', j) || vocab(labels.t, JURISDICTION, j.code)}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <label className="flex items-start gap-2 text-sm text-content-primary">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={isPublic}
+            disabled={publicTypes.length === 0}
+            onChange={(e) => setPublicClient(e.target.checked)}
+            data-testid="concept-public-client"
+          />
+          <span>
+            {t('procurement_concept.ui.concept.public_client', { defaultValue: 'The client is a public body' })}
+            <span className="block text-xs text-content-tertiary">
+              {publicTypes.length === 0
+                ? t('procurement_concept.ui.concept.no_public_types', {
+                    defaultValue: 'This law knows no public client, so no threshold applies.',
+                  })
+                : t('procurement_concept.ui.concept.public_client_hint', {
+                    defaultValue: 'Thresholds apply to public clients only. A private client keeps the law for reference.',
+                  })}
+            </span>
+          </span>
+        </label>
+
+        {isPublic && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t('procurement_concept.ui.concept.client_type', { defaultValue: 'Kind of public client' })} htmlFor="pc-client-type">
+              <select id="pc-client-type" className={FIELD_CLASS} value={chosenType} onChange={(e) => setClientType(e.target.value)}>
+                {publicTypes.map((c) => (
+                  <option key={c} value={c}>
+                    {vocab(labels.t, CLIENT_TYPE, c)}
                   </option>
                 ))}
               </select>
             </Field>
-
-            <label className="flex items-start gap-2 text-sm text-content-primary">
-              <input
-                type="checkbox"
-                className="mt-1"
-                checked={isPublic}
-                disabled={publicTypes.length === 0}
-                onChange={(e) => setPublicClient(e.target.checked)}
-                data-testid="concept-public-client"
-              />
-              <span>
-                {t('procurement_concept.ui.concept.public_client', { defaultValue: 'The client is a public body' })}
-                <span className="block text-xs text-content-tertiary">
-                  {publicTypes.length === 0
-                    ? t('procurement_concept.ui.concept.no_public_types', {
-                        defaultValue: 'This law knows no public client, so no threshold applies.',
-                      })
-                    : t('procurement_concept.ui.concept.public_client_hint', {
-                        defaultValue: 'Thresholds apply to public clients only. A private client keeps the law for reference.',
-                      })}
-                </span>
-              </span>
-            </label>
-
-            {isPublic && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={t('procurement_concept.ui.concept.client_type', { defaultValue: 'Kind of public client' })} htmlFor="pc-client-type">
-                  <select id="pc-client-type" className={FIELD_CLASS} value={chosenType} onChange={(e) => setClientType(e.target.value)}>
-                    {publicTypes.map((c) => (
-                      <option key={c} value={c}>
-                        {vocab(labels.t, CLIENT_TYPE, c)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field
-                  label={t('procurement_concept.ui.concept.vat', { defaultValue: 'VAT rate in percent' })}
-                  htmlFor="pc-vat"
-                  hint={t('procurement_concept.ui.concept.vat_hint', {
-                    defaultValue: 'Used when a threshold is stated on the other VAT basis than the estimate.',
-                  })}
-                >
-                  <input id="pc-vat" inputMode="decimal" className={FIELD_CLASS} value={vat} onChange={(e) => setVat(e.target.value)} />
-                </Field>
-              </div>
-            )}
-
             <Field
-              label={t('procurement_concept.ui.concept.release_gate', { defaultValue: 'Gate that releases procurement' })}
-              htmlFor="pc-gate"
-              hint={
-                gateOff
-                  ? errorText(labels.t, gateOff)
-                  : t('procurement_concept.ui.concept.release_gate_hint', {
-                      defaultValue: 'The code of a gate of this project. Leave it empty to use the gate the governance catalogue names.',
-                    })
-              }
+              label={t('procurement_concept.ui.concept.vat', { defaultValue: 'VAT rate in percent' })}
+              htmlFor="pc-vat"
+              hint={t('procurement_concept.ui.concept.vat_hint', {
+                defaultValue: 'Used when a threshold is stated on the other VAT basis than the estimate.',
+              })}
             >
-              <input id="pc-gate" className={FIELD_CLASS} disabled={!!gateOff} value={gate} onChange={(e) => setGate(e.target.value)} />
+              <input id="pc-vat" inputMode="decimal" className={FIELD_CLASS} value={vat} onChange={(e) => setVat(e.target.value)} />
             </Field>
-          </>
+          </div>
+        )}
+
+        {concept && (
+          <Field
+            label={t('procurement_concept.ui.concept.release_gate', { defaultValue: 'Gate that releases procurement' })}
+            htmlFor="pc-gate"
+            hint={
+              gateOff
+                ? errorText(labels.t, gateOff)
+                : t('procurement_concept.ui.concept.release_gate_hint', {
+                    defaultValue: 'Main works may go to tender once this gate is decided. Advance packages need their own release.',
+                  })
+            }
+          >
+            <select id="pc-gate" className={FIELD_CLASS} disabled={!!gateOff} value={gate} onChange={(e) => setGate(e.target.value)}>
+              <option value="">
+                {tagged
+                  ? t('procurement_concept.ui.concept.gate_tagged', {
+                      defaultValue: 'The gate the governance plan names ({{code}})',
+                      code: tagged.code,
+                    })
+                  : t('procurement_concept.ui.concept.gate_default', { defaultValue: 'The gate the governance plan names' })}
+              </option>
+              {gate && !gates.some((g) => g.code === gate) && <option value={gate}>{gate}</option>}
+              {gates.map((g) => (
+                <option key={g.code} value={g.code}>
+                  {g.code}
+                </option>
+              ))}
+            </select>
+          </Field>
         )}
       </div>
     </WideModal>

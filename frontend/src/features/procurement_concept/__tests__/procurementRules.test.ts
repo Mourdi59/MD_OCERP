@@ -10,21 +10,20 @@ import { catalogueName, errorText, findingText, humanizeCode, vocab, PACKAGE_STA
 import {
   calledOffShare,
   candidateProblems,
-  catalogueStepInput,
+  conceptInput,
   conceptSteps,
   editVerdict,
   gateVerdict,
   frameworkProblems,
-  frameworkTargets,
   hasProposal,
   isConfirmed,
   packageDraft,
-  packageMoves,
+  executionVehicle,
+  packageMove,
   packageProblems,
   parseAmount,
   profileProblems,
   publicClientTypes,
-  rulesStepInput,
   scoresValid,
   soundingReady,
   soundingUnmitigated,
@@ -48,6 +47,7 @@ import {
   blockingFinding,
   can,
   concept,
+  packageCan,
   packageView,
   schedule,
   supplyPackage,
@@ -155,34 +155,36 @@ describe('the concept form', () => {
     expect(publicClientTypes({ code: 'x', client_types: ['a', 'own'], private_client_type: 'own' })).toEqual(['a']);
   });
 
-  it('starts a concept with the catalogue alone, as a private client', () => {
-    expect(catalogueStepInput('shipped:eu', null)).toEqual({ catalogue_source: 'shipped', catalogue_id: 'eu', public_client: false });
-    expect(catalogueStepInput('tenant:9f2c:1', null).catalogue_id).toBe('9f2c:1');
-    expect(catalogueStepInput('tenant:9f2c', null).catalogue_source).toBe('tenant');
-  });
+  const draft = { catalogue: 'shipped:eu', jurisdiction: 'eu', public_client: true, client_type: 'central', vat_rate_pct: '19', release_gate_code: null as string | null };
 
-  it('resets the law when the catalogue of an existing concept changes', () => {
-    expect(catalogueStepInput('shipped:uk', concept())).toEqual({
+  it('starts a concept with the catalogue and the rules in one request', () => {
+    expect(conceptInput(null, draft)).toEqual({
       catalogue_source: 'shipped',
-      catalogue_id: 'uk',
-      public_client: false,
-      jurisdiction: 'none',
+      catalogue_id: 'eu',
+      jurisdiction: 'eu',
+      public_client: true,
+      client_type: 'central',
+      vat_rate_pct: '19',
     });
   });
 
+  it('sends the catalogue again only when it changed', () => {
+    expect('catalogue_id' in conceptInput(concept(), draft)).toBe(false);
+    expect(conceptInput(concept(), { ...draft, catalogue: 'shipped:uk' })).toMatchObject({ catalogue_source: 'shipped', catalogue_id: 'uk' });
+    expect(conceptInput(concept(), { ...draft, catalogue: 'tenant:9f2c:1' })).toMatchObject({ catalogue_source: 'tenant', catalogue_id: '9f2c:1' });
+  });
+
   it('sends the client type only for a public client, the rate as a string', () => {
-    const draft = { jurisdiction: 'eu', public_client: true, client_type: 'central', vat_rate_pct: '19', release_gate_code: '' };
-    expect(rulesStepInput(concept(), draft)).toEqual({ jurisdiction: 'eu', public_client: true, client_type: 'central', vat_rate_pct: '19' });
-    expect(rulesStepInput(concept(), { ...draft, public_client: false })).toEqual({ jurisdiction: 'eu', public_client: false, vat_rate_pct: '19' });
+    expect(conceptInput(concept(), draft)).toEqual({ jurisdiction: 'eu', public_client: true, client_type: 'central', vat_rate_pct: '19' });
+    expect(conceptInput(concept(), { ...draft, public_client: false })).toEqual({ jurisdiction: 'eu', public_client: false, vat_rate_pct: '19' });
   });
 
   it('sends the release gate only when it changed and the reader may set it', () => {
-    const draft = { jurisdiction: 'eu', public_client: false, client_type: '', vat_rate_pct: '0', release_gate_code: 'g2' as string | null };
-    expect(rulesStepInput(concept(), draft).release_gate_code).toBe('g2');
-    expect('release_gate_code' in rulesStepInput(concept({ release_gate_code: 'g2' }), draft)).toBe(false);
-    expect('release_gate_code' in rulesStepInput(concept(), { ...draft, release_gate_code: null })).toBe(false);
-    // Clearing it goes back to the gate the governance catalogue names.
-    expect(rulesStepInput(concept({ release_gate_code: 'g2' }), { ...draft, release_gate_code: '' }).release_gate_code).toBe('');
+    expect(conceptInput(concept(), { ...draft, release_gate_code: 'g2' }).release_gate_code).toBe('g2');
+    expect('release_gate_code' in conceptInput(concept({ release_gate_code: 'g2' }), { ...draft, release_gate_code: 'g2' })).toBe(false);
+    expect('release_gate_code' in conceptInput(concept(), draft)).toBe(false);
+    // Clearing it goes back to the gate the governance plan names.
+    expect(conceptInput(concept({ release_gate_code: 'g2' }), { ...draft, release_gate_code: '' }).release_gate_code).toBe('');
   });
 });
 
@@ -234,51 +236,68 @@ describe('package plan', () => {
   });
 });
 
-describe('packageMoves', () => {
-  it('a package with a procedure can be changed, held, cancelled and sent to tender', () => {
-    expect(packageMoves(packageView())).toEqual({
-      edit: true,
-      hold: true,
-      resume: false,
-      cancel: true,
-      execution: 'bid_package',
-      candidates: true,
+describe('package moves follow the flags of the row', () => {
+  it('an allowed move is offered and open', () => {
+    expect(packageMove(packageView(), 'hold')).toEqual({ show: true, verdict: null });
+    expect(packageMove(packageView(), 'create_execution')).toEqual({ show: true, verdict: null });
+  });
+
+  it('a move that does not apply to the package as it stands is left out', () => {
+    expect(packageMove(packageView(), 'resume')).toEqual({ show: false, verdict: 'package_not_on_hold' });
+    expect(packageMove(unplannedPackage, 'hold').show).toBe(false);
+    expect(packageMove(unplannedPackage, 'edit')).toEqual({ show: true, verdict: null });
+    for (const move of ['edit', 'hold', 'cancel', 'create_execution'] as const) {
+      expect(packageMove(agreementPackage, move).show).toBe(false);
+    }
+  });
+
+  it('a move refused because of the reader or the concept stays visible with the reason', () => {
+    const view = packageView({
+      can: packageCan({ edit: 'concept_locked', hold: 'not_procurement_owner', create_execution: 'concept_not_approved', resume: 'package_not_on_hold' }),
     });
+    expect(packageMove(view, 'edit')).toEqual({ show: true, verdict: 'concept_locked' });
+    expect(packageMove(view, 'hold')).toEqual({ show: true, verdict: 'not_procurement_owner' });
+    expect(packageMove(view, 'create_execution')).toEqual({ show: true, verdict: 'concept_not_approved' });
   });
 
-  it('a supply package goes out as a request for quotation', () => {
-    expect(packageMoves(supplyPackage).execution).toBe('rfq');
-  });
-
-  it('a package without a plan can only be planned', () => {
-    expect(packageMoves(unplannedPackage)).toEqual({
-      edit: true,
-      hold: false,
-      resume: false,
-      cancel: false,
-      execution: null,
-      candidates: false,
-    });
-  });
-
-  it('a kind that is not procured offers nothing', () => {
-    expect(Object.values(packageMoves(agreementPackage)).every((v) => !v)).toBe(true);
-  });
-
-  it('a package on hold can be resumed or cancelled, not changed into tender', () => {
-    const m = packageMoves(packageView({}, { state: 'on_hold' }));
-    expect(m).toMatchObject({ hold: false, resume: true, cancel: true, execution: null });
-  });
-
-  it('a package in tender is closed for the plan and an awarded one for everything', () => {
-    expect(packageMoves(packageView({}, { state: 'in_tender' }))).toMatchObject({ edit: false, hold: false, cancel: true });
-    expect(packageMoves(packageView({}, { state: 'awarded' }))).toMatchObject({ edit: false, cancel: false, execution: null });
+  it('never works a move out from the state: the flag alone decides', () => {
+    // A state that would allow a hold, and a server that refuses it.
+    const refused = packageView({ can: packageCan({ all: 'not_procurement_owner' }) }, { state: 'procedure_set' });
+    expect(packageMove(refused, 'hold').verdict).toBe('not_procurement_owner');
+    // A state that reads closed, and a server that allows the change.
+    expect(packageMove(packageView({ can: packageCan() }, { state: 'awarded' }), 'edit')).toEqual({ show: true, verdict: null });
   });
 
   it('a package that already has its tender vehicle does not get a second one', () => {
-    const view = packageView();
-    view.contract_package.execution_link = { kind: 'bid_package', id: 'b1' };
-    expect(packageMoves(view).execution).toBeNull();
+    const view = packageView({ can: packageCan({ create_execution: 'execution_exists' }) });
+    expect(packageMove(view, 'create_execution').show).toBe(false);
+  });
+
+  it('a row without flags offers nothing', () => {
+    const view = { ...packageView(), can: undefined } as unknown as ReturnType<typeof packageView>;
+    expect(packageMove(view, 'edit').show).toBe(false);
+  });
+
+  it('a supply package goes out as a request for quotation, the rest as a bid package', () => {
+    expect(executionVehicle(supplyPackage)).toBe('rfq');
+    expect(executionVehicle(packageView())).toBe('bid_package');
+  });
+
+  it('names the release of an advance package as one pair, and clears it as one', () => {
+    const original = packageDraft(packageView({}, { is_advance: true, advance_reason: 'Long lead item' }));
+    expect(original.advance_release).toBe('');
+    expect(toPackageInput({ ...original, advance_release: 'gate_decision:d1' }, original)).toEqual({
+      advance_release_kind: 'gate_decision',
+      advance_release_id: 'd1',
+    });
+    const released = packageDraft(packageView({}, { is_advance: true, advance_release_kind: 'condition', advance_release_id: 'c9' }));
+    expect(released.advance_release).toBe('condition:c9');
+    expect(toPackageInput(released, released)).toEqual({});
+    expect(toPackageInput({ ...released, is_advance: false }, released)).toMatchObject({
+      is_advance: false,
+      advance_release_kind: null,
+      advance_release_id: null,
+    });
   });
 });
 
@@ -442,14 +461,6 @@ describe('framework agreements', () => {
     expect(patch).not.toHaveProperty('currency');
     expect(patch).not.toHaveProperty('start_date');
     expect(patch.max_value).toBe('2500000');
-  });
-
-  it('offers the moves the state allows', () => {
-    expect(frameworkTargets('draft')).toEqual(['active', 'terminated']);
-    expect(frameworkTargets('active')).toEqual(['exhausted', 'expired', 'terminated']);
-    expect(frameworkTargets('exhausted')).toEqual(['active', 'terminated']);
-    expect(frameworkTargets('expired')).toEqual([]);
-    expect(frameworkTargets('terminated')).toEqual([]);
   });
 
   it('the called-off share stays between nothing and everything', () => {

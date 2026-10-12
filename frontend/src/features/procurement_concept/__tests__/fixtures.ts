@@ -6,6 +6,7 @@
 
 import type {
   AwardPackage,
+  CatalogueSummary,
   Candidate,
   CandidateMatrix,
   Concept,
@@ -31,6 +32,29 @@ export function can(refused: Partial<Record<keyof Can, string>> = {}): Can {
   const of = (k: keyof Can) => (refused[k] ? no(refused[k] as string) : yes);
   return { steer: of('steer'), edit_plan: of('edit_plan'), submit: of('submit'), return: of('return'), set_gate_fields: of('set_gate_fields') };
 }
+
+type PackageCan = PackageView['can'];
+const PACKAGE_MOVES: Array<keyof PackageCan> = ['edit', 'hold', 'resume', 'cancel', 'confirm_shortlist', 'create_execution'];
+
+/** The flags of one package row: everything allowed, or each key refused with its code. `all` refuses every move. */
+export function packageCan(refused: Partial<Record<keyof PackageCan | 'all', string>> = {}): PackageCan {
+  const of = (k: keyof PackageCan) => {
+    const reason = refused[k] ?? refused.all;
+    return reason ? no(reason) : yes;
+  };
+  return Object.fromEntries(PACKAGE_MOVES.map((k) => [k, of(k)])) as PackageCan;
+}
+
+/** A package with a procedure, as the server flags it: nothing to resume, the rest open. */
+export const PLANNED_CAN = packageCan({ resume: 'package_not_on_hold' });
+/** A package with no award plan yet: it can be planned, and nothing else exists to act on. */
+export const UNPLANNED_CAN = packageCan({
+  hold: 'package_not_found',
+  resume: 'package_not_found',
+  cancel: 'package_not_found',
+  confirm_shortlist: 'package_not_found',
+  create_execution: 'package_not_found',
+});
 
 /** A reader without steering: every write is refused with the same code. */
 export const NO_RIGHTS = can({
@@ -129,6 +153,7 @@ export function packageView(patch: Partial<PackageView> = {}, awardPatch: Partia
         ? null
         : { status: 'unconfirmed', allowed: ['open', 'restricted'], thresholds: [], small_lot_exempt: false, aggregated_value: '2400000.00' },
     schedule: awardPatch === null ? null : { award_date: '2027-06-01', start_date: '2027-03-10', procedure_days: 83 },
+    can: awardPatch === null ? UNPLANNED_CAN : PLANNED_CAN,
     ...patch,
   };
 }
@@ -185,6 +210,7 @@ export const agreementPackage: PackageView = packageView(
       execution_link: null,
     },
     package_kind: null,
+    can: packageCan({ all: 'package_kind_not_procured' }),
   },
   null,
 );
@@ -203,6 +229,27 @@ export const warningFinding: Finding = {
   ref: 'CP-01',
   blocks_approval: false,
   message_key: 'procurement_concept.findings.threshold_source_unconfirmed',
+};
+
+/** One row of the catalogue list, with the laws it brings. */
+export const catalogueRow: CatalogueSummary = {
+  source: 'shipped',
+  id: 'eu',
+  code: 'eu',
+  name: { key: 'procurement_concept.catalogue.eu.name', text: null },
+  state: 'published',
+  versions: [1],
+  latest_version: 1,
+  review_status: 'unconfirmed',
+  jurisdictions: [
+    { code: 'none', name_key: 'procurement_concept.catalogue.jurisdiction.none', client_types: ['private'], private_client_type: 'private' },
+    {
+      code: 'eu',
+      name_key: 'procurement_concept.catalogue.jurisdiction.eu',
+      client_types: ['central', 'sub_central', 'utility', 'private'],
+      private_client_type: 'private',
+    },
+  ],
 };
 
 export const catalogue: PinnedCatalogue = {
@@ -265,6 +312,8 @@ export const profile: PrequalProfile = {
   ],
   pass_mark: '60.00',
   validity_months: 12,
+  in_use: true,
+  can: { edit: yes, delete: no('profile_in_use') },
 };
 
 export function candidate(patch: Partial<Candidate> = {}): Candidate {
@@ -321,6 +370,8 @@ export function matrix(patch: Partial<CandidateMatrix> = {}): CandidateMatrix {
     findings: [
       { code: 'shortlist_below_min_bidders', severity: 'error', ref: 'CP-01', blocks_approval: true },
     ],
+    package_state: 'procedure_set',
+    can: { add: yes, score: yes, reference: yes, set_list: yes, delete: yes, confirm_shortlist: yes },
     ...patch,
     items,
   };
@@ -399,6 +450,7 @@ export const framework: Framework = {
   call_off_mode: 'direct',
   source_procedure_ref: 'Open procedure, framework award 2025',
   state: 'active',
+  can: { edit: yes, transitions: ['exhausted', 'expired', 'terminated'] },
 };
 
 export const ledger: FrameworkLedger = {

@@ -19,6 +19,9 @@ vi.mock('../api', async (importOriginal) => {
     downloadExport: vi.fn(),
     setPackageState: vi.fn(),
     createExecution: vi.fn(),
+    linkExecution: vi.fn(),
+    listTenderPackages: vi.fn(),
+    listAdvanceReleases: vi.fn(),
     putPackage: vi.fn(),
     getThreshold: vi.fn(),
     listCandidates: vi.fn(),
@@ -56,6 +59,7 @@ import {
   framework,
   ledger,
   matrix,
+  packageCan,
   packageView,
   profile,
   schedule,
@@ -71,6 +75,8 @@ const labels: LabelContext = { t: enT as LabelContext['t'], language: 'en', exis
 const refusal = (status: number, code: string, extra: Record<string, unknown> = {}) =>
   new ApiError(status, 'Refused', { detail: { code, message: 'server sentence', ...extra } });
 const readOnly = () => concept({ can: NO_RIGHTS });
+const yes = { allowed: true, reason: null };
+const denied = (reason: string) => ({ allowed: false, reason });
 
 function show(ui: ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -171,21 +177,68 @@ describe('PackageBoard', () => {
   });
 
   it('keeps every write closed, with the reason, for a reader the server gave no rights', () => {
-    board({ concept: readOnly() });
+    board({ concept: readOnly(), packages: [packageView({ can: packageCan({ all: 'not_procurement_owner' }) })] });
     const row = rowOf('package-row', 'data-package', 'CP-01');
-    expect(within(row).getByTestId('package-plan')).toBeDisabled();
-    expect(within(row).getByTestId('package-hold')).toBeDisabled();
-    expect(within(row).getByTestId('package-cancel')).toBeDisabled();
+    for (const id of ['package-plan', 'package-hold', 'package-cancel', 'package-execution', 'package-link']) {
+      expect(within(row).getByTestId(id)).toBeDisabled();
+    }
+    expect(within(row).getAllByTestId('disabled-reason')[0]).toHaveAttribute('data-reason', 'not_procurement_owner');
     expect(screen.getByTestId('board-locked')).toHaveTextContent(en.translation['procurement_concept.errors.not_procurement_owner']!);
     // Reading the candidates stays open.
     expect(within(row).getByTestId('package-candidates')).toBeEnabled();
   });
 
-  it('locks the plan but leaves steering open once the concept is approved', () => {
-    board({ concept: concept({ state: 'approved', can: LOCKED }) });
+  it('locks the plan but leaves steering open once the concept is submitted', () => {
+    board({
+      concept: concept({ state: 'in_review', can: LOCKED }),
+      packages: [packageView({ can: packageCan({ edit: 'concept_locked', resume: 'package_not_on_hold', create_execution: 'concept_not_approved' }) })],
+    });
     const row = rowOf('package-row', 'data-package', 'CP-01');
     expect(within(row).getByTestId('package-plan')).toBeDisabled();
     expect(within(row).getByTestId('package-hold')).toBeEnabled();
+    // Tendering waits for the approval, and the row says so instead of hiding the button.
+    expect(within(row).getByTestId('package-execution')).toBeDisabled();
+    expect(within(row).queryByTestId('package-resume')).toBeNull();
+  });
+
+  it('shows the buttons the flags of the row name, whatever the state reads', () => {
+    board({ packages: [packageView({ can: packageCan({ hold: 'package_not_found', cancel: 'package_closed', create_execution: 'execution_exists' }) })] });
+    const row = rowOf('package-row', 'data-package', 'CP-01');
+    expect(within(row).queryByTestId('package-hold')).toBeNull();
+    expect(within(row).queryByTestId('package-cancel')).toBeNull();
+    expect(within(row).queryByTestId('package-execution')).toBeNull();
+    expect(within(row).getByTestId('package-resume')).toBeEnabled();
+  });
+
+  it('links a tender package that already exists, and not one that serves another package', async () => {
+    mocked.listTenderPackages.mockResolvedValue({
+      items: [
+        { id: 't1', name: 'Structure tender', status: 'draft', deadline: '2027-04-01', linked_package_id: null, linked_package_code: null, can: { link: yes } },
+        { id: 't2', name: 'Facade tender', status: 'draft', deadline: null, linked_package_id: 'k9', linked_package_code: 'CP-09', can: { link: denied('execution_exists') } },
+      ],
+      total: 2,
+      offset: 0,
+      limit: 2,
+    });
+    mocked.linkExecution.mockResolvedValue(undefined as never);
+    const props = board();
+    fireEvent.click(within(rowOf('package-row', 'data-package', 'CP-01')).getByTestId('package-link'));
+    const options = await screen.findAllByTestId('link-tender-option');
+    expect(options.map((o) => o.getAttribute('data-allowed'))).toEqual(['yes', 'no']);
+    expect(options[1]).toHaveTextContent('Already serves CP-09');
+    expect(within(options[1]!).getByRole('radio')).toBeDisabled();
+    expect(screen.getByTestId('link-tender-save')).toBeDisabled();
+    fireEvent.click(within(options[0]!).getByRole('radio'));
+    fireEvent.click(screen.getByTestId('link-tender-save'));
+    await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
+    expect(mocked.linkExecution).toHaveBeenCalledWith('p1', 'k1', 't1');
+  });
+
+  it('says so when the project has no tender package to link', async () => {
+    mocked.listTenderPackages.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 0 });
+    board();
+    fireEvent.click(within(rowOf('package-row', 'data-package', 'CP-01')).getByTestId('package-link'));
+    expect(await screen.findByTestId('link-tender-empty')).toBeInTheDocument();
   });
 });
 
@@ -329,6 +382,37 @@ describe('PackageDialog', () => {
     expect(mocked.putPackage).toHaveBeenCalledWith('p1', 'k1', { estimated_value: '2500000.50' });
   });
 
+  it('names what releases an advance package from the acts of the release gate', async () => {
+    mocked.getThreshold.mockResolvedValue(thresholdCheck);
+    mocked.putPackage.mockResolvedValue(packageView() as never);
+    mocked.listAdvanceReleases.mockResolvedValue({
+      items: [
+        { kind: 'gate_decision', id: 'd1', gate_code: 'g3', label: 'Go with conditions', status: 'decided', date: '2026-12-01', releases: true },
+        { kind: 'condition', id: 'c1', gate_code: 'g3', label: 'Soil report accepted', status: 'open', date: null, releases: false },
+      ],
+      total: 2,
+      offset: 0,
+      limit: 2,
+    });
+    dialog();
+    // Nothing is asked of the server while the package is not an advance package.
+    expect(mocked.listAdvanceReleases).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('package-advance'));
+    await waitFor(() => expect((document.getElementById('pk-advance-release') as HTMLSelectElement).options.length).toBe(3));
+    const select = document.getElementById('pk-advance-release') as HTMLSelectElement;
+    expect(select.options[2]!.textContent).toBe('Soil report accepted (still open)');
+    fireEvent.change(document.getElementById('pk-advance-reason') as HTMLTextAreaElement, { target: { value: 'Long lead item' } });
+    fireEvent.change(select, { target: { value: 'gate_decision:d1' } });
+    fireEvent.click(screen.getByTestId('package-save'));
+    await waitFor(() => expect(mocked.putPackage).toHaveBeenCalledTimes(1));
+    expect(mocked.putPackage).toHaveBeenCalledWith('p1', 'k1', {
+      is_advance: true,
+      advance_reason: 'Long lead item',
+      advance_release_kind: 'gate_decision',
+      advance_release_id: 'd1',
+    });
+  });
+
   it('refuses a value that is not a number before anything is sent', () => {
     dialog(unplannedPackage);
     fireEvent.change(document.getElementById('pk-value') as HTMLInputElement, { target: { value: 'about two million' } });
@@ -415,22 +499,47 @@ describe('PrequalPanel', () => {
     await waitFor(() => expect(mocked.deleteCandidate).toHaveBeenCalledWith('p1', 'cand2'));
   });
 
-  it('keeps the confirmation and the removal closed for a reader the server gave no rights', async () => {
-    mocked.listCandidates.mockResolvedValue(matrix());
-    panel({ concept: readOnly() });
+  it('keeps the confirmation and the removal closed for an editor without steering, with the reason', async () => {
+    mocked.listCandidates.mockResolvedValue(matrix({ can: { add: yes, score: yes, reference: yes, set_list: denied('not_procurement_owner'), delete: denied('not_procurement_owner'), confirm_shortlist: denied('not_procurement_owner') } }));
+    panel();
     expect(await screen.findByTestId('shortlist-confirm')).toBeDisabled();
     for (const b of screen.getAllByTestId('candidate-remove')) expect(b).toBeDisabled();
-    // Adding a company to the long list stays open to an editor.
+    // Adding a company to the long list and scoring stay open to an editor.
     expect(screen.getByTestId('candidate-add')).toBeEnabled();
+    expect(screen.getAllByTestId('candidate-score')[0]).toBeEnabled();
   });
 
-  it('does not let a reader without steering move a company between the lists', async () => {
-    mocked.listCandidates.mockResolvedValue(matrix());
-    panel({ concept: readOnly() });
+  it('does not let an editor without steering move a company between the lists', async () => {
+    mocked.listCandidates.mockResolvedValue(matrix({ can: { add: yes, score: yes, reference: yes, set_list: denied('not_procurement_owner'), delete: denied('not_procurement_owner'), confirm_shortlist: denied('not_procurement_owner') } }));
+    panel();
     await screen.findByTestId('candidate-matrix');
     fireEvent.click(screen.getByTestId('candidate-add'));
     expect(document.getElementById('cd-list')).toBeDisabled();
     expect((document.getElementById('cd-list') as HTMLSelectElement).value).toBe('long');
+  });
+
+  it('closes every write for a viewer', async () => {
+    const off = denied('permission_denied');
+    mocked.listCandidates.mockResolvedValue(matrix({ can: { add: off, score: off, reference: off, set_list: off, delete: off, confirm_shortlist: off } }));
+    panel({ profiles: [{ ...profile, can: { edit: off, delete: off } }] });
+    await screen.findByTestId('candidate-matrix');
+    for (const id of ['candidate-add', 'shortlist-confirm', 'profile-edit']) expect(screen.getByTestId(id)).toBeDisabled();
+    for (const id of ['candidate-score', 'candidate-edit', 'candidate-reference', 'candidate-remove']) {
+      for (const b of screen.getAllByTestId(id)) expect(b).toBeDisabled();
+    }
+  });
+
+  it('keeps a short list with open findings visible, with the reason it cannot be confirmed', async () => {
+    mocked.listCandidates.mockResolvedValue(matrix({ can: { ...matrix().can, confirm_shortlist: denied('shortlist_invalid') } }));
+    panel();
+    expect(await screen.findByTestId('shortlist-confirm')).toBeDisabled();
+  });
+
+  it('offers no confirmation once the short list is confirmed', async () => {
+    mocked.listCandidates.mockResolvedValue(matrix({ package_state: 'shortlisted', can: { ...matrix().can, confirm_shortlist: denied('invalid_transition') } }));
+    panel();
+    await screen.findByTestId('candidate-matrix');
+    expect(screen.queryByTestId('shortlist-confirm')).toBeNull();
   });
 });
 
@@ -490,8 +599,8 @@ describe('AwardSchedule', () => {
 });
 
 describe('Frameworks', () => {
-  const view = (frameworks = [framework]) => {
-    const props = { frameworks, labels, onChanged: vi.fn() };
+  const view = (frameworks = [framework], over: Partial<Parameters<typeof Frameworks>[0]> = {}) => {
+    const props = { frameworks, canCreate: yes, labels, onChanged: vi.fn(), ...over };
     show(<Frameworks {...props} />);
     return props;
   };
@@ -545,6 +654,22 @@ describe('Frameworks', () => {
     await waitFor(() => expect(mocked.setFrameworkState).toHaveBeenCalledWith('fw1', 'terminated'));
   });
 
+  it('offers the moves the server lists for the agreement, and no others', () => {
+    view([{ ...framework, can: { edit: yes, transitions: ['terminated'] } }]);
+    expect(screen.getByTestId('framework-move-terminated')).toBeInTheDocument();
+    expect(screen.queryByTestId('framework-move-exhausted')).toBeNull();
+    expect(screen.queryByTestId('framework-move-expired')).toBeNull();
+  });
+
+  it('closes every write for who does not own the agreements, with the reason', () => {
+    view([{ ...framework, can: { edit: denied('not_framework_owner'), transitions: [] } }], { canCreate: denied('permission_denied') });
+    expect(screen.getByTestId('framework-add')).toBeDisabled();
+    expect(screen.getByTestId('framework-edit')).toBeDisabled();
+    expect(screen.queryByTestId('framework-move-terminated')).toBeNull();
+    // The call-offs stay readable.
+    expect(screen.getByTestId('framework-ledger-toggle')).toBeEnabled();
+  });
+
   it('shows the reason when the server refuses the move', async () => {
     mocked.setFrameworkState.mockRejectedValue(refusal(403, 'permission_denied'));
     view();
@@ -573,8 +698,8 @@ describe('Frameworks', () => {
 });
 
 describe('MarketSoundings', () => {
-  const view = (soundings = [soundingTight]) => {
-    const props = { projectId: 'p1', soundings, packages: [packageView()], labels, onChanged: vi.fn() };
+  const view = (soundings = [soundingTight], over: Partial<Parameters<typeof MarketSoundings>[0]> = {}) => {
+    const props = { projectId: 'p1', soundings, can: { create: yes, edit: yes, delete: yes }, packages: [packageView()], labels, onChanged: vi.fn(), ...over };
     show(<MarketSoundings {...props} />);
     return props;
   };
@@ -597,6 +722,12 @@ describe('MarketSoundings', () => {
   it('does not flag a sounding the server counts as answered', () => {
     view([{ ...soundingTight, mitigation: 'Split the steel into two lots', unmitigated: false }]);
     expect(screen.queryByTestId('sounding-unmitigated')).toBeNull();
+  });
+
+  it('closes the writes for a viewer', () => {
+    const off = denied('permission_denied');
+    view([soundingTight], { can: { create: off, edit: off, delete: off } });
+    for (const id of ['sounding-add', 'sounding-edit', 'sounding-remove']) expect(screen.getByTestId(id)).toBeDisabled();
   });
 
   it('asks before removing a sounding', async () => {

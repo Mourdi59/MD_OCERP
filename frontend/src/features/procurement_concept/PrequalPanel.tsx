@@ -22,6 +22,7 @@ import {
   deleteCandidate,
   deleteReference,
   downloadExport,
+  type Capability,
   type Candidate,
   type CandidateList,
   type Concept,
@@ -34,7 +35,7 @@ import { refusalText, useCandidates, useRefusalToast } from './hooks';
 import { CANDIDATE_LIST, CANDIDATE_SOURCE, catalogueName, vocab, type LabelContext } from './labels';
 import { FIELD_CLASS, FindingList, Money, ReasonedButton, RefusalBox, ToneBadge } from './ProcurementBits';
 import { ProfileDialog } from './ProfileDialog';
-import { steerVerdict } from './rules';
+import { capVerdict, steerVerdict } from './rules';
 import type { BadgeVariant } from '@/shared/ui/Badge';
 
 const LIST_TONE: Record<CandidateList, BadgeVariant> = { long: 'neutral', short: 'success', excluded: 'error' };
@@ -51,6 +52,8 @@ export interface PrequalPanelProps {
   concept: Concept;
   packages: PackageView[];
   profiles: PrequalProfile[];
+  /** Whether the reader may set up a profile, from the profile list. */
+  profileCreate?: Capability;
   catalogue: PinnedCatalogue | null;
   packageId: string | null;
   labels: LabelContext;
@@ -64,6 +67,7 @@ export function PrequalPanel({
   concept,
   packages,
   profiles,
+  profileCreate,
   catalogue,
   packageId,
   labels,
@@ -127,7 +131,13 @@ export function PrequalPanel({
   const refLabel = (ref: string) => names.get(ref) ?? ref;
   const shortCount = (matrix?.items ?? []).filter((c) => c.list === 'short').length;
   const confirmed = current.award?.state === 'shortlisted';
-  const canConfirm = current.award?.state === 'procedure_set';
+  // Each button follows the flag the server sent with the list. Until the list is there, steering stands in.
+  const can = matrix?.can;
+  const v = (key: keyof NonNullable<typeof can>) => (can ? capVerdict(can[key], 'permission_denied') : steer);
+  const confirmVerdict = v('confirm_shortlist');
+  // Offered while the short list can still be confirmed; a list with open findings stays visible with the reason.
+  const canConfirm = !!can && confirmVerdict !== 'invalid_transition';
+  const profileVerdict = profileRow ? capVerdict(profileRow.can?.edit, 'permission_denied') : capVerdict(profileCreate, 'permission_denied');
   const close = () => setOpen(null);
 
   return (
@@ -149,11 +159,11 @@ export function PrequalPanel({
           <Button size="sm" variant="ghost" icon={<Download size={14} />} loading={exportList.isPending} onClick={() => exportList.mutate()}>
             {t('procurement_concept.ui.prequal.export', { defaultValue: 'Short list (XLSX)' })}
           </Button>
-          <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setOpen({ kind: 'candidate', candidate: null })} data-testid="candidate-add">
+          <ReasonedButton quiet verdict={v('add')} size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setOpen({ kind: 'candidate', candidate: null })} data-testid="candidate-add">
             {t('procurement_concept.ui.prequal.add_candidate', { defaultValue: 'Add candidate' })}
-          </Button>
+          </ReasonedButton>
           {canConfirm && (
-            <ReasonedButton size="sm" verdict={steer} loading={confirm.isPending} onClick={() => confirm.mutate()} data-testid="shortlist-confirm">
+            <ReasonedButton size="sm" verdict={confirmVerdict} loading={confirm.isPending} onClick={() => confirm.mutate()} data-testid="shortlist-confirm">
               {t('procurement_concept.actions.confirm_shortlist', { defaultValue: 'Confirm short list' })}
             </ReasonedButton>
           )}
@@ -200,7 +210,7 @@ export function PrequalPanel({
                   </p>
                 )}
               </div>
-              <ReasonedButton size="sm" variant="secondary" icon={<Pencil size={14} />} verdict={steer} onClick={() => setOpen({ kind: 'profile' })} data-testid="profile-edit">
+              <ReasonedButton size="sm" variant="secondary" icon={<Pencil size={14} />} verdict={profileVerdict} onClick={() => setOpen({ kind: 'profile' })} data-testid="profile-edit">
                 {matrix.profile
                   ? t('procurement_concept.ui.prequal.edit_profile', { defaultValue: 'Change profile' })
                   : t('procurement_concept.ui.prequal.new_profile', { defaultValue: 'Set up profile' })}
@@ -352,20 +362,20 @@ export function PrequalPanel({
                           </div>
                         ) : (
                           <div className="flex flex-wrap justify-end gap-1.5">
-                            <Button size="sm" variant="secondary" disabled={criteria.length === 0} onClick={() => setOpen({ kind: 'scores', candidate: c })} data-testid="candidate-score">
+                            <ReasonedButton quiet verdict={v('score')} size="sm" variant="secondary" disabled={criteria.length === 0} onClick={() => setOpen({ kind: 'scores', candidate: c })} data-testid="candidate-score">
                               {t('procurement_concept.ui.prequal.score', { defaultValue: 'Score' })}
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setOpen({ kind: 'candidate', candidate: c })} data-testid="candidate-edit">
+                            </ReasonedButton>
+                            <ReasonedButton quiet verdict={v('add')} size="sm" variant="ghost" onClick={() => setOpen({ kind: 'candidate', candidate: c })} data-testid="candidate-edit">
                               {t('procurement_concept.ui.prequal.edit', { defaultValue: 'Change' })}
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setOpen({ kind: 'reference', candidate: c })} data-testid="candidate-reference">
+                            </ReasonedButton>
+                            <ReasonedButton quiet verdict={v('reference')} size="sm" variant="ghost" onClick={() => setOpen({ kind: 'reference', candidate: c })} data-testid="candidate-reference">
                               {t('procurement_concept.ui.prequal.add_reference', { defaultValue: 'Add reference' })}
-                            </Button>
+                            </ReasonedButton>
                             <ReasonedButton
                               quiet
                               size="sm"
                               variant="ghost"
-                              verdict={steer}
+                              verdict={v('delete')}
                               icon={<Trash2 size={14} />}
                               aria-label={t('procurement_concept.ui.prequal.remove_candidate', { defaultValue: 'Remove {{name}}', name: c.name })}
                               onClick={() => setRemoving(c.id)}
@@ -409,7 +419,7 @@ export function PrequalPanel({
       )}
 
       {open?.kind === 'candidate' && (
-        <CandidateDialog open onClose={close} projectId={projectId} packageId={currentId} candidate={open.candidate} listVerdict={steer} labels={labels} onSaved={onChanged} />
+        <CandidateDialog open onClose={close} projectId={projectId} packageId={currentId} candidate={open.candidate} listVerdict={v('set_list')} labels={labels} onSaved={onChanged} />
       )}
       {open?.kind === 'scores' && (
         <ScoresDialog open onClose={close} projectId={projectId} candidate={open.candidate} criteria={criteria} labels={labels} onSaved={onChanged} />
