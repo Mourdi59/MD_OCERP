@@ -69,7 +69,8 @@
       "activity_not_in_project": "Der Terminplanvorgang gehört nicht zu diesem Projekt",
       "target_date_owned_by_schedule": "Dieses Gate ist mit einem Terminplanvorgang verknüpft, der das Datum vorgibt; lösen Sie die Verknüpfung, um hier ein Datum zu setzen",
       "no_change_route": "Für Änderungen an verbindlichen Dokumenten ist kein Freigabeweg festgelegt. Ein Governance-Verantwortlicher legt in den Governance-Einstellungen einen projekteigenen Freigabeweg fest",
-      "route_not_pinnable": "Dieser Freigabeweg kann nicht festgelegt werden: Er muss ein aktiver Freigabeweg dieses Projekts für diese Art von Entscheidung sein"
+      "route_not_pinnable": "Dieser Freigabeweg kann nicht festgelegt werden: Er muss ein aktiver Freigabeweg dieses Projekts für diese Art von Entscheidung sein",
+      "area_retired": "Dieser Bereich wurde durch einen Wechsel des Phasenmodells stillgelegt und nimmt keine neuen Dokumente auf"
     },
     "outcome": {
       "go": "Go",

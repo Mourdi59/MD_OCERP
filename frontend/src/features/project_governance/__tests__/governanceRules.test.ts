@@ -45,7 +45,7 @@ import {
 import { frameContainerCode } from '../documentFiles';
 import { buildMatrix } from '../matrix';
 import { catalogueIdOf, catalogueName, humanizeCode, type LabelContext } from '../labels';
-import { blocker, condition, detail, frameDocument, gate, gateDocument, matrixArea, matrixResponse, model } from './fixtures';
+import { area, blocker, condition, detail, frameDocument, gate, gateDocument, matrixArea, matrixResponse, model } from './fixtures';
 
 const editor: Viewer = { userId: 'u-editor' };
 const viewer: Viewer = { userId: 'u-viewer' };
@@ -144,10 +144,26 @@ describe('other verdicts', () => {
     expect(canManage(model({ can: { manage: true, edit: true } }))).toBeNull();
     expect(canManage(model({ can: { manage: false, edit: true } }))).toBe('role_manage');
   });
-  it('adding a document and raising a change follow the model edit flag', () => {
-    expect(canAddDocument(model())).toBeNull();
-    expect(canAddDocument(model({ can: { manage: false, edit: false } }))).toBe('role_edit');
-    expect(canRaiseChange(model({ can: { manage: true, edit: false } }))).toBe('role_edit');
+  it('adding a document follows the flag of the area', () => {
+    expect(canAddDocument(area({ can: { add_document: true } }))).toBeNull();
+    expect(canAddDocument(area({ can: { add_document: false, add_document_reason: 'missing_permission' } }))).toBe('role_edit');
+    expect(canAddDocument(area({ can: { add_document: false, add_document_reason: 'not_area_owner' } }))).toBe('not_area_owner');
+    expect(canAddDocument(area({ can: { add_document: false, add_document_reason: 'area_retired' } }))).toEqual({
+      server: 'area_retired',
+    });
+    // A server that sends no flag is not second-guessed.
+    expect(canAddDocument(area())).toBeNull();
+  });
+  it('raising a change request follows the flag of the document', () => {
+    const can = { attach: true, submit: true, return: true };
+    expect(canRaiseChange(frameDocument({ can: { ...can, change_request: true } }))).toBeNull();
+    expect(
+      canRaiseChange(frameDocument({ can: { ...can, change_request: false, change_request_reason: 'not_area_owner' } })),
+    ).toBe('not_area_owner');
+    expect(
+      canRaiseChange(frameDocument({ can: { ...can, change_request: false, change_request_reason: 'no_change_route' } })),
+    ).toEqual({ server: 'no_change_route' });
+    expect(canRaiseChange(frameDocument({ can }))).toBeNull();
   });
 });
 
@@ -247,7 +263,7 @@ describe('frame document actions', () => {
     const bare = frameDocument({ container_id: 'k1', can: undefined });
     expect(documentVerdict(bare, 'attach')).toBeNull();
     expect(documentVerdict(bare, 'return')).toBeNull();
-    expect(canAddDocument(model({ can: { manage: false } }))).toBeNull();
+    expect(canRaiseChange(bare)).toBeNull();
   });
   it('a document without a file cannot be submitted by anybody', () => {
     expect(documentVerdict(frameDocument({ container_id: null }), 'submit')).toBe('document_without_file');

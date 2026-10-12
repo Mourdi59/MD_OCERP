@@ -383,7 +383,24 @@ async def test_the_screens_read_what_the_caller_may_do(world: World) -> None:
         "submit_reason": "missing_permission",
         "return": False,
         "return_reason": "missing_permission",
+        "change_request": False,
+        "change_request_reason": "missing_permission",
     }
+    # Nothing is binding yet, so nobody can raise a change request; the owner reads why.
+    assert draft["can"]["change_request_reason"] == "document_not_binding"
+    assert as_editor[draft["doc_type"]]["can"]["change_request_reason"] == "not_area_owner"
+    assert area_items["scope"]["can"] == {"add_document": True, "add_document_reason": None}
+    async with client_as(world, world.editor, "editor") as c:
+        editor_areas = {a["code"]: a for a in (await c.get(f"{url}/areas")).json()["items"]}
+        untracked = next(
+            (t["code"] for a in editor_areas.values() for t in a["document_types"] if not t["tracked"]), None
+        )
+        added = await c.post(
+            f"{url}/documents",
+            json={"area_id": editor_areas["scope"]["id"], "doc_type": untracked or "scope_statement"},
+        )
+    assert editor_areas["scope"]["can"] == {"add_document": False, "add_document_reason": "not_area_owner"}
+    assert added.status_code == 403 and _code(added) == "not_area_owner"
     # The flag and the write agree.
     async with client_as(world, world.editor, "editor") as c:
         refused = await c.post(f"{url}/documents/{draft['id']}/submit")

@@ -514,7 +514,19 @@ describe('AreaPanel documents', () => {
     expect(screen.getByTestId('add-document')).toHaveTextContent('Required at: Strategy to brief');
   });
 
-  it('says so when nothing is left to add, and follows the edit flag', () => {
+  it('the change request button follows the flag of the document', () => {
+    const can = { attach: true, submit: true, return: true };
+    const binding = (over: object) => frameDocument({ status: 'binding', can: { ...can, ...over } });
+    const view = open([binding({ change_request: false, change_request_reason: 'no_change_route' })]);
+    expect(screen.getByRole('button', { name: 'Raise change request' })).toBeDisabled();
+    expect(screen.getByText(enT('governance.errors.no_change_route'))).toBeInTheDocument();
+    view.unmount();
+
+    open([binding({ change_request: true })]);
+    expect(screen.getByRole('button', { name: 'Raise change request' })).not.toBeDisabled();
+  });
+
+  it('says so when nothing is left to add, and follows the flag of the area', () => {
     const view = open([frameDocument(), frameDocument({ id: 'd2', doc_type: 'charter' })]);
     expect(screen.getByTestId('add-document-none')).toHaveTextContent('Every frame document the phase model names for this area is tracked.');
     view.unmount();
@@ -523,10 +535,10 @@ describe('AreaPanel documents', () => {
     expect(screen.getByTestId('add-document-none')).toHaveTextContent('The phase model names no frame document type for this area.');
     second.unmount();
 
-    open([frameDocument()], theArea(), model({ can: { manage: false, edit: false } }));
+    open([frameDocument()], theArea({ can: { add_document: false, add_document_reason: 'not_area_owner' } }));
     fireEvent.change(screen.getByLabelText('Document type'), { target: { value: 'charter' } });
     expect(screen.getByTestId('add-document-send')).toBeDisabled();
-    expect(within(screen.getByTestId('add-document')).getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'role_edit');
+    expect(within(screen.getByTestId('add-document')).getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'not_area_owner');
   });
 });
 
