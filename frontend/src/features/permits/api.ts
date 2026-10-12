@@ -13,6 +13,16 @@
 
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
 
+/** What the caller may do with a record: the guard of the write, run dry by the server. */
+export interface CanFlag {
+  allowed: boolean;
+  /** False when the action makes no sense for the record as it stands; the button is then left out. */
+  applies?: boolean;
+  /** The refusal code the write would answer with. */
+  reason: string | null;
+  change_request_required?: boolean;
+}
+
 export interface Page<T> {
   items: T[];
   total: number;
@@ -453,6 +463,16 @@ export interface Permit {
   valid_until: string | null;
   superseded_by_id: string | null;
   lapse_warning?: LapseWarning | null;
+  can?: PermitCan;
+}
+
+export interface PermitCan {
+  start?: CanFlag;
+  interrupt?: CanFlag;
+  resume?: CanFlag;
+  transition?: Partial<Record<PermitTarget, CanFlag>>;
+  add_condition?: CanFlag;
+  propose_conditions?: CanFlag;
 }
 
 export interface DecisionResult {
@@ -485,7 +505,10 @@ export interface Condition {
   /** `manual` for a typed condition, anything else for a proposal read out of the notice. */
   source: string;
   confidence: string | null;
+  /** Where the condition stands in the notice: a page or a clause. */
   text_span: string;
+  /** The sentence quoted from the notice; empty unless it really occurs in the document. */
+  passage?: string;
   confirmed: boolean;
   gate_condition_id: string | null;
   original_id: string | null;
@@ -850,6 +873,18 @@ export function confirmProposal(
   return apiPost<{ condition: Condition | null; accepted: boolean }>(`/v1/permits/projects/${projectId}/conditions/${id}/confirm`, {
     accept,
   });
+}
+
+/** What reading a notice answered: the proposals stored, and what was left out and why. */
+export interface ExtractResult extends Page<Condition> {
+  already_known: number;
+  rejected: number;
+  document_cut: boolean;
+}
+
+/** Read the conditions out of the permit's decision notice; they are stored as unconfirmed proposals. */
+export function extractConditions(projectId: string, permitId: string): Promise<ExtractResult> {
+  return apiPost<ExtractResult>(`/v1/permits/projects/${projectId}/permits/${permitId}/condition-proposals/extract`, {});
 }
 
 export function conditionToRequirement(

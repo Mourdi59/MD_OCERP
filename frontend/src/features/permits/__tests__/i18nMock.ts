@@ -15,7 +15,8 @@ export function enT(key: string, opts?: Record<string, unknown>): string {
     text = table[`${key}_${opts.count === 1 ? 'one' : 'other'}`];
   }
   text = text ?? table[key];
-  if (text === undefined) return key;
+  // i18next answers an unknown key with the default the caller passed, and only then with the key.
+  if (text === undefined) return typeof opts?.defaultValue === 'string' ? opts.defaultValue : key;
   for (const [k, v] of Object.entries(opts ?? {})) {
     if (k.startsWith('defaultValue')) continue;
     text = text.split(`{{${k}}}`).join(String(v));

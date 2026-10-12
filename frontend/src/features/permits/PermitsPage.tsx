@@ -384,7 +384,7 @@ export function PermitsPage() {
                   onClick={() => exportRegister(exportTarget, 'xlsx')}
                   data-testid="export-xlsx"
                 >
-                  {t('permits.ui.export_xlsx', { defaultValue: 'Excel' })}
+                  {t('permits.ui.export_xlsx', { defaultValue: 'Spreadsheet (.xlsx)' })}
                 </Button>
                 <Button
                   size="sm"

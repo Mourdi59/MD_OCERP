@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { ApiError } from '@/shared/lib/api';
 
 import { permitErrorCode, permitErrorMessage } from '../api';
-import { errorText, periodText, typeName, vocab, REQUIREMENT_STATE } from '../labels';
+import { errorText, periodText, typeName, vocab, REQUIREMENT_STATE, type KeyText } from '../labels';
 import {
   applicationSteps,
   buildRoadmapRows,
@@ -382,7 +382,7 @@ describe('permits', () => {
 describe('labels and refusals', () => {
   it('translates a known code and makes an unknown one readable', () => {
     expect(vocab(enT, REQUIREMENT_STATE, 'in_progress')).toBe('In progress');
-    expect(vocab(enT, REQUIREMENT_STATE, 'some_new_state')).not.toContain('_');
+    expect(vocab(enT, REQUIREMENT_STATE as Record<string, KeyText>, 'some_new_state')).not.toContain('_');
     expect(vocab(enT, REQUIREMENT_STATE, null)).toBe('');
   });
 

@@ -18,6 +18,7 @@ vi.mock('../api', async (importOriginal) => {
     ...actual,
     confirmProposal: vi.fn(),
     escalateConditions: vi.fn(),
+    extractConditions: vi.fn(),
     getApplication: vi.fn(),
     getCondition: vi.fn(),
     notifyStart: vi.fn(),
@@ -38,7 +39,7 @@ import { ConditionsRegister } from '../ConditionsRegister';
 import { PermitsRegister } from '../PermitsRegister';
 import { RoadmapTable } from '../RoadmapTable';
 import { buildRoadmapRows } from '../rules';
-import { application, condition, labels, loaded, permit, readiness, requirement, timelineRow } from './fixtures';
+import { application, condition, labels, loaded, page, permit, readiness, requirement, timelineRow } from './fixtures';
 import { enT } from './i18nMock';
 
 const mocked = vi.mocked(api);
@@ -251,6 +252,59 @@ describe('PermitsRegister', () => {
       await vi.waitFor(() => expect(screen.queryByTestId('condition-dialog-submit')).toBeNull());
       fireEvent.click(screen.getByTestId('proposal-accept'));
       await vi.waitFor(() => expect(mocked.confirmProposal).toHaveBeenCalledWith('p1', 'c9', true));
+    });
+
+    it('does not offer to read the notice unless the server says so', () => {
+      renderIn(<PermitsRegister {...base} permits={[permit()]} conditions={[]} />);
+      expect(screen.queryByTestId('permit-propose')).toBeNull();
+    });
+
+    it('says that no AI provider is configured and keeps the button off', () => {
+      const can = { propose_conditions: { allowed: false, applies: true, reason: 'ai_not_configured' } };
+      renderIn(<PermitsRegister {...base} permits={[permit({ can })]} conditions={[]} />);
+      expect(screen.getByTestId('permit-propose')).toBeDisabled();
+      expect(screen.getByTestId('extract-unavailable')).toHaveTextContent('No AI provider is configured.');
+    });
+
+    it('says that the notice has no readable text when the reading is refused', async () => {
+      const can = { propose_conditions: { allowed: true, applies: true, reason: null } };
+      mocked.extractConditions.mockRejectedValue(
+        new ApiError(422, 'Unprocessable', { detail: { code: 'document_has_no_text', message: 'The notice document has no readable text.' } }),
+      );
+      renderIn(<PermitsRegister {...base} permits={[permit({ can })]} conditions={[]} />);
+      fireEvent.click(screen.getByTestId('permit-propose'));
+      expect(await screen.findByTestId('extract-refusal')).toHaveTextContent('no readable text');
+      expect(mocked.extractConditions).toHaveBeenCalledWith('p1', 'pm1');
+      expect(screen.queryByTestId('extract-result')).toBeNull();
+    });
+
+    it('reads the notice and says what it found and what it left out', async () => {
+      const can = { propose_conditions: { allowed: true, applies: true, reason: null } };
+      mocked.extractConditions.mockResolvedValue({ ...page([proposal(), proposal({ id: 'c10', number: '8' })]), already_known: 1, rejected: 0, document_cut: true });
+      renderIn(<PermitsRegister {...base} permits={[permit({ can })]} conditions={[]} />);
+      fireEvent.click(screen.getByTestId('permit-propose'));
+      const result = await screen.findByTestId('extract-result');
+      expect(result).toHaveTextContent('2 conditions found. Check them below.');
+      expect(result).toHaveTextContent('1 condition is already on the permit and was left out.');
+      expect(result).toHaveTextContent('only its first part was read');
+      expect(result).not.toHaveTextContent('could not be read as');
+    });
+
+    it('shows the sentence quoted from the notice beside a proposal', () => {
+      renderIn(
+        <PermitsRegister {...base} permits={[permit()]} conditions={[proposal({ passage: 'The traffic plan shall be submitted before work starts.' })]} />,
+      );
+      expect(screen.getByTestId('proposal-passage')).toHaveTextContent('The traffic plan shall be submitted before work starts.');
+    });
+
+    it('follows the server flags on the permit buttons and names the reason', () => {
+      const off = { allowed: false, applies: true, reason: 'edit_required' };
+      const gone = { allowed: false, applies: false, reason: 'start_already_notified' };
+      renderIn(<PermitsRegister {...base} permits={[permit({ can: { start: off, interrupt: gone, resume: gone } })]} conditions={[]} />);
+      expect(screen.getByTestId('permit-start')).toBeDisabled();
+      expect(screen.getByTestId('permit-start')).toHaveAttribute('title', 'You need the right to edit permits for this.');
+      expect(screen.queryByTestId('permit-interruption')).toBeNull();
+      expect(screen.queryByTestId('permit-resumption')).toBeNull();
     });
 
     it('shows the reason on the row when the server refuses', async () => {

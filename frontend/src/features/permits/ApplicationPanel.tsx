@@ -55,6 +55,7 @@ export function ApplicationPanel({
   conditions,
   labels,
   personName,
+  internalReview,
   onBack,
 }: ApplicationPanelProps) {
   const { t } = useTranslation();

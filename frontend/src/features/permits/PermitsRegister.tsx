@@ -24,11 +24,11 @@ import {
   type RequirementRow,
 } from './api';
 import { ConditionDialog } from './ConditionDialogs';
-import { ConditionProposals } from './ConditionProposals';
+import { ConditionProposals, ExtractConditions } from './ConditionProposals';
 import { usePermitAction } from './hooks';
-import { PERMIT_STATE, PERMIT_STEP, SCOPE, typeName, vocab, type LabelContext } from './labels';
-import { Fact, Field, FormDialog, PERMIT_TONE, ToneBadge, dateText, fieldClass } from './PermitBits';
-import { canNotifyStart, permitTargets, workStep } from './rules';
+import { PERMIT_STATE, PERMIT_STEP, SCOPE, errorText, typeName, vocab, type LabelContext, type TFn } from './labels';
+import { Fact, Field, FormDialog, GatedButton, PERMIT_TONE, ToneBadge, dateText, fieldClass } from './PermitBits';
+import { canNotifyStart, gate, permitTargets, workStep } from './rules';
 
 /* ── Notice of the start of works ─────────────────────────────────────── */
 
@@ -153,12 +153,23 @@ function PermitTransitionDialog({ open, onClose, projectId, permit }: { open: bo
         <legend className="mb-1 text-sm font-medium text-content-primary">
           {t('permits.ui.permit.change_target', { defaultValue: 'What happened' })}
         </legend>
-        {targets.map((x) => (
-          <label key={x} className="flex items-center gap-2 rounded-md border border-border-light p-2.5 text-sm">
-            <input type="radio" name="permit-target" checked={target === x} onChange={() => setTarget(x)} />
-            {vocab(t, PERMIT_STEP, x)}
-          </label>
-        ))}
+        {targets.map((x) => {
+          const flag = permit.can?.transition?.[x];
+          const refused = flag?.allowed === false;
+          return (
+            <label key={x} className="flex items-start gap-2 rounded-md border border-border-light p-2.5 text-sm">
+              <input type="radio" name="permit-target" className="mt-1" disabled={refused} checked={target === x} onChange={() => setTarget(x)} />
+              <span>
+                <span className={refused ? 'text-content-tertiary' : undefined}>{vocab(t, PERMIT_STEP, x)}</span>
+                {refused && flag?.reason && (
+                  <span className="block text-xs text-content-tertiary" data-testid="permit-target-refusal">
+                    {errorText(t as TFn, flag.reason, null)}
+                  </span>
+                )}
+              </span>
+            </label>
+          );
+        })}
       </fieldset>
       <Field label={t('permits.ui.permit.change_reason', { defaultValue: 'Reason' })} required>
         {(id) => <textarea id={id} rows={2} className={fieldClass} value={reason} onChange={(e) => setReason(e.target.value)} />}
@@ -242,22 +253,43 @@ export function PermitsRegister({
                   {req?.title && <p className="text-xs text-content-tertiary">{type}</p>}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {canNotifyStart(p) && (
-                    <Button size="sm" variant="secondary" onClick={() => setOpen({ permit: p, kind: 'start' })} data-testid="permit-start">
-                      {t('permits.ui.permit.start_submit', { defaultValue: 'Record start' })}
-                    </Button>
-                  )}
-                  {step && (
-                    <Button size="sm" variant="secondary" onClick={() => setOpen({ permit: p, kind: step })} data-testid={`permit-${step}`}>
-                      {step === 'interruption'
-                        ? t('permits.ui.permit.interruption_submit', { defaultValue: 'Record interruption' })
-                        : t('permits.ui.permit.resumption_submit', { defaultValue: 'Record resumption' })}
-                    </Button>
-                  )}
+                  <GatedButton
+                    gate={gate(p.can?.start, canNotifyStart(p))}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setOpen({ permit: p, kind: 'start' })}
+                    data-testid="permit-start"
+                  >
+                    {t('permits.ui.permit.start_submit', { defaultValue: 'Record start' })}
+                  </GatedButton>
+                  <GatedButton
+                    gate={gate(p.can?.interrupt, step === 'interruption')}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setOpen({ permit: p, kind: 'interruption' })}
+                    data-testid="permit-interruption"
+                  >
+                    {t('permits.ui.permit.interruption_submit', { defaultValue: 'Record interruption' })}
+                  </GatedButton>
+                  <GatedButton
+                    gate={gate(p.can?.resume, step === 'resumption')}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setOpen({ permit: p, kind: 'resumption' })}
+                    data-testid="permit-resumption"
+                  >
+                    {t('permits.ui.permit.resumption_submit', { defaultValue: 'Record resumption' })}
+                  </GatedButton>
                   {p.state === 'in_force' && (
-                    <Button size="sm" variant="secondary" onClick={() => setOpen({ permit: p, kind: 'condition' })} data-testid="permit-add-condition">
+                    <GatedButton
+                      gate={gate(p.can?.add_condition, true)}
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setOpen({ permit: p, kind: 'condition' })}
+                      data-testid="permit-add-condition"
+                    >
                       {t('permits.ui.condition.submit_new', { defaultValue: 'Add condition' })}
-                    </Button>
+                    </GatedButton>
                   )}
                   {targets.length > 0 && (
                     <Button size="sm" variant="ghost" onClick={() => setOpen({ permit: p, kind: 'change' })} data-testid="permit-change">
@@ -326,6 +358,7 @@ export function PermitsRegister({
                   })}
                 </button>
               )}
+              {p.state === 'in_force' && <ExtractConditions projectId={projectId} permit={p} />}
               <ConditionProposals projectId={projectId} proposals={proposals} personName={personName} />
             </li>
           );

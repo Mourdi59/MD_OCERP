@@ -4,7 +4,7 @@
 // Small pieces the permit screens share: the colour of each state, a person
 // chip, a labelled fact, and the one dialog frame every write goes through.
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, MoreHorizontal } from 'lucide-react';
 
@@ -14,6 +14,8 @@ import { WideModal } from '@/shared/ui/WideModal';
 import { fmtDate } from '@/shared/lib/formatters';
 
 import type { ApplicationState, ConditionState, Outcome, PermitState, ReadinessStatus, RequirementState } from './api';
+import { errorText, type TFn } from './labels';
+import type { Gate } from './rules';
 
 export const fieldClass =
   'w-full rounded-md border border-border-light bg-surface-primary px-2.5 py-1.5 text-sm text-content-primary';
@@ -170,6 +172,18 @@ export function PanelHeader({
 }
 
 /** A refusal or a load failure said where the reader is looking. */
+/** A button that follows a server flag: left out when the action does not apply, disabled with the reason when refused. */
+export function GatedButton({ gate, children, ...rest }: { gate: Gate } & ComponentProps<typeof Button>) {
+  const { t } = useTranslation();
+  if (!gate.show) return null;
+  const why = gate.reason ? errorText(t as TFn, gate.reason, null) : undefined;
+  return (
+    <Button {...rest} disabled={!gate.enabled || rest.disabled} title={why ?? rest.title}>
+      {children}
+    </Button>
+  );
+}
+
 export function Refusal({ children, testId = 'refusal' }: { children: ReactNode; testId?: string }) {
   if (!children) return null;
   return (

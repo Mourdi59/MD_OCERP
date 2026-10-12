@@ -5,16 +5,16 @@
 // roadmap rows are put together, what a decision or a condition must carry,
 // and which step a record's state leaves open.
 //
-// Nothing here decides who may act: the API sends no capability flags for
-// permits, so a button is offered by the state of the record alone and the
-// server's refusal is shown in its own words. The state rules mirror
-// backend/app/modules/permits/fsm.py and service.py; the server repeats
-// every one of them.
+// Who may act is the server's answer: a record carries `can` flags and a
+// button follows them (`gate`). The state rules below are the fallback for
+// a record served without flags; they mirror backend/app/modules/permits
+// fsm.py and guards.py, and the server repeats every one of them.
 
 import type {
   Application,
   ApplicationDetail,
   ApplicationTarget,
+  CanFlag,
   Clock,
   ClockEventInput,
   ClockEventKind,
@@ -563,8 +563,25 @@ export function toClockEventInput(d: ClockEventDraft): ClockEventInput {
 
 /* ── Permits ──────────────────────────────────────────────────────────── */
 
+/** How a button stands: left out, offered, or shown disabled with the refusal code. */
+export interface Gate {
+  show: boolean;
+  enabled: boolean;
+  reason: string | null;
+}
+
+/** A button follows the server flag; a record served without one falls back to the client rule. */
+export function gate(flag: CanFlag | null | undefined, fallback: boolean): Gate {
+  if (!flag) return { show: fallback, enabled: true, reason: null };
+  return { show: flag.applies !== false, enabled: flag.allowed, reason: flag.allowed ? null : flag.reason };
+}
+
+const PERMIT_TARGET_ORDER: PermitTarget[] = ['suspended', 'in_force', 'revoked', 'expired', 'lapsed'];
+
 /** The states a permit can be moved to by hand. A lapsed permit returns only through an extension decision. */
-export function permitTargets(p: Pick<Permit, 'state'>): PermitTarget[] {
+export function permitTargets(p: Pick<Permit, 'state' | 'can'>): PermitTarget[] {
+  const served = p.can?.transition;
+  if (served) return PERMIT_TARGET_ORDER.filter((x) => served[x] !== undefined && served[x]?.applies !== false);
   if (p.state === 'in_force') return ['suspended', 'revoked', 'expired'];
   if (p.state === 'suspended') return ['in_force', 'revoked'];
   return [];
