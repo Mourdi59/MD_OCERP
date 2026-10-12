@@ -125,8 +125,6 @@ export type DependencyOn = 'granted' | 'submitted';
 export type ReadinessGate = 'start' | 'handover' | 'roadmap' | 'register';
 export type ReadinessStatus = 'ready' | 'at_risk' | 'not_ready' | 'no_roadmap';
 export type ExportRegister = 'roadmap' | 'conditions' | 'permits';
-/** The governance frame documents a permit register is filed as. */
-export type FrameDocumentType = 'dev_permit_roadmap' | 'dev_special_permits' | 'dev_permit_conditions';
 
 export interface CatalogueSummary {
   kind: string;
@@ -413,7 +411,8 @@ export interface DecisionCorrection {
 }
 
 export interface FrameDocumentResult {
-  doc_type: FrameDocumentType;
+  /** Named by the project's governance model, not by this module. */
+  doc_type: string;
   register: ExportRegister;
   governance_document_id: string;
   container_id: string;
@@ -876,8 +875,8 @@ export function getValidation(projectId: string): Promise<Page<Finding>> {
 }
 
 /** File the register as a new revision of its governance frame document. */
-export function publishFrameDocument(projectId: string, docType: FrameDocumentType): Promise<FrameDocumentResult> {
-  return apiPost<FrameDocumentResult>(`/v1/permits/projects/${projectId}/frame-documents/${docType}/publish`, {});
+export function publishFrameDocument(projectId: string, register: ExportRegister): Promise<FrameDocumentResult> {
+  return apiPost<FrameDocumentResult>(`/v1/permits/projects/${projectId}/frame-document/publish?register=${register}`, {});
 }
 
 export function downloadRegister(projectId: string, register: ExportRegister, format: 'pdf' | 'xlsx'): Promise<void> {

@@ -23,7 +23,7 @@ import { TabBar } from '@/shared/ui/TabBar';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 
-import { downloadRegister, publishFrameDocument, type ExportRegister, type FrameDocumentType } from './api';
+import { downloadRegister, publishFrameDocument, type ExportRegister } from './api';
 import { ApplicationPanel } from './ApplicationPanel';
 import { isBinding } from './ChangeRequestField';
 import { ChecksPanel, READINESS_GATE } from './ChecksPanel';
@@ -60,13 +60,6 @@ const EXPORT_OF_TAB: Record<Tab, ExportRegister | null> = {
   permits: 'permits',
   conditions: 'conditions',
   checks: null,
-};
-
-/** The governance frame document each register is filed as. */
-const FRAME_DOCUMENT: Record<ExportRegister, FrameDocumentType> = {
-  roadmap: 'dev_permit_roadmap',
-  permits: 'dev_special_permits',
-  conditions: 'dev_permit_conditions',
 };
 
 export function PermitsPage() {
@@ -118,7 +111,7 @@ export function PermitsPage() {
   const tabRegister = EXPORT_OF_TAB[tab] ?? 'roadmap';
   const file = usePermitAction(
     projectId,
-    () => publishFrameDocument(projectId, FRAME_DOCUMENT[tabRegister]),
+    () => publishFrameDocument(projectId, tabRegister),
     () => {
       setDialog(null);
       addToast({

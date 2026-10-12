@@ -50094,7 +50094,6 @@ const resource = {
     "permits.errors.field_not_nullable": "Dieses Feld darf nicht leer sein.",
     "permits.errors.frame_document_not_found": "Das Governance-Modell des Projekts kennt dieses Rahmendokument nicht.",
     "permits.errors.frame_document_read_only": "Das Rahmendokument ist verbindlich und erhält ohne Änderungsantrag keine neue Fassung.",
-    "permits.errors.frame_document_type_invalid": "Unbekannte Art von Rahmendokument.",
     "permits.errors.frame_document_without_container": "Das Rahmendokument hat noch keinen Dokumentencontainer.",
     "permits.errors.gate_condition_not_found": "Gate-Bedingung in diesem Projekt nicht gefunden.",
     "permits.errors.gate_invalid": "Unbekannte Bereitschaftsprüfung.",
