@@ -191,7 +191,9 @@
       "code": "planungsvorgaben",
       "area": "b",
       "name_key": "governance.catalogue.aho_heft9.doc.planungsvorgaben",
-      "required_at_gates": [],
+      "required_at_gates": [
+        "stufe2_to_stufe3"
+      ],
       "hosts": [
         "design",
         "quality",

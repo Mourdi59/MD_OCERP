@@ -56,7 +56,7 @@ export interface CatalogueSummary {
   based_on?: string;
   review_status: string;
   jurisdiction_countries: string[];
-  /** Not sent yet; the phase mapping step uses it as soon as it is. */
+  /** Only on a catalogue read in full; the phase mapping step offers a choice when it is there. */
   phases?: GovernancePhase[];
 }
 
@@ -80,9 +80,8 @@ export interface GovernanceModel {
   stopped: boolean;
   stopped_at: string | null;
   phases: GovernancePhase[];
-  /** What the caller may do on this project, decided by the server. */
-  /** `edit` is absent from a server that does not report it; the write then answers for itself. */
-  can: { manage: boolean; edit?: boolean };
+  /** What the caller may do on the model, decided by the server. Writes on areas and documents carry flags of their own. */
+  can: { manage: boolean };
 }
 
 export interface GovernanceArea {
@@ -95,7 +94,7 @@ export interface GovernanceArea {
   applicable: boolean;
   na_rationale: string;
   retired: boolean;
-  /** Not sent yet, see the report on API gaps. */
+  /** The area's label when the server sends one; the catalogue key names it otherwise. */
   name?: GovernanceLabel;
   /** The catalogue's frame document types for this area; `tracked` says which ones the project already holds. */
   document_types?: AreaDocumentType[];
@@ -332,7 +331,7 @@ export interface DocumentRevision {
   revision_number: number;
   content_hash: string;
   file_name: string;
-  created_at: string;
+  created_at: string | null;
   in_force: boolean;
 }
 
@@ -349,7 +348,7 @@ export interface ChangeRequest {
   requested_by: string | null;
   decided_by: string | null;
   decided_at: string | null;
-  created_at: string;
+  created_at: string | null;
 }
 
 export interface DocumentHistory {

@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Layers } from 'lucide-react';
+import { ArrowRight, Layers } from 'lucide-react';
 import clsx from 'clsx';
 
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -30,9 +30,9 @@ import {
   type GovernanceGate,
   type GovernanceModel,
 } from './api';
-import { canManage, type Verdict } from './access';
+import { canManage, frozenInReview, type Verdict } from './access';
 import { RoutePin } from './RoutePin';
-import { ReasonedButton } from './GovernanceBits';
+import { ReasonedButton, VerdictReason } from './GovernanceBits';
 import { catalogueName, errorText, humanizeCode, refusalText, type LabelContext } from './labels';
 
 export interface ModelPickerProps {
@@ -153,16 +153,21 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
               return current ? catalogueTitle(labels, current) : humanizeCode(model.catalogue_id);
             })()}
           </span>
-          <span className="text-xs text-content-tertiary">v{model.catalogue_version}</span>
-          <label className="ml-auto inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={model.four_eyes}
-              disabled={!!verdict || toggleFourEyes.isPending}
-              onChange={(e) => toggleFourEyes.mutate(e.target.checked)}
-            />
-            {t('governance.project.model.four_eyes', { defaultValue: 'Four-eyes rule: an area owner may not decide a gate' })}
-          </label>
+          <span className="text-xs text-content-tertiary">
+            {t('governance.project.model.version', { defaultValue: 'Version {{n}}', n: model.catalogue_version })}
+          </span>
+          <div className="ml-auto flex flex-col items-end gap-1">
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={model.four_eyes}
+                disabled={!!verdict || !!frozenInReview(gates) || toggleFourEyes.isPending}
+                onChange={(e) => toggleFourEyes.mutate(e.target.checked)}
+              />
+              {t('governance.project.model.four_eyes', { defaultValue: 'Four-eyes rule: an area owner may not decide a gate' })}
+            </label>
+            <VerdictReason verdict={verdict ?? frozenInReview(gates)} />
+          </div>
         </div>
       )}
 
@@ -262,9 +267,7 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
                 <span className="w-40 shrink-0 truncate text-content-primary">
                   {catalogueName(labels, { kind: 'phase', code: p.code, catalogueId: model?.catalogue_id, label: p.name })}
                 </span>
-                <span aria-hidden className="text-content-tertiary">
-                  {'->'}
-                </span>
+                <ArrowRight size={14} aria-hidden className="shrink-0 text-content-tertiary" />
                 {choice.phases && choice.phases.length > 0 ? (
                   <select
                     className="flex-1 rounded-md border border-border-light bg-surface-primary px-2 py-1 text-sm"

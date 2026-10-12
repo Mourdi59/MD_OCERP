@@ -79,6 +79,8 @@ ALL_CODES: tuple[str, ...] = (
     "no_change_route",
     "area_retired",
     "pack_catalogue_invalid",
+    "settings_frozen_in_review",
+    "null_not_allowed",
     "activity_not_in_project",
     "target_date_owned_by_schedule",
 )
@@ -425,9 +427,24 @@ def reopen_violation(
         return "gate_not_decided"
     if not (rationale or "").strip():
         return "rationale_required"
-    if any(s != "not_started" for s in later_gate_statuses):
+    # A later gate counts from the moment it is submitted. Its preparation can be opened by
+    # anyone who may edit and cannot be taken back, so it must not lock the gate before it.
+    if any(s in GATE_UNDER_DECISION or s == "decided" for s in later_gate_statuses):
         return "later_gate_active"
     return None
+
+
+GATE_UNDER_DECISION: tuple[str, ...] = ("in_review", "on_hold")
+
+
+def settings_freeze_violation(gate_statuses: Iterable[str]) -> str | None:
+    """What decides who may decide a gate does not change while a gate is being decided.
+
+    Four-eyes and the applicability of an area are inputs of the decision. If
+    they could be changed with a gate in review or on hold, a manager could
+    switch a rule off, decide, and switch it back.
+    """
+    return "settings_frozen_in_review" if any(s in GATE_UNDER_DECISION for s in gate_statuses) else None
 
 
 def reopen_rewinds_phase(last_outcome: str) -> bool:

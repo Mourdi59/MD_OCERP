@@ -281,7 +281,11 @@ function AreaReadiness({
                   ? t('governance.evidence.provider_failed', {
                       defaultValue: 'This evidence source could not be read right now.',
                     })
-                  : catalogueName(labels, { kind: 'doc', code: e.code, label: e.label })}
+                  : e.code.endsWith(':no_answer')
+                    ? t('governance.evidence.no_answer', {
+                        defaultValue: 'This evidence source gave no answer, so it counts as unknown.',
+                      })
+                    : catalogueName(labels, { kind: 'doc', code: e.code, label: e.label })}
                 {e.detail && <span className="text-content-tertiary"> - {e.detail}</span>}
                 {e.blocking && e.state === 'not_met' && (
                   <span className="ml-1 font-medium text-semantic-error">

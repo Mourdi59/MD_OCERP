@@ -114,11 +114,69 @@ async def test_an_area_owner_cannot_decide_under_four_eyes_and_can_without(world
         blocked = await c.post(f"{BASE}/projects/{world.project_id}/gates/{g.id}/decide", json=_decide_body())
         assert blocked.status_code == 403
         assert blocked.json()["detail"]["code"] == "decider_is_area_owner"
+        # The rule cannot be switched off for the gate it is protecting.
         off = await c.patch(f"{BASE}/projects/{world.project_id}/model", json={"four_eyes": False})
-        assert off.status_code == 200
+        assert (off.status_code, off.json()["detail"]["code"]) == (409, "settings_frozen_in_review")
+        still = await c.post(f"{BASE}/projects/{world.project_id}/gates/{g.id}/decide", json=_decide_body())
+        assert still.status_code == 403
+        # Sending the value it already has is not a change, and pinning a route is not frozen.
+        same = await c.patch(f"{BASE}/projects/{world.project_id}/model", json={"four_eyes": True})
+        assert same.status_code == 200, same.text
+    async with world.factory() as s:
+        assert (await GovernanceService(s).require_model(world.project_id)).four_eyes is True
+
+
+async def test_without_four_eyes_an_area_owner_decides(world: World) -> None:
+    """Switched off before the gate goes to review, the rule does not apply, and the decision says so."""
+    async with client_as(world, world.manager, "manager") as c:
+        off = await c.patch(f"{BASE}/projects/{world.project_id}/model", json={"four_eyes": False})
+        assert off.status_code == 200, off.text
+    g = await prepare_gate(world, G1)
+    async with world.factory() as s:
+        svc = GovernanceService(s)
+        area = (await svc.repo.list_areas(world.project_id))[0]
+        await svc.update_area(
+            world.project_id, area.id, changes={"deputy_user_id": world.decider}, actor_id=world.manager
+        )
+        await s.commit()
+    async with client_as(world, world.decider, "manager") as c:
         ok = await c.post(f"{BASE}/projects/{world.project_id}/gates/{g.id}/decide", json=_decide_body())
     assert ok.status_code == 201, ok.text
     assert ok.json()["snapshot"]["four_eyes"] is False
+
+
+async def test_an_area_is_not_taken_out_of_a_gate_that_is_being_decided(world: World) -> None:
+    g = await prepare_gate(world, G1)
+    async with world.factory() as s:
+        area = (await GovernanceService(s).repo.list_areas(world.project_id))[0]
+    url = f"{BASE}/projects/{world.project_id}/areas/{area.id}"
+    async with client_as(world, world.manager, "manager") as c:
+        out = await c.patch(url, json={"applicable": False, "na_rationale": "Not part of this project"})
+        assert (out.status_code, out.json()["detail"]["code"]) == (409, "settings_frozen_in_review")
+        # The owner may still change: that resets the area's readiness, which is visible.
+        owner = await c.patch(url, json={"owner_user_id": str(world.decider)})
+        assert owner.status_code == 200, owner.text
+    async with world.factory() as s:
+        assert (await GovernanceService(s).repo.get_area(world.project_id, area.id)).applicable is True
+    assert (await gate(world, G1)).id == g.id
+
+
+@pytest.mark.parametrize("field", ["applicable", "na_rationale", "name_override"])
+async def test_an_explicit_null_on_an_area_field_is_refused(world: World, field: str) -> None:
+    async with world.factory() as s:
+        area = (await GovernanceService(s).repo.list_areas(world.project_id))[0]
+    async with client_as(world, world.manager, "manager") as c:
+        r = await c.patch(f"{BASE}/projects/{world.project_id}/areas/{area.id}", json={field: None})
+        assert (r.status_code, r.json()["detail"]["code"]) == (422, "null_not_allowed")
+        # An override is cleared with an empty string, not with null.
+        cleared = await c.patch(f"{BASE}/projects/{world.project_id}/areas/{area.id}", json={"name_override": ""})
+        assert cleared.status_code == 200, cleared.text
+
+
+async def test_an_explicit_null_for_four_eyes_is_refused(world: World) -> None:
+    async with client_as(world, world.manager, "manager") as c:
+        r = await c.patch(f"{BASE}/projects/{world.project_id}/model", json={"four_eyes": None})
+    assert (r.status_code, r.json()["detail"]["code"]) == (422, "null_not_allowed")
 
 
 async def test_the_route_approver_decides_and_the_trail_exports(world: World) -> None:

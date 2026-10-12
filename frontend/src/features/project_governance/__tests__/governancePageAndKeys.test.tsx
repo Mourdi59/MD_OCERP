@@ -136,11 +136,11 @@ describe('ProjectGovernancePage states', () => {
       ],
     } as never);
     renderPage();
-    const preset = await screen.findByRole('radio', { name: 'Pack phase model' });
+    const preset = await screen.findByRole('radio', { name: /^Pack phase model/ });
     await waitFor(() => expect(preset).toBeChecked());
     expect(mocked.listCatalogues).toHaveBeenCalledWith('DE');
     expect(screen.getByText(/From the active pack/)).toHaveTextContent('Suggested for this project');
-    expect(screen.getByRole('radio', { name: 'Neutral phase model' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: /^Neutral phase model/ })).not.toBeChecked();
   });
 
   it('a failing model request shows the error, not the empty state', async () => {
@@ -193,7 +193,7 @@ describe('governance i18n keys', () => {
     .join('\n');
 
   const used = new Set<string>();
-  for (const m of sources.matchAll(/t\(\s*'(governance\.[a-z_.]+)'/g)) used.add(m[1]!);
+  for (const m of sources.matchAll(/t\(\s*'(governance\.[a-z0-9_.]+)'/g)) used.add(m[1]!);
   for (const map of [...Object.values(ALL_KEY_MAPS), DISABLED_REASON, DECISION_PROBLEM, ...Object.values(AREA_KEY_MAPS), ...Object.values(ROUTE_KEY_MAPS)]) {
     for (const [key] of Object.values(map)) used.add(key);
   }
