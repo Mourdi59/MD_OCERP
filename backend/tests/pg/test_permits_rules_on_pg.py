@@ -439,12 +439,14 @@ async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_
         attempt = GateAttempt(gate.id, gate.code, 1)
         items = {i.code.split(":")[0]: i for i in await permits_evidence.start_and_handover(s, pid, attempt, area)}
         # The one blocker is the fence. The road occupation is needed at mobilisation, long after the
-        # gate date: it is said as a warning next to the blocker and does not hold the gate.
+        # gate date: it is an item of its own that names the day and does not hold the gate.
+        road_needed = (NOW + timedelta(days=175)).isoformat()
         assert items["permits_start"].state == "not_met"
-        assert [d.split(":")[0] for d in items["permits_start"].detail.split(", ")] == [
-            "warning permit_due_later",
-            "before_start_obligation_open",
-        ]
+        assert [d.split(":")[0] for d in items["permits_start"].detail.split(", ")] == ["before_start_obligation_open"]
+        assert sorted(items) == ["permits_due_later", "permits_start"]
+        due = items["permits_due_later"]
+        assert due.state == permits_evidence.WARNING_STATE
+        assert due.detail == f"Road occupation for crane and site access {road_needed}"
         # One confirmation by the project owner, who is neither the owner of the condition nor the submitter.
         can = svc.condition_can(
             fence, guards.Caller(world.manager, edit=True, manage=True, verify=True), 1, await svc._involved(fence)
@@ -454,17 +456,26 @@ async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_
         await s.commit()
     async with world.factory() as s:
         items = {i.code.split(":")[0]: i for i in await permits_evidence.start_and_handover(s, pid, attempt, area)}
-        # Discharged: the area is met, with exactly one warning that names the day the road
-        # occupation is needed.
-        road_needed = (NOW + timedelta(days=175)).isoformat()
-        assert items["permits_start"].state == "met"
-        assert items["permits_start"].detail == (
-            f"warning permit_due_later:Road occupation for crane and site access {road_needed}"
-        )
-        # Asked without a gate date (the site is to start now) the same permit blocks.
-        start = await PermitService(s).readiness(pid, "start", NOW)
-        assert start["status"] == "not_ready"
-        assert [i["code"] for i in start["items"] if i["state"] == "not_met"] == ["permit_missing"]
+        # Discharged: the area is met, with exactly one warning, the same item as before.
+        assert (items["permits_start"].state, items["permits_start"].detail) == ("met", "")
+        assert sorted(items) == ["permits_due_later", "permits_start"]
+        assert items["permits_due_later"].code == due.code
+        # The permits screen and the site readiness port ask for the same day as the gate.
+        svc = PermitService(s)
+        start = await svc.readiness(pid, "start", NOW)
+        assert start["status"] == "ready" and start["needed_from"] == (NOW + timedelta(days=21)).isoformat()
+        assert [(i["code"], i["state"]) for i in start["items"] if i["state"] != "met"] == [
+            ("permit_due_later", "warning")
+        ]
+        # A gate without a planned day cannot show that anything is needed later: the permit blocks.
+        (await s.get(GovernanceGate, gate.id)).target_date = ""
+        await s.flush()
+        undated = await svc.readiness(pid, "start", NOW)
+        assert undated["status"] == "not_ready" and undated["needed_from"] is None
+        assert [i["code"] for i in undated["items"] if i["state"] == "not_met"] == ["permit_missing"]
+        undated_items = await permits_evidence.start_and_handover(s, pid, attempt, area)
+        assert [(i.code.split(":")[0], i.state) for i in undated_items] == [("permits_start", "not_met")]
+        await s.rollback()
 
 
 # ── finding 10, rules 2, 20, 21, 22: the ports other modules call ─────────

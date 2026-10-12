@@ -227,6 +227,7 @@
     },
     "evidence": {
       "handover": "Occupancy permitted, no open before-occupation conditions",
+      "permit_due_later": "Permit needed after the gate date, not granted yet",
       "register": "Permit condition register complete",
       "roadmap": "Permits needed for the next phase filed or granted",
       "start": "No open before-start permit conditions",

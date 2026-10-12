@@ -122,12 +122,23 @@ def test_a_warning_reaches_the_gate_in_the_detail_and_does_not_block() -> None:
 
     due = {"code": "permit_due_later", "state": "warning", "detail": "Road 2027-04-05", "ref": "r"}
     granted = {"code": "permit_granted", "state": "met", "detail": "P"}
-    item = to_evidence({"items": [granted, due]}, "c", "l", uuid.uuid4())
-    assert item.state == "met" and item.detail == "warning permit_due_later:Road 2027-04-05"
+    from app.modules.permits import evidence as ev
+
+    pid = uuid.uuid4()
+    # The check itself is met: the warning is not folded into it, it is an item of its own.
+    item = to_evidence({"items": [granted, due]}, "c", "l", pid)
+    assert (item.state, item.detail) == ("met", "")
+    (said,) = ev.warnings({"items": [granted, due]}, "g_build", pid)
+    assert said.code == "permits_due_later:g_build:r" and said.detail == "Road 2027-04-05"
+    assert said.label_key == "permits.evidence.permit_due_later" and said.link == ("permits", str(pid))
+    # The state is ``warning`` as soon as the governance module serves it; before that the item is
+    # met and still says what is outstanding. It is never a blocker.
+    assert said.state == ("warning" if "warning" in EVIDENCE_STATES else "met")
     missing = {"code": "permit_missing", "state": "not_met", "detail": "Crane", "ref": "r"}
-    both = to_evidence({"items": [missing, due]}, "c", "l", uuid.uuid4())
-    assert both.state == "not_met"
-    assert both.detail == "permit_missing:Crane, warning permit_due_later:Road 2027-04-05"
+    both = to_evidence({"items": [missing, due]}, "c", "l", pid)
+    assert (both.state, both.detail) == ("not_met", "permit_missing:Crane")
+    assert len(ev.warnings({"items": [missing, due]}, "g_build", pid)) == 1
+    assert ev.warnings({"items": [missing, granted]}, "g_build", pid) == []
     # The check is made for the gate's target date, never for a day already past, on the server's day.
     today = day(2026, 10, 13)
     assert needed_from(Gate(target_date=day(2026, 11, 2)), today) == day(2026, 11, 2)

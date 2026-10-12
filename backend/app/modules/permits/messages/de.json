@@ -227,6 +227,7 @@
     },
     "evidence": {
       "handover": "Nutzung genehmigt, keine offenen Nebenbestimmungen vor Nutzungsaufnahme",
+      "permit_due_later": "Genehmigung erst nach dem Gate-Termin nötig, noch nicht erteilt",
       "register": "Register der Nebenbestimmungen vollständig",
       "roadmap": "Für die nächste Phase nötige Genehmigungen beantragt oder erteilt",
       "start": "Keine offenen Nebenbestimmungen vor Baubeginn",

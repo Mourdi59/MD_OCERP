@@ -2470,7 +2470,9 @@ class PermitService:
 
         ``needed_from`` (start check only) is the date the check is made for, the target date of
         the governance gate being read: a permit the roadmap needs only after it is a warning,
-        not a blocker (``conditions.start_readiness``). Left out, every missing permit blocks.
+        not a blocker (``conditions.start_readiness``). Left out, it is the target date of the
+        project's gate into construction (:meth:`start_needed_from`), so this screen and the
+        gate say the same; where no such gate carries a date every missing permit blocks.
 
         ``enables`` (roadmap check only) is what the next phase needs a permit for; the caller
         resolves it from the governance catalogue's phase tags. Left out, the check asks for
@@ -2482,7 +2484,10 @@ class PermitService:
         if v["roadmap"] is None:
             return {"gate": gate, "status": "no_roadmap", "items": []}
         if gate == "start":
+            if needed_from is None:
+                needed_from = await self.start_needed_from(project_id, today)
             out = cnd.start_readiness(v["reqs"], v["permits"], v["conds"], needed_from).as_dict()
+            out["needed_from"] = needed_from.isoformat() if needed_from else None
             needing = {
                 str(r.needed_by_activity_id): str(r.id) for r in v["snap"]["requirements"] if r.needed_by_activity_id
             }
@@ -2498,6 +2503,22 @@ class PermitService:
         if gate == "register":
             return cnd.register_readiness(v["reqs"], v["conds"]).as_dict()
         return cnd.roadmap_readiness(v["reqs"], hst.DEFAULT_ENABLES if enables is None else enables).as_dict()
+
+    async def start_needed_from(self, project_id: uuid.UUID, today: date) -> date | None:
+        """The day the start of construction is planned for: the gate into it, read through the port.
+
+        The earliest target date among the gates into a phase that enables the start of
+        construction, never earlier than ``today``. ``None`` when the project has no such gate
+        or none of them carries a date.
+        """
+        from app.modules.project_governance import public
+
+        phases = set(await public.phases_enabling(self.session, project_id, "construction_start"))
+        if not phases:
+            return None
+        gates = await public.project_gates(self.session, project_id)
+        planned = [g.target_date for g in gates if g.to_phase in phases and g.target_date is not None]
+        return max(min(planned), today) if planned else None
 
     async def readiness_for_phase(self, project_id: uuid.UUID, phase_code: str, today: date) -> dict[str, Any]:
         """The roadmap check for the gate into one governance phase, by that phase's catalogue tags."""

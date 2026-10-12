@@ -35,6 +35,7 @@ from typing import Any
 
 from app.modules.permits.hosting import Hosting, project_hosting
 from app.modules.project_governance.evidence import (
+    EVIDENCE_STATES,
     EvidenceItem,
     GateAttempt,
     register_evidence_link,
@@ -47,6 +48,11 @@ GATE_PROVIDER = "permits.start_and_handover"
 NO_HOSTING_AREA = "no_area_hosts_permits"
 NO_PHASE_TAGS = "no_phase_enables_tag"
 NO_FRAME_DOCUMENT = "no_frame_document"
+# A permit needed only after the gate date is its own evidence item, so the decider can name it.
+# The governance module serves the state ``warning`` (does not block, is acknowledged at a go);
+# on a governance version without it the item is ``met`` and still says what is outstanding.
+DUE_LATER = "permits_due_later"
+WARNING_STATE = "warning" if "warning" in EVIDENCE_STATES else "met"
 
 
 async def _missing(session: Any, project_id: uuid.UUID, hosting: Hosting) -> str | None:
@@ -99,18 +105,33 @@ def unresolved(provider: str, attempt: GateAttempt, reason: str, project_id: uui
 def to_evidence(readiness: dict[str, Any], code: str, label: str, project_id: uuid.UUID) -> EvidenceItem:
     """One evidence item per readiness check; anything not plainly met is ``not_met`` and says why.
 
-    A ``warning`` is carried in the detail and does not change the state: the item can be
-    ``met`` and still say what is due later.
+    Warnings are not part of it: each is an item of its own (:func:`warnings`).
     """
-    said = [i for i in readiness["items"] if i["state"] != "met"]
-    prefix = {"at_risk": "at_risk ", "warning": "warning "}
+    open_items = [i for i in readiness["items"] if i["state"] not in ("met", "warning")]
     return EvidenceItem(
         code=code,
-        state="not_met" if any(i["state"] != "warning" for i in said) else "met",
+        state="not_met" if open_items else "met",
         label_key=label,
         link=("permits", str(project_id)),
-        detail=", ".join(f"{prefix.get(i['state'], '')}{i['code']}:{i['detail']}" for i in said),
+        detail=", ".join(
+            f"{'at_risk ' if i['state'] == 'at_risk' else ''}{i['code']}:{i['detail']}" for i in open_items
+        ),
     )
+
+
+def warnings(readiness: dict[str, Any], gate_code: str, project_id: uuid.UUID) -> list[EvidenceItem]:
+    """One evidence item per warning of a readiness check, with a code that stays the same between reads."""
+    return [
+        EvidenceItem(
+            code=f"{DUE_LATER}:{gate_code}:{i.get('ref') or ''}",
+            state=WARNING_STATE,
+            label_key=f"permits.evidence.{i['code']}",
+            link=("permits", str(project_id)),
+            detail=i["detail"],
+        )
+        for i in readiness["items"]
+        if i["state"] == "warning"
+    ]
 
 
 async def roadmap_and_register(
@@ -159,6 +180,7 @@ async def start_and_handover(
     for gate in hosting.gates(phase):
         r = await svc.readiness(project_id, gate, today, needed_from=needed_from(read, today))
         out.append(to_evidence(r, f"permits_{gate}:{attempt.gate_code}", f"permits.evidence.{gate}", project_id))
+        out.extend(warnings(r, attempt.gate_code, project_id))
     return out
 
 
