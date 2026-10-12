@@ -9,7 +9,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import app.modules.project_governance.events as gov_events
-from app.modules.project_governance.catalogue_store import CatalogueStore
+from app.modules.project_governance.catalogue_store import CatalogueStore, resolve_catalogue
 from app.modules.project_governance.errors import GovernanceError
 from app.modules.project_governance.models import GovernanceCatalogueVersion, ImmutableRecordError
 from app.modules.project_governance.service import GovernanceService
@@ -94,8 +94,11 @@ async def test_publish_freezes_and_a_project_on_v1_ignores_v2(world: World) -> N
         svc = GovernanceService(s)
         model = await svc.require_model(pid)
         cat = await svc.catalogue_for(model)
+        latest = await resolve_catalogue(s, "tenant", str(row.id), 2, tenant_id=tenant)
     assert model.catalogue_version == 1
-    assert cat.phases[0].labels is None or cat.phases[0].labels.get("en") != "Renamed strategy"
+    # The rename is real in v2, so its absence from the pinned v1 says something.
+    assert (latest.phases[0].labels or {}).get("en") == "Renamed strategy"
+    assert (cat.phases[0].labels or {}).get("en") != "Renamed strategy"
 
     async with world.factory() as s:
         frozen = await s.get(GovernanceCatalogueVersion, v1.id)
@@ -114,7 +117,8 @@ async def test_another_tenant_cannot_see_read_or_pin_it(world: World) -> None:
     async with world.factory() as s:
         store = CatalogueStore(s)
         listed = await store.list_available(other)
-        assert all(i["source"] == "shipped" for i in listed)
+        # Not "all shipped": an installation with an active pack lists its catalogues too.
+        assert listed and all(i["source"] != "tenant" for i in listed)
         with pytest.raises(GovernanceError) as read:
             await store.get(other, row.id)
         pid = await add_project(s, world.outsider, [])

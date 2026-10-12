@@ -48,6 +48,7 @@ from app.modules.project_governance.schemas import (
     ClearIn,
     ConditionIn,
     ConditionOut,
+    CriterionTick,
     DecisionIn,
     DecisionOut,
     DocumentCreate,
@@ -100,6 +101,15 @@ def _uid(user_id: str) -> uuid.UUID:
 
 
 def _role(payload: dict[str, Any]) -> str:
+    """The caller's role, handed on to the approval engine and compared nowhere in this module.
+
+    Accepted exception to "no role strings": a route step may name a role
+    instead of a person, and the approval-routes contract decides such a step
+    from the caller's role (``ApprovalRouteService.submit_decision(caller_role=...)``).
+    Governance passes it through for decide, reopen, resume, waive and
+    add_condition and never branches on it; its own authority checks use
+    permissions and area ownership.
+    """
     return str(payload.get("role") or "")
 
 
@@ -474,9 +484,6 @@ async def update_area(
 ) -> AreaOut:
     await verify_project_access(project_id, user_id, session)
     changes = {k: getattr(body, k) for k in body.model_fields_set}
-    for k in ("applicable", "na_rationale", "name_override"):
-        if k in changes and changes[k] is None:
-            changes.pop(k)
     area = await _run(
         GovernanceService(session).update_area(project_id, area_id, changes=changes, actor_id=_uid(user_id))
     )
@@ -514,6 +521,16 @@ async def get_gate(
         area["name"] = _label(cat, "area", area["code"])
         for doc in area["documents"]:
             doc["name"] = _label(cat, "doc", doc["doc_type"])
+        named = {c.code: c for c in cat.criteria_for(detail["gate"].code, area["code"])} if cat is not None else {}
+        for row in area["criteria"]:
+            crit = named.get(row["code"])
+            row["name"] = label_of(crit.name_key, crit.labels) if crit is not None else dict(_NO_LABEL)
+        # The rule of the write route, so the screen offers no tick that ends in a refusal.
+        area["can_tick"] = (
+            detail["gate"].status != "decided"
+            and not detail["gate"].historic
+            and str(user_id) in (area["owner_user_id"], area["deputy_user_id"])
+        )
     can: dict[str, Any] = {"edit": await _has(payload, "governance.edit")}
     if await _has(payload, "governance.decide"):
         # Always the server date: ``can`` has to agree with the write routes, which take no date.
@@ -528,6 +545,7 @@ async def get_gate(
         can |= {"outcomes": {o: {"allowed": False, "reason": missing} for o in ev.OUTCOMES}}
         for key in ("decide", "go", "resume", "reopen", "add_condition"):
             can |= {key: False, f"{key}_reason": missing}
+        can["acknowledge"] = []
     return GateDetailOut(
         gate=(await _gates_out(svc, [detail["gate"]], cat))[0],
         blockers=detail["blockers"],
@@ -586,6 +604,7 @@ async def decide_gate(
         proceed_at_risk_areas=tuple(body.proceed_at_risk_areas),
         accepted_not_applicable=tuple(body.accepted_not_applicable),
         hold_resume_date=body.hold_resume_date,
+        acknowledged_evidence=tuple((e.area_code, e.code) for e in body.acknowledged_evidence),
     )
     decision = await _run(
         GovernanceService(session).decide(
@@ -661,6 +680,30 @@ async def confirm_check(
     check = await _run(
         GovernanceService(session).confirm_check(
             project_id, gate_id, area_id, status=body.status, rag=body.rag, note=body.note, actor_id=_uid(user_id)
+        )
+    )
+    return CheckOut.model_validate(check)
+
+
+@router.put(
+    "/projects/{project_id}/gates/{gate_id}/checks/{area_id}/criteria/{code}",
+    response_model=CheckOut,
+    dependencies=[EDIT],
+)
+async def tick_criterion(
+    project_id: uuid.UUID,
+    gate_id: uuid.UUID,
+    area_id: uuid.UUID,
+    code: str,
+    body: CriterionTick,
+    session: SessionDep,
+    user_id: CurrentUserId,
+) -> CheckOut:
+    """Tick or untick one readiness criterion of the area. The server records who and when."""
+    await verify_project_access(project_id, user_id, session)
+    check = await _run(
+        GovernanceService(session).tick_criterion(
+            project_id, gate_id, area_id, code, met=body.met, note=body.note, actor_id=_uid(user_id)
         )
     )
     return CheckOut.model_validate(check)

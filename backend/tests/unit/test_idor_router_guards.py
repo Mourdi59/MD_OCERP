@@ -478,6 +478,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "plan_gate",
         "list_gate_decisions",
         "confirm_check",
+        "tick_criterion",
         "check_not_applicable",
         "add_condition",
         "list_documents",

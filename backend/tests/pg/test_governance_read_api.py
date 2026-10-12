@@ -295,3 +295,42 @@ async def test_matrix_query_count_does_not_grow_with_documents(world: World) -> 
         await s.commit()
     assert await _measure() == before
     assert (await gate(world, G1)).status == "in_review"
+
+
+async def test_unknown_evidence_leaves_the_go_open_and_has_to_be_named(world: World) -> None:
+    from app.modules.project_governance import evidence as evd
+
+    async def _down(session, project_id, attempt, area):
+        raise RuntimeError("module is down")
+
+    # Only this provider: on an integrated branch the modules have registered theirs.
+    others = dict(evd._REGISTRY)
+    evd._REGISTRY.clear()
+    evd.register_evidence_provider("risk", _down, name="probe_down", blocking=True)
+    try:
+        g = await prepare_gate(world, G1)
+        item = {"area_code": "risk", "code": "probe_down:error", "provider": "probe_down", "state": "unknown"}
+        can = await _can(world, g.id, world.decider, "manager")
+        assert can["go"] is True
+        assert can["acknowledge"] == [item]
+        async with client_as(world, world.decider, "manager") as c:
+            url = f"{_p(world)}/gates/{g.id}"
+            detail = (await c.get(url)).json()
+            flagged = [
+                (a["code"], e["code"]) for a in detail["areas"] for e in a["evidence"] if e["needs_acknowledgement"]
+            ]
+            assert flagged == [("risk", "probe_down:error")]
+            assert detail["blockers"] == []
+            silent = await c.post(f"{url}/decide", json={"outcome": "go"})
+            assert silent.status_code == 422, silent.text
+            assert silent.json()["detail"]["code"] == "unknown_evidence_not_acknowledged"
+            assert (await gate(world, G1)).status == "in_review"
+            named = await c.post(
+                f"{url}/decide",
+                json={"outcome": "go", "acknowledged_evidence": [{"area_code": "risk", "code": "probe_down:error"}]},
+            )
+            assert named.status_code == 201, named.text
+            assert named.json()["snapshot"]["acknowledged_evidence"] == [item]
+    finally:
+        evd._REGISTRY.clear()
+        evd._REGISTRY.update(others)

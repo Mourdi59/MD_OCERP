@@ -70,7 +70,8 @@ async def handle_route_event(data: dict, *, decision: str, session_factory=None)
                 await svc.apply_change_decision(target_id, decision=decision, decided_by=data.get("decided_by"))
             await session.commit()
     except Exception:
-        logger.debug("governance: approval %s wiring failed for %s %s", decision, kind, target_id, exc_info=True)
+        # At error level: a verdict that was not applied leaves a gate or a change request stuck.
+        logger.exception("governance: approval %s wiring failed for %s %s", decision, kind, target_id)
 
 
 async def _on_completed(event: Event) -> None:

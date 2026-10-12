@@ -49,24 +49,26 @@ def _project_fk(name: str) -> sa.Column:
     return sa.Column("project_id", GUID(), sa.ForeignKey(_PROJECT, ondelete="CASCADE", name=name), nullable=False)
 
 
-def _str(name: str, length: int, default: str | None = "", nullable: bool = False) -> sa.Column:
-    if default is None:
-        return sa.Column(name, sa.String(length=length), nullable=nullable)
-    return sa.Column(name, sa.String(length=length), nullable=nullable, server_default=default)
+# No server defaults below, on purpose. The models default these columns in
+# Python only, and an install built by ``create_all`` therefore has none. A
+# revision that added them would build a different table than a fresh install
+# has (tests/unit/test_governance_migration_shape.py compares the two).
+
+
+def _str(name: str, length: int, nullable: bool = False) -> sa.Column:
+    return sa.Column(name, sa.String(length=length), nullable=nullable)
 
 
 def _text(name: str) -> sa.Column:
-    return sa.Column(name, sa.Text(), nullable=False, server_default="")
+    return sa.Column(name, sa.Text(), nullable=False)
 
 
-def _bool(name: str, default: bool) -> sa.Column:
-    return sa.Column(name, sa.Boolean(), nullable=False, server_default=sa.text("true" if default else "false"))
+def _bool(name: str) -> sa.Column:
+    return sa.Column(name, sa.Boolean(), nullable=False)
 
 
-def _int(name: str, default: int | None = None) -> sa.Column:
-    if default is None:
-        return sa.Column(name, sa.Integer(), nullable=False)
-    return sa.Column(name, sa.Integer(), nullable=False, server_default=str(default))
+def _int(name: str) -> sa.Column:
+    return sa.Column(name, sa.Integer(), nullable=False)
 
 
 def _guid(name: str, nullable: bool = True) -> sa.Column:
@@ -85,12 +87,12 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
     (
         "oe_governance_catalogue",
         lambda: [
-            _str("tenant_id", 64, None),
-            _str("kind", 40, "phase_model"),
-            _str("code", 64, None),
+            _str("tenant_id", 64),
+            _str("kind", 40),
+            _str("code", 64),
             _str("name", 255),
             _str("based_on", 160),
-            _str("state", 20, "draft"),
+            _str("state", 20),
             _json("draft_body"),
             _guid("created_by"),
             sa.UniqueConstraint("tenant_id", "kind", "code", name="uq_oe_gov_catalogue_tenant_code"),
@@ -108,7 +110,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             ),
             _int("version"),
             _json("body"),
-            _str("content_hash", 64, None),
+            _str("content_hash", 64),
             _guid("published_by"),
             _ts("published_at", nullable=False),
             sa.UniqueConstraint("catalogue_id", "version", name="uq_oe_gov_catver_version"),
@@ -119,14 +121,14 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
         "oe_governance_model",
         lambda: [
             _project_fk("fk_oe_gov_model_project"),
-            _str("catalogue_source", 20, "shipped"),
-            _str("catalogue_id", 64, None),
+            _str("catalogue_source", 20),
+            _str("catalogue_id", 64),
             _int("catalogue_version"),
-            _str("current_phase", 64, None, nullable=True),
-            _bool("four_eyes", True),
+            _str("current_phase", 64, nullable=True),
+            _bool("four_eyes"),
             _guid("decision_route_id"),
             _guid("change_route_id"),
-            _bool("stopped", False),
+            _bool("stopped"),
             _ts("stopped_at"),
             _guid("created_by"),
             sa.UniqueConstraint("project_id", name="uq_oe_gov_model_project"),
@@ -137,14 +139,14 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
         "oe_governance_area",
         lambda: [
             _project_fk("fk_oe_gov_area_project"),
-            _str("code", 64, None),
+            _str("code", 64),
             _str("name_override", 255),
-            _int("sort_order", 0),
+            _int("sort_order"),
             _guid("owner_user_id"),
             _guid("deputy_user_id"),
-            _bool("applicable", True),
+            _bool("applicable"),
             _text("na_rationale"),
-            _bool("retired", False),
+            _bool("retired"),
             sa.UniqueConstraint("project_id", "code", name="uq_oe_gov_area_code"),
         ],
         [("ix_oe_gov_area_owner", ["owner_user_id"])],
@@ -153,20 +155,20 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
         "oe_governance_gate",
         lambda: [
             _project_fk("fk_oe_gov_gate_project"),
-            _str("catalogue_id", 64, None),
-            _str("code", 64, None),
-            _str("from_phase", 64, None),
-            _str("to_phase", 64, None),
-            _int("sort_order", 0),
-            _str("status", 20, "not_started"),
-            _int("attempt_no", 1),
+            _str("catalogue_id", 64),
+            _str("code", 64),
+            _str("from_phase", 64),
+            _str("to_phase", 64),
+            _int("sort_order"),
+            _str("status", 20),
+            _int("attempt_no"),
             _guid("schedule_activity_id"),
             _str("target_date", 40),
             _guid("approval_instance_id"),
             _str("hold_resume_date", 40),
             _str("last_outcome", 32),
-            _bool("historic", False),
-            _int("version", 1),
+            _bool("historic"),
+            _int("version"),
             sa.UniqueConstraint("project_id", "catalogue_id", "code", name="uq_oe_gov_gate_code"),
         ],
         [("ix_oe_gov_gate_project", ["project_id"])],
@@ -181,14 +183,14 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
                 sa.ForeignKey("oe_governance_area.id", ondelete="CASCADE", name="fk_oe_gov_document_area"),
                 nullable=False,
             ),
-            _str("doc_type", 64, None),
+            _str("doc_type", 64),
             _json("required_at_gates"),
-            _str("status", 20, "draft"),
+            _str("status", 20),
             _guid("container_id"),
             _guid("bound_revision_id"),
-            _str("bound_content_hash", 64, None, nullable=True),
+            _str("bound_content_hash", 64, nullable=True),
             _guid("approved_gate_id"),
-            _bool("read_only", False),
+            _bool("read_only"),
             sa.UniqueConstraint("project_id", "area_id", "doc_type", name="uq_oe_gov_document_type"),
         ],
         [("ix_oe_gov_document_project", ["project_id"])],
@@ -210,14 +212,15 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
                 sa.ForeignKey("oe_governance_area.id", ondelete="CASCADE", name="fk_oe_gov_check_area"),
                 nullable=False,
             ),
-            _str("status", 20, "not_assessed"),
+            _str("status", 20),
             _str("rag", 10),
             _text("note"),
             _guid("confirmed_by"),
             _ts("confirmed_at"),
             _json("confirmed_revisions"),
-            _bool("stale", False),
+            _bool("stale"),
             _text("na_rationale"),
+            _json("criteria"),
             sa.UniqueConstraint("gate_id", "attempt_no", "area_id", name="uq_oe_gov_check_attempt_area"),
         ],
         [("ix_oe_gov_check_project", ["project_id"])],
@@ -232,9 +235,9 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
                 sa.ForeignKey("oe_governance_gate.id", ondelete="CASCADE", name="fk_oe_gov_decision_gate"),
                 nullable=False,
             ),
-            _str("gate_code", 64, None),
+            _str("gate_code", 64),
             _int("attempt_no"),
-            _str("outcome", 32, None),
+            _str("outcome", 32),
             _text("rationale"),
             _guid("decided_by", nullable=False),
             _ts("decided_at", nullable=False),
@@ -258,14 +261,14 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
                 nullable=False,
             ),
             _guid("gate_id", nullable=False),
-            _str("gate_code", 64, None),
-            _str("area_code", 64, None, nullable=True),
-            _str("document_type", 64, None, nullable=True),
+            _str("gate_code", 64),
+            _str("area_code", 64, nullable=True),
+            _str("document_type", 64, nullable=True),
             sa.Column("text", sa.Text(), nullable=False),
             _guid("owner_user_id"),
             _str("due_date", 40),
-            _str("severity", 20, "essential"),
-            _str("status", 20, "open"),
+            _str("severity", 20),
+            _str("status", 20),
             _text("evidence"),
             _guid("cleared_by"),
             _ts("cleared_at"),
@@ -291,10 +294,10 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             ),
             _guid("previous_revision_id"),
             _guid("proposed_revision_id", nullable=False),
-            _str("proposed_content_hash", 64, None, nullable=True),
+            _str("proposed_content_hash", 64, nullable=True),
             _text("reason"),
             _text("impact"),
-            _str("status", 20, "submitted"),
+            _str("status", 20),
             _guid("approval_instance_id"),
             _guid("requested_by"),
             _guid("decided_by"),

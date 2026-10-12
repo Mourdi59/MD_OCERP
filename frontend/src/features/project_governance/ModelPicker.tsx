@@ -30,9 +30,9 @@ import {
   type GovernanceGate,
   type GovernanceModel,
 } from './api';
-import { canManage, type Verdict } from './access';
+import { canManage, frozenInReview, type Verdict } from './access';
 import { RoutePin } from './RoutePin';
-import { ReasonedButton } from './GovernanceBits';
+import { ReasonedButton, VerdictReason } from './GovernanceBits';
 import { catalogueName, errorText, humanizeCode, refusalText, type LabelContext } from './labels';
 
 export interface ModelPickerProps {
@@ -156,15 +156,18 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
           <span className="text-xs text-content-tertiary">
             {t('governance.project.model.version', { defaultValue: 'Version {{n}}', n: model.catalogue_version })}
           </span>
-          <label className="ml-auto inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={model.four_eyes}
-              disabled={!!verdict || toggleFourEyes.isPending}
-              onChange={(e) => toggleFourEyes.mutate(e.target.checked)}
-            />
-            {t('governance.project.model.four_eyes', { defaultValue: 'Four-eyes rule: an area owner may not decide a gate' })}
-          </label>
+          <div className="ml-auto flex flex-col items-end gap-1">
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={model.four_eyes}
+                disabled={!!verdict || !!frozenInReview(gates) || toggleFourEyes.isPending}
+                onChange={(e) => toggleFourEyes.mutate(e.target.checked)}
+              />
+              {t('governance.project.model.four_eyes', { defaultValue: 'Four-eyes rule: an area owner may not decide a gate' })}
+            </label>
+            <VerdictReason verdict={verdict ?? frozenInReview(gates)} />
+          </div>
         </div>
       )}
 

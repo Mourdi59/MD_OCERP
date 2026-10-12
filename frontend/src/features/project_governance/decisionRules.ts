@@ -6,7 +6,16 @@
 // request instead of after it. The server stays the authority: it repeats
 // every check and adds the blockers the client cannot see.
 
-import type { ConditionInput, DecisionInput, GateArea, GateDetail, GovernanceGate, Outcome, Violation } from './api';
+import type {
+  ConditionInput,
+  DecisionInput,
+  EvidenceRef,
+  GateArea,
+  GateDetail,
+  GovernanceGate,
+  Outcome,
+  Violation,
+} from './api';
 import type { KeyText } from './labels';
 
 export interface ConditionDraft extends ConditionInput {
@@ -21,6 +30,8 @@ export interface DecisionDraft {
   proceedAtRisk: string[];
   acceptedNotApplicable: string[];
   holdResumeDate: string;
+  /** `evidenceKey` of each unknown evidence item the decider ticked. */
+  acknowledged?: string[];
 }
 
 export type DecisionProblem =
@@ -29,7 +40,8 @@ export type DecisionProblem =
   | 'conditions_required'
   | 'condition_text_required'
   | 'hold_needs_resume_date'
-  | 'not_applicable_not_accepted';
+  | 'not_applicable_not_accepted'
+  | 'evidence_not_acknowledged';
 
 export const DECISION_PROBLEM: Record<DecisionProblem, KeyText> = {
   outcome_required: ['governance.project.decision.problem.outcome_required', 'Choose an outcome.'],
@@ -53,11 +65,33 @@ export const DECISION_PROBLEM: Record<DecisionProblem, KeyText> = {
     'governance.project.decision.problem.not_applicable_not_accepted',
     'Accept every area marked not applicable, or send the gate back.',
   ],
+  evidence_not_acknowledged: [
+    'governance.project.decision.problem.evidence_not_acknowledged',
+    'Tick every evidence item listed for confirmation.',
+  ],
 };
 
 /** Outcomes whose rationale the record must carry. Everything except a plain go. */
 export function needsRationale(outcome: Outcome | null): boolean {
   return outcome !== null && outcome !== 'go';
+}
+
+/** Outcomes that let the gate pass, which are the ones that answer for unknown evidence. */
+export function letsGatePass(outcome: Outcome | null): boolean {
+  return outcome === 'go' || outcome === 'go_with_conditions';
+}
+
+/** One evidence item as a single string, for a set of ticked items. */
+export function evidenceKey(ref: EvidenceRef): string {
+  return [ref.area_code, ref.code].join(' ');
+}
+
+/**
+ * The unknown evidence a passing decision has to name. This is the server's list
+ * (`can.acknowledge`), not one worked out here from the evidence states.
+ */
+export function evidenceToAcknowledge(detail: GateDetail): NonNullable<GateDetail['can']['acknowledge']> {
+  return detail.can.acknowledge ?? [];
 }
 
 /** Area codes that are not applicable on this gate, by area flag or by check. */
@@ -98,6 +132,10 @@ export function decisionProblems(draft: DecisionDraft, detail: GateDetail, today
   if (draft.outcome === 'go' || draft.outcome === 'go_with_conditions') {
     const accepted = new Set(draft.acceptedNotApplicable);
     if (notApplicableAreas(detail).some((code) => !accepted.has(code))) problems.push('not_applicable_not_accepted');
+    const seen = new Set(draft.acknowledged ?? []);
+    if (evidenceToAcknowledge(detail).some((ref) => !seen.has(evidenceKey(ref)))) {
+      problems.push('evidence_not_acknowledged');
+    }
   }
   return problems;
 }
@@ -174,10 +212,21 @@ export function reopenProblem(rationale: string): 'rationale_required' | null {
   return rationale.trim() ? null : 'rationale_required';
 }
 
-/** The request body for a draft that passed `decisionProblems`. */
-export function toDecisionInput(draft: DecisionDraft): DecisionInput {
+/**
+ * The request body for a draft that passed `decisionProblems`. The unknown evidence
+ * goes along only on an outcome that lets the gate pass, and only the items the
+ * server asked for and the decider ticked.
+ */
+export function toDecisionInput(draft: DecisionDraft, detail?: GateDetail): DecisionInput {
   const outcome = draft.outcome ?? 'go';
   const withConditions = outcome === 'go_with_conditions';
+  const seen = new Set(draft.acknowledged ?? []);
+  const named =
+    detail && letsGatePass(outcome)
+      ? evidenceToAcknowledge(detail)
+          .filter((ref) => seen.has(evidenceKey(ref)))
+          .map((ref) => ({ area_code: ref.area_code, code: ref.code }))
+      : [];
   return {
     outcome,
     rationale: draft.rationale.trim(),
@@ -185,6 +234,7 @@ export function toDecisionInput(draft: DecisionDraft): DecisionInput {
     proceed_at_risk_areas: withConditions ? draft.proceedAtRisk : [],
     accepted_not_applicable: draft.acceptedNotApplicable,
     hold_resume_date: outcome === 'hold' ? draft.holdResumeDate : null,
+    ...(named.length > 0 ? { acknowledged_evidence: named } : {}),
   };
 }
 

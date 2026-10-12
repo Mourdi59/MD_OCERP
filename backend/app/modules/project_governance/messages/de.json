@@ -12,6 +12,8 @@
       "area_without_owner": "Dieser Managementbereich hat keinen Verantwortlichen, daher kann niemand seine Bereitschaft bestätigen",
       "area_not_ready": "Dieser Managementbereich ist für das Gate nicht bereit",
       "evidence_not_met": "Ein erforderlicher Bereitschaftsnachweis für diesen Bereich ist nicht erfüllt",
+      "unknown_evidence_not_acknowledged": "Ein Bereitschaftsnachweis dieses Bereichs ist unbestätigt oder trägt einen Hinweis. Bestätigen Sie, dass Sie ihn gesehen haben, bevor Sie das Gate freigeben",
+      "unknown_criterion": "Dieses Bereitschaftskriterium gehört für diesen Bereich und dieses Gate nicht zum Modell des Projekts",
       "check_stale": "Ein Dokument wurde nach der Bereitschaftsbestätigung geändert, der Bereich muss erneut bestätigt werden",
       "condition_overdue": "Eine Auflage aus einem früheren Gate ist überfällig und muss zuerst erfüllt oder erlassen werden",
       "conditions_required": "Ein Go mit Auflagen braucht mindestens eine Auflage",
@@ -71,7 +73,9 @@
       "no_change_route": "Für Änderungen an verbindlichen Dokumenten ist kein Freigabeweg festgelegt. Ein Governance-Verantwortlicher legt in den Governance-Einstellungen einen projekteigenen Freigabeweg fest",
       "route_not_pinnable": "Dieser Freigabeweg kann nicht festgelegt werden: Er muss ein aktiver Freigabeweg dieses Projekts für diese Art von Entscheidung sein",
       "area_retired": "Dieser Bereich wurde durch einen Wechsel des Phasenmodells stillgelegt und nimmt keine neuen Dokumente auf",
-      "pack_catalogue_invalid": "Das aktive Paket nennt diesen Katalog, aber seine Datei fehlt oder verletzt die Katalogregeln"
+      "pack_catalogue_invalid": "Das aktive Paket nennt diesen Katalog, aber seine Datei fehlt oder verletzt die Katalogregeln",
+      "settings_frozen_in_review": "Das lässt sich nicht ändern, solange ein Gate in Prüfung oder angehalten ist; zuerst das Gate entscheiden",
+      "null_not_allowed": "Dieses Feld darf nicht leer sein"
     },
     "outcome": {
       "go": "Go",
