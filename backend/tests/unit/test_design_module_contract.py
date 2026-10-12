@@ -216,6 +216,7 @@ async def test_rules_report_failures_from_a_payload() -> None:
         "wbs_code_unique",
         "wbs_reference_resolves",
         "drawing_number_matches_scheme",
+        "drawing_number_parts_consistent",
         "drawing_originator_known",
         "release_revisions_suitable",
         "deliverable_complete_for_phase",

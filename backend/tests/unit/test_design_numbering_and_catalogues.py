@@ -203,7 +203,7 @@ def test_every_field_broken_once_names_that_field(schemes, scheme_id) -> None:
         if f.code == "number":
             continue
         bad = dict(values)
-        bad[f.code] = "Q" * 7 if f.code_list == "free" else "QQ"
+        bad[f.code] = "Q" * 9 if f.code_list == "free" else "QQ"
         if f.length_min and f.length_max and f.length_min == f.length_max:
             bad[f.code] = "Q" * f.length_max if f.code_list != "free" else "#"
         code = nb.compose(scheme, bad, seq)
