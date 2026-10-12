@@ -116,7 +116,12 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _bool("public_client", False),
             _num("vat_rate_pct", 5, 2),
             _str("state", 20, "draft"),
-            _guid("governance_document_id"),
+            sa.Column(
+                "governance_document_id",
+                GUID(),
+                sa.ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_pcc_concept_gov_document"),
+                nullable=True,
+            ),
             _str("release_gate_code", 64, "development_to_execution"),
             _guid("default_profile_id"),
             _guid("submitted_by"),

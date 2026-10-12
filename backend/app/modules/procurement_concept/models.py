@@ -64,8 +64,12 @@ class ProcurementConcept(Base):
     vat_rate_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=Decimal("0"))
     # draft | in_review | approved | reopened (binding is derived)
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
-    # Soft link to project_governance.GovernanceDocument (the m08 frame document).
-    governance_document_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # The m08 frame document (project_governance is a declared dependency).
+    governance_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_pcc_concept_gov_document"),
+        nullable=True,
+    )
     # Gate whose decision releases procurement (rule 11).
     release_gate_code: Mapped[str] = mapped_column(String(64), nullable=False, default="development_to_execution")
     default_profile_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
