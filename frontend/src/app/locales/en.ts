@@ -29490,6 +29490,7 @@ const resource = {
     "governance.errors.activity_not_in_project": "This schedule activity does not belong to the project",
     "governance.errors.area_not_found": "Management area not found",
     "governance.errors.area_not_ready": "This management area is not ready for the gate",
+    "governance.errors.area_retired": "This area was retired by a change of the phase model and takes no new documents",
     "governance.errors.area_without_owner": "This management area has no owner, so nobody can attest its readiness",
     "governance.errors.binding_requires_change_request": "This frame document is binding and changes only through a change request",
     "governance.errors.catalogue_code_taken": "A catalogue with this code already exists",
