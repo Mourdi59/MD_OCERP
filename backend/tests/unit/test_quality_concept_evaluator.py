@@ -333,10 +333,17 @@ def test_rule18_certified_needs_level_at_or_above_target() -> None:
 
 def test_rule18_credit_totals_below_floor_warn_with_review_status() -> None:
     levels = shipped_catalogue().scheme("dgnb_new_construction").levels  # gold floor 65
-    at_risk = ev.certification_target_at_risk(levels, "gold", [Decimal("30"), Decimal("30")])
+    # The floor is a percentage, so it is read against the points the project can score.
+    available = Decimal("100")
+    at_risk = ev.certification_target_at_risk(
+        levels, "gold", [Decimal("30"), Decimal("30")], points_available=available
+    )
     assert _codes(at_risk) == ["certification_target_at_risk"]
     assert at_risk[0].params["review_status"] == "unconfirmed" and at_risk[0].severity == ev.WARNING
-    assert ev.certification_target_at_risk(levels, "gold", [Decimal("40"), Decimal("25")]) == []
+    assert (
+        ev.certification_target_at_risk(levels, "gold", [Decimal("40"), Decimal("25")], points_available=available)
+        == []
+    )
     assert ev.certification_target_at_risk(levels, "gold", []) == []
 
 

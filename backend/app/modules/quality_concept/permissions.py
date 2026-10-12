@@ -17,6 +17,8 @@ def register_quality_concept_permissions() -> None:
         {
             "quality_concept.read": Role.VIEWER,
             "quality_concept.edit": Role.EDITOR,
+            # Changes the plan a governance gate reads; the quality area owner may do the same.
+            "quality_concept.manage": Role.MANAGER,
             "quality_concept.waive": Role.MANAGER,
         },
     )

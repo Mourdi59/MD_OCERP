@@ -121,6 +121,7 @@ class CertificationIn(_In):
     target_level: str = Field(pattern=_CODE, max_length=40)
     assessor_contact_id: uuid.UUID | None = None
     registration_no: str = Field(default="", max_length=120)
+    points_available: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=4)
 
     _s = field_validator("scope")(_one_of(vocab.CERTIFICATION_SCOPES))
 
@@ -130,6 +131,7 @@ class CertificationPatch(_In):
     target_level: str | None = Field(default=None, pattern=_CODE, max_length=40)
     assessor_contact_id: uuid.UUID | None = None
     registration_no: str | None = Field(default=None, max_length=120)
+    points_available: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=4)
     certificate_cde_id: uuid.UUID | None = None
 
 

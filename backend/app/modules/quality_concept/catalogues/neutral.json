@@ -497,6 +497,15 @@
       "default_deliverer": "contractor"
     },
     {
+      "code": "asphalt_conformity_tests",
+      "name_key": "quality_concept.catalogue.evidence_type.asphalt_conformity_tests",
+      "kind": "test",
+      "fulfilled_by": [
+        "cc_test_result"
+      ],
+      "default_deliverer": "contractor"
+    },
+    {
       "code": "concrete_delivery_notes",
       "name_key": "quality_concept.catalogue.evidence_type.concrete_delivery_notes",
       "kind": "record",
@@ -781,7 +790,7 @@
     {
       "code": "asphalt_cores",
       "material_family": "asphalt",
-      "evidence_type": "concrete_conformity_tests",
+      "evidence_type": "asphalt_conformity_tests",
       "test_method": "core sample",
       "frequency": {
         "per_quantity": "1000",
@@ -1052,7 +1061,7 @@
       "contract_basis": "statute",
       "name_key": "quality_concept.catalogue.regime.de_bgb",
       "act_name": "Abnahme",
-      "partial_allowed": false,
+      "partial_allowed": true,
       "partial_term": "Teilabnahme by agreement",
       "refusal_threshold": "insignificant_defect_no_refusal",
       "reservable": [
@@ -1097,7 +1106,10 @@
           "detail_key": "quality_concept.catalogue.effect.burden_shifts_to_client"
         }
       ],
-      "limitation_regime_code": "de_bgb"
+      "limitation_regime_code": "de_bgb",
+      "unconfirmed_facts": [
+        "partial_acceptance_by_agreement_only"
+      ]
     },
     {
       "code": "de_vob_b",
@@ -1158,7 +1170,10 @@
           "detail_key": "quality_concept.catalogue.effect.burden_shifts_to_client"
         }
       ],
-      "limitation_regime_code": "de_vob_b"
+      "limitation_regime_code": "de_vob_b",
+      "unconfirmed_facts": [
+        "deemed_period_days"
+      ]
     },
     {
       "code": "uk_jct_practical",
@@ -1207,6 +1222,10 @@
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.insurance_passes_to_client"
         }
+      ],
+      "unconfirmed_facts": [
+        "effects",
+        "reservable_kinds"
       ]
     },
     {
@@ -1249,6 +1268,10 @@
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.responsibilities_fixed_in_certificate"
         }
+      ],
+      "unconfirmed_facts": [
+        "effects",
+        "reservable_kinds"
       ]
     },
     {
@@ -1269,10 +1292,9 @@
       "deemed_acceptance": [
         {
           "trigger": "completion_notice",
-          "working_days": 28,
-          "saturday_is_working_day": true,
           "source_url": "https://en.wikipedia.org/wiki/FIDIC",
-          "review_status": "unconfirmed"
+          "review_status": "unconfirmed",
+          "calendar_days": 28
         }
       ],
       "effects": [
@@ -1294,6 +1316,11 @@
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.care_of_works_passes"
         }
+      ],
+      "unconfirmed_facts": [
+        "deemed_period_days",
+        "contract_edition",
+        "effects"
       ]
     }
   ],

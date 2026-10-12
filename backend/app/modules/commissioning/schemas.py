@@ -61,6 +61,8 @@ class SystemCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     system_type: str = Field(default="hvac", pattern=_SYSTEM_TYPE_PATTERN)
     tag: str | None = Field(default=None, max_length=100)
+    # Soft link to a plant register item; checked against the project when set.
+    plant_item_id: str | None = Field(default=None, max_length=36)
     location: str | None = Field(default=None, max_length=255)
     description: str | None = None
     status: str = Field(default="not_started", pattern=_SYSTEM_STATUS_PATTERN)
@@ -80,6 +82,8 @@ class SystemUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     system_type: str | None = Field(default=None, pattern=_SYSTEM_TYPE_PATTERN)
     tag: str | None = Field(default=None, max_length=100)
+    # Soft link to a plant register item; checked against the project when set.
+    plant_item_id: str | None = Field(default=None, max_length=36)
     location: str | None = Field(default=None, max_length=255)
     description: str | None = None
     status: str | None = Field(default=None, pattern=_SYSTEM_STATUS_PATTERN)
@@ -101,6 +105,7 @@ class SystemResponse(BaseModel):
     name: str
     system_type: str = "hvac"
     tag: str | None = None
+    plant_item_id: str | None = None
     location: str | None = None
     description: str | None = None
     status: str = "not_started"
@@ -123,6 +128,8 @@ class ChecklistCreate(BaseModel):
 
     kind: str = Field(default="prefunctional", pattern=_KIND_PATTERN)
     title: str = Field(..., min_length=1, max_length=255)
+    # The commissioning stage this checklist documents, when a quality concept defines stages.
+    stage_code: str | None = Field(default=None, max_length=40)
     description: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -147,6 +154,7 @@ class ChecklistResponse(BaseModel):
     system_id: UUID
     kind: str = "prefunctional"
     title: str
+    stage_code: str | None = None
     description: str | None = None
     created_by: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")

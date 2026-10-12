@@ -161,6 +161,11 @@ MaterialTestFrequencyShort = _rule(
 )
 
 
+ProofQuantityKnown = _rule(
+    "proof_quantity_known", "Proof Quantity Known", "evidence", ("placed_quantity_missing",), Severity.WARNING
+)
+
+
 class EvidenceKindAllowed(_QcRule):
     """Rule 3 is enforced at write; this re-checks stored links against the pinned catalogue."""
 
@@ -241,6 +246,7 @@ QUALITY_CONCEPT_RULES: tuple[type[ValidationRule], ...] = (
     PreservationBeforeStart,
     PreservationAcknowledged,
     MaterialTestFrequencyShort,
+    ProofQuantityKnown,
     CommissionedWithoutFinalStage,
 )
 

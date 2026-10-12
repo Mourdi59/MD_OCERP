@@ -28,12 +28,14 @@ from decimal import Decimal
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy.orm.exc import StaleDataError
 
 from app.core.i18n import get_locale
 from app.core.tenant_scope import resolve_tenant_id
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
 from app.modules.quality_concept import evaluator as ev
 from app.modules.quality_concept import schemas as s
+from app.modules.quality_concept.catalogue import shipped_catalogue
 from app.modules.quality_concept.errors import QualityConceptError
 from app.modules.quality_concept.messages import translate
 from app.modules.quality_concept.models import (
@@ -54,12 +56,51 @@ router = APIRouter(tags=["quality_concept"])
 READ = Depends(RequirePermission("quality_concept.read"))
 EDIT = Depends(RequirePermission("quality_concept.edit"))
 WAIVE = Depends(RequirePermission("quality_concept.waive"))
+
+
+async def _may_manage(project_id: uuid.UUID, user_id: str, payload: dict[str, Any], session: Any) -> bool:
+    """Manage permission, or owner (or deputy) of the governance area that hosts quality."""
+    try:
+        await RequirePermission("quality_concept.manage")(payload)
+    except HTTPException as exc:
+        if exc.status_code != 403:
+            raise
+        return await QualityConceptService(session).is_area_owner(project_id, _uid(user_id))
+    return True
+
+
+async def _manage(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> None:
+    """Gate of every route that changes the plan a governance gate reads (404 before 403)."""
+    await verify_project_access(project_id, user_id, session)
+    if not await _may_manage(project_id, user_id, payload, session):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "manage_required",
+                "message_key": "quality_concept.errors.manage_required",
+                "message": translate("quality_concept.errors.manage_required", locale=get_locale() or "en"),
+            },
+        )
+
+
+MANAGE = Depends(_manage)
 P = "/projects/{project_id}"
 
 
 async def _run[T](awaitable: Awaitable[T]) -> T:
     try:
         return await awaitable
+    except StaleDataError as exc:
+        # Two requests changed the same versioned row; the loser retries on fresh data.
+        message = translate("quality_concept.errors.concurrent_update", locale=get_locale() or "en")
+        detail = {
+            "code": "concurrent_update",
+            "message_key": "quality_concept.errors.concurrent_update",
+            "message": message,
+        }
+        raise HTTPException(status_code=409, detail=detail) from exc
     except QualityConceptError as exc:
         message = translate(f"quality_concept.errors.{exc.code}", locale=get_locale() or "en")
         raise HTTPException(status_code=exc.status_code, detail=exc.as_detail(message)) from exc
@@ -106,41 +147,69 @@ async def _svc(project_id: uuid.UUID, user_id: str, session: Any) -> QualityConc
 # ── concept ────────────────────────────────────────────────────────────────
 
 
-async def _concept_out(svc: QualityConceptService, project_id: uuid.UUID, user_id: str) -> dict[str, Any]:
-    concept = await _run(svc.ensure_concept(project_id, _uid(user_id)))
+async def _concept_out(
+    svc: QualityConceptService, project_id: uuid.UUID, user_id: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """The concept with what the caller may do; 404 ``concept_missing`` until it is created."""
+    concept = await _run(svc.require_concept(project_id))
     cat = await _run(svc.catalogue_for(concept))
     findings = await svc.completeness(concept)
+    errors = [f for f in findings if f.severity == ev.ERROR]
+    manage = await _may_manage(project_id, user_id, payload, svc.session)
+    submit_reason = "manage_required" if not manage else svc.submit_refusal(concept, errors)
     return {
         **_row(concept),
         "catalogue_label": {"key": cat.name_key, "text": cat.labels},
         "catalogue_review_status": cat.review_status.value,
         "applicable_packages": await svc.applicable_packages(concept),
         "findings": [f.as_dict() for f in findings],
-        "can_submit": not [f for f in findings if f.severity == ev.ERROR] and concept.state in ("draft", "revising"),
+        "can": {
+            "manage": manage,
+            "edit_plan": manage and concept.state in ("draft", "revising"),
+            "submit": submit_reason is None,
+            "submit_reason": submit_reason,
+        },
     }
 
 
 @router.get(P + "/concept", dependencies=[READ])
-async def get_concept(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
-    svc = await _svc(project_id, user_id, session)
-    out = await _concept_out(svc, project_id, user_id)
-    await session.commit()
-    return out
-
-
-@router.patch(P + "/concept", dependencies=[EDIT])
-async def patch_concept(
-    project_id: uuid.UUID, body: s.ConceptPatch, session: SessionDep, user_id: CurrentUserId
+async def get_concept(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
+    return await _concept_out(svc, project_id, user_id, payload)
+
+
+@router.post(P + "/concept", status_code=201, dependencies=[MANAGE])
+async def create_concept(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """Create the project's concept. The one explicit write that brings it into being."""
+    svc = await _svc(project_id, user_id, session)
+    if await svc.concept(project_id) is not None:
+        await _run(svc.refuse_duplicate_concept())
     await _run(svc.ensure_concept(project_id, _uid(user_id)))
-    await _run(svc.patch_concept(project_id, body))
-    out = await _concept_out(svc, project_id, user_id)
+    out = await _concept_out(svc, project_id, user_id, payload)
     await session.commit()
     return out
 
 
-@router.put(P + "/concept/catalogue", dependencies=[EDIT])
+@router.patch(P + "/concept", dependencies=[MANAGE])
+async def patch_concept(
+    project_id: uuid.UUID,
+    body: s.ConceptPatch,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> dict[str, Any]:
+    svc = await _svc(project_id, user_id, session)
+    await _run(svc.patch_concept(project_id, body))
+    out = await _concept_out(svc, project_id, user_id, payload)
+    await session.commit()
+    return out
+
+
+@router.put(P + "/concept/catalogue", dependencies=[MANAGE])
 async def pin_catalogue(
     project_id: uuid.UUID,
     body: s.CataloguePin,
@@ -149,42 +218,47 @@ async def pin_catalogue(
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    await _run(svc.ensure_concept(project_id, _uid(user_id)))
     await _run(
         svc.pin_catalogue(
             project_id, resolve_tenant_id(payload), body.catalogue_source, body.catalogue_id, body.catalogue_version
         )
     )
-    out = await _concept_out(svc, project_id, user_id)
+    out = await _concept_out(svc, project_id, user_id, payload)
     await session.commit()
     return out
 
 
 @router.get(P + "/concept/catalogue", dependencies=[READ])
 async def get_catalogue(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """The pinned catalogue; before a concept exists, the shipped default it would start with."""
     svc = await _svc(project_id, user_id, session)
-    concept = await _run(svc.ensure_concept(project_id, _uid(user_id)))
-    body = (await _run(svc.catalogue_for(concept))).model_dump(mode="json")
-    await session.commit()
-    return body
+    concept = await svc.concept(project_id)
+    catalogue = shipped_catalogue() if concept is None else await _run(svc.catalogue_for(concept))
+    return catalogue.model_dump(mode="json")
 
 
-@router.post(P + "/concept/submit", dependencies=[EDIT])
-async def submit_concept(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+@router.post(P + "/concept/submit", dependencies=[MANAGE])
+async def submit_concept(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     await _run(svc.submit(project_id, _uid(user_id)))
-    out = await _concept_out(svc, project_id, user_id)
+    out = await _concept_out(svc, project_id, user_id, payload)
     await session.commit()
     return out
 
 
-@router.post(P + "/concept/{action}", dependencies=[EDIT])
+@router.post(P + "/concept/{action}", dependencies=[MANAGE])
 async def concept_action(
-    project_id: uuid.UUID, action: Literal["return", "revise"], session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    action: Literal["return"],
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     await _run(svc.act_on_concept(project_id, action, _uid(user_id)))
-    out = await _concept_out(svc, project_id, user_id)
+    out = await _concept_out(svc, project_id, user_id, payload)
     await session.commit()
     return out
 
@@ -204,7 +278,7 @@ async def list_standards(project_id: uuid.UUID, session: SessionDep, user_id: Cu
     return _page([_row(r) for r in await svc.repo.list(AppliedStandard, project_id)])
 
 
-@router.post(P + "/standards", status_code=201, dependencies=[EDIT])
+@router.post(P + "/standards", status_code=201, dependencies=[MANAGE])
 async def create_standard(
     project_id: uuid.UUID, body: s.StandardIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -215,7 +289,7 @@ async def create_standard(
     return out
 
 
-@router.patch(P + "/standards/{row_id}", dependencies=[EDIT])
+@router.patch(P + "/standards/{row_id}", dependencies=[MANAGE])
 async def patch_standard(
     project_id: uuid.UUID, row_id: uuid.UUID, body: s.StandardPatch, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -226,7 +300,7 @@ async def patch_standard(
     return out
 
 
-@router.delete(P + "/standards/{row_id}", status_code=204, dependencies=[EDIT])
+@router.delete(P + "/standards/{row_id}", status_code=204, dependencies=[MANAGE])
 async def delete_standard(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> Response:
@@ -259,12 +333,12 @@ async def list_requirements(project_id: uuid.UUID, session: SessionDep, user_id:
     return _page([_requirement_out(r) for r in await _run(svc.list_requirements(project_id))])
 
 
-@router.post(P + "/requirements", status_code=201, dependencies=[EDIT])
+@router.post(P + "/requirements", status_code=201, dependencies=[MANAGE])
 async def add_requirement(
     project_id: uuid.UUID, body: s.QualityRequirementIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    await _run(svc.ensure_concept(project_id, _uid(user_id)))
+    await _run(svc.require_concept(project_id))
     out = _requirement_out(await _run(svc.add_requirement(project_id, body, _uid(user_id))))
     await session.commit()
     return out
@@ -294,30 +368,30 @@ async def list_certifications(project_id: uuid.UUID, session: SessionDep, user_i
     return {**_page(rows), "findings": findings}
 
 
-@router.post(P + "/certifications", status_code=201, dependencies=[EDIT])
+@router.post(P + "/certifications", status_code=201, dependencies=[MANAGE])
 async def create_certification(
     project_id: uuid.UUID, body: s.CertificationIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    await _run(svc.ensure_concept(project_id, _uid(user_id)))
+    await _run(svc.require_concept(project_id))
     row = await _run(svc.create_certification(project_id, body))
     out = await _certification_out(svc, project_id, row)
     await session.commit()
     return out
 
 
-@router.patch(P + "/certifications/{row_id}", dependencies=[EDIT])
+@router.patch(P + "/certifications/{row_id}", dependencies=[MANAGE])
 async def patch_certification(
     project_id: uuid.UUID, row_id: uuid.UUID, body: s.CertificationPatch, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    row = await _run(svc.patch_row(CertificationTarget, project_id, row_id, body.model_dump(exclude_unset=True)))
+    row = await _run(svc.patch_certification(project_id, row_id, body.model_dump(exclude_unset=True)))
     out = await _certification_out(svc, project_id, row)
     await session.commit()
     return out
 
 
-@router.post(P + "/certifications/{row_id}/transition", dependencies=[EDIT])
+@router.post(P + "/certifications/{row_id}/transition", dependencies=[MANAGE])
 async def transition_certification(
     project_id: uuid.UUID,
     row_id: uuid.UUID,
@@ -332,17 +406,17 @@ async def transition_certification(
     return out
 
 
-@router.delete(P + "/certifications/{row_id}", status_code=204, dependencies=[EDIT])
+@router.delete(P + "/certifications/{row_id}", status_code=204, dependencies=[MANAGE])
 async def delete_certification(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> Response:
     svc = await _svc(project_id, user_id, session)
-    await _run(svc.delete_row(CertificationTarget, project_id, row_id))
+    await _run(svc.delete_certification(project_id, row_id))
     await session.commit()
     return Response(status_code=204)
 
 
-@router.post(P + "/certifications/{row_id}/credits", status_code=201, dependencies=[EDIT])
+@router.post(P + "/certifications/{row_id}/credits", status_code=201, dependencies=[MANAGE])
 async def add_credits(
     project_id: uuid.UUID, row_id: uuid.UUID, body: s.CreditBulk, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -363,7 +437,7 @@ async def patch_credit(
     return out
 
 
-@router.delete(P + "/credits/{row_id}", status_code=204, dependencies=[EDIT])
+@router.delete(P + "/credits/{row_id}", status_code=204, dependencies=[MANAGE])
 async def delete_credit(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> Response:
@@ -404,7 +478,7 @@ async def list_proofs(
     return _page([_proof_out(p, delivery.get(p.id)) for p in proofs], offset, limit)
 
 
-@router.post(P + "/proofs", status_code=201, dependencies=[EDIT])
+@router.post(P + "/proofs", status_code=201, dependencies=[MANAGE])
 async def create_proof(
     project_id: uuid.UUID, body: s.ProofIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -415,7 +489,7 @@ async def create_proof(
     return out
 
 
-@router.patch(P + "/proofs/{row_id}", dependencies=[EDIT])
+@router.patch(P + "/proofs/{row_id}", dependencies=[MANAGE])
 async def patch_proof(
     project_id: uuid.UUID, row_id: uuid.UUID, body: s.ProofPatch, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -426,7 +500,7 @@ async def patch_proof(
     return out
 
 
-@router.delete(P + "/proofs/{row_id}", status_code=204, dependencies=[EDIT])
+@router.delete(P + "/proofs/{row_id}", status_code=204, dependencies=[MANAGE])
 async def delete_proof(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> Response:
@@ -437,7 +511,7 @@ async def delete_proof(
     return Response(status_code=204)
 
 
-@router.post(P + "/proofs/generate", dependencies=[EDIT])
+@router.post(P + "/proofs/generate", dependencies=[MANAGE])
 async def generate_proofs(
     project_id: uuid.UUID, body: s.ProofGenerateIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -567,16 +641,16 @@ async def list_stages(project_id: uuid.UUID, session: SessionDep, user_id: Curre
     return _page([_row(r) for r in await svc.repo.list(CommissioningStageDef, project_id, CommissioningStageDef.order)])
 
 
-@router.post(P + "/stages/apply-catalogue", dependencies=[EDIT])
+@router.post(P + "/stages/apply-catalogue", dependencies=[MANAGE])
 async def apply_stages(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    await _run(svc.ensure_concept(project_id, _uid(user_id)))
+    await _run(svc.require_concept(project_id))
     out = _page([_row(r) for r in await _run(svc.apply_catalogue_stages(project_id))])
     await session.commit()
     return out
 
 
-@router.post(P + "/stages", status_code=201, dependencies=[EDIT])
+@router.post(P + "/stages", status_code=201, dependencies=[MANAGE])
 async def add_stage(
     project_id: uuid.UUID, body: s.StageDefIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -586,7 +660,7 @@ async def add_stage(
     return out
 
 
-@router.patch(P + "/stages/{row_id}", dependencies=[EDIT])
+@router.patch(P + "/stages/{row_id}", dependencies=[MANAGE])
 async def patch_stage(
     project_id: uuid.UUID, row_id: uuid.UUID, body: s.StageDefPatch, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -596,7 +670,7 @@ async def patch_stage(
     return out
 
 
-@router.delete(P + "/stages/{row_id}", status_code=204, dependencies=[EDIT])
+@router.delete(P + "/stages/{row_id}", status_code=204, dependencies=[MANAGE])
 async def delete_stage(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> Response:
@@ -686,7 +760,7 @@ async def request_release(
     return out
 
 
-@router.post(P + "/stage-progress/{row_id}/not-applicable", dependencies=[EDIT])
+@router.post(P + "/stage-progress/{row_id}/not-applicable", dependencies=[MANAGE])
 async def stage_na(
     project_id: uuid.UUID, row_id: uuid.UUID, body: s.RationaleIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -696,7 +770,17 @@ async def stage_na(
     return out
 
 
-@router.put(P + "/stage-progress/{row_id}/depends-on", dependencies=[EDIT])
+@router.post(P + "/stage-progress/{row_id}/reinstate", dependencies=[MANAGE])
+async def stage_reinstate(
+    project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    svc = await _svc(project_id, user_id, session)
+    out = _row(await _run(svc.reinstate(project_id, row_id)))
+    await session.commit()
+    return out
+
+
+@router.put(P + "/stage-progress/{row_id}/depends-on", dependencies=[MANAGE])
 async def stage_depends(
     project_id: uuid.UUID, row_id: uuid.UUID, body: s.DependsOnIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -751,18 +835,18 @@ async def list_units(
     return _page([await _unit_out(svc, project_id, u, t) for u in await svc.repo.list(AcceptanceUnit, project_id)])
 
 
-@router.post(P + "/acceptance-units", status_code=201, dependencies=[EDIT])
+@router.post(P + "/acceptance-units", status_code=201, dependencies=[MANAGE])
 async def create_unit(
     project_id: uuid.UUID, body: s.AcceptanceUnitIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    await _run(svc.ensure_concept(project_id, _uid(user_id)))
+    await _run(svc.require_concept(project_id))
     out = await _unit_out(svc, project_id, await _run(svc.create_unit(project_id, body)), _today(None))
     await session.commit()
     return out
 
 
-@router.patch(P + "/acceptance-units/{row_id}", dependencies=[EDIT])
+@router.patch(P + "/acceptance-units/{row_id}", dependencies=[MANAGE])
 async def patch_unit(
     project_id: uuid.UUID, row_id: uuid.UUID, body: s.AcceptanceUnitPatch, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -772,7 +856,7 @@ async def patch_unit(
     return out
 
 
-@router.delete(P + "/acceptance-units/{row_id}", status_code=204, dependencies=[EDIT])
+@router.delete(P + "/acceptance-units/{row_id}", status_code=204, dependencies=[MANAGE])
 async def delete_unit(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> Response:
@@ -804,7 +888,7 @@ async def unit_dates(
     return out
 
 
-@router.post(P + "/acceptance-units/{row_id}/refuse", dependencies=[EDIT])
+@router.post(P + "/acceptance-units/{row_id}/refuse", dependencies=[MANAGE])
 async def refuse_unit(
     project_id: uuid.UUID, row_id: uuid.UUID, body: s.AcceptanceRefuseIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -816,7 +900,7 @@ async def refuse_unit(
     return out
 
 
-@router.post(P + "/acceptance-units/{row_id}/effects", dependencies=[EDIT])
+@router.post(P + "/acceptance-units/{row_id}/effects", dependencies=[MANAGE])
 async def confirm_effect(
     project_id: uuid.UUID, row_id: uuid.UUID, body: s.EffectConfirmIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -826,18 +910,17 @@ async def confirm_effect(
     return out
 
 
-@router.post(P + "/acceptance-units/{row_id}/{action}", dependencies=[EDIT])
+@router.post(P + "/acceptance-units/{row_id}/{action}", dependencies=[MANAGE])
 async def unit_action(
     project_id: uuid.UUID,
     row_id: uuid.UUID,
     action: Literal["schedule_inspection", "withdraw", "confirm_deemed"],
     session: SessionDep,
     user_id: CurrentUserId,
-    today: date | None = None,
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    unit = await _run(svc.act_on_unit(project_id, row_id, action, _uid(user_id), today=_today(today)))
-    out = await _unit_out(svc, project_id, unit, _today(today))
+    unit = await _run(svc.act_on_unit(project_id, row_id, action, _uid(user_id)))
+    out = await _unit_out(svc, project_id, unit, _today(None))
     await session.commit()
     return out
 
@@ -900,17 +983,7 @@ async def delete_survey(
     project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> Response:
     svc = await _svc(project_id, user_id, session)
-    row = await _run(svc.get_row(PreservationSurvey, project_id, row_id))
-    if row.state != "planned":
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "survey_recorded",
-                "message_key": "quality_concept.errors.invalid_transition",
-                "message": "A recorded survey is evidence and cannot be deleted.",
-            },
-        )
-    await _run(svc.delete_row(PreservationSurvey, project_id, row_id, owner_kind="preservation"))
+    await _run(svc.delete_survey(project_id, row_id))
     await session.commit()
     return Response(status_code=204)
 
@@ -928,6 +1001,7 @@ async def create_expert_report(
     svc = await _svc(project_id, user_id, session)
     fields = body.model_dump()
     fields["due_dates"] = [d.isoformat() for d in fields["due_dates"]]
+    await _run(svc._check_contact(fields.get("expert_contact_id")))
     out = _row(await svc.repo.add(ExpertReportPlan(project_id=project_id, **fields)))
     await session.commit()
     return out
@@ -941,6 +1015,7 @@ async def patch_expert_report(
     fields = body.model_dump(exclude_unset=True)
     if fields.get("due_dates") is not None:
         fields["due_dates"] = [d.isoformat() for d in fields["due_dates"]]
+    await _run(svc._check_contact(fields.get("expert_contact_id")))
     out = _row(await _run(svc.patch_row(ExpertReportPlan, project_id, row_id, fields)))
     await session.commit()
     return out

@@ -21,6 +21,7 @@ EXPECTED: dict[str, set[tuple[str, str, str]]] = {
         ("in_review", "approve", "approved"),
         ("approved", "bind", "binding"),
         ("approved", "revise", "revising"),
+        ("binding", "reopen", "revising"),
         ("revising", "submit", "in_review"),
     },
     "stage": {
@@ -97,7 +98,9 @@ def test_states_owned_elsewhere_refuse_a_user_request(machine, state, action) ->
 
 
 def test_no_direct_edit_after_binding() -> None:
-    assert fsm.allowed_actions("concept", "binding", mirror=True) == []
+    # No user action leaves a binding concept; only governance (a change request) reopens it.
+    assert fsm.allowed_actions("concept", "binding") == []
+    assert fsm.allowed_actions("concept", "binding", mirror=True) == ["reopen"]
 
 
 @pytest.mark.parametrize(

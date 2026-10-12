@@ -82,6 +82,17 @@ async def handle_handover_issued(data: dict, *, session_factory: Any = None) -> 
     )
 
 
+async def handle_handover_revoked(data: dict, *, session_factory: Any = None) -> None:
+    package_id = _uuid(data.get("package_id"))
+    if package_id is None:
+        return
+    from app.modules.quality_concept.service import QualityConceptService
+
+    await _run(
+        "handover revoke", lambda s: QualityConceptService(s).apply_handover_revoked(package_id), session_factory
+    )
+
+
 async def handle_frame_document(data: dict, *, session_factory: Any = None) -> None:
     project_id, document_id = _uuid(data.get("project_id")), _uuid(data.get("document_id"))
     if project_id is None or document_id is None:
@@ -90,7 +101,13 @@ async def handle_frame_document(data: dict, *, session_factory: Any = None) -> N
 
     await _run(
         "governance",
-        lambda s: QualityConceptService(s).apply_governance_state(project_id, document_id, str(data.get("status"))),
+        lambda s: QualityConceptService(s).apply_governance_state(
+            project_id,
+            document_id,
+            str(data.get("status")),
+            # Governance names the new revision only when a change request moved the binding one.
+            change_request=bool(data.get("bound_revision_id")),
+        ),
         session_factory,
     )
 
@@ -103,6 +120,10 @@ async def _on_handover(event: Event) -> None:
     await handle_handover_issued(event.data or {})
 
 
+async def _on_handover_revoked(event: Event) -> None:
+    await handle_handover_revoked(event.data or {})
+
+
 async def _on_frame(event: Event) -> None:
     await handle_frame_document(event.data or {})
 
@@ -113,5 +134,6 @@ def register_quality_concept_subscribers() -> None:
         return
     event_bus.subscribe_once("cc.gate.released", _on_gate)
     event_bus.subscribe_once("cc.handover.issued", _on_handover)
+    event_bus.subscribe_once("cc.handover.revoked", _on_handover_revoked)
     event_bus.subscribe_once("project_governance.frame_document.state_changed", _on_frame)
     setattr(event_bus, _SUBSCRIBED_FLAG, True)

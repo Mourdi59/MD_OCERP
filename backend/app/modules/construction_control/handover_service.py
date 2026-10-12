@@ -456,6 +456,12 @@ class HandoverService:
         await self.packages.update_fields(package_id, **fields)
         await self.session.refresh(package)
         logger.info("Handover package %s revoked by %s", package.package_number, user_id)
+        publish_after_commit(
+            self.session,
+            "cc.handover.revoked",
+            {"package_id": str(package.id), "project_id": str(package.project_id), "revoked_by": user_id},
+            source_module="construction_control",
+        )
         return package
 
     # ── Element links (UER) ──────────────────────────────────────────────────

@@ -46,13 +46,37 @@ async def _get(session: Any, model: Any, link_id: str, project_id: uuid.UUID) ->
     return row
 
 
-async def calibration_for(session: Any, project_id: uuid.UUID, calibration_ref: Any) -> Any:
-    """A project calibration certificate by id, else ``None`` (see module docstring)."""
+async def calibration_for(session: Any, project_id: uuid.UUID, calibration_ref: Any, used_on: Any = None) -> Any:
+    """A project calibration certificate for ``calibration_ref``, else ``None``.
+
+    The reference is a certificate id (test results) or free text naming the instrument
+    (as-built records): its instrument id or serial number. An instrument has one
+    certificate per calibration; the one that covers ``used_on`` is returned when there
+    is one, otherwise the latest, which then reads as expired on that day.
+    """
+    from sqlalchemy import or_, select
+
     from app.modules.qms.models import QMSCalibration
 
     if not calibration_ref:
         return None
-    return await _get(session, QMSCalibration, str(calibration_ref), project_id)
+    ref = str(calibration_ref).strip()
+    by_id = await _get(session, QMSCalibration, ref, project_id)
+    if by_id is not None:
+        return by_id
+    stmt = (
+        select(QMSCalibration)
+        .where(QMSCalibration.project_id == project_id)
+        .where(or_(QMSCalibration.instrument_id == ref, QMSCalibration.serial_number == ref))
+        .order_by(QMSCalibration.valid_until.desc())
+    )
+    rows = list((await session.execute(stmt)).scalars())
+    day = to_date(used_on)
+    if day is not None:
+        covering = [r for r in rows if r.calibration_date <= day <= r.valid_until]
+        if covering:
+            return covering[0]
+    return rows[0] if rows else None
 
 
 async def _ncr_closed(session: Any, project_id: uuid.UUID, ncr_id: Any) -> bool:
@@ -125,7 +149,7 @@ async def _asbuilt(session: Any, project_id: uuid.UUID, link_id: str) -> Evidenc
     if row is None:
         return None
     outcome = "pass" if row.status in ("verified", "recorded") else "pending"
-    cal = await calibration_for(session, project_id, row.instrument_calibration_ref)
+    cal = await calibration_for(session, project_id, row.instrument_calibration_ref, row.survey_date)
     expired = cal is not None and calibration_expired(cal.valid_until, row.survey_date)
     return EvidenceFact("cc_asbuilt", str(row.id), outcome, calibration_expired=expired)
 

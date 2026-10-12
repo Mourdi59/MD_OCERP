@@ -21,7 +21,7 @@ from typing import Any
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.events import event_bus
+from app.core.events import publish_after_commit
 from app.core.json_merge import merge_metadata
 from app.modules.construction_control.deletion import refuse_if_locked
 from app.modules.construction_control.models import AcceptanceCriterion, HoldGate, Inspection
@@ -266,7 +266,9 @@ class GatingService:
         await self.session.refresh(gate)
 
         await self._log(gate, action="gate_released", from_status="pending", to_status="released", user_id=user_id)
-        event_bus.publish_detached(
+        # After commit: a subscriber reads the gate in its own session, and must find it released.
+        publish_after_commit(
+            self.session,
             "cc.gate.released",
             {
                 "gate_id": str(gate.id),

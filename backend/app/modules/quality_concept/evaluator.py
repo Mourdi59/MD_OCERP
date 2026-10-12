@@ -117,7 +117,7 @@ def concept_completeness(
             out.append(Finding("stage_without_owner", ref=s.code))
         if not s.release_party_role or s.release_party_role not in vocab.PARTY_ROLES:
             out.append(Finding("stage_without_release_party", ref=s.code))
-    covered = {ref for u in units if u.kind == "partial_package" for ref in u.package_refs}
+    covered = {ref for u in units for ref in u.package_refs}
     for p in packages:
         if p.ref not in covered:
             out.append(Finding("acceptance_unit_per_package", ref=p.ref))
@@ -235,6 +235,11 @@ def derive_delivery(
     need = required_count(rule, placed_quantity)
     if open_fails:
         return Delivery("open", passes, need, tuple(findings))
+    if rule is not None and (placed_quantity is None or placed_quantity <= 0):
+        # The number of results a counted proof needs follows the placed quantity; without it
+        # the count is unknown, so the proof stays short of delivered and says why.
+        findings.append(Finding("placed_quantity_missing", WARNING, ref))
+        return Delivery("partly_delivered" if passes else "open", passes, need, tuple(findings))
     if passes >= need:
         return Delivery("delivered", passes, need, tuple(findings))
     if passes > 0:
@@ -258,6 +263,9 @@ def calibration_expired(valid_until: Any, used_on: Any) -> bool:
 
 # ── rules 8-9: stage preconditions ─────────────────────────────────────────
 
+PLANT_NOT_APPLICABLE = frozenset({"no_plant_item_linked", "no_plant_register"})
+TRIGGERING_ACTIVITIES = frozenset({"excavation", "piling", "demolition", "dewatering"})
+
 
 @dataclass(frozen=True)
 class StageContext:
@@ -273,6 +281,8 @@ class StageContext:
     unreleased_gate_count: int = 0
     plant_item_delivered: bool | None = None
     delivery_limit_agreed: bool | None = None
+    # Why the two plant facts are None: ``no_plant_item_linked`` or ``no_plant_register``.
+    plant_unavailable_reason: str = ""
     authority_acceptance_present: bool = False
     released_systems_by_stage: dict[str, frozenset[str]] = field(default_factory=dict)
     scope_system_ids: frozenset[str] = frozenset()
@@ -323,6 +333,8 @@ def _evaluate_one(code: str, params: dict[str, Any], ctx: StageContext) -> Preco
     if code in ("plant_item_delivered", "delivery_limit_agreed"):
         value = getattr(ctx, code)
         if value is None:
+            if ctx.plant_unavailable_reason in PLANT_NOT_APPLICABLE:
+                return PreconditionResult(code, True, ctx.plant_unavailable_reason, {"not_applicable": True})
             return PreconditionResult(code, False, "fact_unavailable")
         return PreconditionResult(code, bool(value), "" if value else code + "_not_met")
     if code == "authority_acceptance_present":
@@ -341,6 +353,29 @@ def _evaluate_one(code: str, params: dict[str, Any], ctx: StageContext) -> Preco
         missing = sorted(wanted - ctx.delivered_slot_keys)
         return PreconditionResult(code, not missing, "" if not missing else "slots_missing", {"missing": missing})
     return PreconditionResult(code, False, "unknown_predicate")
+
+
+def effective_previous_state(states_in_order: Sequence[str], index: int) -> str | None:
+    """The state stage order looks at: the nearest earlier stage that is not ``not_applicable``.
+
+    ``None`` when no earlier stage applies, which is the first-stage case. Skipping a
+    not-applicable stage must not also skip the blocked one before it.
+    """
+    for state in reversed(states_in_order[:index]):
+        if state != "not_applicable":
+            return state
+    return None
+
+
+def delivered_evidence_types(proofs: Iterable[tuple[str, bool]]) -> frozenset[str]:
+    """Evidence types whose in-scope proofs are all done; ``(evidence_type, done)`` per proof.
+
+    One delivered proof of a type does not stand for the others of that type.
+    """
+    seen: dict[str, bool] = {}
+    for code, done in proofs:
+        seen[code] = seen.get(code, True) and done
+    return frozenset(code for code, ok in seen.items() if ok)
 
 
 def stage_ready(results: Sequence[PreconditionResult]) -> bool:
@@ -373,6 +408,24 @@ def stale_dependants(
 class UnmetPrecondition:
     kind: str  # stage | proofs | documentation | defects | partials | final_stage | fm_data
     ref: str
+
+
+def stages_unmet(
+    stage_codes: Sequence[str], rows: Sequence[tuple[str, str, str]], scope_system_ids: Iterable[str] = ()
+) -> list[UnmetPrecondition]:
+    """Rule 13, stages: ``(system_id, stage_code, state)`` rows against the stages a unit names.
+
+    A named stage with no progress row in scope is unmet (ref ``*:<code>``): nothing was
+    tested, which is not the same as everything being released.
+    """
+    scope = set(scope_system_ids)
+    out: list[UnmetPrecondition] = []
+    for code in stage_codes:
+        mine = [r for r in rows if r[1] == code and (not scope or r[0] in scope)]
+        if not mine:
+            out.append(UnmetPrecondition("stage", f"*:{code}"))
+        out += [UnmetPrecondition("stage", f"{sid}:{code}") for sid, _c, state in mine if state not in STAGE_DONE]
+    return out
 
 
 def acceptance_request_check(
@@ -409,20 +462,29 @@ def total_acceptance_unmet(partials: Sequence[tuple[str, str, bool]]) -> list[Un
 
 
 def add_working_days(
-    start: date, days: int, *, saturday_is_working_day: bool = True, holidays: Iterable[date] = ()
+    start: date,
+    days: int,
+    *,
+    saturday_is_working_day: bool = True,
+    holidays: Iterable[date] = (),
+    rest_weekdays: Iterable[int] = (6,),
 ) -> date:
     """The day ``days`` working days after ``start`` (``start`` itself not counted).
 
-    Sundays never count. Saturdays count when the regime counts ``Werktage``
-    (VOB/B), otherwise not. Public holidays are data the caller passes.
+    ``rest_weekdays`` (Monday is 0) never count; the regime names them, Sunday in the
+    shipped regimes. Saturdays count when the regime counts ``Werktage`` (VOB/B),
+    otherwise not. Public holidays are data the caller passes.
     """
     off = set(holidays)
+    rest = set(rest_weekdays)
+    if len(rest) >= 7:
+        raise ValueError("a regime cannot rest on every weekday")
     current = start
     counted = 0
     while counted < days:
         current += timedelta(days=1)
         wd = current.weekday()
-        if wd == 6 or (wd == 5 and not saturday_is_working_day) or current in off:
+        if wd in rest or (wd == 5 and not saturday_is_working_day) or current in off:
             continue
         counted += 1
     return current
@@ -461,9 +523,21 @@ def deemed_dates(
             out.append(DeemedDate(trigger, notice, deadline, r.source_url, status, needs_deadline=deadline is None))
             continue
         start = starts.get(trigger)
-        if start is None or r.working_days is None:
+        if start is None:
             continue
-        on = add_working_days(start, r.working_days, saturday_is_working_day=r.saturday_is_working_day, holidays=hol)
+        calendar_days = getattr(r, "calendar_days", None)
+        if calendar_days is not None:
+            on = start + timedelta(days=calendar_days)
+        elif r.working_days is not None:
+            on = add_working_days(
+                start,
+                r.working_days,
+                saturday_is_working_day=r.saturday_is_working_day,
+                holidays=hol,
+                rest_weekdays=getattr(r, "rest_weekdays", (6,)),
+            )
+        else:
+            continue
         out.append(DeemedDate(trigger, start, on, r.source_url, status))
     return out
 
@@ -501,9 +575,19 @@ def level_index(levels: Sequence[Any], code: str | None) -> int | None:
 
 
 def certification_target_at_risk(
-    levels: Sequence[Any], target_level: str | None, points_targeted: Sequence[Decimal], ref: str = ""
+    levels: Sequence[Any],
+    target_level: str | None,
+    points_targeted: Sequence[Decimal],
+    ref: str = "",
+    *,
+    points_available: Decimal | None = None,
 ) -> list[Finding]:
-    """Rule 18: tracked credits whose targeted points fall below the target level's floor."""
+    """Rule 18: tracked credits whose targeted points fall below the target level's floor.
+
+    A floor in ``points`` is compared with the sum of targeted points. A floor in ``percent``
+    is compared with targeted points as a share of ``points_available``; without that total
+    the comparison has no meaning and nothing is reported.
+    """
     if not points_targeted:
         return []
     idx = level_index(levels, target_level)
@@ -513,6 +597,10 @@ def certification_target_at_risk(
     if floor is None:
         return []
     total = sum(points_targeted, Decimal("0"))
+    if str(getattr(levels[idx], "score_unit", "points")) == "percent":
+        if points_available is None or points_available <= 0:
+            return []
+        total = total * Decimal("100") / points_available
     if total >= floor:
         return []
     status = str(getattr(levels[idx].review_status, "value", levels[idx].review_status))
@@ -527,7 +615,12 @@ def certification_target_at_risk(
 
 
 def certify_allowed(levels: Sequence[Any], target_level: str | None, achieved_level: str | None) -> bool:
-    """Rule 18: ``certified`` needs an achieved level at or above the target."""
+    """Rule 18: ``certified`` needs an achieved level at or above the target.
+
+    A scheme that ships no levels has no order to compare, so any stated level certifies.
+    """
+    if not levels:
+        return bool(achieved_level)
     t = level_index(levels, target_level)
     a = level_index(levels, achieved_level)
     return t is not None and a is not None and a >= t
@@ -555,10 +648,16 @@ class SubjectFact:
     activity_starts: dict[str, date | None] = field(default_factory=dict)  # trigger -> start date of the activity
 
 
+def preservation_unplanned(subjects: Sequence[SubjectFact], surveys: Sequence[SurveyFact]) -> list[str]:
+    """Subjects under a triggering activity with no before survey planned at all (gate readiness)."""
+    planned = {s.subject_ref for s in surveys if s.phase == "before"}
+    return sorted(sub.ref for sub in subjects if sub.triggers & TRIGGERING_ACTIVITIES and sub.ref not in planned)
+
+
 def preservation_findings(subjects: Sequence[SubjectFact], surveys: Sequence[SurveyFact], today: date) -> list[Finding]:
     """Rule 19 (before survey surveyed before a triggering activity starts) and rule 20."""
     out: list[Finding] = []
-    triggering = {"excavation", "piling", "demolition", "dewatering"}
+    triggering = TRIGGERING_ACTIVITIES
     by_subject: dict[str, list[SurveyFact]] = {}
     for s in surveys:
         by_subject.setdefault(s.subject_ref, []).append(s)

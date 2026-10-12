@@ -114,6 +114,7 @@ class NCRService:
             location_lon=data.location_lon,
             location_accuracy_m=data.location_accuracy_m,
             linked_inspection_id=data.linked_inspection_id,
+            package_ref=data.package_ref,
             change_order_id=change_order_id,
             created_by=user_id,
             metadata_=data.metadata,

@@ -139,6 +139,10 @@ class CommissioningStage(_Frozen):
 class DeemedAcceptance(Sourced):
     trigger: str
     working_days: int | None = Field(default=None, ge=1)
+    # A period counted in calendar days (FIDIC); exclusive with ``working_days``.
+    calendar_days: int | None = Field(default=None, ge=1)
+    # Weekdays that never count toward ``working_days``, Monday is 0.
+    rest_weekdays: list[int] = Field(default_factory=lambda: [6])
     reasonable_period: bool = False
     consumer_notice_required: bool = False
     # Saturdays count as working days (German ``Werktage``) unless the regime says otherwise.
@@ -162,6 +166,8 @@ class AcceptanceRegime(Sourced):
     refusal_threshold: str = ""
     # Precondition kinds a unit may still be requested with, each listed as a reservation (rule 13).
     reservable: list[str] = Field(default_factory=list)
+    # Codes of facts in this entry nobody has checked against the source yet, shown with the regime.
+    unconfirmed_facts: list[str] = Field(default_factory=list)
     refusal_needs_defect: bool = False
     deemed_acceptance: list[DeemedAcceptance] = Field(default_factory=list)
     effects: list[LegalEffect] = Field(default_factory=list)
@@ -316,6 +322,9 @@ def validate_quality_catalogue(cat: QualityConceptCatalogue, source: str = "ship
             errors.append(f"material_test_plans.{p.code}: unknown material_family {p.material_family!r}")
         if p.evidence_type not in evidence_codes:
             errors.append(f"material_test_plans.{p.code}: unknown evidence_type {p.evidence_type!r}")
+        if [q.evidence_type for q in cat.material_test_plans].count(p.evidence_type) > 1:
+            # ``test_plan_for`` answers one plan per evidence type; a second one would never be read.
+            errors.append(f"material_test_plans.{p.code}: evidence_type {p.evidence_type!r} has another plan")
         if p.frequency is None and not p.per_lot:
             errors.append(f"material_test_plans.{p.code}: needs a frequency or per_lot")
         if p.frequency is not None:
@@ -359,10 +368,17 @@ def validate_quality_catalogue(cat: QualityConceptCatalogue, source: str = "ship
                 errors.append(f"acceptance_regimes.{r.code}: unknown deemed trigger {d.trigger!r}")
             if not d.source_url:
                 errors.append(f"acceptance_regimes.{r.code}: deemed acceptance {d.trigger} without source_url")
-            if d.working_days is None and not d.reasonable_period:
+            if d.working_days is None and d.calendar_days is None and not d.reasonable_period:
                 errors.append(
-                    f"acceptance_regimes.{r.code}: deemed {d.trigger} needs working_days or a reasonable period"
+                    f"acceptance_regimes.{r.code}: deemed {d.trigger} needs working_days, calendar_days"
+                    " or a reasonable period"
                 )
+            if d.working_days is not None and d.calendar_days is not None:
+                errors.append(
+                    f"acceptance_regimes.{r.code}: deemed {d.trigger} counts working_days or calendar_days, not both"
+                )
+            if any(w not in range(7) for w in d.rest_weekdays) or len(set(d.rest_weekdays)) >= 7:
+                errors.append(f"acceptance_regimes.{r.code}: deemed {d.trigger} has invalid rest_weekdays")
         for eff in r.effects:
             if eff.effect not in vocab.LEGAL_EFFECTS:
                 errors.append(f"acceptance_regimes.{r.code}: unknown effect {eff.effect!r}")

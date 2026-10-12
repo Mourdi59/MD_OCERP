@@ -15,7 +15,7 @@ CONCEPT = {
     "draft": {"submit": "in_review"},
     "in_review": {"return": "draft", "approve": "approved"},
     "approved": {"bind": "binding", "revise": "revising"},
-    "binding": {},
+    "binding": {"reopen": "revising"},
     "revising": {"submit": "in_review"},
 }
 
@@ -66,7 +66,7 @@ STAGE = {
 }
 
 ACCEPTANCE = {
-    "planned": {"request": "requested", "confirm_deemed": "deemed_accepted"},
+    "planned": {"request": "requested"},
     "requested": {
         "schedule_inspection": "inspection_scheduled",
         "accept": "accepted",
@@ -108,7 +108,7 @@ MACHINES: dict[str, dict[str, dict[str, str]]] = {
 
 # Actions a user request may never trigger: another module's record decides them.
 MIRROR_ACTIONS: dict[str, frozenset[str]] = {
-    "concept": frozenset({"approve", "bind"}),
+    "concept": frozenset({"approve", "bind", "reopen"}),
     "stage": frozenset({"release", "go_stale", "mark_ready", "mark_blocked"}),
     "acceptance": frozenset({"accept", "accept_with_reservations", "revoke"}),
 }

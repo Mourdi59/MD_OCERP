@@ -41,6 +41,11 @@ def unregister_all() -> None:
     _PLANT.clear()
 
 
+def plant_reader_registered() -> bool:
+    """Whether a plant register answers :func:`plant_item_facts` in this installation."""
+    return bool(_PLANT)
+
+
 async def list_contract_packages(session: Any, project_id: uuid.UUID) -> list[dict[str, Any]] | None:
     """The project's contract packages, or ``None`` when no package module registered a reader."""
     if not _PACKAGES:

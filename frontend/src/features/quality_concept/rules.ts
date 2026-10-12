@@ -99,7 +99,7 @@ export type AcceptanceAction =
   | 'confirm_effects';
 
 export const ACCEPTANCE_ACTIONS: Record<AcceptanceState, AcceptanceAction[]> = {
-  planned: ['request', 'record_dates', 'confirm_deemed'],
+  planned: ['request', 'record_dates'],
   requested: ['schedule_inspection', 'refuse', 'withdraw', 'record_dates', 'confirm_deemed'],
   inspection_scheduled: ['refuse', 'record_dates', 'confirm_deemed'],
   refused: ['request'],

@@ -128,6 +128,8 @@ class CertificationTarget(Base):
     achieved_level: Mapped[str | None] = mapped_column(String(40), nullable=True)
     assessor_contact_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     registration_no: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    # Points the project can score in this scheme; a percent floor is read against it (rule 18).
+    points_available: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     certificate_cde_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     # planned | registered | design_assessed | post_construction_assessed | certified | level_missed | abandoned
     state: Mapped[str] = mapped_column(String(30), nullable=False, default="planned")
