@@ -14,12 +14,6 @@
 
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth, API_BASE } from '@/shared/lib/api';
 
-const BASE = '/v1/site-logistics';
-
-function p(projectId: string): string {
-  return `${BASE}/projects/${encodeURIComponent(projectId)}`;
-}
-
 export interface PlanPage<T> {
   items: T[];
   total: number;
@@ -106,7 +100,7 @@ export interface CatalogueChoice {
 }
 
 export function getCatalogue(projectId: string): Promise<PlanCatalogue> {
-  return apiGet<PlanCatalogue>(`${p(projectId)}/catalogue`);
+  return apiGet<PlanCatalogue>(`/v1/site-logistics/projects/${projectId}/catalogue`);
 }
 
 export function listCatalogueChoices(): Promise<PlanPage<CatalogueChoice>> {
@@ -114,7 +108,7 @@ export function listCatalogueChoices(): Promise<PlanPage<CatalogueChoice>> {
 }
 
 export function pinCatalogue(projectId: string, body: Body): Promise<Concept> {
-  return apiPut<Concept>(`${p(projectId)}/catalogue`, body);
+  return apiPut<Concept>(`/v1/site-logistics/projects/${projectId}/catalogue`, body);
 }
 
 /* ── Stages, areas, balance ───────────────────────────────────────────── */
@@ -187,12 +181,12 @@ export interface StageBalance {
   media: MediaBalance[];
 }
 
-export const listStages = (projectId: string) => apiGet<PlanPage<Stage>>(`${p(projectId)}/stages`);
-export const listAreas = (projectId: string) => apiGet<PlanPage<SiteArea>>(`${p(projectId)}/areas`);
-export const getBalance = (projectId: string) => apiGet<PlanPage<StageBalance>>(`${p(projectId)}/balance`);
+export const listStages = (projectId: string) => apiGet<PlanPage<Stage>>(`/v1/site-logistics/projects/${projectId}/stages`);
+export const listAreas = (projectId: string) => apiGet<PlanPage<SiteArea>>(`/v1/site-logistics/projects/${projectId}/areas`);
+export const getBalance = (projectId: string) => apiGet<PlanPage<StageBalance>>(`/v1/site-logistics/projects/${projectId}/balance`);
 
 export function putAllocations(projectId: string, areaId: string, items: Body[]): Promise<unknown> {
-  return apiPut<unknown>(`${p(projectId)}/areas/${areaId}/allocations`, { items });
+  return apiPut<unknown>(`/v1/site-logistics/projects/${projectId}/areas/${areaId}/allocations`, { items });
 }
 
 /* ── Utilities ────────────────────────────────────────────────────────── */
@@ -228,16 +222,16 @@ export interface MediaDemand {
   from_plant_position: boolean;
 }
 
-export const listMedia = (projectId: string) => apiGet<PlanPage<MediaConnection>>(`${p(projectId)}/media`);
+export const listMedia = (projectId: string) => apiGet<PlanPage<MediaConnection>>(`/v1/site-logistics/projects/${projectId}/media`);
 export const listDemands = (projectId: string, mediaId: string) =>
-  apiGet<PlanPage<MediaDemand>>(`${p(projectId)}/media/${mediaId}/demands`);
+  apiGet<PlanPage<MediaDemand>>(`/v1/site-logistics/projects/${projectId}/media/${mediaId}/demands`);
 
 /** The power demand a plant position owns; `null` removes it. Called by the site plan when a position is saved. */
 export function putPlantPowerDemand(
   projectId: string,
   body: { site_plant_position_id: string; stage_id?: string | null; power_demand_kva: string | null; consumer?: string },
 ): Promise<{ demand: MediaDemand | null }> {
-  return apiPut<{ demand: MediaDemand | null }>(`${p(projectId)}/plant-positions/power-demand`, body);
+  return apiPut<{ demand: MediaDemand | null }>(`/v1/site-logistics/projects/${projectId}/plant-positions/power-demand`, body);
 }
 
 /* ── Concept ──────────────────────────────────────────────────────────── */
@@ -268,8 +262,8 @@ export interface Concept {
   updated_at: string | null;
 }
 
-export const getConcept = (projectId: string) => apiGet<Concept>(`${p(projectId)}/concept`);
-export const putConcept = (projectId: string, body: Body) => apiPut<Concept>(`${p(projectId)}/concept`, body);
+export const getConcept = (projectId: string) => apiGet<Concept>(`/v1/site-logistics/projects/${projectId}/concept`);
+export const putConcept = (projectId: string, body: Body) => apiPut<Concept>(`/v1/site-logistics/projects/${projectId}/concept`, body);
 
 /* ── Transports and permits ───────────────────────────────────────────── */
 
@@ -339,8 +333,8 @@ export interface Permit {
   state: string;
 }
 
-export const listTransports = (projectId: string) => apiGet<PlanPage<Transport>>(`${p(projectId)}/transports`);
-export const listPermits = (projectId: string) => apiGet<PlanPage<Permit>>(`${p(projectId)}/permits`);
+export const listTransports = (projectId: string) => apiGet<PlanPage<Transport>>(`/v1/site-logistics/projects/${projectId}/transports`);
+export const listPermits = (projectId: string) => apiGet<PlanPage<Permit>>(`/v1/site-logistics/projects/${projectId}/permits`);
 
 /* ── Customs ──────────────────────────────────────────────────────────── */
 
@@ -389,11 +383,11 @@ export interface CustomsDocument {
   state: string;
 }
 
-export const listCustoms = (projectId: string) => apiGet<PlanPage<CustomsCase>>(`${p(projectId)}/customs`);
+export const listCustoms = (projectId: string) => apiGet<PlanPage<CustomsCase>>(`/v1/site-logistics/projects/${projectId}/customs`);
 export const listLines = (projectId: string, caseId: string) =>
-  apiGet<PlanPage<CustomsLine>>(`${p(projectId)}/customs/${caseId}/lines`);
+  apiGet<PlanPage<CustomsLine>>(`/v1/site-logistics/projects/${projectId}/customs/${caseId}/lines`);
 export const listDocuments = (projectId: string, caseId: string) =>
-  apiGet<PlanPage<CustomsDocument>>(`${p(projectId)}/customs/${caseId}/documents`);
+  apiGet<PlanPage<CustomsDocument>>(`/v1/site-logistics/projects/${projectId}/customs/${caseId}/documents`);
 
 /* ── Neighbourhood ────────────────────────────────────────────────────── */
 
@@ -435,13 +429,13 @@ export interface CoordinationEntry {
 }
 
 export const getNeighbourhood = (projectId: string) =>
-  apiGet<{ plan: Neighbourhood }>(`${p(projectId)}/neighbourhood`).then((r) => r.plan);
+  apiGet<{ plan: Neighbourhood }>(`/v1/site-logistics/projects/${projectId}/neighbourhood`).then((r) => r.plan);
 export const putNeighbourhood = (projectId: string, body: Body) =>
-  apiPut<Neighbourhood>(`${p(projectId)}/neighbourhood`, body);
+  apiPut<Neighbourhood>(`/v1/site-logistics/projects/${projectId}/neighbourhood`, body);
 export const listComplaints = (projectId: string) =>
-  apiGet<PlanPage<Complaint>>(`${p(projectId)}/neighbour-issues`);
+  apiGet<PlanPage<Complaint>>(`/v1/site-logistics/projects/${projectId}/neighbour-issues`);
 export const listCoordination = (projectId: string) =>
-  apiGet<PlanPage<CoordinationEntry>>(`${p(projectId)}/coordination`);
+  apiGet<PlanPage<CoordinationEntry>>(`/v1/site-logistics/projects/${projectId}/coordination`);
 
 /* ── Readiness, sweep, export ─────────────────────────────────────────── */
 
@@ -470,15 +464,15 @@ export interface SweepResult {
   transports_arrived: number;
 }
 
-export const getReadiness = (projectId: string) => apiGet<Readiness>(`${p(projectId)}/readiness`);
-export const runSweep = (projectId: string) => apiPost<SweepResult>(`${p(projectId)}/sweep`, {});
+export const getReadiness = (projectId: string) => apiGet<Readiness>(`/v1/site-logistics/projects/${projectId}/readiness`);
+export const runSweep = (projectId: string) => apiPost<SweepResult>(`/v1/site-logistics/projects/${projectId}/sweep`, {});
 
 export const REGISTERS = ['balance', 'media', 'transports', 'customs', 'neighbourhood', 'frame'] as const;
 export type Register = (typeof REGISTERS)[number];
 
 export function exportRegister(projectId: string, register: Register, format: 'pdf' | 'xlsx'): Promise<void> {
   return downloadWithAuth(
-    `${API_BASE}${p(projectId)}/export/${register}?format=${format}`,
+    `${API_BASE}/v1/site-logistics/projects/${projectId}/export/${register}?format=${format}`,
     `logistics-${register}.${format}`,
   );
 }
@@ -487,40 +481,125 @@ export function exportRegister(projectId: string, register: Register, format: 'p
 
 /**
  * The collections that share one shape of write: POST to the collection,
- * PATCH / DELETE / transition on the item. `item` differs from `collection`
- * only where the router nests the create under a parent.
+ * PATCH / DELETE / transition on the item. Each path is written out in full
+ * so that it can be compared with the served routes one by one.
  */
-export const RESOURCE = {
-  stage: { collection: 'stages', item: 'stages' },
-  area: { collection: 'areas', item: 'areas' },
-  media: { collection: 'media', item: 'media' },
-  demand: { collection: 'media/{parent}/demands', item: 'demands' },
-  transport: { collection: 'transports', item: 'transports' },
-  permit: { collection: 'permits', item: 'permits' },
-  customs: { collection: 'customs', item: 'customs' },
-  line: { collection: 'customs/{parent}/lines', item: 'customs-lines' },
-  document: { collection: 'customs/{parent}/documents', item: 'customs-documents' },
-  complaint: { collection: 'neighbour-issues', item: 'neighbour-issues' },
-  coordination: { collection: 'coordination', item: 'coordination' },
-} as const;
+export type ResourceKind =
+  | 'stage'
+  | 'area'
+  | 'media'
+  | 'demand'
+  | 'transport'
+  | 'permit'
+  | 'customs'
+  | 'line'
+  | 'document'
+  | 'complaint'
+  | 'coordination';
 
-export type ResourceKind = keyof typeof RESOURCE;
+/** The router serves no such write for this kind of record; no screen offers it. */
+function notServed(kind: ResourceKind, action: string): Promise<never> {
+  return Promise.reject(new Error(`site logistics plan: no ${action} route for ${kind}`));
+}
 
-export function createItem(projectId: string, kind: ResourceKind, body: Body, parentId?: string): Promise<unknown> {
-  const path = RESOURCE[kind].collection.replace('{parent}', parentId ?? '');
-  return apiPost<unknown>(`${p(projectId)}/${path}`, body);
+export function createItem(projectId: string, kind: ResourceKind, body: Body, parentId = ''): Promise<unknown> {
+  switch (kind) {
+    case 'stage':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/stages`, body);
+    case 'area':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/areas`, body);
+    case 'media':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/media`, body);
+    case 'demand':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/media/${parentId}/demands`, body);
+    case 'transport':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/transports`, body);
+    case 'permit':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/permits`, body);
+    case 'customs':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/customs`, body);
+    case 'line':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/customs/${parentId}/lines`, body);
+    case 'document':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/customs/${parentId}/documents`, body);
+    case 'complaint':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/neighbour-issues`, body);
+    case 'coordination':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/coordination`, body);
+  }
 }
 
 export function updateItem(projectId: string, kind: ResourceKind, id: string, body: Body): Promise<unknown> {
-  return apiPatch<unknown>(`${p(projectId)}/${RESOURCE[kind].item}/${id}`, body);
+  switch (kind) {
+    case 'stage':
+      return apiPatch<unknown>(`/v1/site-logistics/projects/${projectId}/stages/${id}`, body);
+    case 'area':
+      return apiPatch<unknown>(`/v1/site-logistics/projects/${projectId}/areas/${id}`, body);
+    case 'media':
+      return apiPatch<unknown>(`/v1/site-logistics/projects/${projectId}/media/${id}`, body);
+    case 'demand':
+      return apiPatch<unknown>(`/v1/site-logistics/projects/${projectId}/demands/${id}`, body);
+    case 'transport':
+      return apiPatch<unknown>(`/v1/site-logistics/projects/${projectId}/transports/${id}`, body);
+    case 'permit':
+      return apiPatch<unknown>(`/v1/site-logistics/projects/${projectId}/permits/${id}`, body);
+    case 'customs':
+      return apiPatch<unknown>(`/v1/site-logistics/projects/${projectId}/customs/${id}`, body);
+    case 'line':
+      return apiPatch<unknown>(`/v1/site-logistics/projects/${projectId}/customs-lines/${id}`, body);
+    case 'document':
+      return apiPatch<unknown>(`/v1/site-logistics/projects/${projectId}/customs-documents/${id}`, body);
+    case 'complaint':
+      return apiPatch<unknown>(`/v1/site-logistics/projects/${projectId}/neighbour-issues/${id}`, body);
+    case 'coordination':
+      return apiPatch<unknown>(`/v1/site-logistics/projects/${projectId}/coordination/${id}`, body);
+  }
 }
 
 export function deleteItem(projectId: string, kind: ResourceKind, id: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/${RESOURCE[kind].item}/${id}`);
+  switch (kind) {
+    case 'stage':
+      return apiDelete(`/v1/site-logistics/projects/${projectId}/stages/${id}`);
+    case 'area':
+      return apiDelete(`/v1/site-logistics/projects/${projectId}/areas/${id}`);
+    case 'media':
+      return apiDelete(`/v1/site-logistics/projects/${projectId}/media/${id}`);
+    case 'demand':
+      return apiDelete(`/v1/site-logistics/projects/${projectId}/demands/${id}`);
+    case 'transport':
+      return apiDelete(`/v1/site-logistics/projects/${projectId}/transports/${id}`);
+    case 'permit':
+      return apiDelete(`/v1/site-logistics/projects/${projectId}/permits/${id}`);
+    case 'customs':
+      return apiDelete(`/v1/site-logistics/projects/${projectId}/customs/${id}`);
+    case 'line':
+      return apiDelete(`/v1/site-logistics/projects/${projectId}/customs-lines/${id}`);
+    case 'complaint':
+      return apiDelete(`/v1/site-logistics/projects/${projectId}/neighbour-issues/${id}`);
+    case 'coordination':
+      return apiDelete(`/v1/site-logistics/projects/${projectId}/coordination/${id}`);
+    default:
+      return notServed(kind, 'delete');
+  }
 }
 
 export function transitionItem(projectId: string, kind: ResourceKind, id: string, target: string): Promise<unknown> {
-  return apiPost<unknown>(`${p(projectId)}/${RESOURCE[kind].item}/${id}/transition`, { target });
+  switch (kind) {
+    case 'stage':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/stages/${id}/transition`, { target });
+    case 'media':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/media/${id}/transition`, { target });
+    case 'transport':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/transports/${id}/transition`, { target });
+    case 'permit':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/permits/${id}/transition`, { target });
+    case 'customs':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/customs/${id}/transition`, { target });
+    case 'complaint':
+      return apiPost<unknown>(`/v1/site-logistics/projects/${projectId}/neighbour-issues/${id}/transition`, { target });
+    default:
+      return notServed(kind, 'transition');
+  }
 }
 
 /* ── Errors ───────────────────────────────────────────────────────────── */
