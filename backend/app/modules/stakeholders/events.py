@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 TARGET_KIND = "stakeholder_commitment"
 GATE_SUBMITTED = "project_governance.gate.submitted"
-_SUBSCRIBED_FLAG = "_stakeholders_subscribers_registered"
 
 
 async def _can_open_isolated_session() -> bool:
@@ -121,14 +120,16 @@ async def _on_trigger(event: Event) -> None:
 
 
 def register_stakeholder_subscribers() -> None:
-    """Idempotently wire the subscribers of this module."""
+    """Wire the subscribers of this module; safe to call any number of times.
+
+    ``subscribe_once`` looks at the handlers that are bound right now, so a bus
+    that was emptied or restored since the last call gets them back. A flag
+    kept beside the handlers would say "done" for a bus that has none.
+    """
     from app.modules.stakeholders.service import EVENT_TRIGGERS
 
-    if getattr(event_bus, _SUBSCRIBED_FLAG, False):
-        return
     event_bus.subscribe_once("approval_routes.instance.completed", _on_completed)
     event_bus.subscribe_once("approval_routes.instance.rejected", _on_rejected)
     event_bus.subscribe_once("approval_routes.instance.cancelled", _on_cancelled)
     for name in (GATE_SUBMITTED, *EVENT_TRIGGERS):
         event_bus.subscribe_once(name, _on_trigger)
-    setattr(event_bus, _SUBSCRIBED_FLAG, True)

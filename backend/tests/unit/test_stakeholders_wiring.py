@@ -193,3 +193,31 @@ def test_every_audit_call_uses_keywords_log_activity_accepts() -> None:
     assert len(calls) >= 20
     unknown = sorted({k.arg for c in calls for k in c.keywords if k.arg and k.arg not in accepted})
     assert unknown == []
+
+
+@pytest.mark.asyncio
+async def test_subscribers_come_back_after_the_bus_was_emptied(monkeypatch) -> None:
+    from app.core.events import event_bus
+    from app.modules.stakeholders import events
+
+    saved = {name: list(handlers) for name, handlers in event_bus._handlers.items()}
+    calls: list[tuple[str, dict]] = []
+
+    async def trigger(name: str, data: dict, session_factory=None) -> int:
+        calls.append((name, data))
+        return 0
+
+    monkeypatch.setattr(events, "handle_trigger", trigger)
+    try:
+        events.register_stakeholder_subscribers()
+        # What a test or an in-process restart does: the handlers go, the bus object stays.
+        event_bus._handlers.clear()
+        events.register_stakeholder_subscribers()
+        events.register_stakeholder_subscribers()
+        assert event_bus._handlers[events.GATE_SUBMITTED].count(events._on_trigger) == 1
+        assert event_bus._handlers["approval_routes.instance.completed"].count(events._on_completed) == 1
+        await event_bus.publish(events.GATE_SUBMITTED, {"project_id": "p"})
+    finally:
+        event_bus._handlers.clear()
+        event_bus._handlers.update(saved)
+    assert calls == [(events.GATE_SUBMITTED, {"project_id": "p"})]
