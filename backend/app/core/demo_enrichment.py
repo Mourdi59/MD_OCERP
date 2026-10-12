@@ -127,6 +127,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         from app.modules.interface_management.seed import seed_interface_management_demo
         from app.modules.markups.seed import seed_markups
         from app.modules.moc.seed import seed_moc
+        from app.modules.permits.seed import seed_permits_demo
         from app.modules.pointcloud.seed import seed_pointcloud_demo
         from app.modules.portal.seed import seed_portal_demo
         from app.modules.portfolio.seed import seed_portfolio_demo
@@ -325,6 +326,11 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             # The owner's delivery form decision links the contract the
             # contracts seeder wrote above. Guards itself per project.
             ("delivery_model", None, lambda s: seed_delivery_model_demo(s, _demo_pids)),
+            # The authority permit roadmap and its condition register: the
+            # permits a project of its country needs, two decided with
+            # conditions, one under review. Links the schedule activities the
+            # seeders above wrote. Guards itself per project on a roadmap.
+            ("permits", None, lambda s: seed_permits_demo(s, _demo_pids)),
             # The frozen budget the same job is measured against, and the
             # monthly measurements taken since. Reads the same commercial
             # profile as the reconciliation above, so the margin one screen

@@ -124,6 +124,10 @@
       "vi",
       "zh"
     ],
+    "backend/app/modules/permits/messages": [
+      "de",
+      "en"
+    ],
     "backend/app/modules/project_governance/messages": [
       "de",
       "en"

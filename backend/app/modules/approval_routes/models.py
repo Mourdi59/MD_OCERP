@@ -71,6 +71,10 @@ TARGET_KINDS: tuple[str, ...] = (
     # commitment_release module, which starts the instance against a release
     # request and closes it from the terminal events.
     "commitment_release",
+    # Authority permits: optional internal release of a permit application
+    # before it is filed (project setting, off by default). The permits
+    # module starts the instance and listens for rejection or cancellation.
+    "permit_application",
 )
 
 # Aggregation mode at a single step when the approver_role expands to

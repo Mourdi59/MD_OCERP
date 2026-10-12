@@ -1,0 +1,14 @@
+{
+  "id": "de_mv",
+  "version": 1,
+  "name_key": "permits.catalogue.de_mv",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "DE"
+  ],
+  "jurisdiction": "DE-MV",
+  "extends": "de",
+  "source_url": null,
+  "permit_types": [],
+  "condition_kinds": []
+}

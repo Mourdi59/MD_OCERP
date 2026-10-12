@@ -444,6 +444,55 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "export_trail",
         "get_matrix",
     ],
+    # Every project-scoped route; the tenant catalogue routes are excused below.
+    "permits": [
+        "get_roadmap",
+        "put_roadmap",
+        "propose",
+        "accept",
+        "list_requirements",
+        "create_requirement",
+        "patch_requirement",
+        "delete_requirement",
+        "put_dependencies",
+        "push_milestone",
+        "timeline",
+        "list_applications",
+        "create_application",
+        "get_application",
+        "patch_application",
+        "transition_application",
+        "add_clock_event",
+        "deemed",
+        "record_decision",
+        "complete_register",
+        "correct_decision",
+        "list_permits",
+        "start_notice",
+        "interruption_notice",
+        "resumption_notice",
+        "transition_permit",
+        "create_condition",
+        "propose_conditions",
+        "extract_conditions",
+        "list_conditions",
+        "get_condition",
+        "patch_condition",
+        "assign_owner",
+        "add_evidence",
+        "remove_evidence",
+        "submit_evidence",
+        "discharge",
+        "breach",
+        "in_compliance",
+        "confirm_proposal",
+        "condition_requirement",
+        "escalate",
+        "readiness",
+        "validation",
+        "export",
+        "publish_frame_document",
+    ],
 }
 
 
@@ -499,6 +548,12 @@ _GUARD_WRAPPERS = frozenset(
         # bid and delegates to _verify_package_owner for its package.
         "_verify_package_owner",
         "_verify_bid_access",
+        # permits.router: the one place a handler gets its PermitService. It awaits
+        # verify_project_access(project_id, user_id, session) before it returns the
+        # service, so a handler cannot read or write a row of a project it has not
+        # been checked against. Named for the module on purpose: a bare ``_svc``
+        # exists in other routers and does not check anything there.
+        "_permits_service",
     }
 )
 
@@ -729,6 +784,12 @@ _NOT_ROUTER_GATED: dict[str, str] = {
     "project_governance.publish_catalogue": "Tenant-scoped row, resolved per tenant before publishing; manage only.",
     "project_governance.retire_catalogue": "Tenant-scoped row, resolved per tenant before retiring; manage only.",
     "project_governance.diff_catalogue": "Tenant-scoped row, CatalogueStore.get(tenant, id); other tenants 404.",
+    # permits keeps its permit-type catalogues in the same tenant-scoped store (kind ``permit_type``).
+    "permits.get_shipped_catalogue": "Shipped catalogue read from the package by id: the same data for every tenant.",
+    "permits.get_catalogue": "Tenant-scoped row, resolved through _own_catalogue(store, tenant, id); other tenants 404.",
+    "permits.update_catalogue": "Tenant-scoped row, _own_catalogue(store, tenant, id) first; permits.catalogue only.",
+    "permits.publish_catalogue": "Tenant-scoped row, _own_catalogue(store, tenant, id) first; permits.catalogue only.",
+    "permits.diff_catalogue": "Tenant-scoped row, _own_catalogue(store, tenant, id); other tenants 404.",
 }
 
 

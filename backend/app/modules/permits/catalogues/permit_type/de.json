@@ -1,0 +1,414 @@
+{
+  "id": "de",
+  "version": 1,
+  "name_key": "permits.catalogue.de",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "DE"
+  ],
+  "jurisdiction": "DE",
+  "extends": null,
+  "source_url": null,
+  "permit_types": [
+    {
+      "code": "bauvoranfrage",
+      "name_key": "permits.type.bauvoranfrage",
+      "category": "planning_zoning",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "preliminary",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.site_plan",
+        "permits.doc.questions_list"
+      ],
+      "legal_basis": "Landesbauordnung, Vorbescheid",
+      "legal_basis_url": "https://www.bauministerkonferenz.de/",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "baugenehmigung",
+      "name_key": "permits.type.baugenehmigung",
+      "category": "building",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start",
+        "construction"
+      ],
+      "triggered_by_route": [
+        "full_permit",
+        "expertise_required"
+      ],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.design_drawings",
+        "permits.doc.structural_calculations",
+        "permits.doc.fire_strategy"
+      ],
+      "validity": {
+        "source_url": "https://www.bauministerkonferenz.de/",
+        "review_status": "unconfirmed",
+        "as_of": "2026-10-11",
+        "lapse_if_not_started": {
+          "period": 3,
+          "unit": "years"
+        },
+        "lapse_if_paused": {
+          "period": 1,
+          "unit": "years"
+        },
+        "extension_per_request": {
+          "period": 1,
+          "unit": "years"
+        }
+      },
+      "legal_basis": "Landesbauordnung (MBO fallback)",
+      "legal_basis_url": "https://www.bauministerkonferenz.de/",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "genehmigungsfreistellung",
+      "name_key": "permits.type.genehmigungsfreistellung",
+      "category": "building",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start",
+        "construction"
+      ],
+      "triggered_by_route": [
+        "notification"
+      ],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "legal_basis": "Landesbauordnung (MBO fallback)",
+      "legal_basis_url": "https://www.bauministerkonferenz.de/",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "teilbaugenehmigung",
+      "name_key": "permits.type.teilbaugenehmigung",
+      "category": "building",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "partial",
+      "requires": [
+        {
+          "code": "baugenehmigung",
+          "on": "submitted"
+        }
+      ],
+      "enables": [
+        "site_start"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "legal_basis": "Landesbauordnung (MBO fallback)",
+      "legal_basis_url": "https://www.bauministerkonferenz.de/",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "vorzeitiger_baubeginn",
+      "name_key": "permits.type.vorzeitiger_baubeginn",
+      "category": "early_start",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "early_start",
+      "requires": [
+        {
+          "code": "baugenehmigung",
+          "on": "submitted"
+        }
+      ],
+      "enables": [
+        "site_start"
+      ],
+      "triggered_by_route": [],
+      "revocable": true,
+      "security_possible": true,
+      "typical_documents": [],
+      "legal_basis": "Landesbauordnung",
+      "legal_basis_url": "https://www.bauministerkonferenz.de/",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "bimschg_genehmigung",
+      "name_key": "permits.type.bimschg_genehmigung",
+      "category": "immission",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "operator",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "construction",
+        "operation"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.emission_forecast",
+        "permits.doc.safety_report"
+      ],
+      "clock": {
+        "period": 7,
+        "unit": "months",
+        "start_event": "complete",
+        "stop_on_rfi": false,
+        "source_url": "https://www.gesetze-im-internet.de/bimschg/__10.html",
+        "review_status": "verified",
+        "as_of": "2026-10-11",
+        "extension": {
+          "mode": "by_authority_once",
+          "max": 3,
+          "unit": "months",
+          "reason_required": true
+        },
+        "variants": [
+          {
+            "code": "simplified",
+            "name_key": "permits.variant.simplified",
+            "period": 3,
+            "unit": "months",
+            "source_url": "https://www.gesetze-im-internet.de/bimschg/__10.html",
+            "review_status": "verified",
+            "as_of": "2026-10-11"
+          }
+        ]
+      },
+      "legal_basis": "BImSchG §10 Abs. 6a, §19",
+      "legal_basis_url": "https://www.gesetze-im-internet.de/bimschg/__10.html",
+      "legal_basis_review_status": "verified"
+    },
+    {
+      "code": "bimschg_zulassung_vorzeitiger_beginn",
+      "name_key": "permits.type.bimschg_zulassung_vorzeitiger_beginn",
+      "category": "early_start",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "operator",
+      "scope": "early_start",
+      "requires": [
+        {
+          "code": "bimschg_genehmigung",
+          "on": "submitted"
+        }
+      ],
+      "enables": [
+        "site_start"
+      ],
+      "triggered_by_route": [],
+      "revocable": true,
+      "security_possible": true,
+      "typical_documents": [],
+      "legal_basis": "BImSchG §8a",
+      "legal_basis_url": "https://www.gesetze-im-internet.de/bimschg/__8a.html",
+      "legal_basis_review_status": "verified"
+    },
+    {
+      "code": "wasserrechtliche_erlaubnis",
+      "name_key": "permits.type.wasserrechtliche_erlaubnis",
+      "category": "water",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "legal_basis": "WHG §8",
+      "legal_basis_url": "https://www.gesetze-im-internet.de/whg_2009/__8.html",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "whg_vorzeitiger_beginn",
+      "name_key": "permits.type.whg_vorzeitiger_beginn",
+      "category": "early_start",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "owner",
+      "scope": "early_start",
+      "requires": [
+        {
+          "code": "wasserrechtliche_erlaubnis",
+          "on": "submitted"
+        }
+      ],
+      "enables": [
+        "site_start"
+      ],
+      "triggered_by_route": [],
+      "revocable": true,
+      "security_possible": true,
+      "typical_documents": [],
+      "legal_basis": "WHG §17",
+      "legal_basis_url": "https://www.gesetze-im-internet.de/whg_2009/__17.html",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "uvp",
+      "name_key": "permits.type.uvp",
+      "category": "environmental",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.environmental_report"
+      ],
+      "legal_basis": "Directive 2011/92/EU as amended by 2014/52/EU",
+      "legal_basis_url": "https://eur-lex.europa.eu/eli/dir/2011/92/oj",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "denkmalrechtliche_erlaubnis",
+      "name_key": "permits.type.denkmalrechtliche_erlaubnis",
+      "category": "heritage",
+      "authority_kind": "other",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "sondernutzung_strasse",
+      "name_key": "permits.type.sondernutzung_strasse",
+      "category": "traffic_road",
+      "authority_kind": "other",
+      "default_applicant_role": "contractor",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.traffic_management_plan"
+      ]
+    },
+    {
+      "code": "netzanschluss",
+      "name_key": "permits.type.netzanschluss",
+      "category": "utility",
+      "authority_kind": "utility_operator",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "wasser_abwasser_anschluss",
+      "name_key": "permits.type.wasser_abwasser_anschluss",
+      "category": "utility",
+      "authority_kind": "utility_operator",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "nutzungsaufnahme_anzeige",
+      "name_key": "permits.type.nutzungsaufnahme_anzeige",
+      "category": "occupancy",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [
+        {
+          "code": "baugenehmigung",
+          "on": "granted"
+        }
+      ],
+      "enables": [
+        "occupation"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "legal_basis": "Landesbauordnung (MBO fallback)",
+      "legal_basis_url": "https://www.bauministerkonferenz.de/",
+      "legal_basis_review_status": "unconfirmed"
+    }
+  ],
+  "condition_kinds": [
+    {
+      "code": "bedingung",
+      "name_key": "permits.condition_kind.bedingung",
+      "maps_to": "suspensive",
+      "default_trigger": "before_start",
+      "source_url": "https://www.gesetze-im-internet.de/vwvfg/__36.html",
+      "review_status": "verified",
+      "as_of": "2026-10-11"
+    },
+    {
+      "code": "auflage",
+      "name_key": "permits.condition_kind.auflage",
+      "maps_to": "obligation",
+      "source_url": "https://www.gesetze-im-internet.de/vwvfg/__36.html",
+      "review_status": "verified",
+      "as_of": "2026-10-11"
+    },
+    {
+      "code": "befristung",
+      "name_key": "permits.condition_kind.befristung",
+      "maps_to": "time_limit",
+      "default_trigger": "by_date",
+      "source_url": "https://www.gesetze-im-internet.de/vwvfg/__36.html",
+      "review_status": "verified",
+      "as_of": "2026-10-11"
+    },
+    {
+      "code": "widerrufsvorbehalt",
+      "name_key": "permits.condition_kind.widerrufsvorbehalt",
+      "maps_to": "revocation_reserve",
+      "source_url": "https://www.gesetze-im-internet.de/vwvfg/__36.html",
+      "review_status": "verified",
+      "as_of": "2026-10-11"
+    },
+    {
+      "code": "auflagenvorbehalt",
+      "name_key": "permits.condition_kind.auflagenvorbehalt",
+      "maps_to": "reserved_obligation",
+      "source_url": "https://www.gesetze-im-internet.de/vwvfg/__36.html",
+      "review_status": "verified",
+      "as_of": "2026-10-11"
+    },
+    {
+      "code": "hinweis",
+      "name_key": "permits.condition_kind.hinweis",
+      "maps_to": "information"
+    }
+  ]
+}

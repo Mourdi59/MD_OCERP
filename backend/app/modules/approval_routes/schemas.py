@@ -25,6 +25,7 @@ TargetKindLiteral = Literal[
     "phase_gate",
     "frame_change",
     "commitment_release",
+    "permit_application",
 ]
 StepModeLiteral = Literal["all", "any", "majority"]
 InstanceStatusLiteral = Literal["pending", "approved", "rejected", "cancelled"]

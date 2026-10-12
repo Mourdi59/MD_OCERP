@@ -100,6 +100,13 @@ async def risk_tick() -> None:
         await session.commit()
 
 
+async def permits_tick() -> None:
+    """Notify and escalate overdue permit conditions and lapse permits past their validity."""
+    from app.modules.permits.jobs import run_sweep_once
+
+    await run_sweep_once()
+
+
 async def phonelog_tick() -> None:
     """Delete call recordings past their retention window."""
     from app.database import async_session_factory
@@ -302,6 +309,12 @@ def register_builtin_processes(
             _loop(HOUR_S, governance_tick, HOUR_S),
             ["project_governance"],
             logger_names=["app.modules.project_governance.escalation"],
+        ),
+        _spec(
+            "permits_sweep",
+            _loop(HOUR_S, permits_tick, HOUR_S),
+            ["permits"],
+            logger_names=["app.modules.permits.jobs"],
         ),
         # The old loop swept at boot; now it waits for the server to settle.
         _spec(

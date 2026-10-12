@@ -15,6 +15,7 @@ PERIODIC = [
     "deadline_sweeper",
     "risk_escalation",
     "governance_escalation",
+    "permits_sweep",
     "phonelog_retention",
     "file_trash_purge",
 ]
@@ -56,7 +57,7 @@ async def test_boot_runs_no_tick_on_the_boot_path(monkeypatch: pytest.MonkeyPatc
     async def spy() -> None:
         ticked.append("x")
 
-    for name in ("kpi_tick", "reports_tick", "risk_tick", "phonelog_tick", "sla_tick", "deadline_tick"):
+    for name in ("kpi_tick", "reports_tick", "risk_tick", "permits_tick", "phonelog_tick", "sla_tick", "deadline_tick"):
         monkeypatch.setattr(builtin, name, spy)
     reg = await _registry(fresh=False)
     try:

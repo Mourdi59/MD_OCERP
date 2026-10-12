@@ -1837,6 +1837,15 @@ export function ProjectDetailPage() {
           {t('governance.project.title', { defaultValue: 'Project governance' })}
         </Button>
         <Button
+          variant="ghost"
+          size="sm"
+          icon={<FileCheck size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/permits`)}
+          data-testid="project-permits-link"
+        >
+          {t('permits.ui.title', { defaultValue: 'Permits' })}
+        </Button>
+        <Button
           variant={customizing ? 'primary' : 'ghost'}
           size="sm"
           icon={<LayoutGrid size={14} />}
