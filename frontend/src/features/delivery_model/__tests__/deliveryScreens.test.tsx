@@ -564,7 +564,7 @@ describe('DecisionRecordPanel', () => {
     wrap(<DecisionRecordPanel {...props} model={model({ status: 'reopened' })} decisions={[approved]} />);
     fireEvent.click(screen.getByTestId('close-reopening-button'));
     expect(mocked.closeReopening).not.toHaveBeenCalled();
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Give up the reopening' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Give up the reopening' }));
     await waitFor(() => expect(mocked.closeReopening).toHaveBeenCalledWith('p1'));
   });
 

@@ -16,8 +16,6 @@
 
 import { API_BASE, ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
 
-const BASE = '/v1/delivery-model';
-
 export interface Page<T> {
   items: T[];
   total: number;
@@ -453,34 +451,32 @@ export const deliveryKeys = {
   catalogues: ['delivery-model', 'catalogues'] as const,
 };
 
-const p = (projectId: string) => `${BASE}/projects/${projectId}`;
-
 /* ── Catalogues and model ─────────────────────────────────────────────── */
 
 export function listCatalogues(): Promise<Page<CatalogueSummary>> {
-  return apiGet<Page<CatalogueSummary>>(`${BASE}/catalogues`);
+  return apiGet<Page<CatalogueSummary>>('/v1/delivery-model/catalogues');
 }
 
 export function getPinnedCatalogue(projectId: string): Promise<DeliveryCatalogue> {
-  return apiGet<DeliveryCatalogue>(`${p(projectId)}/catalogue`);
+  return apiGet<DeliveryCatalogue>(`/v1/delivery-model/projects/${projectId}/catalogue`);
 }
 
 export function getModel(projectId: string): Promise<DeliveryModel> {
-  return apiGet<DeliveryModel>(`${p(projectId)}/model`);
+  return apiGet<DeliveryModel>(`/v1/delivery-model/projects/${projectId}/model`);
 }
 
 export function setModel(
   projectId: string,
   body: { catalogue_source?: 'shipped' | 'tenant'; catalogue_id?: string; catalogue_version?: number },
 ): Promise<DeliveryModel> {
-  return apiPut<DeliveryModel>(`${p(projectId)}/model`, body);
+  return apiPut<DeliveryModel>(`/v1/delivery-model/projects/${projectId}/model`, body);
 }
 
 export function patchModel(
   projectId: string,
   body: { underground_risk_sharing?: boolean; owner_capability?: OwnerCapability },
 ): Promise<DeliveryModel> {
-  return apiPatch<DeliveryModel>(`${p(projectId)}/model`, body);
+  return apiPatch<DeliveryModel>(`/v1/delivery-model/projects/${projectId}/model`, body);
 }
 
 export function changeCatalogue(
@@ -493,94 +489,94 @@ export function changeCatalogue(
     category_mapping: Record<string, string>;
   },
 ): Promise<DeliveryModel> {
-  return apiPost<DeliveryModel>(`${p(projectId)}/model/catalogue`, body);
+  return apiPost<DeliveryModel>(`/v1/delivery-model/projects/${projectId}/model/catalogue`, body);
 }
 
 export function reopenModel(projectId: string): Promise<DeliveryModel> {
-  return apiPost<DeliveryModel>(`${p(projectId)}/model/reopen`, {});
+  return apiPost<DeliveryModel>(`/v1/delivery-model/projects/${projectId}/model/reopen`, {});
 }
 
 /** Gives a reopening up: the model returns to the approved decision. */
 export function closeReopening(projectId: string): Promise<DeliveryModel> {
-  return apiPost<DeliveryModel>(`${p(projectId)}/model/reopen/close`, {});
+  return apiPost<DeliveryModel>(`/v1/delivery-model/projects/${projectId}/model/reopen/close`, {});
 }
 
 /* ── Comparison ───────────────────────────────────────────────────────── */
 
 export function getComparison(projectId: string): Promise<Comparison> {
-  return apiGet<Comparison>(`${p(projectId)}/comparison`);
+  return apiGet<Comparison>(`/v1/delivery-model/projects/${projectId}/comparison`);
 }
 
 export function addOption(projectId: string, body: { form_code: string; notes?: string }): Promise<unknown> {
-  return apiPost(`${p(projectId)}/options`, { overrides: {}, notes: '', ...body });
+  return apiPost(`/v1/delivery-model/projects/${projectId}/options`, { overrides: {}, notes: '', ...body });
 }
 
 export function updateOption(projectId: string, optionId: string, body: { notes?: string }): Promise<unknown> {
-  return apiPatch(`${p(projectId)}/options/${optionId}`, body);
+  return apiPatch(`/v1/delivery-model/projects/${projectId}/options/${optionId}`, body);
 }
 
 export function deleteOption(projectId: string, optionId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/options/${optionId}`);
+  return apiDelete(`/v1/delivery-model/projects/${projectId}/options/${optionId}`);
 }
 
 export function patchWeights(projectId: string, weights: Record<string, string>): Promise<unknown> {
-  return apiPatch(`${p(projectId)}/criteria`, { weights });
+  return apiPatch(`/v1/delivery-model/projects/${projectId}/criteria`, { weights });
 }
 
 export function putScores(
   projectId: string,
   scores: Array<{ option_id: string; criterion_code: string; score: number; rationale: string }>,
 ): Promise<Comparison> {
-  return apiPut<Comparison>(`${p(projectId)}/scores`, { scores });
+  return apiPut<Comparison>(`/v1/delivery-model/projects/${projectId}/scores`, { scores });
 }
 
 export function prefillScores(projectId: string): Promise<Comparison> {
-  return apiPost<Comparison>(`${p(projectId)}/scores/prefill`, {});
+  return apiPost<Comparison>(`/v1/delivery-model/projects/${projectId}/scores/prefill`, {});
 }
 
 /* ── Decision ─────────────────────────────────────────────────────────── */
 
 export function proposeDecision(projectId: string, body: ProposeInput): Promise<Decision> {
-  return apiPost<Decision>(`${p(projectId)}/decision`, body);
+  return apiPost<Decision>(`/v1/delivery-model/projects/${projectId}/decision`, body);
 }
 
 export function withdrawDecision(projectId: string): Promise<DeliveryModel> {
-  return apiPost<DeliveryModel>(`${p(projectId)}/decision/withdraw`, {});
+  return apiPost<DeliveryModel>(`/v1/delivery-model/projects/${projectId}/decision/withdraw`, {});
 }
 
 export function listDecisions(projectId: string): Promise<Page<Decision>> {
-  return apiGet<Page<Decision>>(`${p(projectId)}/decisions`);
+  return apiGet<Page<Decision>>(`/v1/delivery-model/projects/${projectId}/decisions`);
 }
 
 /* ── Risk allocation ──────────────────────────────────────────────────── */
 
 export function getAllocations(projectId: string): Promise<AllocationMatrix> {
-  return apiGet<AllocationMatrix>(`${p(projectId)}/allocations`);
+  return apiGet<AllocationMatrix>(`/v1/delivery-model/projects/${projectId}/allocations`);
 }
 
 export function putAllocation(projectId: string, category: string, body: AllocationInput): Promise<AllocationMatrix> {
-  return apiPut<AllocationMatrix>(`${p(projectId)}/allocations/${encodeURIComponent(category)}`, body);
+  return apiPut<AllocationMatrix>(`/v1/delivery-model/projects/${projectId}/allocations/${encodeURIComponent(category)}`, body);
 }
 
 export function confirmAllocations(projectId: string, categories?: string[]): Promise<AllocationMatrix> {
-  return apiPost<AllocationMatrix>(`${p(projectId)}/allocations/confirm`, categories ? { categories } : {});
+  return apiPost<AllocationMatrix>(`/v1/delivery-model/projects/${projectId}/allocations/confirm`, categories ? { categories } : {});
 }
 
 export function seedRisks(
   projectId: string,
   body: { categories?: string[]; preview: boolean },
 ): Promise<Page<SeededRisk> & { preview: boolean }> {
-  return apiPost<Page<SeededRisk> & { preview: boolean }>(`${p(projectId)}/allocations/seed-risks`, body);
+  return apiPost<Page<SeededRisk> & { preview: boolean }>(`/v1/delivery-model/projects/${projectId}/allocations/seed-risks`, body);
 }
 
 /* ── Packages ─────────────────────────────────────────────────────────── */
 
 export function listPackages(projectId: string): Promise<Page<DeliveryPackage>> {
-  return apiGet<Page<DeliveryPackage>>(`${p(projectId)}/packages`);
+  return apiGet<Page<DeliveryPackage>>(`/v1/delivery-model/projects/${projectId}/packages`);
 }
 
 export function createPackage(projectId: string, body: PackageInput): Promise<DeliveryPackage> {
-  return apiPost<DeliveryPackage>(`${p(projectId)}/packages`, body);
+  return apiPost<DeliveryPackage>(`/v1/delivery-model/projects/${projectId}/packages`, body);
 }
 
 export function updatePackage(
@@ -588,23 +584,23 @@ export function updatePackage(
   packageId: string,
   body: Partial<Omit<PackageInput, 'code'>>,
 ): Promise<DeliveryPackage> {
-  return apiPatch<DeliveryPackage>(`${p(projectId)}/packages/${packageId}`, body);
+  return apiPatch<DeliveryPackage>(`/v1/delivery-model/projects/${projectId}/packages/${packageId}`, body);
 }
 
 export function deletePackage(projectId: string, packageId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/packages/${packageId}`);
+  return apiDelete(`/v1/delivery-model/projects/${projectId}/packages/${packageId}`);
 }
 
 export function derivePackages(projectId: string): Promise<Page<DeliveryPackage> & { created: number }> {
-  return apiPost<Page<DeliveryPackage> & { created: number }>(`${p(projectId)}/packages/derive`, {});
+  return apiPost<Page<DeliveryPackage> & { created: number }>(`/v1/delivery-model/projects/${projectId}/packages/derive`, {});
 }
 
 export function getConsistency(projectId: string): Promise<Consistency> {
-  return apiGet<Consistency>(`${p(projectId)}/packages/consistency`);
+  return apiGet<Consistency>(`/v1/delivery-model/projects/${projectId}/packages/consistency`);
 }
 
 export function setPackageStatus(projectId: string, packageId: string, status: PackageStatus): Promise<DeliveryPackage> {
-  return apiPost<DeliveryPackage>(`${p(projectId)}/packages/${packageId}/status`, { status });
+  return apiPost<DeliveryPackage>(`/v1/delivery-model/projects/${projectId}/packages/${packageId}/status`, { status });
 }
 
 export function linkPackage(
@@ -612,21 +608,21 @@ export function linkPackage(
   packageId: string,
   body: { link_kind: PackageLinkKind; link_id: string },
 ): Promise<DeliveryPackage> {
-  return apiPut<DeliveryPackage>(`${p(projectId)}/packages/${packageId}/link`, body);
+  return apiPut<DeliveryPackage>(`/v1/delivery-model/projects/${projectId}/packages/${packageId}/link`, body);
 }
 
 export function unlinkPackage(projectId: string, packageId: string): Promise<DeliveryPackage> {
-  return apiDelete<DeliveryPackage>(`${p(projectId)}/packages/${packageId}/link`);
+  return apiDelete<DeliveryPackage>(`/v1/delivery-model/projects/${projectId}/packages/${packageId}/link`);
 }
 
 /* ── Owner-furnished items ────────────────────────────────────────────── */
 
 export function listOfi(projectId: string): Promise<Page<OwnerFurnishedItem>> {
-  return apiGet<Page<OwnerFurnishedItem>>(`${p(projectId)}/ofi`);
+  return apiGet<Page<OwnerFurnishedItem>>(`/v1/delivery-model/projects/${projectId}/ofi`);
 }
 
 export function createOfi(projectId: string, body: OfiInput): Promise<OwnerFurnishedItem> {
-  return apiPost<OwnerFurnishedItem>(`${p(projectId)}/ofi`, body);
+  return apiPost<OwnerFurnishedItem>(`/v1/delivery-model/projects/${projectId}/ofi`, body);
 }
 
 export function updateOfi(
@@ -634,11 +630,11 @@ export function updateOfi(
   ofiId: string,
   body: Partial<Omit<OfiInput, 'code'>>,
 ): Promise<OwnerFurnishedItem> {
-  return apiPatch<OwnerFurnishedItem>(`${p(projectId)}/ofi/${ofiId}`, body);
+  return apiPatch<OwnerFurnishedItem>(`/v1/delivery-model/projects/${projectId}/ofi/${ofiId}`, body);
 }
 
 export function deleteOfi(projectId: string, ofiId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/ofi/${ofiId}`);
+  return apiDelete(`/v1/delivery-model/projects/${projectId}/ofi/${ofiId}`);
 }
 
 export function setOfiRoute(
@@ -646,20 +642,20 @@ export function setOfiRoute(
   ofiId: string,
   body: { procurement_route: OfiRoute; link_kind?: OfiLinkKind; link_id?: string },
 ): Promise<OwnerFurnishedItem> {
-  return apiPut<OwnerFurnishedItem>(`${p(projectId)}/ofi/${ofiId}/route`, body);
+  return apiPut<OwnerFurnishedItem>(`/v1/delivery-model/projects/${projectId}/ofi/${ofiId}/route`, body);
 }
 
 export function setOfiStatus(projectId: string, ofiId: string, status: OfiStatus): Promise<OwnerFurnishedItem> {
-  return apiPost<OwnerFurnishedItem>(`${p(projectId)}/ofi/${ofiId}/status`, { status });
+  return apiPost<OwnerFurnishedItem>(`/v1/delivery-model/projects/${projectId}/ofi/${ofiId}/status`, { status });
 }
 
 /* ── Readiness and export ─────────────────────────────────────────────── */
 
 export function getReadiness(projectId: string): Promise<Readiness> {
-  return apiGet<Readiness>(`${p(projectId)}/readiness`);
+  return apiGet<Readiness>(`/v1/delivery-model/projects/${projectId}/readiness`);
 }
 
 /** Download the decision record, the risk matrix or the package plan as PDF or XLSX. */
 export function downloadExport(projectId: string, what: ExportWhat, format: ExportFormat): Promise<void> {
-  return downloadWithAuth(`${API_BASE}${p(projectId)}/export?what=${what}&format=${format}`, `delivery_${what}.${format}`);
+  return downloadWithAuth(`${API_BASE}/v1/delivery-model/projects/${projectId}/export?what=${what}&format=${format}`, `delivery_${what}.${format}`);
 }

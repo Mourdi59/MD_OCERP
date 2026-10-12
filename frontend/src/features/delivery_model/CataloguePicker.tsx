@@ -6,7 +6,7 @@
 // another catalogue. A catalogue brings the forms that can be compared, the
 // parties, the risk categories and the comparison criteria.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 
@@ -98,17 +98,15 @@ export function StartModel({ projectId, viewer, labels, onDone }: StartModelProp
   const refusal = useRefusalText();
   const cataloguesQ = useDeliveryCatalogues();
   const catalogues = cataloguesQ.data ?? [];
-  const [selected, setSelected] = useState('');
-  useEffect(() => {
-    if (!selected && catalogues[0]) setSelected(idOf(catalogues[0]));
-  }, [catalogues, selected]);
+  // Until the reader picks one, the first catalogue is the choice the screen shows and sends.
+  const [picked, setPicked] = useState('');
+  const chosen = catalogues.find((c) => idOf(c) === picked) ?? catalogues[0];
+  const selected = chosen ? idOf(chosen) : '';
   const verdict: Verdict = canManage(viewer);
 
   const start = useMutation({
-    mutationFn: () => {
-      const chosen = catalogues.find((c) => idOf(c) === selected);
-      return setModel(projectId, chosen ? { catalogue_source: chosen.source, catalogue_id: chosen.id } : {});
-    },
+    mutationFn: (pick: CatalogueSummary | undefined) =>
+      setModel(projectId, pick ? { catalogue_source: pick.source, catalogue_id: pick.id } : {}),
     onSuccess: onDone,
   });
 
@@ -143,7 +141,7 @@ export function StartModel({ projectId, viewer, labels, onDone }: StartModelProp
         <CatalogueChoice
           catalogues={catalogues}
           selected={selected}
-          onSelect={setSelected}
+          onSelect={setPicked}
           labels={labels}
           disabled={!!verdict}
           name="delivery-catalogue"
@@ -154,7 +152,7 @@ export function StartModel({ projectId, viewer, labels, onDone }: StartModelProp
         verdict={verdict}
         loading={start.isPending}
         disabled={catalogues.length === 0}
-        onClick={() => start.mutate()}
+        onClick={() => start.mutate(chosen)}
         data-testid="start-model-button"
       >
         {t('delivery_model.ui.start.action', { defaultValue: 'Start delivery model' })}
