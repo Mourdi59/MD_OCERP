@@ -308,3 +308,148 @@ async def test_a_catalogue_of_another_tenant_cannot_be_pinned_and_a_stored_pin_k
         seen = await c.get(_p(world, "concept"))
         assert seen.status_code == 200, seen.text
         assert (await c.get(_p(world, "concept/catalogue"))).status_code == 200
+
+
+async def _contact(w: World, owner: uuid.UUID, company: str) -> str:
+    from app.modules.contacts.models import Contact
+
+    async with w.factory() as s:
+        row = Contact(contact_type="company", company_name=company, tenant_id=str(owner), created_by=str(owner))
+        s.add(row)
+        await s.commit()
+        return str(row.id)
+
+
+async def test_the_flags_of_a_record_are_the_answers_of_its_routes(world: World) -> None:
+    async with client_as(world, world.manager, "manager") as c:
+        assert (await c.post(_p(world, "concept"))).status_code == 201
+        await c.patch(_p(world, "concept"), json={"packages": [{"ref": "P-01", "title": "Structure"}]})
+        standard = (await c.post(_p(world, "standards"), json={"code": "EN 206"})).json()
+        assert standard["can"] == {"edit": True, "delete": True}
+        asked_by_editor = (await c.post(_p(world, "proofs"), json=_proof("concrete_conformity_tests"))).json()["id"]
+        asked_by_manager = (await c.post(_p(world, "proofs"), json=_proof("om_manual"))).json()["id"]
+        await c.post(_p(world, f"proofs/{asked_by_manager}/waiver-request"), json={"rationale": "Not issued"})
+
+    async with client_as(world, world.editor, "editor") as c:
+        await c.post(_p(world, f"proofs/{asked_by_editor}/waiver-request"), json={"rationale": "Supplier tested"})
+        rows = {r["id"]: r for r in (await c.get(_p(world, "proofs"))).json()["items"]}
+        # An editor never decides a waiver, and is told which permission is missing.
+        for row in rows.values():
+            assert row["can"]["decide_waiver"] is False
+            assert row["can_reason"]["decide_waiver"] == "waive_required"
+            assert row["can_reason"]["edit"] == "manage_required"
+            decided = await c.post(_p(world, f"proofs/{row['id']}/waiver-decision"), json={"approve": False})
+            assert decided.status_code == 403
+        listed = (await c.get(_p(world, "standards"))).json()["items"][0]
+        assert listed["can"] == {"edit": False, "delete": False}
+        assert listed["can_reason"] == {"edit": "manage_required", "delete": "manage_required"}
+
+    async with client_as(world, world.manager, "manager") as c:
+        rows = {r["id"]: r for r in (await c.get(_p(world, "proofs"))).json()["items"]}
+        # Every flag is what the route answers: yes where it accepts, the same code where it refuses.
+        assert rows[asked_by_editor]["can"]["decide_waiver"] is True
+        assert rows[asked_by_manager]["can"]["decide_waiver"] is False
+        assert rows[asked_by_manager]["can_reason"]["decide_waiver"] == "approver_is_requester"
+        refused = await c.post(_p(world, f"proofs/{asked_by_manager}/waiver-decision"), json={"approve": True})
+        assert _code(refused) == (403, "approver_is_requester")
+        assert rows[asked_by_editor]["can_reason"]["accept"] == "proof_not_delivered"
+        assert _code(await c.post(_p(world, f"proofs/{asked_by_editor}/accept"))) == (409, "proof_not_delivered")
+        accepted = await c.post(_p(world, f"proofs/{asked_by_editor}/waiver-decision"), json={"approve": True})
+        assert accepted.status_code == 200, accepted.text
+        after = accepted.json()
+        assert after["can"]["decide_waiver"] is False and after["can"]["reopen"] is True
+        assert after["can_reason"]["decide_waiver"] == "invalid_transition"
+
+    async with client_as(world, world.decider, "manager") as c:
+        # The second manager is the other pair of eyes.
+        rows = {r["id"]: r for r in (await c.get(_p(world, "proofs"))).json()["items"]}
+        assert rows[asked_by_manager]["can"]["decide_waiver"] is True
+        done = await c.post(_p(world, f"proofs/{asked_by_manager}/waiver-decision"), json={"approve": False})
+        assert done.status_code == 200, done.text
+
+
+async def test_the_catalogue_listing_offers_what_a_pin_accepts(world: World) -> None:
+    async with client_as(world, world.manager, "manager") as c:
+        before = (await c.get(_p(world, "catalogues"))).json()
+        assert before["total"] >= 1
+        defaults = [i for i in before["items"] if i["default"]]
+        assert len(defaults) == 1
+        assert not any(i["pinned"] for i in before["items"])
+        assert before["can"] == {"pin": False}
+        made = (await c.post(_p(world, "concept"))).json()
+        # A new concept pins exactly the catalogue the listing calls the default.
+        assert (made["catalogue_source"], made["catalogue_id"]) == (defaults[0]["source"], defaults[0]["id"])
+        after = (await c.get(_p(world, "catalogues"))).json()
+        assert [i["id"] for i in after["items"] if i["pinned"]] == [defaults[0]["id"]]
+        assert after["can"] == {"pin": True}
+        for item in after["items"]:
+            pin = {
+                "catalogue_source": item["source"],
+                "catalogue_id": item["id"],
+                "catalogue_version": item["latest_version"],
+            }
+            assert (await c.put(_p(world, "concept/catalogue"), json=pin)).status_code == 200, item
+    async with client_as(world, world.editor, "editor") as c:
+        assert (await c.get(_p(world, "catalogues"))).json()["can"] == {"pin": False}
+    async with client_as(world, world.outsider, "manager") as c:
+        assert (await c.get(_p(world, "catalogues"))).status_code == 404
+
+
+async def test_reference_fields_offer_what_the_write_accepts(world: World) -> None:
+    own = await _contact(world, world.manager, "Own Surveyors")
+    foreign = await _contact(world, world.outsider, "Foreign Experts")
+    report = {"subject": "Fire protection inspection", "trigger": "before_concealment", "frequency": "per_floor"}
+    async with client_as(world, world.manager, "manager") as c:
+        assert (await c.post(_p(world, "concept"))).status_code == 201
+        listed = (await c.get(_p(world, "options"), params={"kind": "contact"})).json()
+        assert listed["available"] is True
+        assert [i["id"] for i in listed["items"]] == [own]
+        assert listed["items"][0]["label"] == "Own Surveyors"
+        assert (await c.get(_p(world, "options"), params={"kind": "contact", "q": "foreign"})).json()["total"] == 0
+        # A contact the listing does not offer is not accepted by the write either.
+        refused = await c.post(_p(world, "expert-reports"), json={**report, "expert_contact_id": foreign})
+        assert _code(refused) == (404, "contact_not_found")
+        made = await c.post(_p(world, "expert-reports"), json={**report, "expert_contact_id": own})
+        assert made.status_code == 201, made.text
+        assert made.json()["can"] == {"edit": True, "delete": True, "link_evidence": True}
+        patched = await c.patch(_p(world, f"expert-reports/{made.json()['id']}"), json={"expert_contact_id": foreign})
+        assert _code(patched) == (404, "contact_not_found")
+        free_text = await c.post(_p(world, "expert-reports"), json={**report, "trigger": "Before the ceilings close"})
+        assert free_text.status_code == 422
+        # A register that offers no list says so; it does not answer an empty list.
+        plant = (await c.get(_p(world, "options"), params={"kind": "plant_item"})).json()
+        assert (plant["available"], plant["reason"], plant["items"]) == (False, "plant_listing_unavailable", [])
+        retest = (await c.get(_p(world, "options"), params={"kind": "retest_of"})).json()
+        assert (retest["available"], retest["reason"]) == (False, "owner_required")
+        for kind in ("cx_system", "schedule_activity", "handover_package"):
+            answer = (await c.get(_p(world, "options"), params={"kind": kind})).json()
+            assert answer["available"] is True and answer["items"] == [], kind
+        documents = (await c.get(_p(world, "options"), params={"kind": "certificate_document"})).json()
+        assert {i["id"] for i in documents["items"]} == {str(v) for v in world.containers.values()}
+        assert (await c.get(_p(world, "options"), params={"kind": "user"})).status_code == 422
+    async with client_as(world, world.outsider, "manager") as c:
+        assert (await c.get(_p(world, "options"), params={"kind": "contact"})).status_code == 404
+
+
+async def test_a_retest_names_an_earlier_link_of_the_same_record(world: World) -> None:
+    async with client_as(world, world.manager, "manager") as c:
+        assert (await c.post(_p(world, "concept"))).status_code == 201
+        report = (await c.post(_p(world, "expert-reports"), json={"subject": "Acoustic measurement"})).json()
+        container = world.containers["business_case"]
+        link = {
+            "owner_kind": "expert_report",
+            "owner_id": report["id"],
+            "link_kind": "cde_document",
+            "link_id": str(container),
+        }
+        stray = await c.post(_p(world, "evidence-links"), json={**link, "retest_of": str(uuid.uuid4())})
+        assert _code(stray) == (404, "retest_link_not_found")
+        first = await c.post(_p(world, "evidence-links"), json=link)
+        assert first.status_code == 201, first.text
+        offered = (
+            await c.get(
+                _p(world, "options"),
+                params={"kind": "retest_of", "owner_kind": "expert_report", "owner_id": report["id"]},
+            )
+        ).json()
+        assert [i["id"] for i in offered["items"]] == [first.json()["id"]]

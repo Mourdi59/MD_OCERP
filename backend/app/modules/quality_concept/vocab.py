@@ -121,6 +121,29 @@ SURVEY_PHASES: tuple[str, ...] = ("before", "during", "after", "on_complaint")
 # A subset of what a requirement deliverable accepts; the catalogue is validated against that schema.
 FM_DELIVERABLE_TYPES: tuple[str, ...] = ("cobie", "pset", "other")
 
+# What makes an expert report due, and how often it recurs. An empty value means not stated.
+EXPERT_REPORT_TRIGGERS: tuple[str, ...] = (
+    "before_start",
+    "before_concreting",
+    "before_concealment",
+    "after_installation",
+    "before_commissioning",
+    "before_acceptance",
+    "on_defect",
+    "on_change",
+    "periodic",
+)
+EXPERT_REPORT_FREQUENCIES: tuple[str, ...] = (
+    "once",
+    "per_floor",
+    "per_section",
+    "per_package",
+    "weekly",
+    "monthly",
+    "quarterly",
+    "on_event",
+)
+
 STANDARD_MANDATE: tuple[str, ...] = ("statute", "contract", "voluntary")
 PROOF_SOURCES: tuple[str, ...] = ("catalogue_default", "edited")
 REQUIRED_BY_KINDS: tuple[str, ...] = ("stage", "acceptance_unit", "activity", "date")
@@ -133,6 +156,8 @@ __all__ = [
     "DEEMED_TRIGGERS",
     "DELIVERER_ROLES",
     "EVIDENCE_KINDS",
+    "EXPERT_REPORT_FREQUENCIES",
+    "EXPERT_REPORT_TRIGGERS",
     "FM_DELIVERABLE_TYPES",
     "INFLUENCE_TRIGGERS",
     "LEGAL_EFFECTS",

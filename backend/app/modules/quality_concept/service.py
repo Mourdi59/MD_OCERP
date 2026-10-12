@@ -36,14 +36,15 @@ from sqlalchemy.orm.exc import StaleDataError
 
 from app.core.events import publish_after_commit
 from app.core.i18n import get_locale
+from app.modules.quality_concept import capabilities as caps
 from app.modules.quality_concept import evaluator as ev
-from app.modules.quality_concept import fsm, hosting, links
+from app.modules.quality_concept import fsm, hosting, links, references
 from app.modules.quality_concept.catalogue import (
     DEFAULT_CATALOGUE_ID,
     QUALITY_CONCEPT_KIND,
     QualityConceptCatalogue,
 )
-from app.modules.quality_concept.errors import QualityConceptError, conflict, forbidden, not_found
+from app.modules.quality_concept.errors import QualityConceptError, conflict, not_found
 from app.modules.quality_concept.messages import translate
 from app.modules.quality_concept.models import (
     AcceptanceEffect,
@@ -66,9 +67,8 @@ from app.modules.quality_concept.vocab import WARRANTY_EFFECTS
 logger = logging.getLogger(__name__)
 
 EVENT_PREFIX = "quality_concept."
-PLAN_EDITABLE = ("draft", "revising")
-# Unit states in which the dates that start a deemed acceptance may still be recorded.
-DATES_OPEN = ("planned", "requested", "inspection_scheduled")
+PLAN_EDITABLE = caps.PLAN_OPEN_STATES
+DATES_OPEN = caps.DATES_OPEN
 # NCR severities a regime may accept as a reservation; the rest are material defects (rule 13).
 MINOR_NCR = ("minor", "observation")
 OWNER_MODELS: dict[str, Any] = {
@@ -97,6 +97,12 @@ def _transition(machine: str, state: str, action: str, *, mirror: bool = False, 
         raise QualityConceptError(exc.code, status, detail=f"{machine}:{state}->{action}") from exc
 
 
+def _refuse(code: str | None, **kw: Any) -> None:
+    """Raise the refusal a ``capabilities`` check returned; the same code is the ``can`` reason."""
+    if code is not None:
+        raise QualityConceptError(code, caps.status_of(code), **kw)
+
+
 def _text(key: str, **params: Any) -> str:
     """A sentence this module stores or hands to another module, in the request locale."""
     return translate(f"quality_concept.text.{key}", locale=get_locale() or "en", **params)
@@ -123,6 +129,10 @@ class QualityConceptService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.repo = QualityConceptRepository(session)
+        # The user a request acts for; ``None`` for the demo seed and the event mirrors.
+        self.caller_id: str | None = None
+        # Set by the API: the caller's permissions and what the ``can`` flags of this request read.
+        self.ctx: Any = None
 
     def _publish(self, name: str, data: dict[str, Any]) -> None:
         publish_after_commit(self.session, EVENT_PREFIX + name, data, source_module="quality_concept")
@@ -164,11 +174,12 @@ class QualityConceptService:
         row = await self.repo.concept(project_id)
         if row is not None:
             return row
+        source, catalogue_id, version = self.default_pin()
         row = QualityConcept(
             project_id=project_id,
-            catalogue_source="shipped",
-            catalogue_id=DEFAULT_CATALOGUE_ID,
-            catalogue_version=1,
+            catalogue_source=source,
+            catalogue_id=catalogue_id,
+            catalogue_version=version,
             state="draft",
             packages=[],
             holidays=[],
@@ -186,6 +197,30 @@ class QualityConceptService:
         await self.session.flush()
         await self._audit(project_id, actor, "concept", row.id, "created")
         return row
+
+    @staticmethod
+    def default_pin() -> tuple[str, str, int]:
+        """What a new concept pins: the active pack's default, else the shipped neutral catalogue."""
+        from app.modules.project_governance.public import default_catalogue_pin
+        from app.modules.quality_concept.catalogue import register_kinds, shipped_catalogue
+
+        register_kinds()
+        pin = default_catalogue_pin(QUALITY_CONCEPT_KIND)
+        if pin is not None:
+            return pin.source, str(pin.catalogue_id), pin.version
+        return "shipped", DEFAULT_CATALOGUE_ID, shipped_catalogue().version
+
+    async def available_catalogues(self, tenant_id: str | None) -> list[dict[str, Any]]:
+        """Catalogues this caller may pin; ``default`` marks the one a new concept gets."""
+        from app.modules.project_governance.catalogue_store import CatalogueStore
+
+        source, catalogue_id, _version = self.default_pin()
+        items = await CatalogueStore(self.session).list_available(tenant_id, kind=QUALITY_CONCEPT_KIND)
+        for item in items:
+            item.pop("phases", None)
+            item["id"] = str(item["id"])
+            item["default"] = (item["source"], item["id"]) == (source, catalogue_id)
+        return items
 
     async def _frame_documents(self, project_id: uuid.UUID) -> dict[uuid.UUID, str]:
         """``{document id: status}`` of the governance frame documents tagged for quality.
@@ -264,10 +299,7 @@ class QualityConceptService:
         )
 
     def _assert_plan_editable(self, concept: QualityConcept) -> None:
-        if concept.state == "binding":
-            raise conflict("binding_requires_change_request")
-        if concept.state not in PLAN_EDITABLE:
-            raise conflict("concept_not_editable", detail=concept.state)
+        _refuse(caps.plan_refusal(concept.state), detail=concept.state)
 
     async def _plan_concept(self, project_id: uuid.UUID) -> QualityConcept:
         concept = await self.require_concept(project_id)
@@ -760,11 +792,10 @@ class QualityConceptService:
             raise not_found("plant_item_not_found")
 
     async def _check_contact(self, contact_id: uuid.UUID | None) -> None:
-        from app.modules.contacts.models import Contact
-
         if contact_id is None:
             return
-        if await self.session.get(Contact, contact_id) is None:
+        # The same rule as the option listing: a contact the caller cannot see is not found.
+        if not await references.contact_visible(self.session, self.caller_id, contact_id):
             raise not_found("contact_not_found")
 
     async def _check_cde(self, project_id: uuid.UUID, container_id: uuid.UUID | None) -> None:
@@ -947,8 +978,7 @@ class QualityConceptService:
         self, project_id: uuid.UUID, proof_id: uuid.UUID, rationale: str, actor: uuid.UUID
     ) -> ProofRequirement:
         proof = await self.get_row(ProofRequirement, project_id, proof_id)
-        if proof.decision != "none":
-            raise conflict("invalid_transition")
+        _refuse(caps.waiver_request_refusal(proof.decision))
         proof.decision_rationale, proof.requested_by = rationale, actor
         await self.session.flush()
         return proof
@@ -960,13 +990,17 @@ class QualityConceptService:
         proof = await self.repo.get(ProofRequirement, project_id, proof_id, lock=True)
         if proof is None:
             raise not_found("not_found")
-        if proof.decision != "none":
-            # A decided proof has no request pending; rejecting here would wipe the rationale of the waiver.
-            raise conflict("invalid_transition", detail=f"proof:{proof.decision}->waiver_decision")
-        if proof.requested_by is None or not proof.decision_rationale.strip():
-            raise QualityConceptError("waiver_not_requested")
-        if await self._four_eyes(project_id) and proof.requested_by == actor:
-            raise forbidden("approver_is_requester")
+        # A decided proof has no request pending; rejecting here would wipe the rationale of the waiver.
+        _refuse(
+            caps.waiver_decision_refusal(
+                proof.decision,
+                proof.requested_by,
+                proof.decision_rationale,
+                actor,
+                await self._four_eyes(project_id),
+            ),
+            detail=f"proof:{proof.decision}->waiver_decision",
+        )
         if approve:
             proof.decision = _transition("proof", proof.decision, "waive", rationale=proof.decision_rationale)
             proof.decided_by, proof.decided_at = actor, _now()
@@ -979,13 +1013,12 @@ class QualityConceptService:
     async def accept_proof(self, project_id: uuid.UUID, proof_id: uuid.UUID, actor: uuid.UUID) -> ProofRequirement:
         proof = await self.get_row(ProofRequirement, project_id, proof_id)
         delivery = (await self.proof_delivery(project_id, [proof]))[proof.id]
-        if delivery.state != "delivered":
-            raise conflict("proof_not_delivered", violations=_findings(list(delivery.findings)))
         # Four-eyes: whoever attached the evidence does not also accept it.
-        if await self._four_eyes(project_id) and any(
-            link.created_by == actor for link in await self.repo.links_for("proof", [proof.id])
-        ):
-            raise forbidden("approver_added_evidence")
+        authors = [link.created_by for link in await self.repo.links_for("proof", [proof.id])]
+        code = caps.accept_refusal(proof.decision, delivery.state, authors, actor, await self._four_eyes(project_id))
+        if code == "proof_not_delivered":
+            raise conflict(code, violations=_findings(list(delivery.findings)))
+        _refuse(code, detail=f"proof:{proof.decision}->accept")
         proof.decision = _transition("proof", proof.decision, "accept")
         proof.decided_by, proof.decided_at = actor, _now()
         await self.session.flush()
@@ -1024,6 +1057,10 @@ class QualityConceptService:
         fact = await links.resolve(self.session, project_id, data.link_kind, data.link_id)
         if fact is None:
             raise not_found("linked_record_not_found")
+        if data.retest_of is not None and not await references.retest_target_ok(
+            self.session, project_id, data.owner_kind, data.owner_id, data.retest_of
+        ):
+            raise not_found("retest_link_not_found")
         row = EvidenceLink(
             project_id=project_id,
             owner_kind=data.owner_kind,
@@ -1351,12 +1388,8 @@ class QualityConceptService:
         from app.modules.construction_control.schemas import HoldGateCreate
 
         row = await self._progress(project_id, progress_id)
-        if row.state not in ("passed", "stale"):
-            raise conflict("stage_not_passed")
-        if row.hold_gate_id is not None:
-            gate = await self.session.get(HoldGate, row.hold_gate_id)
-            if gate is not None and gate.status == "pending":
-                raise conflict("release_already_requested")
+        held = await self.session.get(HoldGate, row.hold_gate_id) if row.hold_gate_id is not None else None
+        _refuse(caps.release_request_refusal(row.state, held.status if held is not None else None))
         stage = next(s for s in await self.repo.list(CommissioningStageDef, project_id) if s.code == row.stage_code)
         system = await self._require_system(project_id, row.system_id)
         gate = await GatingService(self.session).create_gate(
@@ -1671,8 +1704,7 @@ class QualityConceptService:
         unit = await self.repo.get(AcceptanceUnit, project_id, unit_id, lock=True)
         if unit is None:
             raise not_found("not_found")
-        if unit.state not in DATES_OPEN:
-            raise conflict("unit_dates_locked", detail=unit.state)
+        _refuse(caps.dates_refusal(unit.state), detail=unit.state)
         raw = data.model_dump(exclude_unset=True)
         today = _now().date()
         for key in ("completion_notice_at", "use_started_at"):
@@ -1790,8 +1822,7 @@ class QualityConceptService:
         from app.core.acceptance_effects import apply_effect
 
         unit = await self.get_row(AcceptanceUnit, project_id, unit_id)
-        if unit.state not in ev.ACCEPTED_STATES:
-            raise conflict("unit_not_accepted")
+        _refuse(caps.effect_refusal(unit.state))
         existing = next((e for e in await self.repo.effects(unit.id) if e.effect == data.effect), None)
         if existing is not None and not (existing.outcome or {}).get("revoked_at"):
             return existing
@@ -1926,8 +1957,9 @@ class QualityConceptService:
         self, project_id: uuid.UUID, survey_id: uuid.UUID, data: Any, actor: uuid.UUID
     ) -> PreservationSurvey:
         row = await self.get_row(PreservationSurvey, project_id, survey_id)
+        # The state machine is asked again below with the note, which a refusal of access must carry.
         if data.action == "refuse_access" and row.access_refused_on:
-            raise conflict("refusal_is_final")
+            _refuse(caps.survey_action_refusal(row.state, data.action, True))
         row.state = _transition("preservation", row.state, data.action, rationale=data.note)
         if data.on is not None and data.on > _now().date():
             raise QualityConceptError("date_in_future", detail="on")
@@ -1958,8 +1990,7 @@ class QualityConceptService:
     async def delete_survey(self, project_id: uuid.UUID, survey_id: uuid.UUID) -> None:
         """Only a survey nobody acted on can go; a recorded one is evidence."""
         row = await self.get_row(PreservationSurvey, project_id, survey_id)
-        if row.state != "planned":
-            raise conflict("survey_recorded", detail=row.state)
+        _refuse(caps.survey_delete_refusal(row.state), detail=row.state)
         await self.repo.drop_links("preservation", row.id)
         await self.repo.remove(row)
 
@@ -1967,8 +1998,7 @@ class QualityConceptService:
         self, project_id: uuid.UUID, survey_id: uuid.UUID, before_id: uuid.UUID
     ) -> PreservationSurvey:
         row = await self.get_row(PreservationSurvey, project_id, survey_id)
-        if row.phase != "after":
-            raise QualityConceptError("only_after_surveys_pair")
+        _refuse(caps.pair_refusal(row.phase))
         await self._check_pair(project_id, row.subject_ref, before_id)
         row.paired_with_id = before_id
         await self.session.flush()

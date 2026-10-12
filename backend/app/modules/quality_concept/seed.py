@@ -62,15 +62,15 @@ _REQUIREMENTS = (
     ("quality.fm_data", "Maintainable assets", "asset data set", "complete at handover", "", "Information needs 2.3"),
 )
 _EXPERT_REPORTS = (
-    ("Independent check of the structural analysis", "Before the structure is concreted", "once", (-240,), "completed"),
+    ("Independent check of the structural analysis", "before_concreting", "once", (-240,), "completed"),
     (
         "Fire protection inspection of the services",
-        "Before the ceilings are closed",
-        "per floor",
+        "before_concealment",
+        "per_floor",
         (-20, 25),
         "reporting",
     ),
-    ("Acoustic measurement of the finished floors", "After fit-out of a floor", "per floor", (60, 110), "planned"),
+    ("Acoustic measurement of the finished floors", "after_installation", "per_floor", (60, 110), "planned"),
 )
 _TOTALS = (
     "projects",

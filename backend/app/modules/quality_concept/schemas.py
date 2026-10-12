@@ -62,7 +62,7 @@ class ConceptPatch(_In):
 
 
 class CataloguePin(_In):
-    catalogue_source: Literal["shipped", "tenant"] = "shipped"
+    catalogue_source: Literal["shipped", "tenant", "pack"] = "shipped"
     catalogue_id: str = Field(min_length=1, max_length=64)
     catalogue_version: int | None = Field(default=None, ge=1)
 
@@ -409,9 +409,12 @@ class PairIn(_In):
 class ExpertReportIn(_In):
     subject: str = Field(min_length=1, max_length=500)
     expert_contact_id: uuid.UUID | None = None
-    trigger: str = Field(default="", max_length=255)
-    frequency: str = Field(default="", max_length=64)
+    trigger: str = Field(default="", max_length=40)
+    frequency: str = Field(default="", max_length=40)
     due_dates: list[date] = Field(default_factory=list, max_length=200)
+
+    _t = field_validator("trigger")(_one_of(("", *vocab.EXPERT_REPORT_TRIGGERS)))
+    _f = field_validator("frequency")(_one_of(("", *vocab.EXPERT_REPORT_FREQUENCIES)))
     commitment_ref: str | None = Field(default=None, max_length=64)
     state: Literal["planned", "commissioned", "reporting", "completed", "cancelled"] = "planned"
 
@@ -419,8 +422,11 @@ class ExpertReportIn(_In):
 class ExpertReportPatch(_In):
     subject: str | None = Field(default=None, min_length=1, max_length=500)
     expert_contact_id: uuid.UUID | None = None
-    trigger: str | None = Field(default=None, max_length=255)
-    frequency: str | None = Field(default=None, max_length=64)
+    trigger: str | None = Field(default=None, max_length=40)
+    frequency: str | None = Field(default=None, max_length=40)
     due_dates: list[date] | None = Field(default=None, max_length=200)
+
+    _t = field_validator("trigger")(_one_of(("", *vocab.EXPERT_REPORT_TRIGGERS)))
+    _f = field_validator("frequency")(_one_of(("", *vocab.EXPERT_REPORT_FREQUENCIES)))
     commitment_ref: str | None = Field(default=None, max_length=64)
     state: Literal["planned", "commissioned", "reporting", "completed", "cancelled"] | None = None
