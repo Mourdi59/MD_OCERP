@@ -3,9 +3,10 @@
 //
 // Reopening a decided gate. The earlier decision stays on record; the gate
 // starts a new attempt in preparation. A reopening needs a written reason,
-// and after a go it also moves the project back to the phase the gate leaves,
-// because a gate can only be reviewed from that phase. The dialog says so
-// before the click instead of leaving it to a surprise in the matrix.
+// and after a go the server also moves the project back to the phase the gate
+// leaves, because a gate can only be reviewed from that phase. That is not a
+// choice, so the dialog offers none: it says what will happen before the
+// click instead of leaving it to a surprise in the matrix.
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +29,7 @@ export interface ReopenDialogProps {
   busy: boolean;
   /** The server's refusal of the last try, already as a sentence. */
   serverError: string | null;
-  onSubmit: (body: { rationale: string; rewind_phase: boolean }) => void;
+  onSubmit: (body: { rationale: string }) => void;
 }
 
 export function ReopenDialog({
@@ -52,7 +53,7 @@ export function ReopenDialog({
       setTried(true);
       return;
     }
-    onSubmit({ rationale: rationale.trim(), rewind_phase: rewind });
+    onSubmit({ rationale: rationale.trim() });
   };
 
   return (

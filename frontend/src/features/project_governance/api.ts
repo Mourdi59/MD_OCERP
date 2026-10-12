@@ -76,7 +76,8 @@ export interface GovernanceModel {
   stopped_at: string | null;
   phases: GovernancePhase[];
   /** What the caller may do on this project, decided by the server. */
-  can: { manage: boolean; edit: boolean };
+  /** `edit` is absent from a server that does not report it; the write then answers for itself. */
+  can: { manage: boolean; edit?: boolean };
 }
 
 export interface GovernanceArea {
@@ -300,8 +301,8 @@ export interface FrameDocument {
   approved_gate_id: string | null;
   read_only: boolean;
   name?: GovernanceLabel;
-  /** What the caller may do with this document, decided by the server. */
-  can: DocumentCan;
+  /** What the caller may do with this document, decided by the server. Absent when the server does not report it. */
+  can?: DocumentCan;
 }
 
 export interface DocumentCan {
@@ -500,11 +501,8 @@ export function decideGate(projectId: string, gateId: string, body: DecisionInpu
   return apiPost<GateDecision>(`${p(projectId)}/gates/${gateId}/decide`, body);
 }
 
-export function reopenGate(
-  projectId: string,
-  gateId: string,
-  body: { rationale: string; rewind_phase: boolean },
-): Promise<GovernanceGate> {
+/** The server decides whether the phase goes back: it does exactly when the reopened decision had advanced it. */
+export function reopenGate(projectId: string, gateId: string, body: { rationale: string }): Promise<GovernanceGate> {
   return apiPost<GovernanceGate>(`${p(projectId)}/gates/${gateId}/reopen`, body);
 }
 

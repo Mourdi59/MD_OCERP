@@ -213,22 +213,24 @@ export type DocumentAction = 'attach' | 'submit' | 'return';
  *
  * A document without a file cannot be submitted by anybody, which is said
  * first. Then the server's flag on the document decides: it knows the edit
- * permission and whether the caller owns the area.
+ * permission and whether the caller owns the area. Without a flag nothing is
+ * guessed: the button is open and the server's refusal shows after the click.
  */
 export function documentVerdict(doc: Pick<FrameDocument, 'can' | 'container_id'>, action: DocumentAction): Verdict {
   if (action === 'submit' && !doc.container_id) return 'document_without_file';
+  if (!doc.can) return null;
   const reason = doc.can[`${action}_reason` as const];
   return flagVerdict(doc.can[action], reason, 'edit');
 }
 
 /** Tracking a further frame document needs the edit permission, which the server reports on the model. */
 export function canAddDocument(model: Pick<GovernanceModel, 'can'>): Verdict {
-  return model.can.edit ? null : 'role_edit';
+  return model.can.edit === false ? 'role_edit' : null;
 }
 
 /** Raising a change request needs the edit permission; the route then decides who approves it. */
 export function canRaiseChange(model: Pick<GovernanceModel, 'can'>): Verdict {
-  return model.can.edit ? null : 'role_edit';
+  return model.can.edit === false ? 'role_edit' : null;
 }
 
 /** Clearing follows the condition's own flag: the edit permission plus owner-or-manager, checked by the server. */

@@ -153,9 +153,9 @@ export function conditionForDocument(blocker: Violation, text: string): Conditio
 /**
  * Whether reopening a gate moves the project back to the phase before it.
  *
- * After a go the project already sits in the next phase, and a gate can only
- * be submitted from the phase it leaves, so the server forces the rewind
- * there. After a stop the phase never moved, so there is nothing to choose.
+ * The server decides this, not the request: it rewinds exactly when the
+ * reopened decision had advanced the phase (`reopen_rewinds_phase` in
+ * evaluator.py). This mirrors it only to tell the reader beforehand.
  */
 export function reopenRewind(gate: Pick<GovernanceGate, 'last_outcome'>): 'forced' | 'none' {
   return gate.last_outcome === 'go' || gate.last_outcome === 'go_with_conditions' ? 'forced' : 'none';

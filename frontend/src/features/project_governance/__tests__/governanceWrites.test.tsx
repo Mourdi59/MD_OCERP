@@ -187,10 +187,7 @@ describe('GatePanel', () => {
       });
       fireEvent.click(within(dialog).getByTestId('reopen-submit'));
       await waitFor(() =>
-        expect(mocked.reopenGate).toHaveBeenCalledWith('p1', 'g1', {
-          rationale: 'Scope changed after the client review',
-          rewind_phase: true,
-        }),
+        expect(mocked.reopenGate).toHaveBeenCalledWith('p1', 'g1', { rationale: 'Scope changed after the client review' }),
       );
       await waitFor(() => expect(screen.queryByTestId('reopen-dialog')).toBeNull());
       expect(toastTitles()).toContain('Gate reopened');
@@ -205,7 +202,7 @@ describe('GatePanel', () => {
       fireEvent.change(within(dialog).getByLabelText(/Why the gate is reopened/), { target: { value: 'Funding is back' } });
       fireEvent.click(within(dialog).getByTestId('reopen-submit'));
       await waitFor(() =>
-        expect(mocked.reopenGate).toHaveBeenCalledWith('p1', 'g1', { rationale: 'Funding is back', rewind_phase: false }),
+        expect(mocked.reopenGate).toHaveBeenCalledWith('p1', 'g1', { rationale: 'Funding is back' }),
       );
     });
 

@@ -418,7 +418,7 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
     onError: (err) => addToast({ type: 'error', title: refusalText(t, err) }),
   });
   const reopen = useMutation({
-    mutationFn: (body: { rationale: string; rewind_phase: boolean }) => reopenGate(projectId, gateId, body),
+    mutationFn: (body: { rationale: string }) => reopenGate(projectId, gateId, body),
     onSuccess: () => {
       setReopenOpen(false);
       setReopenError(null);

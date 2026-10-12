@@ -333,10 +333,12 @@ function AddDocument({
     return catalogueName(labels, { kind: 'gate', code, catalogueId, label: gate?.name });
   };
 
+  // A server that does not list the area's document types gives nothing to offer, and nothing to claim.
+  if (!area.document_types) return null;
   if (offered.length === 0) {
     return (
       <p className="mt-3 text-xs text-content-tertiary" data-testid="add-document-none">
-        {(area.document_types ?? []).length === 0
+        {area.document_types.length === 0
           ? t('governance.project.area.no_document_types', {
               defaultValue: 'The phase model names no frame document type for this area.',
             })

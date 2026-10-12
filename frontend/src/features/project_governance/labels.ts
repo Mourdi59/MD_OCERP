@@ -234,6 +234,14 @@ export const ERROR_TEXT: Record<string, string> = {
   catalogue_code_taken: 'A catalogue with this code already exists',
   catalogue_retired: 'This catalogue is retired and can no longer be edited or pinned',
   catalogue_invalid: 'The catalogue draft breaks a catalogue rule and cannot be published',
+  gate_not_on_hold: 'Only a gate on hold can be resumed',
+  gate_historic: 'This gate belongs to a phase model the project no longer uses',
+  later_gate_active: 'A later gate was already started, so this gate cannot be reopened',
+  model_unchanged: 'This phase model is already the one the project uses',
+  not_condition_owner: 'Only the owner of this condition or a manager may clear it',
+  route_needs_more_approvals: 'The last step of the approval route still waits for other approvers',
+  activity_not_in_project: 'This schedule activity does not belong to the project',
+  target_date_owned_by_schedule: 'The target date comes from the linked schedule activity and is changed there',
 };
 
 /** The sentence for a blocker or refusal code, translated when the locale has it. */

@@ -62,7 +62,7 @@ describe('governance client', () => {
       proceed_at_risk_areas: [],
       accepted_not_applicable: [],
     });
-    await reopenGate('p1', 'g1', { rationale: 'r', rewind_phase: true });
+    await reopenGate('p1', 'g1', { rationale: 'r' });
     await resumeGate('p1', 'g1');
     await addGateCondition('p1', 'g1', { text: 'x', severity: 'essential' });
     await createDocument('p1', { area_id: 'a1', doc_type: 'charter' });

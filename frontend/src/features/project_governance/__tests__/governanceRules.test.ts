@@ -243,6 +243,12 @@ describe('gate actions follow the gate flags', () => {
 });
 
 describe('frame document actions', () => {
+  it('without a flag from the server nothing is guessed', () => {
+    const bare = frameDocument({ container_id: 'k1', can: undefined });
+    expect(documentVerdict(bare, 'attach')).toBeNull();
+    expect(documentVerdict(bare, 'return')).toBeNull();
+    expect(canAddDocument(model({ can: { manage: false } }))).toBeNull();
+  });
   it('a document without a file cannot be submitted by anybody', () => {
     expect(documentVerdict(frameDocument({ container_id: null }), 'submit')).toBe('document_without_file');
     expect(documentVerdict(frameDocument({ container_id: 'k1' }), 'submit')).toBeNull();
