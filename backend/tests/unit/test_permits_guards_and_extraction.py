@@ -166,6 +166,12 @@ def test_application_edit_clock_and_decision() -> None:
         assert _refusal(lambda idle=idle: guards.application_clock(_app(idle)))[1] == "clock_not_running"
     guards.application_clock(_app("info_requested"))
     assert _refusal(lambda: guards.application_decide(_app("preparing"))) == (409, "application_not_decidable", True)
+    # What an applicant can still cure waits (applies); what is over is not offered at all.
+    for early in ("planned", "preparing", "internal_review"):
+        assert _refusal(lambda early=early: guards.application_clock(_app(early)))[2] is True
+    for over in ("decided", "withdrawn"):
+        assert _refusal(lambda over=over: guards.application_clock(_app(over)))[2] is False
+    assert _refusal(lambda: guards.application_decide(_app("withdrawn"))) == (409, "application_not_decidable", False)
     for open_ in guards.DECIDABLE:
         guards.application_decide(_app(open_))
 
@@ -285,6 +291,28 @@ def test_only_an_ongoing_condition_is_in_compliance_or_in_breach() -> None:
     )
     assert _refusal(lambda: guards.condition_confirm(_cond())) == (409, "condition_already_confirmed", False)
     guards.condition_confirm(_cond(confirmed=False))
+
+
+def test_a_condition_takes_one_tracked_limit() -> None:
+    guards.condition_link_requirement(_cond(requirement_id=None))
+    assert _refusal(lambda: guards.condition_link_requirement(_cond(requirement_id=uuid.uuid4()))) == (
+        409,
+        "condition_already_linked",
+        False,
+    )
+
+
+def test_a_settled_condition_has_no_discharge_left_and_one_on_its_way_waits() -> None:
+    def refusal(c, mode):
+        return _refusal(lambda: guards.condition_discharge(c, mode, ME, set(), has_document=True))
+
+    assert refusal(_cond(), "self_certified") == (409, "evidence_not_submitted", True)
+    assert refusal(_cond("evidence_submitted"), "not_triggered") == (409, "invalid_transition", True)
+    for settled in ("discharged", "not_triggered", "waived", "superseded"):
+        assert refusal(_cond(settled), "self_certified") == (409, "evidence_not_submitted", False), settled
+        assert refusal(_cond(settled), "waived_by_authority") == (409, "invalid_transition", False), settled
+    authority = _cond("evidence_submitted", requires_authority_approval=True)
+    assert refusal(authority, "self_certified") == (422, "authority_discharge_required", False)
 
 
 def test_a_manual_discharge_is_four_eyes_in_every_mode() -> None:

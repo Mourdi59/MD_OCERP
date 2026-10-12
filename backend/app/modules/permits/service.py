@@ -2370,8 +2370,7 @@ class PermitService:
         c = await self.repo.get_condition(project_id, cid, lock=True)
         if c is None:
             raise not_found("condition_not_found")
-        if c.requirement_id is not None:
-            raise conflict("condition_already_linked")
+        guards.condition_link_requirement(c)
         permit = await self.repo.get_permit(project_id, c.permit_id)
         phase = {"before_occupation": "handover", "after_completion": "operation"}.get(c.trigger, "construction")
         try:
@@ -2722,6 +2721,7 @@ class PermitService:
             "breach": guards.flag(edit, lambda: guards.condition_ongoing(c, "breach")),
             "in_compliance": guards.flag(edit, owned, lambda: guards.condition_ongoing(c, "in_compliance")),
             "confirm": guards.flag(edit, lambda: guards.condition_confirm(c)),
+            "link_requirement": guards.flag(edit, lambda: guards.condition_link_requirement(c)),
             "discharge": self._discharge_can(c, caller, involved),
         }
 

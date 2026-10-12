@@ -132,6 +132,9 @@ def application_edit(app: Any) -> None:
 
 
 def application_clock(app: Any) -> None:
+    if app.status in CLOSED_APPLICATION:
+        # Decided or withdrawn: the authority's clock will not run again.
+        raise not_applicable("clock_not_running")
     if app.status in CLOCK_NOT_RUNNING:
         raise conflict("clock_not_running")
 
@@ -139,6 +142,9 @@ def application_clock(app: Any) -> None:
 def application_decide(app: Any) -> None:
     if app.status == "decided":
         raise not_applicable("already_decided")
+    if app.status == "withdrawn":
+        # Nothing is left for the authority to decide.
+        raise not_applicable("application_not_decidable")
     if app.status not in DECIDABLE:
         raise conflict("application_not_decidable")
 
@@ -273,6 +279,12 @@ def condition_confirm(c: Any) -> None:
         raise not_applicable("condition_already_confirmed")
 
 
+def condition_link_requirement(c: Any) -> None:
+    """Rule 23: a condition carries at most one tracked limit."""
+    if c.requirement_id is not None:
+        raise not_applicable("condition_already_linked")
+
+
 def condition_discharge(
     c: Any, mode: str, actor_id: uuid.UUID | None, involved: Iterable[Any], *, has_document: bool
 ) -> str:
@@ -283,21 +295,24 @@ def condition_discharge(
     """
     if not c.confirmed:
         raise conflict("condition_not_confirmed")
+    # A condition that is settled has no discharge left; one still on its way can get there.
+    no_path = not_applicable if c.status in EVIDENCE_ON_RECORD else conflict
     if mode not in DISCHARGE_MODES:
         # authority_discharged / deemed_discharged come only from a decided discharge application.
         raise PermitError("discharge_needs_application", 422)
     if mode == "self_certified":
         if c.requires_authority_approval:
-            raise PermitError("authority_discharge_required", 422)
+            # Only the authority discharges this one: self certification is not a way for it.
+            raise not_applicable("authority_discharge_required", 422)
         if c.owner_user_id is None:
             raise PermitError("condition_needs_owner", 422)
         if c.status != "evidence_submitted":
-            raise conflict("evidence_not_submitted")
+            raise no_path("evidence_not_submitted")
         target = "discharged"
     else:
         target = "not_triggered" if mode == "not_triggered" else "waived"
         if not CONDITION_FSM.has_transition(c.status, target):
-            raise conflict("invalid_transition", detail=f"{c.status} -> {target}")
+            raise no_path("invalid_transition", detail=f"{c.status} -> {target}")
         if mode == "waived_by_authority" and not has_document:
             raise PermitError("waiver_needs_document", 422)
         # "The trigger never occurred" releases a suspensive condition, or one only the

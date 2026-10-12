@@ -351,7 +351,19 @@ async def test_condition_flags_per_caller_and_the_writes_behind_them(world: Worl
         svc = PermitService(s)
         done = {r["number"]: r["can"] for r in await svc.condition_rows(p, TODAY, verifier)}
         assert done["1"]["add_evidence"] == _no("condition_closed", applies=False)
-        assert done["1"]["discharge"]["self_certified"] == _no("evidence_not_submitted")
+        assert done["1"]["discharge"]["self_certified"] == _no("evidence_not_submitted", applies=False)
+        # A limit can be tracked from a condition once; the flag is the write's own refusal.
+        assert done["2"]["link_requirement"] == YES
+        linked = await svc.repo.get_condition(p, one)
+        linked.requirement_id = uuid.uuid4()
+        involved = await svc._involved(linked)
+        assert svc.condition_can(linked, verifier, 1, involved)["link_requirement"] == _no(
+            "condition_already_linked", applies=False
+        )
+        assert await _code(
+            svc.condition_to_requirement(p, one, {"entity": "noise", "attribute": "level"}, actor_id=world.verifier)
+        ) == (409, "condition_already_linked")
+        await s.rollback()
 
 
 async def test_linked_document_evidence_carries_title_and_revision_label(world: World) -> None:
