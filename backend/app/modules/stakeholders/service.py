@@ -380,21 +380,17 @@ class StakeholderService:
     async def gates(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
         """The project's gates in order, named for the request locale; empty without a phase model."""
         from app.modules.project_governance.messages import translate as governance_text
-        from app.modules.project_governance.repository import GovernanceRepository
-        from app.modules.stakeholders import hosting
+        from app.modules.project_governance.public import project_gates
 
-        catalogue = await hosting.project_catalogue(self.session, project_id)
-        defined = {g.code: g for g in catalogue.gates} if catalogue is not None else {}
         locale = get_locale() or "en"
         out = []
-        for gate in await GovernanceRepository(self.session).list_gates(project_id):
-            spec = defined.get(gate.code)
-            name = ""
-            if spec is not None:
-                labels = spec.labels or {}
-                name = labels.get(locale) or labels.get("en") or governance_text(spec.name_key, locale=locale)
-                if name == spec.name_key:
-                    name = ""
+        for gate in await project_gates(self.session, project_id):
+            text = gate.label.get("text") or {}
+            key = gate.label.get("key")
+            name = text.get(locale) or text.get("en") or (governance_text(key, locale=locale) if key else "")
+            if name == key:
+                # No translation for this key in the bundle: the code is more honest than a raw key.
+                name = ""
             out.append({"code": gate.code, "name": name or gate.code, "status": gate.status})
         return out
 
@@ -2135,14 +2131,11 @@ class StakeholderService:
         """Rule 16: module 1 area owners are not changed, but a hint names areas the old holder owns."""
         if not removed_users:
             return []
-        from app.modules.project_governance.models import GovernanceArea
+        from app.modules.project_governance.public import project_areas
 
-        rows = (
-            await self.session.execute(select(GovernanceArea).where(GovernanceArea.project_id == project_id))
-        ).scalars()
         return [
             {"code": "area_owner_was_previous_holder", "area_code": a.code, "owner_user_id": str(a.owner_user_id)}
-            for a in rows
+            for a in await project_areas(self.session, project_id)
             if a.owner_user_id is not None and str(a.owner_user_id) in removed_users
         ]
 

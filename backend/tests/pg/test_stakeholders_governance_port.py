@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.project_governance.evidence import GateAttempt
 from app.modules.project_governance.models import GovernanceDocument
-from app.modules.project_governance.public import Host, host_for
+from app.modules.project_governance.public import Host, host_for, project_gates
 from app.modules.project_governance.service import GovernanceService
 from app.modules.stakeholders import hosting
 from app.modules.stakeholders.errors import StakeholderError
@@ -195,7 +195,7 @@ async def test_a_read_only_frame_document_takes_no_revision(world: gov.World) ->
 async def test_the_gate_picker_lists_the_projects_gates_by_name(world: gov.World) -> None:
     async with world.factory() as s:
         listed = await StakeholderService(s).gates(world.project_id)
-        expected = [g.code for g in await GovernanceService(s).repo.list_gates(world.project_id)]
+        expected = [g.code for g in await project_gates(s, world.project_id)]
     assert [g["code"] for g in listed] == expected
     assert listed and all(g["name"] and g["status"] for g in listed)
     assert any(g["name"] != g["code"] for g in listed)

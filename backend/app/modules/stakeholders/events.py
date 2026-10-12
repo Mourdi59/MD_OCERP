@@ -89,9 +89,11 @@ async def handle_trigger(name: str, data: dict, *, session_factory=None) -> int:
                 return 0
             today = datetime.now(UTC).date()
             if name == GATE_SUBMITTED:
-                from app.modules.project_governance.models import GovernanceGate
+                from app.modules.project_governance.public import project_gates
 
-                gate = await session.get(GovernanceGate, _uuid(data.get("gate_id")) or uuid.uuid4())
+                # Only a gate of this project fires its plan items; an id from elsewhere names no gate here.
+                gate_id = _uuid(data.get("gate_id"))
+                gate = next((g for g in await project_gates(session, project_id) if g.id == gate_id), None)
                 fired = await svc.fire_trigger(project_id, "gate", gate.code if gate else "", on=today)
             else:
                 fired = await svc.fire_trigger(project_id, "event", name, on=today)
