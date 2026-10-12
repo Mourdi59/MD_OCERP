@@ -80,8 +80,8 @@ class PermitRepository:
     async def list_decisions(self, project_id: uuid.UUID) -> list[PermitDecision]:
         return await self._all(PermitDecision, project_id, PermitDecision.revision)
 
-    async def get_decision(self, project_id: uuid.UUID, did: uuid.UUID) -> PermitDecision | None:
-        return await self._one(PermitDecision, project_id, did, False)
+    async def get_decision(self, project_id: uuid.UUID, did: uuid.UUID, *, lock: bool = False) -> PermitDecision | None:
+        return await self._one(PermitDecision, project_id, did, lock)
 
     async def list_permits(self, project_id: uuid.UUID) -> list[Permit]:
         return await self._all(Permit, project_id)

@@ -46,10 +46,12 @@ from app.modules.permits.schemas import (
     ConditionIn,
     ConditionPatch,
     ConfirmIn,
+    DecisionCorrection,
     DecisionIn,
     DependenciesPut,
     DischargeIn,
     EvidenceIn,
+    InterruptionIn,
     NoteIn,
     PermitTransitionIn,
     ProposalsIn,
@@ -93,8 +95,16 @@ def _uid(user_id: str) -> uuid.UUID:
     return uuid.UUID(str(user_id))
 
 
-def _role(payload: dict[str, Any]) -> str:
-    return str(payload.get("role") or "")
+def _can(payload: dict[str, Any], permission: str) -> bool:
+    """Whether the caller holds ``permission``, by the same test :class:`RequirePermission` applies.
+
+    The service never sees a role: what the caller may do reaches it as a boolean.
+    """
+    from app.core.permissions import permission_registry
+
+    if permission in (payload.get("permissions") or []):
+        return True
+    return permission_registry.role_has_permission(str(payload.get("role") or ""), permission)
 
 
 def _today(value: date | None) -> date:
@@ -345,12 +355,17 @@ async def patch_requirement(
     body: RequirementPatch,
     session: SessionDep,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
+    """The responsible user or a manager. ``applicable``, ``conflict_accepted`` and the responsible user: manage."""
     svc = await _svc(project_id, user_id, session)
     data = body.model_dump(exclude_unset=True)
-    return sv.requirement_out(
-        await _run(svc.update_requirement(project_id, requirement_id, data, actor_id=_uid(user_id)))
+    row = await _run(
+        svc.update_requirement(
+            project_id, requirement_id, data, actor_id=_uid(user_id), can_manage=_can(payload, "permits.manage")
+        )
     )
+    return sv.requirement_out(row)
 
 
 @router.delete("/projects/{project_id}/requirements/{requirement_id}", status_code=204, dependencies=[MANAGE])
@@ -359,7 +374,7 @@ async def delete_requirement(
     requirement_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
-    change_request_id: str | None = None,
+    change_request_id: uuid.UUID | None = None,
 ) -> Response:
     svc = await _svc(project_id, user_id, session)
     await _run(
@@ -395,11 +410,10 @@ async def push_milestone(
     requirement_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
-    today: date | None = None,
 ) -> dict[str, Any]:
     """Rule 6: explicit user action only; writes the forecast decision as a schedule milestone."""
     svc = await _svc(project_id, user_id, session)
-    return await _run(svc.push_milestone(project_id, requirement_id, actor_id=_uid(user_id), today=_today(today)))
+    return await _run(svc.push_milestone(project_id, requirement_id, actor_id=_uid(user_id)))
 
 
 @router.get("/projects/{project_id}/timeline", dependencies=[READ])
@@ -478,7 +492,6 @@ async def transition_application(
     session: SessionDep,
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
-    today: date | None = None,
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     app = await _run(
@@ -487,9 +500,8 @@ async def transition_application(
             application_id,
             body.target,
             actor_id=_uid(user_id),
-            actor_role=_role(payload),
+            can_manage=_can(payload, "permits.manage"),
             on_date=body.on_date,
-            today=_today(today),
             reason=body.reason or None,
         )
     )
@@ -529,12 +541,11 @@ async def record_decision(
     body: DecisionIn,
     session: SessionDep,
     user_id: CurrentUserId,
-    today: date | None = None,
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     data = body.model_dump()
     data["conditions"] = [c.model_dump() for c in body.conditions]
-    out = await _run(svc.record_decision(project_id, application_id, data, actor_id=_uid(user_id), today=_today(today)))
+    out = await _run(svc.record_decision(project_id, application_id, data, actor_id=_uid(user_id)))
     follow = out.get("follow_up_requirement")
     return {
         "decision": sv.decision_out(out["decision"]),
@@ -550,6 +561,20 @@ async def complete_register(
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     return sv.decision_out(await _run(svc.complete_register(project_id, decision_id, actor_id=_uid(user_id))))
+
+
+@router.post("/projects/{project_id}/decisions/{decision_id}/correct", status_code=201, dependencies=[MANAGE])
+async def correct_decision(
+    project_id: uuid.UUID,
+    decision_id: uuid.UUID,
+    body: DecisionCorrection,
+    session: SessionDep,
+    user_id: CurrentUserId,
+) -> dict[str, Any]:
+    """A correction is a new decision revision superseding the old one; the outcome cannot be corrected."""
+    svc = await _svc(project_id, user_id, session)
+    data = body.model_dump(exclude_unset=True)
+    return sv.decision_out(await _run(svc.correct_decision(project_id, decision_id, data, actor_id=_uid(user_id))))
 
 
 # ── permits ────────────────────────────────────────────────────────────────
@@ -569,6 +594,28 @@ async def start_notice(
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     return sv.permit_out(await _run(svc.notify_start(project_id, permit_id, body.on_date, actor_id=_uid(user_id))))
+
+
+@router.post("/projects/{project_id}/permits/{permit_id}/interruption", dependencies=[EDIT])
+async def interruption_notice(
+    project_id: uuid.UUID, permit_id: uuid.UUID, body: InterruptionIn, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    """Rule 9: started work has stopped; the permit lapses if it stays stopped beyond the catalogue period."""
+    svc = await _svc(project_id, user_id, session)
+    row = await _run(
+        svc.notify_interruption(project_id, permit_id, body.on_date, resumed=False, actor_id=_uid(user_id))
+    )
+    return sv.permit_out(row)
+
+
+@router.post("/projects/{project_id}/permits/{permit_id}/resumption", dependencies=[EDIT])
+async def resumption_notice(
+    project_id: uuid.UUID, permit_id: uuid.UUID, body: InterruptionIn, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    """Rule 9: interrupted work has resumed; the lapse clock of the interruption stops."""
+    svc = await _svc(project_id, user_id, session)
+    row = await _run(svc.notify_interruption(project_id, permit_id, body.on_date, resumed=True, actor_id=_uid(user_id)))
+    return sv.permit_out(row)
 
 
 @router.post("/projects/{project_id}/permits/{permit_id}/transition", dependencies=[MANAGE])
@@ -617,7 +664,7 @@ async def list_conditions(
     user_id: CurrentUserId,
     trigger: str | None = None,
     topic: str | None = None,
-    owner_user_id: str | None = None,
+    owner_user_id: uuid.UUID | None = None,
     state: str | None = None,
     overdue: bool | None = None,
     hse: bool | None = None,
@@ -637,7 +684,7 @@ async def list_conditions(
         checks = [
             trigger is None or r["trigger"] == trigger,
             topic is None or r["topic"] == topic,
-            owner_user_id is None or r["owner_user_id"] == owner_user_id,
+            owner_user_id is None or r["owner_user_id"] == str(owner_user_id),
             state is None or r["state"] == state,
             overdue is None or r["overdue"] == overdue,
             hse is None or r["hse_relevant"] == hse,
@@ -654,16 +701,27 @@ async def list_conditions(
 
 @router.get("/projects/{project_id}/conditions/{condition_id}", dependencies=[READ])
 async def get_condition(
-    project_id: uuid.UUID, condition_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    condition_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
+    """One condition with its evidence, its discharges and what the caller may do to discharge it."""
     svc = await _svc(project_id, user_id, session)
     c = await svc.repo.get_condition(project_id, condition_id)
     if c is None:
         raise HTTPException(status_code=404, detail={"code": "condition_not_found"})
+    can = await _run(
+        svc.discharge_capability(
+            project_id, condition_id, actor_id=_uid(user_id), can_verify=_can(payload, "permits.verify")
+        )
+    )
     return {
         **sv.condition_out(c),
         "evidence": [sv.evidence_out(e) for e in await svc.repo.list_evidence(project_id, condition_id)],
         "discharges": [sv.discharge_out(d) for d in await svc.repo.list_discharges(project_id, condition_id)],
+        "can": {"discharge": can},
     }
 
 
@@ -679,7 +737,11 @@ async def patch_condition(
     svc = await _svc(project_id, user_id, session)
     row = await _run(
         svc.update_condition(
-            project_id, condition_id, body.model_dump(exclude_unset=True), actor_id=_uid(user_id), role=_role(payload)
+            project_id,
+            condition_id,
+            body.model_dump(exclude_unset=True),
+            actor_id=_uid(user_id),
+            can_manage=_can(payload, "permits.manage"),
         )
     )
     return sv.condition_out(row)
@@ -691,12 +753,7 @@ async def assign_owner(
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     rows = await _run(
-        svc.assign_owner(
-            project_id,
-            [uuid.UUID(i) for i in body.condition_ids],
-            uuid.UUID(body.owner_user_id),
-            actor_id=_uid(user_id),
-        )
+        svc.assign_owner(project_id, list(body.condition_ids), body.owner_user_id, actor_id=_uid(user_id))
     )
     return _page([sv.condition_out(r) for r in rows])
 
@@ -712,7 +769,13 @@ async def add_evidence(
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     row = await _run(
-        svc.add_evidence(project_id, condition_id, body.model_dump(), actor_id=_uid(user_id), role=_role(payload))
+        svc.add_evidence(
+            project_id,
+            condition_id,
+            body.model_dump(),
+            actor_id=_uid(user_id),
+            can_manage=_can(payload, "permits.manage"),
+        )
     )
     return sv.evidence_out(row)
 
@@ -729,7 +792,11 @@ async def remove_evidence(
     payload: CurrentUserPayload,
 ) -> Response:
     svc = await _svc(project_id, user_id, session)
-    await _run(svc.remove_evidence(project_id, condition_id, evidence_id, actor_id=_uid(user_id), role=_role(payload)))
+    await _run(
+        svc.remove_evidence(
+            project_id, condition_id, evidence_id, actor_id=_uid(user_id), can_manage=_can(payload, "permits.manage")
+        )
+    )
     return Response(status_code=204)
 
 
@@ -742,7 +809,11 @@ async def submit_evidence(
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    row = await _run(svc.submit_evidence(project_id, condition_id, actor_id=_uid(user_id), role=_role(payload)))
+    row = await _run(
+        svc.submit_evidence(
+            project_id, condition_id, actor_id=_uid(user_id), can_manage=_can(payload, "permits.manage")
+        )
+    )
     return sv.condition_out(row)
 
 
@@ -753,13 +824,10 @@ async def discharge(
     body: DischargeIn,
     session: SessionDep,
     user_id: CurrentUserId,
-    today: date | None = None,
 ) -> dict[str, Any]:
-    """Rule 13: four-eyes self certification (verifier != owner), not triggered, or waiver with document."""
+    """Rule 13, always four-eyes: the verifier is not the owner, the submitter or anyone who added evidence."""
     svc = await _svc(project_id, user_id, session)
-    row = await _run(
-        svc.discharge(project_id, condition_id, body.model_dump(), actor_id=_uid(user_id), today=_today(today))
-    )
+    row = await _run(svc.discharge(project_id, condition_id, body.model_dump(), actor_id=_uid(user_id)))
     return sv.discharge_out(row)
 
 
@@ -773,7 +841,11 @@ async def _ongoing(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    row = await _run(svc.ongoing(project_id, condition_id, target, data, actor_id=_uid(user_id), role=_role(payload)))
+    row = await _run(
+        svc.ongoing(
+            project_id, condition_id, target, data, actor_id=_uid(user_id), can_manage=_can(payload, "permits.manage")
+        )
+    )
     return sv.condition_out(row)
 
 
@@ -825,12 +897,10 @@ async def condition_requirement(
 
 
 @router.post("/projects/{project_id}/conditions/escalate", dependencies=[MANAGE])
-async def escalate(
-    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
-) -> dict[str, Any]:
-    """Rules 9 and 17: notify overdue owners and PM, escalate to the area owner, lapse unstarted permits."""
+async def escalate(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """Rules 9 and 17 on demand, as of the server's date; the scheduled sweep does the same every hour."""
     svc = await _svc(project_id, user_id, session)
-    return await _run(svc.escalate(project_id, today=_today(today), actor_id=_uid(user_id)))
+    return await _run(svc.escalate(project_id, actor_id=_uid(user_id)))
 
 
 # ── readiness, validation, export ──────────────────────────────────────────
@@ -841,10 +911,15 @@ async def readiness(
     project_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
-    gate: Literal["start", "handover", "roadmap", "register", "construction", "execution", "operation"] = "start",
+    gate: Literal["start", "handover", "roadmap", "register"] = "start",
+    phase: str | None = Query(None, max_length=64),
     today: date | None = None,
 ) -> dict[str, Any]:
+    """One readiness check. ``phase`` (a phase code of the project's governance model) narrows the
+    roadmap check to what the gate into that phase needs, by the phase's catalogue tags."""
     svc = await _svc(project_id, user_id, session)
+    if gate == "roadmap" and phase:
+        return await _run(svc.readiness_for_phase(project_id, phase, _today(today)))
     return await _run(svc.readiness(project_id, gate, _today(today)))
 
 
@@ -889,18 +964,7 @@ async def export(
 
     svc = await _svc(project_id, user_id, session)
     day = _today(today)
-    if register == "roadmap":
-        rows = (await _run(svc.timeline(project_id, day)))["items"]
-        reqs = {str(r.id): r for r in await svc.repo.list_requirements(project_id)}
-        for row in rows:
-            r = reqs.get(row["requirement_id"])
-            row["permit_type_code"] = r.permit_type_code if r else ""
-            row["title"] = r.title if r else ""
-            row["applicant_role"] = r.applicant_role if r else ""
-    elif register == "permits":
-        rows = await svc.permit_rows(project_id, day)
-    else:
-        rows = [r for r in await svc.condition_rows(project_id, day) if r["confirmed"]]
+    rows = await _run(svc.register_rows(project_id, register, day))
     project = await session.get(Project, project_id)
     content = render(
         register,
@@ -915,4 +979,18 @@ async def export(
         content=content,
         media_type=media,
         headers={"Content-Disposition": f'attachment; filename="permits_{register}.{fmt}"'},
+    )
+
+
+@router.post("/projects/{project_id}/frame-documents/{doc_type}/publish", status_code=201, dependencies=[MANAGE])
+async def publish_frame_document(
+    project_id: uuid.UUID,
+    doc_type: Literal["dev_permit_roadmap", "dev_special_permits", "dev_permit_conditions"],
+    session: SessionDep,
+    user_id: CurrentUserId,
+) -> dict[str, Any]:
+    """Rule 18: store the register export as a new CDE revision of its governance frame document."""
+    svc = await _svc(project_id, user_id, session)
+    return await _run(
+        svc.publish_frame_document(project_id, doc_type, actor_id=_uid(user_id), locale=get_locale() or "en")
     )

@@ -26,6 +26,9 @@ REQUIREMENT_STATES = (
     "refused",
     "not_applicable",
     "blocked",
+    # Decided in our favour, but no permit of the requirement is in force any more
+    # (suspended, lapsed, revoked, expired): it grants nothing right now.
+    "not_in_force",
 )
 SUBMITTED_STATES = ("submitted", "validated", "under_review", "info_requested", "decided")
 
@@ -71,6 +74,9 @@ class AttemptView:
 
     state: str
     outcome: str | None = None
+    # Whether a permit of the requirement is in force. A decision alone grants nothing once the
+    # permit it produced was suspended, revoked, lapsed or expired.
+    permit_live: bool = True
 
 
 def derive_state(applicable: bool, latest: AttemptView | None, deps_met: bool) -> str:
@@ -79,6 +85,9 @@ def derive_state(applicable: bool, latest: AttemptView | None, deps_met: bool) -
         return "not_applicable"
     if latest is not None:
         if latest.state == "decided" and latest.outcome:
+            favourable = latest.outcome in GRANTED_OUTCOMES or latest.outcome == "partially_granted"
+            if favourable and not latest.permit_live:
+                return "not_in_force"
             if latest.outcome in GRANTED_OUTCOMES:
                 return "granted"
             if latest.outcome == "partially_granted":
@@ -124,6 +133,8 @@ class TimelineInput:
     forecast_reason: str | None = None
     planned_submit: date | None = None
     conflict_accepted: bool = False
+    # The authority decided in our favour: ``forecast`` is the decision date and no conflict is left.
+    settled: bool = False
 
 
 @dataclass
@@ -226,7 +237,8 @@ def timeline(rows: Sequence[TimelineInput], edges: Sequence[Edge]) -> list[Timel
         if row.forecast is None and spec.planned_submit is not None and spec.duration_days is not None:
             row.forecast = spec.planned_submit + timedelta(days=spec.duration_days)
             row.forecast_reason = row.forecast_reason or "planned_submit"
-        if row.forecast is not None and row.latest_decision is not None and row.forecast > row.latest_decision:
+        late = row.forecast is not None and row.latest_decision is not None and row.forecast > row.latest_decision
+        if late and not spec.settled:
             row.schedule_conflict = True
             row.conflict_days = (row.forecast - row.latest_decision).days
 

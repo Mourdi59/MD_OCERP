@@ -106,6 +106,8 @@ def test_no_conflict_without_a_forecast() -> None:
 
 REQ = ReqView("r1", "baugenehmigung", "building", "full", ("site_start", "construction"), "granted", title="Permit")
 PERMIT = PermitView("p1", "r1", "baugenehmigung", "building", "full", "in_force", ("site_start",))
+REQUIRES = ("baugenehmigung",)
+START = ("site_start", "construction")
 
 
 def _cond(**kw) -> CondView:
@@ -139,11 +141,13 @@ def test_unconfirmed_ai_proposals_never_count() -> None:
 
 def test_early_start_is_start_at_risk_never_the_full_permit() -> None:
     pending = ReqView("r1", "baugenehmigung", "building", "full", ("site_start",), "in_progress")
-    early = PermitView("p2", "r2", "vorzeitiger_baubeginn", "early_start", "early_start", "in_force", ("site_start",))
+    early = PermitView(
+        "p2", "r2", "vorzeitiger_baubeginn", "early_start", "early_start", "in_force", ("site_start",), (), REQUIRES
+    )
     assert start_readiness([pending], [], []).status == "not_ready"
     r = start_readiness([pending], [early], [])
     assert r.status == "at_risk" and r.items[0].code == "start_at_risk_early_start"
-    revoked = PermitView("p2", "r2", "x", "early_start", "early_start", "revoked", ("site_start",))
+    revoked = PermitView("p2", "r2", "x", "early_start", "early_start", "revoked", ("site_start",), (), REQUIRES)
     assert start_readiness([pending], [revoked], []).status == "not_ready"
 
 
@@ -158,12 +162,14 @@ def test_handover_needs_occupancy_permit_and_no_open_before_occupation_condition
 
 def test_roadmap_and_register_checks() -> None:
     planned = ReqView("r1", "x", "building", "full", ("site_start",), "not_started")
-    assert roadmap_readiness([planned], "construction").status == "not_ready"
-    assert roadmap_readiness([planned], "handover").status == "ready"
-    filed = ReqView("r1", "x", "building", "full", ("site_start",), "in_progress", schedule_conflict=True)
-    assert roadmap_readiness([filed], "construction").status == "not_ready"
-    accepted = ReqView("r1", "x", "building", "full", ("site_start",), "in_progress", True, True, True)
-    assert roadmap_readiness([accepted], "construction").status == "ready"
+    assert roadmap_readiness([planned], START).status == "not_ready"
+    assert roadmap_readiness([planned], ("occupation",)).status == "ready"
+    filed = ReqView("r1", "x", "building", "full", ("site_start",), "in_progress", True, True, submitted=True)
+    assert roadmap_readiness([filed], START).status == "not_ready"
+    accepted = ReqView(
+        "r1", "x", "building", "full", ("site_start",), "in_progress", True, True, True, submitted=True
+    )
+    assert roadmap_readiness([accepted], START).status == "ready"
     pending = ReqView("r1", "x", "building", "full", (), "granted", conditions_pending=True)
     assert register_readiness([pending], []).status == "not_ready"
     assert register_readiness([REQ], [_cond(owner_user_id=None)]).status == "not_ready"

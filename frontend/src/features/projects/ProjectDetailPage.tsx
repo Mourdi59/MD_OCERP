@@ -1805,6 +1805,16 @@ export function ProjectDetailPage() {
             { label: project.name },
           ]}
         />
+        <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<FileCheck size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/permits`)}
+          data-testid="project-permits-link"
+        >
+          {t('permits.ui.title', { defaultValue: 'Permits' })}
+        </Button>
         <Button
           variant={customizing ? 'primary' : 'ghost'}
           size="sm"
@@ -1820,6 +1830,7 @@ export function ProjectDetailPage() {
             ? t('project.layout.done', { defaultValue: 'Done' })
             : t('project.layout.customize', { defaultValue: 'Customize' })}
         </Button>
+        </div>
       </div>
 
       <DismissibleInfo

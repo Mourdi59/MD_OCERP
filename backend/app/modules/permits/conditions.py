@@ -43,18 +43,12 @@ TOPICS: tuple[str, ...] = (
     "other",
 )
 LAPSE_WARNING_DAYS: tuple[int, ...] = (90, 30, 7)
-GRANTED_REQ = ("granted",)
-PROGRESS_REQ = ("in_progress", "granted", "partially_granted")
-
-# Governance phase codes (both shipped governance catalogues) -> what a permit must enable for that phase.
-PHASE_ENABLES: dict[str, tuple[str, ...]] = {
-    "construction": ("site_start", "construction"),
-    "execution": ("site_start", "construction"),
-    "handover": ("occupation",),
-    "operation": ("operation",),
-}
-START_PHASES = ("construction", "execution")
-HANDOVER_PHASES = ("handover", "operation")
+GRANTED_REQ = ("granted", "partially_granted")
+# Condition states a variation carries over when the text is unchanged (rule 14).
+KEPT_IF_SAME_TEXT: tuple[str, ...] = ("discharged", "in_compliance", "not_triggered", "waived", "evidence_submitted")
+# Carried whatever the new text says: a breach never closes itself (rule 16) and a pending
+# discharge application keeps naming the condition it was filed for.
+KEPT_ALWAYS: tuple[str, ...] = ("breach", "discharge_applied")
 
 
 def text_hash(text: str) -> str:
@@ -96,6 +90,8 @@ class PermitView:
     state: str
     enables: tuple[str, ...] = ()
     scope_activity_ids: tuple[str, ...] = ()
+    # Type codes the permit's own type lists under ``requires``: what an early start runs ahead of.
+    requires: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -111,6 +107,8 @@ class ReqView:
     conflict_accepted: bool = False
     conditions_pending: bool = False
     title: str = ""
+    # The newest application is with the authority (filed, not yet decided).
+    submitted: bool = False
 
 
 @dataclass(frozen=True)
@@ -163,12 +161,14 @@ def start_readiness(reqs: Sequence[ReqView], permits: Sequence[PermitView], cond
         if not r.applicable or "site_start" not in r.enables or r.scope in ("early_start", "partial"):
             continue
         has_permit = any(p.requirement_id == r.id for p in live)
+        # Rule 10: an early start runs ahead of the one permit its type names, and only while the
+        # authority has not refused that permit. It is "start at risk", never the full permit.
+        ahead = r.state != "refused" and any(r.type_code in p.requires for p in early)
         if r.state == "granted" and has_permit:
             out.add(Item("permit_granted", "met", r.title or r.type_code, r.id))
         elif r.state == "partially_granted" and has_permit:
             out.add(Item("permit_partial", "at_risk", r.title or r.type_code, r.id))
-        elif early:
-            # Rule 10: an early start permit is "start at risk", never the full permit.
+        elif ahead:
             out.add(Item("start_at_risk_early_start", "at_risk", r.title or r.type_code, r.id))
         else:
             out.add(Item("permit_missing", "not_met", r.title or r.type_code, r.id))
@@ -199,15 +199,20 @@ def handover_readiness(reqs: Sequence[ReqView], permits: Sequence[PermitView], c
     return out
 
 
-def roadmap_readiness(reqs: Sequence[ReqView], next_phase: str | None) -> Readiness:
-    """Rule 19, roadmap area: every requirement the next phase needs is filed or granted, no open conflict."""
+def roadmap_readiness(reqs: Sequence[ReqView], enables: Iterable[str]) -> Readiness:
+    """Rule 19, roadmap area: every requirement the next phase needs is filed or granted, no open conflict.
+
+    ``enables`` is what the next phase needs a permit for (``site_start``, ``occupation``, ...); the
+    caller resolves it from the phase tags of the governance catalogue. A requirement still being
+    prepared is not filed.
+    """
     out = Readiness("roadmap")
-    wanted = set(PHASE_ENABLES.get(next_phase or "", ()))
+    wanted = set(enables)
     for r in reqs:
         if not r.applicable:
             continue
         if wanted & set(r.enables):
-            ok = r.state in PROGRESS_REQ
+            ok = r.state in GRANTED_REQ or (r.state == "in_progress" and r.submitted)
             out.add(Item("requirement_filed", "met" if ok else "not_met", r.title or r.type_code, r.id))
         if r.schedule_conflict and not r.conflict_accepted:
             out.add(Item("schedule_conflict", "not_met", r.title or r.type_code, r.id))
@@ -267,6 +272,14 @@ def valid_until(
     return add_period(served, lapse.period, lapse.unit, working_day)
 
 
+def paused_until(paused_since: date, validity: Any, working_day: Any = None) -> date | None:
+    """Lapse date of a started permit whose work stopped on ``paused_since``; ``None`` without such a period."""
+    lapse = getattr(validity, "lapse_if_paused", None) if validity is not None else None
+    if lapse is None:
+        return None
+    return add_period(paused_since, lapse.period, lapse.unit, working_day)
+
+
 def extended_until(current: date, validity: Any) -> date | None:
     """A decided ``extension_of_validity`` moves the lapse date by the catalogue's step."""
     step = getattr(validity, "extension_per_request", None) if validity is not None else None
@@ -297,6 +310,8 @@ class OldCondition:
     kind: str
     trigger: str
     state: str
+    # An AI proposal nobody confirmed stays a proposal on the varied permit (rule 15).
+    confirmed: bool = True
 
 
 @dataclass(frozen=True)
@@ -315,6 +330,8 @@ class Carried:
     trigger: str
     original_id: str | None
     keep_state: str | None  # the state carried over, or None = reopened (``open``)
+    confirmed: bool = True
+    replaced: bool = False  # the variation itself states this number
 
 
 def carry_forward(
@@ -325,7 +342,10 @@ def carry_forward(
     Every live old condition is superseded by the caller. Those the variation
     replaces (same number) take the new text; those it removes vanish; the rest
     are copied forward. A copy or replacement whose text hash equals the old one
-    keeps a discharged / in-compliance state with its evidence; otherwise it reopens.
+    keeps its closed state (discharged, in compliance, not triggered, waived) or
+    its submitted evidence; otherwise it reopens. A breach and a pending discharge
+    application are carried whatever the text says. An unconfirmed proposal stays
+    unconfirmed unless the variation itself states the condition.
     """
     by_number = {n.number: n for n in replaced}
     removed = set(removed_numbers)
@@ -336,7 +356,7 @@ def carry_forward(
         new = by_number.pop(o.number, None)
         text = new.text if new else o.text
         same = text_hash(text) == text_hash(o.text)
-        keep = o.state if same and o.state in ("discharged", "in_compliance", "not_triggered") else None
+        keep = o.state if o.state in KEPT_ALWAYS or (same and o.state in KEPT_IF_SAME_TEXT) else None
         out.append(
             Carried(
                 o.number,
@@ -345,10 +365,12 @@ def carry_forward(
                 new.trigger if new else o.trigger,
                 o.id,
                 keep,
+                confirmed=True if new else o.confirmed,
+                replaced=new is not None,
             )
         )
     for n in by_number.values():
-        out.append(Carried(n.number, n.text, n.kind, n.trigger, None, None))
+        out.append(Carried(n.number, n.text, n.kind, n.trigger, None, None, replaced=True))
     return out
 
 

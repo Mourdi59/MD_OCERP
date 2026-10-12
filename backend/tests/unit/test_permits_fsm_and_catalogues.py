@@ -4,9 +4,6 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import pytest
 
 from app.core.fsm import FSMError
@@ -19,7 +16,6 @@ from app.modules.permits.catalogue import (
     shipped_catalogues,
     validate_permit_type_catalogue,
 )
-from app.modules.permits.conditions import HANDOVER_PHASES, PHASE_ENABLES, START_PHASES
 from app.modules.permits.fsm import APPLICATION_FSM, CONDITION_FSM, PERMIT_FSM
 
 APPLICATION_TABLE = [
@@ -162,12 +158,22 @@ def test_land_overlay_replaces_the_federal_type_by_code() -> None:
     assert "bimschg_genehmigung" in nw
 
 
-def test_phase_mapping_covers_both_shipped_governance_catalogues() -> None:
-    """The gate mapping must name phases that exist, or the readiness provider silently never fires."""
-    root = Path(__file__).resolve().parents[2] / "app" / "modules" / "project_governance" / "catalogues"
-    for name in ("neutral.json", "elf_module_framework.json"):
-        phases = {p["code"] for p in json.loads((root / name).read_text(encoding="utf-8"))["phases"]}
-        assert phases & set(START_PHASES), name
-        assert set(PHASE_ENABLES) & phases, name
-    neutral = {p["code"] for p in json.loads((root / "neutral.json").read_text(encoding="utf-8"))["phases"]}
-    assert set(HANDOVER_PHASES) <= neutral
+def test_no_phase_or_area_code_of_a_governance_model_is_written_into_the_module() -> None:
+    """Review finding 1: hosting comes from catalogue tags, so no shipped model's codes appear in the code."""
+    import json
+    import re
+    from pathlib import Path
+
+    import app.modules.permits as pkg
+
+    root = Path(pkg.__file__).resolve().parents[1] / "project_governance" / "catalogues"
+    codes: set[str] = set()
+    for path in root.glob("*.json"):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        codes |= {a["code"] for a in data.get("areas", [])}
+        codes |= {p["code"] for p in data.get("phases", []) if re.search(r"\d", p["code"])}
+    assert codes
+    for name in ("hosting.py", "evidence.py"):
+        src = (Path(pkg.__file__).parent / name).read_text(encoding="utf-8")
+        found = sorted(c for c in codes if re.search(rf'"{re.escape(c)}"', src))
+        assert found == [], (name, found)

@@ -2,23 +2,29 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """Gate readiness evidence for module 1 (SPEC rule 19).
 
-Two providers, registered for every area (``"*"``) and deciding relevance per
-area from the roadmap's own area codes (resolved from the project's pinned
-governance model when the roadmap was created, e.g. ``m02_contract_management``
-in the ELF catalogue, ``contracts_procurement`` in the neutral one):
+Two providers, registered for every area (``"*"``). Which area and which gate
+they answer for is read from the tags of the project's pinned governance
+catalogue at the moment the gate asks (:mod:`app.modules.permits.hosting`); no
+area or phase code appears here and nothing resolved is stored.
 
-* ``permits.roadmap_and_register`` (non-blocking): on the roadmap area, every
-  requirement the gate's target phase needs is filed or granted and no schedule
-  conflict is left unaccepted; on the conditions area, the register is complete.
-* ``permits.start_and_handover`` (BLOCKING): on the roadmap area of a gate into
-  construction / execution, no open before-start suspensive condition and every
-  before-start obligation discharged or accepted as a gate condition; of a gate
-  into handover / operation, no open before-occupation condition and the
-  occupancy permit granted. A suspensive condition suspends the permit, so the
-  gate must not pass on a warning (rule 12).
+* ``permits.roadmap_and_register`` (advisory): on the area hosting the roadmap,
+  every requirement the gate's target phase needs is filed or granted and no
+  schedule conflict is left unaccepted; on the area hosting the condition
+  register, the register is complete.
+* ``permits.start_and_handover`` (BLOCKING): on the area hosting the roadmap, for
+  a gate into a phase tagged as the start of construction, no open before-start
+  suspensive condition and every before-start obligation discharged or accepted
+  as a gate condition; for a gate into a phase tagged handover or operation, no
+  open before-occupation condition and the occupancy permit granted.
 
-The phase is the gate's ``to_phase``; :data:`conditions.PHASE_ENABLES` maps the
-phase codes of both shipped governance catalogues.
+Evidence states are met / not_met / unknown. "At risk" (an early start, a
+partial permit, an obligation accepted at the gate) is reported as ``not_met``
+with a detail that says so: the gate can then pass only as go with conditions
+with the area accepted at risk. It is never reported as met (rule 10).
+
+A project with a roadmap whose governance model does not say where permits
+live, or tags no phase at all, gets one ``unknown`` item with the reason on
+every area. A provider that has data must not answer with silence.
 """
 
 from __future__ import annotations
@@ -27,33 +33,49 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from app.modules.permits.conditions import HANDOVER_PHASES, START_PHASES
+from app.modules.permits.hosting import Hosting, project_hosting
 from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, register_evidence_provider
 
 ROADMAP_PROVIDER = "permits.roadmap_and_register"
 GATE_PROVIDER = "permits.start_and_handover"
+# Reasons of an ``unknown`` item (also the i18n key suffix under ``permits.evidence.unresolved``).
+NO_HOSTING_AREA = "no_area_hosts_permits"
+NO_PHASE_TAGS = "no_phase_enables_tag"
 
 
-async def _context(session: Any, project_id: uuid.UUID, attempt: GateAttempt) -> tuple[Any, str | None]:
+async def _context(session: Any, project_id: uuid.UUID, attempt: GateAttempt) -> tuple[Any, Hosting, str | None]:
     from app.modules.permits.repository import PermitRepository
     from app.modules.project_governance.models import GovernanceGate
 
     roadmap = await PermitRepository(session).get_roadmap(project_id)
+    if roadmap is None:
+        return None, Hosting(), None
     gate = await session.get(GovernanceGate, attempt.gate_id)
-    return roadmap, getattr(gate, "to_phase", None)
+    return roadmap, await project_hosting(session, project_id, roadmap), getattr(gate, "to_phase", None)
 
 
-def _items(readiness: dict[str, Any], code: str, label: str, project_id: uuid.UUID) -> list[EvidenceItem]:
-    failing = [i for i in readiness["items"] if i["state"] == "not_met"]
-    return [
-        EvidenceItem(
-            code=code,
-            state="not_met" if failing else "met",
-            label_key=label,
-            link=("permits", str(project_id)),
-            detail=", ".join(f"{i['code']}:{i['detail']}" for i in failing),
-        )
-    ]
+def unresolved(provider: str, attempt: GateAttempt, reason: str, project_id: uuid.UUID) -> EvidenceItem:
+    return EvidenceItem(
+        code=f"permits_unresolved:{provider}:{attempt.gate_code}",
+        state="unknown",
+        label_key=f"permits.evidence.unresolved.{reason}",
+        link=("permits", str(project_id)),
+        detail=reason,
+    )
+
+
+def to_evidence(readiness: dict[str, Any], code: str, label: str, project_id: uuid.UUID) -> EvidenceItem:
+    """One evidence item per readiness check; anything not plainly met is ``not_met`` and says why."""
+    open_items = [i for i in readiness["items"] if i["state"] != "met"]
+    return EvidenceItem(
+        code=code,
+        state="not_met" if open_items else "met",
+        label_key=label,
+        link=("permits", str(project_id)),
+        detail=", ".join(
+            f"{'at_risk ' if i['state'] == 'at_risk' else ''}{i['code']}:{i['detail']}" for i in open_items
+        ),
+    )
 
 
 async def roadmap_and_register(
@@ -61,20 +83,22 @@ async def roadmap_and_register(
 ) -> list[EvidenceItem]:
     from app.modules.permits.service import PermitService
 
-    roadmap, phase = await _context(session, project_id, attempt)
+    roadmap, hosting, phase = await _context(session, project_id, attempt)
     if roadmap is None:
         return []
+    if hosting.roadmap_area is None:
+        return [unresolved(ROADMAP_PROVIDER, attempt, NO_HOSTING_AREA, project_id)]
     svc = PermitService(session)
     today = datetime.now(UTC).date()
     out: list[EvidenceItem] = []
-    if area.code == roadmap.roadmap_area_code:
-        r = await svc.readiness(
-            project_id, phase if phase in ("construction", "execution", "handover", "operation") else "roadmap", today
-        )
-        out += _items(r, f"permits_roadmap:{attempt.gate_code}", "permits.evidence.roadmap", project_id)
-    if area.code == roadmap.conditions_area_code:
+    if area.code == hosting.roadmap_area:
+        if not hosting.phases_tagged:
+            out.append(unresolved(ROADMAP_PROVIDER, attempt, NO_PHASE_TAGS, project_id))
+        r = await svc.readiness(project_id, "roadmap", today, enables=hosting.enables(phase))
+        out.append(to_evidence(r, f"permits_roadmap:{attempt.gate_code}", "permits.evidence.roadmap", project_id))
+    if area.code == hosting.conditions_area:
         r = await svc.readiness(project_id, "register", today)
-        out += _items(r, f"permits_register:{attempt.gate_code}", "permits.evidence.register", project_id)
+        out.append(to_evidence(r, f"permits_register:{attempt.gate_code}", "permits.evidence.register", project_id))
     return out
 
 
@@ -83,17 +107,22 @@ async def start_and_handover(
 ) -> list[EvidenceItem]:
     from app.modules.permits.service import PermitService
 
-    roadmap, phase = await _context(session, project_id, attempt)
-    if roadmap is None or area.code != roadmap.roadmap_area_code:
+    roadmap, hosting, phase = await _context(session, project_id, attempt)
+    if roadmap is None:
         return []
-    if phase in START_PHASES:
-        gate, label = "start", "permits.evidence.start"
-    elif phase in HANDOVER_PHASES:
-        gate, label = "handover", "permits.evidence.handover"
-    else:
+    if hosting.roadmap_area is None:
+        return [unresolved(GATE_PROVIDER, attempt, NO_HOSTING_AREA, project_id)]
+    if area.code != hosting.roadmap_area:
         return []
-    r = await PermitService(session).readiness(project_id, gate, datetime.now(UTC).date())
-    return _items(r, f"permits_{gate}:{attempt.gate_code}", label, project_id)
+    if not hosting.phases_tagged:
+        return [unresolved(GATE_PROVIDER, attempt, NO_PHASE_TAGS, project_id)]
+    svc = PermitService(session)
+    today = datetime.now(UTC).date()
+    out: list[EvidenceItem] = []
+    for gate in hosting.gates(phase):
+        r = await svc.readiness(project_id, gate, today)
+        out.append(to_evidence(r, f"permits_{gate}:{attempt.gate_code}", f"permits.evidence.{gate}", project_id))
+    return out
 
 
 def register_gate_evidence() -> None:

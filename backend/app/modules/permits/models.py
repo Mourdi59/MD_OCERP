@@ -76,6 +76,8 @@ class PermitRoadmap(Base):
     approval_route_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     escalation_days: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
     buffer_days: Mapped[int] = mapped_column(Integer, nullable=False, default=14)
+    # Approved frame change requests already spent on a structural change (rule 18): one request, one change.
+    consumed_change_request_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     created_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
 
 
@@ -149,6 +151,9 @@ class PermitApplication(Base):
     kind: Mapped[str] = mapped_column(String(30), nullable=False, default="new")
     parent_permit_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     discharges_condition_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    # Who files a change to an issued permit (rule 2): allocation | requirement; empty for new applications.
+    applicant_role: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    applicant_source: Mapped[str] = mapped_column(String(20), nullable=False, default="")
     authority_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     authority_reference: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     submitted_at: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -230,6 +235,8 @@ class Permit(Base):
     security_amount: Mapped[Decimal | None] = mapped_column(MoneyType(18, 4), nullable=True)
     security_currency: Mapped[str] = mapped_column(String(3), nullable=False, default="")
     start_notified_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Work interrupted since this day: the permit is back on a lapse clock (rule 9, ``lapse_if_paused``).
+    paused_since: Mapped[date | None] = mapped_column(Date, nullable=True)
     valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     superseded_by_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
 
@@ -262,6 +269,8 @@ class PermitCondition(Base):
     # restoration | security | "" (rule 10)
     purpose: Mapped[str] = mapped_column(String(20), nullable=False, default="")
     owner_user_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # Who submitted the evidence for discharge; never the verifier (rule 13).
+    evidence_submitted_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     responsible_party: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     requires_authority_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     evidence_required: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -318,6 +327,8 @@ class ConditionDischarge(Base):
     document_revision_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     note: Mapped[str] = mapped_column(Text, nullable=False, default="")
     evidence_snapshot: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    # A variation copied this record forward from the discharge of the original condition (rule 14).
+    carried_from_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
 
 
 ALL_MODELS = (
