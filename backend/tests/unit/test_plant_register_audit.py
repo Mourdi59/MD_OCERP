@@ -46,7 +46,8 @@ def _audit_keywords() -> set[str]:
 
 def test_the_service_passes_extras_to_audit() -> None:
     # Guards the test below against scanning nothing.
-    assert {"item", "route", "fields", "from_status", "to_status"} <= _audit_keywords()
+    # State changes are audited by the state machine itself; ``_audit`` carries the other writes.
+    assert {"item", "route", "fields", "steps", "catalogue"} <= _audit_keywords()
 
 
 @pytest.mark.asyncio

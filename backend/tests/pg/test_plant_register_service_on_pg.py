@@ -444,11 +444,12 @@ async def test_handover_needs_commissioned_spares_closed_and_explicit_confirmati
             world.project_id, iid, {"category": "commissioning_spares"}, actor_id=world.manager
         ),
     )
-    code, _ = await _code(
+    code, blockers = await _code(
         world,
         lambda svc: svc.handover(world.project_id, iid, confirm=True, service_contract_id=None, actor_id=world.manager),
     )
-    assert code == "spares_not_handed_over"
+    assert code == "transition_blocked"
+    assert set(blockers) == {"spares_not_handed_over", "handover_needs_service_asset"}
     await _svc_call(
         world,
         lambda svc: svc.transition_spare(

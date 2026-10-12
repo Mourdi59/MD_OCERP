@@ -158,6 +158,7 @@
       "link_not_found": "Der verknüpfte Datensatz gehört nicht zu diesem Projekt.",
       "long_lead_override_needs_reason": "Das Überschreiben der Langläufer-Einstufung braucht eine Begründung.",
       "manage_required": "Nur wer die Berechtigung zur Verwaltung des Anlagenregisters hat, darf dies ändern.",
+      "neutral_spec_names_vendor": "Die Spezifikation ist herstellerneutral, nennt aber einen Hersteller.",
       "no_decision_route": "Das Projekt hat keinen Genehmigungsweg für Entscheidungsvorlagen.",
       "not_equipment_owner": "Nur ein Manager oder der Verantwortliche des Ausrüstungsbereichs darf das Anlagenregister ändern.",
       "null_not_allowed": "Dieses Feld darf nicht leer sein.",

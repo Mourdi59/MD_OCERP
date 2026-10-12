@@ -94,7 +94,7 @@ async def test_revision_reproduces_the_model_schema_up_down_up() -> None:
         # A raw insert gets the same defaults as an ORM one, on a fresh install and on an upgraded one.
         item_columns = from_models["oe_plant_item"]["columns"]
         assert item_columns["status"][2] == "'identified'::character varying"
-        assert item_columns["quantity"][2] == "1"
+        assert item_columns["quantity"][2] == "'1'::numeric"
         assert from_models["oe_plant_lead_time_quote"]["columns"]["is_basis"][2] == "false"
         for table in ("lead_time_quote", "slot_reservation", "decision_paper", "delivery_limit", "spare_part"):
             names = {i[0]: i[2] for i in from_models[f"oe_plant_{table}"]["indexes"]}

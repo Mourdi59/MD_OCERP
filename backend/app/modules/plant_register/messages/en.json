@@ -158,6 +158,7 @@
       "link_not_found": "The linked record is not part of this project.",
       "long_lead_override_needs_reason": "Overriding the long-lead classification needs a reason.",
       "manage_required": "Only a holder of the plant management permission may change this.",
+      "neutral_spec_names_vendor": "The specification is vendor-neutral but names a vendor.",
       "no_decision_route": "The project has no approval route for decision papers.",
       "not_equipment_owner": "Only a manager or the owner of the equipment area may change the plant register.",
       "null_not_allowed": "This field cannot be empty.",
