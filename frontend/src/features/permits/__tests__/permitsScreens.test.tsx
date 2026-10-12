@@ -14,7 +14,14 @@ vi.mock('@/features/teams/api', () => ({ listRoster: vi.fn(async () => ({ items:
 vi.mock('@/features/cde/api', () => ({ fetchCDEContainers: vi.fn(async () => []) }));
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
-  return { ...actual, escalateConditions: vi.fn(), notifyStart: vi.fn(), transitionPermit: vi.fn() };
+  return {
+    ...actual,
+    escalateConditions: vi.fn(),
+    notifyStart: vi.fn(),
+    recordInterruption: vi.fn(),
+    recordResumption: vi.fn(),
+    transitionPermit: vi.fn(),
+  };
 });
 
 import { ApiError } from '@/shared/lib/api';
@@ -141,6 +148,28 @@ describe('PermitsRegister', () => {
     fireEvent.click(await screen.findByTestId('start-notice-dialog-submit'));
     expect(await screen.findByTestId('start-notice-dialog-error')).toHaveTextContent('A suspensive condition is still open.');
     expect(mocked.notifyStart).toHaveBeenCalledWith('p1', 'pm1', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+  });
+
+  it('offers to record an interruption once work started, and the resumption while it is interrupted', async () => {
+    mocked.recordResumption.mockResolvedValue(permit());
+    renderIn(
+      <PermitsRegister
+        {...base}
+        permits={[
+          permit({ start_notified_at: '2026-07-01' }),
+          permit({ id: 'pm2', start_notified_at: '2026-07-01', paused_since: '2026-09-01' }),
+        ]}
+        conditions={[]}
+      />,
+    );
+    expect(screen.queryByTestId('permit-start')).toBeNull();
+    expect(screen.getAllByTestId('permit-interruption')).toHaveLength(1);
+    expect(screen.getAllByTestId('permit-paused')).toHaveLength(1);
+    fireEvent.click(screen.getByTestId('permit-resumption'));
+    expect(await screen.findByText('Record that work resumed')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('start-notice-dialog-submit'));
+    await vi.waitFor(() => expect(mocked.recordResumption).toHaveBeenCalledWith('p1', 'pm2', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)));
+    expect(mocked.notifyStart).not.toHaveBeenCalled();
   });
 
   it('asks what happened and why before it records a change to a permit', async () => {

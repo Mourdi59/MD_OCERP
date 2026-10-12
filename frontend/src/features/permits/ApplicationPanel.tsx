@@ -13,7 +13,8 @@ import { Button } from '@/shared/ui/Button';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 
-import { completeRegister, type ApplicationTarget, type ConditionRow, type Permit } from './api';
+import { completeRegister, type ApplicationTarget, type ConditionRow, type Decision, type Permit } from './api';
+import { CorrectDecisionDialog } from './CorrectDecisionDialog';
 import { ApplicationDialog, ClockEventDialog, TransitionDialog } from './ApplicationDialogs';
 import { DecisionDialog } from './DecisionDialog';
 import { refusalText, useApplicationDetail, usePermitAction } from './hooks';
@@ -59,6 +60,7 @@ export function ApplicationPanel({
   const [target, setTarget] = useState<ApplicationTarget | null>(null);
   const [dialog, setDialog] = useState<'edit' | 'clock' | 'decision' | null>(null);
   const complete = usePermitAction(projectId, (decisionId: string) => completeRegister(projectId, decisionId));
+  const [correcting, setCorrecting] = useState<Decision | null>(null);
   const back = t('permits.ui.back_to_permit', { defaultValue: 'Back to the permit' });
 
   if (detailQ.isLoading) return <SkeletonTable rows={4} columns={4} />;
@@ -224,12 +226,25 @@ export function ApplicationPanel({
           </p>
         ) : (
           <ul className="space-y-1.5" data-testid="decision-list">
-            {a.decisions.map((d) => (
-              <li key={d.id} className="space-y-2 rounded-lg border border-border-light p-3 text-sm">
+            {a.decisions.map((d) => {
+              // A corrected revision stays for the record; only the newest one can be corrected again.
+              const replaced = a.decisions.some((x) => x.supersedes_id === d.id);
+              return (
+              <li key={d.id} className={`space-y-2 rounded-lg border border-border-light p-3 text-sm ${replaced ? 'opacity-60' : ''}`} data-testid="decision-entry">
                 <div className="flex flex-wrap items-center gap-3">
                   <ToneBadge tone={OUTCOME_TONE[d.outcome]}>{vocab(t, OUTCOME, d.outcome)}</ToneBadge>
                   <span className="text-content-secondary">{dateText(d.decision_date)}</span>
                   {d.reference && <span className="text-content-secondary">{d.reference}</span>}
+                  {replaced && (
+                    <span className="text-xs text-content-tertiary" data-testid="decision-replaced">
+                      {t('permits.ui.decision.replaced', { defaultValue: 'Replaced by a correction' })}
+                    </span>
+                  )}
+                  {d.revision > 1 && !replaced && (
+                    <span className="text-xs text-content-tertiary">
+                      {t('permits.ui.decision.revision', { defaultValue: 'Corrected, revision {{n}}', n: d.revision })}
+                    </span>
+                  )}
                   {d.decided_by && (
                     <span className="text-xs text-content-tertiary">
                       {t('permits.ui.decision.recorded_by', {
@@ -245,6 +260,11 @@ export function ApplicationPanel({
                   )}
                 </div>
                 {d.scope_note && <p className="text-content-secondary">{d.scope_note}</p>}
+                {!replaced && (
+                  <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setCorrecting(d)} data-testid="decision-correct">
+                    {t('permits.ui.correct.open', { defaultValue: 'Correct a date or reference' })}
+                  </Button>
+                )}
                 {d.conditions_pending && (
                   <div className="flex flex-wrap items-center gap-3 rounded-md bg-semantic-warning-bg px-3 py-2" data-testid="conditions-pending">
                     <span className="text-content-primary">
@@ -258,7 +278,8 @@ export function ApplicationPanel({
                   </div>
                 )}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </section>
@@ -275,6 +296,7 @@ export function ApplicationPanel({
         conditions={conditions}
         labels={labels}
       />
+      <CorrectDecisionDialog open={correcting !== null} onClose={() => setCorrecting(null)} projectId={projectId} decision={correcting} />
       <ClockEventDialog open={dialog === 'clock'} onClose={() => setDialog(null)} projectId={projectId} applicationId={a.id} clock={clock} />
       <DecisionDialog
         open={dialog === 'decision'}

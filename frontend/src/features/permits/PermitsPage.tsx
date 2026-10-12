@@ -11,7 +11,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { ClipboardCheck, Compass, Download, FileCheck2, ListChecks, Map as MapIcon, ShieldCheck } from 'lucide-react';
+import { ClipboardCheck, Compass, Download, FileCheck2, FileUp, ListChecks, Map as MapIcon, ShieldCheck } from 'lucide-react';
 
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
 import { Button } from '@/shared/ui/Button';
@@ -23,7 +23,7 @@ import { TabBar } from '@/shared/ui/TabBar';
 import { getErrorMessage } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 
-import { downloadRegister, type ExportRegister } from './api';
+import { downloadRegister, publishFrameDocument, type ExportRegister, type FrameDocumentType } from './api';
 import { ApplicationPanel } from './ApplicationPanel';
 import { ChecksPanel, READINESS_GATE } from './ChecksPanel';
 import { ConditionPanel } from './ConditionPanel';
@@ -34,6 +34,7 @@ import {
   useConditions,
   useLabelContext,
   usePeopleNames,
+  usePermitAction,
   usePermits,
   useReadiness,
   useRequirements,
@@ -43,7 +44,7 @@ import {
   useViewerId,
 } from './hooks';
 import { READINESS_STATUS, typeName, vocab, type TFn } from './labels';
-import { READINESS_TONE, ToneBadge } from './PermitBits';
+import { FormDialog, READINESS_TONE, ToneBadge } from './PermitBits';
 import { PermitsRegister } from './PermitsRegister';
 import { RequirementPanel } from './RequirementPanel';
 import { ProposeDialog, RequirementDialog, RoadmapSetupDialog } from './RoadmapDialogs';
@@ -51,13 +52,20 @@ import { RoadmapTable } from './RoadmapTable';
 import { buildRoadmapRows } from './rules';
 
 type Tab = 'roadmap' | 'permits' | 'conditions' | 'checks';
-type Dialog = 'setup' | 'propose' | 'add' | null;
+type Dialog = 'setup' | 'propose' | 'add' | 'file' | null;
 
 const EXPORT_OF_TAB: Record<Tab, ExportRegister | null> = {
   roadmap: 'roadmap',
   permits: 'permits',
   conditions: 'conditions',
   checks: null,
+};
+
+/** The governance frame document each register is filed as. */
+const FRAME_DOCUMENT: Record<ExportRegister, FrameDocumentType> = {
+  roadmap: 'dev_permit_roadmap',
+  permits: 'dev_special_permits',
+  conditions: 'dev_permit_conditions',
 };
 
 export function PermitsPage() {
@@ -103,6 +111,19 @@ export function PermitsPage() {
   const conditions = conditionsQ.data ?? [];
   const permits = permitsQ.data ?? [];
   const overdue = conditions.filter((c) => c.confirmed && c.overdue).length;
+
+  const tabRegister = EXPORT_OF_TAB[tab] ?? 'roadmap';
+  const file = usePermitAction(
+    projectId,
+    () => publishFrameDocument(projectId, FRAME_DOCUMENT[tabRegister]),
+    () => {
+      setDialog(null);
+      addToast({
+        type: 'success',
+        title: t('permits.ui.file.done', { defaultValue: 'Filed as a new revision in the project documents.' }),
+      });
+    },
+  );
 
   const exportRegister = async (register: ExportRegister, format: 'pdf' | 'xlsx') => {
     setExporting(true);
@@ -350,6 +371,18 @@ export function PermitsPage() {
                 >
                   {t('permits.ui.export_xlsx', { defaultValue: 'Excel' })}
                 </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={<FileUp size={14} />}
+                  onClick={() => {
+                    file.reset();
+                    setDialog('file');
+                  }}
+                  data-testid="file-register"
+                >
+                  {t('permits.ui.file.open', { defaultValue: 'File in project documents' })}
+                </Button>
               </span>
             )}
           </div>
@@ -379,6 +412,27 @@ export function PermitsPage() {
       )}
       {body}
       <RoadmapSetupDialog open={dialog === 'setup'} onClose={() => setDialog(null)} projectId={projectId} roadmap={roadmap} labels={labels} />
+      <FormDialog
+        open={dialog === 'file'}
+        onClose={() => setDialog(null)}
+        testId="file-register-dialog"
+        title={t('permits.ui.file.title', { defaultValue: 'File this register in the project documents' })}
+        subtitle={t('permits.ui.file.subtitle', {
+          defaultValue:
+            'The register as it stands now is stored as a new revision of its governance document, so a gate can refer to exactly this state.',
+        })}
+        submitLabel={t('permits.ui.file.submit', { defaultValue: 'File register' })}
+        busy={file.busy}
+        error={file.error}
+        problems={[]}
+        onSubmit={() => file.run(undefined)}
+      >
+        <p className="text-sm text-content-secondary">
+          {t('permits.ui.file.body', {
+            defaultValue: 'Nothing in the register changes. Once the document is binding, a new revision needs an approved change request.',
+          })}
+        </p>
+      </FormDialog>
       <ProposeDialog open={dialog === 'propose'} onClose={() => setDialog(null)} projectId={projectId} labels={labels} />
       <RequirementDialog
         open={dialog === 'add'}

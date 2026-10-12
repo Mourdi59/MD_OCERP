@@ -135,6 +135,7 @@ export function permit(over: Partial<Permit> = {}): Permit {
     security_amount: null,
     security_currency: '',
     start_notified_at: null,
+    paused_since: null,
     valid_until: '2029-06-30',
     superseded_by_id: null,
     lapse_warning: null,

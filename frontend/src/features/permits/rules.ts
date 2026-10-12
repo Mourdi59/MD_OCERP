@@ -285,6 +285,21 @@ export function dischargeModes(c: Pick<Condition, 'state' | 'requires_authority_
   return [];
 }
 
+/** A trigger that did not occur must be shown by a document where the permit hangs on the condition. */
+export function dischargeNeedsDocument(
+  c: Pick<Condition, 'kind' | 'requires_authority_approval'>,
+  mode: DischargeMode,
+): boolean {
+  if (mode === 'waived_by_authority') return true;
+  return mode === 'not_triggered' && (c.kind === 'suspensive' || c.requires_authority_approval);
+}
+
+/** Work can be recorded as interrupted, or as running again, once its start was notified. */
+export function workStep(p: Pick<Permit, 'state' | 'start_notified_at' | 'paused_since'>): 'interruption' | 'resumption' | null {
+  if (p.state !== 'in_force' || !p.start_notified_at) return null;
+  return p.paused_since ? 'resumption' : 'interruption';
+}
+
 export function isLiveCondition(c: Pick<Condition, 'state'>): boolean {
   return c.state !== 'superseded';
 }

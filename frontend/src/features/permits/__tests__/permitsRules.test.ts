@@ -21,6 +21,7 @@ import {
   daysBetween,
   decisionProblems,
   dischargeModes,
+  dischargeNeedsDocument,
   emptyDecision,
   inConditionView,
   isDecidable,
@@ -30,7 +31,9 @@ import {
   toClockEventInput,
   toConditionInput,
   toDecisionInput,
+  workStep,
 } from '../rules';
+import { toCorrection } from '../CorrectDecisionDialog';
 import { application, condition, labels, requirement, timelineRow } from './fixtures';
 import { enT } from './i18nMock';
 
@@ -142,6 +145,14 @@ describe('conditions', () => {
     expect(dischargeModes({ state: 'discharged', requires_authority_approval: false })).toEqual([]);
   });
 
+  it('asks for a document where a trigger that did not occur lifts the permit itself', () => {
+    expect(dischargeNeedsDocument({ kind: 'obligation', requires_authority_approval: false }, 'not_triggered')).toBe(false);
+    expect(dischargeNeedsDocument({ kind: 'suspensive', requires_authority_approval: false }, 'not_triggered')).toBe(true);
+    expect(dischargeNeedsDocument({ kind: 'obligation', requires_authority_approval: true }, 'not_triggered')).toBe(true);
+    expect(dischargeNeedsDocument({ kind: 'obligation', requires_authority_approval: false }, 'waived_by_authority')).toBe(true);
+    expect(dischargeNeedsDocument({ kind: 'suspensive', requires_authority_approval: false }, 'self_certified')).toBe(false);
+  });
+
   it('keeps an unconfirmed proposal out of every view but its own', () => {
     const proposal = condition({ confirmed: false, overdue: true, owner_user_id: 'u1' });
     expect(inConditionView(proposal, 'proposals', 'u1')).toBe(true);
@@ -242,6 +253,51 @@ describe('decisions', () => {
   });
 });
 
+describe('decision correction', () => {
+  const decision = {
+    id: 'd1',
+    application_id: 'a1',
+    revision: 1,
+    supersedes_id: null,
+    outcome: 'granted' as const,
+    decision_date: '2026-06-10',
+    served_date: null,
+    reference: 'BA-1',
+    scope_note: '',
+    scope_activity_ids: [],
+    conditions_pending: false,
+    appeal_deadline: '2026-07-10',
+    document_revision_id: null,
+    content_hash: '',
+    deemed: false,
+    decided_by: null,
+  };
+  const draft = {
+    decision_date: '2026-06-10',
+    served_date: '',
+    reference: 'BA-1',
+    scope_note: '',
+    appeal_deadline: '2026-07-10',
+    document_revision_id: '',
+  };
+
+  it('sends the reason and only the facts that changed', () => {
+    expect(toCorrection(decision, draft, ' typo ')).toEqual({ reason: 'typo' });
+    expect(toCorrection(decision, { ...draft, decision_date: '2026-06-09', reference: ' BA-2 ' }, 'typo')).toEqual({
+      reason: 'typo',
+      decision_date: '2026-06-09',
+      reference: 'BA-2',
+    });
+  });
+
+  it('clears an optional date with null, never with an empty string', () => {
+    expect(toCorrection(decision, { ...draft, appeal_deadline: '' }, 'no appeal period')).toEqual({
+      reason: 'no appeal period',
+      appeal_deadline: null,
+    });
+  });
+});
+
 describe('decision clock', () => {
   it('lets a stopped clock only run again', () => {
     expect(clockEventKinds({ start: null, stopped_now: false })).toEqual([]);
@@ -275,6 +331,13 @@ describe('permits', () => {
     expect(canNotifyStart({ state: 'in_force', start_notified_at: null })).toBe(true);
     expect(canNotifyStart({ state: 'in_force', start_notified_at: '2026-07-01' })).toBe(false);
     expect(canNotifyStart({ state: 'suspended', start_notified_at: null })).toBe(false);
+  });
+
+  it('records an interruption only after the start, and a resumption only while interrupted', () => {
+    expect(workStep({ state: 'in_force', start_notified_at: null, paused_since: null })).toBeNull();
+    expect(workStep({ state: 'in_force', start_notified_at: '2026-07-01', paused_since: null })).toBe('interruption');
+    expect(workStep({ state: 'in_force', start_notified_at: '2026-07-01', paused_since: '2026-09-01' })).toBe('resumption');
+    expect(workStep({ state: 'suspended', start_notified_at: '2026-07-01', paused_since: null })).toBeNull();
   });
 
   it('counts whole days across a month end', () => {

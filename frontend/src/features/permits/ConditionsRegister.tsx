@@ -53,7 +53,17 @@ export function ConditionsRegister({ projectId, conditions, viewerId, personName
   const escalate = usePermitAction(
     projectId,
     () => escalateConditions(projectId),
-    (result) =>
+    (result) => {
+      const waiting = result.unescalated?.length ?? 0;
+      if (waiting > 0) {
+        addToast({
+          type: 'warning',
+          title: t('permits.ui.conditions.escalate_unowned', {
+            defaultValue: 'Not escalated, because the management area has no owner yet: {{n}}. Name an owner in project governance.',
+            n: waiting,
+          }),
+        });
+      }
       addToast({
         type: 'success',
         title: t('permits.ui.conditions.escalate_done', {
@@ -62,7 +72,8 @@ export function ConditionsRegister({ projectId, conditions, viewerId, personName
           escalated: result.escalated.length,
           lapsed: result.lapsed.length,
         }),
-      }),
+      });
+    },
   );
 
   if (conditions.length === 0) {

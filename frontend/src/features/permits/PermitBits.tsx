@@ -26,6 +26,7 @@ export const REQUIREMENT_TONE: Record<RequirementState, BadgeVariant> = {
   refused: 'error',
   blocked: 'warning',
   not_applicable: 'neutral',
+  not_in_force: 'error',
   expired: 'error',
   lapsed: 'error',
 };

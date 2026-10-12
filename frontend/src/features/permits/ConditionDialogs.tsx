@@ -26,6 +26,7 @@ import {
   type ConditionInput,
   type ConditionKind,
   type ConditionPurpose,
+  type DischargeCan,
   type DischargeMode,
   type EvidenceKind,
   type Topic,
@@ -40,7 +41,9 @@ import {
   EVIDENCE_KIND,
   TOPIC,
   TRIGGER,
+  errorText,
   vocab,
+  type TFn,
 } from './labels';
 import { Field, FormDialog, fieldClass } from './PermitBits';
 import {
@@ -48,6 +51,7 @@ import {
   changedOnly,
   conditionProblems,
   dischargeModes,
+  dischargeNeedsDocument,
   draftOfCondition,
   newConditionDraft,
   toConditionInput,
@@ -503,16 +507,25 @@ export function EvidenceDialog({ open, onClose, projectId, condition }: Conditio
 
 /* ── Closing a condition ──────────────────────────────────────────────── */
 
-export function DischargeDialog({ open, onClose, projectId, condition }: ConditionActionDialogProps) {
+export function DischargeDialog({
+  open,
+  onClose,
+  projectId,
+  condition,
+  can,
+}: ConditionActionDialogProps & { can?: DischargeCan }) {
   const { t } = useTranslation();
   const modes = dischargeModes(condition);
+  // The server says which ways are open to this reader; without its word every way the state allows is offered.
+  const blocked = (m: DischargeMode) => can?.[m]?.allowed === false;
+  const free = modes.filter((m) => !blocked(m));
   const [mode, setMode] = useState<DischargeMode | ''>('');
   const [onDate, setOnDate] = useState('');
   const [doc, setDoc] = useState('');
   const [note, setNote] = useState('');
   useEffect(() => {
     if (!open) return;
-    setMode(modes.length === 1 ? modes[0]! : '');
+    setMode(free.length === 1 ? free[0]! : '');
     setOnDate(localToday());
     setDoc('');
     setNote('');
@@ -537,6 +550,14 @@ export function DischargeDialog({ open, onClose, projectId, condition }: Conditi
 
   const problems: string[] = [];
   if (!mode) problems.push(t('permits.ui.discharge.problem_mode', { defaultValue: 'Choose how the condition is closed.' }));
+  const needsProof = mode === 'not_triggered' && dischargeNeedsDocument(condition, mode);
+  if (needsProof && !doc) {
+    problems.push(
+      t('permits.ui.discharge.problem_proof', {
+        defaultValue: 'Add the document that shows the trigger did not occur.',
+      }),
+    );
+  }
   if (mode === 'waived_by_authority' && !doc) {
     problems.push(
       t('permits.ui.discharge.problem_document', { defaultValue: 'A waiver needs the letter of the authority as a document.' }),
@@ -550,7 +571,8 @@ export function DischargeDialog({ open, onClose, projectId, condition }: Conditi
       testId="discharge-dialog"
       title={t('permits.ui.discharge.title', { defaultValue: 'Close condition {{number}}', number: condition.number })}
       subtitle={t('permits.ui.discharge.subtitle', {
-        defaultValue: 'The person who closes a condition cannot be its owner. Discharge by the authority is recorded through a discharge application.',
+        defaultValue:
+          'A second person closes a condition: not its owner, and nobody who added or submitted its evidence. Discharge by the authority is recorded through a discharge application.',
       })}
       submitLabel={t('permits.ui.discharge.submit', { defaultValue: 'Close condition' })}
       busy={action.busy}
@@ -564,10 +586,23 @@ export function DischargeDialog({ open, onClose, projectId, condition }: Conditi
         </legend>
         {modes.map((m) => (
           <label key={m} className="flex items-start gap-2 rounded-md border border-border-light p-2.5 text-sm">
-            <input type="radio" name="discharge-mode" className="mt-1" checked={mode === m} onChange={() => setMode(m)} />
+            <input
+              type="radio"
+              name="discharge-mode"
+              className="mt-1"
+              checked={mode === m}
+              disabled={blocked(m)}
+              onChange={() => setMode(m)}
+              data-testid={`discharge-mode-${m}`}
+            />
             <span>
               <span className="font-medium text-content-primary">{vocab(t, DISCHARGE_MODE, m)}</span>
               <span className="block text-xs text-content-secondary">{vocab(t, DISCHARGE_MODE_HINT, m)}</span>
+              {blocked(m) && (
+                <span className="block text-xs text-semantic-error" data-testid={`discharge-blocked-${m}`}>
+                  {errorText(t as TFn, can?.[m]?.reason ?? '', null)}
+                </span>
+              )}
             </span>
           </label>
         ))}
@@ -577,6 +612,11 @@ export function DischargeDialog({ open, onClose, projectId, condition }: Conditi
           <input id={id} type="date" max={localToday()} className={`${fieldClass} max-w-xs`} value={onDate} onChange={(e) => setOnDate(e.target.value)} />
         )}
       </Field>
+      {needsProof && (
+        <Field label={t('permits.ui.discharge.proof', { defaultValue: 'Document that shows it' })} required>
+          {(id) => <DocumentRevisionSelect id={id} projectId={projectId} value={doc} onChange={setDoc} enabled={open} />}
+        </Field>
+      )}
       {mode === 'waived_by_authority' && (
         <Field label={t('permits.ui.discharge.document', { defaultValue: 'Letter of the authority' })} required>
           {(id) => <DocumentRevisionSelect id={id} projectId={projectId} value={doc} onChange={setDoc} enabled={open} />}

@@ -12,22 +12,74 @@ import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { fmtCurrency } from '@/shared/lib/formatters';
 
-import { localToday, notifyStart, transitionPermit, type ConditionRow, type Permit, type PermitTarget, type RequirementRow } from './api';
+import {
+  localToday,
+  notifyStart,
+  recordInterruption,
+  recordResumption,
+  transitionPermit,
+  type ConditionRow,
+  type Permit,
+  type PermitTarget,
+  type RequirementRow,
+} from './api';
 import { ConditionDialog } from './ConditionDialogs';
 import { usePermitAction } from './hooks';
 import { PERMIT_STATE, PERMIT_STEP, SCOPE, typeName, vocab, type LabelContext } from './labels';
 import { Fact, Field, FormDialog, PERMIT_TONE, ToneBadge, dateText, fieldClass } from './PermitBits';
-import { canNotifyStart, permitTargets } from './rules';
+import { canNotifyStart, permitTargets, workStep } from './rules';
 
 /* ── Notice of the start of works ─────────────────────────────────────── */
 
-function StartNoticeDialog({ open, onClose, projectId, permit }: { open: boolean; onClose: () => void; projectId: string; permit: Permit }) {
+type WorkEvent = 'start' | 'interruption' | 'resumption';
+
+const WORK_CALL = { start: notifyStart, interruption: recordInterruption, resumption: recordResumption };
+
+function StartNoticeDialog({
+  open,
+  onClose,
+  projectId,
+  permit,
+  event,
+}: {
+  open: boolean;
+  onClose: () => void;
+  projectId: string;
+  permit: Permit;
+  event: WorkEvent;
+}) {
   const { t } = useTranslation();
+  const words = {
+    start: {
+      title: t('permits.ui.permit.start_title', { defaultValue: 'Record the start of works' }),
+      subtitle: t('permits.ui.permit.start_subtitle', {
+        defaultValue: 'Once work has started under the permit, it no longer lapses for not being used.',
+      }),
+      submit: t('permits.ui.permit.start_submit', { defaultValue: 'Record start' }),
+      date: t('permits.ui.permit.start_date', { defaultValue: 'Work started on' }),
+    },
+    interruption: {
+      title: t('permits.ui.permit.interruption_title', { defaultValue: 'Record an interruption of the works' }),
+      subtitle: t('permits.ui.permit.interruption_subtitle', {
+        defaultValue: 'A permit can lapse when work stands still for too long. The date is counted from here.',
+      }),
+      submit: t('permits.ui.permit.interruption_submit', { defaultValue: 'Record interruption' }),
+      date: t('permits.ui.permit.interruption_date', { defaultValue: 'Work stopped on' }),
+    },
+    resumption: {
+      title: t('permits.ui.permit.resumption_title', { defaultValue: 'Record that work resumed' }),
+      subtitle: t('permits.ui.permit.resumption_subtitle', {
+        defaultValue: 'Work is running again, so the permit is no longer at risk of lapsing for standing still.',
+      }),
+      submit: t('permits.ui.permit.resumption_submit', { defaultValue: 'Record resumption' }),
+      date: t('permits.ui.permit.resumption_date', { defaultValue: 'Work resumed on' }),
+    },
+  }[event];
   const [onDate, setOnDate] = useState('');
   useEffect(() => {
     if (open) setOnDate(localToday());
   }, [open]);
-  const action = usePermitAction(projectId, () => notifyStart(projectId, permit.id, onDate), onClose);
+  const action = usePermitAction(projectId, () => WORK_CALL[event](projectId, permit.id, onDate), onClose);
   useEffect(() => {
     if (!open) action.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -37,17 +89,15 @@ function StartNoticeDialog({ open, onClose, projectId, permit }: { open: boolean
       open={open}
       onClose={onClose}
       testId="start-notice-dialog"
-      title={t('permits.ui.permit.start_title', { defaultValue: 'Record the start of works' })}
-      subtitle={t('permits.ui.permit.start_subtitle', {
-        defaultValue: 'Once work has started under the permit, it no longer lapses for not being used.',
-      })}
-      submitLabel={t('permits.ui.permit.start_submit', { defaultValue: 'Record start' })}
+      title={words.title}
+      subtitle={words.subtitle}
+      submitLabel={words.submit}
       busy={action.busy}
       error={action.error}
-      problems={onDate ? [] : [t('permits.ui.permit.start_problem', { defaultValue: 'Enter the day work started.' })]}
+      problems={onDate ? [] : [t('permits.ui.permit.start_problem', { defaultValue: 'Enter the day this happened.' })]}
       onSubmit={() => action.run(undefined)}
     >
-      <Field label={t('permits.ui.permit.start_date', { defaultValue: 'Work started on' })} required>
+      <Field label={words.date} required>
         {(id) => (
           <input id={id} type="date" max={localToday()} className={`${fieldClass} max-w-xs`} value={onDate} onChange={(e) => setOnDate(e.target.value)} />
         )}
@@ -129,7 +179,7 @@ export interface PermitsRegisterProps {
   onShowConditions: () => void;
 }
 
-type Open = { permit: Permit; kind: 'start' | 'change' | 'condition' } | null;
+type Open = { permit: Permit; kind: WorkEvent | 'change' | 'condition' } | null;
 
 export function PermitsRegister({
   projectId,
@@ -167,6 +217,7 @@ export function PermitsRegister({
           const openCount = own.filter((c) => c.state === 'open' || c.state === 'evidence_submitted' || c.state === 'breach').length;
           const targets = permitTargets(p);
           const warn = p.lapse_warning;
+          const step = workStep(p);
           return (
             <li key={p.id} className="space-y-3 rounded-lg border border-border-light p-4" data-testid="permit-entry">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -189,6 +240,13 @@ export function PermitsRegister({
                   {canNotifyStart(p) && (
                     <Button size="sm" onClick={() => setOpen({ permit: p, kind: 'start' })} data-testid="permit-start">
                       {t('permits.ui.permit.start_submit', { defaultValue: 'Record start' })}
+                    </Button>
+                  )}
+                  {step && (
+                    <Button size="sm" variant="secondary" onClick={() => setOpen({ permit: p, kind: step })} data-testid={`permit-${step}`}>
+                      {step === 'interruption'
+                        ? t('permits.ui.permit.interruption_submit', { defaultValue: 'Record interruption' })
+                        : t('permits.ui.permit.resumption_submit', { defaultValue: 'Record resumption' })}
                     </Button>
                   )}
                   {p.state === 'in_force' && (
@@ -228,6 +286,11 @@ export function PermitsRegister({
                 <Fact label={t('permits.ui.permit.scope', { defaultValue: 'Covers' })}>{vocab(t, SCOPE, p.scope)}</Fact>
                 <Fact label={t('permits.ui.permit.start_by', { defaultValue: 'Work must start by' })}>{dateText(p.valid_until)}</Fact>
                 <Fact label={t('permits.ui.permit.started', { defaultValue: 'Work started' })}>{dateText(p.start_notified_at)}</Fact>
+                {p.paused_since && (
+                  <Fact label={t('permits.ui.permit.paused_since', { defaultValue: 'Work interrupted since' })} testId="permit-paused">
+                    {dateText(p.paused_since)}
+                  </Fact>
+                )}
                 {p.security_amount && (
                   <Fact label={t('permits.ui.permit.security', { defaultValue: 'Security' })} testId="permit-security">
                     {fmtCurrency(p.security_amount, p.security_currency)}
@@ -249,7 +312,13 @@ export function PermitsRegister({
       </ul>
       {open && (
         <>
-          <StartNoticeDialog open={open.kind === 'start'} onClose={() => setOpen(null)} projectId={projectId} permit={open.permit} />
+          <StartNoticeDialog
+            open={open.kind === 'start' || open.kind === 'interruption' || open.kind === 'resumption'}
+            onClose={() => setOpen(null)}
+            projectId={projectId}
+            permit={open.permit}
+            event={open.kind === 'interruption' || open.kind === 'resumption' ? open.kind : 'start'}
+          />
           <PermitTransitionDialog open={open.kind === 'change'} onClose={() => setOpen(null)} projectId={projectId} permit={open.permit} />
           <ConditionDialog
             open={open.kind === 'condition'}

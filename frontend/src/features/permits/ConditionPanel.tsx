@@ -16,9 +16,9 @@ import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { confirmProposal, removeEvidence, submitEvidence, type ConditionRow } from './api';
 import { ConditionDialog, DischargeDialog, EvidenceDialog, LinkRequirementDialog, OngoingDialog } from './ConditionDialogs';
 import { refusalText, useConditionDetail, usePermitAction } from './hooks';
-import { CONDITION_KIND, CONDITION_STATE, DISCHARGE_MODE, EVIDENCE_KIND, TOPIC, TRIGGER, vocab, type TFn } from './labels';
+import { CONDITION_KIND, CONDITION_STATE, DISCHARGE_MODE, EVIDENCE_KIND, TOPIC, TRIGGER, errorText, vocab, type TFn } from './labels';
 import { CONDITION_TONE, Fact, PanelHeader, PersonChip, Refusal, ToneBadge, dateText } from './PermitBits';
-import { conditionActions, type ConditionAction } from './rules';
+import { conditionActions, dischargeModes, type ConditionAction } from './rules';
 
 export interface ConditionPanelProps {
   projectId: string;
@@ -69,6 +69,11 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
   const can = (a: ConditionAction) => actions.includes(a);
   const refusal = submit.error ?? confirm.error ?? unlink.error;
   const canUnlink = c.state === 'open' || c.state === 'evidence_submitted';
+  // The server names who may close the condition; when it refuses every way, the button says why.
+  const gates = c.can?.discharge;
+  const refused = dischargeModes(c).map((m) => gates?.[m]);
+  const dischargeRefusal =
+    refused.length > 0 && refused.every((g) => g?.allowed === false) ? errorText(t as TFn, refused[0]?.reason ?? '', null) : null;
 
   return (
     <div className="space-y-5" data-testid="condition-panel">
@@ -120,7 +125,7 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
               </Button>
             )}
             {can('discharge') && (
-              <Button size="sm" variant={c.state === 'evidence_submitted' ? 'primary' : 'secondary'} onClick={() => setDialog('discharge')} data-testid="condition-discharge">
+              <Button size="sm" variant={c.state === 'evidence_submitted' ? 'primary' : 'secondary'} disabled={!!dischargeRefusal} title={dischargeRefusal ?? undefined} onClick={() => setDialog('discharge')} data-testid="condition-discharge">
                 {t('permits.ui.discharge.submit', { defaultValue: 'Close condition' })}
               </Button>
             )}
@@ -270,7 +275,7 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
         personName={personName}
       />
       <EvidenceDialog open={dialog === 'evidence'} onClose={() => setDialog(null)} projectId={projectId} condition={c} />
-      <DischargeDialog open={dialog === 'discharge'} onClose={() => setDialog(null)} projectId={projectId} condition={c} />
+      <DischargeDialog open={dialog === 'discharge'} onClose={() => setDialog(null)} projectId={projectId} condition={c} can={gates} />
       <OngoingDialog
         open={dialog === 'breach' || dialog === 'in_compliance'}
         onClose={() => setDialog(null)}

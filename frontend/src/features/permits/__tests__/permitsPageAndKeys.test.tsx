@@ -122,6 +122,7 @@ describe('PermitsPage states', () => {
     expect(await screen.findByTestId('readiness-chip-start')).toHaveTextContent('Not ready');
     expect(screen.getByTestId('readiness-chip-handover')).toHaveTextContent('Ready');
     expect(screen.getByTestId('export-pdf')).toBeInTheDocument();
+    expect(screen.getByTestId('file-register')).toBeInTheDocument();
     expect(mocked.getValidation).not.toHaveBeenCalled();
   });
 

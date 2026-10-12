@@ -37,6 +37,7 @@ export type RequirementState =
   | 'refused'
   | 'blocked'
   | 'not_applicable'
+  | 'not_in_force'
   | 'expired'
   | 'lapsed';
 export type ApplicationState =
@@ -126,6 +127,8 @@ export type DependencyOn = 'granted' | 'submitted';
 export type ReadinessGate = 'start' | 'handover' | 'roadmap' | 'register';
 export type ReadinessStatus = 'ready' | 'at_risk' | 'not_ready' | 'no_roadmap';
 export type ExportRegister = 'roadmap' | 'conditions' | 'permits';
+/** The governance frame documents a permit register is filed as. */
+export type FrameDocumentType = 'dev_permit_roadmap' | 'dev_special_permits' | 'dev_permit_conditions';
 
 export interface CatalogueSummary {
   kind: string;
@@ -299,6 +302,8 @@ export interface Application {
   approval_instance_id: string | null;
   state: ApplicationState;
   appeal_note: string;
+  applicant_role?: ApplicantRole | null;
+  applicant_source?: string;
 }
 
 export interface ClockEvent {
@@ -397,6 +402,25 @@ export interface DecisionInput {
   removed_condition_numbers?: string[];
 }
 
+export interface DecisionCorrection {
+  reason: string;
+  decision_date?: string;
+  served_date?: string | null;
+  reference?: string;
+  scope_note?: string;
+  appeal_deadline?: string | null;
+  document_revision_id?: string | null;
+}
+
+export interface FrameDocumentResult {
+  doc_type: FrameDocumentType;
+  register: ExportRegister;
+  governance_document_id: string;
+  container_id: string;
+  revision_id: string;
+  content_hash: string;
+}
+
 export interface LapseWarning {
   /** `d90`, `d30`, `d7` before the lapse date, `lapsed` after it. */
   level: string;
@@ -416,6 +440,8 @@ export interface Permit {
   security_amount: string | null;
   security_currency: string;
   start_notified_at: string | null;
+  /** The day work stopped, while it is interrupted; a long interruption can make the permit lapse. */
+  paused_since?: string | null;
   valid_until: string | null;
   superseded_by_id: string | null;
   lapse_warning?: LapseWarning | null;
@@ -458,6 +484,7 @@ export interface Condition {
   breach_ref_kind: string;
   breach_ref_id: string | null;
   breach_note: string;
+  evidence_submitted_by?: string | null;
 }
 
 export interface ConditionRow extends Condition {
@@ -489,11 +516,21 @@ export interface Discharge {
   date: string | null;
   document_revision_id: string | null;
   note: string;
+  carried_from_id?: string | null;
 }
+
+/** Whether the reader may close the condition in one way, and the refusal code when not. */
+export interface DischargeGate {
+  allowed: boolean;
+  reason: string | null;
+}
+
+export type DischargeCan = Partial<Record<DischargeMode, DischargeGate>>;
 
 export interface ConditionDetail extends Condition {
   evidence: Evidence[];
   discharges: Discharge[];
+  can?: { discharge?: DischargeCan };
 }
 
 export interface ReadinessItem {
@@ -540,6 +577,8 @@ export interface ProposeResult {
 export interface EscalateResult {
   notified: string[];
   escalated: string[];
+  /** Due for escalation, but the area has no owner yet; the server retries. */
+  unescalated?: string[];
   lapsed: string[];
 }
 
@@ -651,7 +690,7 @@ export function setDependencies(
 }
 
 export function pushMilestone(projectId: string, id: string): Promise<Record<string, unknown>> {
-  return apiPost<Record<string, unknown>>(`${p(projectId)}/requirements/${id}/push-milestone?today=${localToday()}`, {});
+  return apiPost<Record<string, unknown>>(`${p(projectId)}/requirements/${id}/push-milestone`, {});
 }
 
 export function getTimeline(projectId: string): Promise<Page<TimelineRow>> {
@@ -681,7 +720,7 @@ export function transitionApplication(
   id: string,
   body: { target: ApplicationTarget; on_date?: string | null; reason: string },
 ): Promise<Application> {
-  return apiPost<Application>(`${p(projectId)}/applications/${id}/transition?today=${localToday()}`, body);
+  return apiPost<Application>(`${p(projectId)}/applications/${id}/transition`, body);
 }
 
 export function addClockEvent(projectId: string, id: string, body: ClockEventInput): Promise<ClockEvent> {
@@ -689,11 +728,16 @@ export function addClockEvent(projectId: string, id: string, body: ClockEventInp
 }
 
 export function recordDecision(projectId: string, id: string, body: DecisionInput): Promise<DecisionResult> {
-  return apiPost<DecisionResult>(`${p(projectId)}/applications/${id}/decision?today=${localToday()}`, body);
+  return apiPost<DecisionResult>(`${p(projectId)}/applications/${id}/decision`, body);
 }
 
 export function completeRegister(projectId: string, decisionId: string): Promise<Decision> {
   return apiPost<Decision>(`${p(projectId)}/decisions/${decisionId}/complete-register`, {});
+}
+
+/** A new revision of a decision with corrected facts. The outcome itself cannot be corrected. */
+export function correctDecision(projectId: string, decisionId: string, body: DecisionCorrection): Promise<Decision> {
+  return apiPost<Decision>(`${p(projectId)}/decisions/${decisionId}/correct`, body);
 }
 
 /* ── Permits ──────────────────────────────────────────────────────────── */
@@ -704,6 +748,14 @@ export function listPermits(projectId: string): Promise<Page<Permit>> {
 
 export function notifyStart(projectId: string, permitId: string, onDate: string): Promise<Permit> {
   return apiPost<Permit>(`${p(projectId)}/permits/${permitId}/start-notice`, { on_date: onDate });
+}
+
+export function recordInterruption(projectId: string, permitId: string, onDate: string): Promise<Permit> {
+  return apiPost<Permit>(`${p(projectId)}/permits/${permitId}/interruption`, { on_date: onDate });
+}
+
+export function recordResumption(projectId: string, permitId: string, onDate: string): Promise<Permit> {
+  return apiPost<Permit>(`${p(projectId)}/permits/${permitId}/resumption`, { on_date: onDate });
 }
 
 export function transitionPermit(
@@ -760,7 +812,7 @@ export function dischargeCondition(
   id: string,
   body: { mode: DischargeMode; on_date?: string | null; document_revision_id?: string | null; note: string },
 ): Promise<Discharge> {
-  return apiPost<Discharge>(`${p(projectId)}/conditions/${id}/discharge?today=${localToday()}`, body);
+  return apiPost<Discharge>(`${p(projectId)}/conditions/${id}/discharge`, body);
 }
 
 export function raiseBreach(projectId: string, id: string, note: string): Promise<Condition> {
@@ -790,7 +842,7 @@ export function conditionToRequirement(
 }
 
 export function escalateConditions(projectId: string): Promise<EscalateResult> {
-  return apiPost<EscalateResult>(`${p(projectId)}/conditions/escalate?today=${localToday()}`, {});
+  return apiPost<EscalateResult>(`${p(projectId)}/conditions/escalate`, {});
 }
 
 /* ── Read side ────────────────────────────────────────────────────────── */
@@ -801,6 +853,11 @@ export function getReadiness(projectId: string, gate: ReadinessGate): Promise<Re
 
 export function getValidation(projectId: string): Promise<Page<Finding>> {
   return apiGet<Page<Finding>>(`${p(projectId)}/validation?today=${localToday()}`);
+}
+
+/** File the register as a new revision of its governance frame document. */
+export function publishFrameDocument(projectId: string, docType: FrameDocumentType): Promise<FrameDocumentResult> {
+  return apiPost<FrameDocumentResult>(`${p(projectId)}/frame-documents/${docType}/publish`, {});
 }
 
 export function downloadRegister(projectId: string, register: ExportRegister, format: 'pdf' | 'xlsx'): Promise<void> {
