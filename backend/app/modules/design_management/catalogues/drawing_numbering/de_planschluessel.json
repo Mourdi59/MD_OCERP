@@ -1,0 +1,164 @@
+{
+  "id": "de_planschluessel",
+  "version": 1,
+  "name_key": "design.catalogue.de_planschluessel.name",
+  "description_key": "design.catalogue.de_planschluessel.description",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "DE"
+  ],
+  "fields": [
+    {
+      "code": "project",
+      "label_key": "design.catalogue.de_planschluessel.field.project",
+      "pattern": "^[A-Z0-9]{2,8}$",
+      "source_field": "project.code"
+    },
+    {
+      "code": "discipline",
+      "label_key": "design.catalogue.de_planschluessel.field.discipline",
+      "code_list": [
+        {
+          "code": "AR",
+          "label_key": "design.catalogue.de_planschluessel.discipline.ar"
+        },
+        {
+          "code": "TW",
+          "label_key": "design.catalogue.de_planschluessel.discipline.tw"
+        },
+        {
+          "code": "HL",
+          "label_key": "design.catalogue.de_planschluessel.discipline.hl"
+        },
+        {
+          "code": "EL",
+          "label_key": "design.catalogue.de_planschluessel.discipline.el"
+        },
+        {
+          "code": "FA",
+          "label_key": "design.catalogue.de_planschluessel.discipline.fa"
+        },
+        {
+          "code": "BP",
+          "label_key": "design.catalogue.de_planschluessel.discipline.bp"
+        },
+        {
+          "code": "BS",
+          "label_key": "design.catalogue.de_planschluessel.discipline.bs"
+        },
+        {
+          "code": "VA",
+          "label_key": "design.catalogue.de_planschluessel.discipline.va"
+        }
+      ],
+      "source_field": "role.discipline_code"
+    },
+    {
+      "code": "phase",
+      "label_key": "design.catalogue.de_planschluessel.field.phase",
+      "code_list": [
+        {
+          "code": "LPH1",
+          "label_key": "design.catalogue.de_planschluessel.phase.lph1"
+        },
+        {
+          "code": "LPH2",
+          "label_key": "design.catalogue.de_planschluessel.phase.lph2"
+        },
+        {
+          "code": "LPH3",
+          "label_key": "design.catalogue.de_planschluessel.phase.lph3"
+        },
+        {
+          "code": "LPH4",
+          "label_key": "design.catalogue.de_planschluessel.phase.lph4"
+        },
+        {
+          "code": "LPH5",
+          "label_key": "design.catalogue.de_planschluessel.phase.lph5"
+        },
+        {
+          "code": "LPH6",
+          "label_key": "design.catalogue.de_planschluessel.phase.lph6"
+        },
+        {
+          "code": "LPH7",
+          "label_key": "design.catalogue.de_planschluessel.phase.lph7"
+        },
+        {
+          "code": "LPH8",
+          "label_key": "design.catalogue.de_planschluessel.phase.lph8"
+        },
+        {
+          "code": "LPH9",
+          "label_key": "design.catalogue.de_planschluessel.phase.lph9"
+        }
+      ],
+      "source_field": "drawing.phase_code"
+    },
+    {
+      "code": "form",
+      "label_key": "design.catalogue.de_planschluessel.field.form",
+      "code_list": [
+        {
+          "code": "GR",
+          "label_key": "design.catalogue.de_planschluessel.form.gr"
+        },
+        {
+          "code": "AN",
+          "label_key": "design.catalogue.de_planschluessel.form.an"
+        },
+        {
+          "code": "SC",
+          "label_key": "design.catalogue.de_planschluessel.form.sc"
+        },
+        {
+          "code": "DE",
+          "label_key": "design.catalogue.de_planschluessel.form.de"
+        },
+        {
+          "code": "LP",
+          "label_key": "design.catalogue.de_planschluessel.form.lp"
+        },
+        {
+          "code": "SM",
+          "label_key": "design.catalogue.de_planschluessel.form.sm"
+        },
+        {
+          "code": "LI",
+          "label_key": "design.catalogue.de_planschluessel.form.li"
+        }
+      ]
+    },
+    {
+      "code": "spatial",
+      "label_key": "design.catalogue.de_planschluessel.field.spatial",
+      "pattern": "^[A-Z0-9]{2,3}$"
+    },
+    {
+      "code": "number",
+      "label_key": "design.catalogue.de_planschluessel.field.number",
+      "pattern": "^[0-9]{4}$",
+      "pad": 4
+    }
+  ],
+  "metadata_fields": [
+    {
+      "code": "status"
+    },
+    {
+      "code": "revision"
+    }
+  ],
+  "drawing_forms": [
+    "GR",
+    "AN",
+    "SC",
+    "DE",
+    "LP"
+  ],
+  "number_scope": [
+    "discipline",
+    "form"
+  ]
+}

@@ -1,0 +1,197 @@
+{
+  "id": "iso19650_uk_na",
+  "version": 1,
+  "name_key": "design.catalogue.iso19650_uk_na.name",
+  "description_key": "design.catalogue.iso19650_uk_na.description",
+  "source_url": "https://www.cdbb.cam.ac.uk/files/national_annex_guidance.pdf",
+  "source_title": "UK BIM Framework, National Annex guidance",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "GB"
+  ],
+  "fields": [
+    {
+      "code": "project",
+      "label_key": "design.catalogue.iso19650_uk_na.field.project",
+      "pattern": "^[A-Z0-9]{2,6}$",
+      "source_field": "project.code"
+    },
+    {
+      "code": "originator",
+      "label_key": "design.catalogue.iso19650_uk_na.field.originator",
+      "pattern": "^[A-Z0-9]{3,6}$",
+      "source_field": "role.originator_code"
+    },
+    {
+      "code": "functional",
+      "label_key": "design.catalogue.iso19650_uk_na.field.functional",
+      "pattern": "^[A-Z0-9]{2}$"
+    },
+    {
+      "code": "spatial",
+      "label_key": "design.catalogue.iso19650_uk_na.field.spatial",
+      "pattern": "^[A-Z0-9]{2}$"
+    },
+    {
+      "code": "form",
+      "label_key": "design.catalogue.iso19650_uk_na.field.form",
+      "code_list": [
+        {
+          "code": "DR",
+          "label_key": "design.catalogue.iso19650_uk_na.form.dr"
+        },
+        {
+          "code": "M2",
+          "label_key": "design.catalogue.iso19650_uk_na.form.m2"
+        },
+        {
+          "code": "M3",
+          "label_key": "design.catalogue.iso19650_uk_na.form.m3"
+        },
+        {
+          "code": "SP",
+          "label_key": "design.catalogue.iso19650_uk_na.form.sp"
+        },
+        {
+          "code": "RP",
+          "label_key": "design.catalogue.iso19650_uk_na.form.rp"
+        },
+        {
+          "code": "SH",
+          "label_key": "design.catalogue.iso19650_uk_na.form.sh"
+        },
+        {
+          "code": "CA",
+          "label_key": "design.catalogue.iso19650_uk_na.form.ca"
+        },
+        {
+          "code": "SU",
+          "label_key": "design.catalogue.iso19650_uk_na.form.su"
+        },
+        {
+          "code": "VS",
+          "label_key": "design.catalogue.iso19650_uk_na.form.vs"
+        }
+      ]
+    },
+    {
+      "code": "discipline",
+      "label_key": "design.catalogue.iso19650_uk_na.field.discipline",
+      "code_list": [
+        {
+          "code": "A",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.a"
+        },
+        {
+          "code": "B",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.b"
+        },
+        {
+          "code": "C",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.c"
+        },
+        {
+          "code": "D",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.d"
+        },
+        {
+          "code": "E",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.e"
+        },
+        {
+          "code": "F",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.f"
+        },
+        {
+          "code": "G",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.g"
+        },
+        {
+          "code": "H",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.h"
+        },
+        {
+          "code": "I",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.i"
+        },
+        {
+          "code": "K",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.k"
+        },
+        {
+          "code": "L",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.l"
+        },
+        {
+          "code": "M",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.m"
+        },
+        {
+          "code": "P",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.p"
+        },
+        {
+          "code": "Q",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.q"
+        },
+        {
+          "code": "S",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.s"
+        },
+        {
+          "code": "T",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.t"
+        },
+        {
+          "code": "W",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.w"
+        },
+        {
+          "code": "X",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.x"
+        },
+        {
+          "code": "Y",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.y"
+        },
+        {
+          "code": "Z",
+          "label_key": "design.catalogue.iso19650_uk_na.discipline.z"
+        }
+      ],
+      "source_field": "role.discipline_code"
+    },
+    {
+      "code": "number",
+      "label_key": "design.catalogue.iso19650_uk_na.field.number",
+      "pattern": "^[0-9]{4,6}$",
+      "pad": 4
+    }
+  ],
+  "metadata_fields": [
+    {
+      "code": "status",
+      "code_list": [
+        "S0",
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "AR"
+      ]
+    },
+    {
+      "code": "revision"
+    }
+  ],
+  "drawing_forms": [
+    "DR",
+    "M2",
+    "M3"
+  ]
+}

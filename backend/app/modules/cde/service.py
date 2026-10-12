@@ -20,6 +20,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cde_naming import check_container_code
 from app.core.cde_states import CDEState, CDEStateMachine
 from app.core.events import publish_after_commit
 from app.core.json_merge import merge_metadata
@@ -101,6 +102,24 @@ def _iso_role_for(app_role: str | None) -> str:
     return _APP_ROLE_TO_ISO.get(role, role)
 
 
+#: Container fields a numbering scheme checks together (the code and its ISO parts).
+_NAMING_FIELDS = frozenset(
+    {
+        "container_code",
+        "originator_code",
+        "functional_breakdown",
+        "spatial_breakdown",
+        "form_code",
+        "discipline_code",
+        "sequence_number",
+    }
+)
+
+
+def _code_parts(data: Any) -> dict[str, Any]:
+    return {k: getattr(data, k, None) for k in _NAMING_FIELDS}
+
+
 class CDEService:
     """Business logic for CDE operations."""
 
@@ -146,6 +165,10 @@ class CDEService:
                         "spatial_breakdown, form_code, discipline_code, or sequence_number)"
                     ),
                 )
+
+        # A numbering scheme the project pins (design management) checks the code
+        # and its ISO parts; with no scheme pinned this is a no-op.
+        await check_container_code(self.session, data.project_id, data.container_code, _code_parts(data))
 
         existing = await self.container_repo.get_by_code_and_project(data.project_id, data.container_code)
         if existing is not None:
@@ -250,6 +273,10 @@ class CDEService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=reason,
             )
+
+        if _NAMING_FIELDS & fields.keys():
+            merged = {k: fields.get(k, getattr(container, k)) for k in _NAMING_FIELDS}
+            await check_container_code(self.session, container.project_id, merged["container_code"], merged)
 
         await self.container_repo.update_fields(container_id, **fields)
         await self.session.refresh(container)

@@ -67,6 +67,10 @@ TARGET_KINDS: tuple[str, ...] = (
     # these instances and subscribes to their terminal events.
     "phase_gate",
     "frame_change",
+    # Design management: the decision at a design approval point, and the
+    # release of a drawing set when the project runs four-eyes releases.
+    "design_approval_point",
+    "design_release",
 )
 
 # Aggregation mode at a single step when the approver_role expands to

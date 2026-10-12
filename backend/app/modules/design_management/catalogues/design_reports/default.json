@@ -1,0 +1,388 @@
+{
+  "id": "default",
+  "version": 1,
+  "name_key": "design.catalogue.reports.default.name",
+  "review_status": "unconfirmed",
+  "report_kinds": [
+    {
+      "code": "structural_design",
+      "name_key": "design.catalogue.report.structural_design",
+      "discipline": "S",
+      "typical_phase": "design",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
+      "code": "structural_proof_check",
+      "name_key": "design.catalogue.report.structural_proof_check",
+      "discipline": "S",
+      "typical_phase": "approval",
+      "independent_check": "required_by_rule",
+      "country_rules": [
+        {
+          "country": "DE",
+          "region": "BY",
+          "condition_key": "design.catalogue.rule.de_building_class_or_special",
+          "text_key": "design.catalogue.rule.de_independent_structural_check",
+          "source_url": "https://stmb.bayern.de/assets/stmi/buw/baurechtundtechnik/24_bautechnischenachweise_20241125.pdf",
+          "review_status": "unconfirmed"
+        },
+        {
+          "country": "DE",
+          "region": "SH",
+          "condition_key": "design.catalogue.rule.de_building_class_or_special",
+          "text_key": "design.catalogue.rule.de_independent_structural_check",
+          "source_url": "https://umwelt-online.de/recht/bau/laender/sh/ppvo21.htm",
+          "review_status": "unconfirmed"
+        },
+        {
+          "country": "DE",
+          "region": "NI",
+          "condition_key": "design.catalogue.rule.de_building_class_or_special",
+          "text_key": "design.catalogue.rule.de_independent_structural_check",
+          "source_url": "https://umwelt-online.de/recht/bau/laender/nds/bpr.htm",
+          "review_status": "unconfirmed"
+        }
+      ]
+    },
+    {
+      "code": "fire_safety_concept",
+      "name_key": "design.catalogue.report.fire_safety_concept",
+      "discipline": "F",
+      "typical_phase": "design",
+      "independent_check": "optional",
+      "country_rules": []
+    },
+    {
+      "code": "fire_proof_check",
+      "name_key": "design.catalogue.report.fire_proof_check",
+      "discipline": "F",
+      "typical_phase": "approval",
+      "independent_check": "optional",
+      "country_rules": []
+    },
+    {
+      "code": "acoustics",
+      "name_key": "design.catalogue.report.acoustics",
+      "discipline": "BP",
+      "typical_phase": "design",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
+      "code": "thermal_energy",
+      "name_key": "design.catalogue.report.thermal_energy",
+      "discipline": "BP",
+      "typical_phase": "approval",
+      "independent_check": "optional",
+      "country_rules": []
+    },
+    {
+      "code": "geotechnical",
+      "name_key": "design.catalogue.report.geotechnical",
+      "discipline": "B",
+      "typical_phase": "concept",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
+      "code": "environmental",
+      "name_key": "design.catalogue.report.environmental",
+      "discipline": "EN",
+      "typical_phase": "concept",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
+      "code": "sound_insulation",
+      "name_key": "design.catalogue.report.sound_insulation",
+      "discipline": "BP",
+      "typical_phase": "detail",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
+      "code": "vibration",
+      "name_key": "design.catalogue.report.vibration",
+      "discipline": "S",
+      "typical_phase": "design",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
+      "code": "daylight",
+      "name_key": "design.catalogue.report.daylight",
+      "discipline": "A",
+      "typical_phase": "design",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
+      "code": "traffic",
+      "name_key": "design.catalogue.report.traffic",
+      "discipline": "C",
+      "typical_phase": "concept",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
+      "code": "drainage",
+      "name_key": "design.catalogue.report.drainage",
+      "discipline": "D",
+      "typical_phase": "design",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
+      "code": "survey",
+      "name_key": "design.catalogue.report.survey",
+      "discipline": "G",
+      "typical_phase": "brief",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
+      "code": "contamination",
+      "name_key": "design.catalogue.report.contamination",
+      "discipline": "B",
+      "typical_phase": "brief",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
+      "code": "uxo",
+      "name_key": "design.catalogue.report.uxo",
+      "discipline": "B",
+      "typical_phase": "brief",
+      "independent_check": "none",
+      "country_rules": []
+    }
+  ],
+  "permit_steps": [
+    {
+      "code": "neutral",
+      "name_key": "design.catalogue.permit_profile.neutral",
+      "steps": [
+        {
+          "code": "pre_application",
+          "order": 1,
+          "name_key": "design.catalogue.permit_step.pre_application",
+          "spine_key": "design",
+          "cycle_state": "draft",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "application",
+          "order": 2,
+          "name_key": "design.catalogue.permit_step.application",
+          "spine_key": "approval",
+          "cycle_state": "submitted",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "completeness_check",
+          "order": 3,
+          "name_key": "design.catalogue.permit_step.completeness_check",
+          "spine_key": "approval",
+          "cycle_state": "under_review",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "remarks",
+          "order": 4,
+          "name_key": "design.catalogue.permit_step.remarks",
+          "spine_key": "approval",
+          "cycle_state": "remarks_issued",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "approval",
+          "order": 5,
+          "name_key": "design.catalogue.permit_step.approval",
+          "spine_key": "approval",
+          "cycle_state": "approved",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "start_notice",
+          "order": 6,
+          "name_key": "design.catalogue.permit_step.start_notice",
+          "spine_key": "construction",
+          "cycle_state": null,
+          "review_status": "unconfirmed"
+        }
+      ]
+    },
+    {
+      "code": "de_bauantrag",
+      "name_key": "design.catalogue.permit_profile.de_bauantrag",
+      "jurisdiction_countries": [
+        "DE"
+      ],
+      "steps": [
+        {
+          "code": "pre_application",
+          "order": 1,
+          "name_key": "design.catalogue.permit_step.pre_application",
+          "spine_key": "design",
+          "cycle_state": "draft",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "application",
+          "order": 2,
+          "name_key": "design.catalogue.permit_step.application",
+          "spine_key": "approval",
+          "cycle_state": "submitted",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "completeness_check",
+          "order": 3,
+          "name_key": "design.catalogue.permit_step.completeness_check",
+          "spine_key": "approval",
+          "cycle_state": "under_review",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "remarks",
+          "order": 4,
+          "name_key": "design.catalogue.permit_step.remarks",
+          "spine_key": "approval",
+          "cycle_state": "remarks_issued",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "approval",
+          "order": 5,
+          "name_key": "design.catalogue.permit_step.approval",
+          "spine_key": "approval",
+          "cycle_state": "approved",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "partial_approval",
+          "order": 6,
+          "name_key": "design.catalogue.permit_step.partial_approval",
+          "spine_key": "approval",
+          "cycle_state": "approved",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "start_notice",
+          "order": 7,
+          "name_key": "design.catalogue.permit_step.start_notice",
+          "spine_key": "construction",
+          "cycle_state": null,
+          "review_status": "unconfirmed"
+        }
+      ]
+    },
+    {
+      "code": "uk_planning_building_regs",
+      "name_key": "design.catalogue.permit_profile.uk_planning_building_regs",
+      "jurisdiction_countries": [
+        "GB"
+      ],
+      "steps": [
+        {
+          "code": "pre_application",
+          "order": 1,
+          "name_key": "design.catalogue.permit_step.pre_application",
+          "spine_key": "design",
+          "cycle_state": "draft",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "application",
+          "order": 2,
+          "name_key": "design.catalogue.permit_step.application",
+          "spine_key": "approval",
+          "cycle_state": "submitted",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "completeness_check",
+          "order": 3,
+          "name_key": "design.catalogue.permit_step.completeness_check",
+          "spine_key": "approval",
+          "cycle_state": "under_review",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "remarks",
+          "order": 4,
+          "name_key": "design.catalogue.permit_step.remarks",
+          "spine_key": "approval",
+          "cycle_state": "remarks_issued",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "approval",
+          "order": 5,
+          "name_key": "design.catalogue.permit_step.approval",
+          "spine_key": "approval",
+          "cycle_state": "approved",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "start_notice",
+          "order": 6,
+          "name_key": "design.catalogue.permit_step.start_notice",
+          "spine_key": "construction",
+          "cycle_state": null,
+          "review_status": "unconfirmed"
+        }
+      ]
+    },
+    {
+      "code": "us_building_permit",
+      "name_key": "design.catalogue.permit_profile.us_building_permit",
+      "jurisdiction_countries": [
+        "US"
+      ],
+      "steps": [
+        {
+          "code": "application",
+          "order": 1,
+          "name_key": "design.catalogue.permit_step.application",
+          "spine_key": "approval",
+          "cycle_state": "submitted",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "completeness_check",
+          "order": 2,
+          "name_key": "design.catalogue.permit_step.completeness_check",
+          "spine_key": "approval",
+          "cycle_state": "under_review",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "remarks",
+          "order": 3,
+          "name_key": "design.catalogue.permit_step.remarks",
+          "spine_key": "approval",
+          "cycle_state": "remarks_issued",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "approval",
+          "order": 4,
+          "name_key": "design.catalogue.permit_step.approval",
+          "spine_key": "approval",
+          "cycle_state": "approved",
+          "review_status": "unconfirmed"
+        },
+        {
+          "code": "start_notice",
+          "order": 5,
+          "name_key": "design.catalogue.permit_step.start_notice",
+          "spine_key": "construction",
+          "cycle_state": null,
+          "review_status": "unconfirmed"
+        }
+      ]
+    }
+  ]
+}

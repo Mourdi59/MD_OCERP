@@ -1,0 +1,251 @@
+{
+  "design": {
+    "catalogue": {
+      "report": {
+        "acoustics": "Acoustics report",
+        "contamination": "Ground contamination report",
+        "daylight": "Daylight and sunlight report",
+        "drainage": "Drainage strategy",
+        "environmental": "Environmental report",
+        "fire_proof_check": "Independent fire safety check",
+        "fire_safety_concept": "Fire safety concept",
+        "geotechnical": "Geotechnical report",
+        "sound_insulation": "Sound insulation proof",
+        "structural_design": "Structural design and calculations",
+        "structural_proof_check": "Independent structural check",
+        "survey": "Site survey",
+        "thermal_energy": "Thermal and energy performance proof",
+        "traffic": "Traffic report",
+        "uxo": "Unexploded ordnance assessment",
+        "vibration": "Vibration report"
+      }
+    },
+    "cde_state": {
+      "archived": "Archiviert",
+      "published": "Veröffentlicht",
+      "shared": "Geteilt",
+      "wip": "In Bearbeitung"
+    },
+    "common": {
+      "ok": "OK"
+    },
+    "errors": {
+      "answer_required": "Eine Antwort ist erforderlich.",
+      "approval_point_locked": "Der Freigabepunkt ist in Prüfung oder entschieden und kann nicht geändert werden.",
+      "approval_point_not_found": "Freigabepunkt nicht gefunden.",
+      "binding_requires_change_request": "Das Rahmendokument Planung ist verbindlich; Änderungen brauchen einen Änderungsantrag.",
+      "catalogue_retired": "Dieser Katalog ist zurückgezogen und kann nicht festgelegt werden.",
+      "code_duplicate": "Dieser Code wird im Projekt bereits verwendet.",
+      "comment_not_found": "Kommentar nicht gefunden.",
+      "comment_text_required": "Ein Kommentar braucht einen Text.",
+      "concurrent_issue": "Die Freigabe wurde gleichzeitig geändert; bitte erneut versuchen.",
+      "condition_needs_owner_and_due_date": "Eine bestätigte Auflage braucht einen Verantwortlichen und ein Fälligkeitsdatum.",
+      "condition_not_found": "Auflage nicht gefunden.",
+      "condition_not_proposed": "Diese Auflage wurde bereits bestätigt oder verworfen.",
+      "container_not_found": "Dokumentcontainer in diesem Projekt nicht gefunden.",
+      "deliverable_not_found": "Planungsleistung nicht gefunden.",
+      "dist_rule_not_found": "Verteilregel nicht gefunden.",
+      "distribution_list_not_found": "Verteilerliste in diesem Projekt nicht gefunden.",
+      "drawing_not_found": "Plan nicht gefunden.",
+      "duplicate_issue": "Einige Revisionen gingen bereits an diese Empfänger; für eine erneute Ausgabe ist eine Begründung nötig.",
+      "field_required": "Ein Pflichtfeld fehlt.",
+      "frame_document_missing": "Das Projekt hat kein Rahmendokument Planung im Steuerungsmodell.",
+      "hint_override_needs_rationale": "Das Abweichen vom Kataloghinweis braucht eine Begründung.",
+      "invalid_id": "Ungültige Kennung.",
+      "invalid_transition": "Dieser Statuswechsel ist jetzt nicht zulässig.",
+      "model_exists": "Ein Phasenmodell ist bereits festgelegt.",
+      "no_approval_route": "Keine aktive Freigaberoute für Planungsfreigabepunkte in diesem Projekt.",
+      "not_required_needs_rationale": "Ein Gutachten als nicht erforderlich zu markieren braucht eine Begründung.",
+      "number_taken": "Diese Nummer wird oder wurde im Projekt verwendet.",
+      "numbering_case_invalid": "Die Nummer muss in Großbuchstaben stehen.",
+      "numbering_chars_invalid": "Die Nummer enthält Zeichen, die das Schema nicht erlaubt.",
+      "numbering_code_not_in_list": "Ein Feldwert steht nicht in der Codeliste des Schemas.",
+      "numbering_empty": "Die Nummer ist leer.",
+      "numbering_field_invalid": "Ein Feld der Nummer entspricht nicht seinem Format.",
+      "numbering_field_missing": "Ein Pflichtfeld der Nummer fehlt.",
+      "numbering_invalid": "Die Nummer entspricht nicht dem Nummernschema des Projekts.",
+      "numbering_metadata_in_number": "Status und Revision sind Metadaten und gehören nicht in die Nummer.",
+      "numbering_parts_mismatch": "Nummer und gespeicherte Bestandteile stimmen nicht überein.",
+      "numbering_structure_invalid": "Die Nummer hat nicht die Felder des Schemas.",
+      "numbering_too_long": "Die Nummer ist länger als das Schema erlaubt.",
+      "originator_duplicate": "Eine andere aktive Planungsrolle verwendet diesen Urhebercode bereits.",
+      "originator_required": "Ein Fachplaner braucht einen Urhebercode.",
+      "originator_unknown": "Der Urheber gehört zu keiner aktiven Planungsrolle.",
+      "party_kind_invalid": "Unbekannte Art der Partei.",
+      "permit_empty": "Das Genehmigungspaket enthält keine Bestandteile.",
+      "permit_incomplete": "Erforderliche Bestandteile fehlen oder sind noch nicht geteilt.",
+      "permit_item_kind_invalid": "Unbekannte Art des Bestandteils.",
+      "permit_item_missing": "Erforderlicher Bestandteil fehlt.",
+      "permit_item_not_found": "Bestandteil nicht gefunden.",
+      "permit_locked": "Das Paket wurde eingereicht und sein Inhalt ist festgeschrieben.",
+      "permit_not_approved": "Auflagen werden nur bei einem genehmigten Paket erfasst.",
+      "permit_not_found": "Genehmigungspaket nicht gefunden.",
+      "permit_profile_unknown": "Unbekanntes Genehmigungsprofil.",
+      "permit_state_read_from_cycle": "Nach der Einreichung folgt der Status dem Prüfzyklus der Behörde.",
+      "phase_unknown": "Diese Phase ist nicht im Phasenmodell des Projekts.",
+      "planned_count_reduction_needs_rationale": "Das Verringern der geplanten Anzahl braucht eine Begründung.",
+      "project_not_found": "Projekt nicht gefunden.",
+      "rationale_required": "Eine Begründung ist erforderlich.",
+      "recipient_exactly_one": "Entweder eine Verteilerliste oder eine Planungsrolle wählen.",
+      "release_contains_wip": "Eine Freigabe darf keine Arbeitsstände enthalten.",
+      "release_empty": "Die Freigabe enthält keine Revisionen.",
+      "release_four_eyes": "Wer die Freigabe vorbereitet hat, darf sie nicht ausgeben.",
+      "release_needs_published": "Eine Ausgabe zur Ausführung braucht veröffentlichte Revisionen.",
+      "release_no_recipients": "Kein Empfänger der Verteilmatrix passt zu dieser Freigabe.",
+      "release_not_draft": "Nur eine Freigabe im Entwurf kann geändert werden.",
+      "release_not_found": "Freigabe nicht gefunden.",
+      "release_not_ready": "Die Freigabe muss vor der Ausgabe bereit sein.",
+      "report_checker_required": "Eine unabhängige Prüfung braucht eine Prüferrolle.",
+      "report_checker_same_party": "Der Prüfer muss einer anderen Partei angehören als der Verfasser.",
+      "report_external_check_not_approved": "Der externe Prüfzyklus ist noch nicht genehmigt.",
+      "report_kind_unknown": "Unbekannte Gutachtenart.",
+      "report_not_found": "Gutachten nicht gefunden.",
+      "review_comments_open": "Offene Kommentare müssen zuerst geschlossen werden.",
+      "review_cycle_not_found": "Prüfzyklus in diesem Projekt nicht gefunden.",
+      "review_not_found": "Prüfung nicht gefunden.",
+      "review_not_open": "Die Prüfung ist für Kommentare geschlossen.",
+      "review_outcome_invalid": "Unbekanntes Prüfergebnis.",
+      "revision_not_found": "Revision in diesem Projekt nicht gefunden.",
+      "role_in_use": "Die Rolle wird noch von Plänen verwendet.",
+      "role_not_active": "Die Rolle wurde aus dem Projekt entlassen.",
+      "role_not_found": "Planungsrolle nicht gefunden.",
+      "route_start_failed": "Die Freigaberoute konnte nicht gestartet werden.",
+      "setup_exists": "Das Planungsmanagement ist für dieses Projekt bereits eingerichtet.",
+      "setup_missing": "Das Planungsmanagement ist für dieses Projekt noch nicht eingerichtet.",
+      "severity_invalid": "Unbekannte Schwere.",
+      "submission_not_found": "Behördeneinreichung in diesem Projekt nicht gefunden.",
+      "unknown_catalogue": "Katalog nicht gefunden.",
+      "use_conclude": "Zum Abschluss das Ergebnis erfassen.",
+      "use_issue": "Zum Versand die Ausgabe verwenden.",
+      "waiver_needs_rationale": "Der Verzicht auf eine Planungsleistung braucht eine Begründung.",
+      "wbs_code_duplicate": "Dieser PSP-Code wird im Projekt bereits verwendet.",
+      "wbs_code_not_under_parent": "Ein untergeordneter Code muss mit dem Code des Elternelements beginnen.",
+      "wbs_code_required": "Ein PSP-Code ist erforderlich.",
+      "wbs_move_cycle": "Ein Element kann nicht unter sein eigenes Unterelement verschoben werden.",
+      "wbs_node_closed": "Dieses PSP-Element ist für neue Verweise geschlossen.",
+      "wbs_node_not_found": "PSP-Element nicht gefunden.",
+      "wbs_node_referenced": "Das Element oder ein Unterelement wird verwendet; stattdessen schließen.",
+      "wbs_parent_not_found": "Übergeordnetes PSP-Element nicht gefunden."
+    },
+    "evidence": {
+      "deliverables": "Planungsleistungen der Phase abgenommen",
+      "major_comments": "Kein offener wesentlicher Prüfkommentar",
+      "reports": "Erforderliche Gutachten der Phase abgenommen"
+    },
+    "export": {
+      "col_check": "Unabhängige Prüfung",
+      "col_code": "Code",
+      "col_copies": "Papierkopien",
+      "col_discipline": "Fachrichtung",
+      "col_disciplines": "Fachrichtungen",
+      "col_format": "Format",
+      "col_forms": "Planarten",
+      "col_kind": "Art",
+      "col_last_issue": "Letzte Ausgabe",
+      "col_min_status": "Mindeststatus",
+      "col_number": "Nummer",
+      "col_phase": "Phase",
+      "col_phases": "Phasen",
+      "col_pinned_revision": "Festgeschriebene Revision",
+      "col_present": "Vorhanden",
+      "col_purpose": "Zweck",
+      "col_recipient": "Empfänger",
+      "col_recipients": "Empfänger",
+      "col_required": "Erforderlich",
+      "col_revision": "Revision",
+      "col_state": "Zustand",
+      "col_status": "Status",
+      "col_title": "Titel",
+      "empty": "Keine Einträge.",
+      "project": "Projekt",
+      "title_matrix": "Planverteiler",
+      "title_permit": "Genehmigungspaket",
+      "title_register": "Planliste",
+      "title_reports": "Gutachten und Nachweise",
+      "yes": "Ja"
+    },
+    "independent_check": {
+      "none": "Keine",
+      "optional": "Optional",
+      "required_by_rule": "Nach Vorschrift erforderlich"
+    },
+    "permit_item": {
+      "drawing": "Plan",
+      "form": "Formular",
+      "report": "Gutachten"
+    },
+    "purpose": {
+      "for_approval": "Zur Freigabe",
+      "for_construction": "Zur Ausführung",
+      "for_information": "Zur Kenntnis",
+      "for_record": "Zur Ablage",
+      "for_review": "Zur Prüfung",
+      "for_tender": "Zur Ausschreibung"
+    },
+    "report_state": {
+      "accepted": "Abgenommen",
+      "commissioned": "Beauftragt",
+      "in_progress": "In Bearbeitung",
+      "not_required": "Nicht erforderlich",
+      "rejected": "Abgelehnt",
+      "remarks": "Anmerkungen",
+      "required": "Erforderlich",
+      "submitted": "Eingereicht",
+      "under_check": "In Prüfung"
+    },
+    "rules": {
+      "approval_by_entitled_user": {
+        "fail": "Freigabepunkt {code} wurde nicht von einer berechtigten Person entschieden.",
+        "suggestion": "Über die Route erneut entscheiden."
+      },
+      "deliverable_complete_for_phase": {
+        "fail": "Planungsleistung {code} der Phase {phase} ist nicht abgenommen.",
+        "suggestion": "Pläne fertigstellen oder mit Begründung verzichten."
+      },
+      "drawing_number_matches_scheme": {
+        "fail": "Nummer {number} entspricht nicht dem Schema ({fields}).",
+        "suggestion": "Den Plan umnummerieren."
+      },
+      "drawing_number_parts_consistent": {
+        "fail": "Nummer {number} widerspricht ihren gespeicherten Bestandteilen ({fields}).",
+        "suggestion": "Die Containerfelder korrigieren."
+      },
+      "drawing_originator_known": {
+        "fail": "Urheber {value} von {number} gehört zu keiner aktiven Rolle.",
+        "suggestion": "Planungsrolle anlegen oder Nummer korrigieren."
+      },
+      "not_required_has_rationale": {
+        "fail": "Gutachten {code} hat keine Begründung.",
+        "suggestion": "Die Begründung ergänzen."
+      },
+      "permit_content_current": {
+        "fail": "Genehmigungspaket {code} enthält überholte Revisionen.",
+        "suggestion": "Die Behörde informieren oder neu einreichen."
+      },
+      "permit_package_complete": {
+        "fail": "Genehmigungspaket {code} fehlen {count} erforderliche Bestandteile.",
+        "suggestion": "Fehlende Bestandteile ergänzen oder teilen."
+      },
+      "release_revisions_suitable": {
+        "fail": "Freigabe {release} enthält {count} ungeeignete Revisionen.",
+        "suggestion": "Arbeitsstände entfernen oder zuerst veröffentlichen."
+      },
+      "report_independent_check": {
+        "fail": "Gutachten {code} wurde ohne gültige unabhängige Prüfung abgenommen.",
+        "suggestion": "Einen Prüfer einer anderen Partei benennen."
+      },
+      "title_block_matches_number": {
+        "fail": "Der Plankopf von {number} zeigt {value}.",
+        "suggestion": "Den Plankopf korrigieren."
+      },
+      "wbs_code_unique": {
+        "fail": "PSP-Code {code} wird mehrfach verwendet.",
+        "suggestion": "Die Duplikate umnummerieren."
+      },
+      "wbs_reference_resolves": {
+        "fail": "{module} verweist auf PSP-Wert {value}, der zu keinem Element passt.",
+        "suggestion": "Verweis korrigieren oder Element anlegen."
+      }
+    }
+  }
+}
