@@ -168,7 +168,11 @@ async def test_resume_is_only_for_a_held_gate(world: World) -> None:
 async def test_a_held_gate_is_resumed_by_its_decider_and_can_be_decided_again(world: World) -> None:
     g = await prepare_gate(world, G1)
     await decide(
-        world, g.id, "hold", hold_resume_date=datetime.now(UTC).date() + timedelta(days=30), today=datetime.now(UTC).date()
+        world,
+        g.id,
+        "hold",
+        hold_resume_date=datetime.now(UTC).date() + timedelta(days=30),
+        today=datetime.now(UTC).date(),
     )
     assert (await _can(world, g.id, world.decider, "manager"))["resume"] is True
     stranger = await _can(world, g.id, world.manager, "manager")
@@ -254,7 +258,11 @@ async def test_only_the_decider_or_a_route_approver_reopens(world: World) -> Non
 
 async def _change_model(w: World, catalogue_id: str, mapping: dict[str, str]):
     return await _post(
-        w, w.manager, "manager", "model/change", {"catalogue_source": "shipped", "catalogue_id": catalogue_id, "mapping": mapping}
+        w,
+        w.manager,
+        "manager",
+        "model/change",
+        {"catalogue_source": "shipped", "catalogue_id": catalogue_id, "mapping": mapping},
     )
 
 
@@ -290,7 +298,9 @@ async def test_going_back_to_a_model_revives_the_gate_it_decided(world: World) -
         rows = list(
             (
                 await s.execute(
-                    select(GovernanceGate).where(GovernanceGate.project_id == world.project_id, GovernanceGate.code == G1)
+                    select(GovernanceGate).where(
+                        GovernanceGate.project_id == world.project_id, GovernanceGate.code == G1
+                    )
                 )
             ).scalars()
         )
@@ -343,7 +353,9 @@ async def test_the_final_approver_who_approved_in_the_approval_screen_can_still_
         routes = ApprovalRouteService(s)
         instance = await routes.get_instance((await gate(world, G1)).approval_instance_id)
         step = (await routes.list_steps(instance.route_id))[0]
-        await routes.submit_decision(instance.id, DecisionSubmit(step_id=step.id, decision="approved"), approver_id=world.decider)
+        await routes.submit_decision(
+            instance.id, DecisionSubmit(step_id=step.id, decision="approved"), approver_id=world.decider
+        )
         await s.commit()
 
     can = await _can(world, g.id, world.decider, "manager")
@@ -409,7 +421,9 @@ async def test_a_go_is_not_recorded_while_the_final_step_still_needs_other_appro
     assert after.status == "in_review"
     async with world.factory() as s:
         decisions = (
-            await s.execute(select(func.count()).select_from(GovernanceDecision).where(GovernanceDecision.gate_id == g.id))
+            await s.execute(
+                select(func.count()).select_from(GovernanceDecision).where(GovernanceDecision.gate_id == g.id)
+            )
         ).scalar_one()
         instance = await s.get(Instance, after.approval_instance_id)
     assert decisions == 0 and instance.status == "pending"

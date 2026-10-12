@@ -139,6 +139,16 @@ async def build_world(factory: async_sessionmaker[AsyncSession], *, routes: bool
             actor_id=manager,
             tenant_id=str(manager),
         )
+        if routes:
+            # Governance reads only a pinned route; nothing is found by project or kind.
+            await svc.update_settings(
+                pid,
+                four_eyes=None,
+                decision_route_id=w.gate_route_id,
+                change_route_id=w.change_route_id,
+                fields_set={"decision_route_id", "change_route_id"},
+                actor_id=manager,
+            )
         await s.commit()
     return w
 
@@ -180,10 +190,8 @@ async def prepare_gate(
         ).scalar_one()
         for d in await svc.repo.list_documents(w.project_id):
             if gate_code in d.required_at_gates and d.status == "draft":
-                await svc.attach_container(
-                    w.project_id, d.id, container_id=w.containers[d.doc_type], actor_id=owner, role="editor"
-                )
-                await svc.submit_document(w.project_id, d.id, actor_id=owner, role="editor")
+                await svc.attach_container(w.project_id, d.id, container_id=w.containers[d.doc_type], actor_id=owner)
+                await svc.submit_document(w.project_id, d.id, actor_id=owner)
         await svc.start_preparation(w.project_id, g.id, actor_id=owner) if g.status == "not_started" else None
         for a in await svc.repo.list_areas(w.project_id):
             await svc.confirm_check(w.project_id, g.id, a.id, status="ready", rag="green", note="", actor_id=owner)

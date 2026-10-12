@@ -31,7 +31,7 @@
       "binding_requires_change_request": "This frame document is binding and changes only through a change request",
       "phase_mapping_missing": "The new phase model needs a mapping for this phase",
       "phase_mapping_unknown_target": "The mapping names a phase the new model does not have",
-      "no_decision_route": "No active approval route for phase gates is configured for this project",
+      "no_decision_route": "No approval route is pinned for gate decisions. A governance manager pins one of the project's own routes in the governance settings",
       "route_not_at_final_step": "The approval route has not reached its final step yet",
       "route_not_pending": "The approval route of this gate is no longer pending",
       "concurrent_decision": "Somebody else decided this gate a moment ago; reload and check the decision",
@@ -59,7 +59,17 @@
       "document_exists": "This frame document is already tracked for the area",
       "catalogue_code_taken": "A catalogue with this code already exists",
       "catalogue_retired": "This catalogue is retired and can no longer be edited or pinned",
-      "catalogue_invalid": "The catalogue draft breaks a catalogue rule and cannot be published"
+      "catalogue_invalid": "The catalogue draft breaks a catalogue rule and cannot be published",
+      "gate_historic": "This gate belongs to a phase model the project has left and can no longer be changed",
+      "gate_not_on_hold": "Only a gate on hold can be resumed",
+      "later_gate_active": "A later gate has already been started, so this gate cannot be reopened",
+      "model_unchanged": "The project already uses this version of the phase model",
+      "not_condition_owner": "Only the person this condition was given to or a manager may clear it",
+      "route_needs_more_approvals": "The final step of the approval route still needs other approvers; they approve in the approval screen and the last one records the decision",
+      "activity_not_in_project": "The schedule activity does not belong to this project",
+      "target_date_owned_by_schedule": "This gate is linked to a schedule activity, which owns its date; unlink it to set a date here",
+      "no_change_route": "No approval route is pinned for changes to binding documents. A governance manager pins one of the project's own routes in the governance settings",
+      "route_not_pinnable": "This approval route cannot be pinned: it must be an active route of this project for this kind of decision"
     },
     "outcome": {
       "go": "Go",

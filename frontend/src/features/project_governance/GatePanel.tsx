@@ -52,6 +52,7 @@ import {
 import {
   canAddCondition,
   canConfirmCheck,
+  canManage,
   canDecide,
   canReopen,
   canResume,
@@ -95,6 +96,8 @@ export interface GatePanelProps {
   personName: (userId: string | null | undefined) => string | null;
   onBack: () => void;
   onOpenArea: (areaId: string) => void;
+  /** Opens the phase model settings, where the approval route is chosen. */
+  onOpenModel?: () => void;
 }
 
 const CONFIRMABLE: Array<Exclude<CheckStatus, 'not_applicable'>> = ['ready', 'ready_with_risks', 'not_ready'];
@@ -394,7 +397,17 @@ export function SnapshotView({
   );
 }
 
-export function GatePanel({ projectId, gateId, model, viewer, labels, personName, onBack, onOpenArea }: GatePanelProps) {
+export function GatePanel({
+  projectId,
+  gateId,
+  model,
+  viewer,
+  labels,
+  personName,
+  onBack,
+  onOpenArea,
+  onOpenModel,
+}: GatePanelProps) {
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
   const query = useGateDetail(projectId, gateId);
@@ -407,11 +420,27 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
   const [reopenOpen, setReopenOpen] = useState(false);
   const [reopenError, setReopenError] = useState<string | null>(null);
   const [conditionOpen, setConditionOpen] = useState(false);
+  const [routeMissing, setRouteMissing] = useState(false);
   const today = localToday();
 
   const onFail = (err: unknown) => addToast({ type: 'error', title: getErrorMessage(err) });
   const prepare = useMutation({ mutationFn: () => prepareGate(projectId, gateId), onSuccess: invalidate, onError: onFail });
-  const submit = useMutation({ mutationFn: () => submitGate(projectId, gateId), onSuccess: invalidate, onError: onFail });
+  const submit = useMutation({
+    mutationFn: () => submitGate(projectId, gateId),
+    onSuccess: () => {
+      setRouteMissing(false);
+      invalidate();
+    },
+    onError: (err) => {
+      // Nothing is wrong with the gate: the project has no route chosen yet,
+      // so the answer stays on screen and leads to where one is chosen.
+      if (governanceErrorCode(err) === 'no_decision_route') {
+        setRouteMissing(true);
+        return;
+      }
+      onFail(err);
+    },
+  });
   const resume = useMutation({
     mutationFn: () => resumeGate(projectId, gateId),
     onSuccess: invalidate,
@@ -556,6 +585,30 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
           </ReasonedButton>
         )}
       </div>
+
+      {routeMissing && (
+        <div
+          role="alert"
+          data-testid="gate-no-route"
+          className="flex flex-wrap items-center gap-3 rounded-lg border border-[#f59e0b]/40 bg-[#f59e0b]/10 p-3 text-sm text-content-primary"
+        >
+          <span>
+            {t('governance.project.gate.no_route', {
+              defaultValue:
+                'This gate cannot go to review yet: no approval route is chosen for the gate decisions of this project.',
+            })}{' '}
+            {canManage(model) !== null &&
+              t('governance.project.gate.no_route_ask', {
+                defaultValue: 'A governance manager chooses it in the phase model settings.',
+              })}
+          </span>
+          {canManage(model) === null && onOpenModel && (
+            <Button size="sm" variant="secondary" onClick={onOpenModel} data-testid="gate-open-route">
+              {t('governance.project.gate.choose_route', { defaultValue: 'Choose the approval route' })}
+            </Button>
+          )}
+        </div>
+      )}
 
       {conditionOpen && (
         <GateConditionForm

@@ -31,7 +31,7 @@
       "binding_requires_change_request": "Dieses Rahmendokument ist verbindlich und ändert sich nur über einen Änderungsantrag",
       "phase_mapping_missing": "Das neue Phasenmodell braucht eine Zuordnung für diese Phase",
       "phase_mapping_unknown_target": "Die Zuordnung nennt eine Phase, die das neue Modell nicht hat",
-      "no_decision_route": "Für dieses Projekt ist kein aktiver Freigabeweg für Phasen-Gates eingerichtet",
+      "no_decision_route": "Für Gate-Entscheidungen ist kein Freigabeweg festgelegt. Ein Governance-Verantwortlicher legt in den Governance-Einstellungen einen projekteigenen Freigabeweg fest",
       "route_not_at_final_step": "Der Freigabeweg hat seinen letzten Schritt noch nicht erreicht",
       "route_not_pending": "Der Freigabeweg dieses Gates ist nicht mehr offen",
       "concurrent_decision": "Jemand anderes hat gerade über dieses Gate entschieden; bitte neu laden und die Entscheidung prüfen",
@@ -59,7 +59,17 @@
       "document_exists": "Dieses Rahmendokument wird für den Bereich bereits geführt",
       "catalogue_code_taken": "Ein Katalog mit diesem Code existiert bereits",
       "catalogue_retired": "Dieser Katalog ist zurückgezogen und kann nicht mehr bearbeitet oder festgelegt werden",
-      "catalogue_invalid": "Der Katalogentwurf verletzt eine Katalogregel und kann nicht veröffentlicht werden"
+      "catalogue_invalid": "Der Katalogentwurf verletzt eine Katalogregel und kann nicht veröffentlicht werden",
+      "gate_historic": "Dieses Gate gehört zu einem Phasenmodell, das das Projekt verlassen hat, und kann nicht mehr geändert werden",
+      "gate_not_on_hold": "Nur ein angehaltenes Gate kann fortgesetzt werden",
+      "later_gate_active": "Ein späteres Gate wurde bereits begonnen, daher kann dieses Gate nicht wieder geöffnet werden",
+      "model_unchanged": "Das Projekt verwendet diese Version des Phasenmodells bereits",
+      "not_condition_owner": "Nur die Person, der diese Auflage zugewiesen wurde, oder ein Manager darf sie erledigen",
+      "route_needs_more_approvals": "Der letzte Schritt des Freigabewegs braucht noch weitere Freigebende; sie geben in der Freigabeübersicht frei, und die letzte Person hält die Entscheidung fest",
+      "activity_not_in_project": "Der Terminplanvorgang gehört nicht zu diesem Projekt",
+      "target_date_owned_by_schedule": "Dieses Gate ist mit einem Terminplanvorgang verknüpft, der das Datum vorgibt; lösen Sie die Verknüpfung, um hier ein Datum zu setzen",
+      "no_change_route": "Für Änderungen an verbindlichen Dokumenten ist kein Freigabeweg festgelegt. Ein Governance-Verantwortlicher legt in den Governance-Einstellungen einen projekteigenen Freigabeweg fest",
+      "route_not_pinnable": "Dieser Freigabeweg kann nicht festgelegt werden: Er muss ein aktiver Freigabeweg dieses Projekts für diese Art von Entscheidung sein"
     },
     "outcome": {
       "go": "Go",

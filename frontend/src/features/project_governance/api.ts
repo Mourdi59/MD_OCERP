@@ -92,7 +92,7 @@ export interface GovernanceArea {
   retired: boolean;
   /** Not sent yet, see the report on API gaps. */
   name?: GovernanceLabel;
-  /** The catalogue's frame document types for this area, tracked or not; the ones a document may be added for. */
+  /** The catalogue's frame document types for this area; `tracked` says which ones the project already holds. */
   document_types?: AreaDocumentType[];
 }
 
@@ -100,6 +100,8 @@ export interface AreaDocumentType {
   code: string;
   name?: GovernanceLabel | null;
   required_at_gates: string[];
+  /** True when the project already holds a document of this type in the area. */
+  tracked: boolean;
 }
 
 export interface GovernanceGate {
@@ -388,6 +390,17 @@ export function governanceErrorCode(err: unknown): string | null {
   return null;
 }
 
+/**
+ * Whether the reader may set the first model, as the `model_missing` answer
+ * says it. Null when the answer is something else or carries no flag.
+ */
+export function missingModelCanManage(err: unknown): boolean | null {
+  if (governanceErrorCode(err) !== 'model_missing') return null;
+  const detail = ((err as ApiError).body as { detail?: { can?: { manage?: unknown } } }).detail;
+  const manage = detail?.can?.manage;
+  return typeof manage === 'boolean' ? manage : null;
+}
+
 /** The blockers a 422 refusal listed, so the dialog can show all of them, not only the first. */
 export function governanceViolations(err: unknown): Violation[] {
   if (!(err instanceof ApiError)) return [];
@@ -453,7 +466,7 @@ export function changeModel(
   return apiPost<GovernanceModel>(`${p(projectId)}/model/change`, body);
 }
 
-/** `decision_route_id` pins the approval route gate decisions run on; null goes back to the project default. */
+/** `decision_route_id` and `change_route_id` pin the approval routes governance runs on; null removes the pin. */
 export function updateModelSettings(
   projectId: string,
   body: { four_eyes?: boolean; decision_route_id?: string | null; change_route_id?: string | null },

@@ -107,17 +107,22 @@ async def _ensure_members(
         await teams.add_member(team.id, AddMemberRequest(user_id=uid), actor_id=owner)
 
 
-async def _ensure_route(session: AsyncSession, project_id: uuid.UUID, kind: str, approver: uuid.UUID) -> None:
-    """A single-step route naming the decider, unless the project already has one."""
+async def _ensure_route(session: AsyncSession, project_id: uuid.UUID, kind: str, approver: uuid.UUID) -> uuid.UUID:
+    """The project's own single-step route naming the decider; created unless the seed already made it.
+
+    Governance reads only the route pinned on the model, and only a route of
+    the project can be pinned, so a route without a project never counts here.
+    """
     from app.modules.approval_routes.schemas import RouteCreate, StepCreate
     from app.modules.approval_routes.service import ApprovalRouteService
 
     routes = ApprovalRouteService(session)
-    existing = await routes.list_routes(project_id=project_id, target_kind=kind, include_inactive=False)
-    if any(r.project_id in (None, project_id) for r in existing):
-        return
     name = "Gate decision" if kind == "phase_gate" else "Frame document change"
-    await routes.create_route(
+    existing = await routes.list_routes(project_id=project_id, target_kind=kind, include_inactive=False)
+    for route in existing:
+        if route.project_id == project_id and route.name == name:
+            return route.id
+    created = await routes.create_route(
         RouteCreate(
             project_id=project_id,
             name=name,
@@ -126,6 +131,7 @@ async def _ensure_route(session: AsyncSession, project_id: uuid.UUID, kind: str,
         ),
         created_by=approver,
     )
+    return created.id
 
 
 async def _container(session: AsyncSession, project_id: uuid.UUID, doc_type: str, actor: uuid.UUID) -> uuid.UUID:
@@ -160,8 +166,8 @@ async def _seed_project(
 
     svc = GovernanceService(session)
     await _ensure_members(session, svc, project_id, owner, [decider, cost_owner])
-    await _ensure_route(session, project_id, "phase_gate", decider)
-    await _ensure_route(session, project_id, "frame_change", decider)
+    gate_route = await _ensure_route(session, project_id, "phase_gate", decider)
+    change_route = await _ensure_route(session, project_id, "frame_change", decider)
     await svc.set_model(
         project_id,
         source="shipped",
@@ -170,6 +176,14 @@ async def _seed_project(
         four_eyes=True,
         actor_id=owner,
         tenant_id=str(owner),
+    )
+    await svc.update_settings(
+        project_id,
+        four_eyes=None,
+        decision_route_id=gate_route,
+        change_route_id=change_route,
+        fields_set={"decision_route_id", "change_route_id"},
+        actor_id=owner,
     )
 
     areas: list[GovernanceArea] = await svc.repo.list_areas(project_id)
@@ -187,7 +201,7 @@ async def _seed_project(
             continue
         actor = area_owner[doc.area_id]
         container_id = await _container(session, project_id, doc_type, actor)
-        await svc.attach_container(project_id, doc.id, container_id=container_id, actor_id=actor, role="editor")
+        await svc.attach_container(project_id, doc.id, container_id=container_id, actor_id=actor)
 
     gate = (
         await session.execute(
@@ -196,7 +210,7 @@ async def _seed_project(
     ).scalar_one()
     for doc in docs.values():
         if _FIRST_GATE in (doc.required_at_gates or []) and doc.container_id:
-            await svc.submit_document(project_id, doc.id, actor_id=area_owner[doc.area_id], role="editor")
+            await svc.submit_document(project_id, doc.id, actor_id=area_owner[doc.area_id])
     await svc.start_preparation(project_id, gate.id, actor_id=owner)
     for area in areas:
         await svc.confirm_check(
@@ -249,12 +263,11 @@ async def _seed_project(
                 cond.id,
                 evidence="Funding confirmation letter filed in the CDE with the business case.",
                 actor_id=cost_owner,
-                role="estimator",
             )
 
     handbook = docs.get("project_handbook")
     if handbook is not None and handbook.container_id and handbook.status == "draft":
-        await svc.submit_document(project_id, handbook.id, actor_id=area_owner[handbook.area_id], role="editor")
+        await svc.submit_document(project_id, handbook.id, actor_id=area_owner[handbook.area_id])
 
     if bc.status == "binding" and bc.container_id:
         rev = await CDEService(session).create_revision(
@@ -273,7 +286,6 @@ async def _seed_project(
             impact="Budget envelope rises by about four percent; the contingency is reduced accordingly.",
             proposed_revision_id=rev.id,
             actor_id=cost_owner,
-            role="estimator",
         )
     await session.flush()
 

@@ -40,7 +40,9 @@ DOCUMENT_ALLOWED: set[tuple[str, str]] = {
     ("in_review", "draft"),
     ("in_review", "approved_at_gate"),
     ("approved_at_gate", "binding"),
+    # The document type left the phase model on a model change, or came back with a later one.
     ("binding", "superseded"),
+    ("superseded", "binding"),
 }
 
 
@@ -66,9 +68,13 @@ def test_initial_states() -> None:
     assert DOCUMENT_FSM.initial == "draft"
 
 
-def test_superseded_is_the_only_terminal_document_state() -> None:
-    terminal = {s for s in DOCUMENT_STATES if DOCUMENT_FSM.is_terminal(s)}
-    assert terminal == {"superseded"}
+def test_no_document_state_is_a_dead_end() -> None:
+    """Superseded is not terminal: a model change that brings the type back reinstates the document."""
+    assert not [s for s in DOCUMENT_STATES if DOCUMENT_FSM.is_terminal(s)]
+
+
+def test_a_superseded_document_only_ever_goes_back_to_binding() -> None:
+    assert {dst for dst in DOCUMENT_STATES if DOCUMENT_FSM.has_transition("superseded", dst)} == {"binding"}
 
 
 def test_no_gate_state_is_a_dead_end() -> None:
