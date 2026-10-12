@@ -25,12 +25,17 @@ export function day(iso: string | null | undefined): string | null {
   return iso ? fmtDate(iso) : null;
 }
 
-/** A point in time with its hour, in the reader's own zone. */
-export function when(iso: string | null | undefined, language: string): string | null {
+/** A point in time with its hour: on the site clock when the zone is known, else in the reader's own zone. */
+export function when(iso: string | null | undefined, language: string, zone?: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' }).format(d);
+  try {
+    return new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short', timeZone: zone || undefined }).format(d);
+  } catch {
+    // A zone the browser does not know.
+    return new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' }).format(d);
+  }
 }
 
 /** Two ends of a period as one phrase; one end alone when the other is open. */

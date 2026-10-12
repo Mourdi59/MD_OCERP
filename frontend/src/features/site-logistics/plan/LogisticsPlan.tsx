@@ -11,7 +11,7 @@ import clsx from 'clsx';
 
 import { CustomsPanel } from './CustomsPanel';
 import { ConceptPanel, UtilitiesPanel } from './FlowPanels';
-import { useCatalogue, useWords } from './hooks';
+import { useCatalogue, useConcept, useWords } from './hooks';
 import { NeighbourhoodPanel } from './NeighbourhoodPanel';
 import { ReadinessPanel } from './ReadinessPanel';
 import { AreasPanel, BalancePanel, StagesPanel } from './SitePanels';
@@ -40,6 +40,8 @@ export function LogisticsPlan({ projectId, initialTab = 'balance' }: { projectId
   const [tab, setTab] = useState<PlanTab>(initialTab);
   // A failed catalogue does not block the plan: codes then read as plain words.
   const catalogue = useCatalogue(projectId).data ?? null;
+  // Read with the plan, so that every dialog opened later knows the site clock.
+  useConcept(projectId);
   const props = { projectId, catalogue };
 
   return (

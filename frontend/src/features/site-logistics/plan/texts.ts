@@ -442,6 +442,8 @@ export const EN = {
   'f.title': 'Title',
   'f.name': 'Name',
   'f.ordinal': 'Order',
+  'f.date_default_hint': 'Left empty, today on the site clock is used.',
+  'form.site_time': 'Time on the site clock, {{zone}}',
   'f.from_activity': 'Starts with activity',
   'f.to_activity': 'Ends with activity',
   'f.takt_location': 'Takt area',

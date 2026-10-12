@@ -19,7 +19,7 @@ import { WideModal, WideModalField } from '@/shared/ui/WideModal';
 import { getErrorMessage } from '@/shared/lib/api';
 
 import { planProblem, type Body, type Can, type LinkKind, type PlanCatalogue, type PlanProblem, type Verdict } from './api';
-import { useLinkOptions, useWords, type Identified, type Resource } from './hooks';
+import { useConcept, useLinkOptions, useWords, type Identified, type Resource } from './hooks';
 import {
   findingText,
   formProblems,
@@ -342,7 +342,12 @@ export function FormDialog({
   const frozen = frozenOf(record);
   const fields = frozen.length > 0 ? everyField.filter((f) => !frozen.includes(f.name)) : everyField;
   const said = note ?? (fields.length < everyField.length ? 'form.frozen_note' : undefined);
-  const [initial] = useState<FormValues>(() => toFormValues(fields, (record ?? defaults) as Record<string, unknown> | undefined));
+  // The zone is taken once: the same clock turns the stored instants into the form and the form back into instants.
+  const siteZone = useConcept(projectId).data?.site_timezone;
+  const [zone] = useState(siteZone);
+  const [initial] = useState<FormValues>(() =>
+    toFormValues(fields, (record ?? defaults) as Record<string, unknown> | undefined, zone),
+  );
   const [values, setValues] = useState<FormValues>(initial);
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -359,7 +364,7 @@ export function FormDialog({
       setTried(true);
       return;
     }
-    const body = toBody(fields, values, record && !sendAll ? initial : null);
+    const body = toBody(fields, values, record && !sendAll ? initial : null, zone);
     if (record && !sendAll && Object.keys(body).length === 0) {
       onClose();
       return;
@@ -453,6 +458,7 @@ export function FormDialog({
             min={f.kind === 'int' ? 0 : undefined}
             value={value as string}
             onChange={(e) => set(e.target.value)}
+            title={f.kind === 'datetime' && zone ? tx(t, 'form.site_time', { zone }) : undefined}
           />
         );
     }

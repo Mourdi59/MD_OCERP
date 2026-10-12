@@ -12,7 +12,7 @@ import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 
 import { putNeighbourhood, type Complaint, type CoordinationEntry, type Neighbourhood } from './api';
-import { day, localToday, num, span } from './format';
+import { day, num, span } from './format';
 import {
   useComplaints,
   useCoordination,
@@ -81,7 +81,7 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
       required: true,
       options: codeOptions(words, 'neighbour_issue_kinds', catalogue),
     },
-    { name: 'reported_on', label: 'f.reported_on', kind: 'date', required: true },
+    { name: 'reported_on', label: 'f.reported_on', hint: 'f.date_default_hint', kind: 'date' },
     { name: 'reporter', label: 'f.reporter', kind: 'text' },
     { name: 'response_due', label: 'f.response_due', kind: 'date' },
     { name: 'description', label: 'f.description', kind: 'textarea', required: true },
@@ -90,7 +90,7 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
     { name: 'response', label: 'f.response', kind: 'textarea' },
   ];
   const coordinationFields: Field[] = [
-    { name: 'entry_date', label: 'f.entry_date', kind: 'date', required: true },
+    { name: 'entry_date', label: 'f.entry_date', hint: 'f.date_default_hint', kind: 'date' },
     {
       name: 'body',
       label: 'f.body',
@@ -284,7 +284,6 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
           title="edit_title.complaint"
           fields={complaintFields}
           record={complaintRes.editing.record}
-          defaults={{ reported_on: localToday() }}
           projectId={projectId}
           catalogue={catalogue}
           onSubmit={complaintRes.save}
@@ -297,7 +296,6 @@ export function NeighbourhoodPanel({ projectId, catalogue }: PanelProps) {
           title="edit_title.coordination"
           fields={coordinationFields}
           record={coordinationRes.editing.record}
-          defaults={{ entry_date: localToday() }}
           projectId={projectId}
           catalogue={catalogue}
           onSubmit={coordinationRes.save}

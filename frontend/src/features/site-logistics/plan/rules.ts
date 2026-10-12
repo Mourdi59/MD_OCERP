@@ -8,6 +8,7 @@
 import type { BadgeVariant } from '@/shared/ui/Badge';
 
 import type { Can, CatalogueEntry, LinkKind, CatalogueGroup, Finding, PlanCatalogue, Verdict, Violation } from './api';
+import { instantOf, wallClock } from './siteTime';
 import { isTextKey, tx, type TextKey, type TFn } from './texts';
 
 /* ── Status moves ─────────────────────────────────────────────────────── */
@@ -196,7 +197,7 @@ function emptyOf(field: Field): FormValue {
 }
 
 /** The form's starting values from a record (or from nothing, for a new one). */
-export function toFormValues(fields: Field[], record?: Record<string, unknown> | null): FormValues {
+export function toFormValues(fields: Field[], record?: Record<string, unknown> | null, zone?: string | null): FormValues {
   const out: FormValues = {};
   for (const f of fields) {
     const raw = record?.[f.name];
@@ -211,7 +212,7 @@ export function toFormValues(fields: Field[], record?: Record<string, unknown> |
         ? raw.map((row) => toFormValues(f.columns, row as Record<string, unknown>))
         : [];
     } else if (f.kind === 'datetime') {
-      out[f.name] = toLocalInput(String(raw));
+      out[f.name] = wallClock(String(raw), zone) ?? toLocalInput(String(raw));
     } else {
       out[f.name] = String(raw);
     }
@@ -245,7 +246,7 @@ export function formProblems(fields: Field[], values: FormValues): Record<string
   return out;
 }
 
-function wire(field: Field, value: FormValue): unknown {
+function wire(field: Field, value: FormValue, zone?: string | null): unknown {
   if (field.kind === 'rows') return (value as FormValues[]).map((row) => toBody(field.columns, row));
   if (field.kind === 'multi') {
     // Weekdays travel as numbers; every other multi choice is a list of ids.
@@ -257,7 +258,8 @@ function wire(field: Field, value: FormValue): unknown {
   if (field.kind === 'text' || field.kind === 'textarea') return text;
   if (text === '') return null;
   if (field.kind === 'int') return Number(text);
-  if (field.kind === 'datetime') return new Date(text).toISOString();
+  // On the site clock when the concept names a zone, else in the reader's own.
+  if (field.kind === 'datetime') return instantOf(text, zone) ?? new Date(text).toISOString();
   return text;
 }
 
@@ -267,7 +269,12 @@ function wire(field: Field, value: FormValue): unknown {
  * changed are sent, and a cleared field is sent as empty: `null` for a
  * number, date or choice, an empty string for text.
  */
-export function toBody(fields: Field[], values: FormValues, initial?: FormValues | null): Record<string, unknown> {
+export function toBody(
+  fields: Field[],
+  values: FormValues,
+  initial?: FormValues | null,
+  zone?: string | null,
+): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   for (const f of fields) {
     const v = normalised(f, values[f.name] ?? emptyOf(f));
@@ -279,7 +286,7 @@ export function toBody(fields: Field[], values: FormValues, initial?: FormValues
     } else if (f.kind === 'checkbox' && v === false) {
       continue;
     }
-    body[f.name] = wire(f, v);
+    body[f.name] = wire(f, v, zone);
   }
   return body;
 }

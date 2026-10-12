@@ -42430,6 +42430,8 @@ const resource = {
     "site_logistics.plan.f.title": "Title",
     "site_logistics.plan.f.name": "Name",
     "site_logistics.plan.f.ordinal": "Order",
+    "site_logistics.plan.f.date_default_hint": "Left empty, today on the site clock is used.",
+    "site_logistics.plan.form.site_time": "Time on the site clock, {{zone}}",
     "site_logistics.plan.f.from_activity": "Starts with activity",
     "site_logistics.plan.f.to_activity": "Ends with activity",
     "site_logistics.plan.f.takt_location": "Takt area",

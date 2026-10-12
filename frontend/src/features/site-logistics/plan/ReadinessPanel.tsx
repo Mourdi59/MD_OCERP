@@ -12,13 +12,15 @@ import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { useToastStore } from '@/stores/useToastStore';
 
-import { REGISTERS, exportRegister, pinCatalogue, runSweep, type Register } from './api';
+import { REGISTERS, exportRegister, pinCatalogue, runSweep, type CatalogueChoice, type Register } from './api';
 import { useCatalogueChoices, useConcept, useInvalidatePlan, useReadiness, useReportProblem, useWords } from './hooks';
 import { ChecksPanel } from './ChecksPanel';
 import { Card, FormDialog, Loaded, PanelHead } from './PlanBits';
 import { denied, enumLabel, findingText, humanise, type Field } from './rules';
 import type { PanelProps } from './SitePanels';
 import { isTextKey, tx } from './texts';
+
+const PINNABLE: string[] = ['shipped', 'tenant'];
 
 export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
   const words = useWords();
@@ -70,6 +72,16 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
     return isTextKey(key) ? tx(t, key) : humanise(code);
   };
 
+  const governance = (code: string) => {
+    const key = `readiness.governance.${code}`;
+    return isTextKey(key) ? tx(t, key) : humanise(code);
+  };
+  // A shipped catalogue is named by a key, a tenant's own by its texts.
+  const catalogueName = (c: CatalogueChoice) => {
+    const named = c.name.key ? t(c.name.key, { defaultValue: '' }) : '';
+    return named && named !== c.name.key ? named : (c.name.text?.[language] ?? c.name.text?.en ?? humanise(c.code || c.id));
+  };
+
   const pinFields: Field[] = [
     {
       name: 'choice',
@@ -77,10 +89,10 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
       kind: 'select',
       required: true,
       wide: true,
-      options: (choices.data ?? []).map((c) => ({
-        value: `${c.source}:${c.id}`,
-        label: c.name.text?.[language] ?? c.name.text?.en ?? humanise(c.code || c.id),
-      })),
+      // The pin takes a shipped or a tenant catalogue; any other source in the list would be refused.
+      options: (choices.data ?? [])
+        .filter((c) => PINNABLE.includes(c.source))
+        .map((c) => ({ value: `${c.source}:${c.id}`, label: catalogueName(c) })),
     },
   ];
 
@@ -99,9 +111,7 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
             <>
               {r.governance && (
                 <p className="text-sm text-content-secondary" data-testid="plan-ready-governance">
-                  {isTextKey(`readiness.governance.${r.governance}`)
-                    ? tx(t, `readiness.governance.${r.governance}`)
-                    : humanise(r.governance)}
+                  {governance(r.governance)}
                 </p>
               )}
               <div

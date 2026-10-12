@@ -26,6 +26,7 @@ import {
   type Field,
   type Lifecycle,
 } from '../rules';
+import { instantOf, wallClock } from '../siteTime';
 import { EN, isTextKey } from '../texts';
 import { enT } from './i18nMock';
 
@@ -61,6 +62,38 @@ describe('status moves', () => {
     expect(stateLabel(enT, 'permit_pending')).toBe('Permit pending');
     expect(moveLabel(enT, 'transport', 'scheduled')).toBe('Schedule');
     expect(stateLabel(enT, 'brand_new_state')).toBe('Brand new state');
+  });
+});
+
+describe('the site clock', () => {
+  it('an hour typed for the site is the same instant wherever the planner sits', () => {
+    expect(instantOf('2026-07-01T08:00', 'Europe/Berlin')).toBe('2026-07-01T06:00:00.000Z');
+    expect(instantOf('2026-01-15T08:00', 'Europe/Berlin')).toBe('2026-01-15T07:00:00.000Z');
+    expect(instantOf('2026-01-15T08:00', 'Asia/Kolkata')).toBe('2026-01-15T02:30:00.000Z');
+  });
+
+  it('a stored instant reads back as the hour on the site clock', () => {
+    expect(wallClock('2026-07-01T06:00:00+00:00', 'Europe/Berlin')).toBe('2026-07-01T08:00');
+    expect(wallClock('2026-01-15T02:30:00Z', 'Asia/Kolkata')).toBe('2026-01-15T08:00');
+  });
+
+  it('the hour after the clocks go forward lands after the change', () => {
+    // 29 March 2026, 03:30 in Berlin is summer time already.
+    expect(instantOf('2026-03-29T03:30', 'Europe/Berlin')).toBe('2026-03-29T01:30:00.000Z');
+  });
+
+  it('says nothing without a zone or with one the browser does not know', () => {
+    expect(instantOf('2026-07-01T08:00', null)).toBeNull();
+    expect(instantOf('2026-07-01T08:00', 'Mars/Olympus')).toBeNull();
+    expect(wallClock('2026-07-01T06:00:00Z', undefined)).toBeNull();
+    expect(wallClock('not a time', 'Europe/Berlin')).toBeNull();
+  });
+
+  it('a form with the site zone sends and shows site hours', () => {
+    const f: Field[] = [{ name: 'planned_window_start', label: 'f.planned_window_start', kind: 'datetime' }];
+    const body = toBody(f, { planned_window_start: '2026-07-01T08:00' }, null, 'Europe/Berlin');
+    expect(body.planned_window_start).toBe('2026-07-01T06:00:00.000Z');
+    expect(toFormValues(f, body, 'Europe/Berlin').planned_window_start).toBe('2026-07-01T08:00');
   });
 });
 

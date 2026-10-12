@@ -15,7 +15,7 @@ import { fmtList } from '@/shared/lib/formatters';
 import { fetchGates } from '../api';
 import type { Permit, Transport } from './api';
 import { day, num, span, when } from './format';
-import { useCustoms, usePermits, useResource, useTransports, useWords } from './hooks';
+import { useConcept, useCustoms, usePermits, useResource, useTransports, useWords } from './hooks';
 import { Card, Fact, FormDialog, Loaded, PanelHead, PlanEmpty, RowActions, StateBadge } from './PlanBits';
 import { codeLabel, codeOptions, enumLabel, findingText, frozenOf, weekdayOptions, type Field } from './rules';
 import type { PanelProps } from './SitePanels';
@@ -26,6 +26,7 @@ const LOAD_FIELDS = ['gross_weight_t', 'axle_load_t', 'height_m', 'width_m', 'le
 /* ── Transports ───────────────────────────────────────────────────────── */
 
 export function TransportsPanel({ projectId, catalogue }: PanelProps) {
+  const zone = useConcept(projectId).data?.site_timezone;
   const words = useWords();
   const { t, language } = words;
   const transports = useTransports(projectId);
@@ -115,7 +116,7 @@ export function TransportsPanel({ projectId, catalogue }: PanelProps) {
                     </div>
                     <dl className="mt-2 grid gap-3 sm:grid-cols-4">
                       <Fact label="transport.window">
-                        {span(t, when(x.planned_window_start, language), when(x.planned_window_end, language))}
+                        {span(t, when(x.planned_window_start, language, zone), when(x.planned_window_end, language, zone))}
                       </Fact>
                       <Fact label="f.gate">{gateOptions.find((g) => g.value === x.gate_id)?.label}</Fact>
                       <Fact label="f.carrier_name">{x.carrier_name}</Fact>

@@ -549,7 +549,7 @@ export interface CoordinationEntry {
 export const getNeighbourhood = (projectId: string) =>
   apiGet<{ plan: Neighbourhood }>(`/v1/site-logistics/projects/${projectId}/neighbourhood`).then((r) => r.plan);
 export const putNeighbourhood = (projectId: string, body: Body) =>
-  apiPut<Neighbourhood>(`/v1/site-logistics/projects/${projectId}/neighbourhood`, body);
+  apiPut<{ plan: Neighbourhood }>(`/v1/site-logistics/projects/${projectId}/neighbourhood`, body).then((r) => r.plan);
 export const listComplaints = (projectId: string) =>
   apiGet<PlanPage<Complaint>>(`/v1/site-logistics/projects/${projectId}/neighbour-issues`);
 export const listCoordination = (projectId: string) =>

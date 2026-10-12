@@ -50535,6 +50535,8 @@ const resource = {
     "site_logistics.plan.link.none.takt_schedule": "Das Projekt hat noch keinen Taktplan.",
     "site_logistics.plan.link.none.takt_location": "Das Projekt hat noch keine Taktbereiche.",
     "site_logistics.plan.link.none.purchase_order": "Das Projekt hat noch keine Bestellungen.",
+    "site_logistics.plan.f.date_default_hint": "Bleibt das Feld leer, gilt der heutige Tag nach der Uhr der Baustelle.",
+    "site_logistics.plan.form.site_time": "Zeit nach der Uhr der Baustelle, {{zone}}",
   }
 } as { translation: Record<string, string> };
 

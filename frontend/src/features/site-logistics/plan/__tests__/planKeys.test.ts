@@ -65,7 +65,7 @@ describe('logistics plan text keys', () => {
   });
 
   it('no text uses a long dash', () => {
-    const dashed = keys.filter((k) => /[–—]/.test(EN[k as keyof typeof EN] + de.translation[PREFIX + k]));
+    const dashed = keys.filter((k) => /[\u2013\u2014]/.test(EN[k as keyof typeof EN] + de.translation[PREFIX + k]));
     expect(dashed).toEqual([]);
   });
 
