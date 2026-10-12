@@ -40845,6 +40845,7 @@ const resource = {
     "procurement_concept.ui.package.cost_ref_none": "This project has no bill of quantities section yet. Without one the tender starts with no scope lines.",
     "procurement_concept.ui.package.cost_ref_option": "{{name}} (positions: {{n}})",
     "procurement_concept.ui.package.cost_ref_unset": "No section",
+    "procurement_concept.ui.package.criteria_drop_confirm": "A lowest price award has no award criteria. Saving removes the criteria and weights this package holds.",
     "procurement_concept.ui.package.criteria_hint": "Name what the bids are judged on and give each a share in percent. The shares add up to 100.",
     "procurement_concept.ui.package.criteria_title": "Award criteria and their weights",
     "procurement_concept.ui.package.criteria_total": "Total: {{total}} of 100",

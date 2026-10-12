@@ -242,6 +242,14 @@ export const PACKAGE_PROBLEM: Record<PackageProblem, KeyText> = {
   weights_not_100: ['procurement_concept.ui.problem.award_weights_not_100', 'The weights of the award criteria must add up to 100.'],
 };
 
+/**
+ * True when saving the draft removes award criteria the package holds: the
+ * award goes by lowest price and criteria are stored. The form asks first.
+ */
+export function dropsCriteria(d: PackageDraft, original: PackageDraft): boolean {
+  return d.evaluation_method === 'lowest_price' && Object.keys(toWeights(original.weights)).length > 0;
+}
+
 /** The most award criteria one package can carry. */
 export const MAX_AWARD_CRITERIA = 20;
 
@@ -326,12 +334,10 @@ export function toPackageInput(d: PackageDraft, original: PackageDraft): Package
   if (d.prequal_profile_id !== original.prequal_profile_id) out.prequal_profile_id = d.prequal_profile_id || null;
   if (d.notes.trim() !== original.notes.trim()) out.notes = d.notes.trim();
   if (d.evaluation_method !== original.evaluation_method) out.evaluation_method = d.evaluation_method;
-  // Criteria belong to a best value award: under lowest price the form hides them, so the stored ones are
-  // left as they are. The server refuses null here: an empty object is how the criteria are cleared.
-  const weights = toWeights(d.weights);
-  if (d.evaluation_method === 'best_value' && !sameWeights(weights, toWeights(original.weights))) {
-    out.evaluation_weights = weights;
-  }
+  // Criteria belong to a best value award. Under lowest price the form hides them, so none may stay stored
+  // behind it: they are cleared. The server refuses null here, an empty object is how they are cleared.
+  const weights = d.evaluation_method === 'best_value' ? toWeights(d.weights) : {};
+  if (!sameWeights(weights, toWeights(original.weights))) out.evaluation_weights = weights;
   // The kind and the id of the cost reference travel together, and clear together.
   if (d.cost_ref_id !== original.cost_ref_id) {
     out.cost_ref_kind = d.cost_ref_id ? 'boq_section' : null;

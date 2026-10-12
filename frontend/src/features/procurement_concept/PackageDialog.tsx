@@ -43,6 +43,7 @@ import {
   MAX_AWARD_CRITERIA,
   PACKAGE_PROBLEM,
   awardWeightsTotal,
+  dropsCriteria,
   packageDraft,
   packageProblems,
   toPackageInput,
@@ -83,6 +84,9 @@ export function PackageDialog({
   const [draft, setDraft] = useState<PackageDraft>(original);
   const set = <K extends keyof PackageDraft>(key: K, value: PackageDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const problems = packageProblems(draft);
+  // Going to lowest price removes the criteria the package holds, so the reader says yes to that first.
+  const [dropConfirmed, setDropConfirmed] = useState(false);
+  const mustConfirmDrop = dropsCriteria(draft, original);
   const cp = view.contract_package;
 
   // The check needs the package to exist on the server with its value.
@@ -128,7 +132,7 @@ export function PackageDialog({
           <Button variant="ghost" onClick={onClose} disabled={save.isPending}>
             {t('procurement_concept.ui.cancel', { defaultValue: 'Cancel' })}
           </Button>
-          <Button loading={save.isPending} disabled={problems.length > 0} onClick={() => save.mutate()} data-testid="package-save">
+          <Button loading={save.isPending} disabled={problems.length > 0 || (mustConfirmDrop && !dropConfirmed)} onClick={() => save.mutate()} data-testid="package-save">
             {t('procurement_concept.ui.save', { defaultValue: 'Save' })}
           </Button>
         </div>
@@ -402,6 +406,17 @@ export function PackageDialog({
               </select>
             </Field>
           </div>
+          {mustConfirmDrop && (
+            <label
+              className="mt-3 flex items-start gap-2 rounded-md border border-semantic-warning/40 bg-semantic-warning-bg px-3 py-2 text-sm text-content-primary"
+              data-testid="criteria-drop-confirm"
+            >
+              <input type="checkbox" className="mt-1" checked={dropConfirmed} onChange={(e) => setDropConfirmed(e.target.checked)} />
+              {t('procurement_concept.ui.package.criteria_drop_confirm', {
+                defaultValue: 'A lowest price award has no award criteria. Saving removes the criteria and weights this package holds.',
+              })}
+            </label>
+          )}
           {draft.evaluation_method === 'best_value' && (
             <fieldset className="mt-3 rounded-lg border border-border-light p-3" data-testid="award-criteria">
               <legend className="px-1 text-xs font-medium text-content-secondary">

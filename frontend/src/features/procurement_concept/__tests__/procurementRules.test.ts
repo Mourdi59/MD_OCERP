@@ -13,6 +13,7 @@ import {
   candidateProblems,
   companyLinks,
   companyValue,
+  dropsCriteria,
   notApplicable,
   toCandidateInput,
   toFrameworkInput,
@@ -290,10 +291,20 @@ describe('award criteria and the cost reference', () => {
     expect(toPackageInput({ ...stored, weights: [] }, stored)).toEqual({ evaluation_weights: {} });
   });
 
-  it('leaves the stored criteria alone once the award goes by lowest price', () => {
+  it('clears the stored criteria once the award goes by lowest price, and asks first', () => {
+    const stored = { ...best, weights: rows };
+    const switched = { ...stored, evaluation_method: 'lowest_price' as const };
+    expect(dropsCriteria(switched, stored)).toBe(true);
+    expect(dropsCriteria(stored, stored)).toBe(false);
+    expect(packageProblems(switched)).toEqual([]);
+    expect(toPackageInput(switched, stored)).toEqual({ evaluation_method: 'lowest_price', evaluation_weights: {} });
+  });
+
+  it('sends no criteria typed and then abandoned for lowest price when none were stored', () => {
     const half = { ...best, weights: [{ name: 'Price', weight: '70' }] };
-    expect(packageProblems({ ...half, evaluation_method: 'lowest_price' })).toEqual([]);
-    expect(toPackageInput({ ...half, evaluation_method: 'lowest_price' }, best)).toEqual({ evaluation_method: 'lowest_price' });
+    const switched = { ...half, evaluation_method: 'lowest_price' as const };
+    expect(dropsCriteria(switched, best)).toBe(false);
+    expect(toPackageInput(switched, best)).toEqual({ evaluation_method: 'lowest_price' });
   });
 
   it('sets and clears the kind and the id of the cost reference together', () => {

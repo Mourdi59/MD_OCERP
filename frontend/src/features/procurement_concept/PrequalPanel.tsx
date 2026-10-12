@@ -169,9 +169,11 @@ export function PrequalPanel({
           <Button size="sm" variant="ghost" icon={<Download size={14} />} loading={exportList.isPending} onClick={() => exportList.mutate()}>
             {t('procurement_concept.ui.prequal.export', { defaultValue: 'Short list (XLSX)' })}
           </Button>
-          <ReasonedButton quiet verdict={v('add')} size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setOpen({ kind: 'candidate', candidate: null })} data-testid="candidate-add">
-            {t('procurement_concept.ui.prequal.add_candidate', { defaultValue: 'Add candidate' })}
-          </ReasonedButton>
+          {!notApplicable(can?.add) && (
+            <ReasonedButton quiet verdict={v('add')} size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setOpen({ kind: 'candidate', candidate: null })} data-testid="candidate-add">
+              {t('procurement_concept.ui.prequal.add_candidate', { defaultValue: 'Add candidate' })}
+            </ReasonedButton>
+          )}
           {canConfirm && (
             <ReasonedButton size="sm" verdict={confirmVerdict} loading={confirm.isPending} onClick={() => confirm.mutate()} data-testid="shortlist-confirm">
               {t('procurement_concept.actions.confirm_shortlist', { defaultValue: 'Confirm short list' })}
@@ -430,27 +432,35 @@ export function PrequalPanel({
                           </div>
                         ) : (
                           <div className="flex flex-wrap justify-end gap-1.5">
-                            <ReasonedButton quiet verdict={v('score')} size="sm" variant="secondary" disabled={criteria.length === 0} onClick={() => setOpen({ kind: 'scores', candidate: c })} data-testid="candidate-score">
-                              {t('procurement_concept.ui.prequal.score', { defaultValue: 'Score' })}
-                            </ReasonedButton>
-                            <ReasonedButton quiet verdict={v('add')} size="sm" variant="ghost" onClick={() => setOpen({ kind: 'candidate', candidate: c })} data-testid="candidate-edit">
-                              {t('procurement_concept.ui.prequal.edit', { defaultValue: 'Change' })}
-                            </ReasonedButton>
-                            <ReasonedButton quiet verdict={v('reference')} size="sm" variant="ghost" onClick={() => setOpen({ kind: 'reference', candidate: c })} data-testid="candidate-reference">
-                              {t('procurement_concept.ui.prequal.add_reference', { defaultValue: 'Add reference' })}
-                            </ReasonedButton>
-                            <ReasonedButton
-                              quiet
-                              size="sm"
-                              variant="ghost"
-                              verdict={v('delete')}
-                              icon={<Trash2 size={14} />}
-                              aria-label={t('procurement_concept.ui.prequal.remove_candidate', { defaultValue: 'Remove {{name}}', name: c.name })}
-                              onClick={() => setRemoving(c.id)}
-                              data-testid="candidate-remove"
-                            >
-                              {null}
-                            </ReasonedButton>
+                            {!notApplicable(can?.score) && (
+                              <ReasonedButton quiet verdict={v('score')} size="sm" variant="secondary" disabled={criteria.length === 0} onClick={() => setOpen({ kind: 'scores', candidate: c })} data-testid="candidate-score">
+                                {t('procurement_concept.ui.prequal.score', { defaultValue: 'Score' })}
+                              </ReasonedButton>
+                            )}
+                            {!notApplicable(can?.add) && (
+                              <ReasonedButton quiet verdict={v('add')} size="sm" variant="ghost" onClick={() => setOpen({ kind: 'candidate', candidate: c })} data-testid="candidate-edit">
+                                {t('procurement_concept.ui.prequal.edit', { defaultValue: 'Change' })}
+                              </ReasonedButton>
+                            )}
+                            {!notApplicable(can?.reference) && (
+                              <ReasonedButton quiet verdict={v('reference')} size="sm" variant="ghost" onClick={() => setOpen({ kind: 'reference', candidate: c })} data-testid="candidate-reference">
+                                {t('procurement_concept.ui.prequal.add_reference', { defaultValue: 'Add reference' })}
+                              </ReasonedButton>
+                            )}
+                            {!notApplicable(can?.delete) && (
+                              <ReasonedButton
+                                quiet
+                                size="sm"
+                                variant="ghost"
+                                verdict={v('delete')}
+                                icon={<Trash2 size={14} />}
+                                aria-label={t('procurement_concept.ui.prequal.remove_candidate', { defaultValue: 'Remove {{name}}', name: c.name })}
+                                onClick={() => setRemoving(c.id)}
+                                data-testid="candidate-remove"
+                              >
+                                {null}
+                              </ReasonedButton>
+                            )}
                           </div>
                         )}
                       </td>

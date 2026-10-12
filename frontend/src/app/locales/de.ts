@@ -49117,6 +49117,7 @@ const resource = {
     "procurement_concept.ui.package.cost_ref_none": "Dieses Projekt hat noch keinen Abschnitt im Leistungsverzeichnis. Ohne ihn beginnt die Ausschreibung ohne Leistungspositionen.",
     "procurement_concept.ui.package.cost_ref_option": "{{name}} (Positionen: {{n}})",
     "procurement_concept.ui.package.cost_ref_unset": "Kein Abschnitt",
+    "procurement_concept.ui.package.criteria_drop_confirm": "Eine Vergabe nach dem niedrigsten Preis hat keine Zuschlagskriterien. Beim Speichern werden die Kriterien und Gewichtungen dieses Pakets entfernt.",
     "procurement_concept.ui.package.criteria_hint": "Benennen Sie, woran die Angebote gemessen werden, und geben Sie jedem Kriterium einen Anteil in Prozent. Die Anteile ergeben zusammen 100.",
     "procurement_concept.ui.package.criteria_title": "Zuschlagskriterien und ihre Gewichtung",
     "procurement_concept.ui.package.criteria_total": "Summe: {{total}} von 100",

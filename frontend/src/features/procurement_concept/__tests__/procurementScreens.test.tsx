@@ -487,6 +487,19 @@ describe('PrequalPanel', () => {
     return props;
   };
 
+  it('leaves out the candidate buttons the server says do not apply, and keeps a refused one with its reason', async () => {
+    const base = matrix();
+    mocked.listCandidates.mockResolvedValue({
+      ...base,
+      can: { ...base.can, add: denied('package_closed', false), score: denied('package_closed', false), reference: denied('not_procurement_owner'), delete: denied('package_closed', false) },
+    });
+    panel();
+    const row = (await screen.findAllByTestId('candidate-row'))[0]!;
+    for (const id of ['candidate-score', 'candidate-edit', 'candidate-remove']) expect(within(row).queryByTestId(id)).toBeNull();
+    expect(screen.queryByTestId('candidate-add')).toBeNull();
+    expect(within(row).getByTestId('candidate-reference')).toBeDisabled();
+  });
+
   it('removes a profile nothing uses, after asking', async () => {
     mocked.listCandidates.mockResolvedValue(matrix());
     mocked.deleteProfile.mockResolvedValue(undefined as never);
