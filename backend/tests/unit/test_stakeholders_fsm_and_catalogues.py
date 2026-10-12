@@ -222,3 +222,23 @@ def test_kind_registers_with_module_one_and_country_defaults() -> None:
     assert default_framework_id_for_country("GB") == "uk_planning_consultation"
     assert default_framework_id_for_country("FR") == "neutral"
     assert default_framework_id_for_country(None) == "neutral"
+
+
+def test_a_new_project_asks_the_active_pack_before_the_country_default(monkeypatch) -> None:
+    from app.modules.project_governance import public
+    from app.modules.stakeholders.catalogue import FRAMEWORK_KIND, default_framework_pin
+
+    asked: list[tuple[str, str | None]] = []
+
+    def no_opinion(kind, country_code=None):
+        asked.append((kind, country_code))
+
+    monkeypatch.setattr(public, "default_catalogue_pin", no_opinion)
+    assert default_framework_pin("de") == ("shipped", "de_public_participation", None)
+    assert default_framework_pin(None) == ("shipped", "neutral", None)
+    assert asked == [(FRAMEWORK_KIND, "de"), (FRAMEWORK_KIND, None)]
+
+    monkeypatch.setattr(
+        public, "default_catalogue_pin", lambda kind, country_code=None: public.CataloguePin("pack", "acme_people", 3)
+    )
+    assert default_framework_pin("de") == ("pack", "acme_people", 3)

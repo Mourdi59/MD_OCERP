@@ -340,3 +340,18 @@ def register_kind() -> None:
             ),
         )
     )
+
+
+def default_framework_pin(country_code: str | None) -> tuple[str, str, int | None]:
+    """``(source, id, version)`` a new project pins when the caller names no framework.
+
+    The active pack is asked first, through module 1's port. Without a pack
+    opinion the shipped framework of the project's country applies, at its
+    latest version.
+    """
+    from app.modules.project_governance.public import default_catalogue_pin
+
+    pin = default_catalogue_pin(FRAMEWORK_KIND, country_code)
+    if pin is not None:
+        return pin.source, pin.catalogue_id, pin.version
+    return "shipped", default_framework_id_for_country(country_code), None

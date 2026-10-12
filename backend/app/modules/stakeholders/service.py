@@ -38,7 +38,7 @@ from app.modules.stakeholders.catalogue import (
     DEFAULT_FRAMEWORK_ID,
     FRAMEWORK_KIND,
     StakeholderFramework,
-    default_framework_id_for_country,
+    default_framework_pin,
     register_kind,
 )
 from app.modules.stakeholders.errors import StakeholderError, conflict, forbidden, not_found
@@ -505,12 +505,11 @@ class StakeholderService:
         project = await self._project(project_id)
         settings = await self.repo.get_settings(project_id, lock=True)
         source = data.get("framework_source") or (settings.framework_source if settings else "shipped")
-        fid = data.get("framework_id") or (
-            settings.framework_id
-            if settings
-            else default_framework_id_for_country(getattr(project, "country_code", None))
-        )
+        fid = data.get("framework_id") or (settings.framework_id if settings else None)
         version = data.get("framework_version")
+        if settings is None and not data.get("framework_id") and not data.get("framework_source"):
+            # A first pin that names nothing: the installation's default for this project's country.
+            source, fid, version = default_framework_pin(getattr(project, "country_code", None))
         if settings is not None and fid == settings.framework_id and version is None and not data.get("framework_id"):
             version = settings.framework_version
         fid = fid or DEFAULT_FRAMEWORK_ID

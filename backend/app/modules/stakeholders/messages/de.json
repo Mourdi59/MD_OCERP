@@ -227,6 +227,7 @@
       "owner_and_due_required": "Eine vereinbarte Zusage braucht eine verantwortliche Person und ein Fälligkeitsdatum",
       "owner_cannot_verify": "Die verantwortliche Person kann ihre Zusage nicht selbst bestätigen; das übernimmt jemand anderes",
       "owner_change_needs_manage": "Nur wer die Organisation verwaltet, darf die verantwortliche Person einer vereinbarten Zusage ändern",
+      "pack_catalogue_invalid": "Das installierte Paket liefert ein Rahmenwerk, das sich nicht laden lässt",
       "plan_item_not_found": "Planeintrag nicht gefunden",
       "project_not_found": "Projekt nicht gefunden",
       "project_stopped": "Das Projekt wurde an einem Gate gestoppt; seine Rahmendokumente nehmen keine Änderungen an",

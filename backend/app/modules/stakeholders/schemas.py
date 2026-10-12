@@ -32,7 +32,7 @@ class _In(BaseModel):
 
 
 class SettingsPut(_In):
-    framework_source: Literal["shipped", "tenant"] | None = None
+    framework_source: Literal["shipped", "tenant", "pack"] | None = None
     framework_id: str | None = Field(default=None, max_length=64)
     framework_version: int | None = Field(default=None, ge=1)
     analysis_method: str | None = Field(default=None, max_length=64)

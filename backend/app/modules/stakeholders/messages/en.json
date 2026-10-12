@@ -227,6 +227,7 @@
       "owner_and_due_required": "An agreed commitment needs an owner and a due date",
       "owner_cannot_verify": "The owner of a commitment cannot verify it; someone else confirms that it was kept",
       "owner_change_needs_manage": "Only someone who manages the organisation may change the owner of an agreed commitment",
+      "pack_catalogue_invalid": "The installed pack ships a framework that does not load",
       "plan_item_not_found": "Plan item not found",
       "project_not_found": "Project not found",
       "project_stopped": "The project was stopped at a gate; its frame documents take no changes",
