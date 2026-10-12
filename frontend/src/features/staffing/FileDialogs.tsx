@@ -358,8 +358,8 @@ export function DocumentDialog({
   }, [open, document?.document_kind]);
 
   const problem = last4Problem(last4) ?? (issued && until && until < issued ? 'validity_dates_invalid' : null);
-  // The fit answer belongs to the health document. The server marks that kind; the client knows no kind by name.
-  const takesFit = !!document?.special_category;
+  // The server says which kind carries the fit answer; the client knows no kind by name.
+  const takesFit = !!kind?.takes_fit_flag;
 
   return (
     <WideModal

@@ -84,6 +84,7 @@ export function catalogue(over: Partial<StaffingCatalogue> = {}): StaffingCatalo
         special_category: false,
         store_number: false,
         retention_rule: 'neutral_assignment_24m',
+        takes_fit_flag: false,
       },
       {
         code: 'work_permit',
@@ -93,6 +94,7 @@ export function catalogue(over: Partial<StaffingCatalogue> = {}): StaffingCatalo
         special_category: false,
         store_number: true,
         retention_rule: 'neutral_assignment_24m',
+        takes_fit_flag: false,
       },
       {
         code: 'safety_training',
@@ -102,6 +104,7 @@ export function catalogue(over: Partial<StaffingCatalogue> = {}): StaffingCatalo
         special_category: false,
         store_number: false,
         retention_rule: 'neutral_assignment_24m',
+        takes_fit_flag: false,
       },
       {
         code: 'health_certificate',
@@ -111,9 +114,16 @@ export function catalogue(over: Partial<StaffingCatalogue> = {}): StaffingCatalo
         special_category: true,
         store_number: false,
         retention_rule: 'neutral_assignment_24m',
+        takes_fit_flag: true,
       },
     ],
     leave_types: [{ code: 'annual', name_key: 'staffing.leave_type.annual', labels: null }],
+    phases: ['development', 'execution', 'operation'],
+    custom_role_code: 'custom',
+    required_before_options: [
+      { tag: 'construction_start', resolvable: true },
+      { tag: 'handover', resolvable: false },
+    ],
     ...over,
   };
 }
@@ -151,6 +161,7 @@ export function fill(over: Partial<Fill> = {}): Fill {
     to_date: null,
     status: 'confirmed',
     cleared_to_work: true,
+    can: { confirm: no('already_in_state'), end: yes, delete: no('position_has_fills') },
     ...over,
   };
 }
@@ -178,7 +189,11 @@ export function position(over: Partial<Position> = {}): Position {
     notes: null,
     covered_fte: '0',
     fills: [],
-    can: { gate_fields: yes },
+    can: {
+      gate_fields: yes,
+      status: { open: no('already_in_state'), recruiting: yes, on_hold: yes, cancelled: yes },
+      request_resource: no('position_not_recruiting'),
+    },
     ...over,
   };
 }
@@ -291,6 +306,7 @@ export function compliance(over: Partial<Compliance> = {}): Compliance {
         file_id: 'file-1',
         cleared_to_work: true,
         cells: { employment_contract: { state: 'valid' }, work_permit: { state: 'not_required' } },
+        can: { see_documents: yes },
       },
       {
         roster_member_id: 'rm-2',
@@ -299,10 +315,25 @@ export function compliance(over: Partial<Compliance> = {}): Compliance {
         file_id: 'file-2',
         cleared_to_work: false,
         cells: { employment_contract: { state: 'missing' }, work_permit: { state: 'expiring', days: 20 } },
+        can: { see_documents: yes },
       },
     ],
     total: 2,
+    summary: [
+      { document_kind: 'employment_contract', required: 2, valid: 1, expiring: 0, expired: 0, missing: 1, waived: 0 },
+      { document_kind: 'work_permit', required: 1, valid: 0, expiring: 1, expired: 0, missing: 0, waived: 0 },
+    ],
     ...over,
+  };
+}
+
+/** The matrix as a caller gets it who may open nobody's file: names and clearance, no cell, counts only. */
+export function complianceForViewer(): Compliance {
+  const full = compliance();
+  return {
+    ...full,
+    document_kinds: [],
+    items: full.items.map((row) => ({ ...row, file_id: null, cells: {}, can: { see_documents: no('no_relationship_to_person') } })),
   };
 }
 

@@ -26,18 +26,11 @@ export function planCanBeSubmitted(status: PlanStatus): boolean {
   return status === 'draft' || status === 'revising';
 }
 
-/** The states a position can be moved to by hand from its stored state. `filled` is never one: the server derives it. */
-export function nextPositionStatuses(stored: SettablePositionStatus): SettablePositionStatus[] {
-  switch (stored) {
-    case 'open':
-      return ['recruiting', 'on_hold', 'cancelled'];
-    case 'recruiting':
-      return ['open', 'on_hold', 'cancelled'];
-    case 'on_hold':
-      return ['open', 'cancelled'];
-    default:
-      return [];
-  }
+/** The states a position can be moved to by hand now: the ones the server allows, in the order it lists them. */
+export function allowedStatusMoves(position: Pick<Position, 'can'>): SettablePositionStatus[] {
+  return Object.entries(position.can.status)
+    .filter(([, can]) => can.allowed)
+    .map(([status]) => status as SettablePositionStatus);
 }
 
 export function nextTravelStatuses(status: TravelStatus): TravelStatus[] {
@@ -96,22 +89,20 @@ export function costProblem(cost: string, currency: string): 'cost_invalid' | 'c
 }
 
 /**
- * The phases a plan can have positions in, in the order the pinned catalogue first names them. A phase only
- * an existing position carries (after a catalogue change) comes last. The client holds no list of its own.
+ * The phases a plan can have positions in, in the order the server lists them with the pinned catalogue. A phase
+ * only an existing position carries comes last. The client holds no list of its own.
  */
 export function phasesOf(catalogue: StaffingCatalogue | null | undefined, positions: Position[] = []): Phase[] {
-  const seen = new Set<Phase>();
-  for (const role of catalogue?.roles ?? []) for (const phase of role.phases) seen.add(phase);
+  const seen = new Set<Phase>(catalogue?.phases ?? []);
   for (const position of positions) seen.add(position.phase);
   return [...seen];
 }
 
-/** What a key role can be required before: the tags the roles of the pinned catalogue use, plus the one already set. */
-export function requirementTags(catalogue: StaffingCatalogue, current?: string | null): string[] {
-  const seen = new Set<string>();
-  for (const role of catalogue.roles) if (role.required_before) seen.add(role.required_before);
-  if (current) seen.add(current);
-  return [...seen];
+/** What a key role can be required before: the vocabulary the server sends, plus the tag already set. */
+export function requirementTags(catalogue: StaffingCatalogue, current?: string | null): Array<{ tag: string; resolvable: boolean }> {
+  const options = [...catalogue.required_before_options];
+  if (current && !options.some((o) => o.tag === current)) options.push({ tag: current, resolvable: false });
+  return options;
 }
 
 /** Positions per phase in the given phase order, phases without positions left out. */

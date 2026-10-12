@@ -55,7 +55,7 @@ import {
 } from './labels';
 import { ChangeCatalogueDialog, PlanSettingsDialog } from './PlanDialogs';
 import { FillDialog, FromCatalogueDialog, HandoverDialog, PositionDialog } from './PositionDialogs';
-import { fteDecimals, groupByPhase, phasesOf, nextPositionStatuses, planCanBeSubmitted, planIsLocked } from './rules';
+import { allowedStatusMoves, fteDecimals, groupByPhase, phasesOf, planCanBeSubmitted, planIsLocked } from './rules';
 import {
   ClearedBadge,
   ExportButtons,
@@ -339,7 +339,7 @@ export function PlanPanel({
                 </thead>
                 <tbody>
                   {group.positions.map((p) => {
-                    const moves = nextPositionStatuses(p.stored_status);
+                    const moves = allowedStatusMoves(p);
                     const owner = personName(p.owner_user_id);
                     return (
                       <tr key={p.id} className="border-b border-border-light align-top last:border-b-0" data-testid="position-row">
@@ -382,7 +382,7 @@ export function PlanPanel({
                           <ToneBadge tone={POSITION_TONE[p.status]} testId="position-status">
                             {vocab(t, POSITION_STATUS, p.status)}
                           </ToneBadge>
-                          {moves.length > 0 && p.status !== 'filled' && !locked && (
+                          {moves.length > 0 && (
                             <select
                               className={`${FIELD_CLASS} mt-1 !w-auto !py-0.5 text-xs`}
                               aria-label={t('staffing.position.change_status', { defaultValue: 'Change status' })}
@@ -422,17 +422,17 @@ export function PlanPanel({
                                         date: f.from_date ? fmtDate(f.from_date) : '',
                                       })}
                                     </span>
-                                    {!locked && f.status === 'proposed' && (
-                                      <>
+                                    {f.can.confirm.allowed && (
                                         <button type="button" className="text-oe-blue-text hover:underline" onClick={() => confirm.mutate(f.id)} data-testid="fill-confirm">
                                           {t('staffing.fill.confirm', { defaultValue: 'Confirm' })}
                                         </button>
-                                        <button type="button" className="hover:underline" onClick={() => dropFill.mutate(f.id)}>
+                                    )}
+                                    {f.can.delete.allowed && (
+                                        <button type="button" className="hover:underline" onClick={() => dropFill.mutate(f.id)} data-testid="fill-remove">
                                           {t('staffing.fill.remove', { defaultValue: 'Remove' })}
                                         </button>
-                                      </>
                                     )}
-                                    {!locked && f.status === 'confirmed' && (
+                                    {f.can.end.allowed && (
                                       <button type="button" className="hover:underline" onClick={() => end.mutate(f.id)} data-testid="fill-end">
                                         {t('staffing.fill.end', { defaultValue: 'End assignment' })}
                                       </button>
@@ -450,7 +450,7 @@ export function PlanPanel({
                                 {t('staffing.position.resource_requested', { defaultValue: 'Resource requested' })}
                               </span>
                             )}
-                            {p.can.request_resource?.allowed && (
+                            {p.can.request_resource.allowed && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -585,6 +585,7 @@ export function PlanPanel({
         open={dialog?.kind === 'catalogue'}
         projectId={projectId}
         plan={plan}
+        catalogue={catalogue}
         labels={labels}
         onClose={() => setDialog(null)}
         onDone={onChanged}

@@ -90,6 +90,8 @@ export interface CatalogueDocumentKind extends Labelled {
   special_category: boolean;
   store_number: boolean;
   retention_rule: string;
+  /** Whether a document of this kind carries the fit-for-role answer. Decided by the server. */
+  takes_fit_flag: boolean;
 }
 
 export interface StaffingCatalogue {
@@ -102,6 +104,12 @@ export interface StaffingCatalogue {
   roles: CatalogueRole[];
   document_kinds: CatalogueDocumentKind[];
   leave_types: Labelled[];
+  /** The phases a position can be planned in, in order. */
+  phases: Phase[];
+  /** The role code of a role the catalogue does not list; such a position carries its own label. */
+  custom_role_code: string;
+  /** What a key role can be required before. `resolvable` is false when no gate of this project checks the tag. */
+  required_before_options: Array<{ tag: string; resolvable: boolean }>;
 }
 
 export interface StaffingPlan {
@@ -135,6 +143,7 @@ export interface Fill {
   status: FillStatus;
   /** Null when the person has no personnel file yet, so nothing is known. */
   cleared_to_work: boolean | null;
+  can: { confirm: Can; end: Can; delete: Can };
 }
 
 export interface Position {
@@ -160,9 +169,12 @@ export interface Position {
   notes: string | null;
   covered_fte: string;
   fills: Fill[];
-  /** `gate_fields`: whether key role, handover and the requirement may be changed by this caller now. */
-  /** `request_resource`: whether a request in the resources module may be opened for this position now. */
-  can: { gate_fields: Can; request_resource?: Can };
+  /**
+   * `gate_fields`: whether key role, handover and the requirement may be changed by this caller now.
+   * `status`: one flag per state the position could be moved to by hand.
+   * `request_resource`: whether a request in the resources module may be opened for this position now.
+   */
+  can: { gate_fields: Can; status: Record<string, Can>; request_resource: Can };
 }
 
 export interface PositionInput {
@@ -181,6 +193,28 @@ export interface PositionInput {
   recruiting_channel?: RecruitingChannel | null;
   owner_user_id?: string | null;
   notes?: string | null;
+}
+
+export interface CatalogueChangeBody {
+  catalogue_source: 'shipped' | 'tenant';
+  catalogue_id: string;
+  /** Old role code to the role of the new catalogue that replaces it. */
+  role_mapping: Record<string, string>;
+}
+
+/** What a catalogue change would do, computed by the function the change itself uses. Nothing is written. */
+export interface CatalogueChangePreview {
+  custom_role_code: string;
+  target_roles: Array<Labelled & { organisation: string; phases: Phase[] }>;
+  positions: Array<{
+    position_id: string;
+    role_code: string;
+    custom_label: string | null;
+    title: string | null;
+    phase: Phase;
+    outcome: 'kept' | 'mapped' | 'custom';
+    target_role: string | null;
+  }>;
 }
 
 export interface Handover {
@@ -224,13 +258,28 @@ export interface ComplianceRow {
   roles: string[];
   file_id: string | null;
   cleared_to_work: boolean | null;
+  /** Empty for a person whose file the caller may not open. */
   cells: Record<string, { state: CellState; days?: number | null }>;
+  can: { see_documents: Can };
+}
+
+/** Counts per document kind over the whole project: no person, no role, no kind of a special category. */
+export interface ComplianceSummaryRow {
+  document_kind: string;
+  required: number;
+  valid: number;
+  expiring: number;
+  expired: number;
+  missing: number;
+  waived: number;
 }
 
 export interface Compliance {
+  /** Only the kinds at least one visible row carries. */
   document_kinds: string[];
   items: ComplianceRow[];
   total: number;
+  summary: ComplianceSummaryRow[];
 }
 
 export interface PlannedVsActualRow {
@@ -475,10 +524,11 @@ export function patchPlan(
   return apiPatch<StaffingPlan>(`/v1/staffing/projects/${projectId}/plan`, body);
 }
 
-export function changeCatalogue(
-  projectId: string,
-  body: { catalogue_source: 'shipped' | 'tenant'; catalogue_id: string; role_mapping: Record<string, string> },
-): Promise<StaffingPlan> {
+export function previewCatalogueChange(projectId: string, body: CatalogueChangeBody): Promise<CatalogueChangePreview> {
+  return apiPost<CatalogueChangePreview>(`/v1/staffing/projects/${projectId}/plan/catalogue/preview`, body);
+}
+
+export function changeCatalogue(projectId: string, body: CatalogueChangeBody): Promise<StaffingPlan> {
   return apiPost<StaffingPlan>(`/v1/staffing/projects/${projectId}/plan/catalogue`, body);
 }
 

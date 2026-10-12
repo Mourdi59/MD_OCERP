@@ -31,6 +31,9 @@ vi.mock('../api', async (importOriginal) => {
     holdFile: vi.fn(),
     endFile: vi.fn(),
     requestResource: vi.fn(),
+    listCatalogues: vi.fn(),
+    previewCatalogueChange: vi.fn(),
+    changeCatalogue: vi.fn(),
     createPosition: vi.fn(),
     updatePosition: vi.fn(),
   };
@@ -42,12 +45,26 @@ import * as api from '../api';
 import { DocumentDialog, EndFileDialog } from '../FileDialogs';
 import type { LabelContext } from '../labels';
 import { PeoplePanel } from '../PeoplePanel';
+import { ChangeCatalogueDialog } from '../PlanDialogs';
 import { PlanPanel } from '../PlanPanel';
 import { PositionDialog } from '../PositionDialogs';
 import { ComplianceView, OrgChartView, PlannedVsActualView, UpcomingView } from '../ReadViews';
 import { ClearedBadge, ReasonDialog } from '../StaffingBits';
 import { enT } from './i18nMock';
-import { catalogue, compliance, fileDocument, fileRow, fill, handover, no, plan, position, upcoming } from './fixtures';
+import {
+  catalogue,
+  compliance,
+  complianceForViewer,
+  fileDocument,
+  fileRow,
+  fill,
+  handover,
+  no,
+  plan,
+  position,
+  upcoming,
+  yes,
+} from './fixtures';
 
 const mocked = vi.mocked(api);
 const labels: LabelContext = { t: enT, language: 'en', exists: (k) => k in en.translation };
@@ -72,7 +89,7 @@ function renderPlan(over: Partial<Parameters<typeof PlanPanel>[0]> = {}) {
     status: 'filled',
     covered_fte: '1.00',
     owner_user_id: 'u-lead',
-    fills: [fill(), fill({ id: 'fill-2', name: null, status: 'proposed', cleared_to_work: null })],
+    fills: [fill(), fill({ id: 'fill-2', name: null, status: 'proposed', cleared_to_work: null, can: { confirm: yes, end: no('fill_not_confirmed'), delete: yes } })],
   });
   const vacant = position({ id: 'pos-2', role_code: 'site_manager', key_role: false, fte: '0.50', headcount: 2 });
   const operation = position({ id: 'pos-3', role_code: 'operator_plant_manager', organisation: 'operator', phase: 'operation' });
@@ -184,23 +201,36 @@ describe('PlanPanel', () => {
       id: 'pos-r',
       status: 'recruiting',
       stored_status: 'recruiting',
-      can: { gate_fields: no('gate_fields_frozen'), request_resource: { allowed: true, reason: null } },
+      can: { ...position().can, request_resource: yes },
     });
     const asked = position({
       id: 'pos-a',
       role_code: 'site_manager',
       resource_request_id: 'rr-1',
-      can: { gate_fields: no('gate_fields_frozen'), request_resource: no('resource_request_exists') },
+      can: { ...position().can, request_resource: no('resource_request_exists') },
     });
     const { onChanged } = renderPlan({ positions: [recruiting, asked, position({ id: 'pos-o', role_code: 'operator_plant_manager', phase: 'operation' })] });
     const rows = screen.getAllByTestId('position-row');
     expect(within(rows[1]!).queryByTestId('request-resource')).toBeNull();
     expect(within(rows[1]!).getByTestId('resource-requested')).toBeInTheDocument();
-    // A position view without the flag offers nothing: the client does not guess from the status.
+    // Refused by the server: nothing is offered, whatever the status reads.
     expect(within(rows[2]!).queryByTestId('request-resource')).toBeNull();
     fireEvent.click(within(rows[0]!).getByTestId('request-resource'));
     await waitFor(() => expect(mocked.requestResource).toHaveBeenCalledWith('p1', 'pos-r'));
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  });
+
+  it('offers confirm, remove and end on an assignment by the server flag of each', () => {
+    const own = fill({ id: 'fill-own', status: 'proposed', can: { confirm: no('owner_cannot_confirm_own_fill'), end: no('fill_not_confirmed'), delete: yes } });
+    renderPlan({ positions: [position({ fills: [fill(), own] })] });
+    const rows = screen.getAllByTestId('fill-row');
+    // Confirmed: only the end. Proposed on the caller's own position: no confirm, the removal stays.
+    expect(within(rows[0]!).getByTestId('fill-end')).toBeInTheDocument();
+    expect(within(rows[0]!).queryByTestId('fill-confirm')).toBeNull();
+    expect(within(rows[0]!).queryByTestId('fill-remove')).toBeNull();
+    expect(within(rows[1]!).queryByTestId('fill-confirm')).toBeNull();
+    expect(within(rows[1]!).getByTestId('fill-remove')).toBeInTheDocument();
+    expect(within(rows[1]!).queryByTestId('fill-end')).toBeNull();
   });
 
   it('explains an empty plan and offers the catalogue roles as the first step', () => {
@@ -255,6 +285,35 @@ describe('read views', () => {
       ['missing', 'Missing'],
       ['expiring', 'Expires in 20 days'],
     ]);
+  });
+
+  it('shows a plain viewer names, clearance and project counts, and no document state of any person', () => {
+    const onOpenFile = vi.fn();
+    wrap(<ComplianceView projectId="p1" catalogue={catalogue()} labels={labels} compliance={complianceForViewer()} onOpenFile={onOpenFile} />);
+    const rows = screen.getAllByTestId('compliance-row');
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]!).getByText('Dana Weber')).toBeInTheDocument();
+    // No cell, no column of a document kind, and no way into the file.
+    expect(screen.queryAllByTestId('compliance-cell')).toHaveLength(0);
+    expect(within(rows[0]!).queryByRole('button')).toBeNull();
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent).slice(0, 2)).toEqual(['Person', 'Clearance']);
+    expect(screen.getByTestId('compliance-restricted')).toBeInTheDocument();
+    // The counts are per document over the project, exactly as sent: nothing is added up per person here.
+    const summary = screen.getAllByTestId('compliance-summary-row');
+    expect(summary).toHaveLength(2);
+    expect(within(summary[0]!).getByText('Employment contract')).toBeInTheDocument();
+    expect([...summary[0]!.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['1', '0', '0', '1', '0']);
+    expect(screen.getByTestId('compliance-summary')).not.toHaveTextContent('Health certificate');
+  });
+
+  it('hides the cells of one person only and says why, beside the rows the caller may see', () => {
+    const mixed = compliance();
+    mixed.items[1] = { ...mixed.items[1]!, file_id: null, cells: {}, can: { see_documents: no('no_relationship_to_person') } };
+    wrap(<ComplianceView projectId="p1" catalogue={catalogue()} labels={labels} compliance={mixed} onOpenFile={() => undefined} />);
+    const rows = screen.getAllByTestId('compliance-row');
+    expect(within(rows[0]!).getAllByTestId('compliance-cell')).toHaveLength(2);
+    expect(within(rows[1]!).queryAllByTestId('compliance-cell')).toHaveLength(0);
+    expect(within(rows[1]!).getByTestId('compliance-hidden')).toHaveTextContent(en.translation['staffing.errors.no_relationship_to_person']!);
   });
 
   it('explains an empty compliance matrix', () => {
@@ -417,7 +476,8 @@ describe('DocumentDialog', () => {
   });
 
   it('asks for the fit answer only on the kind the server marks, and for no number there', () => {
-    open(fileDocument({ id: null, document_kind: 'health_certificate', status: null, special_category: true }));
+    // The flag on the catalogue kind decides, not the special category and not the kind's name.
+    open(fileDocument({ id: null, document_kind: 'health_certificate', status: null }));
     expect(screen.getByTestId('document-fit')).toBeInTheDocument();
     expect(screen.queryByTestId('document-last4')).toBeNull();
     cleanup();
@@ -438,6 +498,81 @@ describe('EndFileDialog', () => {
     await waitFor(() => expect(mocked.endFile).toHaveBeenCalledTimes(1));
     expect(mocked.endFile.mock.calls[0]).toEqual(['p1', 'file-1']);
     await waitFor(() => expect(onDone).toHaveBeenCalled());
+  });
+});
+
+describe('ChangeCatalogueDialog', () => {
+  const other = { kind: 'staffing_model', source: 'shipped' as const, id: 'uk', code: 'uk', name: { key: null, text: { en: 'United Kingdom' } }, state: 'active', versions: [1], latest_version: 1, review_status: 'unconfirmed' };
+  const previewOf = (mapping: Record<string, string>) => ({
+    custom_role_code: 'custom',
+    target_roles: [
+      { code: 'construction_manager', name_key: '', labels: { en: 'Construction manager' }, organisation: 'owner_project_lead', phases: ['execution'] },
+      { code: 'asset_manager', name_key: '', labels: { en: 'Asset manager' }, organisation: 'operator', phases: ['operation'] },
+    ],
+    positions: [
+      { position_id: 'pos-1', role_code: 'project_manager', custom_label: null, title: null, phase: 'execution', outcome: 'kept' as const, target_role: 'project_manager' },
+      {
+        position_id: 'pos-2',
+        role_code: 'site_manager',
+        custom_label: null,
+        title: null,
+        phase: 'execution',
+        outcome: mapping.site_manager ? ('mapped' as const) : ('custom' as const),
+        target_role: mapping.site_manager ?? null,
+      },
+    ],
+  });
+
+  beforeEach(() => {
+    mocked.listCatalogues.mockResolvedValue({ items: [other], total: 1, offset: 0, limit: 1 });
+    mocked.previewCatalogueChange.mockImplementation(async (_p, body) => previewOf(body.role_mapping));
+    mocked.changeCatalogue.mockResolvedValue(plan());
+  });
+
+  const open = () =>
+    wrap(<ChangeCatalogueDialog open projectId="p1" plan={plan()} catalogue={catalogue()} labels={labels} onClose={() => undefined} onDone={() => undefined} />);
+
+  it('shows what the change would do before anything is changed, and sends the mapping the reader chose', async () => {
+    open();
+    await screen.findByRole('option', { name: 'United Kingdom' });
+    expect(screen.getByTestId('change-catalogue-save')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('new-catalogue'), { target: { value: 'shipped:uk' } });
+    const preview = await screen.findByTestId('catalogue-preview');
+    expect(mocked.changeCatalogue).not.toHaveBeenCalled();
+    expect(within(preview).getByTestId('preview-kept')).toHaveTextContent('Positions that keep their role: 1');
+    const role = within(preview).getByTestId('preview-role');
+    expect(within(role).getByText('Site manager')).toBeInTheDocument();
+    // Only roles of the new catalogue that exist in the position's phase are offered.
+    const target = within(role).getByTestId('preview-target');
+    expect(within(target).getByRole('option', { name: 'Construction manager' })).toBeInTheDocument();
+    expect(within(target).queryByRole('option', { name: 'Asset manager' })).toBeNull();
+    fireEvent.change(target, { target: { value: 'construction_manager' } });
+    await waitFor(() =>
+      expect(mocked.previewCatalogueChange).toHaveBeenLastCalledWith('p1', {
+        catalogue_source: 'shipped',
+        catalogue_id: 'uk',
+        role_mapping: { site_manager: 'construction_manager' },
+      }),
+    );
+    await waitFor(() => expect(screen.getByTestId('change-catalogue-save')).not.toBeDisabled());
+    fireEvent.click(screen.getByTestId('change-catalogue-save'));
+    await waitFor(() =>
+      expect(mocked.changeCatalogue).toHaveBeenCalledWith('p1', {
+        catalogue_source: 'shipped',
+        catalogue_id: 'uk',
+        role_mapping: { site_manager: 'construction_manager' },
+      }),
+    );
+  });
+
+  it('does not let the change through when the preview failed, and offers a retry', async () => {
+    mocked.previewCatalogueChange.mockRejectedValue(new ApiError(422, 'Unprocessable', { detail: { code: 'role_mapping_unknown_target', message: 'x' } }));
+    open();
+    await screen.findByRole('option', { name: 'United Kingdom' });
+    fireEvent.change(screen.getByTestId('new-catalogue'), { target: { value: 'shipped:uk' } });
+    expect(await screen.findByText('What the change would do could not be worked out')).toBeInTheDocument();
+    expect(screen.getByTestId('change-catalogue-save')).toBeDisabled();
+    expect(screen.queryByTestId('catalogue-preview')).toBeNull();
   });
 });
 
@@ -466,6 +601,10 @@ describe('PositionDialog', () => {
     expect(screen.queryByTestId('owner-locked')).toBeNull();
     // The requirement comes from the catalogue role, as a tag of the phase model.
     expect(screen.getByTestId('position-required-before')).toHaveValue('construction_start');
+    // A step no gate of the project checks is offered with a warning, not silently.
+    fireEvent.change(screen.getByTestId('position-required-before'), { target: { value: 'handover' } });
+    expect(screen.getByTestId('required-before-unchecked')).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('position-required-before'), { target: { value: 'construction_start' } });
     fireEvent.click(screen.getByTestId('position-save'));
     await waitFor(() => expect(mocked.createPosition).toHaveBeenCalledTimes(1));
     expect(mocked.createPosition.mock.calls[0]![1]).toMatchObject({
@@ -482,6 +621,7 @@ describe('PositionDialog', () => {
     open({ plan: plan({ can: { manage: no('manage_permission_required'), assign_owner: no('owner_assignment_forbidden') } }) });
     expect(screen.getByTestId('position-key-role')).toBeDisabled();
     expect(screen.getByTestId('position-required-before')).toBeDisabled();
+    expect(screen.queryByTestId('required-before-unchecked')).toBeNull();
     expect(screen.getByTestId('gate-fields-locked')).toHaveTextContent(en.translation['staffing.errors.manage_permission_required']!);
     expect(screen.getByTestId('owner-locked')).toHaveTextContent(en.translation['staffing.errors.owner_assignment_forbidden']!);
     fireEvent.click(screen.getByTestId('position-save'));
@@ -492,7 +632,7 @@ describe('PositionDialog', () => {
 
   it('freezes what the gate reads on a position that has left its first state, for a manager too', async () => {
     mocked.updatePosition.mockResolvedValue(position());
-    open({ position: position({ stored_status: 'recruiting', status: 'recruiting', can: { gate_fields: no('gate_fields_frozen') } }) });
+    open({ position: position({ stored_status: 'recruiting', status: 'recruiting', can: { ...position().can, gate_fields: no('gate_fields_frozen') } }) });
     expect(screen.getByTestId('position-key-role')).toBeDisabled();
     expect(screen.getByTestId('gate-fields-locked')).toHaveTextContent(en.translation['staffing.errors.gate_fields_frozen']!);
     fireEvent.click(screen.getByTestId('position-save'));

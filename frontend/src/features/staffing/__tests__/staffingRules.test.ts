@@ -24,6 +24,7 @@ import {
 } from '../labels';
 import { positionProblem } from '../PositionDialogs';
 import {
+  allowedStatusMoves,
   costProblem,
   datesProblem,
   decimalString,
@@ -34,7 +35,6 @@ import {
   last4Problem,
   liveFills,
   nextLeaveStatuses,
-  nextPositionStatuses,
   nextTravelStatuses,
   phasesOf,
   planCanBeSubmitted,
@@ -44,7 +44,7 @@ import {
 } from '../rules';
 import { enT } from './i18nMock';
 import en from '@/app/locales/en';
-import { catalogue, fill, position } from './fixtures';
+import { catalogue, fill, no, position, yes } from './fixtures';
 
 const labels: LabelContext = { t: enT, language: 'en', exists: (k) => k in en.translation };
 
@@ -66,15 +66,12 @@ describe('plan state', () => {
 });
 
 describe('state changes offered', () => {
-  it('never offers filled, which the server derives from the people assigned', () => {
-    for (const s of ['open', 'recruiting', 'on_hold', 'cancelled'] as const) {
-      expect(nextPositionStatuses(s)).not.toContain('filled');
-    }
-  });
-
-  it('offers nothing from a cancelled position', () => {
-    expect(nextPositionStatuses('cancelled')).toEqual([]);
-    expect(nextPositionStatuses('on_hold')).toEqual(['open', 'cancelled']);
+  it('offers the position moves the server allows and no other', () => {
+    expect(allowedStatusMoves(position())).toEqual(['recruiting', 'on_hold', 'cancelled']);
+    const locked = { open: no('plan_in_review'), recruiting: no('plan_in_review'), on_hold: no('plan_in_review'), cancelled: no('plan_in_review') };
+    expect(allowedStatusMoves(position({ can: { ...position().can, status: locked } }))).toEqual([]);
+    // The client has no table of its own: a state the server adds is offered, one it drops is not.
+    expect(allowedStatusMoves(position({ can: { ...position().can, status: { paused: yes } } }))).toEqual(['paused']);
   });
 
   it('follows the travel and leave lifecycles', () => {
@@ -135,17 +132,20 @@ describe('position draft', () => {
   const ok = { role_code: 'site_manager', custom_label: '', fte: '1', headcount: '1', entry_date: '', exit_date: '' };
 
   it('passes a complete draft', () => {
-    expect(positionProblem(ok)).toBeNull();
+    expect(positionProblem(ok, 'custom')).toBeNull();
   });
 
   it('wants a name for a role that is not in the catalogue', () => {
-    expect(positionProblem({ ...ok, role_code: 'custom' })).toBe('custom_role_needs_label');
-    expect(positionProblem({ ...ok, role_code: 'custom', custom_label: 'Interface manager' })).toBeNull();
+    expect(positionProblem({ ...ok, role_code: 'custom' }, 'custom')).toBe('custom_role_needs_label');
+    expect(positionProblem({ ...ok, role_code: 'custom', custom_label: 'Interface manager' }, 'custom')).toBeNull();
+    // Which code means a free role is the catalogue's to say.
+    expect(positionProblem({ ...ok, role_code: 'other' }, 'other')).toBe('custom_role_needs_label');
+    expect(positionProblem({ ...ok, role_code: 'custom' }, 'other')).toBeNull();
   });
 
   it('names the first problem with the code the server would use', () => {
-    expect(positionProblem({ ...ok, fte: '1.5' })).toBe('fte_out_of_range');
-    expect(positionProblem({ ...ok, entry_date: '2026-09-02', exit_date: '2026-09-01' })).toBe('exit_before_entry');
+    expect(positionProblem({ ...ok, fte: '1.5' }, 'custom')).toBe('fte_out_of_range');
+    expect(positionProblem({ ...ok, entry_date: '2026-09-02', exit_date: '2026-09-01' }, 'custom')).toBe('exit_before_entry');
   });
 });
 
@@ -156,19 +156,23 @@ describe('mappers', () => {
     position({ id: 'c', phase: 'execution', role_code: 'site_manager', status: 'cancelled', stored_status: 'cancelled' }),
   ];
 
-  it('takes the phases from the pinned catalogue, in its order, and holds no list of its own', () => {
+  it('takes the phases from the catalogue response, in its order, and holds no list of its own', () => {
     expect(phasesOf(catalogue())).toEqual(['development', 'execution', 'operation']);
-    const other = catalogue({ roles: [{ ...catalogue().roles[0]!, phases: ['tender', 'build'] }] });
+    const other = catalogue({ phases: ['tender', 'build'] });
     expect(phasesOf(other)).toEqual(['tender', 'build']);
     // A phase only an old position still carries is kept, after the catalogue's own.
     expect(phasesOf(other, [position({ phase: 'execution' })])).toEqual(['tender', 'build', 'execution']);
     expect(phasesOf(null)).toEqual([]);
   });
 
-  it('offers what a key role can be required before from the catalogue, never from a gate code', () => {
-    expect(requirementTags(catalogue())).toEqual(['construction_start']);
-    expect(requirementTags(catalogue(), 'handover')).toEqual(['construction_start', 'handover']);
-    expect(requirementTags(catalogue({ roles: [] }))).toEqual([]);
+  it('offers what a key role can be required before from the server, with whether a gate checks it', () => {
+    expect(requirementTags(catalogue())).toEqual([
+      { tag: 'construction_start', resolvable: true },
+      { tag: 'handover', resolvable: false },
+    ]);
+    // A tag already on the position stays selectable even when the vocabulary dropped it.
+    expect(requirementTags(catalogue({ required_before_options: [] }), 'old_tag')).toEqual([{ tag: 'old_tag', resolvable: false }]);
+    expect(requirementTags(catalogue({ required_before_options: [] }))).toEqual([]);
   });
 
   it('groups positions by phase in the catalogue order and drops empty phases', () => {

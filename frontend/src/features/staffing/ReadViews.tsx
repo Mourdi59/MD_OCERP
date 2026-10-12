@@ -34,6 +34,7 @@ import {
   catalogueName,
   positionName,
   vocab,
+  whyNot,
   type LabelContext,
 } from './labels';
 import { fteDecimals } from './rules';
@@ -110,6 +111,9 @@ export function OrgChartView({ projectId, catalogue, labels, chart }: ViewBase &
   );
 }
 
+/** The states the project summary counts, in the order the server lists them. */
+const SUMMARY_STATES = ['valid', 'expiring', 'expired', 'missing', 'waived'] as const;
+
 export function ComplianceView({
   projectId,
   catalogue,
@@ -172,7 +176,12 @@ export function ComplianceView({
                 <td className="px-3 py-2">
                   <ClearedBadge cleared={row.cleared_to_work} />
                 </td>
-                {compliance.document_kinds.map((k) => {
+                {!row.can.see_documents.allowed && compliance.document_kinds.length > 0 && (
+                  <td colSpan={compliance.document_kinds.length} className="px-3 py-2 text-xs text-content-tertiary" data-testid="compliance-hidden">
+                    {whyNot(labels.t, row.can.see_documents)}
+                  </td>
+                )}
+                {row.can.see_documents.allowed && compliance.document_kinds.map((k) => {
                   const cell = row.cells[k];
                   if (!cell) return <td key={k} className="px-3 py-2" />;
                   return (
@@ -192,6 +201,51 @@ export function ComplianceView({
           </tbody>
         </table>
       </div>
+      {compliance.items.some((row) => !row.can.see_documents.allowed) && (
+        <p className="text-xs text-content-tertiary" role="status" data-testid="compliance-restricted">
+          {t('staffing.compliance.restricted', {
+            defaultValue: 'Document states are shown only for the people whose personnel file you may open.',
+          })}
+        </p>
+      )}
+      {compliance.summary.length > 0 && (
+        <section className="space-y-2" data-testid="compliance-summary">
+          <h2 className="text-sm font-semibold text-content-primary">
+            {t('staffing.compliance.summary_title', { defaultValue: 'Whole project, by document' })}
+          </h2>
+          <p className="text-xs text-content-tertiary">
+            {t('staffing.compliance.summary_hint', { defaultValue: 'Counts of people only. Health documents are left out.' })}
+          </p>
+          <div className="overflow-x-auto rounded-lg border border-border-light">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="border-b border-border-light text-left text-xs text-content-tertiary">
+                  <th scope="col" className="px-3 py-2 font-medium">{t('staffing.document.kind', { defaultValue: 'Document' })}</th>
+                  {SUMMARY_STATES.map((state) => (
+                    <th key={state} scope="col" className="px-3 py-2 text-right font-medium">
+                      {vocab(t, CELL_STATE, state)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {compliance.summary.map((line) => (
+                  <tr key={line.document_kind} className="border-b border-border-light last:border-b-0" data-testid="compliance-summary-row">
+                    <th scope="row" className="px-3 py-2 text-left font-medium text-content-primary">
+                      {catalogueName(labels, catalogue, 'document_kind', line.document_kind)}
+                    </th>
+                    {SUMMARY_STATES.map((state) => (
+                      <td key={state} className="px-3 py-2 text-right tabular-nums" data-state={state}>
+                        {fmtNumber(line[state], 0)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

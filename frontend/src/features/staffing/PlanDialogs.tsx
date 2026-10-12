@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { Button } from '@/shared/ui/Button';
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -14,9 +15,18 @@ import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { WideModal, WideModalField, WideModalSection } from '@/shared/ui/WideModal';
 import { getErrorMessage } from '@/shared/lib/api';
 
-import { changeCatalogue, createPlan, patchPlan, type CatalogueSummary, type StaffingPlan } from './api';
+import {
+  changeCatalogue,
+  createPlan,
+  patchPlan,
+  previewCatalogueChange,
+  staffingKeys,
+  type CatalogueSummary,
+  type StaffingCatalogue,
+  type StaffingPlan,
+} from './api';
 import { useStaffingCatalogues } from './hooks';
-import { labelText, type LabelContext } from './labels';
+import { catalogueName, labelText, refusalText, type LabelContext } from './labels';
 import { FIELD_CLASS, FormError } from './StaffingBits';
 import { useSubmit } from './useSubmit';
 
@@ -250,6 +260,7 @@ export function ChangeCatalogueDialog({
   open,
   projectId,
   plan,
+  catalogue,
   labels,
   onClose,
   onDone,
@@ -257,6 +268,7 @@ export function ChangeCatalogueDialog({
   open: boolean;
   projectId: string;
   plan: StaffingPlan;
+  catalogue: StaffingCatalogue;
   labels: LabelContext;
   onClose: () => void;
   onDone: () => void;
@@ -265,6 +277,8 @@ export function ChangeCatalogueDialog({
   const cataloguesQ = useStaffingCatalogues(open);
   const current = `${plan.catalogue_source}:${plan.catalogue_id}`;
   const [choice, setChoice] = useState('');
+  // Old role code to the role of the new catalogue that replaces it. An empty choice is left out.
+  const [mapping, setMapping] = useState<Record<string, string>>({});
   const { busy, error, run, reset } = useSubmit(() => {
     onDone();
     onClose();
@@ -272,18 +286,38 @@ export function ChangeCatalogueDialog({
   useEffect(() => {
     if (open) {
       setChoice('');
+      setMapping({});
       reset();
     }
   }, [open, reset]);
 
   const others = (cataloguesQ.data ?? []).filter((c) => `${c.source}:${c.id}` !== current);
+  const body = { ...splitChoice(choice), role_mapping: mapping };
+  // The server works out what the change would do with the function the change itself uses; nothing is written.
+  const previewQ = useQuery({
+    queryKey: [...staffingKeys.project(projectId), 'catalogue-preview', choice, mapping],
+    queryFn: () => previewCatalogueChange(projectId, body),
+    enabled: open && !!choice,
+    placeholderData: keepPreviousData,
+  });
+  const preview = choice ? previewQ.data : undefined;
+  const kept = preview?.positions.filter((p) => p.outcome === 'kept').length ?? 0;
+  // One line per old role the new catalogue does not have, with the positions that carry it.
+  const affected = new Map<string, { phases: Set<string>; count: number }>();
+  for (const p of preview?.positions ?? []) {
+    if (p.outcome === 'kept') continue;
+    const entry = affected.get(p.role_code) ?? { phases: new Set<string>(), count: 0 };
+    entry.phases.add(p.phase);
+    entry.count += 1;
+    affected.set(p.role_code, entry);
+  }
 
   return (
     <WideModal
       open={open}
       onClose={onClose}
       busy={busy}
-      size="sm"
+      size="md"
       testId="change-catalogue-dialog"
       title={t('staffing.plan.change_catalogue', { defaultValue: 'Change catalogue' })}
       subtitle={t('staffing.plan.change_catalogue_hint', {
@@ -298,9 +332,9 @@ export function ChangeCatalogueDialog({
           </Button>
           <Button
             loading={busy}
-            disabled={!choice}
+            disabled={!choice || !preview || previewQ.isFetching || previewQ.isError}
             data-testid="change-catalogue-save"
-            onClick={() => run(() => changeCatalogue(projectId, { ...splitChoice(choice), role_mapping: {} }))}
+            onClick={() => run(() => changeCatalogue(projectId, body))}
           >
             {t('staffing.plan.change_catalogue', { defaultValue: 'Change catalogue' })}
           </Button>
@@ -327,12 +361,85 @@ export function ChangeCatalogueDialog({
               id="staffing-new-catalogue"
               className={FIELD_CLASS}
               value={choice}
-              onChange={(e) => setChoice(e.target.value)}
+              onChange={(e) => {
+                setChoice(e.target.value);
+                setMapping({});
+              }}
+              data-testid="new-catalogue"
             >
               <option value="">{t('staffing.choose', { defaultValue: 'Choose' })}</option>
               <CatalogueOptions catalogues={others} labels={labels} />
             </select>
           </WideModalField>
+          {choice && (
+            <WideModalField>
+              {previewQ.isError ? (
+                <ErrorState
+                  compact
+                  title={t('staffing.plan.preview_failed', { defaultValue: 'What the change would do could not be worked out' })}
+                  hint={refusalText(labels.t, previewQ.error)}
+                  onRetry={() => previewQ.refetch()}
+                />
+              ) : !preview ? (
+                <SkeletonTable rows={3} columns={2} />
+              ) : (
+                <div className="space-y-3" data-testid="catalogue-preview">
+                  <p className="text-sm text-content-primary" data-testid="preview-kept">
+                    {t('staffing.plan.preview_kept', { defaultValue: 'Positions that keep their role: {{count}}', count: kept })}
+                  </p>
+                  {affected.size === 0 ? (
+                    <p className="text-sm text-content-secondary" data-testid="preview-nothing">
+                      {t('staffing.plan.preview_nothing', { defaultValue: 'Every position keeps its role. Nothing else changes.' })}
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-content-secondary">
+                        {t('staffing.plan.preview_map_hint', {
+                          defaultValue:
+                            'The new catalogue does not have these roles. Choose the role that replaces each one, or leave it and the positions keep their name as a custom role.',
+                        })}
+                      </p>
+                      <ul className="space-y-2">
+                        {[...affected.entries()].map(([code, entry]) => (
+                          <li key={code} className="grid gap-1 sm:grid-cols-2 sm:items-center" data-testid="preview-role">
+                            <label htmlFor={`map-${code}`} className="text-sm text-content-primary">
+                              {catalogueName(labels, catalogue, 'role', code)}
+                              <span className="block text-xs text-content-tertiary">
+                                {t('staffing.plan.preview_positions', { defaultValue: 'Positions: {{count}}', count: entry.count })}
+                              </span>
+                            </label>
+                            <select
+                              id={`map-${code}`}
+                              className={FIELD_CLASS}
+                              value={mapping[code] ?? ''}
+                              onChange={(e) =>
+                                setMapping((m) => {
+                                  const next = { ...m };
+                                  if (e.target.value) next[code] = e.target.value;
+                                  else delete next[code];
+                                  return next;
+                                })
+                              }
+                              data-testid="preview-target"
+                            >
+                              <option value="">{t('staffing.plan.preview_keep_custom', { defaultValue: 'Keep the name as a custom role' })}</option>
+                              {preview.target_roles
+                                .filter((r) => r.phases.some((ph) => entry.phases.has(ph)))
+                                .map((r) => (
+                                  <option key={r.code} value={r.code}>
+                                    {labelText(labels, { key: r.name_key, text: r.labels }, r.code)}
+                                  </option>
+                                ))}
+                            </select>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )}
+            </WideModalField>
+          )}
         </WideModalSection>
       )}
     </WideModal>

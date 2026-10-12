@@ -43,8 +43,6 @@ import { datesProblem, decimalString, fteProblem, headcountProblem, liveFills, r
 import { FIELD_CLASS, FormError, PeoplePickerNote, personLabel } from './StaffingBits';
 import { useSubmit } from './useSubmit';
 
-/** The role code the API takes for a role the catalogue does not list; such a position carries its own label. */
-const CUSTOM_ROLE = 'custom';
 const CHANNELS = Object.keys(RECRUITING_CHANNEL) as RecruitingChannel[];
 
 interface DialogBase {
@@ -126,7 +124,7 @@ function draftOf(position: Position | null, catalogue: StaffingCatalogue, phase:
   }
   const role = catalogue.roles.find((r) => r.phases.includes(phase)) ?? catalogue.roles[0];
   return {
-    role_code: role?.code ?? CUSTOM_ROLE,
+    role_code: role?.code ?? catalogue.custom_role_code,
     phase,
     custom_label: '',
     organisation: role?.organisation ?? catalogue.organisations[0]?.code ?? '',
@@ -145,8 +143,11 @@ function draftOf(position: Position | null, catalogue: StaffingCatalogue, phase:
 }
 
 /** The first thing wrong with a position draft, as the code the server would answer with. */
-export function positionProblem(draft: Pick<PositionDraft, 'role_code' | 'custom_label' | 'fte' | 'headcount' | 'entry_date' | 'exit_date'>): string | null {
-  if (draft.role_code === CUSTOM_ROLE && !draft.custom_label.trim()) return 'custom_role_needs_label';
+export function positionProblem(
+  draft: Pick<PositionDraft, 'role_code' | 'custom_label' | 'fte' | 'headcount' | 'entry_date' | 'exit_date'>,
+  customRole: string,
+): string | null {
+  if (draft.role_code === customRole && !draft.custom_label.trim()) return 'custom_role_needs_label';
   return fteProblem(draft.fte) ?? headcountProblem(draft.headcount) ?? datesProblem(draft.entry_date, draft.exit_date);
 }
 
@@ -203,7 +204,7 @@ export function PositionDialog({
     }));
   };
 
-  const problem = positionProblem(draft);
+  const problem = positionProblem(draft, catalogue.custom_role_code);
   const save = () => {
     if (problem) {
       setTried(true);
@@ -234,6 +235,7 @@ export function PositionDialog({
 
   const roles = catalogue.roles.filter((r) => r.phases.includes(draft.phase) || r.code === draft.role_code);
   const tags = requirementTags(catalogue, draft.required_before);
+  const unchecked = tags.find((o) => o.tag === draft.required_before && !o.resolvable);
 
   return (
     <WideModal
@@ -281,10 +283,10 @@ export function PositionDialog({
                 {catalogueName(labels, catalogue, 'role', r.code)}
               </option>
             ))}
-            <option value={CUSTOM_ROLE}>{t('staffing.position.custom_role', { defaultValue: 'Another role' })}</option>
+            <option value={catalogue.custom_role_code}>{t('staffing.position.custom_role', { defaultValue: 'Another role' })}</option>
           </select>
         </WideModalField>
-        {draft.role_code === CUSTOM_ROLE && (
+        {draft.role_code === catalogue.custom_role_code && (
           <WideModalField label={t('staffing.position.custom_label', { defaultValue: 'Custom role name' })} required htmlFor="position-custom">
             <input
               id="position-custom"
@@ -423,12 +425,19 @@ export function PositionDialog({
               data-testid="position-required-before"
             >
               <option value="">{t('staffing.not_set', { defaultValue: 'Not set' })}</option>
-              {tags.map((tag) => (
-                <option key={tag} value={tag}>
-                  {humanizeCode(tag)}
+              {tags.map((o) => (
+                <option key={o.tag} value={o.tag}>
+                  {humanizeCode(o.tag)}
                 </option>
               ))}
             </select>
+            {unchecked && (
+              <p className="mt-1 text-xs text-semantic-warning" role="status" data-testid="required-before-unchecked">
+                {t('staffing.position.required_before_unchecked', {
+                  defaultValue: 'No gate of this project checks this step, so nothing will ask for the role to be filled.',
+                })}
+              </p>
+            )}
           </WideModalField>
         )}
         <WideModalField label={t('staffing.position.notes', { defaultValue: 'Notes' })} span={2} htmlFor="position-notes">
