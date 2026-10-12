@@ -80,7 +80,7 @@ async def _drop_all(conn) -> None:
 
 def test_revision_branches_from_governance() -> None:
     assert _rev.revision == "v71_plant_register"
-    assert _rev.down_revision == "v68_project_governance"
+    assert _rev.down_revision == "v73_permits"
 
 
 async def test_revision_reproduces_the_model_schema_up_down_up() -> None:

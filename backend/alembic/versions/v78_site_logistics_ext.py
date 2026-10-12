@@ -21,7 +21,7 @@ is inspector-guarded, so a database whose tables ``create_all`` already built
 reaches this revision and only adds what is missing.
 
 Revision ID: v78_site_logistics_ext
-Revises: v68_project_governance
+Revises: v77_staffing
 Create Date: 2026-10-12
 """
 
@@ -36,7 +36,7 @@ from app.core.db_types import MoneyType
 from app.database import GUID
 
 revision: str = "v78_site_logistics_ext"
-down_revision: str | Sequence[str] | None = "v68_project_governance"
+down_revision: str | Sequence[str] | None = "v77_staffing"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

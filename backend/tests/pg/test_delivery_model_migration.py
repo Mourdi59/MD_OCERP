@@ -76,7 +76,7 @@ async def _drop_all(conn) -> None:
 
 def test_revision_branches_from_governance() -> None:
     assert _rev.revision == "v70_delivery_model"
-    assert _rev.down_revision == "v68_project_governance"
+    assert _rev.down_revision == "v69_commitment_release"
 
 
 async def test_revision_reproduces_the_model_schema_up_down_up() -> None:

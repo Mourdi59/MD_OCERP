@@ -186,7 +186,7 @@ def test_migration_matches_models() -> None:
     spec = importlib.util.spec_from_file_location("v73_permits", MIGRATION)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    assert mod.revision == "v73_permits" and mod.down_revision == "v68_project_governance"
+    assert mod.revision == "v73_permits" and mod.down_revision == "v70_delivery_model"
     models = _model_names()
     tables = {t for t in models if ":" not in t}
     assert {t for t, _c, _i in mod._TABLES} == tables

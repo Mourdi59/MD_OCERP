@@ -20,7 +20,7 @@ step is inspector-guarded, so a database whose tables ``create_all`` already
 built reaches this revision and does nothing.
 
 Revision ID: v74_design_management
-Revises: v68_project_governance
+Revises: v72_procurement_concept
 Create Date: 2026-10-11
 """
 
@@ -34,7 +34,7 @@ from alembic import op
 from app.database import GUID
 
 revision: str = "v74_design_management"
-down_revision: str | Sequence[str] | None = "v68_project_governance"
+down_revision: str | Sequence[str] | None = "v72_procurement_concept"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

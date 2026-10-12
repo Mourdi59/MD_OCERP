@@ -260,7 +260,7 @@ def test_migration_chains_onto_governance_and_names_every_model_table() -> None:
 
     mig = _migration()
     assert mig.revision == "v74_design_management"
-    assert mig.down_revision == "v68_project_governance"
+    assert mig.down_revision == "v72_procurement_concept"
     assert [t for t, _c, _i in mig._TABLES] == [m.__tablename__ for m in ALL_MODELS]
 
 

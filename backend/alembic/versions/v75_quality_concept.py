@@ -17,7 +17,7 @@ inspector-guarded, so a database whose new tables ``create_all`` already built
 reaches this revision and only adds what is missing.
 
 Revision ID: v75_quality_concept
-Revises: v68_project_governance
+Revises: v76_stakeholders
 Create Date: 2026-10-11
 """
 
@@ -31,7 +31,7 @@ from alembic import op
 from app.database import GUID
 
 revision: str = "v75_quality_concept"
-down_revision: str | Sequence[str] | None = "v68_project_governance"
+down_revision: str | Sequence[str] | None = "v76_stakeholders"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

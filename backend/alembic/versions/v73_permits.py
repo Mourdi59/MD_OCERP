@@ -16,7 +16,7 @@ step is inspector-guarded, so a database whose tables ``create_all`` already
 built reaches this revision and only adds what is missing.
 
 Revision ID: v73_permits
-Revises: v68_project_governance
+Revises: v70_delivery_model
 Create Date: 2026-10-11
 """
 
@@ -31,7 +31,7 @@ from app.core.db_types import MoneyType
 from app.database import GUID
 
 revision: str = "v73_permits"
-down_revision: str | Sequence[str] | None = "v68_project_governance"
+down_revision: str | Sequence[str] | None = "v70_delivery_model"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

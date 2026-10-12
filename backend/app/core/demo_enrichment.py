@@ -143,8 +143,8 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         from app.modules.site_inventory.seed import seed_site_inventory_demo
         from app.modules.site_logistics.demo import seed_site_logistics_demo
         from app.modules.site_prep.seed import seed_site_prep_demo
-        from app.modules.stakeholders.seed import seed_stakeholders_demo
         from app.modules.staffing.seed import seed_staffing_demo
+        from app.modules.stakeholders.seed import seed_stakeholders_demo
         from app.modules.supplier_catalogs.seed import seed_supplier_catalogs
         from app.modules.takeoff.seed import seed_takeoff_demo
         from app.modules.temporary_works.seed import seed_temporary_works_demo

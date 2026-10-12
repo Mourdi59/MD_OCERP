@@ -79,7 +79,7 @@ def test_migration_matches_the_models() -> None:
 
     mig = _load_migration()
     assert mig.revision == "v76_stakeholders"
-    assert mig.down_revision == "v68_project_governance"
+    assert mig.down_revision == "v74_design_management"
     tables = {name: (cols, idx) for name, cols, idx in mig._TABLES}
     model_tables = {n: t for n, t in Base.metadata.tables.items() if n.startswith("oe_stakeholders_")}
     assert set(tables) == set(model_tables)

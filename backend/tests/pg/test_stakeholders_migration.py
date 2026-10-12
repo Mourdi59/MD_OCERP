@@ -90,7 +90,7 @@ async def _drop_all(conn) -> None:
 
 async def test_revision_chains_onto_governance() -> None:
     assert _rev.revision == "v76_stakeholders"
-    assert _rev.down_revision == "v68_project_governance"
+    assert _rev.down_revision == "v74_design_management"
 
 
 async def test_revision_reproduces_the_model_schema_up_down_up() -> None:
