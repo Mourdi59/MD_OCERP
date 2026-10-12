@@ -26,6 +26,7 @@ import {
   moveLabel,
   absent,
   denied,
+  frozenOf,
   reasonText,
   stateLabel,
   stateTone,
@@ -278,7 +279,7 @@ export interface FormDialogProps {
 /** One dialog for every record of the plan, drawn from its list of fields. */
 export function FormDialog({
   title,
-  fields,
+  fields: everyField,
   record,
   defaults,
   projectId,
@@ -292,6 +293,10 @@ export function FormDialog({
 }: FormDialogProps) {
   const words = useWords();
   const { t } = words;
+  // A field the server no longer changes on this record is not offered, so it cannot be sent either.
+  const frozen = frozenOf(record);
+  const fields = frozen.length > 0 ? everyField.filter((f) => !frozen.includes(f.name)) : everyField;
+  const said = note ?? (fields.length < everyField.length ? 'form.frozen_note' : undefined);
   const [initial] = useState<FormValues>(() => toFormValues(fields, (record ?? defaults) as Record<string, unknown> | undefined));
   const [values, setValues] = useState<FormValues>(initial);
   const [tried, setTried] = useState(false);
@@ -480,9 +485,9 @@ export function FormDialog({
           )}
         </div>
       )}
-      {note && (
+      {said && (
         <p className="mb-4 rounded-lg border border-border-light bg-surface-secondary p-3 text-sm text-content-secondary" data-testid="plan-form-note">
-          {tx(t, note)}
+          {tx(t, said)}
         </p>
       )}
       <div className="grid gap-4 sm:grid-cols-2">

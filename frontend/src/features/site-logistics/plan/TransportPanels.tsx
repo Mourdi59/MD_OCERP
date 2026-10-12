@@ -17,7 +17,7 @@ import type { Permit, Transport } from './api';
 import { day, num, span, when } from './format';
 import { useCustoms, usePermits, useResource, useTransports, useWords } from './hooks';
 import { Card, Fact, FormDialog, Loaded, PanelHead, PlanEmpty, RowActions, StateBadge } from './PlanBits';
-import { codeLabel, codeOptions, enumLabel, findingText, weekdayOptions, type Field } from './rules';
+import { codeLabel, codeOptions, enumLabel, findingText, frozenOf, weekdayOptions, type Field } from './rules';
 import type { PanelProps } from './SitePanels';
 import { tx } from './texts';
 
@@ -233,10 +233,8 @@ export function PermitsPanel({ projectId, catalogue }: PanelProps) {
     { name: 'document_ref', label: 'f.document_ref', kind: 'text' },
   ];
 
-  // The server names the fields it keeps once a permit is decided (409 permit_frozen); the form does not offer them.
-  const frozenFields = resource.editing?.record?.frozen_fields ?? [];
-  const frozen = frozenFields.length > 0;
-  const shownFields = frozen ? fields.filter((f) => !frozenFields.includes(f.name)) : fields;
+  // The dialog leaves out the fields the server keeps once a permit is decided (409 permit_frozen); this says why.
+  const frozen = frozenOf(resource.editing?.record).length > 0;
 
   return (
     <section className="space-y-3" data-testid="plan-permits">
@@ -294,7 +292,7 @@ export function PermitsPanel({ projectId, catalogue }: PanelProps) {
       {resource.editing && (
         <FormDialog
           title="edit_title.permit"
-          fields={shownFields}
+          fields={fields}
           note={frozen ? 'permit.frozen_note' : undefined}
           record={resource.editing.record}
           projectId={projectId}

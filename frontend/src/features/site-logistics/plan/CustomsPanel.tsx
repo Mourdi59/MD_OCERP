@@ -66,7 +66,7 @@ function CaseDetails({ projectId, record, catalogue }: { projectId: string; reco
       <div>
         <div className="flex items-center justify-between gap-2">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">{tx(t, 'customs.lines')}</h4>
-          <Button size="sm" variant="secondary" disabled={denied(lineRes.mayCreate)} onClick={() => lineRes.open()} data-testid="plan-add-line">
+          <Button size="sm" variant="secondary" disabled={denied(lineRes.mayCreate) || denied(record.can?.add_line)} onClick={() => lineRes.open()} data-testid="plan-add-line">
             {tx(t, 'add_line')}
           </Button>
         </div>
@@ -105,7 +105,7 @@ function CaseDetails({ projectId, record, catalogue }: { projectId: string; reco
           <h4 className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">
             {tx(t, 'customs.documents')}
           </h4>
-          <Button size="sm" variant="secondary" disabled={denied(docRes.mayCreate)} onClick={() => docRes.open()} data-testid="plan-add-document">
+          <Button size="sm" variant="secondary" disabled={denied(docRes.mayCreate) || denied(record.can?.add_document)} onClick={() => docRes.open()} data-testid="plan-add-document">
             {tx(t, 'add_document')}
           </Button>
         </div>

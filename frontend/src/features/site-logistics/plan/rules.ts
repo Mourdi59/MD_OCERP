@@ -7,7 +7,7 @@
 
 import type { BadgeVariant } from '@/shared/ui/Badge';
 
-import type { CatalogueEntry, CatalogueGroup, Finding, PlanCatalogue, Verdict, Violation } from './api';
+import type { Can, CatalogueEntry, CatalogueGroup, Finding, PlanCatalogue, Verdict, Violation } from './api';
 import { isTextKey, tx, type TextKey, type TFn } from './texts';
 
 /* ── Status moves ─────────────────────────────────────────────────────── */
@@ -22,6 +22,12 @@ export function denied(verdict: Verdict | undefined): boolean {
 /** The action does not exist for this record in its state. Unknown counts as existing. */
 export function absent(verdict: Verdict | undefined): boolean {
   return !!verdict && !verdict.applies;
+}
+
+/** The fields of a record the server keeps as they are: from its verdicts, or from the record itself. */
+export function frozenOf(record: object | null | undefined): string[] {
+  const r = record as { can?: Can; frozen_fields?: string[] } | null | undefined;
+  return r?.can?.frozen_fields ?? r?.frozen_fields ?? [];
 }
 
 /** Why the server refuses, in the reader's language; the code in plain words where no sentence is shipped. */

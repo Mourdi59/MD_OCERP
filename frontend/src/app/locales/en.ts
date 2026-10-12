@@ -42228,6 +42228,7 @@ const resource = {
     "site_logistics.plan.permit.validity": "Valid",
     "site_logistics.plan.permit.windows": "Allowed time windows",
     "site_logistics.plan.permit.any_time": "No time restriction",
+    "site_logistics.plan.form.frozen_note": "Some fields can no longer be changed in the present status and are not shown.",
     "site_logistics.plan.permit.frozen_note": "This permit has been decided. Its kind, validity, time windows and transports can no longer be changed.",
     "site_logistics.plan.delivery.flow": "Material flow",
     "site_logistics.plan.delivery.flow_hint": "The flow of the logistics concept this delivery belongs to.",

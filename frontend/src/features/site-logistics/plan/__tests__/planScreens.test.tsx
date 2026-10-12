@@ -298,7 +298,13 @@ describe('transports and permits', () => {
 
   it('a decided permit does not offer the fields the server keeps', async () => {
     mocked.listPermits.mockResolvedValue(
-      page([{ ...permit, state: 'granted', frozen_fields: ['permit_kind', 'valid_from', 'valid_to', 'allowed_windows'] }]),
+      page([
+        {
+          ...permit,
+          state: 'granted',
+          can: { ...permit.can, frozen_fields: ['permit_kind', 'valid_from', 'valid_to', 'allowed_windows'] },
+        },
+      ]),
     );
     renderPlan('permits');
     const card = await screen.findByTestId('plan-permit');

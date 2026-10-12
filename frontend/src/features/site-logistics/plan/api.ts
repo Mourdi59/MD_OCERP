@@ -33,6 +33,13 @@ export interface Can {
   delete?: Verdict;
   /** One entry per state of the record's state machine. */
   transitions?: Record<string, Verdict>;
+  /** The fields the server no longer changes on this record in its present state. */
+  frozen_fields?: string[];
+  /** On the concept: whether the project's catalogue may be changed. */
+  pin_catalogue?: Verdict;
+  /** On a customs case: whether it still takes a line or a document. */
+  add_line?: Verdict;
+  add_document?: Verdict;
 }
 
 export interface PlanPage<T> {

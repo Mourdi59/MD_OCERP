@@ -50523,6 +50523,7 @@ const resource = {
     "site_logistics.plan.siteplan.scale_hint": "Zwei Punkte auf dem Plan anklicken, deren tatsächlicher Abstand bekannt ist, dann diesen Abstand eingeben.",
     "site_logistics.plan.siteplan.scale_distance": "Tatsächlicher Abstand der beiden Punkte (m)",
     "site_logistics.plan.siteplan.scale_save": "Maßstab speichern",
+    "site_logistics.plan.form.frozen_note": "Einige Felder lassen sich im aktuellen Status nicht mehr ändern und werden nicht angezeigt.",
   }
 } as { translation: Record<string, string> };
 

@@ -224,6 +224,7 @@ export const EN = {
   'permit.validity': 'Valid',
   'permit.windows': 'Allowed time windows',
   'permit.any_time': 'No time restriction',
+  'form.frozen_note': 'Some fields can no longer be changed in the present status and are not shown.',
   'permit.frozen_note':
     'This permit has been decided. Its kind, validity, time windows and transports can no longer be changed.',
   'delivery.flow': 'Material flow',

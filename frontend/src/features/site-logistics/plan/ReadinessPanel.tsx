@@ -13,10 +13,10 @@ import { Button } from '@/shared/ui/Button';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { REGISTERS, exportRegister, pinCatalogue, runSweep, type Register } from './api';
-import { useCatalogueChoices, useInvalidatePlan, useReadiness, useReportProblem, useWords } from './hooks';
+import { useCatalogueChoices, useConcept, useInvalidatePlan, useReadiness, useReportProblem, useWords } from './hooks';
 import { ChecksPanel } from './ChecksPanel';
 import { Card, FormDialog, Loaded, PanelHead } from './PlanBits';
-import { enumLabel, findingText, humanise, type Field } from './rules';
+import { denied, enumLabel, findingText, humanise, type Field } from './rules';
 import type { PanelProps } from './SitePanels';
 import { isTextKey, tx } from './texts';
 
@@ -24,6 +24,7 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
   const words = useWords();
   const { t, language } = words;
   const readiness = useReadiness(projectId);
+  const mayPin = useConcept(projectId).data?.can?.pin_catalogue;
   const invalidate = useInvalidatePlan(projectId);
   const report = useReportProblem(catalogue);
   const addToast = useToastStore((s) => s.addToast);
@@ -212,7 +213,13 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
                 {enumLabel(t, 'source', catalogue.pin.source)}
               </Badge>
               <span className="ml-auto">
-                <Button size="sm" variant="secondary" onClick={() => setPinning(true)} data-testid="plan-change-catalogue">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={denied(mayPin)}
+                  onClick={() => setPinning(true)}
+                  data-testid="plan-change-catalogue"
+                >
                   {tx(t, 'readiness.change_catalogue')}
                 </Button>
               </span>
