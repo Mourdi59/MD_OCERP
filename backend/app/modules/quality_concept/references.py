@@ -278,3 +278,35 @@ async def handover_packages(session: Any, project_id: uuid.UUID, ids_: Iterable[
         }
         for p in (await session.execute(stmt)).scalars()
     }
+
+
+async def contact_names(session: Any, contact_ids: Iterable[Any]) -> dict[str, str]:
+    """Display names of contacts a record of this project already stores."""
+    from app.modules.contacts.models import Contact
+
+    ids = {u for c in contact_ids if (u := as_uuid(c)) is not None}
+    if not ids:
+        return {}
+    rows = (await session.execute(select(Contact).where(Contact.id.in_(ids)))).scalars()
+    return {str(c.id): _contact_name(c) for c in rows}
+
+
+async def link_labels(session: Any, project_id: uuid.UUID, pairs: Iterable[tuple[str, str]]) -> dict[str, str]:
+    """``{link_id: name}`` of linked records, by the label the candidate lister gives each kind."""
+    by_kind: dict[str, set[uuid.UUID]] = {}
+    for kind, link_id in pairs:
+        if (uid := as_uuid(link_id)) is not None:
+            by_kind.setdefault(kind, set()).add(uid)
+    out: dict[str, str] = {}
+    specs = links._candidate_specs()
+    rest: set[uuid.UUID] = set()
+    for kind, ids in by_kind.items():
+        if kind not in specs:
+            rest |= ids
+            continue
+        model, attrs = specs[kind]
+        stmt = select(model).where(model.project_id == project_id).where(model.id.in_(ids))
+        for row in (await session.execute(stmt)).scalars():
+            out[str(row.id)] = " ".join(str(getattr(row, a)) for a in attrs if getattr(row, a, None)) or str(row.id)
+    out.update(await labels(session, project_id, rest))
+    return out

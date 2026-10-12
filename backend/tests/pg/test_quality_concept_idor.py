@@ -412,6 +412,8 @@ async def test_reference_fields_offer_what_the_write_accepts(world: World) -> No
         made = await c.post(_p(world, "expert-reports"), json={**report, "expert_contact_id": own})
         assert made.status_code == 201, made.text
         assert made.json()["can"] == {"edit": True, "delete": True, "link_evidence": True}
+        (listed_report,) = (await c.get(_p(world, "expert-reports"))).json()["items"]
+        assert listed_report["expert_contact_label"] == "Own Surveyors"
         patched = await c.patch(_p(world, f"expert-reports/{made.json()['id']}"), json={"expert_contact_id": foreign})
         assert _code(patched) == (404, "contact_not_found")
         free_text = await c.post(_p(world, "expert-reports"), json={**report, "trigger": "Before the ceilings close"})
@@ -453,3 +455,7 @@ async def test_a_retest_names_an_earlier_link_of_the_same_record(world: World) -
             )
         ).json()
         assert [i["id"] for i in offered["items"]] == [first.json()["id"]]
+        # A stored link says what it points to, and whether the record is still there.
+        owner = {"owner_kind": "expert_report", "owner_id": report["id"]}
+        (stored,) = (await c.get(_p(world, "evidence-links"), params=owner)).json()["items"]
+        assert (stored["label"], stored["exists"]) == ("business_case business_case", True)

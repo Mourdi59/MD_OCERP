@@ -192,6 +192,16 @@ async def _svc(
     return svc
 
 
+async def _with_contacts(svc: QualityConceptService, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Each ``<role>_contact_id`` that is set gets ``<role>_contact_label`` beside it; null when the contact is gone."""
+    fields = {k for item in items for k in item if k.endswith("_contact_id")}
+    names = await references.contact_names(svc.session, {item[k] for item in items for k in fields if item.get(k)})
+    return [
+        {**item, **{k[:-3] + "_label": names.get(str(item[k])) if item.get(k) else None for k in fields if k in item}}
+        for item in items
+    ]
+
+
 async def _labelled(svc: QualityConceptService, project_id: uuid.UUID, findings: list[dict]) -> list[dict]:
     """Findings with the name of what ``ref`` points to, and of the linked record in ``params.link``."""
     linked = {f["params"]["link"].partition(":")[2] for f in findings if (f.get("params") or {}).get("link")}
@@ -513,7 +523,10 @@ async def list_certifications(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session, payload)
-    rows = [await _certification_out(svc, project_id, r) for r in await svc.repo.list(CertificationTarget, project_id)]
+    rows = await _with_contacts(
+        svc,
+        [await _certification_out(svc, project_id, r) for r in await svc.repo.list(CertificationTarget, project_id)],
+    )
     raw = [f.as_dict() for f in await _run(svc.certification_findings(project_id))] if rows else []
     findings = await _labelled(svc, project_id, raw)
     return {**_page(rows), "findings": findings}
@@ -673,7 +686,7 @@ async def list_proofs(
     svc = await _svc(project_id, user_id, session, payload)
     filters = {"package_ref": package_ref} if package_ref else {}
     proofs = await svc.repo.list(ProofRequirement, project_id, **filters)
-    return _page(await _proofs_out(svc, project_id, proofs), offset, limit)
+    return _page(await _with_contacts(svc, await _proofs_out(svc, project_id, proofs)), offset, limit)
 
 
 @router.post(P + "/proofs", status_code=201, dependencies=[MANAGE])
@@ -819,7 +832,19 @@ async def list_links(
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session, payload)
     rows = await _run(svc.links_of(project_id, owner_kind, owner_id))
-    return _page([{**_row(r["link"]), "fact": _fact(r["fact"])} for r in rows])
+    names = await references.link_labels(session, project_id, [(r["link"].link_kind, r["link"].link_id) for r in rows])
+    return _page(
+        [
+            {
+                **_row(r["link"]),
+                "fact": _fact(r["fact"]),
+                "label": names.get(str(r["link"].link_id)),
+                # False when the linked record is gone or no longer part of this project.
+                "exists": r["fact"] is not None,
+            }
+            for r in rows
+        ]
+    )
 
 
 @router.post(P + "/evidence-links", status_code=201, dependencies=[EDIT])
@@ -1292,7 +1317,9 @@ async def list_surveys(
     today: date | None = None,
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session, payload)
-    rows = [_survey_out(r, svc.ctx) for r in await svc.repo.list(PreservationSurvey, project_id)]
+    rows = await _with_contacts(
+        svc, [_survey_out(r, svc.ctx) for r in await svc.repo.list(PreservationSurvey, project_id)]
+    )
     raw = [f.as_dict() for f in await svc.preservation_findings(project_id, _today(today))]
     findings = await _labelled(svc, project_id, raw)
     return {**_page(rows), "findings": findings}
@@ -1373,7 +1400,8 @@ async def list_expert_reports(
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session, payload)
     can = caps.editable(svc.ctx.caller)
-    return _page([{**_row(r), **can} for r in await svc.repo.list(ExpertReportPlan, project_id)])
+    rows = [{**_row(r), **can} for r in await svc.repo.list(ExpertReportPlan, project_id)]
+    return _page(await _with_contacts(svc, rows))
 
 
 @router.post(P + "/expert-reports", status_code=201, dependencies=[EDIT])
