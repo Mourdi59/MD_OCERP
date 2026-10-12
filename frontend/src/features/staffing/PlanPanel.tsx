@@ -49,6 +49,7 @@ import {
   catalogueName,
   errorText,
   findingText,
+  offered,
   positionName,
   vocab,
   whyNot,
@@ -64,6 +65,7 @@ import {
   FILL_TONE,
   PLAN_TONE,
   POSITION_TONE,
+  Refusal,
   ToneBadge,
   personLabel,
   useStaffingAction,
@@ -139,7 +141,7 @@ export function PlanPanel({
   const lockedReason = locked ? errorText(labels.t, 'plan_in_review') : undefined;
   // Submitting, returning and re-pinning the catalogue follow the server's flags, state and permission both.
   // The state only picks which control is on screen: nobody submits an approved plan.
-  const submittable = planIsSubmittable(plan.status);
+  const submittable = maySubmit.applies ?? planIsSubmittable(plan.status);
   const maySubmit = plan.can.submit;
   const mayReturn = plan.can.return;
   const mayRepin = plan.can.change_catalogue;
@@ -255,8 +257,16 @@ export function PlanPanel({
                 {t('staffing.plan.submit', { defaultValue: 'Submit for review' })}
               </Button>
             )}
-            {mayReturn.allowed && (
-              <Button size="sm" variant="secondary" loading={giveBack.isPending} onClick={() => giveBack.mutate()} data-testid="plan-return">
+            {offered(mayReturn) && (
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={giveBack.isPending}
+                disabled={!mayReturn.allowed}
+                title={whyNot(labels.t, mayReturn) || undefined}
+                onClick={() => giveBack.mutate()}
+                data-testid="plan-return"
+              >
                 {t('staffing.plan.return', { defaultValue: 'Return to draft' })}
               </Button>
             )}
@@ -287,6 +297,11 @@ export function PlanPanel({
         {submittable && !maySubmit.allowed && positions.length > 0 && (
           <p className="mt-3 text-sm text-content-secondary" role="status" data-testid="plan-submit-refused">
             {whyNot(labels.t, maySubmit)}
+          </p>
+        )}
+        {offered(mayReturn) && !mayReturn.allowed && (
+          <p className="mt-3 text-sm text-content-secondary" role="status" data-testid="plan-return-refused">
+            {whyNot(labels.t, mayReturn)}
           </p>
         )}
         {submittable && blockers.length > 0 && (
@@ -448,20 +463,47 @@ export function PlanPanel({
                                         date: f.from_date ? fmtDate(f.from_date) : '',
                                       })}
                                     </span>
-                                    {f.can.confirm.allowed && (
-                                        <button type="button" className="text-oe-blue-text hover:underline" onClick={() => confirm.mutate(f.id)} data-testid="fill-confirm">
+                                    {offered(f.can.confirm) && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          className="text-oe-blue-text hover:underline disabled:cursor-not-allowed disabled:text-content-tertiary disabled:no-underline"
+                                          disabled={!f.can.confirm.allowed}
+                                          onClick={() => confirm.mutate(f.id)}
+                                          data-testid="fill-confirm"
+                                        >
                                           {t('staffing.fill.confirm', { defaultValue: 'Confirm' })}
                                         </button>
+                                        <Refusal text={whyNot(labels.t, f.can.confirm)} testId="fill-confirm-refused" />
+                                      </>
                                     )}
-                                    {f.can.delete.allowed && (
-                                        <button type="button" className="hover:underline" onClick={() => dropFill.mutate(f.id)} data-testid="fill-remove">
+                                    {offered(f.can.delete) && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          className="hover:underline disabled:cursor-not-allowed disabled:text-content-tertiary disabled:no-underline"
+                                          disabled={!f.can.delete.allowed}
+                                          onClick={() => dropFill.mutate(f.id)}
+                                          data-testid="fill-remove"
+                                        >
                                           {t('staffing.fill.remove', { defaultValue: 'Remove' })}
                                         </button>
+                                        <Refusal text={whyNot(labels.t, f.can.delete)} testId="fill-remove-refused" />
+                                      </>
                                     )}
-                                    {f.can.end.allowed && (
-                                      <button type="button" className="hover:underline" onClick={() => end.mutate(f.id)} data-testid="fill-end">
-                                        {t('staffing.fill.end', { defaultValue: 'End assignment' })}
-                                      </button>
+                                    {offered(f.can.end) && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          className="hover:underline disabled:cursor-not-allowed disabled:text-content-tertiary disabled:no-underline"
+                                          disabled={!f.can.end.allowed}
+                                          onClick={() => end.mutate(f.id)}
+                                          data-testid="fill-end"
+                                        >
+                                          {t('staffing.fill.end', { defaultValue: 'End assignment' })}
+                                        </button>
+                                        <Refusal text={whyNot(labels.t, f.can.end)} testId="fill-end-refused" />
+                                      </>
                                     )}
                                   </div>
                                 </li>
@@ -476,10 +518,12 @@ export function PlanPanel({
                                 {t('staffing.position.resource_requested', { defaultValue: 'Resource requested' })}
                               </span>
                             )}
-                            {p.can.request_resource.allowed && (
+                            <Refusal text={offered(p.can.request_resource) ? whyNot(labels.t, p.can.request_resource) : ''} testId="request-resource-refused" />
+                            {offered(p.can.request_resource) && (
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                disabled={!p.can.request_resource.allowed}
                                 loading={askResource.isPending}
                                 onClick={() => askResource.mutate(p.id)}
                                 data-testid="request-resource"

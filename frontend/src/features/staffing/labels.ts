@@ -300,6 +300,15 @@ export function findingText(ctx: LabelContext, catalogue: StaffingCatalogue | nu
   return errorText(ctx.t, finding.code);
 }
 
+/**
+ * Whether a control belongs on screen: the action is allowed, or the server says
+ * it applies here and refuses this caller. Without that word from the server a
+ * refused action stays off the screen.
+ */
+export function offered(can: Can | null | undefined): boolean {
+  return !!can && (can.allowed || can.applies === true);
+}
+
 /** Why the server does not allow a capability, in the reader's language; empty when it is allowed. */
 export function whyNot(t: TFn, can: Can | null | undefined): string {
   return can && !can.allowed && can.reason ? errorText(t, can.reason) : '';

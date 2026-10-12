@@ -57,6 +57,7 @@ import {
   humanizeCode,
   refusalText,
   vocab,
+  offered,
   whyNot,
   type LabelContext,
 } from './labels';
@@ -68,6 +69,7 @@ import {
   FILE_TONE,
   LEAVE_TONE,
   ReasonDialog,
+  Refusal,
   TRAVEL_TONE,
   ToneBadge,
   personLabel,
@@ -254,18 +256,28 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
                 {t('common.edit', { defaultValue: 'Edit' })}
               </Button>
             )}
-            {file.can.end.allowed && (
-              <Button variant="secondary" size="sm" onClick={() => setDialog({ kind: 'end' })} data-testid="file-end">
+            <Refusal text={offered(file.can.end) ? whyNot(labels.t, file.can.end) : ''} testId="file-end-refused" />
+            {offered(file.can.end) && (
+              <Button variant="secondary" size="sm" disabled={!file.can.end.allowed} onClick={() => setDialog({ kind: 'end' })} data-testid="file-end">
                 {t('staffing.file.end', { defaultValue: 'End assignment' })}
               </Button>
             )}
-            {file.can.hold.allowed && (
-              <Button variant="ghost" size="sm" onClick={() => setDialog({ kind: 'hold' })} data-testid="file-hold">
+            <Refusal text={offered(file.can.hold) ? whyNot(labels.t, file.can.hold) : ''} testId="file-hold-refused" />
+            {offered(file.can.hold) && (
+              <Button variant="ghost" size="sm" disabled={!file.can.hold.allowed} onClick={() => setDialog({ kind: 'hold' })} data-testid="file-hold">
                 {t('staffing.file.hold', { defaultValue: 'Place hold' })}
               </Button>
             )}
-            {file.can.release.allowed && (
-              <Button variant="secondary" size="sm" loading={release.isPending} onClick={() => release.mutate()} data-testid="file-release">
+            <Refusal text={offered(file.can.release) ? whyNot(labels.t, file.can.release) : ''} testId="file-release-refused" />
+            {offered(file.can.release) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={release.isPending}
+                disabled={!file.can.release.allowed}
+                onClick={() => release.mutate()}
+                data-testid="file-release"
+              >
                 {t('staffing.file.release', { defaultValue: 'Release hold' })}
               </Button>
             )}
@@ -366,8 +378,14 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
                                     ? t('staffing.document.update', { defaultValue: 'Update document' })
                                     : t('staffing.document.record', { defaultValue: 'Record document' })}
                                 </Button>
-                                {d.id && d.can.verify.allowed && (
-                                  <Button variant="ghost" size="sm" onClick={() => verify.mutate(d.id as string)} data-testid="document-verify">
+                                {d.id && offered(d.can.verify) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={!d.can.verify.allowed}
+                                    onClick={() => verify.mutate(d.id as string)}
+                                    data-testid="document-verify"
+                                  >
                                     {t('staffing.document.verify', { defaultValue: 'Mark as checked' })}
                                   </Button>
                                 )}
@@ -567,8 +585,15 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
           <Button variant="ghost" size="sm" onClick={() => setShowLog((v) => !v)} aria-expanded={showLog} data-testid="file-log-toggle">
             {t('staffing.file.access_log', { defaultValue: 'Who opened this file' })}
           </Button>
-          {file.can.erase.allowed && (
-            <Button variant="danger" size="sm" icon={<ShieldAlert size={14} />} onClick={() => setDialog({ kind: 'erase' })} data-testid="file-erase">
+          {offered(file.can.erase) && (
+            <Button
+              variant="danger"
+              size="sm"
+              icon={<ShieldAlert size={14} />}
+              disabled={!file.can.erase.allowed}
+              onClick={() => setDialog({ kind: 'erase' })}
+              data-testid="file-erase"
+            >
               {t('staffing.file.erase', { defaultValue: 'Erase personal data' })}
             </Button>
           )}

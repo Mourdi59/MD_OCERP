@@ -280,6 +280,36 @@ describe('PlanPanel', () => {
     expect(within(rows[1]!).queryByTestId('fill-end')).toBeNull();
   });
 
+  it('shows an action that applies but is refused disabled, with the reason of the server beside it', () => {
+    // The line manager of the position proposes, somebody else confirms: confirming applies, this reader may not.
+    const own = { allowed: false, reason: 'owner_cannot_confirm_own_fill', applies: true };
+    const gone = { allowed: false, reason: 'already_in_state', applies: false };
+    renderPlan({
+      positions: [
+        position({
+          id: 'pos-1',
+          fills: [fill({ id: 'fill-1', status: 'proposed', can: { confirm: own, end: gone, delete: yes } })],
+          can: { ...position().can, request_resource: { allowed: false, reason: 'edit_permission_required', applies: true } },
+        }),
+      ],
+      plan: plan({ status: 'in_review', can: { ...plan().can, return: { allowed: false, reason: 'edit_permission_required', applies: true } } }),
+    });
+    const confirm = screen.getByTestId('fill-confirm');
+    expect(confirm).toBeDisabled();
+    fireEvent.click(confirm);
+    expect(screen.getByTestId('fill-confirm-refused')).toHaveTextContent(en.translation['staffing.errors.owner_cannot_confirm_own_fill']!);
+    // An action that does not apply is not on screen, and neither is a reason for it.
+    expect(screen.queryByTestId('fill-end')).toBeNull();
+    expect(screen.queryByTestId('fill-end-refused')).toBeNull();
+    expect(screen.getByTestId('fill-remove')).toBeEnabled();
+    expect(screen.queryByTestId('fill-remove-refused')).toBeNull();
+    const reason = en.translation['staffing.errors.edit_permission_required']!;
+    expect(screen.getByTestId('request-resource')).toBeDisabled();
+    expect(screen.getByTestId('request-resource-refused')).toHaveTextContent(reason);
+    expect(screen.getByTestId('plan-return')).toBeDisabled();
+    expect(screen.getByTestId('plan-return-refused')).toHaveTextContent(reason);
+  });
+
   it('explains an empty plan and offers the catalogue roles as the first step', () => {
     renderPlan({ positions: [], handovers: [] });
     expect(screen.getByText('No positions yet')).toBeInTheDocument();

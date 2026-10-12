@@ -251,6 +251,16 @@ export function ExportButtons({ download }: { download: (format: ExportFormat) =
 }
 
 /** What a person picker says when it has nobody to offer: the team could not be loaded, or nobody is left. */
+/** The server's reason beside a control it refuses; nothing when the action is allowed. */
+export function Refusal({ text, testId }: { text: string; testId: string }) {
+  if (!text) return null;
+  return (
+    <span className="text-xs text-content-tertiary" role="status" data-testid={testId}>
+      {text}
+    </span>
+  );
+}
+
 export function PeoplePickerNote({ failed, empty, onRetry }: { failed: boolean; empty: boolean; onRetry: () => void }) {
   const { t } = useTranslation();
   if (failed) {

@@ -52,6 +52,12 @@ export type ExportWhat = 'plan' | 'org_chart' | 'compliance';
 export interface Can {
   allowed: boolean;
   reason: string | null;
+  /**
+   * Whether the action fits the object's state at all, whoever asks. A refused
+   * action that applies is shown disabled with its reason; one that does not
+   * apply is left off the screen.
+   */
+  applies?: boolean;
 }
 
 export interface CatalogueSummary {
