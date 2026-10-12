@@ -559,6 +559,8 @@ async def test_before_the_gate_into_construction_the_seed_puts_nobody_on_site(fa
     ready = await call(w, "readiness", GATE)
     assert ready["submitted"] is True and ready["errors"] == [] and ready["key_role_findings"] == []
     assert ready["key_roles_required"] is True
+    # Key roles this gate does not ask for are still vacant, and named as such.
+    assert {"commissioning_manager", "operator_plant_manager"} <= set(ready["open_key_roles"])
     states = {i.code: i.state for i in await _evidence(w, PERSONNEL_AREA)}
     assert "not_met" not in states.values() and "unknown" not in states.values()
     assert states["staffing_key_roles_filled"] == "met"
