@@ -38,6 +38,8 @@ from typing import Any
 
 import httpx
 
+from app.core.url_safety import resolve_and_validate_external_url
+
 logger = logging.getLogger(__name__)
 
 # Leading numeric "release" segment of a version, e.g. "1.2.0" from "1.2.0-rc1".
@@ -111,7 +113,14 @@ class ModulePluginManager:
             return await self._install_from_zipfile(zf)
 
     async def install_from_url(self, url: str) -> ModuleInfo:
-        """Download and install a module from URL."""
+        """Download and install a module from URL.
+
+        Raises:
+            UnsafeUrlError: The URL is not http(s) or resolves to a loopback,
+                private, link-local or metadata address. A registry answer
+                names this URL, so it is checked like any outbound target.
+        """
+        await resolve_and_validate_external_url(url)
         logger.info("Downloading module from %s", url)
 
         resp = await self._http.get(url)

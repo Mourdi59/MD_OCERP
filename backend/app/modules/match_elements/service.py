@@ -2222,13 +2222,14 @@ class MatchElementsService:
             # fallback bindings like ``US`` for an ASIA_PAC project have
             # 0 SQL rows but populated Qdrant collections).
             from app.core.match_service.ranker_qdrant import (  # noqa: PLC0415
-                _resolve_catalog_status,
+                resolve_catalog_status_for,
             )
 
             try:
-                _cat_status, _sql_cnt, _vec_cnt = await _resolve_catalog_status(
+                _cat_status, _sql_cnt, _vec_cnt = await resolve_catalog_status_for(
                     db,
                     bound_catalogue_id,
+                    caller_id=user_id,
                 )
             except Exception:  # noqa: BLE001
                 _cat_status, _sql_cnt, _vec_cnt = "ok", rows_in_bound, 1
@@ -2447,6 +2448,7 @@ class MatchElementsService:
                 # backstop against a large cosine gap swamping the nudge.
                 token = prior_pick.bind(prior_ctx) if prior_ctx is not None else None
                 scope_token = catalogue_scope.bind(picked_catalogue_id) if picked_catalogue_id else None
+                caller_token = catalogue_scope.bind_caller(user_id)
                 try:
                     candidates = await matcher.rank(
                         envelope=envelope,
@@ -2463,6 +2465,7 @@ class MatchElementsService:
                     )
                     candidates = []
                 finally:
+                    catalogue_scope.reset_caller(caller_token)
                     if scope_token is not None:
                         catalogue_scope.reset(scope_token)
                     if token is not None:

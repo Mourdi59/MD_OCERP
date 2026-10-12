@@ -752,6 +752,7 @@
     "claim_not_found": "Maksuhakemusta ei löytynyt",
     "gaeb_x89_final_account_unsupported": "Loppuselvitystä tai osittaista loppuselvitystä ei voi vielä viedä GAEB X89 -muodossa. Siinä on laskutettava kumulatiivinen työ vähennettynä aiemmilla maksuilla, mutta maksuhakemuksesta muodostetaan vain yhden kauden välilasku. Vie hakemus välilaskuna.",
     "xpwe_native_file_refused": "Tämä on kustannuslaskentaohjelman oma projektitiedosto, jonka voi avata vain kyseisellä ohjelmalla. Vie kustannusarvio ohjelmastasi XPWE-muodossa ja lataa .xpwe-tiedosto.",
+    "xpwe_unreadable": "Tiedostoa ei voi lukea XPWE-muodossa. Se voi olla vioittunut tai eri tyyppiä. Vie laskelma uudelleen XPWE-muotoon ja lataa .xpwe-tiedosto.",
     "plot_not_found": "Tonttia ei löytynyt",
     "survey_not_found": "Drone-kartoitusta ei löytynyt",
     "diary_video_not_found": "Päiväkirjavideota ei löytynyt",
@@ -910,5 +911,19 @@
       "fail": "Nimikkeen {ordinal} viite '{code}' ei nimeä KNR-luetteloperhettä",
       "suggestion": "Aloita viite luetteloperheellä, kuten KNR, KNNR, KNR-W tai KSNR, tai merkitse rivi kalkulacja indywidualna -riviksi"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Ominaisuusehdoissa jokaiselle ominaisuudelle on annettava sen vaatima arvo.",
+    "unknown_operator": "Ehto kohteelle \"{prop}\" käyttää vertailua, jota tämä versio ei tunne. Valitse yksi luettelosta.",
+    "value_not_allowed": "Ehto kohteelle \"{prop}\" tarkistaa, onko ominaisuus tyhjä, eikä ota arvoa.",
+    "value_required": "Ehto kohteelle \"{prop}\" tarvitsee arvon.",
+    "value_too_long": "Ehdon arvo kohteelle \"{prop}\" on liian pitkä, enintään 500 merkkiä.",
+    "value_not_number": "Ehto kohteelle \"{prop}\" vertaa lukuja, eikä \"{value}\" ole luku. Kirjoita luku, tarvittaessa yksikön kanssa, kuten mm, m, m2, m3 tai kg.",
+    "group_not_found": "Tallennettua ryhmää tai Smart Viewiä, josta tämä sääntö ottaa elementtinsä, ei ole tässä projektissa. Valitse toinen tai tyhjennä kenttä."
+  },
+  "bim_versions": {
+    "parent_not_found": "Malli, jonka uusi versio tämän latauksen pitäisi olla, ei ole tässä projektissa. Valitse toinen tai lataa tiedosto erillisenä mallina.",
+    "parent_not_ready": "Mallin \"{name}\" tuonti ei ole vielä valmis, joten se ei voi vielä vastaanottaa uutta versiota. Odota, kunnes se on valmis, tai lataa tämä erillisenä mallina.",
+    "parent_superseded": "Mallilla \"{name}\" on jo uudempi versio, {version}. Lataa tämä sen sijaan uusimman version uutena versiona."
   }
 }

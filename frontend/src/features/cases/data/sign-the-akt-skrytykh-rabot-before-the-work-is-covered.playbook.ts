@@ -1,7 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
-// Case: "Sign the akt skrytykh rabot before the work is covered" (RU).
+// Case: "Sign the hidden-works certificate (akt skrytykh rabot) before the work is covered" (RU).
 //
 // List what the next operation will hide, give the parties notice, have the
 // materials documented and the work inspected, get the act signed by everyone the
@@ -19,7 +19,7 @@ const playbook: Playbook = {
   region: "RU",
   icon: "FileCheck",
   titleKey: "cases.sign_the_akt_skrytykh_rabot_before_the_work_is_covered.title",
-  titleDefault: "Sign the akt skrytykh rabot before the work is covered",
+  titleDefault: "Sign the hidden-works certificate (akt skrytykh rabot) before the work is covered",
   descKey: "cases.sign_the_akt_skrytykh_rabot_before_the_work_is_covered.desc",
   descDefault:
     "List what the next operation will hide, give the parties notice, document the materials, have it inspected, get the act signed by everyone who must sign it, and keep a position without its act out of the month's acceptance.",

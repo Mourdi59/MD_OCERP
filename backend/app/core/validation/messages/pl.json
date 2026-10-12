@@ -752,6 +752,7 @@
     "claim_not_found": "Nie znaleziono wniosku o płatność za postęp robót",
     "gaeb_x89_final_account_unsupported": "Rozliczenia końcowego ani częściowego rozliczenia końcowego nie można jeszcze eksportować jako GAEB X89. Musi ono rozliczać roboty narastająco, pomniejszone o wcześniejsze płatności, natomiast z wniosku o płatność powstaje tylko faktura przejściowa za jeden okres. Wyeksportuj wniosek jako fakturę przejściową.",
     "xpwe_native_file_refused": "To natywny plik projektu programu kosztorysowego, który może otworzyć tylko ten program. Wyeksportuj kosztorys jako XPWE z programu źródłowego i prześlij plik .xpwe.",
+    "xpwe_unreadable": "Tego pliku nie można odczytać jako XPWE. Może być uszkodzony lub mieć inny format. Wyeksportuj kosztorys ponownie do XPWE i prześlij plik .xpwe.",
     "plot_not_found": "Nie znaleziono działki",
     "survey_not_found": "Nie znaleziono pomiaru z drona",
     "diary_video_not_found": "Nie znaleziono nagrania dziennika",
@@ -910,5 +911,19 @@
       "fail": "Podstawa „{code}” w pozycji {ordinal} nie wskazuje rodziny katalogów KNR",
       "suggestion": "Rozpocznij podstawę od rodziny katalogu, np. KNR, KNNR, KNR-W lub KSNR, albo oznacz pozycję jako „kalkulacja indywidualna”"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Warunki dla właściwości muszą podawać każdą właściwość wraz z wymaganą wartością.",
+    "unknown_operator": "Warunek dla \"{prop}\" używa porównania, którego ta wersja nie zna. Wybierz jedno z listy.",
+    "value_not_allowed": "Warunek dla \"{prop}\" sprawdza, czy właściwość jest pusta, i nie przyjmuje wartości.",
+    "value_required": "Warunek dla \"{prop}\" wymaga wartości.",
+    "value_too_long": "Wartość warunku dla \"{prop}\" jest zbyt długa, maksymalnie 500 znaków.",
+    "value_not_number": "Warunek dla \"{prop}\" porównuje liczby, a \"{value}\" nie jest liczbą. Wpisz liczbę, w razie potrzeby z jednostką, np. mm, m, m2, m3 lub kg.",
+    "group_not_found": "Zapisanej grupy lub Smart View, z której ta reguła bierze elementy, nie ma w tym projekcie. Wybierz inną albo wyczyść pole."
+  },
+  "bim_versions": {
+    "parent_not_found": "Model, którego nową wersją ma być to wgranie, nie należy do tego projektu. Wybierz inny albo wgraj plik jako osobny model.",
+    "parent_not_ready": "Import modelu \"{name}\" jeszcze się nie zakończył, więc nie może on na razie przyjąć nowej wersji. Poczekaj, aż będzie gotowy, albo wgraj ten plik jako osobny model.",
+    "parent_superseded": "Model \"{name}\" ma już nowszą wersję, {version}. Wgraj ten plik zamiast tego jako nową wersję najnowszego."
   }
 }

@@ -52,4 +52,14 @@ describe('New estimate', () => {
     await waitFor(() => expect(screen.getByRole('option', { name: 'Alpha Tower' })).toBeInTheDocument());
     expect(screen.getByRole('combobox')).toHaveValue('proj-a');
   });
+
+  it('pins the submit row so a tall form cannot push it below the window', async () => {
+    renderModal('proj-a');
+    const actions = await screen.findByTestId('create-boq-actions');
+    expect(actions.className).toContain('sticky');
+    expect(actions.className).toContain('bottom-0');
+    const panel = actions.closest('.overflow-y-auto');
+    expect(panel?.className).toContain('max-h-[90vh]');
+    expect(panel?.className).toContain('overscroll-contain');
+  });
 });

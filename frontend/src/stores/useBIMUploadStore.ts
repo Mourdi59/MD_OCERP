@@ -37,6 +37,8 @@ export interface BIMUploadJob {
   projectId: string;
   modelName: string;
   discipline: string;
+  /** The model this upload is a new version of, kept so a retry keeps it. */
+  parentModelId: string | null;
 
   status: BIMUploadStatus;
   /** 0-100, indeterminate during upload phase. */
@@ -83,6 +85,8 @@ export interface StartUploadParams {
   geometryFile?: File | null;
   /** DDC conversion depth: 'standard' (fast, key props), 'medium' (~900 cols), 'complete' (~1000+ cols). */
   conversionDepth?: 'standard' | 'medium' | 'complete';
+  /** A model of the same project this upload is a new version of. */
+  parentModelId?: string | null;
   /** When true, also fire a background request to extract all sheets
    *  from the uploaded CAD file as a single PDF (CAD uploads only). */
   generatePdfSheets?: boolean;
@@ -359,6 +363,7 @@ export const useBIMUploadStore = create<BIMUploadState>((set, get) => {
           params.file,
           ac?.signal,
           params.conversionDepth,
+          params.parentModelId,
         );
 
         clearStageTimer(jobId);
@@ -442,6 +447,7 @@ export const useBIMUploadStore = create<BIMUploadState>((set, get) => {
           params.file,
           params.geometryFile,
           ac?.signal,
+          params.parentModelId,
         );
 
         clearStageTimer(jobId);
@@ -486,6 +492,7 @@ export const useBIMUploadStore = create<BIMUploadState>((set, get) => {
         projectId: params.projectId,
         modelName: params.modelName,
         discipline: params.discipline,
+        parentModelId: params.parentModelId ?? null,
         status: 'uploading',
         progress: 5,
         stage: 'bim_upload.stage_sending',
@@ -584,6 +591,7 @@ export const useBIMUploadStore = create<BIMUploadState>((set, get) => {
         uploadType: existing.fileName.match(/\.(csv|xlsx|xls)$/i) ? 'data' : 'cad',
         geometryFile: files.geometryFile,
         generatePdfSheets: existing.generatePdfSheets,
+        parentModelId: existing.parentModelId,
       });
     },
 

@@ -22,6 +22,7 @@ import {
   Palette,
   Trash2,
   Download,
+  Calculator,
   Plus,
   Box,
   Ruler,
@@ -85,6 +86,8 @@ export interface BIMGroupsPanelProps {
   onCreateGroup?: () => void;
   /** Delete a group. */
   onDeleteGroup: (group: BIMElementGroup) => void;
+  /** Make the group a BOQ position's quantity source (through a quantity rule). */
+  onUseAsQuantitySource?: (group: BIMElementGroup) => void;
   /** Called after a successful rename / color change so the parent can
    *  invalidate the query cache. */
   onGroupUpdated?: () => void;
@@ -103,6 +106,7 @@ export default function BIMGroupsPanel({
   onNavigateToBOQ,
   onCreateGroup,
   onDeleteGroup,
+  onUseAsQuantitySource,
   onGroupUpdated,
 }: BIMGroupsPanelProps) {
   void _projectId;
@@ -562,6 +566,20 @@ export default function BIMGroupsPanel({
                   <Download size={11} />
                   {t('bim.groups_export_csv', { defaultValue: 'Export CSV' })}
                 </button>
+                {onUseAsQuantitySource && (
+                  <button
+                    type="button"
+                    data-testid="group-use-as-quantity"
+                    onClick={() => {
+                      setContextMenu(null);
+                      onUseAsQuantitySource(group);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-content-primary hover:bg-surface-secondary"
+                  >
+                    <Calculator size={11} />
+                    {t('bim.groups_use_as_quantity', { defaultValue: 'Quantity source for a BOQ position' })}
+                  </button>
+                )}
                 <div className="my-1 border-t border-border-light" />
                 <button
                   type="button"

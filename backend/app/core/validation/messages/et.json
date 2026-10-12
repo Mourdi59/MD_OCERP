@@ -752,6 +752,7 @@
     "claim_not_found": "Vahemakse taotlust ei leitud",
     "gaeb_x89_final_account_unsupported": "Lõpparvestust või osalist lõpparvestust ei saa veel GAEB X89 vormingus eksportida. See peab arveldama kumulatiivsed tööd varasemaid makseid maha arvates, kuid taotlusest luuakse ainult ühe perioodi vahearve. Eksportige taotlus vahearvena.",
     "xpwe_native_file_refused": "See on eelarvestusprogrammi oma projektifail, mida saab avada ainult selle programmiga. Eksportige eelarve oma programmist XPWE vormingus ja laadige üles .xpwe fail.",
+    "xpwe_unreadable": "Seda faili ei saa lugeda XPWE-na. See võib olla rikutud või muud tüüpi. Eksportige eelarve uuesti XPWE-na ja laadige üles .xpwe-fail.",
     "plot_not_found": "Krunti ei leitud",
     "survey_not_found": "Droonimõõdistust ei leitud",
     "diary_video_not_found": "Päeviku videot ei leitud",
@@ -910,5 +911,19 @@
       "fail": "Rea {ordinal} viide '{code}' ei nimeta KNR kataloogiperekonda",
       "suggestion": "Alustage viidet kataloogiperekonnaga, näiteks KNR, KNNR, KNR-W või KSNR, või märkige rida kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Omaduste tingimused peavad nimetama iga omaduse koos vajaliku väärtusega.",
+    "unknown_operator": "Tingimus omadusele \"{prop}\" kasutab võrdlust, mida see versioon ei tunne. Valige loendist üks.",
+    "value_not_allowed": "Tingimus omadusele \"{prop}\" kontrollib, kas omadus on tühi, ega võta väärtust.",
+    "value_required": "Tingimus omadusele \"{prop}\" vajab väärtust.",
+    "value_too_long": "Tingimuse väärtus omadusele \"{prop}\" on liiga pikk, kuni 500 märki.",
+    "value_not_number": "Tingimus omadusele \"{prop}\" võrdleb arve ja \"{value}\" ei ole arv. Sisestage arv, vajadusel ühikuga, nt mm, m, m2, m3 või kg.",
+    "group_not_found": "Salvestatud rühma või Smart View'd, kust see reegel elemendid võtab, selles projektis ei ole. Vali teine või tühjenda väli."
+  },
+  "bim_versions": {
+    "parent_not_found": "Mudel, mille uus versioon see üleslaadimine peaks olema, ei kuulu sellesse projekti. Valige mõni muu või laadige see üles eraldi mudelina.",
+    "parent_not_ready": "Mudeli \"{name}\" import pole veel lõppenud, seega ei saa see veel uut versiooni vastu võtta. Oodake, kuni see on valmis, või laadige see fail üles eraldi mudelina.",
+    "parent_superseded": "Mudelil \"{name}\" on juba uuem versioon {version}. Laadige see fail selle asemel üles uusima versiooni uue versioonina."
   }
 }

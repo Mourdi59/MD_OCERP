@@ -49,6 +49,7 @@ import {
   type ResultDecision,
 } from '../api';
 import { SectionToolbar, StatusBadge, ElementLinks, inputCls, labelCls, textareaCls } from './shared';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 // EN 10204 inspection-document grades plus the EU CPR / UKCA markings and a
 // generic certificate of conformity. Mirrors CERT_TYPE_PATTERN in the schema.
@@ -139,6 +140,7 @@ export function MaterialsLabsSection({ projectId }: SectionProps) {
 
   // ── Material mutations ────────────────────────────────────────────────────
 
+  const createMaterialMutationOnce = useSingleFlight();
   const createMaterialMutation = useMutation({
     mutationFn: createMaterial,
     onSuccess: () => {
@@ -187,6 +189,7 @@ export function MaterialsLabsSection({ projectId }: SectionProps) {
 
   // ── Test-result mutations ─────────────────────────────────────────────────
 
+  const createTestMutationOnce = useSingleFlight();
   const createTestMutation = useMutation({
     mutationFn: createTestResult,
     onSuccess: () => {
@@ -610,7 +613,7 @@ export function MaterialsLabsSection({ projectId }: SectionProps) {
           projectId={projectId}
           isPending={createMaterialMutation.isPending}
           onClose={() => setShowCreateMaterial(false)}
-          onSubmit={(payload) => createMaterialMutation.mutate(payload)}
+          onSubmit={(payload) => createMaterialMutationOnce(() => createMaterialMutation.mutateAsync(payload))}
         />
       )}
 
@@ -632,7 +635,7 @@ export function MaterialsLabsSection({ projectId }: SectionProps) {
           defaultMaterialId={materialFilter}
           isPending={createTestMutation.isPending}
           onClose={() => setShowCreateTest(false)}
-          onSubmit={(payload) => createTestMutation.mutate(payload)}
+          onSubmit={(payload) => createTestMutationOnce(() => createTestMutation.mutateAsync(payload))}
         />
       )}
 

@@ -1098,6 +1098,8 @@ export interface MatchReadiness {
     language: string;
     country_iso: string;
     installed: boolean;
+    /** An imported catalogue indexed for Match, not a published one. */
+    custom?: boolean;
   } | null;
   bound_catalogue: string | null;
   /** Owner or admin: may change the project's match settings. */

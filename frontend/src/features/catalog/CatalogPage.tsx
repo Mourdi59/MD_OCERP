@@ -53,6 +53,7 @@ import { getUnitsForLocale } from '@/features/boq/boqHelpers';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { currencyFractionDigits } from '@/shared/lib/money';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { importToastTone } from '@/shared/lib/importToastTone';
 
 // English fallbacks for the computed `catalog.assembly_cat_*` keys. The default used to be
 // the raw value, so until the key lands in a locale the screen shows the bare
@@ -290,7 +291,7 @@ function RegionImportGrid({
       ),
     onSuccess: (result) => {
       addToast({
-        type: 'success',
+        type: importToastTone(result.imported),
         title: t('catalog.import_success', { defaultValue: 'Import complete' }),
         message: `${result.imported} ${t('catalog.resources_imported', { defaultValue: 'resources imported' })}`,
       });

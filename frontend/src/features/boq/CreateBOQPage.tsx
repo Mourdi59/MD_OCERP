@@ -12,6 +12,7 @@ import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { fetchProjectList } from '@/shared/lib/projectList';
 import { boqApi } from './api';
 import { importFailureFromBody } from './importFailureText';
+import { ImportJobFailedError, isImportJob, waitForImportJob } from './importJob';
 
 interface Project {
   id: string;
@@ -34,12 +35,12 @@ type StartMode = 'empty' | 'import';
  * AI takeoff path. The `accept` string is derived from this list so the two can
  * never drift.
  */
-const IMPORT_STANDARDS: { regionKey: string; region: string; standard: string; exts: string[] }[] = [
+const IMPORT_STANDARDS: { regionKey: string; region: string; standard: string; standardKey?: string; exts: string[] }[] = [
   { regionKey: 'boq.import_region_dach', region: 'Germany / Austria / Switzerland', standard: 'GAEB DA XML 3.3 (X81 / X83 / X84 / X86)', exts: ['.x81', '.x83', '.x84', '.x86', '.xml'] },
   { regionKey: 'boq.import_region_es', region: 'Spain / Latin America', standard: 'FIEBDC-3 (BC3)', exts: ['.bc3'] },
   { regionKey: 'boq.import_region_it', region: 'Italy (computo metrico)', standard: 'XPWE / PWE', exts: ['.xpwe', '.pwe', '.dcf'] },
-  { regionKey: 'boq.import_region_universal', region: 'United Kingdom / United States / universal', standard: 'Excel or CSV (NRM / MasterFormat / custom columns)', exts: ['.xlsx', '.xls', '.csv'] },
-  { regionKey: 'boq.import_region_ai', region: 'Drawings and scans (AI takeoff)', standard: 'PDF, IFC, DWG, RVT, DGN, images', exts: ['.pdf', '.ifc', '.dwg', '.rvt', '.dgn', '.jpg', '.jpeg', '.png', '.tiff'] },
+  { regionKey: 'boq.import_region_universal', region: 'United Kingdom / United States / universal', standard: 'Excel or CSV (NRM / MasterFormat / custom columns)', standardKey: 'boq.import_standard_spreadsheet', exts: ['.xlsx', '.xls', '.csv'] },
+  { regionKey: 'boq.import_region_ai', region: 'Drawings and scans (AI takeoff)', standard: 'PDF, IFC, DWG, RVT, DGN, images', standardKey: 'boq.import_standard_drawings', exts: ['.pdf', '.ifc', '.dwg', '.rvt', '.dgn', '.jpg', '.jpeg', '.png', '.tiff'] },
 ];
 
 const IMPORT_ACCEPT = Array.from(new Set(IMPORT_STANDARDS.flatMap((s) => s.exts))).join(',');
@@ -65,6 +66,9 @@ const isReadableDate = (value: string): boolean => {
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   return day >= 1 && day <= days[month - 1]!;
 };
+
+/** The import answered with a reason we can show: refused, or read nothing. */
+class ImportFailure extends Error {}
 
 export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQModalProps) {
   const { t } = useTranslation();
@@ -188,11 +192,24 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
           if (!res.ok) {
             const body = (await res.json().catch(() => ({}))) as { detail?: unknown };
             const failed = t('boq.import_failed', { defaultValue: 'Import failed' });
-            throw new Error(
+            throw new ImportFailure(
               importFailureFromBody(body, t, failed) ?? (typeof body.detail === 'string' ? body.detail : failed),
             );
           }
-          const result = (await res.json()) as {
+          // A large file is imported in the background: the POST answers with
+          // a job, and the counts arrive only once the job is done. Reading the
+          // job itself as the result made a file with no items look like a
+          // finished import.
+          let answer: unknown = await res.json();
+          if (isImportJob(answer)) {
+            answer = await waitForImportJob({
+              boqId: boq.id,
+              jobId: answer.job_id,
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+              t,
+            });
+          }
+          const result = answer as {
             imported: number;
             skipped?: number;
             total_items?: number;
@@ -204,8 +221,17 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
           const denominator = result.total_items ?? result.imported + (result.skipped ?? 0);
           const fmtLabel = result.source_format ? ` (${result.source_format}${result.currency ? `, ${result.currency}` : ''})` : '';
           const errCount = Array.isArray(result.errors) ? result.errors.length : 0;
+          if (!(typeof result.imported === 'number' && result.imported > 0)) {
+            // Nothing landed, so the BOQ we just made would be an empty orphan.
+            throw new ImportFailure(
+              t('boq.import_nothing_read', {
+                defaultValue: 'No positions could be read from {{name}}. Check the file and try again.',
+                name: file.name,
+              }),
+            );
+          }
           addToast({
-            type: result.imported > 0 ? 'success' : 'warning',
+            type: 'success',
             title: t('boq.import_done', {
               defaultValue: 'Imported {{n}} of {{total}} positions{{label}}',
               n: result.imported,
@@ -217,14 +243,30 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
         } catch (importErr) {
           clearTimeout(timeoutId);
           const isTimeout = importErr instanceof DOMException && importErr.name === 'AbortError';
-          // The BOQ was created; only the import failed. Surface that clearly
-          // and still navigate into the (empty) BOQ so the user can retry.
+          const reason = isTimeout
+            ? t('boq.import_timeout', { defaultValue: 'Server did not respond within 90 seconds. Try a smaller file.' })
+            : importErr instanceof ImportFailure || importErr instanceof ImportJobFailedError
+              ? importErr.message
+              : t('boq.import_failed', { defaultValue: 'Import failed' });
+          // The BOQ only existed to receive this import. Remove it so a failed
+          // import leaves no empty estimate behind, and keep the window open
+          // with the file selected so the user can fix it and retry.
+          const removed = await boqApi.deleteBoq(boq.id).then(
+            () => true,
+            () => false,
+          );
+          if (removed) {
+            queryClient.invalidateQueries({ queryKey: ['boqs', selectedProjectId] });
+            queryClient.invalidateQueries({ queryKey: ['all-boqs'] });
+            setError(reason);
+            return;
+          }
+          // Could not remove it (for example no delete permission): fall back
+          // to opening the empty BOQ so the user can retry the import there.
           addToast({
             type: 'error',
             title: t('boq.import_failed', { defaultValue: 'Import failed' }),
-            message: isTimeout
-              ? t('boq.import_timeout', { defaultValue: 'Server did not respond within 90 seconds. Try a smaller file.' })
-              : importErr instanceof Error ? importErr.message : String(importErr),
+            message: reason,
           });
         }
       } else {
@@ -255,7 +297,7 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
       <div className="absolute inset-0 bg-black/70 backdrop-blur-lg animate-fade-in" onClick={busy ? undefined : onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 rounded-2xl bg-surface-elevated border border-border-light shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-lg mx-4 rounded-2xl bg-surface-elevated border border-border-light shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto overscroll-contain">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4">
           <div className="flex items-center gap-3">
@@ -397,7 +439,7 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
                 <ul className="space-y-1">
                   {IMPORT_STANDARDS.map((s) => (
                     <li key={s.standard} className="flex flex-col text-xs leading-tight">
-                      <span className="text-content-primary">{s.standard}</span>
+                      <span className="text-content-primary">{s.standardKey ? t(s.standardKey, { defaultValue: s.standard }) : s.standard}</span>
                       <span className="text-content-tertiary">{t(s.regionKey, { defaultValue: s.region })}</span>
                     </li>
                   ))}
@@ -469,7 +511,12 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
           )}
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-2">
+          {/* Pinned: with the import panel open the form is taller than a
+              768px window and the submit row sat below the fold. */}
+          <div
+            data-testid="create-boq-actions"
+            className="sticky bottom-0 -mx-6 -mb-6 flex items-center justify-end gap-3 border-t border-border-light bg-surface-elevated px-6 pb-6 pt-3"
+          >
             <Button variant="secondary" type="button" onClick={onClose} disabled={busy}>
               {t('common.cancel')}
             </Button>

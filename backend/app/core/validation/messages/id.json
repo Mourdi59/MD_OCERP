@@ -752,6 +752,7 @@
     "claim_not_found": "Klaim pembayaran progres tidak ditemukan",
     "gaeb_x89_final_account_unsupported": "Perhitungan akhir atau perhitungan akhir sebagian belum dapat diekspor sebagai GAEB X89. Perhitungan tersebut harus menagihkan pekerjaan kumulatif dikurangi pembayaran sebelumnya, sedangkan dari klaim hanya dibuat faktur progres untuk satu periode. Ekspor klaim sebagai faktur progres.",
     "xpwe_native_file_refused": "Ini adalah file proyek asli milik program estimasi, yang hanya dapat dibuka oleh program tersebut. Ekspor estimasi sebagai XPWE dari program estimasi Anda, lalu unggah file .xpwe.",
+    "xpwe_unreadable": "File ini tidak dapat dibaca sebagai XPWE. File mungkin rusak atau berjenis lain. Ekspor ulang estimasi sebagai XPWE dan unggah file .xpwe.",
     "plot_not_found": "Kavling tidak ditemukan",
     "survey_not_found": "Survei drone tidak ditemukan",
     "diary_video_not_found": "Video harian tidak ditemukan",
@@ -910,5 +911,19 @@
       "fail": "Referensi '{code}' pada item {ordinal} tidak menyebutkan keluarga katalog KNR",
       "suggestion": "Awali referensi dengan keluarga katalognya, seperti KNR, KNNR, KNR-W, atau KSNR, atau tandai baris sebagai kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Kondisi properti harus menyebutkan setiap properti beserta nilai yang dibutuhkannya.",
+    "unknown_operator": "Kondisi pada \"{prop}\" memakai perbandingan yang tidak dikenal versi ini. Pilih salah satu dari daftar.",
+    "value_not_allowed": "Kondisi pada \"{prop}\" memeriksa apakah properti kosong dan tidak menerima nilai.",
+    "value_required": "Kondisi pada \"{prop}\" membutuhkan nilai.",
+    "value_too_long": "Nilai kondisi pada \"{prop}\" terlalu panjang, maksimal 500 karakter.",
+    "value_not_number": "Kondisi pada \"{prop}\" membandingkan angka, dan \"{value}\" bukan angka. Tulis angka, jika perlu dengan satuan seperti mm, m, m2, m3 atau kg.",
+    "group_not_found": "Grup tersimpan atau Smart View tempat aturan ini mengambil elemennya tidak ada di proyek ini. Pilih yang lain atau kosongkan."
+  },
+  "bim_versions": {
+    "parent_not_found": "Model yang seharusnya menjadi induk versi baru dari unggahan ini tidak ada di proyek ini. Pilih model lain, atau unggah sebagai model terpisah.",
+    "parent_not_ready": "Impor \"{name}\" belum selesai, sehingga belum dapat menerima versi baru. Tunggu sampai siap, atau unggah file ini sebagai model terpisah.",
+    "parent_superseded": "\"{name}\" sudah memiliki versi yang lebih baru, {version}. Unggah file ini sebagai versi baru dari yang terbaru."
   }
 }

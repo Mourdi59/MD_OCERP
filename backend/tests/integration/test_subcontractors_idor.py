@@ -231,3 +231,44 @@ async def test_owner_lists_own_agreement_by_project(http_client, two_tenants):
     assert resp.status_code == 200, resp.text
     ids = {row["id"] for row in resp.json()}
     assert b["agreement_id"] in ids, f"B cannot see its own project agreement: {ids!r}"
+
+
+# ── Dashboard aggregates ───────────────────────────────────────────────────
+
+
+async def _activate(*agreement_ids: str) -> None:
+    """Mark agreements active straight in the database; activation itself is not under test."""
+    from sqlalchemy import update
+
+    from app.database import async_session_factory
+    from app.modules.subcontractors.models import SubcontractAgreement
+
+    async with async_session_factory() as s:
+        await s.execute(
+            update(SubcontractAgreement)
+            .where(SubcontractAgreement.id.in_([uuid.UUID(i) for i in agreement_ids]))
+            .values(status="active")
+        )
+        await s.commit()
+
+
+@pytest.mark.asyncio
+async def test_stranger_dashboard_counts_only_reachable_agreements(http_client, two_tenants):
+    """The dashboard of a SHARED subcontractor must not count A's agreement for B.
+
+    The agreement list is scoped, but the dashboard summed active agreements,
+    open payment applications and retention over every project, so B could
+    read A's activity and retention money from the totals.
+    """
+    a = two_tenants["a"]
+    b = two_tenants["b"]
+    await _activate(a["agreement_id"], b["agreement_id"])
+    url = f"/api/v1/subcontractors/subcontractors/{two_tenants['subcontractor_id']}/dashboard"
+
+    as_b = await http_client.get(url, headers=b["headers"])
+    assert as_b.status_code == 200, as_b.text
+    assert as_b.json()["active_agreements"] == 1, as_b.json()
+
+    as_admin = await http_client.get(url, headers=a["headers"])
+    assert as_admin.status_code == 200, as_admin.text
+    assert as_admin.json()["active_agreements"] == 2, as_admin.json()

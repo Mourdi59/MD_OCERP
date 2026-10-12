@@ -51,6 +51,7 @@ import {
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { projectsApi, type Project } from '@/features/projects/api';
+import { fetchMatchIndex, matchIndexKey } from '@/features/costs/api';
 import { convertToBase } from '@/features/boq/boqHelpers';
 import { aiApi } from '@/features/ai/api';
 import { hasLlmKey } from '@/features/ai-estimator/useAiReadiness';
@@ -654,6 +655,19 @@ export function MatchWizardFlow() {
     () => (cataloguesQ.data?.catalogues ?? []).filter((c) => c.install_status === 'loaded'),
     [cataloguesQ.data],
   );
+  // Imported price lists indexed for Match on the costs page. Listed next to
+  // the published catalogues; without the index they cannot be searched, so
+  // only indexed ones are offered.
+  const importedQ = useQuery({
+    queryKey: matchIndexKey,
+    queryFn: fetchMatchIndex,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const importedCatalogues = useMemo(
+    () => (importedQ.data?.catalogues ?? []).filter((c) => c.indexed > 0),
+    [importedQ.data],
+  );
 
   // What the backend reads from the project's region: its language, the
   // catalogue that fits it, and whether matching can run at all. The
@@ -672,7 +686,10 @@ export function MatchWizardFlow() {
   // never over the project's own binding or over the user's choice of Auto
   // (see catalogueChoice.ts). When the project states no language and has
   // no binding, Auto has nothing to bind from, so the user must pick.
-  const loadedRegions = useMemo(() => loadedCatalogues.map((c) => c.region), [loadedCatalogues]);
+  const loadedRegions = useMemo(
+    () => [...loadedCatalogues.map((c) => c.region), ...importedCatalogues.map((c) => c.region)],
+    [loadedCatalogues, importedCatalogues],
+  );
   const { choose: chooseCatalogue } = useCataloguePreselect(
     readinessQ.data,
     loadedRegions,
@@ -1463,6 +1480,20 @@ export function MatchWizardFlow() {
                             {c.region.toUpperCase()} — {c.language} · {c.currency}
                           </option>
                         ))}
+                        {importedCatalogues.length > 0 && (
+                          <optgroup
+                            label={t('match.wizard.importedCataloguesGroup', {
+                              defaultValue: 'Imported catalogues',
+                            })}
+                          >
+                            {importedCatalogues.map((c) => (
+                              <option key={`imported:${c.region}`} value={c.region}>
+                                {c.region}
+                                {c.language ? ` — ${c.language}` : ''}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
                       </select>
                       {autoBlocked && (
                         <p
@@ -1486,7 +1517,7 @@ export function MatchWizardFlow() {
                               defaultValue:
                                 'Could not list catalogues. Check that the cost service is reachable.',
                             })
-                          : loadedCatalogues.length === 0
+                          : loadedCatalogues.length === 0 && importedCatalogues.length === 0
                             ? t('match.wizard.catalogueNoneLoaded', {
                                 defaultValue:
                                   'No catalogues loaded yet - install one from the Cost catalogues panel on /match-elements home.',

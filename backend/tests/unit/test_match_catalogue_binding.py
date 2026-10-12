@@ -797,3 +797,357 @@ async def test_choosing_auto_after_a_pick_runs_on_the_project_binding(session, m
     await get_service().run_match(session, sid, schemas.RunMatchRequest(method="vector"))
 
     assert "IT_ROME" not in seen
+
+
+@pytest.mark.asyncio
+async def test_readiness_never_names_another_users_imported_catalogue(session, monkeypatch) -> None:
+    from app.modules.costs.models import CostCatalog, CostItem
+    from app.modules.match_elements import readiness
+    from app.modules.match_elements.readiness import compute_readiness
+
+    alice, bob = uuid.uuid4(), uuid.uuid4()
+    catalog = CostCatalog(id=uuid.uuid4(), name="Prezzario Toscana 2025", currency="EUR", created_by=alice)
+    session.add(catalog)
+    session.add(
+        CostItem(
+            id=uuid.uuid4(),
+            code="TOS.001",
+            description="Voce toscana",
+            unit="m2",
+            rate="5",
+            currency="EUR",
+            region=catalog.name,
+            catalog_id=catalog.id,
+            is_active=True,
+        )
+    )
+    await session.flush()
+    _store(monkeypatch, collections={"cwicr_it_v3"})
+    indexed = {"region": catalog.name, "language": "it", "country": "IT", "points": 1}
+    probe = readiness.StoreProbe("server", "ok", frozenset({"cwicr_it_v3"}), "", (indexed,))
+    monkeypatch.setattr(readiness, "probe_store", lambda: probe)
+    pid = await _make_project(session, region="Italy")
+
+    own = await compute_readiness(session, pid, owner_id=alice)
+    assert own.recommended_catalogue is not None
+    assert own.recommended_catalogue.region == catalog.name
+
+    foreign = await compute_readiness(session, pid, owner_id=bob)
+    assert foreign.recommended_catalogue is None or foreign.recommended_catalogue.region != catalog.name
+
+
+class _StopAfterRouting(Exception):
+    pass
+
+
+async def _ranked_collections(session, monkeypatch, pid: uuid.UUID, actor: uuid.UUID | None) -> list[str]:
+    """The collections the ranker routes one request to, for ``actor``.
+
+    The ranker stops right after it resolved the catalogue, before any
+    encoder or search, so only the routing is observed.
+    """
+    from app.core.match_service import catalogue_scope, ranker_qdrant
+    from app.core.match_service.envelope import ElementEnvelope, MatchRequest
+
+    routed: list[str] = []
+    real = ranker_qdrant.country_to_collection
+
+    def _record(country):
+        name = real(country)
+        routed.append(name)
+        return name
+
+    async def _stop(*_a, **_k):
+        raise _StopAfterRouting
+
+    monkeypatch.setattr(ranker_qdrant, "country_to_collection", _record)
+    monkeypatch.setattr(ranker_qdrant, "_maybe_translate", _stop)
+    ranker_qdrant._catalog_status_cache.clear()
+    token = catalogue_scope.bind_caller(actor)
+    try:
+        req = MatchRequest(envelope=ElementEnvelope(source="text", description="Muratura"), project_id=pid)
+        with pytest.raises(_StopAfterRouting):
+            await ranker_qdrant.rank(req, db=session)
+    finally:
+        catalogue_scope.reset_caller(token)
+    return routed
+
+
+@pytest.mark.asyncio
+async def test_the_ranker_never_searches_another_users_imported_catalogue(session, monkeypatch) -> None:
+    """User B names A's private price list as the project region: no A rows.
+
+    The ranker follows the ``/catalogs/`` rule. A catalogue the caller may not
+    see routes as if it had no index at all, so B searches whatever an
+    unindexed region of that name would reach, never A's collection.
+    """
+    from app.modules.costs import match_index
+    from app.modules.costs import qdrant_adapter as qa
+    from app.modules.costs.models import CostCatalog, CostItem
+
+    alice, bob = uuid.uuid4(), uuid.uuid4()
+    name = "Prezzario Toscana 2025"
+    catalog = CostCatalog(id=uuid.uuid4(), name=name, currency="EUR", created_by=alice)
+    session.add(catalog)
+    session.add(
+        CostItem(
+            id=uuid.uuid4(),
+            code="TOS.001",
+            description="Voce toscana",
+            unit="m2",
+            rate="5",
+            currency="EUR",
+            region=name,
+            catalog_id=catalog.id,
+            is_active=True,
+        )
+    )
+    await session.flush()
+    private = match_index.collection_for_region(name)
+    _fake_qdrant(monkeypatch, {**IT_AND_EN, private: 1})
+    monkeypatch.setattr(qa, "_available_custom_collections", frozenset({private}))
+    pid = await _make_project(session, region=name)
+    await _bind(session, pid, name)
+
+    assert private not in await _ranked_collections(session, monkeypatch, pid, bob)
+    assert private not in await _ranked_collections(session, monkeypatch, pid, None)
+    assert private in await _ranked_collections(session, monkeypatch, pid, alice)
+
+
+@pytest.mark.asyncio
+async def test_a_match_run_reaches_the_owners_imported_catalogue_and_no_one_elses(session, monkeypatch) -> None:
+    """Through ``run_match``, as the route calls it: the owner's run searches
+    their imported index, another user's run on a same-named region does not.
+
+    The route passes the caller's id and binds no audit actor, so this is the
+    path that decides whether the owner can use the feature at all.
+    """
+    from app.core.match_service import ranker_qdrant
+    from app.modules.costs import match_index
+    from app.modules.costs import qdrant_adapter as qa
+    from app.modules.costs.models import CostCatalog, CostItem
+    from app.modules.match_elements import schemas
+    from app.modules.match_elements.service import get_service
+
+    alice, bob = uuid.uuid4(), uuid.uuid4()
+    name = "Prezzario Toscana 2025"
+    catalog = CostCatalog(id=uuid.uuid4(), name=name, currency="EUR", created_by=alice)
+    session.add(catalog)
+    session.add(
+        CostItem(
+            id=uuid.uuid4(),
+            code="TOS.001",
+            description="Voce toscana",
+            unit="m2",
+            rate="5",
+            currency="EUR",
+            region=name,
+            catalog_id=catalog.id,
+            is_active=True,
+        )
+    )
+    await session.flush()
+    private = match_index.collection_for_region(name)
+    _fake_qdrant(monkeypatch, {**IT_AND_EN, private: 1})
+    monkeypatch.setattr(qa, "_available_custom_collections", frozenset({private}))
+
+    routed: list[str] = []
+    real = ranker_qdrant.country_to_collection
+
+    def _record(country):
+        out = real(country)
+        routed.append(out)
+        return out
+
+    async def _stop(*_a, **_k):
+        raise _StopAfterRouting
+
+    monkeypatch.setattr(ranker_qdrant, "country_to_collection", _record)
+    monkeypatch.setattr(ranker_qdrant, "_maybe_translate", _stop)
+
+    async def run_as(user: uuid.UUID) -> list[str]:
+        routed.clear()
+        ranker_qdrant._catalog_status_cache.clear()
+        pid = await _make_project(session, region=name)
+        await _bind(session, pid, name)
+        sid = await _text_session(session, pid, None)
+        await get_service().run_match(session, sid, schemas.RunMatchRequest(method="vector"), user_id=user)
+        return list(routed)
+
+    assert private in await run_as(alice)
+    bob_routed = await run_as(bob)
+    assert bob_routed, "the ranker never ran for the second user"
+    assert private not in bob_routed
+
+
+async def _private_catalogue(session, monkeypatch, owner: uuid.UUID) -> tuple[str, str]:
+    """Seed ``owner``'s imported price list, indexed for Match; (region, collection)."""
+    from app.modules.costs import match_index
+    from app.modules.costs import qdrant_adapter as qa
+    from app.modules.costs.models import CostCatalog, CostItem
+
+    name = "Prezzario Umbria 2025"
+    catalog = CostCatalog(id=uuid.uuid4(), name=name, currency="EUR", created_by=owner)
+    session.add(catalog)
+    session.add(
+        CostItem(
+            id=uuid.uuid4(),
+            code="UMB.001",
+            description="Voce umbra",
+            unit="m2",
+            rate="5",
+            currency="EUR",
+            region=name,
+            catalog_id=catalog.id,
+            is_active=True,
+        )
+    )
+    await session.flush()
+    private = match_index.collection_for_region(name)
+    _fake_qdrant(monkeypatch, {**IT_AND_EN, private: 500})
+    monkeypatch.setattr(qa, "_available_custom_collections", frozenset({private}))
+    return name, private
+
+
+def _record_routing(monkeypatch) -> list[str]:
+    from app.core.match_service import ranker_qdrant
+
+    routed: list[str] = []
+    real = ranker_qdrant.country_to_collection
+
+    def _record(country):
+        out = real(country)
+        routed.append(out)
+        return out
+
+    async def _stop(*_a, **_k):
+        raise _StopAfterRouting
+
+    monkeypatch.setattr(ranker_qdrant, "country_to_collection", _record)
+    monkeypatch.setattr(ranker_qdrant, "_maybe_translate", _stop)
+    return routed
+
+
+@pytest.mark.asyncio
+async def test_the_ai_estimator_reaches_the_owners_imported_catalogue_and_no_one_elses(session, monkeypatch) -> None:
+    """The AI estimator runs for ``run.user_id``: its probe searches the
+    owner's imported index, another user's run on the same region does not,
+    and the vector-readiness check counts the index only for the owner."""
+    from app.core.match_service import ranker_qdrant
+    from app.modules.ai_estimator.intake import IntakeService
+    from app.modules.ai_estimator.service import AiEstimatorService
+
+    alice, bob = uuid.uuid4(), uuid.uuid4()
+    name, private = await _private_catalogue(session, monkeypatch, alice)
+    pid = await _make_project(session, region=name)
+    await _bind(session, pid, name)
+    routed = _record_routing(monkeypatch)
+
+    async def probe_as(user: uuid.UUID) -> list[str]:
+        routed.clear()
+        ranker_qdrant._catalog_status_cache.clear()
+        run = SimpleNamespace(project_id=pid, user_id=user, currency="EUR", region=name, catalogue_id=name)
+        await IntakeService(session)._probe_score(run, "Muratura in laterizio", "m2", "structure")
+        return list(routed)
+
+    assert private in await probe_as(alice)
+    bob_routed = await probe_as(bob)
+    assert bob_routed, "the probe never reached the ranker"
+    assert private not in bob_routed
+
+    async def vectors_as(user: uuid.UUID) -> int:
+        ranker_qdrant._catalog_status_cache.clear()
+        run = SimpleNamespace(user_id=user, catalogue_id=name)
+        _ready, count = await AiEstimatorService(session)._vector_status(run)
+        return count
+
+    assert await vectors_as(alice) == 500
+    assert await vectors_as(bob) != 500
+
+
+@pytest.mark.asyncio
+async def test_the_estimator_agent_tools_search_as_the_runs_user(monkeypatch) -> None:
+    """The agent's tools take the run's user from the agent context."""
+    import contextlib
+
+    from app import database
+    from app.core.match_service import ranker_qdrant
+    from app.modules.ai_estimator import tools
+
+    seen: list[object] = []
+
+    async def _rank(_req, *, db, caller_id=None, **_k):
+        seen.append(caller_id)
+        return SimpleNamespace(candidates=[], status="ok", catalog_id=None)
+
+    @contextlib.asynccontextmanager
+    async def _no_session():
+        yield None
+
+    monkeypatch.setattr(ranker_qdrant, "rank", _rank)
+    monkeypatch.setattr(database, "async_session_factory", _no_session)
+    user = uuid.uuid4()
+    ctx = {"project_id": str(uuid.uuid4()), "user_id": str(user)}
+
+    await tools._tool_search_rates(description="Muratura", __agent_context__=ctx)
+    await tools._tool_refine_query(new_description="Muratura piena", __agent_context__=ctx)
+    await tools._tool_llm_rerank(description="Muratura", __agent_context__=ctx)
+    assert seen == [user, user, user]
+
+
+async def _owner_of(session, pid: uuid.UUID) -> uuid.UUID:
+    from app.modules.projects.models import Project
+
+    project = await session.get(Project, pid)
+    return project.owner_id
+
+
+@pytest.mark.asyncio
+async def test_the_match_endpoint_searches_as_the_requests_user(session, monkeypatch) -> None:
+    """``POST /match/element`` over HTTP: A's request reaches A's imported
+    index, B's request on a project whose region names A's catalogue does not."""
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+
+    from app.core.match_service import ranker_qdrant
+    from app.dependencies import get_current_user_payload, get_session
+    from app.modules.match.router import router as match_router
+
+    pid_a = await _make_project(session, region="Prezzario Umbria 2025")
+    alice = await _owner_of(session, pid_a)
+    name, private = await _private_catalogue(session, monkeypatch, alice)
+    await _bind(session, pid_a, name)
+    pid_b = await _make_project(session, region=name)
+    bob = await _owner_of(session, pid_b)
+    await _bind(session, pid_b, name)
+    routed = _record_routing(monkeypatch)
+
+    async def post_as(user: uuid.UUID, pid: uuid.UUID) -> list[str]:
+        routed.clear()
+        ranker_qdrant._catalog_status_cache.clear()
+        app = FastAPI()
+        app.include_router(match_router, prefix="/api/v1/match")
+
+        async def _session():
+            yield session
+
+        app.dependency_overrides[get_session] = _session
+        app.dependency_overrides[get_current_user_payload] = lambda: {"sub": str(user), "role": "estimator"}
+        # The ranker is stopped right after routing, so the request itself
+        # ends in a 500; only where it was routed matters here.
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://match.test") as client:
+            await client.post(
+                "/api/v1/match/element",
+                json={
+                    "source": "bim",
+                    "project_id": str(pid),
+                    "raw_element_data": {"category": "wall", "description": "Muratura in laterizio"},
+                },
+            )
+        return list(routed)
+
+    assert private in await post_as(alice, pid_a)
+    bob_routed = await post_as(bob, pid_b)
+    assert bob_routed, "B's request never reached the ranker"
+    assert private not in bob_routed

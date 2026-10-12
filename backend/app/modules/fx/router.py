@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from app.core.i18n import get_locale
 from app.core.validation.engine import ValidationReport
 from app.core.validation.messages import translate
-from app.dependencies import CurrentUserId, RequirePermission, SessionDep
+from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.fx.repository import RateSetLockedError
 from app.modules.fx.schemas import (
     ConvertRequest,
@@ -323,10 +323,12 @@ async def delete_rate_set(
 async def get_fx_policy(
     project_id: uuid.UUID,
     _user_id: CurrentUserId,
+    session: SessionDep,
     service: FxService = Depends(_get_fx_service),
     _perm: None = Depends(RequirePermission("fx.read")),
 ) -> FxPolicyResponse:
     """Return a project's currency policy, or 404 when it has none configured."""
+    await verify_project_access(project_id, _user_id, session)
     data = await service.get_policy(project_id)
     if data is None:
         raise HTTPException(
@@ -341,6 +343,7 @@ async def put_fx_policy(
     project_id: uuid.UUID,
     body: FxPolicyRequest,
     _user_id: CurrentUserId,
+    session: SessionDep,
     service: FxService = Depends(_get_fx_service),
     _perm: None = Depends(RequirePermission("fx.manage")),
 ) -> FxPolicyResponse:
@@ -349,6 +352,7 @@ async def put_fx_policy(
     A pinned policy is checked against the register before it is stored, so a
     pin can never point at a set that is not there.
     """
+    await verify_project_access(project_id, _user_id, session)
     try:
         data = await service.save_policy(
             project_id,
@@ -373,10 +377,12 @@ async def put_fx_policy(
 async def delete_fx_policy(
     project_id: uuid.UUID,
     _user_id: CurrentUserId,
+    session: SessionDep,
     service: FxService = Depends(_get_fx_service),
     _perm: None = Depends(RequirePermission("fx.manage")),
 ) -> Response:
     """Remove a project's currency policy."""
+    await verify_project_access(project_id, _user_id, session)
     if not await service.delete_policy(project_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -389,6 +395,7 @@ async def delete_fx_policy(
 async def validate_fx_policy(
     project_id: uuid.UUID,
     _user_id: CurrentUserId,
+    session: SessionDep,
     service: FxService = Depends(_get_fx_service),
     on_date: date | None = Query(default=None, description="Judge rate freshness as at this date."),
     _perm: None = Depends(RequirePermission("fx.read")),
@@ -398,6 +405,7 @@ async def validate_fx_policy(
     Green means the project's three currencies are all priceable, the rates are
     within the age it tolerates, and a pin (if any) actually holds.
     """
+    await verify_project_access(project_id, _user_id, session)
     report = await service.validate_project(project_id, on_date=on_date)
     return _validation_payload(project_id, report)
 

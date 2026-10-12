@@ -234,6 +234,10 @@ export interface BIMModelData {
   status: string;
   /** model_format from backend, e.g. "rvt", "ifc" */
   model_format?: string;
+  /** Version label, "1" for a first upload. */
+  version?: string;
+  /** The model this one is a newer version of, when it was uploaded as one. */
+  parent_model_id?: string | null;
   /** File size in bytes (set after CAD upload) */
   file_size?: number;
   /** ISO date string */

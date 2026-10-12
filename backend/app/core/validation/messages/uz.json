@@ -752,6 +752,7 @@
     "claim_not_found": "Bajarilgan ishlar boʻyicha toʻlov talabnomasi topilmadi",
     "gaeb_x89_final_account_unsupported": "Yakuniy hisobni yoki qisman yakuniy hisobni hozircha GAEB X89 sifatida eksport qilib boʻlmaydi. Unda jami bajarilgan ishlar qiymatidan avvalgi toʻlovlar chegirilishi kerak, talabnomadan esa faqat bitta davr uchun oraliq hisob-faktura tuziladi. Talabnomani oraliq hisob-faktura sifatida eksport qiling.",
     "xpwe_native_file_refused": "Bu smeta dasturining oʻz loyiha fayli boʻlib, uni faqat oʻsha dastur ochishi mumkin. Smeta dasturingizdan smetani XPWE formatida eksport qiling va .xpwe faylini yuklang.",
+    "xpwe_unreadable": "Bu faylni XPWE sifatida o‘qib bo‘lmaydi. U shikastlangan yoki boshqa turdagi bo‘lishi mumkin. Smetani XPWE sifatida qayta eksport qilib, .xpwe faylini yuklang.",
     "plot_not_found": "Yer uchastkasi topilmadi",
     "survey_not_found": "Dron bilan oʻlchash topilmadi",
     "diary_video_not_found": "Kundalik videosi topilmadi",
@@ -910,5 +911,19 @@
       "fail": "{ordinal} pozitsiyadagi '{code}' havolasida KNR katalog oilasi koʻrsatilmagan",
       "suggestion": "Havolani KNR, KNNR, KNR-W yoki KSNR kabi katalog oilasi bilan boshlang yoki satrni kalkulacja indywidualna deb belgilang"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Xususiyat shartlarida har bir xususiyat uchun kerakli qiymat koʻrsatilishi kerak.",
+    "unknown_operator": "\"{prop}\" sharti bu versiya tanimaydigan taqqoslashdan foydalanmoqda. Roʻyxatdan birini tanlang.",
+    "value_not_allowed": "\"{prop}\" sharti xususiyat boʻsh yoki boʻsh emasligini tekshiradi va qiymat qabul qilmaydi.",
+    "value_required": "\"{prop}\" sharti uchun qiymat kerak.",
+    "value_too_long": "\"{prop}\" shartining qiymati juda uzun, koʻpi bilan 500 belgi.",
+    "value_not_number": "\"{prop}\" sharti sonlarni taqqoslaydi, \"{value}\" esa son emas. Son kiriting, kerak boʻlsa mm, m, m2, m3 yoki kg kabi birlik bilan.",
+    "group_not_found": "Bu qoida elementlarni oladigan saqlangan guruh yoki Smart View ushbu loyihada yoʻq. Boshqasini tanlang yoki maydonni tozalang."
+  },
+  "bim_versions": {
+    "parent_not_found": "Ushbu yuklama yangi versiyasi boʻlishi kerak boʻlgan model bu loyihada yoʻq. Boshqasini tanlang yoki alohida model sifatida yuklang.",
+    "parent_not_ready": "\"{name}\" importi hali tugamagan, shuning uchun u hozircha yangi versiyani qabul qila olmaydi. Tayyor boʻlguncha kuting yoki bu faylni alohida model sifatida yuklang.",
+    "parent_superseded": "\"{name}\" uchun yangiroq versiya bor: {version}. Buning oʻrniga bu faylni eng oxirgi modelning yangi versiyasi sifatida yuklang."
   }
 }

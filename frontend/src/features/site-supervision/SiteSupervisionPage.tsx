@@ -68,6 +68,7 @@ import {
   type UpdateVisitPayload,
 } from './api';
 import { siteSupervisionGuide } from './siteSupervisionGuide';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -686,6 +687,7 @@ function VisitDetail({
     qc.invalidateQueries({ queryKey: ['site-supervision-change-links'] });
   }, [qc, visit.id]);
 
+  const createEntryMutOnce = useSingleFlight();
   const createEntryMut = useMutation({
     mutationFn: (data: { ordinal: string; category: string; observation: string; links_to_change_ref: string }) =>
       createEntry({
@@ -867,7 +869,7 @@ function VisitDetail({
         <EntryFormModal
           onClose={() => setShowEntryModal(false)}
           isPending={createEntryMut.isPending}
-          onSubmit={(data) => createEntryMut.mutate(data)}
+          onSubmit={(data) => createEntryMutOnce(() => createEntryMut.mutateAsync(data))}
         />
       )}
 

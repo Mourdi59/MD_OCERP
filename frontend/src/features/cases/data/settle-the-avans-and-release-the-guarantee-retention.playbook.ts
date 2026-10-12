@@ -1,7 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
-// Case: "Settle the avans and release the guarantee retention" (RU).
+// Case: "Settle the advance payment (avans) and release the guarantee retention" (RU).
 //
 // Record what the contract says about the advance and the retention, book the
 // advance and the tax on it, set it off against every act at the agreed rate,
@@ -20,7 +20,7 @@ const playbook: Playbook = {
   region: "RU",
   icon: "Coins",
   titleKey: "cases.settle_the_avans_and_release_the_guarantee_retention.title",
-  titleDefault: "Settle the avans and release the guarantee retention",
+  titleDefault: "Settle the advance payment (avans) and release the guarantee retention",
   descKey: "cases.settle_the_avans_and_release_the_guarantee_retention.desc",
   descDefault:
     "Record the advance and the retention the contract sets, book the advance and its tax, set it off against every act at the agreed rate, keep the net payable on the statutory clock, release the retention at its trigger and agree the closing balance.",

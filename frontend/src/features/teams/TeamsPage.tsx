@@ -85,6 +85,7 @@ import {
 } from './api';
 import { RosterTab } from './RosterTab';
 import { fmtList } from '@/shared/lib/formatters';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 type TabId = 'people' | 'teams' | 'restricted' | 'matrix';
 
@@ -594,6 +595,7 @@ function TeamsTab({ projectId }: { projectId: string }) {
     [addToast, t],
   );
 
+  const createMutationOnce = useSingleFlight();
   const createMutation = useMutation({
     mutationFn: (values: TeamFormValues) => createTeam({ project_id: projectId, ...values }),
     onSuccess: () => {
@@ -628,7 +630,7 @@ function TeamsTab({ projectId }: { projectId: string }) {
         <TeamForm
           submitting={createMutation.isPending}
           onCancel={() => setCreating(false)}
-          onSubmit={(values) => createMutation.mutate(values)}
+          onSubmit={(values) => createMutationOnce(() => createMutation.mutateAsync(values))}
         />
       ) : (
         <Button size="sm" onClick={() => setCreating(true)}>

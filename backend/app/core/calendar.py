@@ -1127,6 +1127,41 @@ def _holidays_es(year: int) -> set[date]:
     }
 
 
+def _holidays_it(year: int) -> set[date]:
+    """Italy's national holidays (Law 260/1949 as amended, Law 54/1977, DPR 792/1985).
+
+    Easter Sunday is listed because the shipped Italian roster lists it; it
+    is a Sunday and changes no working day. Patron saints' days are local
+    and left out, so a site in Rome or Milan has one more day off than this
+    returns.
+
+    4 October, the feast of San Francesco d'Assisi, is a public holiday from
+    2026. Legge 8 ottobre 2025, n. 151 (Gazzetta Ufficiale n. 236 of 10
+    October 2025) adds it to the list of giorni festivi in art. 2 of Law
+    260/1949, the same list that carries 25 April and 1 May, and the act
+    enters into force on 1 January 2026. Text:
+    https://www.normattiva.it/eli/id/2025/10/10/25G00153/ORIGINAL
+    """
+    e = easter(year)
+    days = {
+        date(year, 1, 1),  # Capodanno
+        date(year, 1, 6),  # Epifania
+        e,  # Pasqua
+        e + timedelta(days=1),  # Lunedi dell'Angelo
+        date(year, 4, 25),  # Festa della Liberazione
+        date(year, 5, 1),  # Festa dei Lavoratori
+        date(year, 6, 2),  # Festa della Repubblica
+        date(year, 8, 15),  # Ferragosto
+        date(year, 11, 1),  # Tutti i Santi
+        date(year, 12, 8),  # Immacolata Concezione
+        date(year, 12, 25),  # Natale
+        date(year, 12, 26),  # Santo Stefano
+    }
+    if year >= 2026:
+        days.add(date(year, 10, 4))  # San Francesco d'Assisi
+    return days
+
+
 def _holidays_ng(year: int) -> set[date]:
     """Nigerian federal public holidays (Public Holidays Act, Cap. P40, LFN 2004).
 
@@ -1320,6 +1355,7 @@ _WORKING_WEEK: dict[str, frozenset[int]] = {
     # sets its own calendar.
     # https://www.boe.es/buscar/act.php?id=BOE-A-2015-11430
     "ES": frozenset({0, 1, 2, 3, 4}),
+    "IT": frozenset({0, 1, 2, 3, 4}),
 }
 
 _DEFAULT_WORKING_WEEK: frozenset[int] = frozenset({0, 1, 2, 3, 4})
@@ -1348,6 +1384,7 @@ _HOLIDAY_FUNCS: dict[str, Any] = {
     "TR": _holidays_tr,
     "HU": _holidays_hu,
     "ES": _holidays_es,
+    "IT": _holidays_it,
 }
 
 

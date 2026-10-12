@@ -17,6 +17,7 @@ from app.dependencies import (
     CurrentUserId,
     RequirePermission,
     SessionDep,
+    accessible_project_ids,
     verify_project_access,
 )
 from app.modules.resources.resource_depth_router import resource_depth_router
@@ -159,10 +160,15 @@ async def delete_resource(
 )
 async def resource_dashboard(
     resource_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
     _perm: None = Depends(RequirePermission("resources.read")),
     service: ResourcesService = Depends(_get_service),
 ) -> ResourceDashboardResponse:
-    payload = await service.resource_dashboard(resource_id)
+    # A resource is shared across projects, its bookings are not: list only
+    # the bookings on projects the caller can open.
+    visible = await accessible_project_ids(session, user_id)
+    payload = await service.resource_dashboard(resource_id, visible_project_ids=visible)
     return ResourceDashboardResponse(
         resource=ResourceResponse.model_validate(payload["resource"]),
         active_assignments=[AssignmentResponse.model_validate(a) for a in payload["active_assignments"]],

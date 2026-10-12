@@ -38,6 +38,7 @@ import {
 import { Button, Card, Badge, Input, SkeletonTable, Breadcrumb, DismissibleInfo, IntroRichText, GanttChart as SVGGanttChart, ViewInBIMButton, ConfirmDialog, ModuleGuideButton, CollapsibleSection } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 import type { GanttActivity as SVGGanttActivity, GanttViewMode } from '@/shared/ui';
 import type { GanttLinkType } from '@/shared/ui/Gantt';
 import { scheduleErrorDetail, scheduleErrorMessage } from './errors';
@@ -235,10 +236,12 @@ function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-lg" aria-hidden="true" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-labelledby="schedule-modal-title" className="relative z-10 w-full max-w-md rounded-2xl border border-border-light bg-surface-elevated p-6 shadow-xl animate-fade-in">
-        <div className="mb-5 flex items-center justify-between">
+      {/* A dialog taller than the window scrolls inside itself, so the actions
+          at its foot stay reachable; the action row of a long dialog is sticky. */}
+      <div role="dialog" aria-modal="true" aria-labelledby="schedule-modal-title" className="relative z-10 flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl border border-border-light bg-surface-elevated shadow-xl animate-fade-in">
+        <div className="flex shrink-0 items-center justify-between px-6 pb-5 pt-6">
           <h2 id="schedule-modal-title" className="text-lg font-semibold text-content-primary">{title}</h2>
           <button
             onClick={onClose}
@@ -248,7 +251,9 @@ function Modal({
             <X size={16} />
           </button>
         </div>
-        {children}
+        <div data-testid="schedule-modal-body" className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -1714,13 +1719,13 @@ export function ScheduleDetail({
       </button>
 
       {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
-        <div>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold text-content-primary">{schedule.name}</h1>
           {schedule.description && (
             <p className="mt-1 text-sm text-content-secondary">{schedule.description}</p>
           )}
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <Badge variant="blue" size="sm">
               {t(`schedule.status_${schedule.status}`, { defaultValue: schedule.status })}
             </Badge>
@@ -1737,6 +1742,10 @@ export function ScheduleDetail({
                 })}
               </Badge>
             )}
+          </div>
+          {/* Its own row: inside the badge row the warning was squeezed into a
+              narrow column beside the title. */}
+          <div data-testid="schedule-calendar-notice" className="mt-2 max-w-3xl">
             <CalendarCoverageNotice schedule={{ ...schedule, ...scheduleRecord }} />
           </div>
         </div>
@@ -2605,7 +2614,10 @@ export function ScheduleDetail({
               ))}
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+          <div
+            data-testid="generate-actions"
+            className="sticky bottom-0 -mb-6 flex flex-wrap items-center justify-end gap-2 border-t border-border-light bg-surface-elevated pb-6 pt-3"
+          >
             <Button variant="ghost" onClick={() => setShowGenerateBOQ(false)}>
               {t('common.cancel', 'Cancel')}
             </Button>
@@ -2817,6 +2829,7 @@ export function ProjectSchedules({
     }
   }, [generateBoqId, schedules, selectedSchedule, addToast, t, canCreateSchedule, canGenerate, openCreateForGenerate]);
 
+  const submitCreateOnce = useSingleFlight();
   const createSchedule = useMutation({
     mutationFn: (data: CreateScheduleForm) =>
       scheduleApi.createSchedule({
@@ -3165,7 +3178,7 @@ export function ProjectSchedules({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            createSchedule.mutate(form);
+            submitCreateOnce(() => createSchedule.mutateAsync(form));
           }}
           className="space-y-4"
         >

@@ -752,6 +752,7 @@
     "claim_not_found": "未找到进度款申请。",
     "gaeb_x89_final_account_unsupported": "目前尚不支持将最终结算或部分最终结算导出为 GAEB X89。最终结算需要按累计完成工程额扣除先前付款，而进度款申请只能生成单个期间的进度发票。请将该申请导出为进度发票。",
     "xpwe_native_file_refused": "这是某造价软件的专有项目文件，仅可由该软件打开。请从原造价软件将估算导出为 XPWE，再上传 .xpwe 文件。",
+    "xpwe_unreadable": "无法将此文件读取为 XPWE。文件可能已损坏或属于其他类型。请重新将估算导出为 XPWE，并上传 .xpwe 文件。",
     "plot_not_found": "未找到地块。",
     "survey_not_found": "未找到无人机测绘记录。",
     "diary_video_not_found": "未找到施工日志视频。",
@@ -910,5 +911,19 @@
       "fail": "清单项 {ordinal} 的引用“{code}”未注明 KNR 目录系列。",
       "suggestion": "请以目录系列名称开头，例如 KNR、KNNR、KNR-W 或 KSNR，或将该项标记为 kalkulacja indywidualna。"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "属性条件必须为每个属性写明所需的值。",
+    "unknown_operator": "\"{prop}\" 的条件使用了此版本不认识的比较方式。请从列表中选择一个。",
+    "value_not_allowed": "\"{prop}\" 的条件用于检查属性是否为空,不接受数值。",
+    "value_required": "\"{prop}\" 的条件需要一个值。",
+    "value_too_long": "\"{prop}\" 的条件值过长,最多 500 个字符。",
+    "value_not_number": "\"{prop}\" 的条件比较的是数字,而 \"{value}\" 不是数字。请输入数字,需要时可加单位,如 mm、m、m2、m3 或 kg。",
+    "group_not_found": "此规则取构件所用的已保存分组或 Smart View 不在本项目中。请选择其他项或清除。"
+  },
+  "bim_versions": {
+    "parent_not_found": "本次上传应作为其新版本的模型不在此项目中。请另选一个，或将其作为独立模型上传。",
+    "parent_not_ready": "“{name}”尚未导入完成，暂时无法接收新版本。请等待其就绪，或将本文件作为独立模型上传。",
+    "parent_superseded": "“{name}”已有更新的版本 {version}。请改为将本文件作为最新版本的新版本上传。"
   }
 }

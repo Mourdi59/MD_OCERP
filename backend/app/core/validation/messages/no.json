@@ -752,6 +752,7 @@
     "claim_not_found": "Fremdriftskravet ble ikke funnet",
     "gaeb_x89_final_account_unsupported": "Et sluttoppgjør eller delsluttoppgjør kan ennå ikke eksporteres som GAEB X89. Det må fakturere samlet utført arbeid minus tidligere betalinger, mens et fremdriftskrav bare danner en avdragsfaktura for én periode. Eksporter kravet som en avdragsfaktura.",
     "xpwe_native_file_refused": "Dette er kalkulasjonsprogrammets egen prosjektfil, som bare det programmet kan åpne. Eksporter kalkylen som XPWE fra kalkulasjonsprogrammet, og last opp .xpwe-filen.",
+    "xpwe_unreadable": "Filen kan ikke leses som XPWE. Den kan være skadet eller av en annen type. Eksporter kalkylen som XPWE på nytt og last opp .xpwe-filen.",
     "plot_not_found": "Tomten ble ikke funnet",
     "survey_not_found": "Droneoppmålingen ble ikke funnet",
     "diary_video_not_found": "Dagbokvideoen ble ikke funnet",
@@ -910,5 +911,19 @@
       "fail": "Referansen '{code}' på post {ordinal} angir ingen KNR-katalogfamilie",
       "suggestion": "Start referansen med katalogfamilien, som KNR, KNNR, KNR-W eller KSNR, eller merk posten som kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Egenskapsbetingelser må angi hver egenskap med verdien den krever.",
+    "unknown_operator": "Betingelsen for \"{prop}\" bruker en sammenligning som denne versjonen ikke kjenner. Velg en fra listen.",
+    "value_not_allowed": "Betingelsen for \"{prop}\" sjekker om egenskapen er tom, og tar ingen verdi.",
+    "value_required": "Betingelsen for \"{prop}\" krever en verdi.",
+    "value_too_long": "Verdien i betingelsen for \"{prop}\" er for lang, høyst 500 tegn.",
+    "value_not_number": "Betingelsen for \"{prop}\" sammenligner tall, og \"{value}\" er ikke et tall. Skriv et tall, om nødvendig med en enhet som mm, m, m2, m3 eller kg.",
+    "group_not_found": "Den lagrede gruppen eller Smart View som regelen henter elementene fra, finnes ikke i prosjektet. Velg en annen eller tøm feltet."
+  },
+  "bim_versions": {
+    "parent_not_found": "Modellen denne opplastingen skal være en ny versjon av, finnes ikke i prosjektet. Velg en annen, eller last den opp som en separat modell.",
+    "parent_not_ready": "Importen av \"{name}\" er ikke ferdig, så den kan ikke få en ny versjon ennå. Vent til den er klar, eller last opp denne som en separat modell.",
+    "parent_superseded": "\"{name}\" har allerede en nyere versjon, {version}. Last heller opp denne som en ny versjon av den nyeste."
   }
 }

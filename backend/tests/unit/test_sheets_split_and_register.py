@@ -686,3 +686,26 @@ async def test_which_row_a_revision_supersedes_does_not_depend_on_insertion_orde
     # the later id, whichever order the rows were written in.
     assert str(picked_forwards.id) == str(high)
     assert str(picked_backwards.id) == str(high_b)
+
+
+async def test_a_file_that_is_not_a_pdf_is_refused_with_a_code_and_leaves_no_copy(
+    session: AsyncSession, tmp_path: Path
+) -> None:
+    """A garbage upload answers 422 with a stable code, not the parser's English text.
+
+    The reader's own message ("EOF marker not found", ...) used to travel to the
+    user verbatim. The client now gets ``pdf_unreadable`` to translate, and the
+    copy saved before parsing is removed, since nothing will ever read it.
+    """
+    from fastapi import HTTPException
+
+    project_id, user_id = await _seed_project(session)
+
+    with pytest.raises(HTTPException) as caught:
+        await SheetService(session).split_pdf_to_sheets(project_id, _upload(b"this is not a pdf"), user_id)
+
+    assert caught.value.status_code == 422
+    assert caught.value.detail["code"] == documents_service.PDF_UNREADABLE
+    assert "EOF" not in str(caught.value.detail)
+    saved = list((tmp_path / "uploads").rglob("*.pdf"))
+    assert saved == []

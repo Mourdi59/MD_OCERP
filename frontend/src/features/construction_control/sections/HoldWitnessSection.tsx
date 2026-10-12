@@ -46,6 +46,7 @@ import {
 } from '../api';
 import { SectionToolbar, StatusBadge, inputCls, labelCls, textareaCls } from './shared';
 import { fmtList } from '@/shared/lib/formatters';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 const POINT_TYPES: PointType[] = ['hold', 'witness', 'surveillance', 'review'];
 const PARTY_ROLES: PartyRole[] = ['qc', 'qa', 'tpi', 'ahj'];
@@ -116,6 +117,7 @@ export function HoldWitnessSection({ projectId }: SectionProps) {
       message: (e as Error).message,
     });
 
+  const createMutationOnce = useSingleFlight();
   const createMutation = useMutation({
     mutationFn: createGate,
     onSuccess: () => {
@@ -359,7 +361,7 @@ export function HoldWitnessSection({ projectId }: SectionProps) {
           projectId={projectId}
           isPending={createMutation.isPending}
           onClose={() => setShowCreate(false)}
-          onSubmit={(payload) => createMutation.mutate(payload)}
+          onSubmit={(payload) => createMutationOnce(() => createMutation.mutateAsync(payload))}
         />
       )}
 

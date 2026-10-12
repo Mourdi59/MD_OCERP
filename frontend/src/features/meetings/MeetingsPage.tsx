@@ -98,6 +98,7 @@ import { meetingsGuide } from './meetingsGuide';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildMeetingsInsights } from './meetingsInsights';
 import { fmtFixed } from '@/shared/lib/formatters';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 /* -- Constants ------------------------------------------------------------- */
 
@@ -2141,6 +2142,7 @@ export function MeetingsPage() {
   });
 
   // Meeting-minutes-tool-style recurring series.
+  const createSeriesMutOnce = useSingleFlight();
   const createSeriesMut = useMutation({
     mutationFn: (data: CreateSeriesPayload) => createSeries(data),
     onSuccess: (res) => {
@@ -2682,7 +2684,7 @@ export function MeetingsPage() {
         onClose={() => setShowSeriesModal(false)}
         projectId={projectId}
         isPending={createSeriesMut.isPending}
-        onSubmit={(payload) => createSeriesMut.mutate(payload)}
+        onSubmit={(payload) => createSeriesMutOnce(() => createSeriesMut.mutateAsync(payload))}
       />
 
       {/* Edit Modal */}

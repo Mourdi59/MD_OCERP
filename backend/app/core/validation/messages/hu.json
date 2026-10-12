@@ -752,6 +752,7 @@
     "claim_not_found": "A teljesítési elszámolás nem található",
     "gaeb_x89_final_account_unsupported": "Végelszámolás vagy részleges végelszámolás még nem exportálható GAEB X89 formátumban. Ennek a halmozott teljesítést kell számláznia a korábbi kifizetések levonásával; egy teljesítési elszámolásból csak egy időszak részszámlája készül. Exportálja az elszámolást részszámlaként.",
     "xpwe_native_file_refused": "Ez egy költségvetés-készítő program saját projektfájlja, amelyet csak az a program tud megnyitni. Exportálja a költségvetést XPWE formátumban a forrásprogramból, és töltse fel az .xpwe fájlt.",
+    "xpwe_unreadable": "Ez a fájl nem olvasható XPWE-ként. Lehet, hogy sérült, vagy más típusú. Exportálja újra a költségvetést XPWE formátumba, és töltse fel az .xpwe fájlt.",
     "plot_not_found": "A telek nem található",
     "survey_not_found": "A drónos felmérés nem található",
     "diary_video_not_found": "Az építési napló videója nem található",
@@ -910,5 +911,19 @@
       "fail": "A(z) {ordinal}. tétel „{code}” hivatkozása nem nevez meg KNR katalóguscsaládot",
       "suggestion": "A hivatkozást a katalóguscsaláddal kezdje, például KNR, KNNR, KNR-W vagy KSNR, vagy jelölje a tételt kalkulacja indywidualna megnevezéssel"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "A tulajdonságfeltételeknek minden tulajdonságot a szükséges értékkel együtt kell megnevezniük.",
+    "unknown_operator": "A(z) \"{prop}\" feltétele olyan összehasonlítást használ, amelyet ez a verzió nem ismer. Válasszon a listából.",
+    "value_not_allowed": "A(z) \"{prop}\" feltétele azt ellenőrzi, hogy a tulajdonság üres-e, és nem fogad el értéket.",
+    "value_required": "A(z) \"{prop}\" feltételéhez érték kell.",
+    "value_too_long": "A(z) \"{prop}\" feltételének értéke túl hosszú, legfeljebb 500 karakter.",
+    "value_not_number": "A(z) \"{prop}\" feltétele számokat hasonlít össze, a(z) \"{value}\" pedig nem szám. Adjon meg számot, szükség esetén mértékegységgel, pl. mm, m, m2, m3 vagy kg.",
+    "group_not_found": "A mentett csoport vagy Smart View, amelyből a szabály az elemeit veszi, nincs ebben a projektben. Válasszon másikat, vagy törölje a mezőt."
+  },
+  "bim_versions": {
+    "parent_not_found": "Az a modell, amelynek ez a feltöltés az új verziója lenne, nincs ebben a projektben. Válasszon másikat, vagy töltse fel különálló modellként.",
+    "parent_not_ready": "A(z) \"{name}\" importálása még nem fejeződött be, ezért még nem fogadhat új verziót. Várja meg, amíg elkészül, vagy töltse fel ezt különálló modellként.",
+    "parent_superseded": "A(z) \"{name}\" modellnek már van újabb verziója: {version}. Inkább ezt töltse fel a legújabb új verziójaként."
   }
 }

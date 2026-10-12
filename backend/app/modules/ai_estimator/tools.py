@@ -92,7 +92,23 @@ def _candidate_to_brief(c: Any) -> dict[str, Any]:
     }
 
 
-async def _run_rank(*, description: str, unit: str, project_id: str, top_k: int, use_reranker: bool) -> dict[str, Any]:
+def _context_user(ctx: dict[str, Any]) -> uuid.UUID | None:
+    """The user the agent runs for, from its context; ``None`` when absent."""
+    try:
+        return uuid.UUID(str(ctx.get("user_id") or ""))
+    except (ValueError, TypeError):
+        return None
+
+
+async def _run_rank(
+    *,
+    description: str,
+    unit: str,
+    project_id: str,
+    top_k: int,
+    use_reranker: bool,
+    caller_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
     """Call the grounded ranker once and return a JSON-safe candidate list.
 
     Opens its own session (the agent runner holds none). Never raises - any
@@ -124,7 +140,7 @@ async def _run_rank(*, description: str, unit: str, project_id: str, top_k: int,
                 top_k=max(1, min(int(top_k or 10), 50)),
                 use_reranker=bool(use_reranker),
             )
-            resp = await rank(req, db=session)
+            resp = await rank(req, db=session, caller_id=caller_id)
     except Exception as exc:  # noqa: BLE001 - tools degrade, never crash the loop
         logger.warning("estimator tool rank failed: %s", exc)
         return {"candidates": [], "note": f"rank_error:{type(exc).__name__}"}
@@ -143,6 +159,7 @@ async def _tool_search_rates(description: str = "", unit: str = "", top_k: int =
         project_id=project_id,
         top_k=top_k,
         use_reranker=True,
+        caller_id=_context_user(ctx),
     )
 
 
@@ -158,6 +175,7 @@ async def _tool_refine_query(
         project_id=project_id,
         top_k=top_k,
         use_reranker=True,
+        caller_id=_context_user(ctx),
     )
 
 
@@ -228,6 +246,7 @@ async def _tool_llm_rerank(
             resp = await rank(
                 MatchRequest(envelope=envelope, project_id=pid, top_k=10, use_reranker=True),
                 db=session,
+                caller_id=_context_user(ctx),
             )
             if not resp.candidates:
                 return {"candidates": [], "note": "no_candidates"}

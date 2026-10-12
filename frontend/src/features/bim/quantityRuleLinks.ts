@@ -14,7 +14,16 @@
 /** Query parameters the rules page reads. `new=1` asks it to open the rule
  *  editor once, pre-filled from the remaining `NEW_RULE_PARAMS`. */
 export const RULES_CONTEXT_PARAMS = ['project_id', 'model_id', 'boq_id'] as const;
-export const NEW_RULE_PARAMS = ['new', 'element_type', 'prop_key', 'prop_value', 'qty_source', 'unit'] as const;
+export const NEW_RULE_PARAMS = [
+  'new',
+  'element_type',
+  'prop_key',
+  'prop_value',
+  'qty_source',
+  'unit',
+  'group_id',
+  'group_name',
+] as const;
 
 /** Server column width for `element_type_filter` (String(100)). */
 const ELEMENT_TYPE_FILTER_MAX = 100;
@@ -27,6 +36,10 @@ export interface NewRulePrefill {
   /** Raw quantity source (`area_m2`, `count`, a quantities key, `property:x`). */
   quantitySource: string;
   unit: string;
+  /** A saved element group or Smart View the rule takes its elements from:
+   *  the group becomes a BOQ position's quantity source through the rule. */
+  groupId: string;
+  groupName: string;
 }
 
 export interface QuantityRulesLink {
@@ -102,6 +115,10 @@ export function buildQuantityRulesUrl(link: QuantityRulesLink = {}): string {
     }
     if (rule.quantitySource) params.set('qty_source', rule.quantitySource);
     if (rule.unit) params.set('unit', rule.unit);
+    if (rule.groupId) {
+      params.set('group_id', rule.groupId);
+      if (rule.groupName) params.set('group_name', rule.groupName);
+    }
   }
   const qs = params.toString();
   return qs ? `/bim/rules?${qs}` : '/bim/rules';
@@ -126,6 +143,8 @@ export function readQuantityRulesContext(params: URLSearchParams): QuantityRules
           propValue: params.get('prop_value') ?? '',
           quantitySource: get('qty_source'),
           unit: get('unit'),
+          groupId: get('group_id'),
+          groupName: get('group_name'),
         }
       : null;
   return { projectId: get('project_id'), modelId: get('model_id'), boqId: get('boq_id'), newRule };

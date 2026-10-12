@@ -696,6 +696,21 @@ repos:
         pass_filenames: false
         files: ^(backend/tests/.*\.py|scripts/check_shared_test_clock\.py)$
 
+      # The four bug classes behind the published security advisories: a route
+      # that takes an object or project id and never checks project access, a
+      # route with no authentication, an outbound HTTP client with no pass
+      # through app.core.url_safety, and module-level state written per
+      # request. Each new site fails until it is guarded or baselined with a
+      # reason in the commit; a fixed site must leave the baseline. Needs
+      # Python 3.12 to parse the backend. CI runs the same script in the Repo
+      # hygiene lane.
+      - id: security-class-ratchets
+        name: Block a new route, client or global that repeats an advisory's class
+        entry: python scripts/check_security_class_ratchets.py
+        language: system
+        pass_filenames: false
+        files: ^(backend/app/.*\.py|scripts/check_security_class_ratchets\.py|scripts/security_class_baseline\.json)$
+
       # Fonts are the one dependency class the attribution pipeline is blind
       # to by construction: pip-licenses and license-checker enumerate
       # installed packages, and a font committed into our own tree is not one.

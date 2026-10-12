@@ -82,6 +82,7 @@ import {
   type CertMaps,
 } from './certificate';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 // English fallbacks for the computed `commissioning.severity_*` keys. The default used to be
 // the raw value, so until the key lands in a locale the screen shows the bare
@@ -1277,6 +1278,7 @@ export function CommissioningPage() {
     downloadCsv('commissioning_register.csv', [header, ...rows].join('\n'));
   }, [systems, t]);
 
+  const createMutOnce = useSingleFlight();
   const createMut = useMutation({
     mutationFn: (data: Omit<CreateSystemPayload, 'project_id'>) =>
       createSystem({ ...data, project_id: projectId }),
@@ -1494,7 +1496,7 @@ export function CommissioningPage() {
       {showCreate && (
         <CreateSystemModal
           onClose={() => setShowCreate(false)}
-          onSubmit={(data) => createMut.mutate(data)}
+          onSubmit={(data) => createMutOnce(() => createMut.mutateAsync(data))}
           isPending={createMut.isPending}
         />
       )}

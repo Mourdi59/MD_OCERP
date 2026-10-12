@@ -65,6 +65,8 @@ interface BIMRightPanelTabsProps {
   onIsolateGroup: (g: BIMElementGroup) => void;
   onHighlightGroup: (g: BIMElementGroup | null) => void;
   onLinkGroupToBOQ: (g: BIMElementGroup) => void;
+  /** Open a new quantity rule fed by the group, for a BOQ position. */
+  onUseGroupAsQuantity?: (g: BIMElementGroup) => void;
   onNavigateToBOQ: (positionId: string) => void;
   onDeleteGroup: (g: BIMElementGroup) => void;
   onGroupUpdated: () => void;
@@ -81,6 +83,7 @@ export default function BIMRightPanelTabs({
   onIsolateGroup,
   onHighlightGroup,
   onLinkGroupToBOQ,
+  onUseGroupAsQuantity,
   onNavigateToBOQ,
   onDeleteGroup,
   onGroupUpdated,
@@ -501,6 +504,7 @@ export default function BIMRightPanelTabs({
                 onIsolateGroup={onIsolateGroup}
                 onHighlightGroup={onHighlightGroup}
                 onLinkToBOQ={onLinkGroupToBOQ}
+                onUseAsQuantitySource={onUseGroupAsQuantity}
                 onNavigateToBOQ={onNavigateToBOQ}
                 onDeleteGroup={onDeleteGroup}
                 onGroupUpdated={onGroupUpdated}

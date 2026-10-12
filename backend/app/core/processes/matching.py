@@ -15,6 +15,13 @@ match module (``POST /processes/ensure``) or a match request needs them. When
 one is off, request paths do not load it either, see
 :func:`matching_model_allowed`. Being lazy they load nothing at boot, so
 ``OE_TEST_FAST_STARTUP`` does not need to lock them off.
+
+``match_catalogue_indexer`` is the job that embeds an imported catalogue for
+Match (:mod:`app.modules.costs.match_index`). It needs the ranker's encoder,
+declares it as a dependency and follows the same default, so it is off
+wherever the matching models are off. It is manual: it starts only when
+someone asks for a catalogue to be indexed and finishes when the queue is
+empty.
 """
 
 from __future__ import annotations
@@ -23,7 +30,7 @@ import asyncio
 import contextlib
 import logging
 
-from app.core.processes.base import ResidentProcess
+from app.core.processes.base import OneShotProcess, ResidentProcess
 from app.core.processes.registry import ProcessRegistry, ProcessSpec
 
 logger = logging.getLogger(__name__)
@@ -79,6 +86,12 @@ async def _load_reranker() -> None:
         raise RuntimeError("BGE reranker unavailable (FlagEmbedding not installed or model load failed)")
 
 
+async def _run_catalogue_indexer() -> None:
+    from app.modules.costs.match_index import run_queue
+
+    await run_queue()
+
+
 def _unload_reranker() -> None:
     from app.core.match_service import reranker_bge
 
@@ -127,5 +140,18 @@ def register_matching_processes(registry: ProcessRegistry) -> None:
             factory=lambda: ResidentProcess(load=_load_reranker, unload=_unload_reranker),
             logger_names=["app.core.match_service.reranker_bge"],
             **common,  # type: ignore[arg-type]
+        )
+    )
+    registry.register(
+        ProcessSpec(
+            id="match_catalogue_indexer",
+            # The encoder is the ranker's; the job itself holds one page of rows.
+            estimated_ram_mb=50,
+            dependencies=["cwicr_ranker"],
+            factory=lambda: OneShotProcess(run=_run_catalogue_indexer),
+            logger_names=["app.modules.costs.match_index"],
+            # Manual: opening the costs or match module must not run it, only
+            # an index request does (``match_index._ensure_running``).
+            **{**common, "start_mode": "manual"},  # type: ignore[arg-type]
         )
     )

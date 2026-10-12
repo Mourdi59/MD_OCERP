@@ -752,6 +752,7 @@
     "claim_not_found": "기성 지급 청구를 찾을 수 없습니다",
     "gaeb_x89_final_account_unsupported": "최종 정산 또는 부분 최종 정산은 아직 GAEB X89로 내보낼 수 없습니다. 누적 기성에서 이전 지급액을 차감하여 청구해야 하지만, 지급 청구에서는 한 기간의 기성 청구서만 생성됩니다. 기성 청구서로 내보내세요.",
     "xpwe_native_file_refused": "이 파일은 특정 적산 프로그램의 고유 프로젝트 파일로, 해당 프로그램에서만 열 수 있습니다. 원래 적산 프로그램에서 견적을 XPWE로 내보낸 후 .xpwe 파일을 업로드하세요.",
+    "xpwe_unreadable": "이 파일을 XPWE로 읽을 수 없습니다. 손상되었거나 다른 형식일 수 있습니다. 견적을 XPWE로 다시 내보낸 후 .xpwe 파일을 업로드하세요.",
     "plot_not_found": "필지를 찾을 수 없습니다",
     "survey_not_found": "드론 측량을 찾을 수 없습니다",
     "diary_video_not_found": "일지 동영상을 찾을 수 없습니다",
@@ -910,5 +911,19 @@
       "fail": "항목 {ordinal}의 참조 '{code}'에 KNR 카탈로그 계열이 지정되어 있지 않습니다",
       "suggestion": "KNR, KNNR, KNR-W 또는 KSNR과 같은 카탈로그 계열로 참조를 시작하거나 항목을 kalkulacja indywidualna로 표시하세요"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "속성 조건은 각 속성에 필요한 값을 함께 지정해야 합니다.",
+    "unknown_operator": "\"{prop}\" 조건이 이 버전에서 알 수 없는 비교를 사용합니다. 목록에서 하나를 선택하세요.",
+    "value_not_allowed": "\"{prop}\" 조건은 속성이 비어 있는지 확인하므로 값을 받지 않습니다.",
+    "value_required": "\"{prop}\" 조건에는 값이 필요합니다.",
+    "value_too_long": "\"{prop}\" 조건의 값이 너무 깁니다. 최대 500자입니다.",
+    "value_not_number": "\"{prop}\" 조건은 숫자를 비교하는데 \"{value}\"은(는) 숫자가 아닙니다. 숫자를 입력하세요. 필요하면 mm, m, m2, m3, kg 같은 단위를 붙일 수 있습니다.",
+    "group_not_found": "이 규칙이 요소를 가져오는 저장된 그룹 또는 Smart View가 이 프로젝트에 없습니다. 다른 항목을 선택하거나 선택을 해제하세요."
+  },
+  "bim_versions": {
+    "parent_not_found": "이 업로드가 새 버전이 되어야 할 모델이 이 프로젝트에 없습니다. 다른 모델을 선택하거나 별도 모델로 업로드하세요.",
+    "parent_not_ready": "\"{name}\" 가져오기가 아직 끝나지 않아 새 버전을 받을 수 없습니다. 준비될 때까지 기다리거나 이 파일을 별도 모델로 업로드하세요.",
+    "parent_superseded": "\"{name}\"에는 이미 더 새로운 버전 {version}이(가) 있습니다. 대신 가장 최신 모델의 새 버전으로 업로드하세요."
   }
 }

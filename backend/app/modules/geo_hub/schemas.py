@@ -950,4 +950,13 @@ class GeocodingConsentUpdate(BaseModel):
         v = v.strip()
         if not v.lower().startswith(("http://", "https://")):
             raise ValueError("mirror_url must start with http:// or https://")
+        # A private mirror usually sits on the LAN, so the self-hosted policy
+        # applies (the one AI runtimes use): loopback and private stay allowed,
+        # link-local and cloud metadata never. The geocoder re-checks after DNS.
+        from app.core.url_safety import UnsafeUrlError, validate_ai_provider_url
+
+        try:
+            validate_ai_provider_url(v)
+        except UnsafeUrlError as exc:
+            raise ValueError(str(exc)) from exc
         return v

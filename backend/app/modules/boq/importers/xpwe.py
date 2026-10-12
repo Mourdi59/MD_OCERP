@@ -159,7 +159,19 @@ _DECLARED_ENCODING = re.compile(rb"<\?xml[^>]*encoding\s*=\s*[\"']([A-Za-z0-9._-
 
 
 class XpweNativeFileError(ImporterParseError):
-    """The upload is not XML: a native project file rather than its XPWE export."""
+    """The upload is not XML: a native project file or some other non-XPWE content."""
+
+
+# Leading bytes of the estimating program's native project container. Only an
+# upload that starts with them is called a native project file; anything else
+# that is not XML is just unreadable, and telling its owner "this is your
+# program's project file" would send them looking for the wrong problem.
+NATIVE_PROJECT_SIGNATURE = b"AAMVHFSS"
+
+
+def is_native_project_file(head: bytes) -> bool:
+    """Whether ``head`` opens with the native project container's signature."""
+    return head.startswith(NATIVE_PROJECT_SIGNATURE)
 
 
 class _UnreadableFactor(ValueError):
@@ -1453,6 +1465,13 @@ def native_file_message(locale: str) -> str:
     return translate("errors.xpwe_native_file_refused", locale=locale)
 
 
+def unreadable_file_message(locale: str) -> str:
+    """The translated refusal for an upload that is neither XPWE nor a native project file."""
+    from app.core.validation.messages import translate
+
+    return translate("errors.xpwe_unreadable", locale=locale)
+
+
 class XpweImporter:
     """XPWE (Italian estimating XML) native importer."""
 
@@ -1489,7 +1508,9 @@ class XpweImporter:
         try:
             return await asyncio.to_thread(_parse_sync, content)
         except XpweNativeFileError as exc:
-            raise ImporterParseError(native_file_message(locale), code="xpwe_not_xml") from exc
+            if is_native_project_file(content[:16]):
+                raise ImporterParseError(native_file_message(locale), code="xpwe_not_xml") from exc
+            raise ImporterParseError(unreadable_file_message(locale), code="xpwe_unreadable") from exc
 
 
 def _parse_sync(content: bytes) -> ImportedBOQ:
@@ -1506,7 +1527,10 @@ __all__ = [
     "XpwePriceItem",
     "build_imported_boq",
     "index_price_list",
+    "NATIVE_PROJECT_SIGNATURE",
+    "is_native_project_file",
     "native_file_message",
+    "unreadable_file_message",
     "normalise_unit",
     "open_xml_stream",
     "plain_decimal",

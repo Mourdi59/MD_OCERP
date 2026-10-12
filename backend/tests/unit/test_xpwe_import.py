@@ -84,6 +84,28 @@ def test_a_file_that_is_not_xml_is_refused_with_what_to_do(name: str) -> None:
         read_xpwe(native)
 
 
+@pytest.mark.parametrize("content", [b"\x00\x13garbage\xff\xfe random bytes", b"just some text, not xml"])
+def test_garbage_named_xpwe_is_not_called_a_native_project_file(content: bytes) -> None:
+    """Only the native container's signature earns the "project file" diagnosis.
+
+    A damaged or renamed upload used to be told it was the estimating program's
+    own project file, which sends its owner looking for the wrong problem.
+    """
+    assert XpweImporter.detect(content, "computo.xpwe")
+    with pytest.raises(ImporterParseError) as caught:
+        _parse(content)
+    assert caught.value.code == "xpwe_unreadable"
+    assert "project file" not in str(caught.value)
+
+
+def test_the_native_signature_still_gets_the_project_file_diagnosis() -> None:
+    native = b"AAMVHFSS\x00\x01\x02\x03" + bytes(range(256))
+    with pytest.raises(ImporterParseError) as caught:
+        _parse(native)
+    assert caught.value.code == "xpwe_not_xml"
+    assert "project file" in str(caught.value)
+
+
 def test_a_legacy_name_carrying_the_same_xml_is_read() -> None:
     result = _parse(fx.small_computo())
     assert result.positions

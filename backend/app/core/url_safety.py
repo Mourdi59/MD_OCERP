@@ -29,6 +29,7 @@ from urllib.parse import urlparse
 
 __all__ = [
     "UnsafeUrlError",
+    "external_url_block_reason",
     "resolve_and_validate_ai_provider_url",
     "resolve_and_validate_external_url",
     "validate_ai_provider_url",
@@ -54,6 +55,7 @@ _BLOCKED_HOSTNAMES = frozenset(
         "metadata.google.internal",
         "metadata.goog",
         "169.254.169.254",
+        "100.100.100.200",
         "fd00:ec2::254",
     }
 )
@@ -64,9 +66,20 @@ class UnsafeUrlError(ValueError):
 
 
 def _is_blocked_address(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
-    """Return True if *addr* is in a blocklisted range."""
+    """Return True if *addr* is in a blocklisted range.
+
+    ``not is_global`` is what actually covers carrier-grade NAT: Python does not
+    count 100.64.0.0/10 as private, so the named predicates alone let it through,
+    and with it 100.100.100.200, a cloud metadata address. It also covers the
+    benchmarking, documentation and other special-purpose ranges a webhook has
+    no reason to reach.
+    """
+    mapped = getattr(addr, "ipv4_mapped", None)
+    if mapped is not None:
+        addr = mapped
     return (
-        addr.is_loopback
+        not addr.is_global
+        or addr.is_loopback
         or addr.is_private
         or addr.is_link_local
         or addr.is_multicast
@@ -93,6 +106,44 @@ def _parse_host(url: str) -> tuple[str, str]:
     return scheme, host
 
 
+def _internal_allowlist() -> list[str]:
+    """Hosts and CIDR ranges an administrator opened to webhooks.
+
+    Read on every call so a changed environment needs no code path of its own.
+    Binds ``OE_WEBHOOK_INTERNAL_ALLOWLIST``; empty keeps every internal address
+    closed.
+    """
+    try:
+        from app.config import get_settings
+
+        return get_settings().webhook_internal_allowlist_hosts
+    except Exception:  # noqa: BLE001 - a broken config must not open anything
+        return []
+
+
+def _check_webhook_address(
+    host: str,
+    addr: ipaddress.IPv4Address | ipaddress.IPv6Address,
+    allowlist: list[str],
+) -> None:
+    """Raise unless a webhook may reach *addr* (which *host* named or resolved to).
+
+    Link-local, multicast, unspecified and the cloud metadata addresses are
+    refused whatever the allowlist says: no webhook has a reason to reach them
+    and a listed range must not be able to reopen them. Any other non-global
+    address is refused unless the host, or the address itself, is listed.
+    """
+    if _ai_address_blocked(addr):
+        raise UnsafeUrlError(f"URL targets a metadata or link-local address {addr}")
+    if _is_blocked_address(addr) and not (
+        _host_in_allowlist(host, allowlist) or _host_in_allowlist(str(addr), allowlist)
+    ):
+        raise UnsafeUrlError(
+            f"URL targets non-routable address {addr}; an administrator can allow internal "
+            "webhook targets with OE_WEBHOOK_INTERNAL_ALLOWLIST"
+        )
+
+
 def validate_external_url(url: str) -> str:
     """Reject URLs that are trivially unsafe (bad scheme, literal private IP).
 
@@ -101,8 +152,11 @@ def validate_external_url(url: str) -> str:
     :func:`resolve_and_validate_external_url` at dispatch time.
     """
     _, host = _parse_host(url)
+    allowlist = _internal_allowlist()
 
-    if host in _BLOCKED_HOSTNAMES:
+    if host in _AI_BLOCKED_HOSTNAMES:
+        raise UnsafeUrlError(f"Hostname {host!r} is blocked")
+    if host in _BLOCKED_HOSTNAMES and not _host_in_allowlist(host, allowlist):
         raise UnsafeUrlError(f"Hostname {host!r} is blocked")
 
     # Is the host a literal IP address?
@@ -111,10 +165,32 @@ def validate_external_url(url: str) -> str:
     except ValueError:
         return url  # hostname - resolve later
 
-    if _is_blocked_address(addr):
-        raise UnsafeUrlError(f"URL targets non-routable address {addr}")
-
+    _check_webhook_address(host, addr, allowlist)
     return url
+
+
+def external_url_block_reason(url: str) -> str | None:
+    """Why the webhook policy refuses *url*, as a stable code, or ``None``.
+
+    For showing a stored target's state, where raising is not useful:
+    ``metadata_address`` can never be allowed, ``internal_address`` can be by
+    an administrator, and ``invalid_url`` is everything else. DNS-free, so a
+    name that only resolves inward is reported by the dispatcher's log instead.
+    """
+    try:
+        validate_external_url(url)
+    except UnsafeUrlError as exc:
+        text = str(exc)
+        if "metadata" in text or "link-local" in text:
+            return "metadata_address"
+        if "non-routable" in text or "is blocked" in text:
+            try:
+                _, host = _parse_host(url)
+            except UnsafeUrlError:
+                return "invalid_url"
+            return "metadata_address" if host in _AI_BLOCKED_HOSTNAMES else "internal_address"
+        return "invalid_url"
+    return None
 
 
 async def resolve_and_validate_external_url(url: str) -> str:
@@ -126,6 +202,7 @@ async def resolve_and_validate_external_url(url: str) -> str:
     """
     validate_external_url(url)  # fast-path
     _, host = _parse_host(url)
+    allowlist = _internal_allowlist()
 
     # Skip DNS for literal IPs - already validated above.
     try:
@@ -151,8 +228,10 @@ async def resolve_and_validate_external_url(url: str) -> str:
             addr = ipaddress.ip_address(raw_addr)
         except ValueError:
             continue
-        if _is_blocked_address(addr):
-            raise UnsafeUrlError(f"Hostname {host!r} resolves to non-routable address {addr}")
+        try:
+            _check_webhook_address(host, addr, allowlist)
+        except UnsafeUrlError as exc:
+            raise UnsafeUrlError(f"Hostname {host!r} resolves to a refused address: {exc}") from exc
 
     return url
 
@@ -181,6 +260,7 @@ _AI_BLOCKED_HOSTNAMES = frozenset(
         "metadata.google.internal",
         "metadata.goog",
         "169.254.169.254",
+        "100.100.100.200",
         "fd00:ec2::254",
     }
 )
@@ -192,9 +272,16 @@ _AI_BLOCKED_HOSTNAMES = frozenset(
 _AI_METADATA_ADDRESSES = frozenset(
     {
         ipaddress.ip_address("169.254.169.254"),
+        # Carrier-grade NAT, which this policy leaves open for runtimes on a
+        # tailnet, also holds one cloud's metadata service.
+        ipaddress.ip_address("100.100.100.200"),
         ipaddress.ip_address("fd00:ec2::254"),
     }
 )
+
+# The NAT64 well-known prefix embeds an IPv4 address in its last 32 bits, so a
+# blocked IPv4 address can be reached through it on a NAT64 network.
+_NAT64_PREFIX = ipaddress.ip_network("64:ff9b::/96")
 
 
 def _ai_address_blocked(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
@@ -212,6 +299,8 @@ def _ai_address_blocked(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> 
     mapped = getattr(addr, "ipv4_mapped", None)
     if mapped is not None:
         addr = mapped
+    elif isinstance(addr, ipaddress.IPv6Address) and addr in _NAT64_PREFIX:
+        addr = ipaddress.IPv4Address(int(addr) & 0xFFFFFFFF)
     return addr.is_link_local or addr.is_multicast or addr.is_unspecified or addr in _AI_METADATA_ADDRESSES
 
 

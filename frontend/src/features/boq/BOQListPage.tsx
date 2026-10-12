@@ -895,9 +895,10 @@ export function BOQListPage() {
           */
           isLoading
             ? t('common.loading')
-            : boqError
-              ? // No count when the bills could not be read: "0 estimates"
-                // over the error card below would be a figure, and a wrong one.
+            : boqError || projError
+              ? // No count when the bills or the projects could not be read:
+                // "0 estimates across 0 projects" over the error card below
+                // would be a figure, and a wrong one.
                 undefined
               : t('boq.list_subtitle_count', {
                   defaultValue: '{{boqCount}} estimates across {{projectCount}} projects',

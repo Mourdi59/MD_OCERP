@@ -205,6 +205,7 @@
       {"date": "2026-05-01", "name": {"en": "Labour Day", "it": "Festa dei Lavoratori"}, "type": "public_holiday"},
       {"date": "2026-06-02", "name": {"en": "Republic Day", "it": "Festa della Repubblica"}, "type": "public_holiday"},
       {"date": "2026-08-15", "name": {"en": "Assumption of Mary", "it": "Ferragosto"}, "type": "public_holiday"},
+      {"date": "2026-10-04", "name": {"en": "Saint Francis of Assisi", "it": "San Francesco d'Assisi"}, "type": "public_holiday"},
       {"date": "2026-11-01", "name": {"en": "All Saints' Day", "it": "Tutti i Santi"}, "type": "public_holiday"},
       {"date": "2026-12-08", "name": {"en": "Immaculate Conception", "it": "Immacolata Concezione"}, "type": "public_holiday"},
       {"date": "2026-12-25", "name": {"en": "Christmas Day", "it": "Natale"}, "type": "public_holiday"},

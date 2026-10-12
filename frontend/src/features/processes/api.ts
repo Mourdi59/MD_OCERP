@@ -75,6 +75,7 @@ export const SEMANTIC_PROCESS_IDS = [
   'vector_backfill',
   'cwicr_ranker',
   'bge_reranker',
+  'match_catalogue_indexer',
 ];
 
 export const CATEGORY_ORDER: ProcessCategory[] = ['ai_model', 'vector_index', 'scheduler', 'cache_warmup', 'sync', 'maintenance'];

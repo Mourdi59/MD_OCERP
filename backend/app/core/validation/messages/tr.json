@@ -752,6 +752,7 @@
     "claim_not_found": "Hakediş talebi bulunamadı",
     "gaeb_x89_final_account_unsupported": "Kesin hesap veya kısmi kesin hesap henüz GAEB X89 olarak dışa aktarılamaz. Önceki ödemeler düşülmüş kümülatif iş bedelinin faturalandırılması gerekir; hakedişten ise yalnızca tek dönemlik ara fatura oluşturulur. Hakedişi ara fatura olarak dışa aktarın.",
     "xpwe_native_file_refused": "Bu dosya, bir maliyet hesaplama programının yalnızca o programda açılabilen kendi proje dosyasıdır. Maliyet hesabını programınızdan XPWE biçiminde dışa aktarın ve .xpwe dosyasını yükleyin.",
+    "xpwe_unreadable": "Bu dosya XPWE olarak okunamıyor. Dosya bozuk veya başka bir türde olabilir. Keşfi yeniden XPWE olarak dışa aktarıp .xpwe dosyasını yükleyin.",
     "plot_not_found": "Parsel bulunamadı",
     "survey_not_found": "Drone ölçümü bulunamadı",
     "diary_video_not_found": "Günlük videosu bulunamadı",
@@ -910,5 +911,19 @@
       "fail": "{ordinal} pozundaki '{code}' referansı herhangi bir KNR katalog ailesini belirtmiyor",
       "suggestion": "Referansı KNR, KNNR, KNR-W veya KSNR gibi katalog ailesiyle başlatın veya kalemi kalkulacja indywidualna olarak işaretleyin"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Özellik koşulları her özelliği, gereken değeriyle birlikte belirtmelidir.",
+    "unknown_operator": "\"{prop}\" için koşul, bu sürümün tanımadığı bir karşılaştırma kullanıyor. Listeden birini seçin.",
+    "value_not_allowed": "\"{prop}\" için koşul özelliğin boş olup olmadığını denetler ve değer almaz.",
+    "value_required": "\"{prop}\" için koşul bir değer gerektirir.",
+    "value_too_long": "\"{prop}\" koşulunun değeri çok uzun, en fazla 500 karakter.",
+    "value_not_number": "\"{prop}\" için koşul sayıları karşılaştırır ve \"{value}\" bir sayı değildir. Bir sayı yazın, gerekirse mm, m, m2, m3 veya kg gibi bir birimle.",
+    "group_not_found": "Bu kuralın öğelerini aldığı kayıtlı grup veya Smart View bu projede yok. Başka birini seçin ya da alanı temizleyin."
+  },
+  "bim_versions": {
+    "parent_not_found": "Bu yüklemenin yeni sürümü olacağı model bu projede yok. Başka bir model seçin ya da ayrı bir model olarak yükleyin.",
+    "parent_not_ready": "\"{name}\" içe aktarımı henüz bitmedi, bu yüzden henüz yeni sürüm alamaz. Hazır olana kadar bekleyin veya bu dosyayı ayrı bir model olarak yükleyin.",
+    "parent_superseded": "\"{name}\" için daha yeni bir sürüm var: {version}. Bunun yerine bu dosyayı en yeni modelin yeni sürümü olarak yükleyin."
   }
 }

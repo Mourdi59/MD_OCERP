@@ -40,6 +40,7 @@ import {
   bulkUpdateSheets,
   rereadTitleBlocks,
   splitPdfIntoSheets,
+  SheetSplitError,
   type SheetBulkPatch,
   type SheetRereadSummary,
 } from './api';
@@ -291,7 +292,17 @@ export function SheetsIndexPage() {
     },
     onError: (err: unknown) => {
       setSplitAdded(null);
-      setSplitError(err instanceof Error ? err.message : String(err));
+      // A file the PDF reader cannot open gets its own translated sentence;
+      // the server's text for it is English parser internals.
+      setSplitError(
+        err instanceof SheetSplitError && err.code === 'pdf_unreadable'
+          ? t('sheets.split_not_a_pdf', {
+              defaultValue: 'This file is not a valid PDF or it is damaged. Export it again as PDF and retry.',
+            })
+          : err instanceof Error
+            ? err.message
+            : String(err),
+      );
     },
   });
 
@@ -492,7 +503,7 @@ export function SheetsIndexPage() {
                         : 'bg-surface-secondary text-content-secondary hover:bg-surface-tertiary',
                     )}
                   >
-                    {d}
+                    {t(`sheets.discipline_name.${d.toLowerCase()}`, { defaultValue: d })}
                     <span className="ms-1.5 tabular-nums opacity-70">{count}</span>
                   </button>
                 );
@@ -809,7 +820,7 @@ export function SheetsIndexPage() {
                         <td className="px-4 py-3">
                           {s.discipline ? (
                             <Badge variant={disciplineVariant(s.discipline)} size="sm">
-                              {s.discipline}
+                              {t(`sheets.discipline_name.${s.discipline.toLowerCase()}`, { defaultValue: s.discipline })}
                             </Badge>
                           ) : (
                             <span className="text-content-quaternary">&mdash;</span>

@@ -464,6 +464,17 @@ export async function renameDocument(
  * browser has to own the multipart boundary, and a full drawing set takes far
  * longer to split than the JSON client's 45s abort allows.
  */
+/** A refused sheet split, carrying the backend's error code when it sent one. */
+export class SheetSplitError extends Error {
+  constructor(
+    message: string,
+    readonly code: string | null,
+  ) {
+    super(message);
+    this.name = 'SheetSplitError';
+  }
+}
+
 export async function splitPdfIntoSheets(
   projectId: string,
   file: File,
@@ -480,7 +491,12 @@ export async function splitPdfIntoSheets(
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(extractErrorMessageFromBody(body) ?? `Split failed (${res.status})`);
+    const detail = (body as { detail?: unknown }).detail;
+    const code =
+      detail && typeof detail === 'object' && typeof (detail as { code?: unknown }).code === 'string'
+        ? (detail as { code: string }).code
+        : null;
+    throw new SheetSplitError(extractErrorMessageFromBody(body) ?? `Split failed (${res.status})`, code);
   }
   return (await res.json()) as SheetRow[];
 }

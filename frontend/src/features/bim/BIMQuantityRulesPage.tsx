@@ -24,6 +24,7 @@ import {
   type FormEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNameCollator } from '@/shared/lib/collator';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -77,6 +78,8 @@ import { ApiError, apiGet, downloadWithAuth } from '@/shared/lib/api';
 import {
   applyQuantityMaps,
   createQuantityMap,
+  listElementGroups,
+  type BIMElementGroup,
   fetchBIMElements,
   fetchBIMDataframeSchema,
   fetchBIMModels,
@@ -100,13 +103,20 @@ import {
   type RulesTabsAvailable,
 } from './quantityRuleLinks';
 import {
-  isWildcardSample,
   propertyLabelMap,
   rulePropertyOptions,
   ruleQuantitySourceOptions,
 } from './rulePropertyCatalog';
+import { RuleConditionRow, type ConditionRowState } from './RuleConditionRow';
+import {
+  checkConditionValue,
+  decodeCondition,
+  encodeCondition,
+  type PropertyFilterValue,
+  type RuleOperator,
+} from './ruleOperators';
 import { boqApi, type BOQ, type Position } from '@/features/boq/api';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { getNumberLocale, useNumberLocale } from '@/stores/usePreferencesStore';
 import {
   type BIMFormat,
   getCategoriesForFormat,
@@ -171,10 +181,7 @@ const RULES_DIM_LABELS: Record<string, string> = {
 
 type TargetKind = 'existing' | 'auto_create';
 
-interface PropertyRow {
-  key: string;
-  value: string;
-}
+type PropertyRow = ConditionRowState;
 
 interface RuleFormState {
   name: string;
@@ -192,6 +199,9 @@ interface RuleFormState {
    *  ``boq_target.unit_rate``. */
   target_unit_rate: string;
   is_active: boolean;
+  /** Saved element group or Smart View the rule takes its elements from;
+   *  empty when the filters alone select. */
+  element_group_id: string;
 }
 
 const QUANTITY_SOURCE_PRESETS = [
@@ -220,6 +230,7 @@ function blankForm(): RuleFormState {
     target_position_id: '',
     target_unit_rate: '',
     is_active: true,
+    element_group_id: '',
   };
 }
 
@@ -298,10 +309,16 @@ function presetFromQuantitySource(source: string): QuantitySourcePreset {
   return 'custom';
 }
 
+/** The saved group a rule takes its elements from (``metadata.element_group_id``). */
+function ruleGroupId(metadata: Record<string, unknown> | null | undefined): string | null {
+  const raw = metadata?.element_group_id;
+  return typeof raw === 'string' && raw ? raw : null;
+}
+
 function toFormState(rule: BIMQuantityMap, boqPositionLookup: Map<string, string>): RuleFormState {
   const props: PropertyRow[] = Object.entries(rule.property_filter ?? {}).map(([key, value]) => ({
     key,
-    value: String(value),
+    ...decodeCondition(value),
   }));
   const preset = presetFromQuantitySource(rule.quantity_source);
   const target = rule.boq_target ?? {};
@@ -322,6 +339,7 @@ function toFormState(rule: BIMQuantityMap, boqPositionLookup: Map<string, string
     target_position_id: existingPositionId,
     target_unit_rate: typeof target.unit_rate === 'string' ? target.unit_rate : '',
     is_active: rule.is_active,
+    element_group_id: ruleGroupId(rule.metadata) ?? '',
   };
 }
 
@@ -337,11 +355,15 @@ function formFromPrefill(prefill: NewRulePrefill, boqId: string, name: string): 
     ...base,
     name,
     element_type_filter: prefill.elementType,
-    property_filter: prefill.propKey ? [{ key: prefill.propKey, value: prefill.propValue }] : [],
+    property_filter: prefill.propKey ? [{ key: prefill.propKey, op: 'equals', value: prefill.propValue }] : [],
     quantity_source: preset,
     custom_quantity_source: source && preset === 'custom' ? source : '',
     unit: prefill.unit || base.unit,
     target_boq_id: boqId,
+    element_group_id: prefill.groupId,
+    // A group handed over from the viewer is meant for a position the user
+    // picks here, so the target starts on "existing position".
+    ...(prefill.groupId ? { target_kind: 'existing' as const } : {}),
   };
 }
 
@@ -359,8 +381,9 @@ function buildPayload(
   form: RuleFormState,
   projectId: string | null,
   versionCtx?: VersionContext,
+  numberLocale = 'en',
 ): CreateBIMQuantityMapRequest {
-  const propertyFilter = propertyFilterMap(form.property_filter);
+  const propertyFilter = propertyFilterMap(form.property_filter, numberLocale);
   const quantitySource = effectiveQuantitySource(form);
 
   const boqTarget: QuantityMapTarget = {};
@@ -385,7 +408,7 @@ function buildPayload(
   let metadata: Record<string, unknown> = {};
   if (versionCtx) {
     metadata = { ...versionCtx.baseMetadata };
-    const nextFields = formToFormulaFields(form);
+    const nextFields = formToFormulaFields(form, numberLocale);
     const changed = formulaSignature(nextFields) !== formulaSignature(versionCtx.previousFields);
     if (changed) {
       const existing = readVersions(versionCtx.baseMetadata);
@@ -408,18 +431,52 @@ function buildPayload(
     waste_factor_pct: form.waste_factor_pct.trim() || '0',
     boq_target: Object.keys(boqTarget).length > 0 ? boqTarget : null,
     is_active: form.is_active,
-    metadata,
+    // Always sent, so clearing the group on an edit clears it on the server.
+    metadata: { ...metadata, element_group_id: form.element_group_id || null },
   };
 }
 
-/** Collapse the editor's property rows into the flat key/value map the
- *  sandbox + payload share. Blank keys are dropped. */
-function propertyFilterMap(rows: PropertyRow[]): Record<string, string> {
-  const out: Record<string, string> = {};
+/** One stored condition as the rules table shows it: "Width > 200 mm",
+ *  "Phase Demolished is empty". */
+function conditionBadgeText(
+  key: string,
+  stored: unknown,
+  t: ReturnType<typeof useTranslation>['t'],
+): string {
+  const { op, value } = decodeCondition(stored);
+  switch (op) {
+    case 'equals':
+      return `${key}=${value}`;
+    case 'not_equals':
+      return `${key} ≠ ${value}`;
+    case 'gt':
+      return `${key} > ${value}`;
+    case 'gte':
+      return `${key} ≥ ${value}`;
+    case 'lt':
+      return `${key} < ${value}`;
+    case 'lte':
+      return `${key} ≤ ${value}`;
+    case 'contains':
+      return t('bim_rules.badge_contains', { defaultValue: '{{key}} contains {{value}}', key, value });
+    case 'not_contains':
+      return t('bim_rules.badge_not_contains', { defaultValue: '{{key}} does not contain {{value}}', key, value });
+    case 'is_empty':
+      return t('bim_rules.badge_is_empty', { defaultValue: '{{key}} is empty', key });
+    case 'is_not_empty':
+      return t('bim_rules.badge_is_not_empty', { defaultValue: '{{key}} is not empty', key });
+  }
+}
+
+/** Collapse the editor's property rows into the map the sandbox + payload
+ *  share: a bare value for "equals", a ``{$op, value}`` condition otherwise,
+ *  numbers read in the reader's convention. Blank keys are dropped. */
+function propertyFilterMap(rows: PropertyRow[], numberLocale = 'en'): Record<string, PropertyFilterValue> {
+  const out: Record<string, PropertyFilterValue> = {};
   for (const row of rows) {
     const k = row.key.trim();
     if (!k) continue;
-    out[k] = row.value;
+    out[k] = encodeCondition(row.op, checkConditionValue(row.op, row.value, numberLocale).value);
   }
   return out;
 }
@@ -434,14 +491,15 @@ function effectiveQuantitySource(form: RuleFormState): string {
 
 /** The formula-bearing slice of the form, used for the sandbox, unit-safety
  *  and version snapshots. */
-function formToFormulaFields(form: RuleFormState): RuleFormulaFields {
+function formToFormulaFields(form: RuleFormState, numberLocale = 'en'): RuleFormulaFields {
   return {
     element_type_filter: form.element_type_filter.trim(),
-    property_filter: propertyFilterMap(form.property_filter),
+    property_filter: propertyFilterMap(form.property_filter, numberLocale),
     quantity_source: effectiveQuantitySource(form),
     multiplier: form.multiplier.trim() || '1',
     waste_factor_pct: form.waste_factor_pct.trim() || '0',
     unit: form.unit.trim(),
+    element_group_id: form.element_group_id || null,
   };
 }
 
@@ -638,6 +696,7 @@ function RuleEditorModal({
   submitting,
 }: RuleEditorModalProps) {
   const { t } = useTranslation();
+  const numberLocale = useNumberLocale();
   const [form, setForm] = useState<RuleFormState>(initial);
 
   useEffect(() => {
@@ -663,7 +722,16 @@ function RuleEditorModal({
     }
   }, [open]);
 
-  const formula = useMemo(() => formToFormulaFields(form), [form]);
+  const formula = useMemo(() => formToFormulaFields(form, numberLocale), [form, numberLocale]);
+  // Each condition checked the way the server checks it; a row with a
+  // problem blocks Save and says why under itself.
+  const checkedConditions = useMemo(
+    () => form.property_filter.map((row) => checkConditionValue(row.op, row.value, numberLocale)),
+    [form.property_filter, numberLocale],
+  );
+  const conditionsInvalid = checkedConditions.some(
+    (c, i) => c.problem !== null && form.property_filter[i]!.key.trim() !== '',
+  );
   const unitSafety = useMemo(
     () => checkUnitSafety(formula.quantity_source, formula.unit),
     [formula.quantity_source, formula.unit],
@@ -671,6 +739,8 @@ function RuleEditorModal({
   const versions = useMemo(() => readVersions(baseMetadata), [baseMetadata]);
 
   const runTest = useCallback(async () => {
+    // The rows already say what is wrong; the server would refuse the same.
+    if (conditionsInvalid) return;
     if (!modelId) {
       setSandboxError(
         t('bim_rules.sandbox_no_model', {
@@ -699,7 +769,7 @@ function RuleEditorModal({
     } finally {
       setSandboxBusy(false);
     }
-  }, [modelId, formula, t]);
+  }, [modelId, formula, t, conditionsInvalid]);
 
   const restoreVersion = useCallback((v: RuleVersionSnapshot) => {
     setForm((prev) => ({
@@ -707,8 +777,9 @@ function RuleEditorModal({
       element_type_filter: v.element_type_filter,
       property_filter: Object.entries(v.property_filter ?? {}).map(([key, value]) => ({
         key,
-        value: String(value),
+        ...decodeCondition(value),
       })),
+      element_group_id: v.element_group_id ?? '',
       quantity_source: presetFromQuantitySource(v.quantity_source),
       custom_quantity_source: presetFromQuantitySource(v.quantity_source) === 'custom'
         ? v.quantity_source
@@ -771,6 +842,18 @@ function RuleEditorModal({
     () => ruleQuantitySourceOptions(catalogQuery.data),
     [catalogQuery.data],
   );
+  // Saved groups and Smart Views of the project, offered as the element source.
+  const groupsQuery = useQuery<BIMElementGroup[]>({
+    queryKey: ['bim-element-groups', projectId],
+    queryFn: () => (projectId ? listElementGroups(projectId) : Promise.resolve<BIMElementGroup[]>([])),
+    enabled: open && !!projectId,
+    staleTime: 60 * 1000,
+  });
+  const compareGroupNames = useNameCollator();
+  const groupOptions = useMemo(
+    () => [...(groupsQuery.data ?? [])].sort((a, b) => compareGroupNames(a.name, b.name)),
+    [groupsQuery.data, compareGroupNames],
+  );
   const pickerId = useId();
   const keyListId = `${pickerId}-prop-keys`;
   const sourceListId = `${pickerId}-qty-sources`;
@@ -798,7 +881,7 @@ function RuleEditorModal({
   const handleAddPropertyRow = useCallback(() => {
     setForm((prev) => ({
       ...prev,
-      property_filter: [...prev.property_filter, { key: '', value: '' }],
+      property_filter: [...prev.property_filter, { key: '', op: 'equals', value: '' }],
     }));
   }, []);
 
@@ -810,11 +893,11 @@ function RuleEditorModal({
   }, []);
 
   const handleUpdatePropertyRow = useCallback(
-    (index: number, field: 'key' | 'value', value: string) => {
+    (index: number, field: keyof PropertyRow, value: string) => {
       setForm((prev) => ({
         ...prev,
         property_filter: prev.property_filter.map((row, i) =>
-          i === index ? { ...row, [field]: value } : row,
+          i === index ? { ...row, [field]: field === 'op' ? (value as RuleOperator) : value } : row,
         ),
       }));
     },
@@ -824,7 +907,7 @@ function RuleEditorModal({
   const handleSubmit = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      if (!form.name.trim()) return;
+      if (!form.name.trim() || conditionsInvalid) return;
       // Only edits carry a version context; create/duplicate start clean.
       const versionCtx =
         mode === 'edit' && previousFields
@@ -834,9 +917,9 @@ function RuleEditorModal({
               label: form.name.trim(),
             }
           : undefined;
-      onSubmit(buildPayload(form, projectId, versionCtx));
+      onSubmit(buildPayload(form, projectId, versionCtx, numberLocale));
     },
-    [form, projectId, onSubmit, mode, previousFields, baseMetadata],
+    [form, projectId, onSubmit, mode, previousFields, baseMetadata, conditionsInvalid, numberLocale],
   );
 
   if (!open) return null;
@@ -894,6 +977,48 @@ function RuleEditorModal({
                 })}
                 className="w-full rounded-lg border border-border-light bg-surface-primary px-3 py-2 text-sm text-content-primary focus:border-oe-blue focus:outline-none focus:ring-1 focus:ring-oe-blue"
               />
+            </div>
+
+            {/* Saved group or Smart View as the element source */}
+            <div>
+              <label htmlFor="rule-element-group" className="mb-1 block text-xs font-medium text-content-secondary">
+                {t('bim_rules.field_element_group', { defaultValue: 'Elements from a saved group or Smart View' })}
+              </label>
+              <select
+                id="rule-element-group"
+                value={form.element_group_id}
+                onChange={(e) => updateField('element_group_id', e.target.value)}
+                className="w-full rounded-lg border border-border-light bg-surface-primary px-3 py-2 text-sm text-content-primary focus:border-oe-blue focus:outline-none"
+              >
+                <option value="">
+                  {t('bim_rules.element_group_none', { defaultValue: 'None, the filters below select' })}
+                </option>
+                {groupOptions.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+                {form.element_group_id && !groupOptions.some((g) => g.id === form.element_group_id) && (
+                  <option value={form.element_group_id}>
+                    {groupsQuery.isLoading
+                      ? '…'
+                      : t('bim_rules.element_group_missing', { defaultValue: 'A group that no longer exists' })}
+                  </option>
+                )}
+              </select>
+              <p className="mt-1 text-[11px] text-content-tertiary">
+                {t('bim_rules.element_group_hint', {
+                  defaultValue:
+                    'The rule takes the elements of the group, on every version of the model. Filters below narrow them further.',
+                })}
+              </p>
+              {form.element_group_id && !groupsQuery.isLoading && !groupOptions.some((g) => g.id === form.element_group_id) && (
+                <p role="alert" data-testid="rule-element-group-missing" className="mt-1 text-[11px] text-red-600">
+                  {t('bim_rules.element_group_missing_hint', {
+                    defaultValue: 'This group was deleted or belongs to another project. Choose another one or clear it.',
+                  })}
+                </p>
+              )}
             </div>
 
             {/* Element type filter */}
@@ -966,59 +1091,18 @@ function RuleEditorModal({
                     // Keyed by position only: a key containing the typed name
                     // remounted the row on every keystroke and dropped focus.
                     <div key={index}>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={row.key}
-                        onChange={(e) =>
-                          handleUpdatePropertyRow(index, 'key', e.target.value)
-                        }
-                        list={keyListId}
-                        autoComplete="off"
-                        data-testid={`rule-prop-key-${index}`}
-                        aria-label={t('bim_rules.property_key', { defaultValue: 'Property key' })}
-                        placeholder={t('bim_rules.property_key', { defaultValue: 'Property key' })}
-                        className="flex-1 rounded-lg border border-border-light bg-surface-primary px-2 py-1.5 font-mono text-xs text-content-primary focus:border-oe-blue focus:outline-none"
+                      <RuleConditionRow
+                        index={index}
+                        row={row}
+                        checked={checkedConditions[index]!}
+                        modelId={modelId}
+                        schema={schemaQuery.data}
+                        samples={samplesByKey.get(row.key.trim()) ?? []}
+                        keyListId={keyListId}
+                        valueListId={`${pickerId}-prop-values-${index}`}
+                        onChange={(field, value) => handleUpdatePropertyRow(index, field, value)}
+                        onRemove={() => handleRemovePropertyRow(index)}
                       />
-                      <span className="text-xs text-content-tertiary">=</span>
-                      <input
-                        type="text"
-                        value={row.value}
-                        onChange={(e) =>
-                          handleUpdatePropertyRow(index, 'value', e.target.value)
-                        }
-                        list={`${pickerId}-prop-values-${index}`}
-                        autoComplete="off"
-                        data-testid={`rule-prop-value-${index}`}
-                        aria-label={t('bim_rules.property_value', { defaultValue: 'Value (wildcards OK)' })}
-                        placeholder={t('bim_rules.property_value', { defaultValue: 'Value (wildcards OK)' })}
-                        className="flex-1 rounded-lg border border-border-light bg-surface-primary px-2 py-1.5 font-mono text-xs text-content-primary focus:border-oe-blue focus:outline-none"
-                      />
-                      <datalist id={`${pickerId}-prop-values-${index}`}>
-                        {(samplesByKey.get(row.key.trim()) ?? []).map((v) => (
-                          <option key={v} value={v} />
-                        ))}
-                      </datalist>
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePropertyRow(index)}
-                        className="rounded p-1 text-content-tertiary hover:bg-surface-secondary hover:text-red-600"
-                        aria-label={t('common.remove', { defaultValue: 'Remove' })}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                    {isWildcardSample(row.value, samplesByKey.get(row.key.trim()) ?? []) && (
-                      <p
-                        data-testid={`rule-prop-wildcard-hint-${index}`}
-                        className="mt-1 text-[11px] text-amber-700 dark:text-amber-400"
-                      >
-                        {t('bim_rules.value_has_wildcard', {
-                          defaultValue:
-                            'This value contains * or ?, which match any text in a rule, so it can pick more elements than this exact value.',
-                        })}
-                      </p>
-                    )}
                     </div>
                   ))}
                 </div>
@@ -1416,7 +1500,7 @@ function RuleEditorModal({
                           // from the property_filter rows when present.
                           const props: Record<string, string> = {};
                           for (const row of form.property_filter) {
-                            if (row.key.trim()) props[row.key.trim()] = row.value;
+                            if (row.key.trim() && row.op === 'equals') props[row.key.trim()] = row.value;
                           }
                           const suggestions = await apiPost<
                             Array<{
@@ -1493,7 +1577,7 @@ function RuleEditorModal({
                 nothing. handleSubmit still guards the empty-name case. */}
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || conditionsInvalid}
               className="flex items-center gap-1.5 rounded-lg bg-oe-blue px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-oe-blue-dark disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting && <Loader2 size={12} className="animate-spin" />}
@@ -3604,6 +3688,7 @@ export function BIMQuantityRulesPage() {
         name: r.name,
         element_type_filter: r.element_type_filter ?? '',
         is_active: r.is_active,
+        element_group_id: ruleGroupId(r.metadata),
       })),
     );
   }, [elementsQuery.data, rules]);
@@ -3869,10 +3954,11 @@ export function BIMQuantityRulesPage() {
     const prefill = urlContext.newRule;
     if (!prefill || prefillOpenedRef.current) return;
     prefillOpenedRef.current = true;
-    const name = prefill.elementType
+    const label = prefill.groupName || prefill.elementType;
+    const name = label
       ? t('bim_rules.prefill_rule_name', {
           defaultValue: '{{type}} - quantity',
-          type: prefill.elementType,
+          type: label,
         })
       : '';
     setEditorMode('create');
@@ -3957,12 +4043,16 @@ export function BIMQuantityRulesPage() {
     return {
       element_type_filter: editingRule.element_type_filter ?? '',
       property_filter: Object.fromEntries(
-        Object.entries(editingRule.property_filter ?? {}).map(([k, v]) => [k, String(v)]),
+        Object.entries(editingRule.property_filter ?? {}).map(([k, v]) => [
+          k,
+          typeof v === 'object' && v !== null ? v : String(v),
+        ]),
       ),
       quantity_source: editingRule.quantity_source ?? '',
       multiplier: editingRule.multiplier ?? '1',
       waste_factor_pct: editingRule.waste_factor_pct ?? '0',
       unit: editingRule.unit ?? '',
+      element_group_id: ruleGroupId(editingRule.metadata),
     };
   }, [editingRule]);
 
@@ -4350,7 +4440,7 @@ export function BIMQuantityRulesPage() {
                             <div className="mt-0.5 flex flex-wrap gap-1">
                               {Object.entries(rule.property_filter).map(([k, v]) => (
                                 <Badge key={k} variant="neutral" size="sm">
-                                  {k}={String(v)}
+                                  {conditionBadgeText(k, v, t)}
                                 </Badge>
                               ))}
                             </div>

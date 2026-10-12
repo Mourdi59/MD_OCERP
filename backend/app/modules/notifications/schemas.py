@@ -19,8 +19,9 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.core.url_safety import UnsafeUrlError, validate_external_url
 from app.modules.notifications.templates import (
     icon_category_for,
 )
@@ -283,6 +284,22 @@ class WebhookTargetCreate(BaseModel):
     secret: str | None = Field(default=None, max_length=255)
     active: bool = True
 
+    @field_validator("url")
+    @classmethod
+    def _url_is_external(cls, v: str | None) -> str | None:
+        """Refuse loopback, private, link-local and metadata targets.
+
+        The dispatcher POSTs every matching event to this URL from the server,
+        so the same policy as the integrations webhooks applies, and the
+        dispatcher re-checks it after DNS before each delivery.
+        """
+        if v is None:
+            return v
+        try:
+            return validate_external_url(v)
+        except UnsafeUrlError as exc:
+            raise ValueError(str(exc)) from exc
+
 
 class WebhookTargetUpdate(BaseModel):
     """Partial-update payload for an existing webhook target."""
@@ -299,6 +316,22 @@ class WebhookTargetUpdate(BaseModel):
     event_filter: str | None = Field(default=None, max_length=1024)
     secret: str | None = Field(default=None, max_length=255)
     active: bool | None = None
+
+    @field_validator("url")
+    @classmethod
+    def _url_is_external(cls, v: str | None) -> str | None:
+        """Refuse loopback, private, link-local and metadata targets.
+
+        The dispatcher POSTs every matching event to this URL from the server,
+        so the same policy as the integrations webhooks applies, and the
+        dispatcher re-checks it after DNS before each delivery.
+        """
+        if v is None:
+            return v
+        try:
+            return validate_external_url(v)
+        except UnsafeUrlError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 class WebhookTargetResponse(BaseModel):
@@ -318,6 +351,12 @@ class WebhookTargetResponse(BaseModel):
     last_status: int | None = None
     last_attempt_at: datetime | None = None
     failure_count: int = 0
+    # Why the server refuses to deliver to this URL, or None when it does not:
+    # ``internal_address`` (an administrator can open it with
+    # OE_WEBHOOK_INTERNAL_ALLOWLIST), ``metadata_address`` (never deliverable)
+    # or ``invalid_url``. A target saved before the address check existed keeps
+    # failing silently otherwise, until it auto-deactivates.
+    blocked_reason: str | None = None
     created_at: datetime
     updated_at: datetime
 

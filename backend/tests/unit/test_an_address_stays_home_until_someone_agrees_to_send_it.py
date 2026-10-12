@@ -10,6 +10,8 @@ the deployer win over the answer.
 
 from __future__ import annotations
 
+import socket
+
 import httpx
 import pytest
 
@@ -100,6 +102,10 @@ async def test_suggestions_go_to_the_answered_mirror(monkeypatch: pytest.MonkeyP
         return ("mirror", "https://geo.example.org")
 
     monkeypatch.setattr(consent, "_read_choice", _mirror)
+    # A stored mirror is resolved before it is asked; answer without the network.
+    monkeypatch.setattr(
+        socket, "getaddrinfo", lambda *_a, **_k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.215.14", 0))]
+    )
     hosts: list[str] = []
 
     def _handler(request: httpx.Request) -> httpx.Response:

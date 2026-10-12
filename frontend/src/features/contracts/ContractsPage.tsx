@@ -2564,8 +2564,8 @@ export function ContractDetailDrawer({
               </p>
             ) : retentionQ.data.totals.length === 0 ? (
               <p className="py-2 text-sm text-content-tertiary">
-                {t('contracts.retention_ledger_empty', {
-                  defaultValue: 'No retention held or scheduled yet.',
+                {t('finance.retention_empty_desc', {
+                  defaultValue: 'No invoice retention or payment withholding has been recorded on this project yet. Retainage appears here once invoices carry a retention amount or payments hold back a withholding.',
                 })}
               </p>
             ) : (
@@ -2836,7 +2836,7 @@ export function CreateContractModal({
   // the contract records that it was the country's default rather than
   // claiming the person typed it. A project whose country has no usual terms
   // gets empty fields, never another country's figures.
-  const defaultsQ = useContractCountryDefaults(projectId);
+  const defaultsQ = useContractCountryDefaults(projectId, form.counterparty_type);
   const defaults = defaultsQ.data;
   const knownDefaults = defaults?.has_defaults ? defaults : null;
   const prefill = useMemo<Record<PaymentTermField, string>>(() => {

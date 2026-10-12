@@ -752,6 +752,7 @@
     "claim_not_found": "Abschlagsrechnung nicht gefunden",
     "gaeb_x89_final_account_unsupported": "Eine Schlussrechnung oder Teilschlussrechnung kann noch nicht als GAEB X89 exportiert werden. Sie muss die gesamte Leistung abzüglich früherer Zahlungen abrechnen, aus einer Abrechnung wird nur eine Abschlagsrechnung eines Zeitraums erstellt. Exportieren Sie die Abrechnung als Abschlagsrechnung.",
     "xpwe_native_file_refused": "Dies ist die eigene Projektdatei eines Kalkulationsprogramms, die nur dieses Programm öffnen kann. Exportieren Sie die Kalkulation in Ihrem Kalkulationsprogramm als XPWE und laden Sie die .xpwe-Datei hoch.",
+    "xpwe_unreadable": "Diese Datei kann nicht als XPWE gelesen werden. Sie ist möglicherweise beschädigt oder hat ein anderes Format. Exportieren Sie die Kalkulation erneut als XPWE und laden Sie die .xpwe-Datei hoch.",
     "plot_not_found": "Grundstück nicht gefunden",
     "survey_not_found": "Drohnenvermessung nicht gefunden",
     "diary_video_not_found": "Bautagebuch-Video nicht gefunden",
@@ -910,5 +911,19 @@
       "fail": "Der Verweis '{code}' in Position {ordinal} nennt keine KNR-Katalogfamilie",
       "suggestion": "Den Verweis mit seiner Katalogfamilie beginnen, etwa KNR, KNNR, KNR-W oder KSNR, oder die Position als kalkulacja indywidualna kennzeichnen"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Eigenschaftsbedingungen müssen jede Eigenschaft mit dem benötigten Wert benennen.",
+    "unknown_operator": "Die Bedingung für \"{prop}\" verwendet einen Vergleich, den diese Version nicht kennt. Wählen Sie einen aus der Liste.",
+    "value_not_allowed": "Die Bedingung für \"{prop}\" prüft, ob die Eigenschaft leer ist, und erhält keinen Wert.",
+    "value_required": "Die Bedingung für \"{prop}\" benötigt einen Wert.",
+    "value_too_long": "Der Wert der Bedingung für \"{prop}\" ist zu lang, höchstens 500 Zeichen.",
+    "value_not_number": "Die Bedingung für \"{prop}\" vergleicht Zahlen, und \"{value}\" ist keine Zahl. Geben Sie eine Zahl ein, bei Bedarf mit einer Einheit wie mm, m, m2, m3 oder kg.",
+    "group_not_found": "Die gespeicherte Gruppe oder Smart View, aus der diese Regel ihre Elemente nimmt, gibt es in diesem Projekt nicht. Wählen Sie eine andere oder entfernen Sie die Auswahl."
+  },
+  "bim_versions": {
+    "parent_not_found": "Das Modell, von dem dieser Upload eine neue Version sein soll, gehört nicht zu diesem Projekt. Wählen Sie ein anderes oder laden Sie die Datei als eigenständiges Modell hoch.",
+    "parent_not_ready": "Der Import von \"{name}\" ist noch nicht abgeschlossen, daher kann noch keine neue Version angelegt werden. Warten Sie, bis das Modell bereit ist, oder laden Sie diese Datei als eigenständiges Modell hoch.",
+    "parent_superseded": "Von \"{name}\" gibt es bereits eine neuere Version, {version}. Laden Sie diese Datei stattdessen als neue Version der neuesten hoch."
   }
 }

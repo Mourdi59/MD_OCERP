@@ -752,6 +752,7 @@
     "claim_not_found": "Progress claim not found",
     "gaeb_x89_final_account_unsupported": "A final account or part final account cannot be exported as GAEB X89 yet. It has to bill the cumulative work less earlier payments, and only a progress invoice of one period is built from a claim. Export the claim as a progress invoice.",
     "xpwe_native_file_refused": "This is an estimating program's own project file, which only that program can open. Export the estimate as XPWE from your estimating program and upload the .xpwe file.",
+    "xpwe_unreadable": "This file cannot be read as XPWE. It may be damaged or of another type. Export the estimate as XPWE again and upload the .xpwe file.",
     "plot_not_found": "Plot not found",
     "survey_not_found": "Drone survey not found",
     "diary_video_not_found": "Diary video not found",
@@ -910,5 +911,19 @@
       "fail": "Reference '{code}' on position {ordinal} names no KNR catalogue family",
       "suggestion": "Start the reference with its catalogue family, such as KNR, KNNR, KNR-W or KSNR, or mark the line as kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Property conditions must name each property with the value it needs.",
+    "unknown_operator": "The condition on \"{prop}\" uses a comparison this version does not know. Choose one from the list.",
+    "value_not_allowed": "The condition on \"{prop}\" checks whether the property is empty and takes no value.",
+    "value_required": "The condition on \"{prop}\" needs a value.",
+    "value_too_long": "The value of the condition on \"{prop}\" is too long, 500 characters at most.",
+    "value_not_number": "The condition on \"{prop}\" compares numbers, and \"{value}\" is not a number. Write a number, with a unit such as mm, m, m2, m3 or kg if you need one.",
+    "group_not_found": "The saved group or Smart View this rule takes its elements from is not in this project. Choose another one or clear it."
+  },
+  "bim_versions": {
+    "parent_not_found": "The model this upload should be a new version of is not in this project. Choose another one, or upload it as a separate model.",
+    "parent_not_ready": "\"{name}\" has not finished importing, so it cannot take a new version yet. Wait until it is ready, or upload this one as a separate model.",
+    "parent_superseded": "\"{name}\" already has a newer version, {version}. Upload this one as a new version of the newest one instead."
   }
 }

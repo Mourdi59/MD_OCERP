@@ -16,7 +16,7 @@ from sqlalchemy import inspect, or_, select, text
 from sqlalchemy.orm import raiseload
 
 from app.core.boq_target import BOQTargetRefused, require_project_boq
-from app.modules.bim_hub.models import BIMElement, BIMModel, BIMQuantityMap, BOQElementLink
+from app.modules.bim_hub.models import BIMElement, BIMElementGroup, BIMModel, BIMQuantityMap, BOQElementLink
 from app.modules.bim_hub.schemas import QuantityMapApplyRequest, QuantityMapApplyResult
 from app.modules.boq.models import BOQ, Position
 
@@ -83,6 +83,12 @@ async def _load(service: BIMHubService, request: QuantityMapApplyRequest, *, loc
     boqs = await rows(BOQ, BOQ.project_id == model.project_id)
     positions = await rows(Position, Position.boq_id.in_([boq.id for boq in boqs]))
     links = await rows(BOQElementLink, BOQElementLink.boq_position_id.in_([position.id for position in positions]))
+    # A rule fed by a saved group selects what the group says, so an edit of
+    # the group after the preview is a changed input like an edited rule.
+    from app.modules.bim_hub.service import rule_element_group_id
+
+    group_ids = sorted({gid for rule in rules if (gid := rule_element_group_id(rule)) is not None}, key=str)
+    groups = await rows(BIMElementGroup, BIMElementGroup.id.in_(group_ids)) if group_ids else []
     subjects = await service._rule_subjects(elements, rules)
     snapshot = {
         "contract": 1,
@@ -96,7 +102,15 @@ async def _load(service: BIMHubService, request: QuantityMapApplyRequest, *, loc
         "positions": [_columns(row) for row in positions],
         "links": [_columns(row) for row in links],
     }
-    source = {key: snapshot[key] for key in ("models", "elements", "resolved_properties", "rules")}
+    if groups:
+        # Only when a rule reads a group, so receipts of runs without one
+        # keep the digest they were recorded with.
+        snapshot["groups"] = [_columns(row) for row in groups]
+    source = {
+        key: snapshot[key]
+        for key in ("models", "elements", "resolved_properties", "rules", "groups")
+        if key in snapshot
+    }
     return (model, elements, rules, subjects), _digest(snapshot), _digest(source)
 
 

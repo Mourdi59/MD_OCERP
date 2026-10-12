@@ -106,6 +106,12 @@ _MIN_KEYS = 900
 # instead of reporting a green loop over an empty dictionary.
 _OVERLAYS = frozenset({"en-GB", "en-US"})
 
+# i18next reaches a plural form only when the caller passed `count`, so any
+# form may print it. English "once" names no number, but the Russian, Croatian
+# and Ukrainian singular also covers 21 and 31, and has to. Same rule as
+# `everyTranslationKeepsItsPlaceholders.test.ts`.
+_PLURAL_FORM = re.compile(r"_(zero|one|two|few|many|other)$")
+
 
 def _names(value: str) -> set[str]:
     """Variable names only: `{{count}}` and `{{count, number}}` are one slot."""
@@ -185,7 +191,10 @@ def main() -> int:
                 continue  # orphan guard's territory
             checked += 1
             want, got = _names(source[key]), _names(value)
-            if got - want:
+            invented = got - want
+            if _PLURAL_FORM.search(key):
+                invented.discard("count")
+            if invented:
                 failures.append((path, key, source[key], value))
             elif want - got:
                 omissions.append((path, key, sorted(want - got)))

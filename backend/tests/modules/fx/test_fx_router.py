@@ -16,6 +16,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.fx.service import FxService
@@ -25,7 +26,9 @@ from tests.modules.fx.conftest import (
     build_app,
     http_client,
     make_policy,
+    make_project,
     make_rate_set,
+    make_user,
 )
 
 MARCH_1 = date(2026, 3, 1)
@@ -33,9 +36,14 @@ MARCH_15 = date(2026, 3, 15)
 CALLER = uuid.uuid4()
 
 
-@pytest.fixture
-def app(session: AsyncSession):  # noqa: ANN201 - FastAPI app, typed by the factory
-    """The FX router mounted with the test session and an admin caller."""
+@pytest_asyncio.fixture
+async def app(session: AsyncSession):  # noqa: ANN201 - FastAPI app, typed by the factory
+    """The FX router mounted with the test session and an admin caller.
+
+    The caller is persisted because the policy routes check project access,
+    and that check reads the admin role from the user row, not the token.
+    """
+    await make_user(session, role="admin", user_id=CALLER)
     return build_app(session, caller_id=CALLER)
 
 
@@ -259,7 +267,7 @@ async def test_an_unknown_rate_set_reads_as_404(session: AsyncSession, app) -> N
 @pytest.mark.asyncio
 async def test_policy_round_trip_and_validation(session: AsyncSession, app) -> None:  # noqa: ANN001
     rate_set = await make_rate_set(session, rate_date=MARCH_1, rates={"TRY": "38.7", "USD": "1.07"}, lock=True)
-    project_id = uuid.uuid4()
+    project_id = (await make_project(session)).id
 
     async with http_client(app) as client:
         saved = await client.put(

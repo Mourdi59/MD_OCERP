@@ -47,6 +47,7 @@ import httpx
 from sqlalchemy import select
 
 from app.core.events import Event, event_bus
+from app.core.url_safety import UnsafeUrlError, resolve_and_validate_external_url
 from app.database import async_session_factory
 from app.modules.notifications.email_render import digest_heading, digest_subject, render_notification_email
 from app.modules.notifications.localized import localize_context
@@ -353,6 +354,10 @@ async def _on_dispatch_webhook(event: Event) -> None:
                 status_code: int | None = None
                 ok = False
                 try:
+                    # Re-checked after DNS on every delivery: a target saved
+                    # before the schema refused internal URLs, or a name that
+                    # now resolves inward, must not be posted to.
+                    await resolve_and_validate_external_url(target.url)
                     resp = await client.post(
                         target.url,
                         content=body,
@@ -360,6 +365,8 @@ async def _on_dispatch_webhook(event: Event) -> None:
                     )
                     status_code = resp.status_code
                     ok = 200 <= resp.status_code < 300
+                except UnsafeUrlError as exc:
+                    logger.warning("dispatcher: webhook target %s refused: %s", target.id, exc)
                 except (httpx.HTTPError, httpx.TimeoutException, Exception):  # noqa: BLE001
                     logger.warning(
                         "dispatcher: webhook target %s (%s) crashed",

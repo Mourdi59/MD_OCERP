@@ -81,7 +81,7 @@ def _stub_rank_gap(monkeypatch):
     """
     from app.core.match_service.envelope import MatchResponse
 
-    async def _empty_rank(req, *, db, ai_settings=None):
+    async def _empty_rank(req, *, db, ai_settings=None, caller_id=None):
         return MatchResponse(request=req, candidates=[], status="ok")
 
     monkeypatch.setattr("app.core.match_service.ranker_qdrant.rank", _empty_rank)
@@ -91,7 +91,7 @@ def _stub_rank_score(monkeypatch, score: float) -> None:
     """Make every probe return a single candidate at ``score`` (controls band)."""
     from app.core.match_service.envelope import MatchCandidate, MatchResponse
 
-    async def _rank(req, *, db, ai_settings=None):
+    async def _rank(req, *, db, ai_settings=None, caller_id=None):
         return MatchResponse(
             request=req,
             candidates=[

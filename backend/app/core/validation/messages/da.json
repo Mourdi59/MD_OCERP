@@ -752,6 +752,7 @@
     "claim_not_found": "Acontobegæringen blev ikke fundet",
     "gaeb_x89_final_account_unsupported": "En slutopgørelse eller delslutopgørelse kan endnu ikke eksporteres som GAEB X89. Den skal fakturere det akkumulerede arbejde minus tidligere betalinger, mens en acontobegæring kun danner en acontofaktura for én periode. Eksportér begæringen som en acontofaktura.",
     "xpwe_native_file_refused": "Dette er kalkulationsprogrammets egen projektfil, som kun det program kan åbne. Eksportér kalkulationen som XPWE fra dit kalkulationsprogram, og upload .xpwe-filen.",
+    "xpwe_unreadable": "Filen kan ikke læses som XPWE. Den kan være beskadiget eller af en anden type. Eksportér overslaget som XPWE igen, og upload .xpwe-filen.",
     "plot_not_found": "Grunden blev ikke fundet",
     "survey_not_found": "Droneopmålingen blev ikke fundet",
     "diary_video_not_found": "Dagbogsvideoen blev ikke fundet",
@@ -910,5 +911,19 @@
       "fail": "Referencen '{code}' på post {ordinal} angiver ingen KNR-katalogfamilie",
       "suggestion": "Begynd referencen med katalogfamilien, f.eks. KNR, KNNR, KNR-W eller KSNR, eller markér posten som kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Egenskabsbetingelser skal angive hver egenskab med den værdi, den kræver.",
+    "unknown_operator": "Betingelsen for \"{prop}\" bruger en sammenligning, som denne version ikke kender. Vælg en fra listen.",
+    "value_not_allowed": "Betingelsen for \"{prop}\" tjekker, om egenskaben er tom, og tager ingen værdi.",
+    "value_required": "Betingelsen for \"{prop}\" kræver en værdi.",
+    "value_too_long": "Værdien i betingelsen for \"{prop}\" er for lang, højst 500 tegn.",
+    "value_not_number": "Betingelsen for \"{prop}\" sammenligner tal, og \"{value}\" er ikke et tal. Skriv et tal, om nødvendigt med en enhed som mm, m, m2, m3 eller kg.",
+    "group_not_found": "Den gemte gruppe eller Smart View, som reglen henter sine elementer fra, findes ikke i projektet. Vælg en anden, eller ryd feltet."
+  },
+  "bim_versions": {
+    "parent_not_found": "Modellen, som denne upload skal være en ny version af, findes ikke i projektet. Vælg en anden, eller upload den som en separat model.",
+    "parent_not_ready": "\"{name}\" er ikke færdigimporteret, så den kan ikke få en ny version endnu. Vent, til den er klar, eller upload denne som en separat model.",
+    "parent_superseded": "\"{name}\" har allerede en nyere version, {version}. Upload i stedet denne som en ny version af den nyeste."
   }
 }

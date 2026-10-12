@@ -42,6 +42,7 @@ from fastapi import (
 from sqlalchemy import select
 
 from app.config import get_settings
+from app.core.url_safety import external_url_block_reason
 from app.core.ws_auth import refuse_socket, resolve_socket_token
 from app.dependencies import (
     CurrentUserId,
@@ -458,6 +459,7 @@ def _webhook_to_response(t: WebhookTarget) -> WebhookTargetResponse:
         last_status=t.last_status,
         last_attempt_at=t.last_attempt_at,
         failure_count=t.failure_count,
+        blocked_reason=external_url_block_reason(t.url),
         created_at=t.created_at,
         updated_at=t.updated_at,
     )

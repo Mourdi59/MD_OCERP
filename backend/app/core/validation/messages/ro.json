@@ -752,6 +752,7 @@
     "claim_not_found": "Cererea de plată intermediară nu a fost găsită",
     "gaeb_x89_final_account_unsupported": "Decontul final sau decontul final parțial nu poate fi încă exportat ca GAEB X89. Acesta trebuie să factureze lucrările cumulate minus plățile anterioare, iar dintr-o cerere se generează doar o factură intermediară pentru o singură perioadă. Exportați cererea ca factură intermediară.",
     "xpwe_native_file_refused": "Acesta este fișierul de proiect propriu al unui program de devize, pe care numai acel program îl poate deschide. Exportați devizul ca XPWE din programul dumneavoastră și încărcați fișierul .xpwe.",
+    "xpwe_unreadable": "Acest fișier nu poate fi citit ca XPWE. Poate fi deteriorat sau de alt tip. Exportați din nou devizul ca XPWE și încărcați fișierul .xpwe.",
     "plot_not_found": "Parcela nu a fost găsită",
     "survey_not_found": "Ridicarea cu drona nu a fost găsită",
     "diary_video_not_found": "Videoclipul din jurnal nu a fost găsit",
@@ -910,5 +911,19 @@
       "fail": "Referința '{code}' de la poziția {ordinal} nu indică o familie de cataloage KNR",
       "suggestion": "Începeți referința cu familia catalogului, precum KNR, KNNR, KNR-W sau KSNR, sau marcați linia drept kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Condițiile pe proprietăți trebuie să numească fiecare proprietate împreună cu valoarea de care are nevoie.",
+    "unknown_operator": "Condiția pentru \"{prop}\" folosește o comparație necunoscută acestei versiuni. Alegeți una din listă.",
+    "value_not_allowed": "Condiția pentru \"{prop}\" verifică dacă proprietatea este goală și nu primește valoare.",
+    "value_required": "Condiția pentru \"{prop}\" necesită o valoare.",
+    "value_too_long": "Valoarea condiției pentru \"{prop}\" este prea lungă, cel mult 500 de caractere.",
+    "value_not_number": "Condiția pentru \"{prop}\" compară numere, iar \"{value}\" nu este un număr. Introduceți un număr, la nevoie cu o unitate precum mm, m, m2, m3 sau kg.",
+    "group_not_found": "Grupul salvat sau Smart View din care această regulă preia elementele nu există în acest proiect. Alegeți altul sau goliți câmpul."
+  },
+  "bim_versions": {
+    "parent_not_found": "Modelul a cărui versiune nouă ar trebui să fie această încărcare nu se află în acest proiect. Alegeți altul sau încărcați fișierul ca model separat.",
+    "parent_not_ready": "Importul modelului \"{name}\" nu s-a încheiat, deci acesta nu poate primi încă o versiune nouă. Așteptați până este gata sau încărcați acest fișier ca model separat.",
+    "parent_superseded": "Modelul \"{name}\" are deja o versiune mai nouă, {version}. Încărcați în schimb acest fișier ca versiune nouă a celei mai recente."
   }
 }

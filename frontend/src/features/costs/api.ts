@@ -451,3 +451,60 @@ export function fetchCostBenchmark(
 ): Promise<CostBenchmarkResponse> {
   return apiPost<CostBenchmarkResponse, CostBenchmarkRequest>('/v1/costs/benchmark/', body);
 }
+
+/* ── Imported catalogues indexed for CAD-BIM Match ─────────────────────── */
+
+export type MatchIndexJobStatus = 'queued' | 'running' | 'done' | 'failed' | 'interrupted';
+
+export interface MatchIndexJob {
+  region: string;
+  language: string;
+  country: string;
+  status: MatchIndexJobStatus;
+  total: number;
+  processed: number;
+  embedded: number;
+  removed: number;
+  error_code: string | null;
+}
+
+export interface MatchIndexCatalogue {
+  region: string;
+  /** Active items in the catalogue. */
+  count: number;
+  /** Items already in its Match index. */
+  indexed: number;
+  language: string;
+  country: string;
+  /** Short enough to be bound to a project as its catalogue. */
+  bindable: boolean;
+  job: MatchIndexJob | null;
+}
+
+export interface MatchIndexOverview {
+  catalogues: MatchIndexCatalogue[];
+  embedder_installed: boolean;
+  indexer_enabled: boolean;
+}
+
+export const matchIndexKey = ['costs', 'match-index'] as const;
+
+export function fetchMatchIndex(): Promise<MatchIndexOverview> {
+  return apiGet<MatchIndexOverview>('/v1/costs/match-index/');
+}
+
+export function requestMatchIndex(body: {
+  region: string;
+  language: string;
+  country?: string | null;
+}): Promise<MatchIndexJob> {
+  return apiPost<MatchIndexJob, typeof body>('/v1/costs/match-index/', body);
+}
+
+/** The refusal code a match-index request came back with, if any. */
+export function matchIndexErrorCode(err: unknown): string | null {
+  const body = (err as { body?: unknown } | null)?.body;
+  const detail = (body as { detail?: unknown } | null)?.detail;
+  const code = (detail as { code?: unknown } | null)?.code;
+  return typeof code === 'string' ? code : null;
+}

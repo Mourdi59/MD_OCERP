@@ -31,7 +31,7 @@ from app.core.translation.downloader import (
     list_downloaded,
     process_iate_tbx,
 )
-from app.dependencies import CurrentUserId, SessionDep
+from app.dependencies import CurrentUserId, CurrentUserPayload, RequireRole, SessionDep
 from app.modules.ai.repository import AISettingsRepository
 
 logger = logging.getLogger(__name__)
@@ -204,8 +204,17 @@ async def trigger_download(
     body: DownloadRequest,
     background: BackgroundTasks,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> DownloadResponse:
-    """Kick off a MUSE / IATE download in the background."""
+    """Kick off a MUSE / IATE download in the background.
+
+    ``local_tbx_path`` names a file on the server's own disk, and what it parses
+    lands in the dictionaries every user's translations read from, so only an
+    administrator may pass one. The mirror download is host-allowlisted and
+    MUSE pairs come from a fixed source, so those stay open to any login.
+    """
+    if body.local_tbx_path:
+        await RequireRole("admin")(payload)
     task_id = uuid.uuid4().hex
     _record_task(
         task_id,

@@ -268,6 +268,7 @@ class RentalRepository(_BaseRepository):
         *,
         equipment_id: uuid.UUID | None = None,
         project_id: uuid.UUID | None = None,
+        project_ids: set[uuid.UUID] | None = None,
         status: str | None = None,
         offset: int = 0,
         limit: int = 50,
@@ -277,6 +278,8 @@ class RentalRepository(_BaseRepository):
             base = base.where(EquipmentRental.equipment_id == equipment_id)
         if project_id is not None:
             base = base.where(EquipmentRental.project_id == project_id)
+        if project_ids is not None:
+            base = base.where(EquipmentRental.project_id.in_(project_ids))
         if status is not None:
             base = base.where(EquipmentRental.status == status)
 

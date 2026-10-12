@@ -1231,6 +1231,7 @@ async def _handle_bim_model_ready(event: Event) -> None:
 
         from app.database import async_session_factory
         from app.modules.bim_hub.models import BIMElement, BIMQuantityMap
+        from app.modules.bim_hub.service import BIMHubService, rule_element_group_id
 
         async with async_session_factory() as session:
             # Load BIM elements for this model
@@ -1261,15 +1262,15 @@ async def _handle_bim_model_ready(event: Event) -> None:
             matched_count = 0
             for qmap in qty_maps:
                 for elem in elements:
-                    # Filter by element_type if specified
-                    if qmap.element_type_filter and elem.element_type != qmap.element_type_filter:
+                    # The one rule matcher (type wildcards, property operators),
+                    # so this path cannot select differently from apply.
+                    if not BIMHubService._rule_matches_element(qmap, elem):
                         continue
-
-                    # Filter by property_filter if specified
-                    if qmap.property_filter:
-                        match = all(elem.properties.get(k) == v for k, v in qmap.property_filter.items())
-                        if not match:
-                            continue
+                    # A rule fed by a saved group needs its members; this
+                    # path cannot resolve them, so it leaves such rules alone
+                    # rather than letting them select every element.
+                    if rule_element_group_id(qmap) is not None:
+                        continue
 
                     # Extract quantity from element
                     raw_qty = elem.quantities.get(qmap.quantity_source, 0)

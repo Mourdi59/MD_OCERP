@@ -752,6 +752,7 @@
     "claim_not_found": "Solicitação de pagamento por medição não encontrada",
     "gaeb_x89_final_account_unsupported": "Uma conta final ou parcialmente final ainda não pode ser exportada em GAEB X89. Ela deve faturar os serviços acumulados deduzidos dos pagamentos anteriores, enquanto uma solicitação de pagamento gera apenas uma fatura de medição de um período. Exporte a solicitação como fatura de medição.",
     "xpwe_native_file_refused": "Este é um arquivo de projeto nativo de um programa de orçamento, que apenas esse programa pode abrir. Exporte o orçamento como XPWE no programa de origem e envie o arquivo .xpwe.",
+    "xpwe_unreadable": "Este arquivo não pode ser lido como XPWE. Pode estar danificado ou ser de outro tipo. Exporte novamente o orçamento como XPWE e envie o arquivo .xpwe.",
     "plot_not_found": "Terreno não encontrado",
     "survey_not_found": "Levantamento por drone não encontrado",
     "diary_video_not_found": "Vídeo do diário não encontrado",
@@ -910,5 +911,19 @@
       "fail": "A referência «{code}» do item {ordinal} não identifica uma família de catálogos KNR",
       "suggestion": "Inicie a referência com a família do catálogo, como KNR, KNNR, KNR-W ou KSNR, ou identifique a linha como kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "As condições de propriedades devem nomear cada propriedade com o valor de que ela precisa.",
+    "unknown_operator": "A condição em \"{prop}\" usa uma comparação que esta versão não conhece. Escolha uma da lista.",
+    "value_not_allowed": "A condição em \"{prop}\" verifica se a propriedade está vazia e não aceita valor.",
+    "value_required": "A condição em \"{prop}\" precisa de um valor.",
+    "value_too_long": "O valor da condição em \"{prop}\" é longo demais, no máximo 500 caracteres.",
+    "value_not_number": "A condição em \"{prop}\" compara números, e \"{value}\" não é um número. Escreva um número, com uma unidade como mm, m, m2, m3 ou kg, se precisar.",
+    "group_not_found": "O grupo guardado ou a Smart View de onde esta regra obtém os elementos não existe neste projeto. Escolha outro ou limpe o campo."
+  },
+  "bim_versions": {
+    "parent_not_found": "O modelo do qual este envio deveria ser uma nova versão não está neste projeto. Escolha outro ou envie como modelo separado.",
+    "parent_not_ready": "A importação de \"{name}\" ainda não terminou, então ele ainda não pode receber uma nova versão. Aguarde até ficar pronto ou envie este arquivo como modelo separado.",
+    "parent_superseded": "\"{name}\" já tem uma versão mais recente, {version}. Envie este arquivo como nova versão da mais recente."
   }
 }
