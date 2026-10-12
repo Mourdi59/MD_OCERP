@@ -960,6 +960,8 @@ class QualityConceptService:
 
     async def generate_proofs(self, project_id: uuid.UUID, data: Any) -> dict[str, Any]:
         """Preview (``confirm`` omitted) or create the catalogue default proofs of one package."""
+        if data.confirm is not None:
+            await self.reconcile_governance(project_id, reopen=True)
         concept = await self.require_concept(project_id)
         if data.confirm is not None:
             self._assert_plan_editable(concept)
@@ -1646,6 +1648,8 @@ class QualityConceptService:
 
     async def patch_unit(self, project_id: uuid.UUID, unit_id: uuid.UUID, data: Any) -> AcceptanceUnit:
         await self.reconcile_handover(project_id)
+        # Every write that asks whether the plan is open follows an approved change request first.
+        await self.reconcile_governance(project_id, reopen=True)
         concept = await self.require_concept(project_id)
         unit = await self.get_row(AcceptanceUnit, project_id, unit_id)
         fields = data.model_dump(exclude_unset=True)

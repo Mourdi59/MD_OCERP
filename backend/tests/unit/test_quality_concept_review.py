@@ -711,7 +711,13 @@ def test_the_concept_can_reach_binding_in_every_shipped_phase_model() -> None:
         document = cat.host_of(hosting.SUBJECT)
         assert document is not None, cat.id
         assert document.required_at_gates, cat.id
-        assert set(document.required_at_gates) <= {g.code for g in cat.gates}, cat.id
+        gates = {g.code: g for g in cat.gates}
+        assert set(document.required_at_gates) <= set(gates), cat.id
+        # Bound no later than the gate into construction: the plan is in force while the works run.
+        order = {p.code: p.order for p in cat.phases}
+        (start,) = hosting.phases_enabling(cat, hosting.CONSTRUCTION_START)
+        first = min(order[gates[code].to_phase] for code in document.required_at_gates)
+        assert first <= order[start], (cat.id, document.required_at_gates)
 
 
 @pytest.mark.asyncio
@@ -731,3 +737,47 @@ async def test_four_eyes_is_read_through_the_governance_port(monkeypatch) -> Non
     assert asked == [pid]
     # No model: the control is on until somebody with the authority switches it off.
     assert public.control_settings(None).four_eyes is True
+
+
+def test_a_unit_is_accepted_only_through_its_handover_act() -> None:
+    """The handover catch-up takes back every accepted unit on a revoked act.
+
+    That undoes no decision of a person only while no person can accept a unit. A user action
+    into either accepted state turns this red, and the catch-up then needs to tell the two apart.
+    """
+    accepted = {"accepted", "accepted_with_reservations"}
+    into = {action for moves in fsm.ACCEPTANCE.values() for action, target in moves.items() if target in accepted}
+    assert into == {"accept", "accept_with_reservations"}
+    assert into <= fsm.MIRROR_ACTIONS["acceptance"]
+    for state, moves in fsm.ACCEPTANCE.items():
+        for action in into & set(moves):
+            with pytest.raises(fsm.TransitionError):
+                fsm.next_state("acceptance", state, action)
+            assert fsm.next_state("acceptance", state, action, mirror=True) in accepted
+
+
+def test_every_plan_write_follows_a_lost_change_request_before_it_asks_whether_the_plan_is_open() -> None:
+    """A write that checks the plan without the catch-up answers ``binding_requires_change_request`` after a
+    change request whose event was lost, while its sibling write goes through."""
+    import ast
+    import inspect
+
+    from app.modules.quality_concept.service import QualityConceptService
+
+    tree = ast.parse(inspect.getsource(QualityConceptService))
+    checked = []
+    for fn in ast.walk(tree):
+        if not isinstance(fn, ast.AsyncFunctionDef):
+            continue
+        calls = [n for n in ast.walk(fn) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)]
+        if not any(c.func.attr == "_assert_plan_editable" for c in calls):
+            continue
+        checked.append(fn.name)
+        reopening = [
+            c
+            for c in calls
+            if c.func.attr == "reconcile_governance"
+            and any(k.arg == "reopen" and getattr(k.value, "value", None) is True for k in c.keywords)
+        ]
+        assert reopening, fn.name
+    assert len(checked) >= 3, checked

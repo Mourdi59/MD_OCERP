@@ -591,8 +591,10 @@ async def test_a_frame_document_whose_event_never_arrived_is_followed_by_the_nex
 
     # A change request puts another revision in force and that event is lost: the plan write reopens it.
     in_force["value"] = "revision-2"
-    await svc.create_proof(pid, extra, p.manager)
+    (existing,) = await svc.repo.list(ProofRequirement, pid)
+    await svc.patch_proof(pid, existing.id, s.ProofPatch(title="Operation and maintenance manual, as built"))
     assert concept.state == "revising"
+    await svc.create_proof(pid, extra, p.manager)
     assert [r.reason for r in await svc.revisions(pid)] == ["submitted", "approved", "change_request"]
 
     # Bound again under the new revision, neither the late event nor a further write reopens it.
