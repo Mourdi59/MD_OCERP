@@ -32263,6 +32263,7 @@ const resource = {
     "governance.catalogue.riba_2020.gate.stage5_to_stage6": "Gate: Phase 5 Herstellung und Bau zu Phase 6 Übergabe",
     "governance.catalogue.riba_2020.gate.stage6_to_stage7": "Gate: Phase 6 Übergabe zu Phase 7 Nutzung",
     "modules.catalog.project_governance": "Projektsteuerung",
+    "modules.catalog.staffing": "Personal",
     "governance.errors.activity_not_in_project": "Dieser Terminplanvorgang gehört nicht zum Projekt",
     "governance.errors.area_retired": "Dieser Bereich wurde durch einen Wechsel des Phasenmodells stillgelegt und nimmt keine neuen Dokumente auf",
     "governance.errors.gate_historic": "Dieses Gate gehört zu einem Phasenmodell, das das Projekt nicht mehr nutzt",

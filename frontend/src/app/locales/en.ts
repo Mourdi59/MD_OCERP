@@ -29487,6 +29487,7 @@ const resource = {
     "governance.catalogue.riba_2020.gate.stage5_to_stage6": "Gate: Stage 5 Manufacturing and Construction to Stage 6 Handover",
     "governance.catalogue.riba_2020.gate.stage6_to_stage7": "Gate: Stage 6 Handover to Stage 7 Use",
     "modules.catalog.project_governance": "Project governance",
+    "modules.catalog.staffing": "Staffing",
     "governance.errors.activity_not_in_project": "This schedule activity does not belong to the project",
     "governance.errors.area_not_found": "Management area not found",
     "governance.errors.area_not_ready": "This management area is not ready for the gate",
