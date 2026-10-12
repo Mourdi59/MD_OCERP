@@ -474,3 +474,38 @@ async def test_the_cost_reference_picker_lists_what_the_package_body_then_accept
             },
         )
         assert lots.status_code == 422
+
+
+async def test_a_framework_supplier_link_can_be_changed_and_cleared(world: World) -> None:
+    from app.modules.subcontractors.models import Subcontractor
+
+    async with world.factory() as s:
+        company = Subcontractor(legal_name="Rebar supplier", tax_id="FW-LINK-1")
+        s.add(company)
+        await s.commit()
+    body = {
+        "code": "FW-LINK",
+        "max_value": "500000",
+        "currency": "EUR",
+        "start_date": "2026-01-01",
+        "end_date": "2028-12-31",
+    }
+    async with client_as(world, world.manager, "manager") as c:
+        fw = f"{BASE}/frameworks/{(await c.post(f'{BASE}/frameworks', json=body)).json()['id']}"
+        unknown = await c.patch(fw, json={"subcontractor_id": str(uuid.uuid4()), "vendor_id": None})
+        unknown_vendor = await c.patch(fw, json={"subcontractor_id": None, "vendor_id": str(uuid.uuid4())})
+        linked = await c.patch(
+            fw, json={"subcontractor_id": str(company.id), "vendor_id": None, "supplier_name": "Rebar supplier"}
+        )
+        kept = await c.patch(fw, json={"title": "Rebar 2026"})
+        cleared = await c.patch(fw, json={"subcontractor_id": None})
+    for refused in (unknown, unknown_vendor):
+        assert (refused.status_code, refused.json()["detail"]["code"]) == (404, "company_not_found")
+    assert (linked.status_code, linked.json()["subcontractor_id"], linked.json()["vendor_id"]) == (
+        200,
+        str(company.id),
+        None,
+    )
+    # A patch that does not name the link keeps it; an explicit null clears it.
+    assert kept.json()["subcontractor_id"] == str(company.id)
+    assert (cleared.status_code, cleared.json()["subcontractor_id"]) == (200, None)

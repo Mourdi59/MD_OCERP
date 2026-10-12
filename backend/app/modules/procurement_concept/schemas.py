@@ -374,7 +374,11 @@ class FrameworkIn(_In):
 
 
 class FrameworkPatch(_In):
+    clearable: ClassVar[frozenset[str]] = frozenset({"subcontractor_id", "vendor_id"})
+
     title: str | None = Field(default=None, max_length=255)
+    subcontractor_id: uuid.UUID | None = None
+    vendor_id: uuid.UUID | None = None
     supplier_name: str | None = Field(default=None, max_length=255)
     scope: str | None = Field(default=None, max_length=8000)
     package_kinds: list[Literal["design", "works", "supply", "supply_and_install", "services"]] | None = None

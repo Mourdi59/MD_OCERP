@@ -1944,6 +1944,7 @@ class ProcurementConceptService:
         row = await self._framework(tenant_id, framework_id, lock=True)
         if row.state in ("expired", "terminated"):
             raise conflict("framework_closed")
+        await self._require_company(data)
         if "end_date" in data and data["end_date"] < _day(row.start_date):
             raise ProcurementError("framework_dates_inverted", 422)
         if "max_value" in data:
