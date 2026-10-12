@@ -184,7 +184,8 @@ describe('delivery model i18n keys', () => {
     // A broken extraction would make the tests below pass on nothing.
     expect(used.size).toBeGreaterThan(300);
     expect(used.has('delivery_model.ui.comparison.propose')).toBe(true);
-    expect(used.has('delivery_model.ui.disabled.decision_pending')).toBe(true);
+    expect(used.has('delivery_model.ui.disabled.role_manage')).toBe(true);
+    expect(used.has('delivery_model.blocked.approval_not_ready')).toBe(true);
     expect(used.has('delivery_model.errors.weights_not_100')).toBe(true);
   });
 

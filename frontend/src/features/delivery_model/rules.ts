@@ -308,6 +308,19 @@ export function nextOfiStatus(status: OfiStatus): OfiStatus | null {
   return OFI_ORDER[OFI_ORDER.indexOf(status) + 1] ?? null;
 }
 
+/**
+ * The fields of `after` that differ from `before`. A PATCH carries only these:
+ * the server reads an explicit null as "clear this field" and refuses a null
+ * on a field that cannot be empty, so an untouched field must not travel.
+ */
+export function changedFields<T extends object>(before: T, after: T): Partial<T> {
+  const out: Partial<T> = {};
+  for (const key of Object.keys(after) as Array<keyof T>) {
+    if (JSON.stringify(after[key] ?? null) !== JSON.stringify(before[key] ?? null)) out[key] = after[key];
+  }
+  return out;
+}
+
 /** Comparison, weights, scores and owner situation can change in these states only. */
 export function comparisonEditable(status: ModelStatus): boolean {
   return status === 'draft' || status === 'under_evaluation' || status === 'reopened';

@@ -19,7 +19,7 @@ import { EmptyState } from '@/shared/ui/EmptyState';
 import { WideModal } from '@/shared/ui/WideModal';
 import { fmtDate } from '@/shared/lib/formatters';
 
-import { canDerivePackages, canEditPlan, type Viewer } from './access';
+import { canEditPlan } from './access';
 import {
   createPackage,
   deletePackage,
@@ -54,7 +54,7 @@ import {
   type LabelContext,
 } from './labels';
 import { RecordPicker } from './RecordPicker';
-import { filterPackages, nextPackageStatuses, packageProblems, packageTree, type ResponsibilityFilter } from './rules';
+import { changedFields, filterPackages, nextPackageStatuses, packageProblems, packageTree, type ResponsibilityFilter } from './rules';
 
 const KINDS = Object.keys(PACKAGE_KIND) as PackageKind[];
 const PRICE_BASES = Object.keys(PRICE_BASIS) as PriceBasis[];
@@ -93,22 +93,22 @@ export interface PackagePlanPanelProps {
   packages: DeliveryPackage[];
   consistency: Consistency | null;
   catalogue: DeliveryCatalogue | null;
-  viewer: Viewer;
   labels: LabelContext;
   onChanged: () => void;
 }
 
 type Editing = { mode: 'new' } | { mode: 'edit'; pkg: DeliveryPackage } | null;
 
-export function PackagePlanPanel({ projectId, model, packages, consistency, catalogue, viewer, labels, onChanged }: PackagePlanPanelProps) {
+export function PackagePlanPanel({ projectId, model, packages, consistency, catalogue, labels, onChanged }: PackagePlanPanelProps) {
   const { t } = useTranslation();
   const onError = useRefusalToast();
   const [filter, setFilter] = useState<ResponsibilityFilter>('all');
   const [editing, setEditing] = useState<Editing>(null);
   const [linking, setLinking] = useState<DeliveryPackage | null>(null);
   const [deleting, setDeleting] = useState<DeliveryPackage | null>(null);
-  const editV = canEditPlan(viewer);
-  const deriveV = canDerivePackages(viewer, model);
+  const editV = canEditPlan(model);
+  // The usual packages come from the chosen form, or before a proposal from the leading one.
+  const deriveV = editV;
   const partyName = useMemo(() => partyNamer(labels, catalogue?.parties ?? []), [labels, catalogue]);
   const rows = useMemo(() => packageTree(filterPackages(packages, filter)), [packages, filter]);
   const planFindings = (consistency?.items ?? []).filter((f) => PLAN_FINDINGS.includes(f.code));
@@ -438,7 +438,8 @@ export function PackageDialog({ projectId, pkg, packages, catalogue, labels, onC
     mutationFn: () => {
       const body = { ...draft, code: draft.code.trim(), title: draft.title.trim() };
       if (!pkg) return createPackage(projectId, body);
-      const changes: Partial<PackageInput> = { ...body };
+      // Only what changed travels; a null among it clears that field.
+      const changes = changedFields(draftOfPackage(pkg), body);
       delete changes.code;
       return updatePackage(projectId, pkg.id, changes);
     },

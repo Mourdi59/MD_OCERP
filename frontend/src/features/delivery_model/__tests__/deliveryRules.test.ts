@@ -9,13 +9,16 @@ import { describe, expect, it } from 'vitest';
 import { ApiError } from '@/shared/lib/api';
 
 import {
-  canDerivePackages,
+  canChangeCatalogue,
+  canCloseReopening,
   canEditAllocations,
   canEditComparison,
+  canEditPlan,
   canManage,
   canPropose,
   canReopen,
   canWithdraw,
+  personOnly,
   roleAllows,
 } from '../access';
 import { deliveryErrorCode, deliveryServerMessage, deliveryViolations } from '../api';
@@ -24,6 +27,7 @@ import {
   allocationProblems,
   allocationsFrozen,
   cellState,
+  changedFields,
   comparisonEditable,
   filterPackages,
   fromHundredths,
@@ -318,31 +322,83 @@ describe('button verdicts', () => {
     expect(roleAllows('wizard', 'read')).toBe(false);
   });
 
-  it('says who can act when the role is too low', () => {
+  it('before a model exists only the role is known, and only a manager starts one', () => {
     expect(canManage(viewer('editor'))).toBe('role_manage');
-    expect(canEditComparison(viewer('viewer'), model())).toBe('role_edit');
-    expect(canPropose(viewer('editor'), model())).toBe('role_manage');
-    expect(canEditAllocations(viewer('viewer'), model())).toBe('role_edit');
+    expect(canManage(viewer('manager'))).toBeNull();
   });
 
-  it('explains the state before anything else once the role is enough', () => {
-    expect(canEditComparison(viewer('editor'), model())).toBeNull();
-    expect(canEditComparison(viewer('editor'), model({ status: 'proposed' }))).toBe('decision_pending');
-    expect(canEditComparison(viewer('manager'), model({ status: 'binding' }))).toBe('model_frozen');
-    expect(canPropose(viewer('manager'), model({ status: 'reopened' }))).toBeNull();
-    expect(canPropose(viewer('manager'), model({ status: 'proposed' }))).toBe('decision_pending');
-    expect(canWithdraw(viewer('manager'), model({ status: 'proposed' }))).toBeNull();
-    expect(canWithdraw(viewer('manager'), model())).toBe('not_proposed');
-    expect(canReopen(viewer('manager'), model({ status: 'binding' }))).toBeNull();
-    expect(canReopen(viewer('manager'), model({ status: 'approved' }))).toBe('not_binding');
-    expect(canEditAllocations(viewer('editor'), model({ status: 'proposed' }))).toBeNull();
-    expect(canEditAllocations(viewer('editor'), model({ status: 'binding' }))).toBe('model_frozen');
+  it('every action reads the answer the server sent with the model', () => {
+    expect(canEditComparison(model())).toBeNull();
+    expect(canEditComparison(model({}, 'viewer'))).toBe('permission_missing');
+    expect(canEditComparison(model({ status: 'proposed' }, 'editor'))).toBe('model_not_editable');
+    expect(canPropose(model({}, 'editor'))).toBe('permission_missing');
+    expect(canPropose(model({ status: 'reopened' }))).toBeNull();
+    expect(canPropose(model({ status: 'proposed' }))).toBe('decision_pending');
+    expect(canWithdraw(model({ status: 'proposed' }))).toBeNull();
+    expect(canWithdraw(model())).toBe('decision_not_pending');
+    expect(canReopen(model({ status: 'binding' }))).toBeNull();
+    expect(canReopen(model({ status: 'approved' }))).toBe('model_not_binding');
+    expect(canCloseReopening(model({ status: 'reopened' }))).toBeNull();
+    expect(canCloseReopening(model())).toBe('reopening_not_open');
   });
 
-  it('the usual packages need a chosen form', () => {
-    expect(canDerivePackages(viewer('editor'), model())).toBe('form_not_selected');
-    expect(canDerivePackages(viewer('editor'), model({ selected_form_code: 'design_build' }))).toBeNull();
-    expect(canDerivePackages(viewer('viewer'), model({ selected_form_code: 'design_build' }))).toBe('role_edit');
+  it('a reason the server gives is kept as it is, not replaced by a guess from the role', () => {
+    const m = model();
+    m.can.edit = { allowed: false, reason: 'not_area_owner' };
+    m.can.reopen = { allowed: false, reason: 'change_request_required' };
+    expect(canEditComparison(m)).toBe('not_area_owner');
+    expect(canEditPlan(m)).toBe('not_area_owner');
+    expect(canReopen(m)).toBe('change_request_required');
+  });
+
+  it('a flag that did not arrive denies', () => {
+    const m = { ...model(), can: {} as ReturnType<typeof model>['can'] };
+    expect(canPropose(m)).toBe('permission_missing');
+    expect(canEditPlan(m)).toBe('permission_missing');
+    expect(canPropose({ can: { ...model().can, propose: { allowed: false, reason: null } } })).toBe('permission_missing');
+  });
+
+  it('allocations, packages and items stay open while a decision is proposed and close once it is approved', () => {
+    expect(canEditPlan(model({ status: 'proposed' }, 'editor'))).toBeNull();
+    expect(canEditAllocations(model({ status: 'proposed' }))).toBeNull();
+    expect(canEditPlan(model({ status: 'approved' }))).toBe('model_not_editable');
+    expect(canEditPlan(model({ status: 'binding' }))).toBe('model_not_editable');
+    expect(canEditPlan(model({ status: 'proposed' }, 'viewer'))).toBe('permission_missing');
+  });
+
+  it('pinning another catalogue needs no carrier document', () => {
+    const m = model();
+    m.can.propose = { allowed: false, reason: 'carrier_missing' };
+    expect(canPropose(m)).toBe('carrier_missing');
+    expect(canChangeCatalogue(m)).toBeNull();
+    expect(canChangeCatalogue(model({ status: 'proposed' }))).toBe('decision_pending');
+    expect(canChangeCatalogue(model({}, 'editor'))).toBe('permission_missing');
+  });
+
+  it('tells a reason about the person from a reason about the state', () => {
+    expect(personOnly('not_area_owner')).toBe('not_area_owner');
+    expect(personOnly('permission_missing')).toBe('permission_missing');
+    expect(personOnly('model_not_editable')).toBeNull();
+    expect(personOnly(null)).toBeNull();
+  });
+});
+
+describe('changedFields', () => {
+  const before = { title: 'Shell', parent_id: 'p0' as string | null, need_date: null as string | null, designs: false };
+
+  it('carries only what changed, so an untouched empty field never travels as null', () => {
+    expect(changedFields(before, { ...before })).toEqual({});
+    expect(changedFields(before, { ...before, title: 'Shell and core' })).toEqual({ title: 'Shell and core' });
+  });
+
+  it('a cleared field travels as an explicit null', () => {
+    const changes = changedFields(before, { ...before, parent_id: null });
+    expect(changes).toEqual({ parent_id: null });
+    expect('parent_id' in changes).toBe(true);
+  });
+
+  it('sees a flag flip and a date that was set', () => {
+    expect(changedFields(before, { ...before, designs: true, need_date: '2027-01-15' })).toEqual({ designs: true, need_date: '2027-01-15' });
   });
 });
 

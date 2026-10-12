@@ -18,7 +18,7 @@ import { EmptyState } from '@/shared/ui/EmptyState';
 import { WideModal } from '@/shared/ui/WideModal';
 import { getErrorMessage } from '@/shared/lib/api';
 
-import { canEditAllocations, type Viewer } from './access';
+import { canEditAllocations, personOnly } from './access';
 import {
   confirmAllocations,
   deliveryKeys,
@@ -85,17 +85,16 @@ export interface RiskMatrixPanelProps {
   model: DeliveryModel;
   matrix: AllocationMatrix;
   catalogue: DeliveryCatalogue | null;
-  viewer: Viewer;
   labels: LabelContext;
   onChanged: () => void;
 }
 
-export function RiskMatrixPanel({ projectId, model, matrix, catalogue, viewer, labels, onChanged }: RiskMatrixPanelProps) {
+export function RiskMatrixPanel({ projectId, model, matrix, catalogue, labels, onChanged }: RiskMatrixPanelProps) {
   const { t } = useTranslation();
   const onError = useRefusalToast();
   const [editing, setEditing] = useState<AllocationItem | null>(null);
   const [seeding, setSeeding] = useState(false);
-  const editV = canEditAllocations(viewer, model);
+  const editV = canEditAllocations(model);
   const partyName = useMemo(() => partyNamer(labels, matrix.parties), [labels, matrix.parties]);
   const summary = useMemo(() => matrixSummary(matrix.items), [matrix.items]);
   const form = catalogue?.forms.find((f) => f.code === matrix.form_code) ?? null;
@@ -140,7 +139,7 @@ export function RiskMatrixPanel({ projectId, model, matrix, catalogue, viewer, l
         )}
         {summary.seedable > 0 && (
           <ReasonedButton
-            verdict={editV === 'role_edit' ? editV : null}
+            verdict={personOnly(editV)}
             variant={summary.toConfirm > 0 ? 'secondary' : 'primary'}
             icon={<ListPlus size={14} />}
             onClick={() => setSeeding(true)}

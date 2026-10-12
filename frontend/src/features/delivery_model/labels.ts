@@ -55,6 +55,27 @@ export const DECISION_STATUS: Record<DecisionStatus, KeyText> = {
   approved: ['delivery_model.decision_status.approved', 'Approved'],
   superseded: ['delivery_model.decision_status.superseded', 'Superseded'],
   withdrawn: ['delivery_model.decision_status.withdrawn', 'Withdrawn'],
+  rejected: ['delivery_model.decision_status.rejected', 'Rejected'],
+};
+
+/** Why a binding frame document did not approve the decision it carries. */
+export const APPROVAL_BLOCKED: Record<string, KeyText> = {
+  approval_needs_change_request: [
+    'delivery_model.blocked.approval_needs_change_request',
+    'The frame document was already binding when this decision was proposed. Raise a change request on it; its approval approves the decision.',
+  ],
+  approval_not_ready: [
+    'delivery_model.blocked.approval_not_ready',
+    'The frame document is binding, but the delivery model has open errors. Fix them and the decision is approved.',
+  ],
+  four_eyes_proposer_is_approver: [
+    'delivery_model.blocked.four_eyes_proposer_is_approver',
+    'Four-eyes: the person who proposed the decision also approved the frame document. Someone else has to propose or approve.',
+  ],
+  approver_unknown: [
+    'delivery_model.blocked.approver_unknown',
+    'Four-eyes cannot be checked: the governance approval does not say who decided.',
+  ],
 };
 
 export const ALLOCATION_STATUS: Record<AllocationStatus, KeyText> = {
@@ -254,6 +275,7 @@ export const FINDING_REASON: Record<string, KeyText> = {
 export const ALL_KEY_MAPS: Record<string, Record<string, KeyText>> = {
   MODEL_STATUS,
   DECISION_STATUS,
+  APPROVAL_BLOCKED,
   ALLOCATION_STATUS,
   BASIS,
   PACKAGE_KIND,

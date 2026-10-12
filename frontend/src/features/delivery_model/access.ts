@@ -3,18 +3,23 @@
 //
 // Which delivery model button may be pressed, and in words why not.
 //
-// The server decides; this only predicts, so a button is disabled with a
-// reason instead of answering with a refusal after the click. The delivery
-// model API sends no capability flags yet, so the role half of the prediction
-// reads the shared mirror of the backend hierarchy (delivery_model.read is
-// viewer, .edit is editor, .manage is manager, see
-// delivery_model/permissions.py). The state half reads the model status the
-// server sent. Once the API carries `can` flags they replace the role checks
-// here and nothing else changes.
+// The server decides and says so: the model carries `can`, one answer per
+// action, computed by the same function that enforces it. A verdict here is
+// that answer, so a button never disagrees with the request behind it. The
+// reason is the server's refusal code and is worded by
+// `delivery_model.errors.<code>`.
+//
+// Two things the flags do not cover:
+// - Starting a model. There is no model yet, so nothing carries a flag, and
+//   the role is the only thing known (delivery_model.manage is the manager).
+// - Risk allocations, packages and owner-furnished items stay editable while
+//   a decision is proposed, where `can.edit` (the comparison) already says no.
+//   For those the state half of `can.edit` is replaced by the status rule the
+//   API documents; the permission half is kept as sent.
 
-import type { DeliveryModel, ModelStatus } from './api';
+import type { Capability, DeliveryModel } from './api';
 import type { KeyText } from './labels';
-import { allocationsFrozen, comparisonEditable } from './rules';
+import { allocationsFrozen } from './rules';
 import { ROLE_ALIASES, ROLE_RANK } from '@/shared/lib/roles';
 
 export type DeliveryLevel = 'read' | 'edit' | 'manage';
@@ -35,85 +40,76 @@ export function roleAllows(role: string | null | undefined, level: DeliveryLevel
   return rank >= LEVEL_RANK[level];
 }
 
-export type DisabledReason =
-  | 'role_edit'
-  | 'role_manage'
-  | 'decision_pending'
-  | 'model_frozen'
-  | 'not_proposed'
-  | 'not_binding'
-  | 'form_not_selected';
-
-export const DISABLED_REASON: Record<DisabledReason, KeyText> = {
-  role_edit: ['delivery_model.ui.disabled.role_edit', 'Your role can view the delivery model but not edit it. An editor or manager can.'],
+/** Reasons this screen words itself. Every other reason is a server code. */
+export const DISABLED_REASON: Record<string, KeyText> = {
   role_manage: ['delivery_model.ui.disabled.role_manage', 'Only a project manager can do this.'],
-  decision_pending: [
-    'delivery_model.ui.disabled.decision_pending',
-    'A decision is proposed and waits for the gate. Withdraw it to change the comparison.',
-  ],
-  model_frozen: [
-    'delivery_model.ui.disabled.model_frozen',
-    'The delivery model is approved. It changes only after it is reopened through a change request.',
-  ],
-  not_proposed: ['delivery_model.ui.disabled.not_proposed', 'There is no proposed decision to withdraw.'],
-  not_binding: ['delivery_model.ui.disabled.not_binding', 'Only a binding delivery model can be reopened.'],
-  form_not_selected: ['delivery_model.ui.disabled.form_not_selected', 'Propose a delivery form first. The package template comes from it.'],
 };
 
-/** null means allowed; otherwise the first reason that stops the action. */
-export type Verdict = DisabledReason | null;
+/** null means allowed; otherwise the reason that stops the action. */
+export type Verdict = string | null;
 
 export interface Viewer {
   userId: string | null;
   role: string | null;
 }
 
-function frozenReason(status: ModelStatus): DisabledReason {
-  return status === 'proposed' ? 'decision_pending' : 'model_frozen';
+type CanModel = Pick<DeliveryModel, 'can'>;
+type CanAndStatus = Pick<DeliveryModel, 'can' | 'status'>;
+
+/** A flag that did not arrive denies: an unknown answer is not a yes. */
+function verdictOf(flag: Capability | undefined): Verdict {
+  if (!flag) return 'permission_missing';
+  return flag.allowed ? null : (flag.reason ?? 'permission_missing');
 }
 
-/** Starting the model, pinning another catalogue. */
+/** Reasons about the person, not about the state of the model. */
+const PERSON_REASONS = new Set(['permission_missing', 'not_area_owner']);
+
+/** The verdict when only the person can stop the action. */
+export function personOnly(verdict: Verdict): Verdict {
+  return verdict && PERSON_REASONS.has(verdict) ? verdict : null;
+}
+
+/** Starting the model: nothing carries a flag before a model exists. */
 export function canManage(viewer: Viewer): Verdict {
   return roleAllows(viewer.role, 'manage') ? null : 'role_manage';
 }
 
 /** Options, weights, scores and the owner situation. */
-export function canEditComparison(viewer: Viewer, model: Pick<DeliveryModel, 'status'>): Verdict {
-  if (!roleAllows(viewer.role, 'edit')) return 'role_edit';
-  return comparisonEditable(model.status) ? null : frozenReason(model.status);
+export function canEditComparison(model: CanModel): Verdict {
+  return verdictOf(model.can?.edit);
 }
 
-export function canChangeCatalogue(viewer: Viewer, model: Pick<DeliveryModel, 'status'>): Verdict {
-  if (!roleAllows(viewer.role, 'manage')) return 'role_manage';
-  return comparisonEditable(model.status) ? null : frozenReason(model.status);
+export function canPropose(model: CanModel): Verdict {
+  return verdictOf(model.can?.propose);
 }
 
-export function canPropose(viewer: Viewer, model: Pick<DeliveryModel, 'status'>): Verdict {
-  if (!roleAllows(viewer.role, 'manage')) return 'role_manage';
-  return comparisonEditable(model.status) ? null : frozenReason(model.status);
+export function canWithdraw(model: CanModel): Verdict {
+  return verdictOf(model.can?.withdraw);
 }
 
-export function canWithdraw(viewer: Viewer, model: Pick<DeliveryModel, 'status'>): Verdict {
-  if (!roleAllows(viewer.role, 'manage')) return 'role_manage';
-  return model.status === 'proposed' ? null : 'not_proposed';
+export function canReopen(model: CanModel): Verdict {
+  return verdictOf(model.can?.reopen);
 }
 
-export function canReopen(viewer: Viewer, model: Pick<DeliveryModel, 'status'>): Verdict {
-  if (!roleAllows(viewer.role, 'manage')) return 'role_manage';
-  return model.status === 'binding' ? null : 'not_binding';
+export function canCloseReopening(model: CanModel): Verdict {
+  return verdictOf(model.can?.close_reopening);
 }
 
-export function canEditAllocations(viewer: Viewer, model: Pick<DeliveryModel, 'status'>): Verdict {
-  if (!roleAllows(viewer.role, 'edit')) return 'role_edit';
-  return allocationsFrozen(model.status) ? 'model_frozen' : null;
+/**
+ * Pinning another catalogue has no flag of its own. It needs what proposing
+ * needs, except a carrier document, so the carrier reasons do not stop it.
+ */
+export function canChangeCatalogue(model: CanModel): Verdict {
+  const verdict = verdictOf(model.can?.propose);
+  return verdict === 'carrier_missing' || verdict === 'governance_model_missing' ? null : verdict;
 }
 
-/** Packages and owner-furnished items follow the edit permission; the server owns every state rule. */
-export function canEditPlan(viewer: Viewer): Verdict {
-  return roleAllows(viewer.role, 'edit') ? null : 'role_edit';
+/** Risk allocations, packages and owner-furnished items: open until the decision is approved. */
+export function canEditPlan(model: CanAndStatus): Verdict {
+  const person = personOnly(verdictOf(model.can?.edit));
+  if (person) return person;
+  return allocationsFrozen(model.status) ? 'model_not_editable' : null;
 }
 
-export function canDerivePackages(viewer: Viewer, model: Pick<DeliveryModel, 'selected_form_code'>): Verdict {
-  if (!roleAllows(viewer.role, 'edit')) return 'role_edit';
-  return model.selected_form_code ? null : 'form_not_selected';
-}
+export const canEditAllocations = canEditPlan;

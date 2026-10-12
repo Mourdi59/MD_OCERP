@@ -8,7 +8,7 @@
 // and read the decision record. The URL remembers the tab (?tab=), so a link
 // reopens the same screen.
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Boxes, Compass, FileSignature, Handshake, PackageOpen, Scale, ShieldAlert } from 'lucide-react';
@@ -80,6 +80,25 @@ export function DeliveryModelPage() {
   const decisionsQ = useDecisions(projectId, hasModel && tab === 'decision');
   const readinessQ = useReadiness(projectId, hasModel && tab === 'decision');
 
+  // Reading the model or the decisions lets the server catch up with
+  // governance, so the status can move without anyone pressing a button here.
+  // Everything read under the old status is then read again.
+  const status = modelQ.data?.status;
+  const seenStatus = useRef(status);
+  useEffect(() => {
+    if (seenStatus.current && status && seenStatus.current !== status) void invalidate();
+    seenStatus.current = status;
+  }, [status, invalidate]);
+  const currentDecision = decisionsQ.data?.find((d) => d.is_current);
+  const caughtUp = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentDecision || currentDecision.status !== 'approved' || status !== 'proposed') return;
+    // once per decision, so a model that stays behind cannot loop the refetch
+    if (caughtUp.current === currentDecision.id) return;
+    caughtUp.current = currentDecision.id;
+    void invalidate();
+  }, [currentDecision, status, invalidate]);
+
   const header = (
     <>
       <Breadcrumb
@@ -105,7 +124,7 @@ export function DeliveryModelPage() {
       >
         <ol className="ml-4 list-decimal space-y-1 text-sm text-content-secondary">
           <li>{t('delivery_model.ui.how_step_1', { defaultValue: 'Add the forms the project could be delivered under and score each one against weighted criteria.' })}</li>
-          <li>{t('delivery_model.ui.how_step_2', { defaultValue: 'Propose the form that fits best, with the reasons. The governance gate of the contracts area approves it.' })}</li>
+          <li>{t('delivery_model.ui.how_step_2', { defaultValue: 'Propose the form that fits best, with the reasons. It is approved in governance, at the gate of the frame document that carries it.' })}</li>
           <li>{t('delivery_model.ui.how_step_3', { defaultValue: 'Confirm who carries each risk. The usual split of the chosen form is the starting point.' })}</li>
           <li>{t('delivery_model.ui.how_step_4', { defaultValue: 'Cut the work into packages, link each one to its tender or contract, and list what the owner supplies itself.' })}</li>
         </ol>
@@ -175,7 +194,6 @@ export function DeliveryModelPage() {
         model={model}
         matrix={allocationsQ.data}
         catalogue={catalogue}
-        viewer={viewer}
         labels={labels}
         onChanged={invalidate}
       />
@@ -192,7 +210,6 @@ export function DeliveryModelPage() {
         packages={packages}
         consistency={consistencyQ.data ?? null}
         catalogue={catalogue}
-        viewer={viewer}
         labels={labels}
         onChanged={invalidate}
       />
@@ -203,7 +220,7 @@ export function DeliveryModelPage() {
     ) : !ofiQ.data ? (
       loading
     ) : (
-      <OfiPanel projectId={projectId} items={ofiQ.data} packages={packages} viewer={viewer} labels={labels} onChanged={invalidate} />
+      <OfiPanel projectId={projectId} model={model} items={ofiQ.data} packages={packages} labels={labels} onChanged={invalidate} />
     );
   } else if (tab === 'decision') {
     body = decisionsQ.isError ? (
@@ -216,7 +233,6 @@ export function DeliveryModelPage() {
         model={model}
         decisions={decisionsQ.data}
         readiness={readinessQ.data ?? null}
-        viewer={viewer}
         labels={labels}
         personName={personName}
         onChanged={invalidate}
@@ -235,7 +251,6 @@ export function DeliveryModelPage() {
         comparison={comparisonQ.data}
         catalogue={catalogue}
         packages={packages}
-        viewer={viewer}
         labels={labels}
         onChanged={invalidate}
       />
@@ -265,7 +280,7 @@ export function DeliveryModelPage() {
             <span className="text-content-primary">{catalogueSummaryName}</span>
           </span>
         )}
-        {!canChangeCatalogue(viewer, model) && (
+        {!canChangeCatalogue(model) && (
           <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setChangingCatalogue(true)} data-testid="change-catalogue-button">
             {t('delivery_model.ui.catalogue.change_title', { defaultValue: 'Use another catalogue' })}
           </Button>

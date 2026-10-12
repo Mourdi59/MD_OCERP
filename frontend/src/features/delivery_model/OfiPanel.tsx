@@ -18,13 +18,14 @@ import { EmptyState } from '@/shared/ui/EmptyState';
 import { WideModal } from '@/shared/ui/WideModal';
 import { fmtDate } from '@/shared/lib/formatters';
 
-import { canEditPlan, type Viewer } from './access';
+import { canEditPlan } from './access';
 import {
   createOfi,
   deleteOfi,
   setOfiRoute,
   setOfiStatus,
   updateOfi,
+  type DeliveryModel,
   type DeliveryPackage,
   type InstallBy,
   type OfiInput,
@@ -38,7 +39,7 @@ import { Field, FindingList, INPUT_CLASS, OFI_TONE, ProblemList, ReasonedButton,
 import { useRefusalText, useRefusalToast } from './hooks';
 import { INSTALL_BY, OFI_KIND, OFI_LINK_KIND, OFI_ROUTE, OFI_STATUS, vocab, type KeyText, type LabelContext } from './labels';
 import { RecordPicker } from './RecordPicker';
-import { nextOfiStatus, ofiProblems } from './rules';
+import { changedFields, nextOfiStatus, ofiProblems } from './rules';
 
 const KINDS = Object.keys(OFI_KIND) as OfiKind[];
 const ROUTES = Object.keys(OFI_ROUTE) as OfiRoute[];
@@ -56,20 +57,20 @@ export interface OfiPanelProps {
   projectId: string;
   items: OwnerFurnishedItem[];
   packages: DeliveryPackage[];
-  viewer: Viewer;
+  model: Pick<DeliveryModel, 'can' | 'status'>;
   labels: LabelContext;
   onChanged: () => void;
 }
 
 type Editing = { mode: 'new' } | { mode: 'edit'; item: OwnerFurnishedItem } | null;
 
-export function OfiPanel({ projectId, items, packages, viewer, labels, onChanged }: OfiPanelProps) {
+export function OfiPanel({ projectId, model, items, packages, labels, onChanged }: OfiPanelProps) {
   const { t } = useTranslation();
   const onError = useRefusalToast();
   const [editing, setEditing] = useState<Editing>(null);
   const [routing, setRouting] = useState<OwnerFurnishedItem | null>(null);
   const [deleting, setDeleting] = useState<OwnerFurnishedItem | null>(null);
-  const editV = canEditPlan(viewer);
+  const editV = canEditPlan(model);
   const packageTitle = (id: string | null) => packages.find((p) => p.id === id)?.title ?? '';
 
   const advance = useMutation({
@@ -312,7 +313,8 @@ export function OfiDialog({ projectId, item, packages, labels, onClose, onDone }
         package_id: draft.install_by === 'package' ? draft.package_id : null,
       };
       if (!item) return createOfi(projectId, body);
-      const changes: Partial<OfiInput> = { ...body };
+      // Only what changed travels; a null among it clears that field.
+      const changes = changedFields(draftOfItem(item), body);
       delete changes.code;
       return updateOfi(projectId, item.id, changes);
     },

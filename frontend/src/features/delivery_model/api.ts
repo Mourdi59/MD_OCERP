@@ -26,7 +26,7 @@ export interface Page<T> {
 }
 
 export type ModelStatus = 'draft' | 'under_evaluation' | 'proposed' | 'approved' | 'binding' | 'reopened';
-export type DecisionStatus = 'proposed' | 'approved' | 'superseded' | 'withdrawn';
+export type DecisionStatus = 'proposed' | 'approved' | 'superseded' | 'withdrawn' | 'rejected';
 export type AllocationStatus = 'unconfirmed' | 'confirmed' | 'link_missing';
 export type Basis = 'contract' | 'insurance' | 'shared_pain_gain' | 'statute' | 'ground_baseline';
 export type PackageKind =
@@ -90,6 +90,7 @@ export interface CatalogueParty {
   name_key?: string | null;
   labels?: LocaleTexts | null;
   contract_party_role?: string | null;
+  side?: 'owner' | 'contractor' | 'operator' | null;
 }
 
 export interface CatalogueRiskCategory {
@@ -98,6 +99,7 @@ export interface CatalogueRiskCategory {
   description_key?: string | null;
   labels?: LocaleTexts | null;
   register_category?: string | null;
+  concerns?: 'design' | 'operation' | null;
 }
 
 export interface CatalogueCriterion {
@@ -118,7 +120,6 @@ export interface DeliveryCatalogue {
   parties: CatalogueParty[];
   risk_categories: CatalogueRiskCategory[];
   criteria: CatalogueCriterion[];
-  governance_areas: string[];
 }
 
 export interface CatalogueSummary {
@@ -141,6 +142,22 @@ export interface OwnerCapability {
   funding_source?: string;
 }
 
+/** The server's answer for one action: may the caller do it now, and if not, why. */
+export interface Capability {
+  allowed: boolean;
+  reason: string | null;
+}
+
+export type ModelAction = 'edit' | 'propose' | 'withdraw' | 'reopen' | 'close_reopening';
+
+/** The governance frame document that carries the delivery decision. */
+export interface Carrier {
+  document_id: string | null;
+  document_type: string | null;
+  document_status: string | null;
+  missing_reason: 'governance_model_missing' | 'carrier_missing' | null;
+}
+
 export interface DeliveryModel {
   id: string;
   project_id: string;
@@ -152,8 +169,12 @@ export interface DeliveryModel {
   status: ModelStatus;
   underground_risk_sharing: boolean;
   owner_capability: OwnerCapability;
-  governance_document_id: string | null;
+  carrier: Carrier;
+  change_request_id: string | null;
   current_decision_id: string | null;
+  /** Why a binding carrier did not approve the current decision, when it did not. */
+  approval_blocked_reason: string | null;
+  can: Record<ModelAction, Capability>;
   version: number;
 }
 
@@ -162,6 +183,8 @@ export interface DeliveryOption {
   form_code: string;
   form: DeliveryForm | null;
   overrides: Record<string, unknown>;
+  /** Attributes of the form this project changed. `form` already has them applied. */
+  customised?: string[];
   notes: string;
   /** Decimal string, or null while the option still misses a score. */
   weighted_total: string | null;
@@ -219,9 +242,15 @@ export interface Decision {
   approved_by: string | null;
   approved_at: string | null;
   approval_source: 'gate' | 'change_request' | '';
+  /** Written at approval, null before. */
   governance_document_id: string | null;
   supersedes_id: string | null;
+  snapshot_hash?: string | null;
+  /** null when the record cannot be compared with the bound revision. */
+  record_matches_bound_revision?: boolean | null;
+  four_eyes?: boolean | null;
   four_eyes_violated: boolean;
+  approval_blocked_reason?: string | null;
   is_current: boolean;
 }
 
@@ -469,6 +498,11 @@ export function changeCatalogue(
 
 export function reopenModel(projectId: string): Promise<DeliveryModel> {
   return apiPost<DeliveryModel>(`${p(projectId)}/model/reopen`, {});
+}
+
+/** Gives a reopening up: the model returns to the approved decision. */
+export function closeReopening(projectId: string): Promise<DeliveryModel> {
+  return apiPost<DeliveryModel>(`${p(projectId)}/model/reopen/close`, {});
 }
 
 /* ── Comparison ───────────────────────────────────────────────────────── */

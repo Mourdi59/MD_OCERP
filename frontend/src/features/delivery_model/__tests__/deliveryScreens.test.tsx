@@ -19,6 +19,7 @@ vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
   return {
     ...actual,
+    closeReopening: vi.fn(),
     proposeDecision: vi.fn(),
     putScores: vi.fn(),
     patchWeights: vi.fn(),
@@ -32,7 +33,6 @@ vi.mock('../api', async (importOriginal) => {
 
 import { ApiError } from '@/shared/lib/api';
 
-import type { Viewer } from '../access';
 import * as api from '../api';
 import { ProposeDialog } from '../ComparisonDialogs';
 import { ComparisonPanel } from '../ComparisonPanel';
@@ -48,8 +48,6 @@ import { enExists, enT } from './i18nMock';
 
 const mocked = vi.mocked(api);
 const labels: LabelContext = { t: enT, language: 'en', exists: enExists };
-const manager: Viewer = { userId: 'u1', role: 'manager' };
-const reader: Viewer = { userId: 'u2', role: 'viewer' };
 const noop = () => undefined;
 
 function wrap(node: ReactNode) {
@@ -68,7 +66,7 @@ describe('ComparisonPanel', () => {
   const props = { projectId: 'p1', catalogue: catalogue(), packages: [], labels, onChanged: noop };
 
   it('shows the forms, their weighted totals and which one leads', () => {
-    wrap(<ComparisonPanel {...props} model={model()} comparison={comparison()} viewer={manager} />);
+    wrap(<ComparisonPanel {...props} model={model()} comparison={comparison()} />);
     const columns = screen.getAllByTestId('option-column');
     expect(columns).toHaveLength(2);
     expect(columns[0]).toHaveTextContent('Single main contractor');
@@ -84,7 +82,7 @@ describe('ComparisonPanel', () => {
 
   it('lists what still stops a proposal', () => {
     const c = comparison({ options: [option('o1', 'design_build', null)], scores: [], weights_total: '90' });
-    wrap(<ComparisonPanel {...props} model={model()} comparison={c} viewer={manager} />);
+    wrap(<ComparisonPanel {...props} model={model()} comparison={c} />);
     const open = within(screen.getByTestId('comparison-open-points')).getAllByRole('listitem');
     expect(open.map((n) => n.textContent)).toEqual([
       'A decision needs at least two compared forms.',
@@ -96,7 +94,7 @@ describe('ComparisonPanel', () => {
   });
 
   it('shows the weight total turning wrong while the reader types, before anything is saved', () => {
-    wrap(<ComparisonPanel {...props} model={model()} comparison={comparison()} viewer={manager} />);
+    wrap(<ComparisonPanel {...props} model={model()} comparison={comparison()} />);
     expect(screen.queryByTestId('weights-save-bar')).toBeNull();
     fireEvent.change(screen.getByLabelText('Weight of Schedule'), { target: { value: '30' } });
     expect(screen.getByTestId('weights-total')).toHaveTextContent('90');
@@ -106,7 +104,7 @@ describe('ComparisonPanel', () => {
 
   it('saves one score with the rationale that cell already had', async () => {
     mocked.putScores.mockResolvedValue(comparison());
-    wrap(<ComparisonPanel {...props} model={model()} comparison={comparison()} viewer={manager} />);
+    wrap(<ComparisonPanel {...props} model={model()} comparison={comparison()} />);
     fireEvent.change(screen.getByLabelText('Score of Design and build on Cost certainty at award'), { target: { value: '4' } });
     await waitFor(() => expect(mocked.putScores).toHaveBeenCalled());
     expect(mocked.putScores).toHaveBeenCalledWith('p1', [
@@ -115,7 +113,7 @@ describe('ComparisonPanel', () => {
   });
 
   it('is read-only while a decision waits for the gate, and says so', () => {
-    wrap(<ComparisonPanel {...props} model={model({ status: 'proposed', selected_form_code: 'design_build' })} comparison={comparison()} viewer={manager} />);
+    wrap(<ComparisonPanel {...props} model={model({ status: 'proposed', selected_form_code: 'design_build' })} comparison={comparison()} />);
     expect(screen.getByTestId('propose-button')).toBeDisabled();
     expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'decision_pending');
     expect(screen.queryByTestId('add-form-button')).toBeNull();
@@ -123,14 +121,31 @@ describe('ComparisonPanel', () => {
     expect(screen.getByTestId('chosen-option')).toHaveTextContent('Chosen');
   });
 
+  it('a project without a frame document for the decision cannot propose, and the button says which step is missing', () => {
+    const noCarrier = model();
+    noCarrier.can.propose = { allowed: false, reason: 'governance_model_missing' };
+    wrap(<ComparisonPanel {...props} model={noCarrier} comparison={comparison()} />);
+    expect(screen.getByTestId('propose-button')).toBeDisabled();
+    expect(screen.getByTestId('add-form-button')).toBeEnabled();
+    expect(screen.getByTestId('disabled-reason')).toHaveTextContent('governance model first');
+  });
+
+  it('marks a form the project adjusted', () => {
+    const c = comparison();
+    c.options[1] = option('o2', 'design_build', '4.20', { customised: ['price_basis_at_award'] });
+    wrap(<ComparisonPanel {...props} model={model()} comparison={c} />);
+    expect(screen.getAllByTestId('customised-option')).toHaveLength(1);
+  });
+
   it('a viewer sees the comparison but no way to change it', () => {
-    wrap(<ComparisonPanel {...props} model={model()} comparison={comparison()} viewer={reader} />);
-    expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'role_manage');
+    wrap(<ComparisonPanel {...props} model={model({}, 'viewer')} comparison={comparison()} />);
+    expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'permission_missing');
+    expect(screen.getByTestId('disabled-reason')).toHaveTextContent('You do not have the permission for this.');
     expect(screen.queryByTestId('add-form-button')).toBeNull();
   });
 
   it('an empty comparison says what to do first', () => {
-    wrap(<ComparisonPanel {...props} model={model({ status: 'draft' })} comparison={comparison({ options: [], scores: [] })} viewer={manager} />);
+    wrap(<ComparisonPanel {...props} model={model({ status: 'draft' })} comparison={comparison({ options: [], scores: [] })} />);
     expect(screen.getByText('No forms to compare yet')).toBeInTheDocument();
     expect(screen.getByTestId('add-form-button')).toBeEnabled();
   });
@@ -213,7 +228,7 @@ describe('RiskMatrixPanel', () => {
   const props = { projectId: 'p1', catalogue: catalogue(), labels, onChanged: noop };
 
   it('tells confirmed, changed, usual and empty rows apart', () => {
-    wrap(<RiskMatrixPanel {...props} model={model()} matrix={matrix(items)} viewer={manager} />);
+    wrap(<RiskMatrixPanel {...props} model={model()} matrix={matrix(items)} />);
     const rows = screen.getAllByTestId('risk-row');
     expect(rows.map((r) => r.getAttribute('data-state'))).toEqual(['confirmed', 'unconfirmed', 'default', 'empty']);
     expect(rows[0]).toHaveTextContent('Design errors');
@@ -233,29 +248,29 @@ describe('RiskMatrixPanel', () => {
 
   it('confirm all sends no category list, so the server confirms every row', async () => {
     mocked.confirmAllocations.mockResolvedValue(matrix(items));
-    wrap(<RiskMatrixPanel {...props} model={model()} matrix={matrix(items)} viewer={manager} />);
+    wrap(<RiskMatrixPanel {...props} model={model()} matrix={matrix(items)} />);
     fireEvent.click(screen.getByTestId('confirm-all-button'));
     await waitFor(() => expect(mocked.confirmAllocations).toHaveBeenCalledWith('p1'));
   });
 
   it('confirming one row names that row only', async () => {
     mocked.confirmAllocations.mockResolvedValue(matrix(items));
-    wrap(<RiskMatrixPanel {...props} model={model()} matrix={matrix(items)} viewer={manager} />);
+    wrap(<RiskMatrixPanel {...props} model={model()} matrix={matrix(items)} />);
     fireEvent.click(within(screen.getAllByTestId('risk-row')[2]!).getByTestId('confirm-row'));
     await waitFor(() => expect(mocked.confirmAllocations).toHaveBeenCalledWith('p1', ['price_escalation']));
   });
 
   it('is read-only once the model is approved, with the reason', () => {
-    wrap(<RiskMatrixPanel {...props} model={model({ status: 'binding' })} matrix={matrix(items)} viewer={manager} />);
+    wrap(<RiskMatrixPanel {...props} model={model({ status: 'binding' })} matrix={matrix(items)} />);
     expect(screen.queryByTestId('edit-row')).toBeNull();
-    expect(screen.getAllByTestId('disabled-reason')[0]).toHaveAttribute('data-reason', 'model_frozen');
+    expect(screen.getAllByTestId('disabled-reason')[0]).toHaveAttribute('data-reason', 'model_not_editable');
   });
 
   it('offers the risk register only for confirmed risks that are not there yet', () => {
-    const { unmount } = wrap(<RiskMatrixPanel {...props} model={model()} matrix={matrix(items)} viewer={manager} />);
+    const { unmount } = wrap(<RiskMatrixPanel {...props} model={model()} matrix={matrix(items)} />);
     expect(screen.queryByTestId('seed-risks-button')).toBeNull();
     unmount();
-    wrap(<RiskMatrixPanel {...props} model={model()} matrix={matrix([allocationItem('design_errors', { allocation: allocation('design_errors') })])} viewer={manager} />);
+    wrap(<RiskMatrixPanel {...props} model={model()} matrix={matrix([allocationItem('design_errors', { allocation: allocation('design_errors') })])} />);
     expect(screen.getByTestId('seed-risks-button')).toBeEnabled();
     expect(screen.queryByTestId('confirm-all-button')).toBeNull();
   });
@@ -338,7 +353,7 @@ describe('PackagePlanPanel', () => {
   const chosen = model({ selected_form_code: 'design_build' });
 
   it('lists the plan with duties, status from the linked record and a broken link', () => {
-    wrap(<PackagePlanPanel {...props} model={chosen} packages={plan} consistency={null} viewer={manager} />);
+    wrap(<PackagePlanPanel {...props} model={chosen} packages={plan} consistency={null} />);
     const rows = screen.getAllByTestId('package-row');
     expect(rows.map((r) => within(r).getByRole('rowheader').textContent)).toEqual([
       expect.stringContaining('Design and build contract'),
@@ -353,7 +368,7 @@ describe('PackagePlanPanel', () => {
   });
 
   it('the banner names plan findings only, with the package and the form rule', () => {
-    wrap(<PackagePlanPanel {...props} model={chosen} packages={plan} consistency={consistency} viewer={manager} />);
+    wrap(<PackagePlanPanel {...props} model={chosen} packages={plan} consistency={consistency} />);
     const findings = within(screen.getByTestId('consistency-findings')).getAllByRole('listitem');
     expect(findings).toHaveLength(1);
     expect(findings[0]).toHaveTextContent('Facade');
@@ -362,27 +377,35 @@ describe('PackagePlanPanel', () => {
   });
 
   it('says so when the plan fits', () => {
-    wrap(<PackagePlanPanel {...props} model={chosen} packages={plan} consistency={{ ...consistency, items: [], errors: 0 }} viewer={manager} />);
+    wrap(<PackagePlanPanel {...props} model={chosen} packages={plan} consistency={{ ...consistency, items: [], errors: 0 }} />);
     expect(screen.getByTestId('consistency-ok')).toHaveTextContent('The plan fits the chosen form.');
   });
 
   it('answers who supplies', () => {
-    wrap(<PackagePlanPanel {...props} model={chosen} packages={plan} consistency={null} viewer={manager} />);
+    wrap(<PackagePlanPanel {...props} model={chosen} packages={plan} consistency={null} />);
     fireEvent.click(screen.getByTestId('package-filter-supplies'));
     expect(screen.getAllByTestId('package-row')).toHaveLength(1);
     expect(screen.getByTestId('package-row')).toHaveTextContent('Lift supply');
   });
 
-  it('an empty plan offers the usual packages, and says why not before a form is chosen', () => {
-    wrap(<PackagePlanPanel {...props} model={model()} packages={[]} consistency={null} viewer={manager} />);
+  it('an empty plan offers the usual packages already before a form is proposed', () => {
+    wrap(<PackagePlanPanel {...props} model={model()} packages={[]} consistency={null} />);
     expect(screen.getByText('No packages yet')).toBeInTheDocument();
-    expect(screen.getByTestId('derive-button')).toBeDisabled();
-    expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'form_not_selected');
+    expect(screen.getByTestId('derive-button')).toBeEnabled();
     expect(screen.getByTestId('add-package-button')).toBeEnabled();
   });
 
+  it('the plan stays open while a decision is proposed and closes once it is approved', () => {
+    const { unmount } = wrap(<PackagePlanPanel {...props} model={model({ status: 'proposed' })} packages={[]} consistency={null} />);
+    expect(screen.getByTestId('derive-button')).toBeEnabled();
+    unmount();
+    wrap(<PackagePlanPanel {...props} model={model({ status: 'binding' })} packages={[]} consistency={null} />);
+    expect(screen.getByTestId('derive-button')).toBeDisabled();
+    expect(screen.getByTestId('disabled-reason')).toHaveAttribute('data-reason', 'model_not_editable');
+  });
+
   it('a viewer gets no row actions', () => {
-    wrap(<PackagePlanPanel {...props} model={chosen} packages={plan} consistency={null} viewer={reader} />);
+    wrap(<PackagePlanPanel {...props} model={model({ selected_form_code: 'design_build' }, 'viewer')} packages={plan} consistency={null} />);
     expect(screen.queryByTestId('package-edit')).toBeNull();
     expect(screen.getByTestId('add-package-button')).toBeDisabled();
   });
@@ -432,10 +455,10 @@ describe('OfiPanel', () => {
       findings: [{ code: 'ofi_late_for_installer', severity: 'warning', ref: 'CHILLER' }],
     }),
   ];
-  const props = { projectId: 'p1', packages: [pkg('mep', { title: 'Building services' })], labels, onChanged: noop };
+  const props = { projectId: 'p1', model: model(), packages: [pkg('mep', { title: 'Building services' })], labels, onChanged: noop };
 
   it('flags an item without a route and one that arrives late', () => {
-    wrap(<OfiPanel {...props} items={items} viewer={manager} />);
+    wrap(<OfiPanel {...props} items={items} />);
     const rows = screen.getAllByTestId('ofi-row');
     expect(within(rows[0]!).getByTestId('ofi-route')).toHaveTextContent('Not decided yet');
     expect(rows[0]).toHaveTextContent('Set a procurement route first.');
@@ -449,7 +472,7 @@ describe('OfiPanel', () => {
 
   it('moves an item one step forward', async () => {
     mocked.setOfiStatus.mockResolvedValue(items[1]!);
-    wrap(<OfiPanel {...props} items={items} viewer={manager} />);
+    wrap(<OfiPanel {...props} items={items} />);
     const advance = within(screen.getAllByTestId('ofi-row')[1]!).getByTestId('ofi-advance');
     expect(advance).toHaveTextContent('Mark as ordered');
     fireEvent.click(advance);
@@ -457,7 +480,7 @@ describe('OfiPanel', () => {
   });
 
   it('an empty list says what belongs here and offers the first item', () => {
-    wrap(<OfiPanel {...props} items={[]} viewer={manager} />);
+    wrap(<OfiPanel {...props} items={[]} />);
     expect(screen.getByText('No owner-furnished items yet')).toBeInTheDocument();
     expect(screen.getByTestId('add-ofi-button')).toBeEnabled();
   });
@@ -475,7 +498,7 @@ describe('DecisionRecordPanel', () => {
 
   it('a proposed decision points to the gate and can be withdrawn by a manager', async () => {
     mocked.withdrawDecision.mockResolvedValue(model());
-    wrap(<DecisionRecordPanel {...props} model={model({ status: 'proposed' })} decisions={[decision()]} viewer={manager} />);
+    wrap(<DecisionRecordPanel {...props} model={model({ status: 'proposed' })} decisions={[decision()]} />);
     expect(screen.getByRole('heading', { name: 'Design and build' })).toBeInTheDocument();
     expect(screen.getByTestId('decision-status')).toHaveTextContent('Proposed');
     expect(screen.getByTestId('decision-rationale')).toHaveTextContent('One point of responsibility');
@@ -487,13 +510,13 @@ describe('DecisionRecordPanel', () => {
   });
 
   it('never prints a user id for a person it cannot name', () => {
-    wrap(<DecisionRecordPanel {...props} model={model({ status: 'proposed' })} decisions={[decision({ proposed_by: 'f3a1c0de-0000-4000-8000-000000000001' })]} viewer={manager} />);
+    wrap(<DecisionRecordPanel {...props} model={model({ status: 'proposed' })} decisions={[decision({ proposed_by: 'f3a1c0de-0000-4000-8000-000000000001' })]} />);
     expect(screen.getByTestId('current-decision')).not.toHaveTextContent('f3a1c0de');
   });
 
   it('warns when one person proposed and approved, and offers reopening on a binding model', () => {
     const approved = decision({ status: 'approved', approved_by: 'u1', approved_at: '2026-10-05T08:00:00+00:00', approval_source: 'gate', four_eyes_violated: true });
-    wrap(<DecisionRecordPanel {...props} model={model({ status: 'binding' })} decisions={[approved]} viewer={manager} />);
+    wrap(<DecisionRecordPanel {...props} model={model({ status: 'binding' })} decisions={[approved]} />);
     expect(screen.getByTestId('four-eyes-warning')).toBeInTheDocument();
     expect(screen.getByText('Approved at the governance gate')).toBeInTheDocument();
     expect(screen.queryByTestId('approve-at-gate')).toBeNull();
@@ -506,9 +529,8 @@ describe('DecisionRecordPanel', () => {
       <DecisionRecordPanel
         {...props}
         readiness={readiness}
-        model={model({ status: 'proposed' })}
+        model={model({ status: 'proposed' }, 'viewer')}
         decisions={[decision(), decision({ id: 'd0', status: 'withdrawn', is_current: false, form_code: 'cm_at_risk', snapshot: {}, rationale: 'First attempt.' })]}
-        viewer={reader}
       />,
     );
     const checks = within(screen.getByTestId('gate-readiness')).getAllByRole('listitem').slice(0, 3);
@@ -518,9 +540,46 @@ describe('DecisionRecordPanel', () => {
     expect(screen.getByTestId('withdraw-button')).toBeDisabled();
   });
 
+  it('says what blocks the approval when the frame document is binding but the decision is not approved', () => {
+    wrap(
+      <DecisionRecordPanel
+        {...props}
+        model={model({ status: 'proposed' })}
+        decisions={[decision({ approval_blocked_reason: 'approval_not_ready' })]}
+      />,
+    );
+    expect(screen.getByTestId('approval-blocked')).toHaveTextContent('the delivery model has open errors');
+  });
+
+  it('a project whose governance names no frame document says so instead of pointing to a gate', () => {
+    const noCarrier = model({ status: 'proposed', carrier: { document_id: null, document_type: null, document_status: null, missing_reason: 'carrier_missing' } });
+    wrap(<DecisionRecordPanel {...props} model={noCarrier} decisions={[decision()]} />);
+    expect(screen.getByTestId('carrier-missing')).toHaveTextContent('names no frame document');
+    expect(screen.queryByTestId('approve-at-gate')).toBeNull();
+  });
+
+  it('a reopening can be given up after a confirmation', async () => {
+    mocked.closeReopening.mockResolvedValue(model({ status: 'binding' }));
+    const approved = decision({ status: 'approved', approved_at: '2026-10-05T08:00:00+00:00', approval_source: 'gate' });
+    wrap(<DecisionRecordPanel {...props} model={model({ status: 'reopened' })} decisions={[approved]} />);
+    fireEvent.click(screen.getByTestId('close-reopening-button'));
+    expect(mocked.closeReopening).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Give up the reopening' }));
+    await waitFor(() => expect(mocked.closeReopening).toHaveBeenCalledWith('p1'));
+  });
+
+  it('a record that no longer matches the bound revision is flagged, and a rejected decision reads as rejected', () => {
+    const approved = decision({ status: 'approved', record_matches_bound_revision: false });
+    const rejected = decision({ id: 'd0', status: 'rejected', is_current: false });
+    wrap(<DecisionRecordPanel {...props} model={model({ status: 'binding' })} decisions={[approved, rejected]} />);
+    expect(screen.getByTestId('record-differs')).toBeInTheDocument();
+    expect(screen.getByTestId('earlier-decision')).toHaveTextContent('Rejected');
+    expect(screen.queryByTestId('reopening')).toBeNull();
+  });
+
   it('without any decision it sends the reader to the comparison', () => {
     const onOpenComparison = vi.fn();
-    wrap(<DecisionRecordPanel {...props} onOpenComparison={onOpenComparison} model={model()} decisions={[]} viewer={manager} />);
+    wrap(<DecisionRecordPanel {...props} onOpenComparison={onOpenComparison} model={model()} decisions={[]} />);
     expect(screen.getByText('No decision yet')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Go to the comparison' }));
     expect(onOpenComparison).toHaveBeenCalled();
@@ -530,12 +589,12 @@ describe('DecisionRecordPanel', () => {
 describe('shared pieces', () => {
   it('a disabled button stays visible and says why', () => {
     render(
-      <ReasonedButton verdict="role_edit" onClick={noop}>
+      <ReasonedButton verdict="not_area_owner" onClick={noop}>
         Change
       </ReasonedButton>,
     );
     expect(screen.getByRole('button', { name: 'Change' })).toBeDisabled();
-    expect(screen.getByTestId('disabled-reason')).toHaveTextContent('An editor or manager can.');
+    expect(screen.getByTestId('disabled-reason')).toHaveTextContent('Only a manager or the owner of the governance area');
   });
 
   it('only an unconfirmed fact carries the mark', () => {

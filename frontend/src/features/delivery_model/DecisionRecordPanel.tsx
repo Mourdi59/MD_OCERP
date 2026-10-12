@@ -3,23 +3,26 @@
 //
 // The decision record: which form was proposed, why, against which
 // alternatives, and where it stands. This module never approves. The decision
-// is approved by the governance gate of the contracts area, so a proposed
-// decision points the reader there. Earlier decisions stay listed below.
+// is approved in governance, when the frame document that carries it becomes
+// binding, so a proposed decision points the reader there and says what still
+// blocks the approval. Earlier decisions stay listed below.
 
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Circle, FileSignature } from 'lucide-react';
 
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { fmtDate, fmtNumber } from '@/shared/lib/formatters';
 
-import { canReopen, canWithdraw, type Viewer } from './access';
-import { reopenModel, withdrawDecision, type Decision, type DeliveryModel, type Readiness } from './api';
+import { canCloseReopening, canReopen, canWithdraw } from './access';
+import { closeReopening, reopenModel, withdrawDecision, type Decision, type DeliveryModel, type Readiness } from './api';
 import { DECISION_TONE, FindingList, ReasonedButton, ToneBadge } from './DeliveryBits';
 import { ExportButtons } from './ExportButtons';
 import { useRefusalToast } from './hooks';
-import { DECISION_STATUS, formName, humanizeCode, vocab, type KeyText, type LabelContext } from './labels';
+import { APPROVAL_BLOCKED, DECISION_STATUS, errorText, formName, humanizeCode, vocab, type KeyText, type LabelContext, type TFn } from './labels';
 
 const READINESS: Record<'decision_present' | 'risks_allocated' | 'no_errors', KeyText> = {
   decision_present: ['delivery_model.evidence.decision_proposed', 'Delivery form decision proposed'],
@@ -39,7 +42,6 @@ export interface DecisionRecordPanelProps {
   model: DeliveryModel;
   decisions: Decision[];
   readiness: Readiness | null;
-  viewer: Viewer;
   labels: LabelContext;
   personName: (userId: string | null | undefined) => string | null;
   onChanged: () => void;
@@ -67,7 +69,6 @@ export function DecisionRecordPanel({
   model,
   decisions,
   readiness,
-  viewer,
   labels,
   personName,
   onChanged,
@@ -79,6 +80,18 @@ export function DecisionRecordPanel({
   const earlier = decisions.filter((d) => !d.is_current);
   const withdraw = useMutation({ mutationFn: () => withdrawDecision(projectId), onSuccess: onChanged, onError });
   const reopen = useMutation({ mutationFn: () => reopenModel(projectId), onSuccess: onChanged, onError });
+  const [closing, setClosing] = useState(false);
+  const close = useMutation({
+    mutationFn: () => closeReopening(projectId),
+    onSuccess: () => {
+      setClosing(false);
+      onChanged();
+    },
+    onError,
+  });
+  const closeV = canCloseReopening(model);
+  const blocked = current?.approval_blocked_reason ?? model.approval_blocked_reason ?? null;
+  const carrierMissing = model.carrier?.missing_reason ?? null;
   const nameOf = (d: Decision) => formName(labels, d.snapshot?.form ?? null, d.form_code);
 
   const readinessRows: Array<[keyof typeof READINESS, boolean]> = readiness?.in_use
@@ -104,6 +117,11 @@ export function DecisionRecordPanel({
 
   return (
     <div className="space-y-5" data-testid="decision-record-panel">
+      {carrierMissing && (
+        <p className="rounded-lg border border-semantic-warning/40 bg-semantic-warning-bg p-3 text-sm text-content-primary" role="status" data-testid="carrier-missing">
+          {errorText(t as TFn, carrierMissing)}
+        </p>
+      )}
       {current && (
         <section className="space-y-3 rounded-xl border border-border-light p-4" data-testid="current-decision">
           <div className="flex flex-wrap items-start gap-3">
@@ -167,12 +185,25 @@ export function DecisionRecordPanel({
             </div>
           )}
 
-          {current.status === 'proposed' && (
+          {current.record_matches_bound_revision === false && (
+            <p className="rounded-md border border-semantic-error/30 bg-semantic-error-bg px-3 py-2 text-sm" role="alert" data-testid="record-differs">
+              {t('delivery_model.ui.decision.record_differs', {
+                defaultValue: 'This record no longer matches the revision of the frame document it was approved with.',
+              })}
+            </p>
+          )}
+
+          {blocked && (
+            <p className="rounded-md border border-semantic-warning/40 bg-semantic-warning-bg px-3 py-2 text-sm text-content-primary" role="alert" data-testid="approval-blocked" data-reason={blocked}>
+              {vocab(labels.t, APPROVAL_BLOCKED, blocked)}
+            </p>
+          )}
+
+          {current.status === 'proposed' && !carrierMissing && (
             <div className="rounded-lg bg-oe-purple-subtle p-3 text-sm" data-testid="approve-at-gate">
               <p className="text-content-primary">
                 {t('delivery_model.ui.decision.gate_body', {
-                  defaultValue:
-                    'This proposal is approved at the governance gate of the contracts area, not here. Once the gate approves it, the form becomes binding.',
+                  defaultValue: 'This proposal is approved in governance, not here. When the frame document that carries the delivery decision becomes binding, this form becomes binding too.',
                 })}
               </p>
               <Link to={`/projects/${projectId}/governance`} className="mt-1 inline-block font-medium text-oe-blue-text underline">
@@ -185,7 +216,7 @@ export function DecisionRecordPanel({
             {current.status === 'proposed' && (
               <ReasonedButton
                 variant="secondary"
-                verdict={canWithdraw(viewer, model)}
+                verdict={canWithdraw(model)}
                 loading={withdraw.isPending}
                 onClick={() => withdraw.mutate()}
                 data-testid="withdraw-button"
@@ -196,12 +227,12 @@ export function DecisionRecordPanel({
             {model.status === 'binding' && (
               <ReasonedButton
                 variant="secondary"
-                verdict={canReopen(viewer, model)}
+                verdict={canReopen(model)}
                 loading={reopen.isPending}
                 onClick={() => reopen.mutate()}
                 data-testid="reopen-button"
                 title={t('delivery_model.ui.decision.reopen_hint', {
-                  defaultValue: 'Needs an open change request on the frame document of the contracts area.',
+                  defaultValue: 'Needs an open change request on the governance frame document that carries the delivery decision.',
                 })}
               >
                 {t('delivery_model.ui.decision.reopen', { defaultValue: 'Reopen the decision' })}
@@ -210,6 +241,31 @@ export function DecisionRecordPanel({
           </div>
         </section>
       )}
+
+      {(model.status === 'reopened' || !closeV) && (
+        <section className="space-y-2 rounded-xl border border-border-light p-4" data-testid="reopening">
+          <p className="text-sm text-content-secondary">
+            {t('delivery_model.ui.decision.reopened_body', {
+              defaultValue: 'The approved decision is reopened. Propose a form again, or give the reopening up to return to the approved decision.',
+            })}
+          </p>
+          <ReasonedButton variant="secondary" verdict={closeV} onClick={() => setClosing(true)} data-testid="close-reopening-button">
+            {t('delivery_model.ui.decision.close_reopening', { defaultValue: 'Give up the reopening' })}
+          </ReasonedButton>
+        </section>
+      )}
+      <ConfirmDialog
+        open={closing}
+        loading={close.isPending}
+        title={t('delivery_model.ui.decision.close_title', { defaultValue: 'Give up the reopening?' })}
+        message={t('delivery_model.ui.decision.close_body', {
+          defaultValue: 'The delivery model returns to the approved decision. Risk allocations go back to the approved record and a pending proposal is rejected.',
+        })}
+        confirmLabel={t('delivery_model.ui.decision.close_reopening', { defaultValue: 'Give up the reopening' })}
+        cancelLabel={t('delivery_model.ui.cancel', { defaultValue: 'Cancel' })}
+        onCancel={() => setClosing(false)}
+        onConfirm={() => close.mutate()}
+      />
 
       {readinessRows.length > 0 && (
         <section className="space-y-2" data-testid="gate-readiness">

@@ -43,14 +43,16 @@ export function ReasonedButton({
 }: ButtonProps & { verdict: Verdict; children: ReactNode }) {
   const { t } = useTranslation();
   const reasonId = useId();
-  const reason = verdict ? DISABLED_REASON[verdict] : null;
+  // A reason this screen words itself, else the server's own refusal code.
+  const own = verdict ? DISABLED_REASON[verdict] : undefined;
+  const reason = !verdict ? null : own ? t(own[0], { defaultValue: own[1] }) : errorText(t as TFn, verdict);
   return (
     <span className="inline-flex flex-col items-start gap-1">
       <Button
         {...rest}
         disabled={disabled || !!verdict}
         aria-describedby={reason ? reasonId : undefined}
-        title={reason ? t(reason[0], { defaultValue: reason[1] }) : rest.title}
+        title={reason ?? rest.title}
       >
         {children}
       </Button>
@@ -62,7 +64,7 @@ export function ReasonedButton({
           className="inline-flex max-w-xs items-start gap-1 text-2xs text-content-tertiary"
         >
           <Info size={11} className="mt-px shrink-0" aria-hidden />
-          {t(reason[0], { defaultValue: reason[1] })}
+          {reason}
         </span>
       )}
     </span>
@@ -83,6 +85,7 @@ export const DECISION_TONE: Record<DecisionStatus, BadgeVariant> = {
   approved: 'success',
   superseded: 'neutral',
   withdrawn: 'neutral',
+  rejected: 'error',
 };
 
 export const ALLOCATION_TONE: Record<AllocationStatus, BadgeVariant> = {

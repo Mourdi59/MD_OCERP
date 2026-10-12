@@ -17,7 +17,7 @@ import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { fmtNumber } from '@/shared/lib/formatters';
 
-import { canEditComparison, canPropose, type Viewer } from './access';
+import { canEditComparison, canPropose } from './access';
 import {
   deleteOption,
   patchWeights,
@@ -43,20 +43,19 @@ export interface ComparisonPanelProps {
   comparison: Comparison;
   catalogue: DeliveryCatalogue | null;
   packages: ReadonlyArray<DeliveryPackage>;
-  viewer: Viewer;
   labels: LabelContext;
   onChanged: () => void;
 }
 
 type Dialog = 'add' | 'owner' | 'propose' | null;
 
-export function ComparisonPanel({ projectId, model, comparison, catalogue, packages, viewer, labels, onChanged }: ComparisonPanelProps) {
+export function ComparisonPanel({ projectId, model, comparison, catalogue, packages, labels, onChanged }: ComparisonPanelProps) {
   const { t } = useTranslation();
   const onError = useRefusalToast();
   const [dialog, setDialog] = useState<Dialog>(null);
   const [removing, setRemoving] = useState<DeliveryOption | null>(null);
-  const editV = canEditComparison(viewer, model);
-  const proposeV = canPropose(viewer, model);
+  const editV = canEditComparison(model);
+  const proposeV = canPropose(model);
   const readOnly = !!editV;
 
   const serverWeights = useMemo(
@@ -203,6 +202,11 @@ export function ComparisonPanel({ projectId, model, comparison, catalogue, packa
                   <span className="flex items-start justify-between gap-2">
                     <span>
                       <span className="block text-sm text-content-primary">{formName(labels, o.form, o.form_code)}</span>
+                      {(o.customised ?? []).length > 0 && (
+                        <span className="mr-2 text-content-tertiary" data-testid="customised-option">
+                          {t('delivery_model.ui.comparison.customised', { defaultValue: 'Adjusted for this project' })}
+                        </span>
+                      )}
                       {o.id === leading && (
                         <span className="text-semantic-success" data-testid="leading-option">
                           {t('delivery_model.ui.comparison.leading', { defaultValue: 'Highest score' })}

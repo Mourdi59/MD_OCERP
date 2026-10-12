@@ -15,6 +15,8 @@ import type {
   DeliveryModel,
   DeliveryOption,
   DeliveryPackage,
+  ModelAction,
+  ModelStatus,
   OwnerFurnishedItem,
 } from '../api';
 
@@ -37,7 +39,32 @@ export function form(code = 'design_build', over: Partial<DeliveryForm> = {}): D
   };
 }
 
-export function model(over: Partial<DeliveryModel> = {}): DeliveryModel {
+export type Role = 'manager' | 'editor' | 'viewer';
+
+/** `can` the way the server answers it for a role in a status, so a fixture reads like a response. */
+export function capabilities(status: ModelStatus, role: Role = 'manager'): DeliveryModel['can'] {
+  const editable = status === 'draft' || status === 'under_evaluation' || status === 'reopened';
+  const blocks: Record<ModelAction, string | null> = {
+    edit: editable ? null : 'model_not_editable',
+    propose: status === 'proposed' ? 'decision_pending' : status === 'under_evaluation' || status === 'reopened' ? null : 'model_not_editable',
+    withdraw: status === 'proposed' ? null : 'decision_not_pending',
+    reopen: status === 'binding' ? null : 'model_not_binding',
+    close_reopening: status === 'reopened' ? null : 'reopening_not_open',
+  };
+  const flag = (action: ModelAction, permitted: boolean) => {
+    const reason = permitted ? blocks[action] : 'permission_missing';
+    return { allowed: reason === null, reason };
+  };
+  return {
+    edit: flag('edit', role !== 'viewer'),
+    propose: flag('propose', role === 'manager'),
+    withdraw: flag('withdraw', role === 'manager'),
+    reopen: flag('reopen', role === 'manager'),
+    close_reopening: flag('close_reopening', role === 'manager'),
+  };
+}
+
+export function model(over: Partial<DeliveryModel> = {}, role: Role = 'manager'): DeliveryModel {
   return {
     id: 'm1',
     project_id: 'p1',
@@ -49,8 +76,11 @@ export function model(over: Partial<DeliveryModel> = {}): DeliveryModel {
     status: 'under_evaluation',
     underground_risk_sharing: false,
     owner_capability: {},
-    governance_document_id: null,
+    carrier: { document_id: 'doc1', document_type: 'procurement_strategy', document_status: 'draft', missing_reason: null },
+    change_request_id: null,
     current_decision_id: null,
+    approval_blocked_reason: null,
+    can: capabilities(over.status ?? 'under_evaluation', role),
     version: 1,
     ...over,
   };
@@ -100,7 +130,6 @@ export function catalogue(over: Partial<DeliveryCatalogue> = {}): DeliveryCatalo
     parties: parties(),
     risk_categories: [],
     criteria: [],
-    governance_areas: [],
     ...over,
   };
 }
