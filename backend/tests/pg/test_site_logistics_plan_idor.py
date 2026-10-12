@@ -275,3 +275,54 @@ async def test_links_to_rows_of_another_project_and_wrong_values_are_refused(wor
     async with client_as(world, world.editor, "editor") as c:
         # Reading the rule results is a read; it needs no more than the plan does.
         assert (await c.post(f"{base}/validate")).status_code == 200
+
+
+async def test_a_catalogue_of_another_tenant_is_not_pinned_and_a_stored_pin_keeps_resolving(world: World) -> None:
+    from app.modules.project_governance.catalogue_store import CatalogueStore
+    from app.modules.site_logistics.catalogue import SITE_LOGISTICS_KIND
+    from app.modules.site_logistics.errors import LogisticsError
+
+    owner, stranger = str(world.manager), str(world.outsider)
+    pid = world.project_id
+    async with world.factory() as s:
+        store = CatalogueStore(s)
+        row = await store.create(
+            owner,
+            code="house",
+            name="House rules",
+            based_on_source="shipped",
+            based_on_id="neutral",
+            based_on_version=None,
+            actor_id=world.manager,
+            kind=SITE_LOGISTICS_KIND,
+        )
+        await store.publish(owner, row.id, actor_id=world.manager)
+        await s.commit()
+        cid = str(row.id)
+
+    # An id from a request resolves only for the tenant that owns it, and for nobody without a tenant.
+    for tenant in (stranger, None):
+        async with world.factory() as s:
+            with pytest.raises(LogisticsError) as exc:
+                await LogisticsPlanService(s).pin_catalogue(
+                    pid, tenant_id=tenant, source="tenant", catalogue_id=cid, version=1, actor_id=world.outsider
+                )
+            assert (exc.value.code, exc.value.status_code) == ("unknown_catalogue", 404), tenant
+            await s.rollback()
+    async with world.factory() as s:
+        before = await LogisticsPlanService(s).concept_view(pid)
+        assert (before["catalogue_source"], before["catalogue_id"]) != ("tenant", cid)
+        await LogisticsPlanService(s).pin_catalogue(
+            pid, tenant_id=owner, source="tenant", catalogue_id=cid, version=1, actor_id=world.manager
+        )
+        await s.commit()
+
+    # The stored pin was checked when it was written: every member of the project reads the plan
+    # through it, and no tenant is asked again.
+    async with world.factory() as s:
+        svc = LogisticsPlanService(s)
+        pinned = await svc.concept_view(pid)
+        assert (pinned["catalogue_source"], pinned["catalogue_id"], pinned["catalogue_version"]) == ("tenant", cid, 1)
+        assert "power" in (await svc.catalogue(pid)).codes("media_kinds")
+    async with client_as(world, world.editor, "editor") as c:
+        assert (await c.get(f"{BASE}/projects/{pid}/catalogue")).status_code == 200
