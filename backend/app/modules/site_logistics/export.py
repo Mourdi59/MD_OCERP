@@ -3,8 +3,8 @@
 """The logistics plan as printable registers (PDF and XLSX), rule 21.
 
 Built on :mod:`app.core.register_export`; every label comes from this module's
-message bundle. The ``frame`` register is what governance frame document
-``m06_logistics_frame`` stores as a CDE revision at gate ``development_to_execution``.
+message bundle. The ``frame`` register is what the governance frame document
+for logistics stores as a CDE revision at the gate into construction.
 """
 
 from __future__ import annotations

@@ -3,8 +3,8 @@
 """Where logistics sits in a project's governance model, read from catalogue tags.
 
 Governance models name their areas, documents and gates differently
-(``m06_logistics`` in the module framework, ``schedule_logistics`` in the
-neutral model, ``d`` in the steering model). This module never matches a code:
+(a numbered module in one framework, a schedule topic in another, a single
+letter in a steering model). This module never matches a code:
 
 * the hosting AREA is the one tagged ``hosts: ["logistics"]``;
 * the frame DOCUMENT is the document type tagged ``hosts: ["logistics"]``;

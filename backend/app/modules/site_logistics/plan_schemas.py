@@ -53,7 +53,7 @@ class AreaIn(_In):
     area_kind: str | None = Field(default=None, pattern=_CODE, max_length=40)
     geometry: dict[str, Any] | None = None
     frame: Literal["local", "wgs84"] | None = None
-    area_m2_declared: Decimal | None = Field(default=None, ge=0)
+    area_m2_declared: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
     geo_overlay_id: uuid.UUID | None = None
     takt_location_id: uuid.UUID | None = None
     owner_party: str | None = Field(default=None, max_length=255)
@@ -62,7 +62,7 @@ class AreaIn(_In):
 class AllocationItem(_In):
     stage_id: uuid.UUID
     area_kind: str | None = Field(default=None, pattern=_CODE, max_length=40)
-    allocated_m2: Decimal | None = Field(default=None, ge=0)
+    allocated_m2: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
     use_note: str | None = Field(default=None, max_length=2000)
 
 
@@ -78,8 +78,8 @@ class MediaIn(_In):
     connection_point: str | None = Field(default=None, max_length=2000)
     connection_point_geometry: dict[str, Any] | None = None
     capacity_unit: str | None = Field(default=None, max_length=20)
-    available_capacity: Decimal | None = Field(default=None, ge=0)
-    contracted_capacity: Decimal | None = Field(default=None, ge=0)
+    available_capacity: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=3)
+    contracted_capacity: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=3)
     application_ref: str | None = Field(default=None, max_length=120)
     applied_on: date | None = None
     promised_on: date | None = None
@@ -92,15 +92,15 @@ class DemandIn(_In):
     stage_id: uuid.UUID | None = None
     consumer: str | None = Field(default=None, max_length=255)
     plant_item_id: uuid.UUID | None = None
-    peak_demand: Decimal | None = Field(default=None, ge=0)
-    simultaneity_factor: Decimal | None = Field(default=None, ge=0, le=1)
+    peak_demand: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=3)
+    simultaneity_factor: Decimal | None = Field(default=None, ge=0, le=1, max_digits=4, decimal_places=3)
 
 
 class PlantDemandIn(_In):
     """Rule 9 hook: the plant position save path sends its power demand here."""
 
     site_plant_position_id: uuid.UUID
-    power_demand_kva: Decimal | None = Field(default=None, ge=0)
+    power_demand_kva: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=3)
     stage_id: uuid.UUID | None = None
     consumer: str = Field(default="", max_length=255)
 
@@ -121,6 +121,8 @@ class ConceptIn(_In):
     max_deliveries_per_hour: int | None = Field(default=None, ge=1, le=500)
     rules_text: str | None = Field(default=None, max_length=20000)
     document_ref: str | None = Field(default=None, max_length=120)
+    # IANA name such as "Europe/Berlin": the clock every time-of-day rule of the plan reads.
+    site_timezone: str | None = Field(default=None, max_length=64)
 
 
 class TransportIn(_In):
@@ -137,15 +139,17 @@ class TransportIn(_In):
     plant_item_id: uuid.UUID | None = None
     waste_record_ref: str | None = Field(default=None, max_length=120)
     customs_case_id: uuid.UUID | None = None
-    axle_load_t: Decimal | None = Field(default=None, ge=0)
-    gross_weight_t: Decimal | None = Field(default=None, ge=0)
-    height_m: Decimal | None = Field(default=None, ge=0)
-    width_m: Decimal | None = Field(default=None, ge=0)
-    length_m: Decimal | None = Field(default=None, ge=0)
-    turning_radius_m: Decimal | None = Field(default=None, ge=0)
+    axle_load_t: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=2)
+    gross_weight_t: Decimal | None = Field(default=None, ge=0, max_digits=10, decimal_places=2)
+    height_m: Decimal | None = Field(default=None, ge=0, max_digits=8, decimal_places=2)
+    width_m: Decimal | None = Field(default=None, ge=0, max_digits=8, decimal_places=2)
+    length_m: Decimal | None = Field(default=None, ge=0, max_digits=8, decimal_places=2)
+    turning_radius_m: Decimal | None = Field(default=None, ge=0, max_digits=8, decimal_places=2)
     route_geojson: dict[str, Any] | None = None
     route_notes: str | None = Field(default=None, max_length=5000)
     escort_required: bool | None = None
+    # The load class "heavy" is measured against; unset means the most permissive class of the catalogue.
+    load_class: str | None = Field(default=None, pattern=_CODE, max_length=40)
 
 
 class WindowIn(_In):
@@ -188,7 +192,7 @@ class CustomsIn(_In):
     country_of_destination: str | None = Field(default=None, min_length=2, max_length=2)
     declarant_party: Literal["buyer", "seller"] | None = None
     broker_name: str | None = Field(default=None, max_length=255)
-    customs_value: Decimal | None = Field(default=None, ge=0)
+    customs_value: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=2)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     declaration_ref: str | None = Field(default=None, max_length=120)
     cleared_on: date | None = None
@@ -199,10 +203,11 @@ class LineIn(_In):
     description: str | None = Field(default=None, max_length=2000)
     hs_code: str | None = Field(default=None, min_length=2, max_length=14)
     commodity_code_id: uuid.UUID | None = None
-    quantity: Decimal | None = Field(default=None, ge=0)
+    quantity: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=4)
     unit: str | None = Field(default=None, max_length=20)
-    net_mass_kg: Decimal | None = Field(default=None, ge=0)
-    value: Decimal | None = Field(default=None, ge=0)
+    net_mass_kg: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=3)
+    value: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=2)
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
     origin_country: str | None = Field(default=None, min_length=2, max_length=2)
     preferential_origin: bool | None = None
     sort_order: int | None = Field(default=None, ge=0)
@@ -220,8 +225,8 @@ class DocumentAddIn(_In):
 class NeighbourhoodIn(_In):
     zone_type: Literal["residential", "mixed", "industrial"] | None = None
     noise_limit_source: str | None = Field(default=None, max_length=64)
-    day_dba: Decimal | None = Field(default=None, ge=0, le=200)
-    night_dba: Decimal | None = Field(default=None, ge=0, le=200)
+    day_dba: Decimal | None = Field(default=None, ge=0, le=200, max_digits=5, decimal_places=1)
+    night_dba: Decimal | None = Field(default=None, ge=0, le=200, max_digits=5, decimal_places=1)
     quiet_hours: list[str] | None = Field(default=None, min_length=2, max_length=2)
     site_traffic_routes: dict[str, Any] | None = None
     parking_note: str | None = Field(default=None, max_length=5000)

@@ -171,3 +171,107 @@ async def test_list_envelope_and_coded_errors(world: World) -> None:
     assert detail["code"] == "unknown_area_kind"
     assert detail["message_key"] == "site_logistics.errors.unknown_area_kind"
     assert detail["message"] and "site_logistics." not in detail["message"]
+
+
+async def test_links_to_rows_of_another_project_and_wrong_values_are_refused(world: World) -> None:
+    """Soft links are checked like ids in the path; wrong values answer with a code, never a 500."""
+    import uuid
+
+    from app.modules.site_logistics.models import Gate
+
+    other = await build_world(world.factory)
+    foreign = await _seed_rows(other)
+    own = await _seed_rows(world)
+    async with other.factory() as s:
+        foreign_gate = Gate(project_id=other.project_id, name="Theirs")
+        s.add(foreign_gate)
+        await s.commit()
+    async with world.factory() as s:
+        own_gate = Gate(project_id=world.project_id, name="Ours")
+        s.add(own_gate)
+        await s.commit()
+    pid = world.project_id
+    base = f"{BASE}/projects/{pid}"
+    start, end = window(6, 9, 1)
+    booking = {
+        "project_id": str(pid),
+        "gate_id": str(own_gate.id),
+        "supplier_name": "Supplier",
+        "window_start": start.isoformat(),
+        "window_end": end.isoformat(),
+    }
+    async with client_as(world, world.manager, "manager") as c:
+        not_found = {
+            "transport gate": await c.post(
+                f"{base}/transports", json={"transport_kind": "inbound_delivery", "gate_id": str(foreign_gate.id)}
+            ),
+            "transport customs case": await c.patch(
+                f"{base}/transports/{own['transport']}", json={"customs_case_id": str(foreign["case"])}
+            ),
+            "permit covers": await c.post(
+                f"{base}/permits",
+                json={"permit_kind": "oversize_permit", "covers_transport_ids": [str(foreign["transport"])]},
+            ),
+            "permit covers an unknown transport": await c.post(
+                f"{base}/permits",
+                json={"permit_kind": "oversize_permit", "covers_transport_ids": [str(uuid.uuid4())]},
+            ),
+            "complaint transport": await c.post(
+                f"{base}/neighbour-issues", json={"kind": "noise", "transport_id": str(foreign["transport"])}
+            ),
+            "delivery transport": await c.post(
+                f"{BASE}/deliveries/", json={**booking, "transport_id": str(foreign["transport"])}
+            ),
+            "delivery takt area": await c.post(
+                f"{BASE}/deliveries/", json={**booking, "takt_location_id": str(uuid.uuid4())}
+            ),
+        }
+        assert {k: r.status_code for k, r in not_found.items()} == dict.fromkeys(not_found, 404), {
+            k: r.text for k, r in not_found.items()
+        }
+
+        # A link into a module that is not installed cannot be checked, so it is not stored.
+        unchecked = await c.post(
+            f"{base}/transports", json={"transport_kind": "inbound_delivery", "plant_item_id": str(uuid.uuid4())}
+        )
+        assert unchecked.status_code == 422, unchecked.text
+        assert unchecked.json()["detail"]["code"] == "link_target_unavailable"
+        unchecked = await c.post(f"{BASE}/deliveries/", json={**booking, "plant_item_id": str(uuid.uuid4())})
+        assert unchecked.status_code == 400, unchecked.text
+        assert unchecked.json()["detail"].startswith("link_target_unavailable")
+        unknown_flow = await c.post(f"{BASE}/deliveries/", json={**booking, "flow_code": "no_such_flow"})
+        assert unknown_flow.status_code == 400 and unknown_flow.json()["detail"].startswith("flow_code_unknown")
+
+        # Null on a column that cannot be null, a value finer than the column, a same-state move.
+        null = await c.patch(f"{base}/transports/{own['transport']}", json={"title": None})
+        assert (null.status_code, null.json()["detail"]["code"]) == (422, "field_required")
+        too_fine = await c.patch(f"{base}/transports/{own['transport']}", json={"gross_weight_t": "24.123"})
+        assert too_fine.status_code == 422, too_fine.text
+        too_large = await c.patch(f"{base}/transports/{own['transport']}", json={"gross_weight_t": "123456789.00"})
+        assert too_large.status_code == 422, too_large.text
+        moved = await c.post(f"{base}/transports/{own['transport']}/transition", json={"target": "scheduled"})
+        assert moved.status_code == 200, moved.text
+        again = await c.post(f"{base}/transports/{own['transport']}/transition", json={"target": "scheduled"})
+        assert (again.status_code, again.json()["detail"]["code"]) == (409, "invalid_transition")
+
+        # The sweep runs on the server's date: a date in the body is not accepted.
+        assert (await c.post(f"{base}/sweep", json={"today": "2020-01-01"})).status_code == 422
+        swept = await c.post(f"{base}/sweep", json={})
+        assert swept.status_code == 200, swept.text
+        assert set(swept.json()) == {"permits", "complaints_overdue", "transports_arrived"}
+
+        # The site clock is part of the concept and comes back on a read.
+        bad_zone = await c.put(f"{base}/concept", json={"site_timezone": "Mars/Olympus"})
+        assert (bad_zone.status_code, bad_zone.json()["detail"]["code"]) == (422, "timezone_invalid")
+        zone = await c.put(f"{base}/concept", json={"site_timezone": "Europe/Berlin"})
+        assert zone.status_code == 200, zone.text
+        assert (await c.get(f"{base}/concept")).json()["site_timezone"] == "Europe/Berlin"
+
+        # An amount needs its currency, on the case and on a line.
+        no_currency = await c.post(
+            f"{base}/customs", json={"direction": "import", "title": "X", "incoterm": "FCA", "customs_value": "10.00"}
+        )
+        assert (no_currency.status_code, no_currency.json()["detail"]["code"]) == (422, "currency_required")
+    async with client_as(world, world.editor, "editor") as c:
+        # Reading the rule results is a read; it needs no more than the plan does.
+        assert (await c.post(f"{base}/validate")).status_code == 200

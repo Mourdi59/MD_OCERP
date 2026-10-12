@@ -4,7 +4,10 @@
 
 A world is a throwaway database with real users and a project whose team holds
 a manager and an editor; an outsider is a manager of nothing here. The plan is
-started on the shipped ``neutral`` catalogue. Everything commits for real.
+started on the shipped ``neutral`` catalogue by its first write, which sets the
+site time zone. That zone is not UTC on purpose: every window a test builds is
+a site clock time, PostgreSQL hands it back as an instant, and a rule that read
+the UTC clock would be five and a half hours off. Everything commits for real.
 """
 
 from __future__ import annotations
@@ -12,7 +15,8 @@ from __future__ import annotations
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -21,6 +25,8 @@ from tests.pg.governance_fixtures import add_project, add_user
 
 BASE = "/api/v1/site-logistics"
 SQUARE_M2 = "10000"
+SITE_ZONE = "Asia/Kolkata"
+SITE = ZoneInfo(SITE_ZONE)
 
 
 @dataclass
@@ -32,14 +38,17 @@ class World:
     outsider: uuid.UUID
 
 
-async def build_world(factory: async_sessionmaker[AsyncSession], *, start_plan: bool = True) -> World:
+async def build_world(
+    factory: async_sessionmaker[AsyncSession], *, start_plan: bool = True, site_zone: str | None = SITE_ZONE
+) -> World:
     async with factory() as s:
         manager = await add_user(s, "manager")
         editor = await add_user(s, "editor")
         outsider = await add_user(s, "manager")
         pid = await add_project(s, manager, [editor])
         if start_plan:
-            await LogisticsPlanService(s).stages(pid)
+            # The first write starts the plan (concept and initial stage); a read never does.
+            await LogisticsPlanService(s).put_concept(pid, {"site_timezone": site_zone}, manager)
         await s.commit()
     return World(factory, pid, manager, editor, outsider)
 
@@ -52,8 +61,8 @@ def square(side: float, x: float = 0, y: float = 0) -> dict:
 
 
 def window(days: int, hour: int, hours: int) -> tuple[datetime, datetime]:
-    """A window ``days`` from now at ``hour`` UTC, ``hours`` long."""
-    base = (datetime.now(UTC) + timedelta(days=days)).replace(hour=hour, minute=0, second=0, microsecond=0)
+    """A window ``days`` from now at ``hour`` on the site clock, ``hours`` long."""
+    base = (datetime.now(SITE) + timedelta(days=days)).replace(hour=hour, minute=0, second=0, microsecond=0)
     return base, base + timedelta(hours=hours)
 
 

@@ -68,7 +68,7 @@ def test_permissions_registered() -> None:
 
 def test_plan_rules_cover_every_emitted_rule() -> None:
     keys = {r.key for r in validators.PLAN_RULES}
-    assert len(keys) == len(validators.PLAN_RULES) == 20
+    assert len(keys) == len(validators.PLAN_RULES) == 22
     source = inspect.getsource(plan_service)
     emitted = set(re.findall(r'_finding\(\s*"([a-z_]+)"', source))
     emitted |= {"stage_has_storage", "stage_has_site_setup", "jit_aligned_to_takt"}

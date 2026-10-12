@@ -434,7 +434,7 @@ class MediaDemand(Base):
 class LogisticsConcept(Base):
     """The logistics concept of a project (one row): material flows and delivery rules.
 
-    Its approved state is governance frame document ``m06_logistics_frame``; this
+    Its approved state is the governance frame document tagged for logistics; this
     row is the working content, versioned through that document's CDE revisions.
     It also pins the ``site_logistics`` catalogue the project plans with.
     """

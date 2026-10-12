@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.site_logistics.errors import LogisticsError
 from app.modules.site_logistics.plan_service import LogisticsPlanService
 from tests._pg import isolated_engine
-from tests.pg.site_logistics_fixtures import World, build_world, square, window
+from tests.pg.site_logistics_fixtures import SITE, World, build_world, square, window
 
 pytestmark = pytest.mark.asyncio
 
@@ -121,7 +121,7 @@ async def test_heavy_transport_needs_a_granted_permit_covering_its_window(world:
             },
             world.manager,
         )
-        view = await svc.transport_view(t, await svc.catalogue(world.project_id))
+        view = await svc.transport_view(t, await svc.catalogue(world.project_id), SITE)
         assert view["is_heavy"] is True
         assert "is_heavy" not in {c.name for c in t.__table__.columns}
         with pytest.raises(LogisticsError) as exc:
@@ -146,12 +146,45 @@ async def test_heavy_transport_needs_a_granted_permit_covering_its_window(world:
             await svc.transition_transport(world.project_id, t.id, "scheduled", world.manager)
         assert exc.value.code == "window_outside_permit"
 
+        # What the authority granted is frozen: nobody widens the windows afterwards.
+        with pytest.raises(LogisticsError) as exc:
+            await svc.update_permit(
+                world.project_id,
+                permit.id,
+                {"allowed_windows": [{"weekdays": list(range(7)), "from": "21:00", "to": "05:00"}]},
+                world.manager,
+            )
+        assert (exc.value.code, exc.value.status_code) == ("permit_frozen", 409)
+        for frozen in (
+            {"valid_to": end.date() + timedelta(days=400)},
+            {"valid_from": start.date() - timedelta(days=400)},
+            {"permit_kind": "night_work"},
+            {"covers_transport_ids": []},
+        ):
+            with pytest.raises(LogisticsError) as exc:
+                await svc.update_permit(world.project_id, permit.id, frozen, world.manager)
+            assert exc.value.code == "permit_frozen", frozen
+        # Sending what is stored is not a change, and the free fields stay editable.
         await svc.update_permit(
             world.project_id,
             permit.id,
-            {"allowed_windows": [{"weekdays": list(range(7)), "from": "21:00", "to": "05:00"}]},
+            {"valid_to": end.date() + timedelta(days=1), "covers_transport_ids": [str(t.id)], "authority": "Roads"},
             world.manager,
         )
+        permit = await svc.create_permit(
+            world.project_id,
+            {
+                "permit_kind": "oversize_permit",
+                "reference": "OS-1b",
+                "covers_transport_ids": [t.id],
+                "valid_from": start.date() - timedelta(days=1),
+                "valid_to": end.date() + timedelta(days=1),
+                "allowed_windows": [{"weekdays": list(range(7)), "from": "21:00", "to": "05:00"}],
+            },
+            world.manager,
+        )
+        for target in ("applied", "granted"):
+            await svc.transition_permit(world.project_id, permit.id, target, world.manager)
         moved = await svc.transition_transport(world.project_id, t.id, "scheduled", world.manager)
         assert moved.state == "scheduled"
         await s.commit()
@@ -194,9 +227,11 @@ async def test_sweep_expires_a_past_permit_that_still_has_transports(world: Worl
         )
         for target in ("applied", "granted"):
             await svc.transition_permit(world.project_id, p.id, target, world.manager)
-        counts = await svc.sweep_permits(world.project_id, today=date(2026, 2, 1))
+        # The sweep reads the server's date; it takes none from a caller.
+        counts = await svc.sweep_permits(world.project_id)
         assert counts["expired"] == 1
         assert p.state == "expired"
+        assert await svc.sweep_permits(world.project_id) == {"expired": 0, "expiring": 0}
         await s.commit()
 
 
@@ -230,9 +265,33 @@ async def test_customs_case_builds_its_document_checklist_from_the_incoterm(worl
             world.manager,
             can_see_values=False,
         )
+        exw = await svc.create_customs(
+            world.project_id,
+            {"direction": "import", "title": "Valves", "incoterm": "EXW", "transport_mode": "road"},
+            world.manager,
+            can_see_values=True,
+        )
+        ddp_out = await svc.create_customs(
+            world.project_id,
+            {"direction": "export", "title": "Returned formwork", "incoterm": "DDP", "transport_mode": "road"},
+            world.manager,
+            can_see_values=True,
+        )
         await s.flush()
         assert {"commercial_invoice", "import_declaration", "cmr"} <= await _doc_kinds(s, fca.id)
-        assert "import_declaration" not in await _doc_kinds(s, ddp.id)
+        assert "export_declaration" not in await _doc_kinds(s, fca.id)
+        assert not {"import_declaration", "export_declaration"} & await _doc_kinds(s, ddp.id)
+        # EXW: the buyer clears export as well. DDP: the seller clears import as well.
+        assert {"import_declaration", "export_declaration"} <= await _doc_kinds(s, exw.id)
+        assert {"import_declaration", "export_declaration"} <= await _doc_kinds(s, ddp_out.id)
+        with pytest.raises(LogisticsError) as exc:
+            await svc.create_customs(
+                world.project_id,
+                {"direction": "import", "title": "No currency", "incoterm": "FCA", "customs_value": Decimal("5.00")},
+                world.manager,
+                can_see_values=True,
+            )
+        assert exc.value.code == "currency_required"
         assert ddp.customs_value is None  # stripped for a user without the customs permission
         assert fca.customs_value == Decimal("184250.40")
         codes = {f["code"] for f in await svc.findings(world.project_id)}
@@ -260,6 +319,11 @@ async def test_plant_position_power_demand_hook_upserts_and_removes(world: World
             "consumer": "Tower crane TC1",
             "actor_id": world.manager,
         }
+        # Over the API nobody can say whose position this is until the plant module plugs in.
+        with pytest.raises(LogisticsError) as exc:
+            await svc.sync_plant_power_demand(world.project_id, power_demand_kva=Decimal("120"), **kwargs)
+        assert exc.value.code == "link_target_unavailable"
+        kwargs["trusted"] = True  # the plant module's own call
         await svc.sync_plant_power_demand(world.project_id, power_demand_kva=Decimal("120"), **kwargs)
         await svc.sync_plant_power_demand(world.project_id, power_demand_kva=Decimal("140"), **kwargs)
         from app.modules.site_logistics.models import MediaDemand
@@ -292,10 +356,56 @@ async def test_demo_seed_runs_closes_its_balances_and_is_idempotent(bare: World)
         codes = {f["code"] for f in await svc.findings(world.project_id)}
     assert again["projects"] == 0
     assert [i["area"]["closed"] for i in bal["items"]] == [True, True]
+    # No governance model in this world, so the export cannot be proven and the plan is not ready.
     assert readiness["ready"] is False
-    assert {"media_capacity_short", "heavy_without_permit"} & codes
+    assert readiness["governance"] == "no_governance_model"
+    # The demo is a valid plan on its own clock: nothing was skipped for a missing zone,
+    # and the flagship heavy transport is scheduled on its granted permits.
+    assert (
+        not {
+            "site_timezone_missing",
+            "gate_load_exceeded",
+            "heavy_without_permit",
+            "window_outside_permit",
+            "quiet_hours_conflict",
+        }
+        & codes
+    )
     json.dumps(bal)
     json.dumps(readiness)
+    async with world.factory() as s:
+        svc = LogisticsPlanService(s)
+        summary = await svc.frame_summary(world.project_id, can_see_values=True)
+        heavy = [t for t in summary["transports"] if t["is_heavy"]]
+        assert [t["state"] for t in heavy] == ["scheduled"]
+        assert {p["permit_kind"]: p["state"] for p in heavy[0]["permits"]} == {
+            "oversize_permit": "granted",
+            "night_work": "granted",
+        }
+        from app.modules.site_logistics import models as m
+
+        for model in (
+            m.ExpansionStage,
+            m.SiteArea,
+            m.AreaAllocation,
+            m.MediaConnection,
+            m.MediaDemand,
+            m.Transport,
+            m.TransportPermit,
+            m.CustomsCase,
+            m.CustomsLine,
+            m.CustomsDocument,
+            m.NeighbourIssue,
+            m.CoordinationEntry,
+        ):
+            assert await svc._list(model, world.project_id), model.__name__
+        assert summary["concept"]["site_timezone"] == "UTC"
+        assert summary["concept"]["strategy"]
+        # Chronology: no permit ends before it starts, no window ends before it opens.
+        for p in summary["permits"]:
+            assert p["valid_from"] <= p["valid_to"]
+        for t in summary["transports"]:
+            assert t["planned_window_start"] < t["planned_window_end"]
 
 
 async def test_json_columns_hold_json_native_values(bare: World) -> None:
