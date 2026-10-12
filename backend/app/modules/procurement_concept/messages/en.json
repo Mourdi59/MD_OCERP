@@ -100,7 +100,12 @@
       "vehicle_not_allowed_for_kind": "A request for quotation is only for supply packages."
     },
     "evidence": {
-      "concept_ready": "Procurement concept submitted without blocking findings"
+      "concept_ready": "Procurement concept submitted without blocking findings",
+      "unknown": {
+        "frame_document_unresolved": "Procurement concept: no frame document carries the concept, so nothing can approve it. Add the procurement frame document to the project, or name a document on the concept.",
+        "procurement_area_unresolved": "Procurement concept: the project has no applicable management area to report on. Pin a phase model for the project, or switch the procurement area back on.",
+        "release_gate_unresolved": "Procurement concept: the gate that releases procurement is not known. Name the release gate on the concept."
+      }
     },
     "export": {
       "catalogue": "Catalogue",

@@ -131,6 +131,9 @@ async def test_evidence_is_met_not_met_or_unknown_and_never_silently_empty(world
         await s.commit()
     (item,) = await _evidence(world, G1, AREA)
     assert (item.state, item.detail) == ("unknown", "frame_document_unresolved")
+    # A code of its own and a sentence of its own: the decider acknowledges the item by name.
+    assert item.code == "procurement_concept_ready:frame_document_unresolved"
+    assert item.label_key == "procurement_concept.evidence.unknown.frame_document_unresolved"
     # The named gate is not a gate of the project any more (the project moved to another model): unknown,
     # with the reason, at whichever gate asks.
     async with world.factory() as s:
@@ -140,6 +143,7 @@ async def test_evidence_is_met_not_met_or_unknown_and_never_silently_empty(world
     for code in (G1, RELEASE_GATE):
         (item,) = await _evidence(world, code, AREA)
         assert (item.state, item.detail) == ("unknown", "release_gate_unresolved")
+        assert item.label_key == "procurement_concept.evidence.unknown.release_gate_unresolved"
 
 
 async def _prepare_and_decide(w: World) -> None:

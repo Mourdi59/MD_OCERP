@@ -27,6 +27,9 @@ from app.modules.project_governance.public import project_areas
 
 PROVIDER_NAME = "procurement_concept.concept_ready"
 LABEL_KEY = "procurement_concept.evidence.concept_ready"
+# An ``unknown`` item has a code of its own and a sentence that says what to do: the decider of the gate has
+# to acknowledge it by name.
+UNKNOWN_KEY = "procurement_concept.evidence.unknown"
 
 
 async def _anchor_area_code(session: Any, project_id: uuid.UUID, tagged: str | None) -> str | None:
@@ -54,7 +57,7 @@ async def concept_ready(session: Any, project_id: uuid.UUID, attempt: GateAttemp
             EvidenceItem(
                 code="procurement_concept_ready:procurement_area_unresolved",
                 state="unknown",
-                label_key=LABEL_KEY,
+                label_key=f"{UNKNOWN_KEY}.procurement_area_unresolved",
                 link=link,
                 detail="procurement_area_unresolved",
             )
@@ -67,7 +70,7 @@ async def concept_ready(session: Any, project_id: uuid.UUID, attempt: GateAttemp
             EvidenceItem(
                 code="procurement_concept_ready:release_gate_unresolved",
                 state="unknown",
-                label_key=LABEL_KEY,
+                label_key=f"{UNKNOWN_KEY}.release_gate_unresolved",
                 link=link,
                 detail="release_gate_unresolved",
             )
@@ -80,9 +83,9 @@ async def concept_ready(session: Any, project_id: uuid.UUID, attempt: GateAttemp
         # the concept, so the answer is not "met".
         return [
             EvidenceItem(
-                code=f"procurement_concept_ready:{attempt.gate_code}",
+                code="procurement_concept_ready:frame_document_unresolved",
                 state="unknown",
-                label_key=LABEL_KEY,
+                label_key=f"{UNKNOWN_KEY}.frame_document_unresolved",
                 link=link,
                 detail="frame_document_unresolved",
             )
