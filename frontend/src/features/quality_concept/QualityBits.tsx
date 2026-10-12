@@ -220,7 +220,7 @@ export function FindingList({
               aria-hidden
               className={clsx('mt-0.5 shrink-0', blocking ? 'text-semantic-error' : 'text-semantic-warning')}
             />
-            <span>{findingText(t as TFn, f.code, refName ? refName(f) : f.ref)}</span>
+            <span>{findingText(t as TFn, f.code, f.label || (refName ? refName(f) : f.ref))}</span>
           </li>
         );
       })}

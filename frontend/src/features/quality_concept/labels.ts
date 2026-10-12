@@ -9,7 +9,8 @@
 
 import { ApiError, getErrorMessage } from '@/shared/lib/api';
 
-import { refusalDetail, type CatalogueItem } from './api';
+import { refusalDetail, type Capable, type CatalogueItem } from './api';
+import { canKey, may, whyNot } from './rules';
 
 /** A message key and the English it stands for, handed to `t` as `defaultValue`. */
 export type KeyText = readonly [key: string, english: string];
@@ -442,6 +443,29 @@ export const PACKAGE_PROBLEM: KeyMap = {
 };
 
 /** Every vocabulary map, for the test that proves each key resolves in en and de. */
+export const EXPERT_TRIGGER: KeyMap = {
+  before_start: ['quality_concept.vocab.expert_trigger.before_start', 'Before work starts'],
+  before_concreting: ['quality_concept.vocab.expert_trigger.before_concreting', 'Before concreting'],
+  before_concealment: ['quality_concept.vocab.expert_trigger.before_concealment', 'Before the work is covered up'],
+  after_installation: ['quality_concept.vocab.expert_trigger.after_installation', 'After installation'],
+  before_commissioning: ['quality_concept.vocab.expert_trigger.before_commissioning', 'Before commissioning'],
+  before_acceptance: ['quality_concept.vocab.expert_trigger.before_acceptance', 'Before acceptance'],
+  on_defect: ['quality_concept.vocab.expert_trigger.on_defect', 'When a defect is found'],
+  on_change: ['quality_concept.vocab.expert_trigger.on_change', 'When the design changes'],
+  periodic: ['quality_concept.vocab.expert_trigger.periodic', 'At regular intervals'],
+};
+
+export const EXPERT_FREQUENCY: KeyMap = {
+  once: ['quality_concept.vocab.expert_frequency.once', 'Once'],
+  per_floor: ['quality_concept.vocab.expert_frequency.per_floor', 'Per floor'],
+  per_section: ['quality_concept.vocab.expert_frequency.per_section', 'Per section'],
+  per_package: ['quality_concept.vocab.expert_frequency.per_package', 'Per contract package'],
+  weekly: ['quality_concept.vocab.expert_frequency.weekly', 'Weekly'],
+  monthly: ['quality_concept.vocab.expert_frequency.monthly', 'Monthly'],
+  quarterly: ['quality_concept.vocab.expert_frequency.quarterly', 'Quarterly'],
+  on_event: ['quality_concept.vocab.expert_frequency.on_event', 'On each occurrence'],
+};
+
 /** Why the server keeps the submit button closed. */
 export const SUBMIT_REASON: KeyMap = {
   manage_required: [
@@ -460,6 +484,8 @@ export const SUBMIT_REASON: KeyMap = {
 
 export const ALL_KEY_MAPS: Record<string, KeyMap> = {
   SUBMIT_REASON,
+  EXPERT_TRIGGER,
+  EXPERT_FREQUENCY,
   CONCEPT_STATE,
   CERTIFICATION_STATE,
   CERTIFICATION_ACTION,
@@ -533,6 +559,32 @@ export function catalogueName(ctx: LabelContext, item: CatalogueItem | null | un
 export function nameIn(ctx: LabelContext, list: CatalogueItem[] | undefined, code: string | null | undefined): string {
   if (!code) return '';
   return catalogueName(ctx, list?.find((i) => i.code === code), code);
+}
+
+/** A stored value that is a code of the vocabulary, or free text an older record still holds. */
+export function vocabOrRaw(t: TFn, map: KeyMap, value: string | null | undefined): string {
+  if (!value) return '';
+  const entry = map[value];
+  return entry ? t(entry[0], { defaultValue: entry[1] }) : value;
+}
+
+/**
+ * Button props from the capability flags of a record: closed when the server
+ * says so, with its reason as the tooltip. The reason is the error code the
+ * route would answer, so it reads through the same message key.
+ */
+export function gate(
+  t: TFn,
+  row: Capable | null | undefined,
+  action: string,
+  fallback = true,
+): { disabled: boolean; title?: string } {
+  const key = canKey(action);
+  const reason = whyNot(row, key);
+  return {
+    disabled: !may(row, key, fallback),
+    title: reason ? t(`quality_concept.errors.${reason}`, { defaultValue: humanizeCode(reason) }) : undefined,
+  };
 }
 
 /** The sentence for a finding. */

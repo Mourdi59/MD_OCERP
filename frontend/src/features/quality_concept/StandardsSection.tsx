@@ -21,7 +21,7 @@ import {
   type Mandate,
 } from './api';
 import { useQcWrite, useRequirements, useStandards } from './hooks';
-import { MANDATE, VERIFICATION_METHOD, catalogueName, nameIn, vocab, type TFn } from './labels';
+import { MANDATE, VERIFICATION_METHOD, catalogueName, gate, nameIn, vocab, type TFn } from './labels';
 import type { PanelProps } from './panel';
 import { Field, FormDialog, Hint, RefusalNote, Section, VocabSelect, inputCls } from './QualityBits';
 
@@ -73,7 +73,7 @@ export function StandardsSection(props: PanelProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled={!editable}
+                  {...gate(t as TFn, s, 'edit', editable)}
                   icon={<Pencil size={14} />}
                   aria-label={t('qualityConcept.common.edit', { defaultValue: 'Edit' })}
                   onClick={() => setEditing(s)}
@@ -81,7 +81,7 @@ export function StandardsSection(props: PanelProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled={!editable}
+                  {...gate(t as TFn, s, 'delete', editable)}
                   icon={<Trash2 size={14} />}
                   aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
                   onClick={() => setRemoving(s)}

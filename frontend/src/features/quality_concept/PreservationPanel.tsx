@@ -36,14 +36,18 @@ import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useExpertReports, useQcWrite, useSurveys } from './hooks';
 import {
+  EXPERT_FREQUENCY,
   EXPERT_STATE,
+  EXPERT_TRIGGER,
   INFLUENCE_TRIGGER,
   SURVEY_ACTION,
   SURVEY_METHOD,
   SURVEY_PHASE,
   SURVEY_STATE,
+  gate,
   nameIn,
   vocab,
+  vocabOrRaw,
   type TFn,
 } from './labels';
 import type { PanelProps } from './panel';
@@ -181,6 +185,7 @@ export function PreservationPanel(props: PanelProps) {
                       size="sm"
                       variant={action === 'refuse_access' ? 'ghost' : 'secondary'}
                       loading={write.pending}
+                      {...gate(t as TFn, s, action)}
                       onClick={() =>
                         action === 'close'
                           ? write.send(() => surveyAction(projectId, s.id, { action }))
@@ -192,7 +197,7 @@ export function PreservationPanel(props: PanelProps) {
                     </Button>
                   ))}
                   {s.phase === 'after' && !s.paired_with_id && (
-                    <Button size="sm" variant="secondary" onClick={() => setDialog({ kind: 'pair', survey: s })} data-testid="survey-pair">
+                    <Button size="sm" variant="secondary" {...gate(t as TFn, s, 'pair')} onClick={() => setDialog({ kind: 'pair', survey: s })} data-testid="survey-pair">
                       {t('qualityConcept.preservation.pair', { defaultValue: 'Pair with the before survey' })}
                     </Button>
                   )}
@@ -204,6 +209,7 @@ export function PreservationPanel(props: PanelProps) {
                     variant="ghost"
                     icon={<Pencil size={14} />}
                     aria-label={t('qualityConcept.common.edit', { defaultValue: 'Edit' })}
+                    {...gate(t as TFn, s, 'edit')}
                     onClick={() => setDialog({ kind: 'survey', survey: s })}
                   />
                   {s.state === 'planned' && (
@@ -212,6 +218,7 @@ export function PreservationPanel(props: PanelProps) {
                       variant="ghost"
                       icon={<Trash2 size={14} />}
                       aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
+                      {...gate(t as TFn, s, 'delete')}
                       onClick={() => setRemoving({ survey: s })}
                     />
                   )}
@@ -252,7 +259,9 @@ export function PreservationPanel(props: PanelProps) {
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="font-medium text-content-primary">{r.subject}</span>
                   <StateBadge map={EXPERT_STATE} tones={EXPERT_TONE} code={r.state} />
-                  {r.frequency && <span className="text-xs text-content-secondary">{r.frequency}</span>}
+                  {r.frequency && (
+                    <span className="text-xs text-content-secondary">{vocabOrRaw(t as TFn, EXPERT_FREQUENCY, r.frequency)}</span>
+                  )}
                   {r.due_dates.length > 0 && (
                     <span className="text-xs text-content-secondary">
                       {t('qualityConcept.expert.due', { defaultValue: 'Due: {{dates}}', dates: fmtList(r.due_dates.map((d) => fmtDate(d))) })}
@@ -267,6 +276,7 @@ export function PreservationPanel(props: PanelProps) {
                       variant="ghost"
                       icon={<Pencil size={14} />}
                       aria-label={t('qualityConcept.common.edit', { defaultValue: 'Edit' })}
+                      {...gate(t as TFn, r, 'edit')}
                       onClick={() => setDialog({ kind: 'report', report: r })}
                     />
                     <Button
@@ -274,11 +284,14 @@ export function PreservationPanel(props: PanelProps) {
                       variant="ghost"
                       icon={<Trash2 size={14} />}
                       aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
+                      {...gate(t as TFn, r, 'delete')}
                       onClick={() => setRemoving({ report: r })}
                     />
                   </span>
                 </div>
-                {r.trigger && <p className="mt-0.5 text-xs text-content-tertiary">{r.trigger}</p>}
+                {r.trigger && (
+                  <p className="mt-0.5 text-xs text-content-tertiary">{vocabOrRaw(t as TFn, EXPERT_TRIGGER, r.trigger)}</p>
+                )}
                 {linksOf === r.id && (
                   <div className="mt-2">
                     <EvidenceLinks projectId={projectId} ownerKind="expert_report" ownerId={r.id} />
@@ -575,10 +588,28 @@ function ReportDialog({ projectId, report, onClose }: PanelProps & { report: Exp
       </Field>
       <div className="grid gap-3 md:grid-cols-3">
         <Field label={t('qualityConcept.expert.trigger', { defaultValue: 'What sets it off' })}>
-          <input className={inputCls} value={trigger} onChange={(e) => setTrigger(e.target.value)} />
+          <select className={inputCls} value={trigger} onChange={(e) => setTrigger(e.target.value)} data-testid="report-trigger">
+            <option value="">{t('qualityConcept.common.none', { defaultValue: 'None' })}</option>
+            {/* A value an older record holds as free text stays selectable until it is replaced. */}
+            {trigger && !EXPERT_TRIGGER[trigger] && <option value={trigger}>{trigger}</option>}
+            {Object.keys(EXPERT_TRIGGER).map((code) => (
+              <option key={code} value={code}>
+                {vocab(t as TFn, EXPERT_TRIGGER, code)}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label={t('qualityConcept.expert.frequency', { defaultValue: 'How often' })}>
-          <input className={inputCls} value={frequency} onChange={(e) => setFrequency(e.target.value)} />
+          <select className={inputCls} value={frequency} onChange={(e) => setFrequency(e.target.value)} data-testid="report-frequency">
+            <option value="">{t('qualityConcept.common.none', { defaultValue: 'None' })}</option>
+            {/* A value an older record holds as free text stays selectable until it is replaced. */}
+            {frequency && !EXPERT_FREQUENCY[frequency] && <option value={frequency}>{frequency}</option>}
+            {Object.keys(EXPERT_FREQUENCY).map((code) => (
+              <option key={code} value={code}>
+                {vocab(t as TFn, EXPERT_FREQUENCY, code)}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label={t('qualityConcept.expert.state', { defaultValue: 'Status' })}>
           <VocabSelect map={EXPERT_STATE} codes={EXPERT_STATES} value={state} onChange={(v) => setState(v as ExpertReportState)} />

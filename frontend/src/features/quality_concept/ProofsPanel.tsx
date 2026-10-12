@@ -34,7 +34,7 @@ import {
 import { EvidenceLinks } from './EvidenceLinks';
 import { ExportButtons } from './ExportButtons';
 import { useAcceptanceUnits, useCoverage, useProofs, useQcWrite, useStageMatrix } from './hooks';
-import { DELIVERER_ROLE, PROOF_ACTION, PROOF_STATE, REQUIRED_BY_KIND, nameIn, vocab, type TFn } from './labels';
+import { DELIVERER_ROLE, PROOF_ACTION, PROOF_STATE, REQUIRED_BY_KIND, gate, nameIn, vocab, type TFn } from './labels';
 import { packageName, type PanelProps } from './panel';
 import {
   Field,
@@ -315,6 +315,7 @@ export function ProofsPanel(props: PanelProps) {
                       size="sm"
                       variant={action === 'accept' ? 'secondary' : 'ghost'}
                       loading={write.pending}
+                      {...gate(t as TFn, p, action)}
                       onClick={() => run(p, action)}
                       data-testid={`proof-action-${action}`}
                     >
@@ -327,7 +328,7 @@ export function ProofsPanel(props: PanelProps) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    disabled={!editable}
+                    {...gate(t as TFn, p, 'edit', editable)}
                     icon={<Pencil size={14} />}
                     aria-label={t('qualityConcept.common.edit', { defaultValue: 'Edit' })}
                     onClick={() => setEditing(p)}
@@ -335,7 +336,7 @@ export function ProofsPanel(props: PanelProps) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    disabled={!editable}
+                    {...gate(t as TFn, p, 'delete', editable)}
                     icon={<Trash2 size={14} />}
                     aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
                     onClick={() => setRemoving(p)}

@@ -12,6 +12,7 @@
 
 import type {
   AcceptanceState,
+  Capable,
   CertificationAction,
   CertificationState,
   ConceptState,
@@ -22,6 +23,35 @@ import type {
   SurveyAction,
   SurveyState,
 } from './api';
+
+/**
+ * Whether the server lets this reader take an action on a record. The flag
+ * decides whenever the record carries one; `fallback` only stands in for a
+ * record that came without flags.
+ */
+export function may(row: Capable | null | undefined, action: string, fallback = true): boolean {
+  const can = row?.can;
+  if (can && action in can) return can[action] === true;
+  return fallback;
+}
+
+/** The code of the reason the server gives for a closed action, or null. */
+export function whyNot(row: Capable | null | undefined, action: string): string | null {
+  if (row?.can?.[action] !== false) return null;
+  return row.can_reason?.[action] ?? null;
+}
+
+/** The capability flag behind each button, where the two are not named alike. */
+export const CAN_KEY: Record<string, string> = {
+  approve_waiver: 'decide_waiver',
+  reject_waiver: 'decide_waiver',
+  pass: 'record_pass',
+  fail: 'record_fail',
+};
+
+export function canKey(action: string): string {
+  return CAN_KEY[action] ?? action;
+}
 
 export type ConceptAction = 'submit' | 'return';
 

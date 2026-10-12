@@ -50,6 +50,7 @@ import {
   STAGE_ACTION,
   STAGE_STATE,
   nameIn,
+  gate,
   vocab,
   type TFn,
 } from './labels';
@@ -193,7 +194,7 @@ export function StagesPanel(props: PanelProps) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  disabled={!editable}
+                  {...gate(t as TFn, s, 'edit', editable)}
                   icon={<Pencil size={14} />}
                   aria-label={t('qualityConcept.common.edit', { defaultValue: 'Edit' })}
                   onClick={() => setDialog({ kind: 'stage', stage: s })}
@@ -202,7 +203,7 @@ export function StagesPanel(props: PanelProps) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  disabled={!editable}
+                  {...gate(t as TFn, s, 'delete', editable)}
                   icon={<Trash2 size={14} />}
                   aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
                   onClick={() => setRemoving(s)}
@@ -345,9 +346,14 @@ export function StagesPanel(props: PanelProps) {
           )}
           {current.hold_gate_id && current.computed_state !== 'released' && (
             <p className="mt-2 text-sm text-content-secondary" data-testid="release-pending">
-              {t('qualityConcept.stages.release_pending', {
-                defaultValue: 'A hold point is open for this stage. It is released in construction control.',
-              })}{' '}
+              {current.hold_gate?.label
+                ? t('qualityConcept.stages.release_pending_gate', {
+                    defaultValue: 'Hold point {{gate}} is open for this stage. It is released in construction control.',
+                    gate: current.hold_gate.label,
+                  })
+                : t('qualityConcept.stages.release_pending', {
+                    defaultValue: 'A hold point is open for this stage. It is released in construction control.',
+                  })}{' '}
               <Link className="text-oe-blue-text underline" to={`/projects/${projectId}/construction-control`}>
                 {t('qualityConcept.stages.open_construction_control', { defaultValue: 'Open construction control' })}
               </Link>
@@ -360,14 +366,14 @@ export function StagesPanel(props: PanelProps) {
                 size="sm"
                 variant={action === 'not_applicable' ? 'ghost' : 'secondary'}
                 loading={write.pending}
-                disabled={!manage && PLAN_STAGE_ACTIONS.has(action)}
+                {...gate(t as TFn, current, action, manage || !PLAN_STAGE_ACTIONS.has(action))}
                 onClick={() => run(current, action)}
                 data-testid={`stage-action-${action}`}
               >
                 {vocab(t as TFn, STAGE_ACTION, action)}
               </Button>
             ))}
-            <Button size="sm" variant="ghost" disabled={!manage} onClick={() => setDialog({ kind: 'depends', progress: current })} data-testid="stage-depends">
+            <Button size="sm" variant="ghost" {...gate(t as TFn, current, 'set_dependencies', manage)} onClick={() => setDialog({ kind: 'depends', progress: current })} data-testid="stage-depends">
               {t('qualityConcept.stages.depends', { defaultValue: 'Systems it depends on' })}
             </Button>
           </div>

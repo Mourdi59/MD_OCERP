@@ -9,7 +9,19 @@ import { describe, expect, it } from 'vitest';
 import { ApiError } from '@/shared/lib/api';
 
 import { isConceptMissing, refusalDetail } from '../api';
-import { FINDING, catalogueName, findingText, humanizeCode, nameIn, refusalText, vocab, type LabelContext } from '../labels';
+import {
+  EXPERT_FREQUENCY,
+  FINDING,
+  catalogueName,
+  findingText,
+  gate,
+  humanizeCode,
+  nameIn,
+  refusalText,
+  vocab,
+  vocabOrRaw,
+  type LabelContext,
+} from '../labels';
 import {
   ACCEPTANCE_ACTIONS,
   CERTIFICATION_ACTIONS,
@@ -17,10 +29,12 @@ import {
   CREDIT_ACTIONS,
   STAGE_ACTIONS,
   SURVEY_ACTIONS,
+  canKey,
   conceptEditable,
   filledPackages,
   isAccepted,
   lines,
+  may,
   needsAchievedLevel,
   needsRationale,
   packageScopeProblem,
@@ -29,6 +43,7 @@ import {
   preconditionNotApplicable,
   proofActions,
   waiverPending,
+  whyNot,
 } from '../rules';
 import { enT } from './i18nMock';
 
@@ -204,5 +219,46 @@ describe('refusals', () => {
     );
     expect(refusalText(enT, refused({ code: 'x', message: 'Server text' }))).toBe('Server text');
     expect(refusalText(enT, 'nothing useful')).toBe('The action could not be completed.');
+  });
+});
+
+describe('capability flags', () => {
+  it('follows the flag when the record carries one and the fallback when it does not', () => {
+    expect(may({ can: { edit: false } }, 'edit', true)).toBe(false);
+    expect(may({ can: { edit: true } }, 'edit', false)).toBe(true);
+    expect(may({ can: {} }, 'edit', false)).toBe(false);
+    expect(may({}, 'edit')).toBe(true);
+    expect(may(null, 'edit', false)).toBe(false);
+  });
+
+  it('gives a reason only for a closed action', () => {
+    const row = { can: { accept: false, reopen: true }, can_reason: { accept: 'approver_added_evidence' } };
+    expect(whyNot(row, 'accept')).toBe('approver_added_evidence');
+    expect(whyNot(row, 'reopen')).toBeNull();
+    expect(whyNot({}, 'accept')).toBeNull();
+  });
+
+  it('reads both waiver buttons and both test results from the flag the server names', () => {
+    expect(canKey('approve_waiver')).toBe('decide_waiver');
+    expect(canKey('reject_waiver')).toBe('decide_waiver');
+    expect(canKey('pass')).toBe('record_pass');
+    expect(canKey('fail')).toBe('record_fail');
+    expect(canKey('request')).toBe('request');
+  });
+
+  it('turns the reason into the sentence of its error key', () => {
+    const closed = gate(enT, { can: { edit: false }, can_reason: { edit: 'manage_required' } }, 'edit');
+    expect(closed).toEqual({
+      disabled: true,
+      title: 'Only a manager or the owner of the quality area can change the plan.',
+    });
+    expect(gate(enT, { can: { edit: true } }, 'edit')).toEqual({ disabled: false, title: undefined });
+    expect(gate(enT, {}, 'pass', false).disabled).toBe(true);
+  });
+
+  it('shows a code of the vocabulary as words and older free text as it was typed', () => {
+    expect(vocabOrRaw(enT, EXPERT_FREQUENCY, 'once')).toBe('Once');
+    expect(vocabOrRaw(enT, EXPERT_FREQUENCY, 'every second pour')).toBe('every second pour');
+    expect(vocabOrRaw(enT, EXPERT_FREQUENCY, '')).toBe('');
   });
 });

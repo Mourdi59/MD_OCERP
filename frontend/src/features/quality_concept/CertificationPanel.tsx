@@ -42,6 +42,7 @@ import {
   CREDIT_STATE,
   catalogueName,
   nameIn,
+  gate,
   vocab,
   type TFn,
 } from './labels';
@@ -149,7 +150,7 @@ export function CertificationPanel(props: PanelProps) {
                       size="sm"
                       icon={<Pencil size={14} />}
                       aria-label={t('qualityConcept.common.edit', { defaultValue: 'Edit' })}
-                      disabled={!manage}
+                      {...gate(t as TFn, target, 'edit', manage)}
                       onClick={() => setDialog({ kind: 'target', target })}
                     />
                     <Button
@@ -157,7 +158,7 @@ export function CertificationPanel(props: PanelProps) {
                       size="sm"
                       icon={<Trash2 size={14} />}
                       aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
-                      disabled={!manage}
+                      {...gate(t as TFn, target, 'delete', manage)}
                       onClick={() => setRemoving({ target })}
                     />
                   </div>
@@ -217,7 +218,7 @@ export function CertificationPanel(props: PanelProps) {
                       key={action}
                       size="sm"
                       variant={action === 'abandon' ? 'ghost' : 'secondary'}
-                      disabled={!manage}
+                      {...gate(t as TFn, target, action, manage)}
                       onClick={() => setDialog({ kind: 'transition', target, action })}
                       data-testid={`certification-action-${action}`}
                     >
@@ -254,7 +255,7 @@ export function CertificationPanel(props: PanelProps) {
                           )}
                           <span className="ml-auto flex flex-wrap gap-1">
                             {(CREDIT_ACTIONS[c.state] ?? []).map((action) => (
-                              <Button key={action} size="sm" variant="ghost" loading={write.pending} onClick={() => runCredit(c, action)}>
+                              <Button key={action} size="sm" variant="ghost" loading={write.pending} {...gate(t as TFn, c, action)} onClick={() => runCredit(c, action)}>
                                 {vocab(t as TFn, CREDIT_ACTION, action)}
                               </Button>
                             ))}
@@ -266,7 +267,7 @@ export function CertificationPanel(props: PanelProps) {
                               variant="ghost"
                               icon={<Trash2 size={14} />}
                               aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
-                              disabled={!manage}
+                              {...gate(t as TFn, c, 'delete', manage)}
                               onClick={() => setRemoving({ credit: c })}
                             />
                           </span>
@@ -281,7 +282,7 @@ export function CertificationPanel(props: PanelProps) {
                   </ul>
                 )}
                 <div className="mt-2">
-                  <Button size="sm" variant="secondary" icon={<Plus size={14} />} disabled={!manage} onClick={() => setDialog({ kind: 'credit', target })} data-testid="credit-add">
+                  <Button size="sm" variant="secondary" icon={<Plus size={14} />} {...gate(t as TFn, target, 'add_credits', manage)} onClick={() => setDialog({ kind: 'credit', target })} data-testid="credit-add">
                     {t('qualityConcept.credits.add', { defaultValue: 'Add credit' })}
                   </Button>
                 </div>

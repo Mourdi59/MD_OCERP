@@ -404,3 +404,83 @@ describe('a reader who may not manage the plan', () => {
     expect(screen.queryByRole('button', { name: 'Add certification target' })).toBeNull();
   });
 });
+
+describe('capability flags of a record', () => {
+  it('closes the waiver decision for the person who asked, and says why', async () => {
+    mocked.listProofs.mockResolvedValue(
+      page([
+        proof({
+          requested_by: 'u2',
+          decision_rationale: 'Out of scope',
+          can: { decide_waiver: false, edit: true, delete: true },
+          can_reason: { decide_waiver: 'approver_is_requester' },
+        }),
+      ]),
+    );
+    renderPage('proofs');
+    const approve = await screen.findByTestId('proof-action-approve_waiver');
+    expect(approve).toBeDisabled();
+    expect(screen.getByTestId('proof-action-reject_waiver')).toBeDisabled();
+    expect(approve.getAttribute('title')).toBeTruthy();
+    expect(approve.getAttribute('title')).not.toContain('quality_concept.');
+  });
+
+  it('lets the flag of the record win over what the concept allows', async () => {
+    mocked.listUnits.mockResolvedValue(
+      page([unit({ can: { request: false, record_dates: true, edit: false, delete: false }, can_reason: { request: 'edit_required' } })]),
+    );
+    renderPage('acceptance');
+    const card = await screen.findByTestId('acceptance-unit');
+    expect(within(card).getByTestId('unit-action-request')).toBeDisabled();
+    expect(within(card).getByTestId('unit-action-record_dates')).toBeEnabled();
+  });
+
+  it('opens an action for a reader the concept flags would have stopped', async () => {
+    mocked.getConcept.mockResolvedValue(concept({ can: NOT_MANAGER }));
+    mocked.getStageMatrix.mockResolvedValue(
+      matrix([progress({ state: 'ready', computed_state: 'ready', preconditions: [], can: { open_test: true, not_applicable: true } })]),
+    );
+    renderPage('stages');
+    fireEvent.click(await screen.findByTestId('matrix-cell'));
+    expect(screen.getByTestId('stage-action-not_applicable')).toBeEnabled();
+  });
+
+  it('names the record a finding points at', async () => {
+    mocked.getConcept.mockResolvedValue(
+      concept({
+        findings: [{ code: 'proof_without_deliverer', severity: 'error', ref: 'pr1', params: {}, label: 'Pressure test, shell' }],
+      }),
+    );
+    renderPage();
+    expect(await screen.findByTestId('finding')).toBeInTheDocument();
+    expect(screen.queryByText(/pr1/)).toBeNull();
+  });
+});
+
+describe('expert reports', () => {
+  it('offers trigger and frequency from the vocabulary and sends the codes', async () => {
+    mocked.createExpertReport.mockResolvedValue({
+      id: 'x1',
+      subject: 'Facade',
+      expert_contact_id: null,
+      trigger: 'before_acceptance',
+      frequency: 'once',
+      due_dates: [],
+      commitment_ref: null,
+      state: 'planned',
+    });
+    renderPage('preservation');
+    fireEvent.click(await screen.findByTestId('report-add'));
+    fireEvent.change(screen.getByTestId('report-subject'), { target: { value: 'Facade' } });
+    fireEvent.change(screen.getByTestId('report-trigger'), { target: { value: 'before_acceptance' } });
+    fireEvent.change(screen.getByTestId('report-frequency'), { target: { value: 'once' } });
+    expect(within(screen.getByTestId('report-frequency')).getByText('Once')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('form-submit'));
+    await waitFor(() => expect(mocked.createExpertReport).toHaveBeenCalled());
+    expect(mocked.createExpertReport.mock.calls[0]![1]).toMatchObject({
+      subject: 'Facade',
+      trigger: 'before_acceptance',
+      frequency: 'once',
+    });
+  });
+});

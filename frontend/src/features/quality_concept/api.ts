@@ -30,11 +30,36 @@ export interface QcLabel {
   text: Record<string, string> | null;
 }
 
+/**
+ * What the server lets this reader do with one record: a flag per action, and
+ * where the flag is false the error code the route would answer.
+ */
+export interface Capable {
+  can?: Record<string, boolean> | null;
+  can_reason?: Record<string, string> | null;
+}
+
+/** A record of a neighbour module, named so the screen can say which one it is. */
+export interface RecordRef {
+  kind: string;
+  id: string;
+  label: string | null;
+  status: string | null;
+}
+
+export interface HoldGateRef extends RecordRef {
+  gate_number: string | number | null;
+  required_party_role: string;
+}
+
 export interface Finding {
   code: string;
   severity: 'error' | 'warning' | string;
   ref: string;
   params: Record<string, unknown>;
+  /** The name of the record `ref` is the id of; null when `ref` already reads as a code. */
+  label?: string | null;
+  link_label?: string | null;
 }
 
 export type ConceptState = 'draft' | 'in_review' | 'approved' | 'binding' | 'revising';
@@ -206,7 +231,7 @@ export interface Catalogue {
 
 export type Mandate = 'statute' | 'contract' | 'voluntary';
 
-export interface AppliedStandard {
+export interface AppliedStandard extends Capable {
   id: string;
   code: string;
   edition: string;
@@ -255,7 +280,7 @@ export interface RequirementInput {
 
 /* ── Certification ─────────────────────────────────────────────────────── */
 
-export interface Credit {
+export interface Credit extends Capable {
   id: string;
   target_id: string;
   credit_code: string;
@@ -266,7 +291,7 @@ export interface Credit {
   state: CreditState;
 }
 
-export interface Certification {
+export interface Certification extends Capable {
   id: string;
   scheme_code: string;
   scheme_version: string;
@@ -335,7 +360,7 @@ export interface QuantityRule {
   placed_quantity?: string | null;
 }
 
-export interface Proof {
+export interface Proof extends Capable {
   id: string;
   package_ref: string | null;
   plant_item_id: string | null;
@@ -439,7 +464,7 @@ export interface StagePrecondition {
   params: Record<string, unknown>;
 }
 
-export interface StageDef {
+export interface StageDef extends Capable {
   id: string;
   code: string;
   order: number;
@@ -475,7 +500,7 @@ export interface PreconditionResult {
   params: Record<string, unknown>;
 }
 
-export interface StageProgress {
+export interface StageProgress extends Capable {
   id: string;
   system_id: string;
   stage_code: string;
@@ -487,6 +512,7 @@ export interface StageProgress {
   released_by: string | null;
   computed_state: StageState;
   preconditions: PreconditionResult[];
+  hold_gate?: HoldGateRef | null;
 }
 
 export interface CxSystemRef {
@@ -503,7 +529,13 @@ export interface StageMatrix extends Page<StageProgress> {
 
 export interface ReleaseRequestResult {
   progress_id: string;
-  hold_gate: { id: string; gate_number: string | number | null; required_party_role: string; status: string };
+  hold_gate: {
+    id: string;
+    gate_number: string | number | null;
+    required_party_role: string;
+    status: string;
+    label?: string | null;
+  };
 }
 
 /* ── Acceptance ────────────────────────────────────────────────────────── */
@@ -534,9 +566,10 @@ export interface AppliedEffect {
 export interface UnmetPrecondition {
   kind: string;
   ref: string;
+  label?: string | null;
 }
 
-export interface AcceptanceUnit {
+export interface AcceptanceUnit extends Capable {
   id: string;
   code: string;
   title: string;
@@ -546,6 +579,7 @@ export interface AcceptanceUnit {
   regime_code: string | null;
   planned_date: string | null;
   handover_package_id: string | null;
+  handover_package?: RecordRef | null;
   state: AcceptanceState;
   completion_notice_at: string | null;
   use_started_at: string | null;
@@ -581,7 +615,7 @@ export interface AcceptanceDatesInput {
 
 /* ── Preservation and expert reports ───────────────────────────────────── */
 
-export interface Survey {
+export interface Survey extends Capable {
   id: string;
   subject_kind: string;
   subject_ref: string;
@@ -624,7 +658,7 @@ export interface SurveyList extends Page<Survey> {
   findings: Finding[];
 }
 
-export interface ExpertReport {
+export interface ExpertReport extends Capable {
   id: string;
   subject: string;
   expert_contact_id: string | null;

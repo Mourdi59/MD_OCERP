@@ -43,6 +43,7 @@ import {
   UNMET_KIND,
   catalogueName,
   nameIn,
+  gate,
   vocab,
   type LabelContext,
   type TFn,
@@ -202,7 +203,7 @@ export function AcceptancePanel(props: PanelProps) {
                   size="sm"
                   icon={<Pencil size={14} />}
                   aria-label={t('qualityConcept.common.edit', { defaultValue: 'Edit' })}
-                  disabled={!manage}
+                  {...gate(t as TFn, u, 'edit', manage)}
                   onClick={() => setDialog({ kind: 'unit', unit: u })}
                 />
                 <Button
@@ -210,7 +211,7 @@ export function AcceptancePanel(props: PanelProps) {
                   size="sm"
                   icon={<Trash2 size={14} />}
                   aria-label={t('qualityConcept.common.remove', { defaultValue: 'Remove' })}
-                  disabled={!manage}
+                  {...gate(t as TFn, u, 'delete', manage)}
                   onClick={() => setRemoving(u)}
                 />
               </div>
@@ -242,7 +243,9 @@ export function AcceptancePanel(props: PanelProps) {
                   {u.unmet.map((x, i) => (
                     <li key={`${x.kind}:${x.ref}:${i}`}>
                       {vocab(t as TFn, UNMET_KIND, x.kind)}
-                      {x.kind === 'documentation' && <span className="text-content-tertiary"> {x.ref}</span>}
+                      {(x.label || x.kind === 'documentation') && (
+                        <span className="text-content-tertiary"> {x.label || x.ref}</span>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -304,6 +307,14 @@ export function AcceptancePanel(props: PanelProps) {
                 </Link>
               </p>
             )}
+            {u.handover_package?.label && (
+              <p className="mt-1 text-sm text-content-secondary" data-testid="unit-handover-act">
+                {t('qualityConcept.acceptance.handover_act', {
+                  defaultValue: 'Handover act: {{label}}',
+                  label: u.handover_package.label,
+                })}
+              </p>
+            )}
 
             {isAccepted(u.state) && (
               <div className="mt-3" data-testid="unit-effects">
@@ -341,7 +352,7 @@ export function AcceptancePanel(props: PanelProps) {
                           <span className="text-content-primary">{effectName(labels, e)}</span>
                           {e.value && <span className="text-xs text-content-secondary">{e.value}</span>}
                           <ReviewBadge status={e.review_status} />
-                          <Button size="sm" variant="secondary" className="ml-auto" disabled={!manage} onClick={() => setDialog({ kind: 'effect', unit: u, effect: e })} data-testid="effect-confirm">
+                          <Button size="sm" variant="secondary" className="ml-auto" {...gate(t as TFn, u, 'confirm_effect', manage)} onClick={() => setDialog({ kind: 'effect', unit: u, effect: e })} data-testid="effect-confirm">
                             {t('qualityConcept.actions.confirmEffect', { defaultValue: 'Confirm effect' })}
                           </Button>
                         </li>
@@ -360,7 +371,7 @@ export function AcceptancePanel(props: PanelProps) {
                     size="sm"
                     variant={action === 'request' ? 'primary' : action === 'refuse' || action === 'withdraw' ? 'ghost' : 'secondary'}
                     loading={write.pending}
-                    disabled={!manage && !RECORDING_UNIT_ACTIONS.has(action)}
+                    {...gate(t as TFn, u, action, manage || RECORDING_UNIT_ACTIONS.has(action))}
                     onClick={() => run(u, action)}
                     data-testid={`unit-action-${action}`}
                   >
