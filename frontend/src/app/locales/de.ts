@@ -50524,6 +50524,17 @@ const resource = {
     "site_logistics.plan.siteplan.scale_distance": "Tatsächlicher Abstand der beiden Punkte (m)",
     "site_logistics.plan.siteplan.scale_save": "Maßstab speichern",
     "site_logistics.plan.form.frozen_note": "Einige Felder lassen sich im aktuellen Status nicht mehr ändern und werden nicht angezeigt.",
+    "site_logistics.plan.f.from_activity": "Beginnt mit Vorgang",
+    "site_logistics.plan.f.to_activity": "Endet mit Vorgang",
+    "site_logistics.plan.f.takt_location": "Taktbereich",
+    "site_logistics.plan.f.takt_schedule": "Taktplan",
+    "site_logistics.plan.f.purchase_order": "Bestellung",
+    "site_logistics.plan.link.kept": "Verknüpfter Eintrag, der nicht mehr angeboten wird",
+    "site_logistics.plan.link.failed": "Die Liste konnte nicht geladen werden.",
+    "site_logistics.plan.link.none.activity": "Das Projekt hat noch keine Terminplanvorgänge.",
+    "site_logistics.plan.link.none.takt_schedule": "Das Projekt hat noch keinen Taktplan.",
+    "site_logistics.plan.link.none.takt_location": "Das Projekt hat noch keine Taktbereiche.",
+    "site_logistics.plan.link.none.purchase_order": "Das Projekt hat noch keine Bestellungen.",
   }
 } as { translation: Record<string, string> };
 

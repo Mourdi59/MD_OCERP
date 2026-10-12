@@ -7,7 +7,7 @@
 
 import type { BadgeVariant } from '@/shared/ui/Badge';
 
-import type { Can, CatalogueEntry, CatalogueGroup, Finding, PlanCatalogue, Verdict, Violation } from './api';
+import type { Can, CatalogueEntry, LinkKind, CatalogueGroup, Finding, PlanCatalogue, Verdict, Violation } from './api';
 import { isTextKey, tx, type TextKey, type TFn } from './texts';
 
 /* ── Status moves ─────────────────────────────────────────────────────── */
@@ -166,6 +166,8 @@ interface FieldBase {
 export type Field =
   | (FieldBase & { kind: 'text' | 'textarea' | 'date' | 'datetime' | 'time' | 'decimal' | 'int' | 'checkbox' | 'person' })
   | (FieldBase & { kind: 'select' | 'multi'; options: Option[] })
+  /** A record of the project, chosen from the list the server offers; never a typed id. */
+  | (FieldBase & { kind: 'link'; link: LinkKind })
   | (FieldBase & { kind: 'rows'; columns: Field[] });
 
 export type FormValue = string | boolean | string[] | FormValues[];

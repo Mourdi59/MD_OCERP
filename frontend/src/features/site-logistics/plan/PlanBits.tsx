@@ -18,8 +18,8 @@ import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 import { WideModal, WideModalField } from '@/shared/ui/WideModal';
 import { getErrorMessage } from '@/shared/lib/api';
 
-import { planProblem, type Body, type Can, type PlanCatalogue, type PlanProblem, type Verdict } from './api';
-import { useWords, type Identified, type Resource } from './hooks';
+import { planProblem, type Body, type Can, type LinkKind, type PlanCatalogue, type PlanProblem, type Verdict } from './api';
+import { useLinkOptions, useWords, type Identified, type Resource } from './hooks';
 import {
   findingText,
   formProblems,
@@ -276,6 +276,51 @@ export interface FormDialogProps {
   note?: TextKey;
 }
 
+/** A choice among the records of the project the server offers for one kind of link. */
+function LinkSelect({
+  id,
+  label,
+  projectId,
+  kind,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  projectId: string;
+  kind: LinkKind;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const { t } = useWords();
+  const options = useLinkOptions(projectId, kind);
+  const rows = options.data ?? [];
+  return (
+    <>
+      <select id={id} aria-label={label} className={inputCls} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{tx(t, 'not_set')}</option>
+        {/* A link the list no longer offers stays as it is until the reader changes it. */}
+        {value && !rows.some((r) => r.id === value) && <option value={value}>{tx(t, 'link.kept')}</option>}
+        {rows.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.detail ? `${r.label} (${r.detail})` : r.label}
+          </option>
+        ))}
+      </select>
+      {options.isError && (
+        <p role="alert" className="mt-1 text-xs text-semantic-error">
+          {tx(t, 'link.failed')}
+        </p>
+      )}
+      {options.isSuccess && rows.length === 0 && (
+        <p className="mt-1 text-xs text-content-tertiary" data-testid={`plan-link-none-${kind}`}>
+          {tx(t, `link.none.${kind}`)}
+        </p>
+      )}
+    </>
+  );
+}
+
 /** One dialog for every record of the plan, drawn from its list of fields. */
 export function FormDialog({
   title,
@@ -387,6 +432,10 @@ export function FormDialog({
           </div>
         );
       }
+      case 'link':
+        return (
+          <LinkSelect id={id} label={label} projectId={projectId} kind={f.link} value={value as string} onChange={(v) => set(v)} />
+        );
       case 'person':
         return (
           <ProjectPeopleSelect id={id} projectId={projectId} value={value as string} onChange={(userId) => set(userId)} />

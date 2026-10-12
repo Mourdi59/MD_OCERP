@@ -33,6 +33,8 @@ const STAGE_FIELDS: Field[] = [
   { name: 'code', label: 'f.code', hint: 'f.code_hint', kind: 'text', required: true },
   { name: 'from_date', label: 'f.from_date', kind: 'date' },
   { name: 'to_date', label: 'f.to_date', kind: 'date' },
+  { name: 'from_activity_id', label: 'f.from_activity', kind: 'link', link: 'activity' },
+  { name: 'to_activity_id', label: 'f.to_activity', kind: 'link', link: 'activity' },
   { name: 'ordinal', label: 'f.ordinal', kind: 'int' },
 ];
 
@@ -115,6 +117,7 @@ export function AreasPanel({ projectId, catalogue }: PanelProps) {
     { name: 'area_kind', label: 'f.area_kind', kind: 'select', options: kinds, required: true },
     { name: 'area_m2_declared', label: 'f.area_m2_declared', hint: 'f.area_m2_declared_hint', kind: 'decimal' },
     { name: 'owner_party', label: 'f.owner_party', kind: 'text' },
+    { name: 'takt_location_id', label: 'f.takt_location', kind: 'link', link: 'takt_location' },
   ];
   const allocationFields: Field[] = [
     {

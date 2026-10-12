@@ -233,6 +233,7 @@ export function ConceptPanel({ projectId, catalogue }: PanelProps) {
         { name: 'mode', label: 'f.mode', kind: 'select', options: enumOptions(t, 'flow_mode', FLOW_MODES), required: true },
         { name: 'storage_area_id', label: 'f.storage_area', kind: 'select', options: areaOptions },
         { name: 'buffer_days', label: 'f.buffer_days', kind: 'int' },
+        { name: 'takt_schedule_id', label: 'f.takt_schedule', kind: 'link', link: 'takt_schedule' },
         { name: 'description', label: 'f.description', kind: 'text', wide: true },
       ],
     },

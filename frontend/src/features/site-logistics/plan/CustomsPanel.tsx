@@ -174,6 +174,7 @@ export function CustomsPanel({ projectId, catalogue }: PanelProps) {
 
   const fields: Field[] = [
     { name: 'title', label: 'f.title', kind: 'text', required: true, wide: true },
+    { name: 'po_id', label: 'f.purchase_order', kind: 'link', link: 'purchase_order' },
     {
       name: 'direction',
       label: 'f.direction',

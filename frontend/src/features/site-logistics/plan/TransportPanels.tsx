@@ -69,6 +69,7 @@ export function TransportsPanel({ projectId, catalogue }: PanelProps) {
     { name: 'load_class', label: 'f.load_class', kind: 'select', options: codeOptions(words, 'load_classes', catalogue) },
     { name: 'escort_required', label: 'f.escort_required', kind: 'checkbox' },
     { name: 'customs_case_id', label: 'f.customs_case', kind: 'select', options: caseOptions },
+    { name: 'po_id', label: 'f.purchase_order', kind: 'link', link: 'purchase_order' },
     { name: 'waste_record_ref', label: 'f.waste_record_ref', kind: 'text' },
     { name: 'route_notes', label: 'f.route_notes', kind: 'textarea' },
   ];

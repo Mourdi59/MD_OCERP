@@ -140,6 +140,23 @@ export function pinCatalogue(projectId: string, body: Body): Promise<Concept> {
   return apiPut<Concept>(`/v1/site-logistics/projects/${projectId}/catalogue`, body);
 }
 
+/* ── Linked records ───────────────────────────────────────────────────── */
+
+/** The kinds of project record a plan field can point at. */
+export type LinkKind = 'activity' | 'takt_schedule' | 'takt_location' | 'purchase_order';
+
+export interface LinkOption {
+  id: string;
+  label: string;
+  detail: string;
+}
+
+/** The rows of this project a link field may point at. The write checks the id again. */
+export const listLinkOptions = (projectId: string, kind: LinkKind) =>
+  apiGet<{ items: LinkOption[]; total: number }>(`/v1/site-logistics/projects/${projectId}/link-options/${kind}`).then(
+    (r) => r.items,
+  );
+
 /* ── Stages, areas, balance ───────────────────────────────────────────── */
 
 export interface Stage {
@@ -155,6 +172,8 @@ export interface Stage {
   /** The dates the stage runs, from its own dates or from the linked activities. */
   start: string | null;
   end: string | null;
+  from_activity_id?: string | null;
+  to_activity_id?: string | null;
   /** The project document shown behind the site plan drawing of this stage. */
   plan_document_id?: string | null;
   plan_metres_per_pixel?: string | null;
@@ -213,6 +232,7 @@ export interface SiteArea {
   area_m2_declared: string | null;
   effective_m2: string | null;
   owner_party: string;
+  takt_location_id?: string | null;
   allocations: Allocation[];
 }
 
@@ -363,6 +383,7 @@ export interface Transport {
   planned_window_start: string | null;
   planned_window_end: string | null;
   customs_case_id: string | null;
+  po_id?: string | null;
   waste_record_ref: string;
   /** GeoJSON line in the local site frame. */
   route_geojson?: unknown;
@@ -440,6 +461,7 @@ export interface CustomsCase {
   currency: string | null;
   values_hidden: boolean;
   declaration_ref: string;
+  po_id?: string | null;
   cleared_on: string | null;
   state: string;
 }

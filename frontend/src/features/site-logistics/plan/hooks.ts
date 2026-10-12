@@ -37,6 +37,8 @@ import {
   updateItem,
   type Body,
   type PlanCatalogue,
+  listLinkOptions,
+  type LinkKind,
   type PlanPage,
   type ResourceKind,
   type Verdict,
@@ -121,6 +123,14 @@ export const useCoordination = (projectId: string) =>
   usePlanList(projectId, 'coordination', () => listCoordination(projectId));
 export const useCatalogueChoices = (projectId: string, enabled: boolean) =>
   usePlanList(projectId, 'catalogue-choices', () => listCatalogueChoices(), enabled);
+
+export const useLinkOptions = (projectId: string, kind: LinkKind) =>
+  useQuery({
+    queryKey: planKeys.of(projectId, `links:${kind}`),
+    queryFn: () => listLinkOptions(projectId, kind),
+    enabled: !!projectId,
+    staleTime: 60_000,
+  });
 
 export const useConcept = (projectId: string) =>
   useQuery({ queryKey: planKeys.of(projectId, 'concept'), queryFn: () => getConcept(projectId), enabled: !!projectId });

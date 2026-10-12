@@ -43,6 +43,7 @@ vi.mock('../api', async (importOriginal) => {
     'runSweep',
     'validatePlan',
     'listPlanImages',
+    'listLinkOptions',
     'loadPlanImage',
     'exportRegister',
     'createItem',
@@ -100,6 +101,7 @@ beforeEach(() => {
   mocked.getCatalogue.mockResolvedValue(catalogue);
   mocked.listStages.mockResolvedValue(page([stage]));
   mocked.listPlanImages.mockResolvedValue([]);
+  mocked.listLinkOptions.mockResolvedValue([]);
   mocked.listAreas.mockResolvedValue(page([area]));
   mocked.getBalance.mockResolvedValue(page([openBalance]));
   mocked.listMedia.mockResolvedValue(page([media]));
@@ -158,6 +160,36 @@ describe('stages and areas', () => {
     fireEvent.click(screen.getByTestId('plan-form-save'));
     expect(await screen.findAllByText('Required')).toHaveLength(2);
     expect(mocked.createItem).not.toHaveBeenCalled();
+  });
+
+  it('a stage is tied to a schedule activity by choosing it, and an empty list says why', async () => {
+    mocked.createItem.mockResolvedValue({});
+    mocked.listLinkOptions.mockResolvedValue([{ id: 'act1', label: 'Excavation', detail: '1.2' }]);
+    renderPlan('stages');
+    await screen.findByTestId('plan-stage');
+    fireEvent.click(screen.getByTestId('plan-add_stage'));
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Earthworks' } });
+    fireEvent.change(screen.getByLabelText('Short code'), { target: { value: 'earth' } });
+    await screen.findAllByRole('option', { name: 'Excavation (1.2)' });
+    fireEvent.change(screen.getByLabelText('Starts with activity'), { target: { value: 'act1' } });
+    fireEvent.click(screen.getByTestId('plan-form-save'));
+    await waitFor(() =>
+      expect(mocked.createItem).toHaveBeenCalledWith(
+        'p1',
+        'stage',
+        { title: 'Earthworks', code: 'earth', from_activity_id: 'act1' },
+        undefined,
+      ),
+    );
+    expect(mocked.listLinkOptions).toHaveBeenCalledWith('p1', 'activity');
+  });
+
+  it('a link with nothing to choose from says what is missing', async () => {
+    renderPlan('stages');
+    await screen.findByTestId('plan-stage');
+    fireEvent.click(screen.getByTestId('plan-add_stage'));
+    expect(await screen.findAllByTestId('plan-link-none-activity')).toHaveLength(2);
+    expect(screen.getAllByTestId('plan-link-none-activity')[0]).toHaveTextContent('The project has no schedule activities yet.');
   });
 
   it('a new stage sends what was typed and nothing else', async () => {
