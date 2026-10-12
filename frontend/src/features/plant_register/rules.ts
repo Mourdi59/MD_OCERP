@@ -124,9 +124,13 @@ export function isDecimalText(raw: string): boolean {
   return raw.trim() !== '' && parseDecimalInput(raw.trim()) !== null;
 }
 
-/** The server takes three decimals on a quantity and two on money, and refuses a longer figure. */
+/**
+ * The server takes three decimals on a quantity and two on money, and refuses
+ * a finer figure. Trailing zeros do not count: a stored `2.0000` is two.
+ */
 function fits(raw: string, places: number): boolean {
-  return (toDecimalPayloadString(raw).split('.')[1] ?? '').length <= places;
+  const decimals = (toDecimalPayloadString(raw).split('.')[1] ?? '').replace(/0+$/, '');
+  return decimals.length <= places;
 }
 
 function positive(raw: string): boolean {

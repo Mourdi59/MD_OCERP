@@ -18,6 +18,7 @@ import clsx from 'clsx';
 
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { fmtDate, fmtList, fmtNumber } from '@/shared/lib/formatters';
 import { formatCurrency } from '@/shared/lib/money';
 
@@ -124,6 +125,16 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
   const busy = (where: string) => run.isPending && run.variables?.where === where;
   const errorAt = (where: string): ReactNode =>
     failed?.where === where ? <Refusal error={failed.error} className="mb-3" /> : null;
+  // A section that is still loading or failed to load says so. It must never
+  // read as empty: "no slot reserved" is a statement about the project.
+  const waiting = (q: { isLoading: boolean; error: unknown }, name: string): ReactNode =>
+    q.error ? (
+      <Refusal error={q.error} className="mb-3" />
+    ) : q.isLoading ? (
+      <div data-testid={`${name}-loading`}>
+        <SkeletonTable rows={2} columns={3} />
+      </div>
+    ) : null;
   const saved = () => {
     setDialog(null);
     setFailed(null);
@@ -335,7 +346,8 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
         }
       >
         {errorAt('quotes')}
-        {(quotesQ.data ?? []).length === 0 ? (
+        {waiting(quotesQ, 'quotes')}
+        {quotesQ.data === undefined ? null : quotesQ.data.length === 0 ? (
           <p className="text-sm text-content-tertiary" data-testid="quotes-empty">
             {t('plant.quote.empty', {
               defaultValue: 'No lead time asked yet. Until one is added, the dates rest on the catalogue default, which is not market evidence.',
@@ -468,15 +480,16 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
                   {t('plant.paper.withdraw', { defaultValue: 'Take back to draft' })}
                 </WriteButton>
               )}
-              {(!paper || paper.status === 'rejected') && !closed && (
+              {papersQ.data !== undefined && (!paper || paper.status === 'rejected') && !closed && (
                 <WriteButton size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'paper', paper: null })}>
                   {t('plant.paper.write', { defaultValue: 'Write decision paper' })}
                 </WriteButton>
               )}
             </div>
           </div>
-          {!paper ? (
-            <p className="mt-1 text-sm text-content-tertiary">
+          {waiting(papersQ, 'paper')}
+          {papersQ.data === undefined ? null : !paper ? (
+            <p className="mt-1 text-sm text-content-tertiary" data-testid="paper-empty">
               {t('plant.paper.empty', {
                 defaultValue: 'No decision paper. Write one to compare the options and have the choice approved.',
               })}
@@ -523,7 +536,7 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
       <Section
         title={t('plant.slot.section', { defaultValue: 'Production slot' })}
         hint={
-          item.needs_slot && !slot
+          item.needs_slot && slotsQ.data !== undefined && !slot
             ? t('plant.slot.needed_hint', {
                 defaultValue: 'With a lead time this long, reserve factory capacity before the order can be placed.',
               })
@@ -532,6 +545,7 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
         testId="item-slot"
         action={
           !closed &&
+          slotsQ.data !== undefined &&
           (!slot || !slotIsOpen(slot.status)) && (
             <WriteButton size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setDialog({ kind: 'slot', slot: null })}>
               {t('plant.slot.add_submit', { defaultValue: 'Reserve slot' })}
@@ -540,7 +554,8 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
         }
       >
         {errorAt('slot')}
-        {!slot ? (
+        {waiting(slotsQ, 'slot')}
+        {slotsQ.data === undefined ? null : !slot ? (
           <p className="text-sm text-content-tertiary" data-testid="slot-empty">
             {t('plant.slot.empty', { defaultValue: 'No production slot reserved.' })}
           </p>
@@ -640,14 +655,16 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
         }
         testId="item-limits"
         action={
-          !closed && (
+          !closed &&
+          limitsQ.data !== undefined && (
             <WriteButton size="sm" variant="secondary" icon={<Pencil size={14} />} onClick={() => setDialog({ kind: 'limits' })}>
               {t('plant.common.edit', { defaultValue: 'Edit' })}
             </WriteButton>
           )
         }
       >
-        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        {waiting(limitsQ, 'limits')}
+        <ul className={clsx('grid gap-2 sm:grid-cols-2 lg:grid-cols-5', limitsQ.data === undefined && 'hidden')}>
           {steps.map((s) => {
             const limit = limits.find((l) => l.step === s.code);
             const gap = item.delivery_limit_gaps.includes(s.code);
@@ -694,7 +711,8 @@ export function ItemPanel({ projectId, item, catalogue, labels, personName, onBa
         }
       >
         {errorAt('spares')}
-        {(sparesQ.data ?? []).length === 0 ? (
+        {waiting(sparesQ, 'spares')}
+        {sparesQ.data === undefined ? null : sparesQ.data.length === 0 ? (
           <p className="text-sm text-content-tertiary" data-testid="spares-empty">
             {t('plant.spare.empty', { defaultValue: 'No spares listed for this item.' })}
           </p>

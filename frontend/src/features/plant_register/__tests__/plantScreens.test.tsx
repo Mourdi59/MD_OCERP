@@ -224,8 +224,8 @@ describe('ItemPanel', () => {
     );
     const onChanged = panel();
     fireEvent.click(screen.getByTestId('item-next-step'));
-    expect(mocked.transitionItem).toHaveBeenCalledWith('p1', 'i1', 'route_set');
     const box = await screen.findByTestId('plant-refusal');
+    expect(mocked.transitionItem).toHaveBeenCalledWith('p1', 'i1', 'route_set');
     expect(within(box).getAllByRole('listitem')).toHaveLength(2);
     expect(box).toHaveTextContent('No procurement route is set.');
     expect(onChanged).not.toHaveBeenCalled();
@@ -248,6 +248,36 @@ describe('ItemPanel', () => {
     expect(screen.getByRole('alertdialog')).toHaveTextContent('This cannot be undone.');
     fireEvent.click(screen.getByTestId('item-cancel-confirm'));
     await waitFor(() => expect(mocked.transitionItem).toHaveBeenCalledWith('p1', 'i1', 'cancelled'));
+  });
+
+  it('every section of a new item says what is missing and what to do first', async () => {
+    panel({ needs_slot: true });
+    expect(await screen.findByTestId('quotes-empty')).toHaveTextContent('No lead time asked yet.');
+    expect(await screen.findByTestId('paper-empty')).toHaveTextContent('No decision paper.');
+    expect(await screen.findByTestId('slot-empty')).toHaveTextContent('No production slot reserved.');
+    expect(await screen.findByTestId('spares-empty')).toHaveTextContent('No spares listed for this item.');
+    expect(screen.getByTestId('item-slot')).toHaveTextContent('reserve factory capacity before the order can be placed');
+    expect(screen.getAllByTestId('limit-cell').every((cell) => cell.textContent?.includes('Nobody yet'))).toBe(true);
+  });
+
+  it('a section that is still loading shows that, not an empty state, and offers no write yet', () => {
+    mocked.listSlots.mockReturnValue(new Promise(() => undefined));
+    mocked.listPapers.mockReturnValue(new Promise(() => undefined));
+    panel({ needs_slot: true });
+    expect(screen.getByTestId('slot-loading')).toBeInTheDocument();
+    expect(screen.getByTestId('paper-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('slot-empty')).toBeNull();
+    expect(screen.queryByTestId('paper-empty')).toBeNull();
+    expect(screen.queryByText('Reserve slot')).toBeNull();
+    expect(screen.queryByText('Write decision paper')).toBeNull();
+  });
+
+  it('a section that failed to load shows the reason, not an empty state', async () => {
+    mocked.listQuotes.mockRejectedValue(refusal(404, 'item_not_found', 'Plant item not found.'));
+    panel();
+    const box = await within(screen.getByTestId('item-quotes')).findByTestId('plant-refusal');
+    expect(box).toHaveTextContent('Plant item not found.');
+    expect(screen.queryByTestId('quotes-empty')).toBeNull();
   });
 
   it('a closed item offers no step, no edit and no new lead time', () => {

@@ -15,8 +15,6 @@
 
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
 
-const BASE = '/v1/plant-register';
-
 export interface Page<T> {
   items: T[];
   total: number;
@@ -501,41 +499,38 @@ export const plantKeys = {
   validation: (projectId: string) => ['plant-register', projectId, 'validation'] as const,
 };
 
-const p = (projectId: string) => `${BASE}/projects/${projectId}`;
-const item = (projectId: string, itemId: string) => `${p(projectId)}/items/${itemId}`;
-
 /* ── Catalogue and items ──────────────────────────────────────────────── */
 
 export function getCatalogue(projectId: string): Promise<PlantCatalogue> {
-  return apiGet<PlantCatalogue>(`${p(projectId)}/catalogue`);
+  return apiGet<PlantCatalogue>(`/v1/plant-register/projects/${projectId}/catalogue`);
 }
 
 export function getSettings(projectId: string): Promise<PlantSettings> {
-  return apiGet<PlantSettings>(`${p(projectId)}/settings`);
+  return apiGet<PlantSettings>(`/v1/plant-register/projects/${projectId}/settings`);
 }
 
 export function listItems(projectId: string): Promise<Page<PlantItem>> {
-  return apiGet<Page<PlantItem>>(`${p(projectId)}/items?limit=500&today=${localToday()}`);
+  return apiGet<Page<PlantItem>>(`/v1/plant-register/projects/${projectId}/items?limit=500&today=${localToday()}`);
 }
 
 export function createItem(projectId: string, body: ItemInput): Promise<PlantItem> {
-  return apiPost<PlantItem>(`${p(projectId)}/items`, body);
+  return apiPost<PlantItem>(`/v1/plant-register/projects/${projectId}/items`, body);
 }
 
 export function updateItem(projectId: string, itemId: string, body: ItemInput): Promise<PlantItem> {
-  return apiPatch<PlantItem>(item(projectId, itemId), body);
+  return apiPatch<PlantItem>(`/v1/plant-register/projects/${projectId}/items/${itemId}`, body);
 }
 
 export function transitionItem(projectId: string, itemId: string, target: ItemStatus): Promise<PlantItem> {
-  return apiPost<PlantItem>(`${item(projectId, itemId)}/transition`, { target });
+  return apiPost<PlantItem>(`/v1/plant-register/projects/${projectId}/items/${itemId}/transition`, { target });
 }
 
 export function syncItem(projectId: string, itemId: string): Promise<PlantItem> {
-  return apiPost<PlantItem>(`${item(projectId, itemId)}/sync`, {});
+  return apiPost<PlantItem>(`/v1/plant-register/projects/${projectId}/items/${itemId}/sync`, {});
 }
 
 export function setRoute(projectId: string, itemId: string, route: ProcurementRouteCode): Promise<PlantItem> {
-  return apiPut<PlantItem>(`${item(projectId, itemId)}/route`, { procurement_route: route });
+  return apiPut<PlantItem>(`/v1/plant-register/projects/${projectId}/items/${itemId}/route`, { procurement_route: route });
 }
 
 /** Handover with no service contract named, so the server asks why the item has no service asset. */
@@ -545,35 +540,35 @@ export function handoverItem(
   confirm: boolean,
   noAssetReason: string,
 ): Promise<PlantItem> {
-  return apiPost<PlantItem>(`${item(projectId, itemId)}/handover`, { confirm, no_asset_reason: noAssetReason });
+  return apiPost<PlantItem>(`/v1/plant-register/projects/${projectId}/items/${itemId}/handover`, { confirm, no_asset_reason: noAssetReason });
 }
 
 /* ── Quotes ───────────────────────────────────────────────────────────── */
 
 export function listQuotes(projectId: string, itemId: string): Promise<Page<Quote>> {
-  return apiGet<Page<Quote>>(`${item(projectId, itemId)}/quotes`);
+  return apiGet<Page<Quote>>(`/v1/plant-register/projects/${projectId}/items/${itemId}/quotes`);
 }
 
 export function addQuote(projectId: string, itemId: string, body: QuoteInput): Promise<Quote> {
-  return apiPost<Quote>(`${item(projectId, itemId)}/quotes`, body);
+  return apiPost<Quote>(`/v1/plant-register/projects/${projectId}/items/${itemId}/quotes`, body);
 }
 
 export function setBasisQuote(projectId: string, itemId: string, quoteId: string): Promise<Quote> {
-  return apiPost<Quote>(`${item(projectId, itemId)}/quotes/${quoteId}/basis`, {});
+  return apiPost<Quote>(`/v1/plant-register/projects/${projectId}/items/${itemId}/quotes/${quoteId}/basis`, {});
 }
 
 /* ── Capacity reservation ─────────────────────────────────────────────── */
 
 export function listSlots(projectId: string, itemId: string): Promise<Page<Slot>> {
-  return apiGet<Page<Slot>>(`${item(projectId, itemId)}/slot`);
+  return apiGet<Page<Slot>>(`/v1/plant-register/projects/${projectId}/items/${itemId}/slot`);
 }
 
 export function createSlot(projectId: string, itemId: string, body: SlotInput): Promise<Slot> {
-  return apiPost<Slot>(`${item(projectId, itemId)}/slot`, body);
+  return apiPost<Slot>(`/v1/plant-register/projects/${projectId}/items/${itemId}/slot`, body);
 }
 
 export function updateSlot(projectId: string, itemId: string, slotId: string, body: SlotInput): Promise<Slot> {
-  return apiPatch<Slot>(`${item(projectId, itemId)}/slot/${slotId}`, body);
+  return apiPatch<Slot>(`/v1/plant-register/projects/${projectId}/items/${itemId}/slot/${slotId}`, body);
 }
 
 export function transitionSlot(
@@ -582,36 +577,36 @@ export function transitionSlot(
   slotId: string,
   target: Extract<SlotStatus, 'held' | 'converted_to_order' | 'released'>,
 ): Promise<Slot> {
-  return apiPost<Slot>(`${item(projectId, itemId)}/slot/${slotId}/transition`, { target });
+  return apiPost<Slot>(`/v1/plant-register/projects/${projectId}/items/${itemId}/slot/${slotId}/transition`, { target });
 }
 
 /* ── Decision paper ───────────────────────────────────────────────────── */
 
 export function listPapers(projectId: string, itemId: string): Promise<Page<Paper>> {
-  return apiGet<Page<Paper>>(`${item(projectId, itemId)}/decision-paper`);
+  return apiGet<Page<Paper>>(`/v1/plant-register/projects/${projectId}/items/${itemId}/decision-paper`);
 }
 
 export function createPaper(projectId: string, itemId: string, body: PaperInput): Promise<Paper> {
-  return apiPost<Paper>(`${item(projectId, itemId)}/decision-paper`, body);
+  return apiPost<Paper>(`/v1/plant-register/projects/${projectId}/items/${itemId}/decision-paper`, body);
 }
 
 export function updatePaper(projectId: string, itemId: string, paperId: string, body: PaperInput): Promise<Paper> {
-  return apiPatch<Paper>(`${item(projectId, itemId)}/decision-paper/${paperId}`, body);
+  return apiPatch<Paper>(`/v1/plant-register/projects/${projectId}/items/${itemId}/decision-paper/${paperId}`, body);
 }
 
 export function submitPaper(projectId: string, itemId: string, paperId: string): Promise<Paper> {
-  return apiPost<Paper>(`${item(projectId, itemId)}/decision-paper/${paperId}/submit`, {});
+  return apiPost<Paper>(`/v1/plant-register/projects/${projectId}/items/${itemId}/decision-paper/${paperId}/submit`, {});
 }
 
 /** Takes a submitted paper back to draft so it can be changed. */
 export function withdrawPaper(projectId: string, itemId: string, paperId: string): Promise<Paper> {
-  return apiPost<Paper>(`${item(projectId, itemId)}/decision-paper/${paperId}/withdraw`, {});
+  return apiPost<Paper>(`/v1/plant-register/projects/${projectId}/items/${itemId}/decision-paper/${paperId}/withdraw`, {});
 }
 
 /* ── Delivery limits ──────────────────────────────────────────────────── */
 
 export function listLimits(projectId: string, itemId: string): Promise<Page<Limit>> {
-  return apiGet<Page<Limit>>(`${item(projectId, itemId)}/delivery-limits`);
+  return apiGet<Page<Limit>>(`/v1/plant-register/projects/${projectId}/items/${itemId}/delivery-limits`);
 }
 
 export function putLimits(
@@ -619,25 +614,25 @@ export function putLimits(
   itemId: string,
   limits: Array<{ step: string; party: string; note: string; contract_package_id?: string | null }>,
 ): Promise<Page<Limit>> {
-  return apiPut<Page<Limit>>(`${item(projectId, itemId)}/delivery-limits`, { limits });
+  return apiPut<Page<Limit>>(`/v1/plant-register/projects/${projectId}/items/${itemId}/delivery-limits`, { limits });
 }
 
 export function getLimitMatrix(projectId: string): Promise<LimitMatrix> {
-  return apiGet<LimitMatrix>(`${p(projectId)}/delivery-limits`);
+  return apiGet<LimitMatrix>(`/v1/plant-register/projects/${projectId}/delivery-limits`);
 }
 
 /* ── Spares ───────────────────────────────────────────────────────────── */
 
 export function listSpares(projectId: string, itemId: string): Promise<Page<Spare>> {
-  return apiGet<Page<Spare>>(`${item(projectId, itemId)}/spares`);
+  return apiGet<Page<Spare>>(`/v1/plant-register/projects/${projectId}/items/${itemId}/spares`);
 }
 
 export function createSpare(projectId: string, itemId: string, body: SpareInput): Promise<Spare> {
-  return apiPost<Spare>(`${item(projectId, itemId)}/spares`, body);
+  return apiPost<Spare>(`/v1/plant-register/projects/${projectId}/items/${itemId}/spares`, body);
 }
 
 export function updateSpare(projectId: string, itemId: string, spareId: string, body: SpareInput): Promise<Spare> {
-  return apiPatch<Spare>(`${item(projectId, itemId)}/spares/${spareId}`, body);
+  return apiPatch<Spare>(`/v1/plant-register/projects/${projectId}/items/${itemId}/spares/${spareId}`, body);
 }
 
 export function transitionSpare(
@@ -647,25 +642,25 @@ export function transitionSpare(
   target: Exclude<SpareStatus, 'required'>,
   reason: string,
 ): Promise<Spare> {
-  return apiPost<Spare>(`${item(projectId, itemId)}/spares/${spareId}/transition`, { target, reason });
+  return apiPost<Spare>(`/v1/plant-register/projects/${projectId}/items/${itemId}/spares/${spareId}/transition`, { target, reason });
 }
 
 export function deleteSpare(projectId: string, itemId: string, spareId: string): Promise<void> {
-  return apiDelete(`${item(projectId, itemId)}/spares/${spareId}`);
+  return apiDelete(`/v1/plant-register/projects/${projectId}/items/${itemId}/spares/${spareId}`);
 }
 
 /* ── IT services ──────────────────────────────────────────────────────── */
 
 export function listItServices(projectId: string): Promise<Page<ItService>> {
-  return apiGet<Page<ItService>>(`${p(projectId)}/it-services`);
+  return apiGet<Page<ItService>>(`/v1/plant-register/projects/${projectId}/it-services`);
 }
 
 export function createItService(projectId: string, body: ItServiceInput): Promise<ItService> {
-  return apiPost<ItService>(`${p(projectId)}/it-services`, body);
+  return apiPost<ItService>(`/v1/plant-register/projects/${projectId}/it-services`, body);
 }
 
 export function updateItService(projectId: string, serviceId: string, body: ItServiceInput): Promise<ItService> {
-  return apiPatch<ItService>(`${p(projectId)}/it-services/${serviceId}`, body);
+  return apiPatch<ItService>(`/v1/plant-register/projects/${projectId}/it-services/${serviceId}`, body);
 }
 
 export function transitionItService(
@@ -673,29 +668,29 @@ export function transitionItService(
   serviceId: string,
   target: Extract<ItStatus, 'provisioned' | 'retired'>,
 ): Promise<ItService> {
-  return apiPost<ItService>(`${p(projectId)}/it-services/${serviceId}/transition`, { target });
+  return apiPost<ItService>(`/v1/plant-register/projects/${projectId}/it-services/${serviceId}/transition`, { target });
 }
 
 export function deleteItService(projectId: string, serviceId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/it-services/${serviceId}`);
+  return apiDelete(`/v1/plant-register/projects/${projectId}/it-services/${serviceId}`);
 }
 
 /* ── Read views, escalation, export ───────────────────────────────────── */
 
 export function getFrameSummary(projectId: string): Promise<FrameSummary> {
-  return apiGet<FrameSummary>(`${p(projectId)}/frame-summary?today=${localToday()}`);
+  return apiGet<FrameSummary>(`/v1/plant-register/projects/${projectId}/frame-summary?today=${localToday()}`);
 }
 
 export function getReadiness(projectId: string): Promise<Readiness> {
-  return apiGet<Readiness>(`${p(projectId)}/readiness?today=${localToday()}`);
+  return apiGet<Readiness>(`/v1/plant-register/projects/${projectId}/readiness?today=${localToday()}`);
 }
 
 export function listFindings(projectId: string): Promise<Page<Finding>> {
-  return apiGet<Page<Finding>>(`${p(projectId)}/validation?today=${localToday()}`);
+  return apiGet<Page<Finding>>(`/v1/plant-register/projects/${projectId}/validation?today=${localToday()}`);
 }
 
 export function escalate(projectId: string): Promise<EscalateResult> {
-  return apiPost<EscalateResult>(`${p(projectId)}/escalate`, {});
+  return apiPost<EscalateResult>(`/v1/plant-register/projects/${projectId}/escalate`, {});
 }
 
 export function downloadExport(
@@ -705,5 +700,5 @@ export function downloadExport(
   itemId?: string,
 ): Promise<void> {
   const query = itemId ? `format=${format}&item_id=${itemId}` : `format=${format}`;
-  return downloadWithAuth(`/api${p(projectId)}/export/${kind}?${query}`, `plant_${kind}.${format}`);
+  return downloadWithAuth(`/api/v1/plant-register/projects/${projectId}/export/${kind}?${query}`, `plant_${kind}.${format}`);
 }

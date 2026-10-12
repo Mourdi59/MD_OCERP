@@ -138,6 +138,7 @@ describe('item draft', () => {
     // The server keeps three decimals on a quantity and refuses a finer one.
     expect(itemProblems({ ...base, quantity: '1.2345' }, true)).toEqual(['quantity_invalid']);
     expect(itemProblems({ ...base, quantity: '1.234' }, true)).toEqual([]);
+    expect(itemProblems({ ...base, quantity: '2.0000' }, true)).toEqual([]);
   });
 
   it('a create sends the quantity as a string and nothing the reader left empty', () => {
