@@ -143,6 +143,7 @@
       "not_found": "Not found.",
       "outside_gate_hours": "The window lies outside the opening hours of the gate.",
       "owner_not_member": "The owner must be a member of this project.",
+      "pack_catalogue_invalid": "The catalogue of the pack does not load.",
       "permission_denied": "You do not have permission for this.",
       "permit_frozen": "A permit that was granted, refused or expired keeps its validity, windows and transports.",
       "permit_not_found": "Permit not found.",

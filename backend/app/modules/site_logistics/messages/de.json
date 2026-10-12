@@ -143,6 +143,7 @@
       "not_found": "Nicht gefunden.",
       "outside_gate_hours": "Das Zeitfenster liegt außerhalb der Öffnungszeiten des Tors.",
       "owner_not_member": "Der Verantwortliche muss Mitglied dieses Projekts sein.",
+      "pack_catalogue_invalid": "Der Katalog des Pakets lässt sich nicht laden.",
       "permission_denied": "Dafür fehlt die Berechtigung.",
       "permit_frozen": "Eine erteilte, abgelehnte oder abgelaufene Genehmigung behält Gültigkeit, Zeitfenster und Transporte.",
       "permit_not_found": "Genehmigung nicht gefunden.",

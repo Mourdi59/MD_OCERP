@@ -751,7 +751,7 @@ class LogisticsPlanService:
             # written (pin_catalogue) and has to keep resolving for every project member.
             obj = await resolve_catalogue(self.session, source, cid, version, kind=SITE_LOGISTICS_KIND, from_pin=True)
         except GovernanceError as exc:
-            raise LogisticsError(exc.code, exc.status_code) from exc
+            raise LogisticsError(exc.code, exc.status_code, detail=exc.detail) from exc
         except InvalidCatalogueError as exc:
             # A pinned pack catalogue whose file no longer loads. The rule faults are the
             # detail; the message of the exception carries a server path and is not shown.
@@ -803,7 +803,7 @@ class LogisticsPlanService:
                 tenant_id, source, catalogue_id, version, kind=SITE_LOGISTICS_KIND
             )
         except GovernanceError as exc:
-            raise LogisticsError(exc.code, exc.status_code) from exc
+            raise LogisticsError(exc.code, exc.status_code, detail=exc.detail) from exc
         before = f"{concept.catalogue_source}:{concept.catalogue_id}@{concept.catalogue_version}"
         concept.catalogue_source, concept.catalogue_id, concept.catalogue_version = source, catalogue_id, pinned
         await self.session.flush()

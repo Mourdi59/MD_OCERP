@@ -8,13 +8,17 @@
 2. Two approvals of one slot queue instead of both reading the approved set
    before either commits. A read never waits behind that queue.
 3. A heavy transport is ready for the gate with a granted permit only.
+4. A catalogue of the active pack is pinned like a shipped one and is the default
+   of the country the pack names it for.
 """
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -23,6 +27,8 @@ import sqlalchemy as sa
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.partner_pack import discovery
+from app.modules.project_governance import catalogue_packs
 from app.modules.site_logistics import models as m
 from app.modules.site_logistics.permissions import register_site_logistics_permissions
 from app.modules.site_logistics.plan_service import LogisticsPlanService, PlanPerms
@@ -246,3 +252,96 @@ async def test_an_applied_permit_does_not_make_a_heavy_transport_ready(world: Wo
         assert await item(svc) == ("not_met", "permit_applied: Transformer")
         await svc.transition_permit(pid, permit.id, "granted", world.manager)
         assert await item(svc) == ("met", "")
+
+
+# The entry and the body as the pack carries them: a German catalogue that adds no figure of
+# its own and extends the shipped German one, which extends the neutral one.
+PACK_ID = "eleven_areas_framework_de"
+PACK_PATH = f"catalogues/site_logistics/{PACK_ID}.json"
+PACK_BODY = {
+    "id": PACK_ID,
+    "version": 1,
+    "labels": {
+        "en": "Eleven module framework: site logistics, Germany",
+        "de": "Elf-Module-Rahmen: Baustellenlogistik, Deutschland",
+    },
+    "jurisdiction": "DE",
+    "extends": "de",
+    "review_status": "unconfirmed",
+}
+
+
+@pytest.fixture
+def active_pack(monkeypatch: pytest.MonkeyPatch):
+    entry = {
+        "kind": "site_logistics",
+        "id": PACK_ID,
+        "version": 1,
+        "path": PACK_PATH,
+        "default_for_countries": ["DE"],
+    }
+    manifest = SimpleNamespace(slug="demo-pack", metadata={"catalogues": [entry]})
+    files = {("demo-pack", PACK_PATH): json.dumps(PACK_BODY).encode("utf-8")}
+    monkeypatch.setattr(discovery, "get_active_pack", lambda: manifest)
+    monkeypatch.setattr(discovery, "discover_packs", lambda: [manifest])
+    monkeypatch.setattr(discovery, "read_pack_file", lambda slug, rel: files.get((slug, rel)))
+    catalogue_packs.clear_pack_catalogue_cache()
+    yield files
+    catalogue_packs.clear_pack_catalogue_cache()
+
+
+async def _country(world: World, code: str | None) -> None:
+    from app.modules.projects.models import Project
+
+    async with world.factory() as s:
+        await s.execute(sa.update(Project).where(Project.id == world.project_id).values(country_code=code))
+        await s.commit()
+
+
+async def test_a_pack_catalogue_is_pinned_and_resolves_through_its_parents(world: World, active_pack) -> None:
+    root = f"{BASE}/projects/{world.project_id}"
+    async with client_as(world, world.manager, "manager") as c, client_as(world, world.editor, "editor") as editor:
+        before = (await c.get(f"{root}/catalogue")).json()
+        assert before["pin"]["source"] == "shipped"
+
+        # Pinning is the manager's decision, for a pack catalogue as for any other.
+        assert (
+            await editor.put(f"{root}/catalogue", json={"source": "pack", "catalogue_id": PACK_ID})
+        ).status_code == 403
+        unknown = await c.put(f"{root}/catalogue", json={"source": "pack", "catalogue_id": "not_in_the_pack"})
+        assert unknown.status_code == 404, unknown.text
+
+        pinned = await c.put(f"{root}/catalogue", json={"source": "pack", "catalogue_id": PACK_ID})
+        assert pinned.status_code == 200, pinned.text
+        cat = (await c.get(f"{root}/catalogue")).json()
+        assert cat["pin"] == {"source": "pack", "id": PACK_ID, "version": 1}
+        # The German permit kinds come from the shipped parent, the area kinds from its parent.
+        permits = {p["code"]: p for p in cat["permit_kinds"]}
+        assert permits["oversize_permit"]["jurisdiction"] == "DE"
+        assert len(cat["area_kinds"]) == len(before["area_kinds"]) == 10
+        assert cat["resolved_thresholds"] == before["resolved_thresholds"]
+
+    async with world.factory() as s:
+        concept = await LogisticsPlanService(s).concept(world.project_id)
+        assert (concept.catalogue_source, concept.catalogue_id, concept.catalogue_version) == ("pack", PACK_ID, 1)
+
+
+async def test_the_pack_catalogue_is_the_default_of_its_country_only(bare: World, active_pack) -> None:
+    root = f"{BASE}/projects/{bare.project_id}"
+    async with client_as(bare, bare.manager, "manager") as c:
+        await _country(bare, "DE")
+        german = (await c.get(f"{root}/catalogue")).json()
+        assert german["pin"] == {"source": "pack", "id": PACK_ID, "version": 1}
+        await _country(bare, "FR")
+        assert (await c.get(f"{root}/catalogue")).json()["pin"]["source"] == "shipped"
+        await _country(bare, "DE")
+
+    # The first write of the plan stores the pin the read showed.
+    async with bare.factory() as s:
+        await LogisticsPlanService(s).put_concept(
+            bare.project_id, {"rules_text": "Deliveries by slot only."}, bare.manager
+        )
+        await s.commit()
+    async with bare.factory() as s:
+        concept = await LogisticsPlanService(s).concept(bare.project_id)
+        assert (concept.catalogue_source, concept.catalogue_id, concept.catalogue_version) == ("pack", PACK_ID, 1)
