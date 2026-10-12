@@ -52,7 +52,10 @@ def _permissions(route: APIRoute) -> set[str]:
 def test_every_plan_route_requires_a_permission(route: APIRoute) -> None:
     perms = _permissions(route)
     assert perms and all(p.startswith("site_logistics.") for p in perms)
-    if route.methods & {"POST", "PUT", "PATCH", "DELETE"}:
+    if route.path.endswith("/validate"):
+        # Runs the rules and returns the report; it writes nothing, so reading the plan is enough.
+        assert perms == {"site_logistics.read"}
+    elif route.methods & {"POST", "PUT", "PATCH", "DELETE"}:
         assert perms & {"site_logistics.write", "site_logistics.approve", "site_logistics.customs"}, perms
 
 

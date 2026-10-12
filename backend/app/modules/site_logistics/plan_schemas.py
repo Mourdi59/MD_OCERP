@@ -45,6 +45,10 @@ class StageIn(_In):
     to_activity_id: uuid.UUID | None = None
     from_date: date | None = None
     to_date: date | None = None
+    # The site plan drawing: a project document, metres per image pixel, and the pixel of the metre origin.
+    plan_document_id: uuid.UUID | None = None
+    plan_metres_per_pixel: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=6)
+    plan_origin_px: tuple[float, float] | None = None
 
 
 class AreaIn(_In):

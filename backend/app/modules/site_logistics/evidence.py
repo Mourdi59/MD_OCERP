@@ -3,8 +3,8 @@
 """Gate readiness evidence of the logistics plan for the governance module.
 
 One BLOCKING provider, registered for every area. It names no area and no gate:
-:mod:`app.modules.site_logistics.hosting` resolves both from the tags of the
-project's pinned governance catalogue each time it is asked.
+:mod:`app.modules.site_logistics.hosting` resolves both through the governance
+read port from the project's pinned phase model each time it is asked.
 
 * No plan content yet (see :meth:`LogisticsPlanService.plan_started`): nothing.
   Opening the logistics tab does not arm the gate.
@@ -25,30 +25,11 @@ from app.modules.project_governance.evidence import ANY_AREA, EvidenceItem, Gate
 PROVIDER = "site_logistics.plan_readiness"
 
 
-async def _anchor_area_code(session: Any, project_id: uuid.UUID) -> str | None:
-    """The first applicable area of the project: where an unplaced plan reports itself."""
-    from sqlalchemy import select
-
-    from app.modules.project_governance.models import GovernanceArea
-
-    return (
-        await session.execute(
-            select(GovernanceArea.code)
-            .where(
-                GovernanceArea.project_id == project_id,
-                GovernanceArea.applicable.is_(True),
-                GovernanceArea.retired.is_(False),
-            )
-            .order_by(GovernanceArea.sort_order, GovernanceArea.code)
-            .limit(1)
-        )
-    ).scalar_one_or_none()
-
-
 async def logistics_readiness(
     session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any
 ) -> list[EvidenceItem]:
     """Evidence items of the logistics plan for one area of a gate attempt."""
+    from app.modules.site_logistics import hosting
     from app.modules.site_logistics.plan_service import LogisticsPlanService
 
     svc = LogisticsPlanService(session)
@@ -71,7 +52,7 @@ async def logistics_readiness(
             )
             for item in readiness["items"]
         ]
-    anchor = target.area_code or await _anchor_area_code(session, project_id)
+    anchor = target.area_code or await hosting.first_applicable_area(session, project_id)
     if code != anchor or not await svc.plan_started(project_id):
         return []
     return [

@@ -21,6 +21,7 @@ commit. The service flushes; the request's session dependency commits.
 from __future__ import annotations
 
 import logging
+import math
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, date, datetime, timedelta, tzinfo
@@ -45,7 +46,13 @@ from app.modules.site_logistics.catalogue import (
     shipped_catalogues,
 )
 from app.modules.site_logistics.errors import LogisticsError, conflict, not_found
-from app.modules.site_logistics.geometry import GeometryError, polygon_area_m2, validate_polygon
+from app.modules.site_logistics.geometry import (
+    GeometryError,
+    polygon_area_m2,
+    validate_point,
+    validate_polygon,
+    validate_route,
+)
 from app.modules.site_logistics.models import (
     AreaAllocation,
     CoordinationEntry,
@@ -131,7 +138,18 @@ def _finding(rule: str, code: str, severity: str, ref: Any, **params: Any) -> di
 
 
 # Columns a client may set per entity. Everything else is service-owned.
-_STAGE_FIELDS = ("code", "title", "ordinal", "from_activity_id", "to_activity_id", "from_date", "to_date")
+_STAGE_FIELDS = (
+    "code",
+    "title",
+    "ordinal",
+    "from_activity_id",
+    "to_activity_id",
+    "from_date",
+    "to_date",
+    "plan_document_id",
+    "plan_metres_per_pixel",
+    "plan_origin_px",
+)
 _AREA_FIELDS = (
     "code",
     "name",
@@ -320,18 +338,8 @@ class LogisticsPlanService:
 
     async def _area_owner(self, project_id: uuid.UUID) -> uuid.UUID | None:
         """The owner of the governance area that hosts logistics, the addressee of logistics notifications."""
-        from app.modules.project_governance.models import GovernanceArea
-
         target = await self.governance_target(project_id)
-        if target.area_code is None:
-            return None
-        return (
-            await self.session.execute(
-                select(GovernanceArea.owner_user_id).where(
-                    GovernanceArea.project_id == project_id, GovernanceArea.code == target.area_code
-                )
-            )
-        ).scalar_one_or_none()
+        return await hosting.area_owner(self.session, project_id, target.area_code)
 
     async def _get(
         self, model: Any, project_id: uuid.UUID, row_id: Any, code: str = "not_found", *, lock: bool = False
@@ -446,6 +454,12 @@ class LogisticsPlanService:
             else:
                 stmt = stmt.where(TaktSchedule.id == rid)
             return (await self.session.execute(stmt)).scalar_one_or_none()
+        if kind == "plan_document":
+            from app.modules.documents.models import Document
+
+            return (
+                await self.session.execute(select(Document.project_id).where(Document.id == rid))
+            ).scalar_one_or_none()
         if kind == "po":
             from app.modules.procurement.models import PurchaseOrder
 
@@ -518,8 +532,15 @@ class LogisticsPlanService:
         ).scalar_one_or_none()
 
     async def _default_pin(self, project_id: uuid.UUID) -> tuple[str, str, int]:
+        from app.modules.project_governance.public import default_catalogue_pin
+
         project = await self._project(project_id)
-        cid = default_catalogue_id(getattr(project, "country_code", None))
+        country = getattr(project, "country_code", None)
+        # The active pack may name the catalogue new projects plan with; ours is the fallback.
+        pin = default_catalogue_pin(SITE_LOGISTICS_KIND, country)
+        if pin is not None:
+            return pin.source, pin.catalogue_id, pin.version
+        cid = default_catalogue_id(country)
         return "shipped", cid, shipped_catalogues()[cid].version
 
     async def _ensure_concept(self, project_id: uuid.UUID) -> LogisticsConcept:
@@ -594,7 +615,9 @@ class LogisticsPlanService:
         else:
             source, cid, version = concept.catalogue_source, concept.catalogue_id, concept.catalogue_version
         try:
-            obj = await resolve_catalogue(self.session, source, cid, version, kind=SITE_LOGISTICS_KIND)
+            # A pin this module stored (or its shipped default): it was checked when it was
+            # written (pin_catalogue) and has to keep resolving for every project member.
+            obj = await resolve_catalogue(self.session, source, cid, version, kind=SITE_LOGISTICS_KIND, from_pin=True)
         except GovernanceError as exc:
             raise LogisticsError(exc.code, exc.status_code) from exc
         shipped = shipped_catalogues()
@@ -667,8 +690,10 @@ class LogisticsPlanService:
     async def create_stage(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> ExpansionStage:
         await self._start(project_id)
         row = ExpansionStage(project_id=project_id, state="planned", title="", ordinal=0)
+        data = dict(data)
         await self._stage_links(project_id, data)
         self._apply(row, data, _STAGE_FIELDS)
+        self._plan_backdrop_order(row)
         await self._unique_code(ExpansionStage, project_id, row.code, None)
         await self._insert(row, "code_taken")
         await self._audit(actor_id, "logistics_stage", row.id, "stage_created", metadata={"code": row.code})
@@ -678,10 +703,12 @@ class LogisticsPlanService:
         self, project_id: uuid.UUID, stage_id: Any, data: dict[str, Any], actor_id: Any
     ) -> ExpansionStage:
         row = await self._get(ExpansionStage, project_id, stage_id, "stage_not_found", lock=True)
+        data = dict(data)
         await self._stage_links(project_id, data)
         if "code" in data:
             await self._unique_code(ExpansionStage, project_id, data["code"], row.id)
         changed = await self._apply_unique(row, data, _STAGE_FIELDS)
+        self._plan_backdrop_order(row)
         await self._audit(actor_id, "logistics_stage", row.id, "stage_updated", metadata=changed)
         return row
 
@@ -718,6 +745,43 @@ class LogisticsPlanService:
     async def _stage_links(self, project_id: uuid.UUID, data: dict[str, Any]) -> None:
         for key in ("from_activity_id", "to_activity_id"):
             await self._soft("activity", data.get(key), project_id)
+        await self._soft("plan_document", data.get("plan_document_id"), project_id)
+        origin = data.get("plan_origin_px")
+        if origin is not None:
+            ok = (
+                isinstance(origin, list | tuple)
+                and len(origin) == 2
+                and all(isinstance(v, int | float) and not isinstance(v, bool) and math.isfinite(v) for v in origin)
+            )
+            if not ok:
+                raise LogisticsError("plan_origin_invalid", 422)
+            data["plan_origin_px"] = [float(origin[0]), float(origin[1])]
+        scale = data.get("plan_metres_per_pixel")
+        if scale is not None and not Decimal(str(scale)) > 0:
+            raise LogisticsError("plan_scale_invalid", 422)
+
+    @staticmethod
+    def _plan_backdrop_order(row: ExpansionStage) -> None:
+        """A calibration belongs to an image: without the document there is nothing it calibrates."""
+        if row.plan_document_id is None and (row.plan_metres_per_pixel is not None or row.plan_origin_px is not None):
+            raise LogisticsError("plan_calibration_without_image", 422)
+
+    @staticmethod
+    def _route_check(data: dict[str, Any]) -> None:
+        """A route drawn on the site plan is a line in the local metre frame (rule 20 of inputs: nothing unchecked)."""
+        if data.get("route_geojson") is not None:
+            try:
+                validate_route(data["route_geojson"])
+            except GeometryError as exc:
+                raise LogisticsError("route_invalid", 422, detail=str(exc)) from exc
+
+    @staticmethod
+    def _connection_point_check(data: dict[str, Any]) -> None:
+        if data.get("connection_point_geometry") is not None:
+            try:
+                validate_point(data["connection_point_geometry"])
+            except GeometryError as exc:
+                raise LogisticsError("connection_point_invalid", 422, detail=str(exc)) from exc
 
     async def _unique_code(self, model: Any, project_id: uuid.UUID, code: Any, own_id: Any) -> None:
         if not code:
@@ -898,6 +962,7 @@ class LogisticsPlanService:
         cat = await self.catalogue(project_id)
         self._need(cat, "media_kinds", data.get("media_kind"), "unknown_media_kind")
         await self._master("vendor", data.get("provider_vendor_id"))
+        self._connection_point_check(data)
         row = MediaConnection(project_id=project_id, state="identified")
         self._apply(row, data, _MEDIA_FIELDS)
         if not row.capacity_unit:
@@ -914,6 +979,7 @@ class LogisticsPlanService:
         if "media_kind" in data:
             self._need(await self.catalogue(project_id), "media_kinds", data["media_kind"], "unknown_media_kind")
         await self._master("vendor", data.get("provider_vendor_id"))
+        self._connection_point_check(data)
         changed = self._apply(row, data, _MEDIA_FIELDS)
         await self.session.flush()
         await self._audit(actor_id, "logistics_media", row.id, "media_updated", metadata=changed)
@@ -1443,6 +1509,7 @@ class LogisticsPlanService:
             raise LogisticsError("direction_invalid", 422)
         if data.get("load_class") is not None:
             self._need(cat, "load_classes", data["load_class"], "unknown_load_class")
+        self._route_check(data)
         await self._soft("gate", data.get("gate_id"), project_id)
         await self._soft("po", data.get("po_id"), project_id)
         await self._soft("customs_case", data.get("customs_case_id"), project_id)
@@ -1634,6 +1701,7 @@ class LogisticsPlanService:
     ) -> None:
         if "permit_kind" in data:
             self._need(cat, "permit_kinds", data["permit_kind"], "unknown_permit_kind")
+        self._route_check(data)
         await self._soft("transport", data.get("transport_id"), project_id)
         await self._port(
             "authority_permit", data.get("authority_permit_id"), project_id, row.authority_permit_id if row else None
@@ -2689,8 +2757,12 @@ class LogisticsPlanService:
             # No frame document in this governance model: nothing can prove the export.
             items.append({"code": "concept_saved_and_exported", "state": "unknown", "detail": "no_frame_document"})
         else:
-            exported = await self._frame_doc_bound(project_id, target.frame_doc_type)
-            items.append(_item("concept_saved_and_exported", exported, "" if exported else "not_exported"))
+            exported = await hosting.frame_document_bound(self.session, project_id, target.frame_doc_type)
+            if exported is None:
+                # The model names the document, this project has no row for it yet.
+                items.append({"code": "concept_saved_and_exported", "state": "unknown", "detail": "no_frame_document"})
+            else:
+                items.append(_item("concept_saved_and_exported", exported, "" if exported else "not_exported"))
         heavy_kinds = cat.permit_kinds_for("heavy_transport")
         unpermitted = []
         blocked = []
@@ -2732,19 +2804,6 @@ class LogisticsPlanService:
             "passed_by_permit": passed_by_permit,
             "findings": findings,
         }
-
-    async def _frame_doc_bound(self, project_id: uuid.UUID, doc_type: str) -> bool:
-        """True when the frame document of this project has a revision bound: the export to the CDE happened."""
-        from app.modules.project_governance.models import GovernanceDocument
-
-        rows = (
-            await self.session.execute(
-                select(GovernanceDocument.bound_revision_id).where(
-                    GovernanceDocument.project_id == project_id, GovernanceDocument.doc_type == doc_type
-                )
-            )
-        ).scalars()
-        return any(r is not None for r in rows)
 
     async def frame_summary(
         self, project_id: uuid.UUID, today: date | None = None, *, can_see_values: bool = False
@@ -2885,6 +2944,9 @@ def stage_out(s: ExpansionStage, start: date | None = None, end: date | None = N
         "to_date": _iso(s.to_date),
         "start": _iso(start if start is not None else s.from_date),
         "end": _iso(end if end is not None else s.to_date),
+        "plan_document_id": _s(s.plan_document_id),
+        "plan_metres_per_pixel": _dec(s.plan_metres_per_pixel),
+        "plan_origin_px": s.plan_origin_px,
     }
 
 

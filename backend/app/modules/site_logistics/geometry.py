@@ -130,6 +130,45 @@ def validate_polygon(geometry: dict[str, Any], frame: str = "local") -> None:
     polygon_area_m2(geometry, frame)
 
 
+MAX_ROUTE_POSITIONS = 5000
+
+
+def validate_point(geometry: Any, frame: str = "local") -> None:
+    """A GeoJSON ``Point`` with two finite, bounded numbers; raises :class:`GeometryError` otherwise."""
+    if not isinstance(geometry, dict) or geometry.get("type") != "Point":
+        raise GeometryError("geometry_not_point")
+    _point(geometry.get("coordinates"), frame)
+
+
+def _line(raw: Any, frame: str) -> list[Point]:
+    if not isinstance(raw, list) or len(raw) < 2:
+        raise GeometryError("line_too_short")
+    points = [_point(pt, frame) for pt in raw]
+    if all(p == points[0] for p in points):
+        raise GeometryError("line_without_length")
+    return points
+
+
+def validate_route(geometry: Any, frame: str = "local") -> None:
+    """A GeoJSON ``LineString`` or ``MultiLineString`` a route can be drawn from.
+
+    Every line has at least two positions that are not all the same point, every
+    position is finite and inside the frame's bounds, and the whole route has at
+    most :data:`MAX_ROUTE_POSITIONS` positions. Raises :class:`GeometryError`.
+    """
+    if not isinstance(geometry, dict) or geometry.get("type") not in ("LineString", "MultiLineString"):
+        raise GeometryError("geometry_not_line")
+    coords = geometry.get("coordinates")
+    if not isinstance(coords, list) or not coords:
+        raise GeometryError("line_too_short")
+    lines = [coords] if geometry["type"] == "LineString" else coords
+    total = 0
+    for raw in lines:
+        total += len(_line(raw, frame))
+        if total > MAX_ROUTE_POSITIONS:
+            raise GeometryError("line_too_long")
+
+
 def _orient(a: Point, b: Point, c: Point) -> float:
     return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
 

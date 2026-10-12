@@ -23,7 +23,7 @@ manifest = ModuleManifest(
     category="business",
     # oe_boq: a delivery line points at the BOQ position it delivers, and the
     # bill-coverage table reads the estimate directly.
-    # oe_project_governance: catalogue kind, gate evidence and the m06 frame
+    # oe_project_governance: catalogue kind, gate evidence and the frame document
     # document; oe_schedule: stage dates are read from schedule activities.
     depends=["oe_projects", "oe_users", "oe_boq", "oe_project_governance", "oe_schedule"],
     auto_install=True,

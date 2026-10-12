@@ -164,5 +164,9 @@ async def test_downgrade_removes_every_new_column_and_index_it_added() -> None:
     assert transport["in_transit_on"] == ("DATE", True)
     assert transport["load_class"] == ("VARCHAR(40)", True)
     assert built["oe_site_logistics_delivery"]["columns"]["flow_code"] == ("VARCHAR(40)", True)
+    stage = built["oe_site_logistics_stage"]["columns"]
+    assert stage["plan_metres_per_pixel"] == ("NUMERIC(12, 6)", True)
+    assert stage["plan_document_id"][1] is True
+    assert stage["plan_origin_px"][1] is True
     assert built["oe_site_logistics_customs_line"]["columns"]["currency"] == ("VARCHAR(3)", True)
     assert ("uq_oe_site_concept_project", ("project_id",)) in built["oe_site_logistics_concept"]["unique"]

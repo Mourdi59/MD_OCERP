@@ -200,49 +200,105 @@ def test_module_names_no_governance_area_gate_or_document() -> None:
         assert not used, (path.name, used)
 
 
-def test_hosting_resolves_logistics_from_tags_in_every_tagged_catalogue() -> None:
+# What the tags of the shipped phase models resolve to. The codes live here, in a
+# test, and nowhere in the module.
+SHIPPED_HOSTS = {
+    "neutral": ("resources", "resource_plan"),
+    "elf_module_framework": ("m06_logistics", "m06_logistics_frame"),
+    "aho_heft9": ("d", "rahmenterminplan"),
+}
+
+
+def test_hosting_resolves_logistics_through_the_port_in_every_shipped_model() -> None:
     from app.modules.project_governance.catalogue import list_catalogues
 
-    tagged = {}
+    seen = {}
     for cat in list_catalogues():
-        target = hosting.target_of(cat)
-        if target.area_code is not None:
-            tagged[cat.id] = target
-            assert target.area_code in {a.code for a in cat.areas}
-    # Three shipped models place logistics, each under a different code.
-    assert len(tagged) >= 3
-    assert len({t.area_code for t in tagged.values()}) == len(tagged)
-    resolved = [t for t in tagged.values() if t.reason is None]
-    assert resolved, "at least one shipped model gives logistics a gate"
-    for target in resolved:
+        target = hosting.target_in(cat)
+        assert target.reason is None, (cat.id, target)
+        assert target.area_code in {a.code for a in cat.areas}
+        assert target.frame_doc_type in {d.code for d in cat.document_types}
+        enabling = {p.code for p in cat.phases_enabling(hosting.CAPABILITY)}
+        assert target.gate_codes == tuple(g.code for g in cat.gates if g.to_phase in enabling)
         assert target.gate_codes
+        seen[cat.id] = (target.area_code, target.frame_doc_type)
+    for cid, expected in SHIPPED_HOSTS.items():
+        assert seen[cid] == expected, cid
 
 
-def test_an_untagged_catalogue_resolves_to_a_named_reason() -> None:
-    cat = SimpleNamespace(
-        areas=[SimpleNamespace(code="x")],
-        document_types=[SimpleNamespace(code="doc")],
-        phases=[SimpleNamespace(code="p")],
-        gates=[SimpleNamespace(code="g", to_phase="p")],
-    )
-    target = hosting.target_of(cat)
+def test_the_subject_and_capability_are_in_the_governance_vocabulary() -> None:
+    from app.modules.project_governance.catalogue_kinds import host_subjects, phase_capabilities
+
+    assert hosting.SUBJECT in host_subjects()
+    assert hosting.CAPABILITY in phase_capabilities()
+
+
+class _Untagged:
+    """A phase model that hosts nothing and enables nothing."""
+
+    gates = (SimpleNamespace(code="g", to_phase="p"),)
+
+    def host_of(self, subject: str):
+        return None
+
+    def phases_enabling(self, capability: str):
+        return ()
+
+
+def test_a_model_without_the_tags_resolves_to_a_named_reason() -> None:
+    target = hosting.target_in(_Untagged())
     assert (target.area_code, target.frame_doc_type, target.gate_codes) == (None, None, ())
     assert target.reason == "no_area_hosts_logistics"
     assert hosting.GovernanceTarget(has_model=False).reason == "no_governance_model"
     assert hosting.GovernanceTarget(has_model=True, area_code="x").reason == "no_gate_for_logistics"
 
 
-def test_gates_fall_back_to_the_phase_that_enables_construction() -> None:
-    cat = SimpleNamespace(
-        areas=[SimpleNamespace(code="log", hosts=("logistics",))],
-        document_types=[],
-        phases=[SimpleNamespace(code="plan"), SimpleNamespace(code="build", enables=("construction_start",))],
-        gates=[SimpleNamespace(code="g1", to_phase="plan"), SimpleNamespace(code="g2", to_phase="build")],
-    )
-    target = hosting.target_of(cat)
-    assert target.gate_codes == ("g2",)
-    assert target.frame_doc_type is None
-    assert target.reason is None
+def test_a_plan_the_model_does_not_place_is_reported_unknown_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Data exists and nothing matches: one ``unknown`` item with the reason, on one area, never met."""
+    from app.modules.project_governance.evidence import GateAttempt
+    from app.modules.site_logistics import evidence
+
+    svc = plan_service.LogisticsPlanService
+    target = hosting.GovernanceTarget(has_model=True)
+
+    async def fake_target(self, project_id):
+        return target
+
+    async def started(self, project_id):
+        return True
+
+    async def anchor(session, project_id):
+        return "first"
+
+    monkeypatch.setattr(svc, "governance_target", fake_target)
+    monkeypatch.setattr(svc, "plan_started", started)
+    monkeypatch.setattr(hosting, "first_applicable_area", anchor)
+    attempt = GateAttempt(gate_id=uuid.uuid4(), gate_code="any", attempt_no=1)
+    pid = uuid.uuid4()
+    on_first = _run(evidence.logistics_readiness(None, pid, attempt, SimpleNamespace(code="first")))
+    assert [(i.code, i.state, i.detail) for i in on_first] == [
+        ("site_logistics:unresolved", "unknown", "no_area_hosts_logistics")
+    ]
+    assert _run(evidence.logistics_readiness(None, pid, attempt, SimpleNamespace(code="second"))) == []
+
+    async def not_started(self, project_id):
+        return False
+
+    monkeypatch.setattr(svc, "plan_started", not_started)
+    assert _run(evidence.logistics_readiness(None, pid, attempt, SimpleNamespace(code="first"))) == []
+
+
+def test_the_module_reads_governance_only_through_its_port() -> None:
+    for path in MODULE.glob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        assert "project_governance.models" not in text, path.name
+        assert "project_governance.repository" not in text, path.name
+        assert "GovernanceService" not in text, path.name
+    source = (MODULE / "plan_service.py").read_text(encoding="utf-8")
+    calls = re.findall(r"resolve_catalogue\(([^)]*)\)", source, flags=re.S)
+    assert calls, "the plan resolves its pinned catalogue"
+    for call in calls:
+        assert "from_pin=True" in call or "tenant_id=" in call, call
 
 
 def test_evidence_provider_is_registered_for_every_area_and_blocking() -> None:
@@ -360,3 +416,76 @@ def test_customs_values_follow_the_permission_of_the_token() -> None:
 )
 def test_same_compares_what_a_request_sends_with_what_is_stored(current, new, same: bool) -> None:
     assert plan_service._same(current, new) is same
+
+
+# ── routes and connection points drawn on the site plan ────────────────────
+
+
+@pytest.mark.parametrize(
+    "geometry",
+    [
+        {"type": "LineString", "coordinates": [[0, 0], [10, 5]]},
+        {"type": "LineString", "coordinates": [[0, 0], [10, 5], [10.25, 30.5]]},
+        {"type": "MultiLineString", "coordinates": [[[0, 0], [1, 1]], [[5, 5], [6, 5]]]},
+    ],
+)
+def test_a_route_is_a_line(geometry: dict) -> None:
+    from app.modules.site_logistics.geometry import validate_route
+
+    validate_route(geometry)
+
+
+@pytest.mark.parametrize(
+    "geometry",
+    [
+        None,
+        {},
+        {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]},
+        {"type": "LineString", "coordinates": []},
+        {"type": "LineString", "coordinates": [[0, 0]]},
+        {"type": "LineString", "coordinates": [[3, 3], [3, 3]]},
+        {"type": "LineString", "coordinates": [[0, 0], [float("nan"), 1]]},
+        {"type": "LineString", "coordinates": [[0, 0], [2e7, 1]]},
+        {"type": "LineString", "coordinates": [[0, 0], ["1", 1]]},
+        {"type": "MultiLineString", "coordinates": [[[0, 0], [1, 1]], [[5, 5]]]},
+        {"type": "LineString", "coordinates": [[i, 0] for i in range(5001)]},
+    ],
+)
+def test_a_route_that_is_not_a_line_is_refused(geometry) -> None:
+    from app.modules.site_logistics.geometry import GeometryError, validate_route
+
+    with pytest.raises(GeometryError):
+        validate_route(geometry)
+
+
+def test_a_connection_point_is_a_point() -> None:
+    from app.modules.site_logistics.geometry import GeometryError, validate_point
+
+    validate_point({"type": "Point", "coordinates": [12.5, -3]})
+    for bad in (
+        None,
+        {"type": "Point"},
+        {"type": "Point", "coordinates": [1]},
+        {"type": "Point", "coordinates": [1, float("inf")]},
+        {"type": "Point", "coordinates": [1, 2e7]},
+        {"type": "LineString", "coordinates": [[0, 0], [1, 1]]},
+    ):
+        with pytest.raises(GeometryError):
+            validate_point(bad)
+
+
+def test_stage_schema_carries_the_site_plan_backdrop() -> None:
+    stage = plan_schemas.StageIn.model_validate(
+        {"plan_document_id": str(uuid.uuid4()), "plan_metres_per_pixel": "0.052500", "plan_origin_px": [120, 840.5]}
+    )
+    assert stage.plan_origin_px == (120.0, 840.5)
+    for bad in (
+        {"plan_metres_per_pixel": "0"},
+        {"plan_metres_per_pixel": "-1"},
+        {"plan_metres_per_pixel": "0.1234567"},
+        {"plan_origin_px": [1]},
+        {"plan_origin_px": [1, 2, 3]},
+        {"plan_origin_px": ["a", 2]},
+    ):
+        with pytest.raises(ValueError):
+            plan_schemas.StageIn.model_validate(bad)

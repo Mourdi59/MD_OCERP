@@ -301,6 +301,11 @@ class ExpansionStage(Base):
     from_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     to_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="planned")
+    # The site plan drawing of this stage: a document of the project (soft link, checked
+    # on write) and how its pixels map to the local metre frame the areas are drawn in.
+    plan_document_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    plan_metres_per_pixel: Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)
+    plan_origin_px: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
 
 class SiteArea(Base):

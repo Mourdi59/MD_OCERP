@@ -479,7 +479,7 @@ async def test_arrivals_frozen_records_and_racing_first_writes(world: World) -> 
 
 async def test_gate_evidence_is_placed_by_catalogue_tags() -> None:
     from app.modules.project_governance.evidence import GateAttempt, collect_evidence
-    from app.modules.project_governance.repository import GovernanceRepository
+    from app.modules.project_governance.public import project_areas
     from app.modules.project_governance.service import GovernanceService
     from app.modules.site_logistics.evidence import PROVIDER, logistics_readiness, register_gate_evidence
     from tests.pg import governance_fixtures as gov
@@ -488,7 +488,7 @@ async def test_gate_evidence_is_placed_by_catalogue_tags() -> None:
     register_gate_evidence()
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-        w = await gov.build_world(factory)  # the neutral governance model
+        w = await gov.build_world(factory)  # the neutral phase model
         async with factory() as s:
             framework = await add_project(s, w.manager, [])
             await GovernanceService(s).set_model(
@@ -505,55 +505,45 @@ async def test_gate_evidence_is_placed_by_catalogue_tags() -> None:
         def attempt(code: str) -> GateAttempt:
             return GateAttempt(gate_id=uuid.uuid4(), gate_code=code, attempt_no=1)
 
-        async with factory() as s:
-            svc = LogisticsPlanService(s)
-            placed = await svc.governance_target(framework)
-            assert placed.reason is None, placed
-            areas = await GovernanceRepository(s).list_areas(framework)
-            hosting_area = next(a for a in areas if a.code == placed.area_code)
-            other_area = next(a for a in areas if a.code != placed.area_code)
-            gate_code = placed.gate_codes[0]
+        placed_at = {}
+        for pid in (framework, w.project_id):
+            async with factory() as s:
+                svc = LogisticsPlanService(s)
+                placed = await svc.governance_target(pid)
+                assert placed.reason is None, placed
+                placed_at[pid] = placed.area_code
+                areas = await project_areas(s, pid)
+                hosting_area = next(a for a in areas if a.code == placed.area_code)
+                other_area = next(a for a in areas if a.code != placed.area_code)
+                gate_code = placed.gate_codes[0]
 
-            # No plan content: the provider says nothing, so an unopened plan blocks no gate.
-            assert await logistics_readiness(s, framework, attempt(gate_code), hosting_area) == []
-            await svc.put_concept(framework, {"site_timezone": "Europe/Berlin"}, w.manager)
-            assert await logistics_readiness(s, framework, attempt(gate_code), hosting_area) == []
+                # No plan content: the provider says nothing, so an unopened plan blocks no gate.
+                assert await logistics_readiness(s, pid, attempt(gate_code), hosting_area) == []
+                await svc.put_concept(pid, {"site_timezone": "Europe/Berlin"}, w.manager)
+                assert await logistics_readiness(s, pid, attempt(gate_code), hosting_area) == []
 
-            await svc.put_concept(framework, {"rules_text": "Book 48 hours ahead."}, w.manager)
-            items = await logistics_readiness(s, framework, attempt(gate_code), hosting_area)
-            assert {i.code for i in items} >= {"site_logistics:no_errors", "site_logistics:balance_closed"}
-            assert "not_met" in {i.state for i in items}
-            assert all(i.label_key and i.label_key.startswith("site_logistics.evidence.") for i in items)
-            # Only its own area, only its own gates.
-            assert await logistics_readiness(s, framework, attempt(gate_code), other_area) == []
-            assert await logistics_readiness(s, framework, attempt("no_such_gate"), hosting_area) == []
-            collected = await collect_evidence(s, framework, attempt(gate_code), list(areas))
-            mine = [c for c in collected if c.provider == PROVIDER]
-            assert mine and {c.area_code for c in mine} == {placed.area_code}
-            assert all(c.blocking for c in mine)
-            readiness = await svc.readiness(framework)
-            assert (readiness["area"], readiness["gates"], readiness["governance"]) == (
-                placed.area_code,
-                list(placed.gate_codes),
-                None,
-            )
-            exported = next(i for i in readiness["items"] if i["code"] == "concept_saved_and_exported")
-            assert (exported["state"], exported["detail"]) == ("not_met", "not_exported")
-            await s.commit()
-
-        # The neutral model tags an area for logistics but, on this branch, no gate for it.
-        async with factory() as s:
-            svc = LogisticsPlanService(s)
-            target = await svc.governance_target(w.project_id)
-            if target.reason is None:
-                pytest.skip("the neutral model now places logistics at a gate; the unresolved case needs another model")
-            areas = await GovernanceRepository(s).list_areas(w.project_id)
-            await svc.put_concept(w.project_id, {"rules_text": "Book 48 hours ahead."}, w.manager)
-            collected = await collect_evidence(s, w.project_id, attempt("any_gate"), list(areas))
-            mine = [c for c in collected if c.provider == PROVIDER]
-            # Data exists and nothing matches: one item that says so, and it does not block.
-            assert [(c.item.code, c.item.state, c.item.detail) for c in mine] == [
-                ("site_logistics:unresolved", "unknown", target.reason)
-            ]
-            readiness = await svc.readiness(w.project_id)
-            assert readiness["governance"] == target.reason
+                await svc.put_concept(pid, {"rules_text": "Book 48 hours ahead."}, w.manager)
+                items = await logistics_readiness(s, pid, attempt(gate_code), hosting_area)
+                assert {i.code for i in items} >= {"site_logistics:no_errors", "site_logistics:balance_closed"}
+                assert "not_met" in {i.state for i in items}
+                assert all(i.label_key and i.label_key.startswith("site_logistics.evidence.") for i in items)
+                # Only its own area, only its own gates.
+                assert await logistics_readiness(s, pid, attempt(gate_code), other_area) == []
+                assert await logistics_readiness(s, pid, attempt("no_such_gate"), hosting_area) == []
+                collected = await collect_evidence(s, pid, attempt(gate_code), list(areas))
+                mine = [c for c in collected if c.provider == PROVIDER]
+                assert mine and {c.area_code for c in mine} == {placed.area_code}
+                assert all(c.blocking for c in mine)
+                readiness = await svc.readiness(pid)
+                assert (readiness["area"], readiness["gates"], readiness["governance"]) == (
+                    placed.area_code,
+                    list(placed.gate_codes),
+                    None,
+                )
+                assert readiness["frame_doc_type"] == placed.frame_doc_type
+                exported = next(i for i in readiness["items"] if i["code"] == "concept_saved_and_exported")
+                # Saved, and the frame document of this project has no revision bound yet.
+                assert (exported["state"], exported["detail"]) == ("not_met", "not_exported")
+                await s.commit()
+        # Two phase models, two different areas, no code named in the module.
+        assert placed_at[framework] != placed_at[w.project_id]

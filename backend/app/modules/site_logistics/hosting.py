@@ -1,21 +1,19 @@
 # DDC-CWICR-OE: DataDrivenConstruction - OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Where logistics sits in a project's governance model, read from catalogue tags.
+"""Where the logistics plan sits in a project's phase model, read through the governance port.
 
-Governance models name their areas, documents and gates differently
-(a numbered module in one framework, a schedule topic in another, a single
-letter in a steering model). This module never matches a code:
+Phase models name their areas, documents and gates differently, so this module
+never matches a code. It asks :mod:`app.modules.project_governance.public`:
 
-* the hosting AREA is the one tagged ``hosts: ["logistics"]``;
-* the frame DOCUMENT is the document type tagged ``hosts: ["logistics"]``;
-* the readiness GATES are the gates at which the catalogue requires that frame
-  document; a catalogue without one falls back to the gates into a phase tagged
-  ``enables: ["construction_start"]``.
+* the HOST of subject ``site_logistics`` is the frame document type the plan is
+  exported into, and with it the area that document belongs to;
+* the readiness GATES are the gates into a phase whose entry enables
+  ``construction_start``.
 
-Everything is resolved at read time from the project's pinned governance
-catalogue, so a re-pin moves logistics with it and nothing resolved is stored.
-The tags are read with ``getattr``: a catalogue model that does not carry them
-yet resolves to nothing, which the callers report as unknown instead of guessing.
+Everything is resolved at read time from the project's pinned model, so a
+re-pin moves logistics with it and nothing resolved is stored. When the model
+answers nothing the callers report ``unknown`` with the reason below; they
+never treat it as met.
 """
 
 from __future__ import annotations
@@ -24,43 +22,13 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-LOGISTICS_TAG = "logistics"
-CONSTRUCTION_START_TAG = "construction_start"
-
-
-def _tagged(item: Any, attribute: str, tag: str) -> bool:
-    return tag in (getattr(item, attribute, ()) or ())
-
-
-def hosting_area_code(catalogue: Any) -> str | None:
-    """The code of the area tagged for logistics, or ``None`` when the catalogue tags none."""
-    return next((a.code for a in catalogue.areas if _tagged(a, "hosts", LOGISTICS_TAG)), None)
-
-
-def frame_document(catalogue: Any) -> Any | None:
-    """The document type tagged for logistics (the frame document the plan is exported into)."""
-    return next((d for d in catalogue.document_types if _tagged(d, "hosts", LOGISTICS_TAG)), None)
-
-
-def readiness_gate_codes(catalogue: Any) -> tuple[str, ...]:
-    """The gates the logistics plan has to be ready for.
-
-    First the gates at which the tagged frame document is required. A catalogue
-    that requires it nowhere (or has no such document) answers with the gates
-    into a phase that enables the start of construction. Empty when neither tag
-    resolves.
-    """
-    doc = frame_document(catalogue)
-    required = tuple(getattr(doc, "required_at_gates", ()) or ()) if doc is not None else ()
-    if required:
-        return required
-    enabling = {p.code for p in catalogue.phases if _tagged(p, "enables", CONSTRUCTION_START_TAG)}
-    return tuple(g.code for g in catalogue.gates if g.to_phase in enabling)
+SUBJECT = "site_logistics"
+CAPABILITY = "construction_start"
 
 
 @dataclass(frozen=True)
 class GovernanceTarget:
-    """Where logistics sits in one project's governance model."""
+    """Where logistics sits in one project's phase model."""
 
     has_model: bool
     area_code: str | None = None
@@ -79,23 +47,72 @@ class GovernanceTarget:
         return None
 
 
-def target_of(catalogue: Any) -> GovernanceTarget:
-    """The target a governance catalogue gives."""
-    doc = frame_document(catalogue)
+def target_in(catalogue: Any) -> GovernanceTarget:
+    """The target a parsed phase model gives (pure; the gates are the catalogue's)."""
+    from app.modules.project_governance.public import host_in, phases_enabling_in
+
+    host = host_in(catalogue, SUBJECT)
+    phases = set(phases_enabling_in(catalogue, CAPABILITY))
     return GovernanceTarget(
         has_model=True,
-        area_code=hosting_area_code(catalogue),
-        frame_doc_type=doc.code if doc is not None else None,
-        gate_codes=readiness_gate_codes(catalogue),
+        area_code=host.area_code if host is not None else None,
+        frame_doc_type=host.doc_type if host is not None else None,
+        gate_codes=tuple(g.code for g in catalogue.gates if g.to_phase in phases),
     )
 
 
 async def project_target(session: Any, project_id: uuid.UUID) -> GovernanceTarget:
-    """The target of the project's pinned governance model; ``has_model`` False without one."""
-    from app.modules.project_governance.repository import GovernanceRepository
-    from app.modules.project_governance.service import GovernanceService
+    """The target of the project's pinned phase model; ``has_model`` False without one.
 
-    model = await GovernanceRepository(session).get_model(project_id)
-    if model is None:
+    The gates are the project's own gate rows, so a gate of a model the project
+    left is not answered for.
+    """
+    from app.modules.project_governance.public import (
+        host_in,
+        phases_enabling_in,
+        project_catalogue,
+        project_gates,
+    )
+
+    catalogue = await project_catalogue(session, project_id)
+    if catalogue is None:
         return GovernanceTarget(has_model=False)
-    return target_of(await GovernanceService(session).catalogue_for(model))
+    host = host_in(catalogue, SUBJECT)
+    phases = set(phases_enabling_in(catalogue, CAPABILITY))
+    gates = await project_gates(session, project_id) if phases else ()
+    return GovernanceTarget(
+        has_model=True,
+        area_code=host.area_code if host is not None else None,
+        frame_doc_type=host.doc_type if host is not None else None,
+        gate_codes=tuple(g.code for g in gates if g.to_phase in phases),
+    )
+
+
+async def area_owner(session: Any, project_id: uuid.UUID, area_code: str | None) -> uuid.UUID | None:
+    """The owner of the hosting area, the addressee of logistics notifications."""
+    from app.modules.project_governance.public import project_areas
+
+    if area_code is None:
+        return None
+    return next((a.owner_user_id for a in await project_areas(session, project_id) if a.code == area_code), None)
+
+
+async def first_applicable_area(session: Any, project_id: uuid.UUID) -> str | None:
+    """The first applicable area of the project: where a plan the model does not place reports itself."""
+    from app.modules.project_governance.public import project_areas
+
+    return next((a.code for a in await project_areas(session, project_id) if a.status == "applicable"), None)
+
+
+async def frame_document_bound(session: Any, project_id: uuid.UUID, doc_type: str) -> bool | None:
+    """Whether the frame document has a revision bound (the export happened); ``None`` without a document row.
+
+    A project pinned before its model gained the document type has no row for
+    it, which is unknown, not "not exported".
+    """
+    from app.modules.project_governance.public import project_documents
+
+    rows = [d for d in await project_documents(session, project_id) if d.code == doc_type]
+    if not rows:
+        return None
+    return any(d.bound_revision_id is not None for d in rows)
