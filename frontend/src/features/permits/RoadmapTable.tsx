@@ -10,6 +10,7 @@ import clsx from 'clsx';
 
 import { EmptyState } from '@/shared/ui/EmptyState';
 
+import type { RoadmapCan } from './api';
 import { APPLICANT_ROLE, APPLICATION_STATE, REQUIREMENT_STATE, typeName, vocab, type LabelContext } from './labels';
 import { GatedButton, REQUIREMENT_TONE, RefusedActions, ToneBadge, dateText } from './PermitBits';
 import { gate, summariseRoadmap, type RoadmapRow } from './rules';
