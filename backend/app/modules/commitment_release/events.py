@@ -28,7 +28,6 @@ from app.database import async_session_factory
 logger = logging.getLogger(__name__)
 
 TARGET_KIND = "commitment_release"
-_SUBSCRIBED_FLAG = "_commitment_release_subscribers_registered"
 
 # event name -> (link kind, payload keys that may carry the document id)
 DOCUMENT_EVENTS: dict[str, tuple[str, tuple[str, ...]]] = {
@@ -167,9 +166,12 @@ async def _on_document(event: Event) -> None:
 
 
 def register_commitment_subscribers() -> None:
-    """Idempotently wire the approval-route and document subscribers of this module."""
-    if getattr(event_bus, _SUBSCRIBED_FLAG, False):
-        return
+    """Wire the approval-route and document subscribers of this module; safe to call again.
+
+    ``subscribe_once`` is what makes a second call harmless. A flag kept beside the bus would
+    outlive the handlers whenever the bus is emptied (an app restarted in one process), and the
+    module would then never hear a decision, a cancellation or a signed document again.
+    """
     event_bus.subscribe_once("approval_routes.instance.completed", _on_completed)
     event_bus.subscribe_once("approval_routes.instance.rejected", _on_rejected)
     event_bus.subscribe_once("approval_routes.instance.cancelled", _on_cancelled)
@@ -177,4 +179,3 @@ def register_commitment_subscribers() -> None:
         event_bus.subscribe_once(name, _on_document)
     # The order of the same award is drafted without an event; the sweeper links it.
     event_bus.subscribe_once("contracts.contract.drafted_from_bid_award", _on_award_draft)
-    setattr(event_bus, _SUBSCRIBED_FLAG, True)

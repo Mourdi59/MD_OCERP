@@ -113,3 +113,42 @@ def test_parameters_of_another_basis_and_values_outside_a_share_are_refused() ->
     assert parameter_violation(fee, {"fee_pct": "10"}) == ("abort_parameter_invalid", "fee_pct")
     assert parameter_violation(fee, {"fee_pct": "-0.1"}) == ("abort_parameter_invalid", "fee_pct")
     assert parameter_violation(fee, {"fee_pct": "ten"}) == ("abort_parameter_invalid", "fee_pct")
+
+
+def test_the_module_hears_events_again_after_the_bus_was_emptied(monkeypatch) -> None:
+    """An app restarted in one process empties the bus; registering again must subscribe again."""
+    import asyncio
+
+    from app.core.events import event_bus
+    from app.modules.commitment_release import events
+
+    heard: list[tuple[str, str]] = []
+
+    async def record(data: dict, *, verdict: str, session_factory=None) -> None:
+        heard.append((data["target_id"], verdict))
+
+    monkeypatch.setattr(events, "handle_route_event", record)
+    kept = {name: list(handlers) for name, handlers in event_bus._handlers.items()}
+    kept_wildcard = list(event_bus._wildcard_handlers)
+
+    async def fire(target: str) -> None:
+        await event_bus.publish("approval_routes.instance.completed", {"target_id": target})
+        pending = event_bus.pending_tasks()
+        if pending:
+            await asyncio.gather(*pending)
+
+    try:
+        event_bus.clear()
+        events.register_commitment_subscribers()
+        asyncio.run(fire("first"))
+        event_bus.clear()
+        asyncio.run(fire("nobody listens"))
+        events.register_commitment_subscribers()
+        events.register_commitment_subscribers()
+        asyncio.run(fire("second"))
+    finally:
+        event_bus.clear()
+        event_bus._handlers.update(kept)
+        event_bus._wildcard_handlers.extend(kept_wildcard)
+    # Heard once per event while subscribed, never while the bus was empty, and not twice after two calls.
+    assert heard == [("first", "approved"), ("second", "approved")]
