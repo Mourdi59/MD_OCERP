@@ -76,7 +76,7 @@ const FundingPage = lazy(() =>
   import('@/features/funding/FundingPage').then((m) => ({ default: m.FundingPage }))
 );
 const StakeholdersPage = lazy(() =>
-  import('@/features/stakeholders').then((m) => ({ default: m.StakeholdersPage }))
+  import('@/features/stakeholders/StakeholdersPage').then((m) => ({ default: m.StakeholdersPage }))
 );
 const ProjectGovernancePage = lazy(() =>
   import('@/features/project_governance').then((m) => ({ default: m.ProjectGovernancePage }))

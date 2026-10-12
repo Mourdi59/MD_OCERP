@@ -191,6 +191,9 @@ const REVIEWED_OPAQUE: string[] = [
   'backend/app/modules/notifications/service.py: action_url',
   'backend/app/modules/notifications/service.py: payload.get("action_url")',
   'backend/app/modules/portal/login_email.py: portal_link_url(token, role)',
+  // The parameter of the module's own sender. Its three callers pass the register
+  // with a stakeholder, the communication section and the commitments section.
+  'backend/app/modules/stakeholders/service.py: url',
   'backend/app/modules/tendering/service.py: action_url',
   'backend/app/modules/tendering/service.py: bid_link_url(token)',
 ];
