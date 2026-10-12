@@ -164,3 +164,21 @@ def test_no_issue_register_words_in_model_names() -> None:
     names = re.findall(r"^class (\w+)\(Base\)", src, re.M) + re.findall(r'__tablename__ = "([^"]+)"', src)
     words = ("ncr", "punch", "defect", "snag", "issue", "clash", "nonconform", "observation")
     assert not [n for n in names if any(w in n.lower() for w in words)]
+
+
+def test_every_audit_call_uses_keywords_log_activity_accepts() -> None:
+    """``_audit`` forwards its keywords to ``log_activity``; an unknown one is a TypeError on every write."""
+    import inspect
+
+    from app.core.audit_log import log_activity
+
+    accepted = set(inspect.signature(log_activity).parameters)
+    tree = ast.parse((_MODULE / "service.py").read_text(encoding="utf-8"))
+    calls = [
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "_audit"
+    ]
+    assert len(calls) >= 20
+    unknown = sorted({k.arg for c in calls for k in c.keywords if k.arg and k.arg not in accepted})
+    assert unknown == []

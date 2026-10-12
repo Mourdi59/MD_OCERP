@@ -376,7 +376,7 @@ class StakeholderService:
             "stakeholder_settings",
             settings.id,
             "pinned" if created else "updated",
-            details=an.jsonable({"framework": f"{source}:{fw.id}@{fw.version}", "method": method}),
+            metadata=an.jsonable({"framework": f"{source}:{fw.id}@{fw.version}", "method": method}),
         )
         return settings
 
@@ -476,7 +476,7 @@ class StakeholderService:
                 await self.repo.add(row)
         except IntegrityError as exc:
             raise conflict("duplicate_code") from exc
-        await self._audit(actor_id, "stakeholder", row.id, "created", details={"code": code, "category": row.category})
+        await self._audit(actor_id, "stakeholder", row.id, "created", metadata={"code": code, "category": row.category})
         self._publish(
             "stakeholder.created", {"project_id": project_id, "stakeholder_id": row.id, "category": row.category}
         )
@@ -504,7 +504,7 @@ class StakeholderService:
             "stakeholder",
             row.id,
             "updated",
-            details=an.jsonable({"before": before, "after": {k: _s(v) for k, v in fields.items()}}),
+            metadata=an.jsonable({"before": before, "after": {k: _s(v) for k, v in fields.items()}}),
         )
         return row
 
@@ -695,7 +695,7 @@ class StakeholderService:
             "stakeholder",
             stakeholder.id,
             "assessed",
-            details=an.jsonable({"method": method.code, "classification": row.classification, "scores": scores}),
+            metadata=an.jsonable({"method": method.code, "classification": row.classification, "scores": scores}),
         )
         self._publish(
             "stakeholder.assessed",
@@ -898,7 +898,7 @@ class StakeholderService:
         await self.repo.add(row)
         await self._recompute_next_due(row)
         await self.session.flush()
-        await self._audit(actor_id, "stakeholder_plan_item", row.id, "created", details={"title": row.title})
+        await self._audit(actor_id, "stakeholder_plan_item", row.id, "created", metadata={"title": row.title})
         return row
 
     async def update_plan_item(
@@ -914,12 +914,12 @@ class StakeholderService:
             await self._fsm(PLAN_FSM, row, target, actor_id)
         await self._recompute_next_due(row)
         await self.session.flush()
-        await self._audit(actor_id, "stakeholder_plan_item", row.id, "updated", details=an.jsonable(fields))
+        await self._audit(actor_id, "stakeholder_plan_item", row.id, "updated", metadata=an.jsonable(fields))
         return row
 
     async def delete_plan_item(self, project_id: uuid.UUID, pid: uuid.UUID, *, actor_id: uuid.UUID) -> None:
         row = await self.get_plan_item(project_id, pid, lock=True)
-        await self._audit(actor_id, "stakeholder_plan_item", row.id, "deleted", details={"title": row.title})
+        await self._audit(actor_id, "stakeholder_plan_item", row.id, "deleted", metadata={"title": row.title})
         await self.repo.delete(row)
 
     @staticmethod
@@ -1066,7 +1066,7 @@ class StakeholderService:
         if item is not None:
             await self._recompute_next_due(item)
             await self.session.flush()
-        await self._audit(actor_id, "stakeholder_event", row.id, f"created_{status}", details={"title": row.title})
+        await self._audit(actor_id, "stakeholder_event", row.id, f"created_{status}", metadata={"title": row.title})
         return row
 
     async def update_event(
@@ -1087,7 +1087,7 @@ class StakeholderService:
             item = await self.get_plan_item(project_id, row.plan_item_id, lock=True)
             await self._recompute_next_due(item)
             await self.session.flush()
-        await self._audit(actor_id, "stakeholder_event", row.id, "updated", details=an.jsonable(fields))
+        await self._audit(actor_id, "stakeholder_event", row.id, "updated", metadata=an.jsonable(fields))
         return row
 
     async def delete_event(self, project_id: uuid.UUID, eid: uuid.UUID, *, actor_id: uuid.UUID) -> None:
@@ -1099,7 +1099,7 @@ class StakeholderService:
             item = await self.get_plan_item(project_id, row.plan_item_id, lock=True)
             await self._recompute_next_due(item)
             await self.session.flush()
-        await self._audit(actor_id, "stakeholder_event", row.id, "deleted", details={"title": row.title})
+        await self._audit(actor_id, "stakeholder_event", row.id, "deleted", metadata={"title": row.title})
 
     def event_out(self, r: EngagementEvent, fw: StakeholderFramework | None, today: date) -> dict[str, Any]:
         return {
@@ -1222,7 +1222,9 @@ class StakeholderService:
                 await self.repo.add(row)
         except IntegrityError as exc:
             raise conflict("concurrent_change") from exc
-        await self._audit(actor_id, "stakeholder_commitment", row.id, "created", details={"code": code, "source": kind})
+        await self._audit(
+            actor_id, "stakeholder_commitment", row.id, "created", metadata={"code": code, "source": kind}
+        )
         return row
 
     async def update_commitment(
@@ -1238,7 +1240,7 @@ class StakeholderService:
         for k, v in fields.items():
             setattr(row, k, v)
         await self.session.flush()
-        await self._audit(actor_id, "stakeholder_commitment", row.id, "updated", details=an.jsonable(fields))
+        await self._audit(actor_id, "stakeholder_commitment", row.id, "updated", metadata=an.jsonable(fields))
         return row
 
     @staticmethod
@@ -1382,7 +1384,7 @@ class StakeholderService:
             "stakeholder_commitment",
             row.id,
             "approval_requested",
-            details=an.jsonable({"target": target, "instance_id": instance.id}),
+            metadata=an.jsonable({"target": target, "instance_id": instance.id}),
         )
 
     async def apply_route_verdict(self, instance_id: uuid.UUID, *, verdict: str, decided_by: Any) -> bool:
@@ -1717,7 +1719,7 @@ class StakeholderService:
             "stakeholder_role",
             role_code,
             "holders_set",
-            details=an.jsonable({"role_code": role_code, "before": old_users, "after": new_users}),
+            metadata=an.jsonable({"role_code": role_code, "before": old_users, "after": new_users}),
         )
         self._publish(
             "role.changed",
@@ -1833,7 +1835,7 @@ class StakeholderService:
                 await self.repo.add(row)
         except IntegrityError as exc:
             raise conflict("duplicate_code") from exc
-        await self._audit(actor_id, "stakeholder_body", row.id, "created", details={"code": code})
+        await self._audit(actor_id, "stakeholder_body", row.id, "created", metadata={"code": code})
         return row
 
     async def update_body(
@@ -1847,14 +1849,14 @@ class StakeholderService:
         if row.quorum_kind == "min_members" and not row.quorum_min:
             raise StakeholderError("invalid_quorum")
         await self.session.flush()
-        await self._audit(actor_id, "stakeholder_body", row.id, "updated", details=an.jsonable(fields))
+        await self._audit(actor_id, "stakeholder_body", row.id, "updated", metadata=an.jsonable(fields))
         return row
 
     async def delete_body(self, project_id: uuid.UUID, bid: uuid.UUID, *, actor_id: uuid.UUID) -> None:
         row = await self.get_body(project_id, bid, lock=True)
         if any(m.holder_kind == "body" and m.holder_code == row.code for m in await self.repo.mandates(project_id)):
             raise conflict("body_in_use")
-        await self._audit(actor_id, "stakeholder_body", row.id, "deleted", details={"code": row.code})
+        await self._audit(actor_id, "stakeholder_body", row.id, "deleted", metadata={"code": row.code})
         await self.repo.delete(row)
 
     async def put_members(
@@ -1896,7 +1898,7 @@ class StakeholderService:
             self.session.add(r)
         await self.session.flush()
         await self._enforce_conflicts(project_id, fw, today)
-        await self._audit(actor_id, "stakeholder_body", body.id, "members_set", details={"count": len(rows)})
+        await self._audit(actor_id, "stakeholder_body", body.id, "members_set", metadata={"count": len(rows)})
         return rows
 
     async def bodies_view(self, project_id: uuid.UUID, *, today: date) -> list[dict[str, Any]]:
@@ -2027,7 +2029,7 @@ class StakeholderService:
         except IntegrityError as exc:
             raise conflict("concurrent_change") from exc
         conflicts = await self._enforce_conflicts(project_id, fw, today)
-        await self._audit(actor_id, "stakeholder_mandate", project_id, "matrix_set", details={"rows": len(parsed)})
+        await self._audit(actor_id, "stakeholder_mandate", project_id, "matrix_set", metadata={"rows": len(parsed)})
         self._publish("mandate.changed", {"project_id": project_id, "rows": len(parsed)})
         return {
             "conflicts": [_conflict_out(c) for c in conflicts],
@@ -2152,7 +2154,7 @@ class StakeholderService:
             "stakeholder_frame_document",
             doc.id,
             "filed",
-            details=an.jsonable({"revision_id": revision.id, "file_name": file_name}),
+            metadata=an.jsonable({"revision_id": revision.id, "file_name": file_name}),
         )
         return {
             "document_id": str(doc.id),
