@@ -373,6 +373,7 @@ class GovernanceService:
                     rag=c.rag,
                     note=c.note,
                     confirmed_at=c.confirmed_at.isoformat() if c.confirmed_at else None,
+                    criteria=dict(c.criteria or {}),
                 )
                 for c in checks
                 if c.area_id in by_id
@@ -1009,14 +1010,36 @@ class GovernanceService:
         if not out["decide"]:
             out["decide_reason"] = outcomes["stop"]["reason"]
         go_reason = outcomes["go"]["reason"]
+        # What a go has to name. It is content of the request, as a rationale is, and not a
+        # reason the go is closed, so the probe below names all of it.
+        pending = ev.evidence_to_acknowledge(ctx) if ctx is not None else []
+        out["acknowledge"] = [{"area_code": e.area_code, "code": e.code, "provider": e.provider} for e in pending]
         if go_reason is None and ctx is not None:
-            probe = ev.DecisionRequest(outcome="go", rationale="", decider_id=str(decider_id))
+            probe = ev.DecisionRequest(
+                outcome="go",
+                rationale="",
+                decider_id=str(decider_id),
+                acknowledged_evidence=tuple((e.area_code, e.code) for e in pending),
+            )
             violations = ev.validate_decision(ctx, probe)
             go_reason = ev.decision_refusal(violations)[0] if violations else None
         out["go"] = go_reason is None
         if go_reason is not None:
             out["go_reason"] = go_reason
         return out
+
+    async def unknown_evidence(
+        self, project_id: uuid.UUID, gate_id: uuid.UUID, *, today: date
+    ) -> tuple[tuple[str, str], ...]:
+        """``(area_code, code)`` of the unknown evidence a go on this gate has to name now.
+
+        For a caller that decides without a screen, such as the demo seed: it
+        reads the list the dialog shows and hands it to :meth:`decide`.
+        """
+        model = await self.require_model(project_id)
+        gate = await self.get_gate(project_id, gate_id)
+        ctx, _, _ = await self.gate_context(model, gate, today)
+        return tuple((e.area_code, e.code) for e in ev.evidence_to_acknowledge(ctx))
 
     async def gate_capability(
         self, project_id: uuid.UUID, gate_id: uuid.UUID, *, actor_id: uuid.UUID, role: str | None
@@ -1257,6 +1280,7 @@ class GovernanceService:
                     confirmed_revisions=dict(c.confirmed_revisions or {}),
                     stale=True if carry_stale else c.stale,
                     na_rationale=c.na_rationale,
+                    criteria=dict(c.criteria or {}),
                 )
             )
         await self.session.flush()
@@ -1499,6 +1523,44 @@ class GovernanceService:
             from_status=before,
             to_status=status,
             metadata={"gate": gate.code, "area": area.code, "revisions": confirmed},
+        )
+        return check
+
+    async def tick_criterion(
+        self,
+        project_id: uuid.UUID,
+        gate_id: uuid.UUID,
+        area_id: uuid.UUID,
+        code: str,
+        *,
+        met: bool,
+        note: str,
+        actor_id: uuid.UUID,
+    ) -> GovernanceCheck:
+        """The area owner (or deputy) ticks one readiness criterion of the catalogue.
+
+        The checklist is what the owner works through before attesting; it does
+        not attest and does not block. Readiness is still the check's status.
+        """
+        model = await self.require_model(project_id)
+        gate = await self.get_gate(project_id, gate_id, lock=True)
+        if gate.status not in _UNDECIDED or gate.historic:
+            raise conflict("invalid_transition")
+        area = await self._area_for_owner(project_id, area_id, actor_id)
+        catalogue = await self.catalogue_for(model)
+        if code not in {c.code for c in catalogue.criteria_for(gate.code, area.code)}:
+            raise GovernanceError("unknown_criterion", 422)
+        check = await self._current_check(gate, area)
+        check.criteria = ev.criterion_tick(
+            check.criteria or {}, code, met=met, note=note, actor_id=str(actor_id), at=datetime.now(UTC).isoformat()
+        )
+        await self.session.flush()
+        await self._audit(
+            actor_id,
+            "governance_check",
+            check.id,
+            "criterion_ticked" if met else "criterion_unticked",
+            metadata={"gate": gate.code, "area": area.code, "criterion": code},
         )
         return check
 
@@ -2149,6 +2211,19 @@ class GovernanceService:
         decisions = await self.repo.list_decisions(project_id, gate.id)
         checks = {c.area_code: c for c in ctx.checks}
         doc_states = {d.id: d for d in ctx.documents}
+        unseen = {(e.area_code, e.code) for e in ev.evidence_to_acknowledge(ctx)}
+        try:
+            catalogue: Catalogue | None = await self.catalogue_for(model)
+        except GovernanceError:
+            # A pin that no longer resolves: the gate still reads, without a checklist.
+            catalogue = None
+
+        def _criteria(area_code: str) -> list[dict[str, Any]]:
+            if catalogue is None:
+                return []
+            ticks = checks[area_code].criteria if area_code in checks else {}
+            return ev.criteria_rows([c.code for c in catalogue.criteria_for(gate.code, area_code)], ticks)
+
         return {
             "gate": gate,
             "blockers": [b.as_dict() for b in ev.gate_blockers(ctx)],
@@ -2159,7 +2234,11 @@ class GovernanceService:
                     "owner_user_id": _s(a.owner_user_id),
                     "deputy_user_id": _s(a.deputy_user_id),
                     "applicable": a.applicable,
-                    "evidence": [e.as_dict() for e in self.last_evidence if e.area_code == a.code],
+                    "evidence": [
+                        e.as_dict(project_id) | {"needs_acknowledgement": (e.area_code, e.item.code) in unseen}
+                        for e in self.last_evidence
+                        if e.area_code == a.code
+                    ],
                     "check": (
                         {
                             "status": checks[a.code].status,
@@ -2173,6 +2252,7 @@ class GovernanceService:
                         if a.code in checks
                         else None
                     ),
+                    "criteria": _criteria(a.code),
                     "documents": [
                         {
                             "document_id": str(d.id),
