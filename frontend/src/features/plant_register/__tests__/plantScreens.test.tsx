@@ -303,7 +303,7 @@ describe('ItemPanel', () => {
     mocked.listSlots.mockResolvedValue(page([slot()]));
     panel();
     const fee = await screen.findByTestId('slot-fee');
-    expect(fee.textContent).toMatch(/12[.,\s  ]?500[.,]50/);
+    expect(fee.textContent).toMatch(/12[.,\s\u00a0\u202f]?500[.,]50/);
     const section = screen.getByTestId('item-slot');
     expect(within(section).getByTestId('slot-state')).toHaveTextContent('Requested');
     expect(section).toHaveTextContent('Partly refundable');
