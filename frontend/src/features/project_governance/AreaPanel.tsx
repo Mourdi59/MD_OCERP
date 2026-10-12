@@ -35,7 +35,7 @@ import {
   type GovernanceGate,
   type GovernanceModel,
 } from './api';
-import { canAddDocument, canEditArea, canRaiseChange, documentVerdict } from './access';
+import { canAddDocument, canEditArea, canRaiseChange, documentVerdict, frozenInReview } from './access';
 import { DocumentAttach } from './DocumentAttach';
 import { DOCUMENT_TONE, PersonChip, ReasonedButton, ToneBadge, VerdictReason } from './GovernanceBits';
 import { useInvalidateGovernance } from './hooks';
@@ -448,6 +448,7 @@ export function AreaPanel({
 
   const docs = documents.filter((d) => d.area_id === area.id);
   const canOfferDocument = (area.document_types ?? []).some((d) => !d.tracked);
+  const applicableVerdict = verdict ?? frozenInReview(gates);
   const ownerLabel = (id: string | null) =>
     id ? personName(id) ?? t('governance.project.unknown_person', { defaultValue: 'Project member' }) : null;
 
@@ -527,7 +528,7 @@ export function AreaPanel({
           <input
             type="checkbox"
             checked={area.applicable}
-            disabled={!!verdict || patch.isPending || (area.applicable && !naRationale.trim())}
+            disabled={!!applicableVerdict || patch.isPending || (area.applicable && !naRationale.trim())}
             onChange={(e) =>
               patch.mutate(e.target.checked ? { applicable: true } : { applicable: false, na_rationale: naRationale.trim() })
             }
@@ -547,7 +548,7 @@ export function AreaPanel({
           disabled={!!verdict || !area.applicable}
           onChange={(e) => setNaRationale(e.target.value)}
         />
-        <VerdictReason verdict={verdict} />
+        <VerdictReason verdict={applicableVerdict} />
       </section>
 
       <section>

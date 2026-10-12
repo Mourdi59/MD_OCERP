@@ -220,8 +220,7 @@ def default_catalogue_pin(kind: str = PHASE_MODEL_KIND, country_code: str | None
     falls back to the shipped catalogue of the project's country. For another
     kind ``None`` says the owning module's own default applies.
     """
-    pin = catalogue_packs.pack_default_pin(kind, country_code)
-    if pin is not None:
+    for pin in catalogue_packs.pack_default_candidates(kind, country_code):
         ref = catalogue_packs.find_pack_catalogue(kind, pin.catalogue_id, pin.version, active_only=True)
         try:
             if ref is not None:
@@ -271,8 +270,10 @@ class CatalogueStore:
         for ref in catalogue_packs.active_pack_catalogues(kind):
             try:
                 c = catalogue_packs.load_pack_catalogue(spec, ref)
-            except InvalidCatalogueError:
-                # A broken pack file is not offered; pinning it by hand names the fault.
+            except (InvalidCatalogueError, GovernanceError, OSError) as exc:
+                # A pack file that does not load is not offered, and never takes the rest of the
+                # list down with it; pinning it by hand names the fault.
+                logger.warning("pack catalogue %s:%s is not offered: %s", ref.slug, ref.id, exc)
                 continue
             items.append(
                 {
@@ -376,7 +377,12 @@ class CatalogueStore:
             body["id"] = code
             body["version"] = 1
             body["labels"] = {"en": name}
-            based_on = f"{based_on_source}:{based_on_id}@{source.version}"
+            origin = str(based_on_id)
+            if based_on_source == catalogue_packs.PACK_SOURCE:
+                ref = catalogue_packs.find_pack_catalogue(kind, origin, source.version, active_only=True)
+                # Two packs may carry one id, so the provenance names the pack as well.
+                origin = f"{ref.slug}/{origin}" if ref is not None else origin
+            based_on = f"{based_on_source}:{origin}@{source.version}"
         else:
             body = empty_body(code, name, kind)
             based_on = ""

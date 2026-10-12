@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
 vi.mock('react-i18next', async () => (await import('./i18nMock')).i18nMockModule);
+vi.mock('@/features/approval-routes/ApprovalInstanceDetailDrawer', () => ({ ApprovalInstanceDetailDrawer: () => null }));
 vi.mock('@/shared/ui/ProjectPeopleSelect', () => ({
   ProjectPeopleSelect: ({ placeholder }: { placeholder?: string }) => <input aria-label={placeholder} readOnly />,
 }));
