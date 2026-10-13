@@ -50395,6 +50395,8 @@ const resource = {
     "design.ui.schedule.point_submit": "Zur Freigabe senden",
     "design.ui.schedule.point_reopen": "Wieder öffnen",
     "design.ui.schedule.gate": "Meilenstein der Projektsteuerung",
+    "design.ui.no_gates": "Dieses Projekt arbeitet ohne Meilensteine.",
+    "design.ui.overview.no_frame_document": "Dieses Projekt arbeitet ohne Meilensteine, daher gibt es kein Rahmendokument der Planung, unter dem die Register abgelegt werden.",
     "design.ui.schedule.form": "Dokumentart",
     "design.ui.drawings.title": "Planliste",
     "design.ui.drawings.hint": "Jeder Plan des Projekts mit Nummer, Revision und Status. Die Nummern folgen dem Schema \"{{scheme}}\".",

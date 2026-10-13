@@ -143,6 +143,8 @@ export const UI = {
   'design.ui.schedule.point_submit': 'Send for approval',
   'design.ui.schedule.point_reopen': 'Reopen',
   'design.ui.schedule.gate': 'Gate of project governance',
+  'design.ui.no_gates': 'This project does not use gates.',
+  'design.ui.overview.no_frame_document': 'This project does not use gates, so there is no design frame document to file the registers under.',
   'design.ui.schedule.form': 'Kind of document',
   'design.ui.drawings.title': 'Drawing register',
   'design.ui.drawings.hint': 'Every drawing of the project with its number, revision and status. Numbers follow the scheme "{{scheme}}".',

@@ -165,6 +165,8 @@ export interface DesignPhase {
 
 export interface DesignSetup {
   id: string;
+  /** False on a project without a phase model: no phases, no gates, no frame document. */
+  gates_in_use?: boolean;
   project_id: string;
   scheme_source: CatalogueSource;
   scheme_id: string;

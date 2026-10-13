@@ -41,7 +41,7 @@ import { PermitsPanel } from '../PermitsPanel';
 import { SchedulePanel } from '../SchedulePanel';
 import { TeamPanel } from '../TeamPanel';
 import { WbsPanel } from '../WbsPanel';
-import { context, deliverable, drawing, permit, permitItem, release, role, wbsNode } from './fixtures';
+import { context, deliverable, drawing, permit, permitItem, release, role, setup, wbsNode } from './fixtures';
 
 const mocked = vi.mocked(api);
 
@@ -199,6 +199,23 @@ describe('approval points', () => {
     fireEvent.click(within(rows[0]!).getByTestId('point-reopen'));
     await waitFor(() => expect(mocked.reopenApprovalPoint).toHaveBeenCalledWith('p1', 'ap1'));
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  });
+
+  it('on a project without gates the phase is free text and the form says there are no gates', async () => {
+    mocked.listOptions.mockImplementation(async (_project, kind) => ({
+      kind,
+      available: kind === 'governance_gates',
+      reason: null,
+      items: kind === 'governance_gates' ? [{ id: 'g1', label: 'Left over gate', code: 'g1' }] : [],
+    }));
+    wrap(<SchedulePanel ctx={context({ setup: setup({ phases: [], gates_in_use: false }) })} />);
+    fireEvent.click(await screen.findByTestId('line-add'));
+    expect((await screen.findByTestId('field-phase_code')).tagName).toBe('INPUT');
+    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByTestId('point-add'));
+    expect(await screen.findByText('This project does not use gates.')).toBeInTheDocument();
+    expect((await screen.findByTestId('field-phase_code')).tagName).toBe('INPUT');
+    expect(screen.queryByTestId('field-governance_gate_id')).toBeNull();
   });
 
   it('shows the gate picker only when project governance has gates to offer', async () => {
