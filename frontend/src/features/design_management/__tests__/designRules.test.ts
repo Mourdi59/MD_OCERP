@@ -62,7 +62,7 @@ describe('steps the server offers', () => {
   });
 
   it('skips a move that has a button of its own', () => {
-    expect(offered({ draft: yes, issued: yes }, ['issued']).map((s) => s.target)).toEqual(['draft']);
+    expect(offered<'draft' | 'issued'>({ draft: yes, issued: yes }, ['issued']).map((s) => s.target)).toEqual(['draft']);
   });
 
   it('treats a flag without "applies" as applying, and a missing flag as not', () => {
