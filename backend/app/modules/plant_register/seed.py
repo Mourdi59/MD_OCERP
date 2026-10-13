@@ -13,8 +13,10 @@ descriptions, never company names. Dates are relative to today.
 
 Nothing is written past the rules. A state from ``ordered`` on is read from a
 real purchase order or commissioning system the seed creates and links; the
-decision paper is approved by a second user through a real approval route (and
-stays a draft where the demo has no second user); the held slot carries no fee,
+decision paper is approved through a real approval route by the decider of the
+demo cast, or else by a team member of the project other than its owner, never
+by any other account of the installation (and stays a draft where the project
+has no such person); the held slot carries no fee,
 because a fee binds money only through a released commitment. ``installed`` is
 read from an owner-furnished item of the delivery-model module and is not
 seeded here. Money is in the project's own currency or left out.
@@ -288,13 +290,18 @@ _PAPER = {
 }
 
 
-async def seed_plant_register_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
-    """Seed the register of every demo project in ``project_ids`` that has none. The caller commits."""
+async def seed_plant_register_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, Any]:
+    """Seed the register of every demo project in ``project_ids`` that has none. The caller commits.
+
+    Returns the counts, and under ``notes`` one row per project for anything
+    that was legally left out (``{"project_id", "note"}``): a project nobody
+    owns is not seeded, a paper nobody may decide stays a draft.
+    """
     from app.core.demo_marker import demo_id_of
     from app.modules.plant_register.models import PlantItem
     from app.modules.projects.models import Project
 
-    totals = {"projects": 0, "items": 0, "quotes": 0}
+    totals: dict[str, Any] = {"projects": 0, "items": 0, "quotes": 0, "papers_left_draft": 0, "notes": []}
     ids = list(project_ids)
     if not ids:
         return totals
@@ -308,7 +315,8 @@ async def seed_plant_register_demo(session: AsyncSession, project_ids: Iterable[
             continue
         if owner is None:
             # Every write is attributed to a real user; a project nobody owns gets no invented one.
-            logger.warning("plant_register demo seed skipped for %s: the project has no owner", pid)
+            logger.info("plant_register demo seed skipped for %s: the project has no owner", pid)
+            totals["notes"].append({"project_id": str(pid), "note": "no_owner"})
             continue
         has = (
             await session.execute(select(PlantItem.id).where(PlantItem.project_id == pid).limit(1))
@@ -326,6 +334,8 @@ async def seed_plant_register_demo(session: AsyncSession, project_ids: Iterable[
         totals["projects"] += 1
         for k, v in counts.items():
             totals[k] += v
+        if counts["papers_left_draft"]:
+            totals["notes"].append({"project_id": str(pid), "note": "decision_paper_left_draft"})
     return totals
 
 
@@ -398,32 +408,54 @@ async def _package(svc: Any, project_id: uuid.UUID) -> tuple[bool, uuid.UUID | N
     return package is not None, package
 
 
-async def _approver(session: AsyncSession, owner: uuid.UUID) -> tuple[uuid.UUID, str] | None:
-    """A second active user who can decide the paper the owner submits (four eyes), if the demo has one."""
+async def _deciders(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID) -> dict[uuid.UUID, str]:
+    """The people who may decide a paper the owner submits (four eyes), with their role, preferred first.
+
+    The decider of the demo cast, then the active team members of the project,
+    the owner left out. Never another account of the installation: on a real
+    install that would be somebody's own login, possibly another tenant's,
+    signing a demo paper.
+    """
+    from app.core.demo_cast import find_cast
+    from app.modules.teams.models import Team, TeamMembership
     from app.modules.users.models import User
 
-    row = (
-        await session.execute(
-            select(User.id, User.role)
-            .where(User.id != owner, User.is_active.is_(True))
-            .order_by(User.created_at, User.id)
-            .limit(1)
-        )
-    ).first()
-    return (row.id, row.role) if row else None
+    people: dict[uuid.UUID, str] = {}
+    decider = (await find_cast(session)).get("decider")
+    if decider is not None and decider != owner:
+        role = (
+            await session.execute(select(User.role).where(User.id == decider, User.is_active.is_(True)))
+        ).scalar_one_or_none()
+        if role is not None:
+            people[decider] = role
+    members = await session.execute(
+        select(User.id, User.role)
+        .join(TeamMembership, TeamMembership.user_id == User.id)
+        .join(Team, Team.id == TeamMembership.team_id)
+        .where(Team.project_id == project_id, User.id != owner, User.is_active.is_(True))
+        .order_by(TeamMembership.created_at, User.id)
+    )
+    for user_id, role in members:
+        people.setdefault(user_id, role)
+    return people
 
 
 async def _approve_paper(
     session: AsyncSession, svc: Any, project_id: uuid.UUID, item_id: uuid.UUID, paper: Any, owner: uuid.UUID
 ) -> bool:
-    """Take the paper through a real approval route, decided by somebody other than its submitter."""
+    """Take the paper through a real approval route, decided by somebody other than its submitter.
+
+    False leaves the paper a draft: nobody of this demo may decide it, or the
+    project already routes its papers to somebody the seed cannot speak for.
+    """
     from app.modules.approval_routes.models import Route, Step
     from app.modules.approval_routes.schemas import DecisionSubmit
     from app.modules.approval_routes.service import ApprovalRouteService
     from app.modules.plant_register.service import PAPER_TARGET_KIND
 
-    approver = await _approver(session, owner)
-    if approver is None:
+    people = await _deciders(session, project_id, owner)
+    if not people:
+        logger.info("plant_register demo seed: no second person on %s, the decision paper stays a draft", project_id)
         return False
     routes = ApprovalRouteService(session)
     existing = [
@@ -431,24 +463,34 @@ async def _approve_paper(
         for r in await routes.list_routes(project_id=project_id, target_kind=PAPER_TARGET_KIND, include_inactive=False)
         if r.project_id == project_id
     ]
-    if not existing:
+    if existing:
+        # A route the project already has decides who signs. If that is not one person of this demo, the
+        # paper would wait on a desk the seed cannot speak for, so it is not submitted at all.
+        signers: set[uuid.UUID | None] = set()
+        for route in existing:
+            steps = await routes.list_steps(route.id)
+            signers.add(steps[0].approver_user_id if steps else None)
+        signer = next(iter(signers)) if len(signers) == 1 else None
+        if signer not in people:
+            logger.info("plant_register demo seed: %s routes its papers elsewhere, the paper stays a draft", project_id)
+            return False
+    else:
+        signer = next(iter(people))
         route = Route(
             project_id=project_id, name="Plant decision paper sign-off", target_kind=PAPER_TARGET_KIND, is_active=True
         )
         session.add(route)
         await session.flush()
-        session.add(Step(route_id=route.id, ordinal=1, approver_user_id=approver[0], mode="any"))
+        session.add(Step(route_id=route.id, ordinal=1, approver_user_id=signer, mode="any"))
         await session.flush()
     paper = await svc.submit_paper(project_id, item_id, paper.id, actor_id=owner)
     instance = await routes.get_instance(paper.approval_instance_id)
     step = (await routes.list_steps(instance.route_id))[0]
-    if step.approver_user_id != approver[0]:
-        return False  # the project already routes its papers to somebody the seed cannot speak for
     await routes.submit_decision(
         instance.id,
         DecisionSubmit(step_id=step.id, decision="approved", comment=None),
-        approver_id=approver[0],
-        caller_role=approver[1],
+        approver_id=signer,
+        caller_role=people[signer],
     )
     # The route's event is handled outside this transaction; read the verdict from the route here.
     return await svc.reconcile_paper(paper)
@@ -482,7 +524,7 @@ async def _seed_project(
     today = datetime.now(UTC).date()
     money = currency if re.fullmatch(r"[A-Z]{3}", currency) else ""
     can_route, package = await _package(svc, project_id)
-    counts = {"items": 0, "quotes": 0}
+    counts = {"items": 0, "quotes": 0, "papers_left_draft": 0}
     for index, spec in enumerate(_ITEMS):
         reach = _reach_before_gate(spec) if before_gate else spec["reach"]
         need_days = max(spec["need_days"], CONSTRUCTION_START_DAYS + 15) if before_gate else spec["need_days"]
@@ -543,6 +585,7 @@ async def _seed_project(
         if spec.get("paper"):
             paper = await svc.create_paper(project_id, item.id, _PAPER, actor_id=owner)
             approved = await _approve_paper(session, svc, project_id, item.id, paper, owner)
+            counts["papers_left_draft"] += 0 if approved else 1
         if reach == "identified":
             continue
         await svc.transition_item(project_id, item.id, "specified", actor_id=owner, today=today)
