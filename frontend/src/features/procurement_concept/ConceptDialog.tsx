@@ -69,6 +69,8 @@ export function ConceptDialog({ open, onClose, projectId, concept, catalogues, c
   const gatesQ = useGates(projectId, open && !!concept);
   const gates = gatesQ.data ?? [];
   const tagged = gates.find((g) => g.tagged_release_gate);
+  // The server's answer: the phase model opens procurement in its first phase, so no gate releases it.
+  const fromStart = concept?.released_from_start === true;
 
   const save = useMutation({
     mutationFn: () =>
@@ -220,14 +222,23 @@ export function ConceptDialog({ open, onClose, projectId, concept, catalogues, c
             hint={
               gateOff
                 ? errorText(labels.t, gateOff)
-                : t('procurement_concept.ui.concept.release_gate_hint', {
-                    defaultValue: 'Main works may go to tender once this gate is decided. Advance packages need their own release.',
-                  })
+                : fromStart
+                  ? t('procurement_concept.ui.concept.released_from_start_hint', {
+                      defaultValue:
+                        'The phase model of this project opens procurement in its first phase. Name a gate only if procurement should wait for it.',
+                    })
+                  : t('procurement_concept.ui.concept.release_gate_hint', {
+                      defaultValue: 'Main works may go to tender once this gate is decided. Advance packages need their own release.',
+                    })
             }
           >
             <select id="pc-gate" className={FIELD_CLASS} disabled={!!gateOff} value={gate} onChange={(e) => setGate(e.target.value)}>
               <option value="">
-                {tagged
+                {fromStart
+                  ? t('procurement_concept.ui.concept.gate_none_from_start', {
+                      defaultValue: 'No gate, procurement is open from the project start',
+                    })
+                  : tagged
                   ? t('procurement_concept.ui.concept.gate_tagged', {
                       defaultValue: 'The gate the governance plan names ({{code}})',
                       code: tagged.code,

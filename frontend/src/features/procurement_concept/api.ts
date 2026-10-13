@@ -147,6 +147,8 @@ export interface Concept {
   release_gate_code: string | null;
   /** The gate actually used. Null when none is named or tagged. */
   resolved_release_gate_code: string | null;
+  /** The phase model opens procurement in its first phase: no gate releases it, and none is missing. */
+  released_from_start?: boolean;
   governance_area_code: string | null;
   default_profile_id: string | null;
   submitted_by: string | null;

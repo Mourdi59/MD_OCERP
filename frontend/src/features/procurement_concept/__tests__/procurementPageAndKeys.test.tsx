@@ -165,6 +165,23 @@ describe('ProcurementConceptPage states', () => {
     });
   });
 
+  it('offers no gate as the standing choice where procurement is open from the start', async () => {
+    loaded();
+    mocked.getConcept.mockResolvedValue(concept({ resolved_release_gate_code: null, released_from_start: true }));
+    mocked.listGates.mockResolvedValue(
+      page([
+        { code: 'g2', from_phase: 'p2', to_phase: 'p3', status: 'open', target_date: null, sort_order: 2, tagged_release_gate: false, selected: false },
+      ]),
+    );
+    renderPage('/projects/p1/procurement-concept?tab=record');
+    fireEvent.click(await screen.findByTestId('concept-edit'));
+    const gate = (await screen.findByLabelText('Gate that releases procurement')) as HTMLSelectElement;
+    await waitFor(() => expect([...gate.options].map((o) => o.value)).toEqual(['', 'g2']));
+    expect(gate.value).toBe('');
+    expect(gate.options[0]!.textContent).toBe('No gate, procurement is open from the project start');
+    expect(screen.getByTestId('concept-dialog')).toHaveTextContent('opens procurement in its first phase');
+  });
+
   it('keeps the release gate closed, with the reason, for who may not name it', async () => {
     loaded();
     mocked.getConcept.mockResolvedValue(concept({ can: can({ set_gate_fields: 'manage_required' }) }));

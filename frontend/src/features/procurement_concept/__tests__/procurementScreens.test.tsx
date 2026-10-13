@@ -396,6 +396,12 @@ describe('ConceptRecord', () => {
     expect(screen.getByTestId('concept-record')).toHaveTextContent('Not known yet');
   });
 
+  it('says procurement is open from the start where the phase model has no release gate', () => {
+    record({ concept: concept({ resolved_release_gate_code: null, released_from_start: true }) });
+    expect(screen.getByTestId('concept-record')).toHaveTextContent('None, procurement is open from the project start');
+    expect(screen.getByTestId('concept-record')).not.toHaveTextContent('Not known yet');
+  });
+
   it('says so when the person who submitted also approved', () => {
     record({ concept: concept({ state: 'approved', can: LOCKED, four_eyes_violated: true }) });
     expect(screen.getByTestId('four-eyes')).toBeInTheDocument();
