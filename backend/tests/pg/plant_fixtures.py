@@ -82,7 +82,10 @@ class World:
     route_id: uuid.UUID | None = None
 
 
-async def build_world(factory: async_sessionmaker[AsyncSession], *, provider: FakePlanProvider | None = None) -> World:
+async def build_world(
+    factory: async_sessionmaker[AsyncSession], *, provider: FakePlanProvider | None = None, model: bool = True
+) -> World:
+    """The plant test world. ``model=False`` leaves the project without a phase model: no gates, no areas."""
     from sqlalchemy import select
 
     from app.modules.plant_register.catalogue import register_plant_kind
@@ -99,21 +102,24 @@ async def build_world(factory: async_sessionmaker[AsyncSession], *, provider: Fa
         approver = await add_user(s, "manager")
         outsider = await add_user(s, "manager")
         pid = await add_project(s, manager, [area_owner, editor, approver])
-        await GovernanceService(s).set_model(
-            pid,
-            source="shipped",
-            catalogue_id="elf_module_framework",
-            version=None,
-            four_eyes=True,
-            actor_id=manager,
-            tenant_id=str(manager),
-        )
-        area = (
-            await s.execute(
-                select(GovernanceArea).where(GovernanceArea.project_id == pid, GovernanceArea.code == "m04_equipment")
+        if model:
+            await GovernanceService(s).set_model(
+                pid,
+                source="shipped",
+                catalogue_id="elf_module_framework",
+                version=None,
+                four_eyes=True,
+                actor_id=manager,
+                tenant_id=str(manager),
             )
-        ).scalar_one()
-        area.owner_user_id = area_owner
+            area = (
+                await s.execute(
+                    select(GovernanceArea).where(
+                        GovernanceArea.project_id == pid, GovernanceArea.code == "m04_equipment"
+                    )
+                )
+            ).scalar_one()
+            area.owner_user_id = area_owner
         route_id = await add_route(s, pid, "plant_decision_paper", approver)
         await s.commit()
     sup, ins = uuid.uuid4(), uuid.uuid4()

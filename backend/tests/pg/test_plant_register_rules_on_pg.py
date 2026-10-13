@@ -445,6 +445,107 @@ async def test_a_cancelled_item_is_never_overdue_and_never_long_lead_open(world:
 # ── readiness and gate evidence (SPEC 7) ──────────────────────────────────
 
 
+@pytest_asyncio.fixture
+async def bare_world():
+    """A project that does not use gates: no phase model, so no areas, gates or frame documents."""
+    async with isolated_engine() as engine:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        yield await build_world(factory, model=False)
+    unregister_package_plan_provider()
+    unregister_commitment_provider()
+
+
+async def test_a_project_without_gates_takes_a_critical_item_from_identified_to_ordered(bare_world: World) -> None:
+    """Rule 26: nothing in the register waits for a gate decision or a frame document that cannot come.
+
+    The decision paper is approved by its own approval route, the route is set
+    by hand, the order is read from the purchase order. All of it works
+    without a phase model, and the readiness read says that no gate is in use.
+    """
+    from app.modules.plant_register.errors import PlantError as Refused
+    from app.modules.plant_register.events import handle_route_event
+    from app.modules.plant_register.evidence import plant_readiness
+    from app.modules.project_governance.evidence import GateAttempt
+    from app.modules.project_governance.public import project_controls
+
+    w = bare_world
+    async with w.factory() as s:
+        assert (await project_controls(s, w.project_id)).has_model is False
+        # Nobody owns an equipment area here, so the register is edited by the holders of the manage right.
+        await PlantService(s).require_editor(w.project_id, w.manager, can_manage=True)
+        with pytest.raises(Refused) as exc:
+            await PlantService(s).require_editor(w.project_id, w.area_owner, can_manage=False)
+        assert exc.value.code == "not_equipment_owner"
+
+    iid = await item(w)  # mv_switchgear is critical by default
+    await quote(w, iid, set_basis=True)
+    for target in ("specified", "enquired"):
+        await _do(w, lambda svc, t=target: svc.transition_item(w.project_id, iid, t, actor_id=w.manager, today=TODAY))
+    await _do(
+        w,
+        lambda svc: svc.set_route(
+            w.project_id,
+            iid,
+            route="contractor_furnished_installed",
+            contract_package_id=w.supplier_pkg,
+            actor_id=w.manager,
+        ),
+    )
+    await _do(
+        w,
+        lambda svc: svc.put_limits(
+            w.project_id, iid, [{"step": s, "party": "contractor"} for s in _steps()], actor_id=w.manager
+        ),
+    )
+    # Before the paper is approved the critical item cannot go on, with or without gates.
+    code, blockers, _ = await _refused(
+        w, lambda svc: svc.transition_item(w.project_id, iid, "route_set", actor_id=w.manager, today=TODAY)
+    )
+    assert code == "transition_blocked" and "critical_without_decision" in blockers
+
+    paper = await _submitted(w, iid, by=w.manager)
+    assert paper.status == "submitted"
+    await handle_route_event(
+        {
+            "target_kind": "plant_decision_paper",
+            "target_id": str(paper.id),
+            "instance_id": str(paper.approval_instance_id),
+        },
+        decision="approved",
+        session_factory=w.factory,
+    )
+    assert (await get(w, DecisionPaper, paper.id)).status == "approved"
+
+    # The first thing the approval unlocks, then the order.
+    await _do(w, lambda svc: svc.transition_item(w.project_id, iid, "route_set", actor_id=w.manager, today=TODAY))
+    assert await _status(w, iid) == "route_set"
+    po = await _purchase_order(w, "issued")
+    await _do(w, lambda svc: svc.update_item(w.project_id, iid, {"purchase_order_id": po}, actor_id=w.manager))
+    assert await _status(w, iid) == "ordered"
+
+    r = await _do(w, lambda svc: svc.readiness(w.project_id, today=TODAY))
+    assert r["gates_in_use"] is False
+    assert (r["frame_document_exists"], r["frame_document_attached"]) == (False, False)
+    assert (r["critical_open"], r["long_lead_open"]) == ([], [])
+    # No frame document exists to attach here, so it does not hold the register back.
+    assert r["ready"] is (not r["error_findings"])
+    payload = await _do(w, lambda svc: svc.validation_payload(w.project_id, today=TODAY))
+    assert payload["gate_date"] is None
+    # And no gate finding: the evidence provider has nothing to say about a project without a model.
+    from types import SimpleNamespace
+
+    async with w.factory() as s:
+        area = SimpleNamespace(code="m04_equipment", applicable=True)
+        attempt = GateAttempt(uuid.uuid4(), "development_to_execution", 1)
+        assert await plant_readiness(s, w.project_id, attempt, area) == []
+
+
+async def test_with_gates_the_readiness_read_says_so_and_still_wants_the_frame_document(world: World) -> None:
+    r = await _do(world, lambda svc: svc.readiness(world.project_id, today=TODAY))
+    assert r["gates_in_use"] is True
+    assert r["frame_document_attached"] is False and r["ready"] is False
+
+
 async def test_readiness_counts_a_long_lead_item_with_no_need_date_as_open_until_it_is_ordered(world: World) -> None:
     iid = await _route_set(world)  # lift, 44 weeks, no activity and no fixed date
     v = await view(world, iid)

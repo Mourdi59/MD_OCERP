@@ -1953,14 +1953,24 @@ class PlantService:
         long_lead_open = calc.long_lead_open(items)
         frame = await self._frame_document(project_id)
         frame_ok = bool(frame is not None and frame.container_id is not None)
+        # A project without a phase model has no gate to be ready for and no frame document to attach:
+        # the register is then judged on its own items, and the reader is told that no gate is in use.
+        gates_in_use = await self.gates_in_use(project_id)
         return {
-            "ready": not errors and not critical_open and not long_lead_open and frame_ok,
+            "gates_in_use": gates_in_use,
+            "ready": not errors and not critical_open and not long_lead_open and (frame_ok or not gates_in_use),
             "error_findings": [{"rule_id": e["rule_id"], "element_ref": e["element_ref"]} for e in errors],
             "critical_open": critical_open,
             "long_lead_open": long_lead_open,
             "frame_document_attached": frame_ok,
             "frame_document_exists": frame is not None,
         }
+
+    async def gates_in_use(self, project_id: uuid.UUID) -> bool:
+        """Whether the project pinned a phase model, and so has gates and frame documents at all."""
+        from app.modules.project_governance.public import project_controls
+
+        return (await project_controls(self.session, project_id)).has_model
 
     async def _frame_document(self, project_id: uuid.UUID) -> Any:
         from app.modules.project_governance.public import project_documents
