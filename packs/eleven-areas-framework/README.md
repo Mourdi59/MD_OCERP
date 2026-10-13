@@ -20,13 +20,15 @@ The pack contains data only. It selects eleven platform modules and gives them t
 | `catalogues/stakeholder_framework/eleven_areas_framework.json` | `stakeholder_framework` | stakeholder categories, analysis methods, roles, bodies, decision types, mandate template |
 | `catalogues/delivery_forms/eleven_areas_framework.json` | `delivery_forms` | the delivery forms the framework names, with risk categories, criteria and package templates |
 | `catalogues/permit_type/eleven_areas_framework_de.json` | `permit_type` | German roadmap entries on top of the shipped `de` catalogue |
+| `catalogues/permit_type/eleven_areas_framework_de_by.json` | `permit_type` | the same entries on top of the shipped Bavarian catalogue (`de_by`), the default for projects in DE-BY |
+| `catalogues/permit_type/eleven_areas_framework_de_bw.json` | `permit_type` | the same entries on top of the shipped Baden-Wuerttemberg catalogue (`de_bw`), the default for projects in DE-BW |
 | `catalogues/site_logistics/eleven_areas_framework_de.json` | `site_logistics` | German site logistics catalogue that extends the shipped `de` catalogue and adds no figure of its own |
 
 Every entry carries its label in German and English. Country facts (permit periods, procurement thresholds,
 retention rules, noise limits, load classes) are not in this pack: they come from the catalogues the platform
 resolves from the project's country.
 
-`demo/demo_project.json` carries the demo story for the governance seed: catalogue pins, area owners, the eleven frame documents and the state of the gate. Rows on the module screens come from the module seeders.
+The pack installs two demo projects of common types, each in the Land whose building code it follows: `residential-regensburg`, a quarter of four multi-family buildings in Bavaria, and `school-ludwigsburg`, a primary school with a sports hall in Baden-Wuerttemberg. A project's Land picks its permit catalogue. `demo/demo_project.json` carries the demo story of the Bavarian project for the governance seed: catalogue pins, area owners, the eleven frame documents and the state of the gate. Rows on the module screens come from the module seeders.
 
 ## Install
 

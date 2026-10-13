@@ -531,7 +531,7 @@ class PermitService:
             # A new roadmap: the active pack's default for this country first, the module's own after.
             from app.modules.project_governance.public import default_catalogue_pin
 
-            pin = default_catalogue_pin(PERMIT_TYPE_KIND, country)
+            pin = default_catalogue_pin(PERMIT_TYPE_KIND, country, getattr(project, "subdivision_code", None))
             if pin is not None:
                 source, catalogue_id = pin.source, pin.catalogue_id
                 catalogue_version = catalogue_version or pin.version

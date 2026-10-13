@@ -3,8 +3,8 @@
   "schema_version": 1,
   "demo_id": "eleven-areas-office",
   "project": {
-    "demo_template_id": "office-frankfurt",
-    "$template_note": "The project row and its bill come from the existing Python demo template of this id (German office building); the manifest names it in demo_template_ids. A pack never runs code and this file is no second source of the project row."
+    "demo_template_id": "residential-regensburg",
+    "$template_note": "The project row and its bill come from the existing Python demo template of this id (Bavarian residential quarter); the manifest names it in demo_template_ids. A pack never runs code and this file is no second source of the project row."
   },
   "pins": [
     {
@@ -28,7 +28,7 @@
     {
       "kind": "permit_type",
       "source": "pack",
-      "id": "eleven_areas_framework_de",
+      "id": "eleven_areas_framework_de_by",
       "version": 1
     },
     {

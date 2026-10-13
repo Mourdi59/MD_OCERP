@@ -212,10 +212,13 @@ def _load_pack(spec: Any, ref: catalogue_packs.PackCatalogue) -> Any:
         raise GovernanceError("pack_catalogue_invalid", 422, detail="; ".join(exc.errors[:5])) from exc
 
 
-def default_catalogue_pin(kind: str = PHASE_MODEL_KIND, country_code: str | None = None) -> CataloguePin | None:
+def default_catalogue_pin(
+    kind: str = PHASE_MODEL_KIND, country_code: str | None = None, subdivision_code: str | None = None
+) -> CataloguePin | None:
     """The catalogue a new project should pin for ``kind``, or ``None``.
 
-    The active pack is asked first (:func:`catalogue_packs.pack_default_pin`);
+    The active pack is asked first (:func:`catalogue_packs.pack_default_pin`),
+    with the project's subdivision (``DE-BY``) before its country;
     a default whose file does not load is passed over, so a broken pack never
     becomes what new projects pin.
 
@@ -236,7 +239,7 @@ def default_catalogue_pin(kind: str = PHASE_MODEL_KIND, country_code: str | None
     last resort here, its neutral catalogue: governance is the owning module
     of that kind.
     """
-    for pin in catalogue_packs.pack_default_candidates(kind, country_code):
+    for pin in catalogue_packs.pack_default_candidates(kind, country_code, subdivision_code):
         ref = catalogue_packs.find_pack_catalogue(kind, pin.catalogue_id, pin.version, active_only=True)
         try:
             if ref is not None:

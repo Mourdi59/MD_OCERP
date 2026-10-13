@@ -50,7 +50,8 @@ PACK_SOURCE = "pack"
 
 # What a project pins and a URL carries: lower snake case, at most 64 characters.
 _CATALOGUE_ID = re.compile(r"[a-z][a-z0-9_]{0,63}")
-_COUNTRY = re.compile(r"[A-Z]{2}")
+# A country (ISO 3166-1 alpha-2) or one of its subdivisions (ISO 3166-2, "DE-BY").
+_COUNTRY = re.compile(r"[A-Z]{2}(-[A-Z0-9]{1,3})?")
 
 
 @dataclass(frozen=True)
@@ -231,16 +232,22 @@ def pack_default_pin(kind: str, country_code: str | None = None) -> CataloguePin
     return candidates[0] if candidates else None
 
 
-def pack_default_candidates(kind: str, country_code: str | None = None) -> tuple[CataloguePin, ...]:
+def pack_default_candidates(
+    kind: str, country_code: str | None = None, subdivision_code: str | None = None
+) -> tuple[CataloguePin, ...]:
     """Every catalogue the ACTIVE pack names as a default, in the order to try them.
 
-    The ones named for the country first, then the ones named for every
-    country, each group by id. A caller that finds the first one unusable
-    (its file does not load) takes the next before it leaves the pack.
+    The ones named for the project's subdivision first (a Land such as
+    ``DE-BY``, only when it belongs to the country), then the ones named for
+    the country, then the ones named for every country, each group by id. A
+    caller that finds the first one unusable (its file does not load) takes
+    the next before it leaves the pack.
     """
     country = (country_code or "").strip().upper()
+    sub = (subdivision_code or "").strip().upper()
     refs = sorted(active_pack_catalogues(kind), key=lambda c: c.id)
-    ordered = [c for c in refs if country and country in c.default_for_countries]
+    ordered = [c for c in refs if country and sub.startswith(f"{country}-") and sub in c.default_for_countries]
+    ordered += [c for c in refs if country and country in c.default_for_countries and c not in ordered]
     ordered += [c for c in refs if c.default_for_new_projects and c not in ordered]
     return tuple(CataloguePin(source=PACK_SOURCE, catalogue_id=c.id, version=c.version) for c in ordered)
 

@@ -669,7 +669,7 @@ class LogisticsPlanService:
         country = getattr(project, "country_code", None)
         # The governance port is the only country rule: the active pack, the regional packs,
         # then the one shipped catalogue that names the country. No answer means the neutral file.
-        pin = default_catalogue_pin(SITE_LOGISTICS_KIND, country)
+        pin = default_catalogue_pin(SITE_LOGISTICS_KIND, country, getattr(project, "subdivision_code", None))
         if pin is not None:
             return pin.source, pin.catalogue_id, pin.version
         return "shipped", DEFAULT_CATALOGUE_ID, shipped_catalogues()[DEFAULT_CATALOGUE_ID].version

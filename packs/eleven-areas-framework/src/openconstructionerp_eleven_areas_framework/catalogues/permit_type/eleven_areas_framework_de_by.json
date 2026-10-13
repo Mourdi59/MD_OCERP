@@ -1,0 +1,67 @@
+{
+  "id": "eleven_areas_framework_de_by",
+  "version": 1,
+  "labels": {
+    "en": "Eleven module framework: permit roadmap additions, Bavaria",
+    "de": "Elf-Module-Rahmen: Ergänzungen zum Genehmigungsfahrplan, Bayern"
+  },
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [],
+  "jurisdiction": "DE-BY",
+  "extends": "de_by",
+  "source_url": null,
+  "permit_types": [
+    {
+      "code": "bebauungsplan",
+      "labels": {
+        "en": "Binding land-use plan (planning law basis)",
+        "de": "Bebauungsplan (Baurecht)"
+      },
+      "default_applicant_role": "owner",
+      "scope": "preliminary",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "category": "planning_zoning",
+      "authority_kind": "planning_authority"
+    },
+    {
+      "code": "energierechtliche_genehmigung",
+      "labels": {
+        "en": "Energy law approval",
+        "de": "Energierechtliche Genehmigung"
+      },
+      "default_applicant_role": "operator",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "category": "other",
+      "authority_kind": "other"
+    },
+    {
+      "code": "telekommunikationsanschluss",
+      "labels": {
+        "en": "Telecom connection agreement",
+        "de": "Telekommunikationsanschluss"
+      },
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "category": "utility",
+      "authority_kind": "utility_operator"
+    }
+  ],
+  "condition_kinds": []
+}

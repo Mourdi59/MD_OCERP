@@ -657,3 +657,27 @@ def test_the_port_answers_what_the_private_country_rule_of_a_module_answered(
             differing[country] = (answer, rule(country))
     assert differing == {}, f"{kind}: port against {module}.{rule_name}: {differing}"
     assert public.default_catalogue_pin(kind, None) is None
+
+
+def test_a_default_named_for_the_subdivision_comes_before_the_country_one(installed: Packs) -> None:
+    installed.install(
+        _pack(
+            "acme",
+            _entry("acme_german", default_for_countries=["DE"]),
+            _entry("acme_bavarian", default_for_countries=["DE-BY"]),
+        ),
+        active=True,
+    )
+    bavarian, german = packs.CataloguePin("pack", "acme_bavarian", 1), packs.CataloguePin("pack", "acme_german", 1)
+    assert public.default_catalogue_pin("phase_model", "DE", "DE-BY") == bavarian
+    assert packs.pack_default_candidates("phase_model", "DE", "DE-BY") == (bavarian, german)
+    # Another Land of the country, no Land at all, or a subdivision of another country: the country's default.
+    assert public.default_catalogue_pin("phase_model", "DE", "DE-BW") == german
+    assert public.default_catalogue_pin("phase_model", "DE") == german
+    assert packs.pack_default_candidates("phase_model", "AT", "DE-BY") == ()
+
+
+def test_a_subdivision_code_is_accepted_and_a_malformed_one_refuses_the_entry() -> None:
+    ok = packs.declared_catalogues(_pack("acme", _entry("acme_by", default_for_countries=["DE-BY"])))
+    assert [c.default_for_countries for c in ok] == [("DE-BY",)]
+    assert packs.declared_catalogues(_pack("acme", _entry("acme_x", default_for_countries=["DE-"]))) == ()

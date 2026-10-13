@@ -57,8 +57,19 @@ def test_the_two_manifests_state_the_same_pack() -> None:
 
 
 def test_the_pack_declares_catalogues_to_check() -> None:
-    kinds = sorted(entry["kind"] for entry in _catalogues())
-    assert kinds == ["delivery_forms", "permit_type", "phase_model", "site_logistics", "stakeholder_framework"]
+    ids = sorted((entry["kind"], entry["id"]) for entry in _catalogues())
+    assert ids == [
+        ("delivery_forms", "eleven_areas_framework"),
+        ("permit_type", "eleven_areas_framework_de"),
+        ("permit_type", "eleven_areas_framework_de_bw"),
+        ("permit_type", "eleven_areas_framework_de_by"),
+        ("phase_model", "eleven_areas_framework"),
+        ("site_logistics", "eleven_areas_framework_de"),
+        ("stakeholder_framework", "eleven_areas_framework"),
+    ]
+    # Each Land catalogue of a demo project stands on the shipped catalogue of that Land.
+    lands = {e["id"]: e["default_for_countries"] for e in _catalogues() if e["id"].endswith(("_by", "_bw"))}
+    assert lands == {"eleven_areas_framework_de_by": ["DE-BY"], "eleven_areas_framework_de_bw": ["DE-BW"]}
 
 
 @pytest.mark.parametrize("entry", _catalogues(), ids=lambda e: f"{e['kind']}:{e['id']}")

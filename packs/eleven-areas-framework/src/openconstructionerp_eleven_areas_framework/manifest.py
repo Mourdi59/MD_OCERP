@@ -70,7 +70,7 @@ MANIFEST = PartnerPackManifest(
         logo_path=None,
         powered_by_text="Powered by OpenConstructionERP",
     ),
-    demo_template_ids=["office-frankfurt"],
+    demo_template_ids=["residential-regensburg", "school-ludwigsburg"],
     onboarding_script_path=None,
     metadata={
         "industry": "owner_project_management",
@@ -104,6 +104,20 @@ MANIFEST = PartnerPackManifest(
                 "version": 1,
                 "path": "catalogues/permit_type/eleven_areas_framework_de.json",
                 "default_for_countries": ["DE"],
+            },
+            {
+                "kind": "permit_type",
+                "id": "eleven_areas_framework_de_by",
+                "version": 1,
+                "path": "catalogues/permit_type/eleven_areas_framework_de_by.json",
+                "default_for_countries": ["DE-BY"],
+            },
+            {
+                "kind": "permit_type",
+                "id": "eleven_areas_framework_de_bw",
+                "version": 1,
+                "path": "catalogues/permit_type/eleven_areas_framework_de_bw.json",
+                "default_for_countries": ["DE-BW"],
             },
             {
                 "kind": "site_logistics",
