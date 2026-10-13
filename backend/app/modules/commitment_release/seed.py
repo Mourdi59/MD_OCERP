@@ -3,8 +3,9 @@
 """Demo commitment matrix for the demo estate, run by ``app.core.demo_enrichment``.
 
 Each demo project gets the authority schedule its catalogue data resolves to,
-the project owner as holder of every tier and a second person (a team member,
-else another demo login) who plans and requests, so that four eyes holds. The
+the project owner as holder of every tier and a second person (a member of the
+project's team) who plans and requests, so that four eyes holds. Without such a
+member the items are seeded and nothing is requested. The
 four items are the ones an owner would plan:
 
 * a works package, released in full and then linked to the first subcontractor
@@ -134,22 +135,15 @@ async def _cast_cost_person(session: AsyncSession, project_id: uuid.UUID, owner:
 
 
 async def _second_person(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID) -> uuid.UUID | None:
-    """Who plans and requests while the owner approves: a team member, else another demo login."""
-    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS
-    from app.modules.users.models import User
+    """Who plans and requests while the owner approves: a member of this project's team, or nobody.
 
+    Never an account that is not on the project: a project whose only person is its owner is a
+    legal state (a pack install without the demo logins), and it is seeded without a release.
+    """
     cost = await _cast_cost_person(session, project_id, owner)
     if cost is not None:
         return cost
-    member = await _team_member(session, project_id, owner)
-    if member is not None:
-        return member
-    stmt = (
-        select(User.id)
-        .where(User.email.in_(sorted(DEMO_ACCOUNT_EMAILS)), User.is_active.is_(True), User.id != owner)
-        .order_by(User.email)
-    )
-    return (await session.execute(stmt)).scalars().first()
+    return await _team_member(session, project_id, owner)
 
 
 async def _release(
