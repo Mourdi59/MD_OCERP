@@ -271,12 +271,15 @@ def test_the_evidence_says_why_it_cannot_report_through_a_label(locale: str, lab
 def test_the_evidence_link_opens_the_register_page_of_the_project() -> None:
     from app.modules.plant_register import evidence
     from app.modules.project_governance.evidence import evidence_link_href, unregister_evidence_link
+    from tests.pg.governance_fixtures import only_evidence
 
-    unregister_evidence_link(evidence.LINK_KIND)
     project = uuid.uuid4()
-    assert evidence_link_href(evidence.LINK_KIND, str(project), project) is None
-    evidence.register_gate_evidence()
-    assert evidence_link_href(evidence.LINK_KIND, str(project), project) == f"/projects/{project}/plant-register"
+    # Inside the helper the registry is this test's alone and is put back as it was on leaving.
+    with only_evidence():
+        unregister_evidence_link(evidence.LINK_KIND)
+        assert evidence_link_href(evidence.LINK_KIND, str(project), project) is None
+        evidence.register_gate_evidence()
+        assert evidence_link_href(evidence.LINK_KIND, str(project), project) == f"/projects/{project}/plant-register"
     # The page is a route of the web app; a renamed route would leave the link dead.
     app_routes = (Path(__file__).resolve().parents[3] / "frontend" / "src" / "app" / "App.tsx").read_text(
         encoding="utf-8"
