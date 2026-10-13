@@ -103,6 +103,9 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
     },
   ];
 
+  // Only the server's plain no counts; while the answer is on its way nothing is claimed.
+  const noGates = readiness.data?.gates_in_use === false;
+
   return (
     <section className="space-y-5" data-testid="plan-readiness">
       <div className="space-y-3">
@@ -112,14 +115,21 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
             {tx(t, 'readiness.sweep')}
           </Button>
         </PanelHead>
-        <p className="text-sm text-content-secondary">{tx(t, 'readiness.lead')}</p>
+        <p className="text-sm text-content-secondary">{tx(t, noGates ? 'readiness.lead_plain' : 'readiness.lead')}</p>
         <Loaded query={readiness}>
           {(r) => (
             <>
-              {r.governance && (
-                <p className="text-sm text-content-secondary" data-testid="plan-ready-governance">
-                  {governance(r.governance)}
+              {/* Without gates the missing model is how the project is run, not something to repair. */}
+              {noGates ? (
+                <p className="text-sm text-content-secondary" data-testid="plan-ready-no-gates">
+                  {tx(t, 'readiness.no_gates')}
                 </p>
+              ) : (
+                r.governance && (
+                  <p className="text-sm text-content-secondary" data-testid="plan-ready-governance">
+                    {governance(r.governance)}
+                  </p>
+                )
               )}
               <div
                 className="flex items-center gap-2 text-base font-semibold text-content-primary"
@@ -131,7 +141,9 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
                 ) : (
                   <CircleAlert size={18} className="text-semantic-error" aria-hidden />
                 )}
-                {tx(t, r.ready ? 'readiness.ready' : 'readiness.not_ready')}
+                {noGates
+                  ? tx(t, r.ready ? 'readiness.ready_plain' : 'readiness.not_ready_plain')
+                  : tx(t, r.ready ? 'readiness.ready' : 'readiness.not_ready')}
               </div>
               <ul className="space-y-1.5">
                 {r.items.map((item) => (
