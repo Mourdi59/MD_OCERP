@@ -22,8 +22,6 @@ carrier now that every shipped model names one.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
-from contextlib import contextmanager
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -31,28 +29,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.delivery_model.service import DeliveryModelService
 from app.modules.project_governance.service import GovernanceService
 from tests.pg.governance_fixtures import World, add_container, add_project, add_route, add_user
-
-
-@contextmanager
-def only_delivery_evidence() -> Iterator[None]:
-    """Gate evidence of this module alone, and the registry as it was afterwards.
-
-    The registry is one per process. With every module installed, the blocking
-    providers of the others answer for a world that has none of their rows, and
-    a gate these tests need to pass is refused for a reason that is not theirs.
-    """
-    from app.modules.delivery_model.evidence import register_gate_evidence
-    from app.modules.project_governance import evidence as registry
-
-    before = dict(registry._REGISTRY)
-    registry._REGISTRY.clear()
-    register_gate_evidence()
-    try:
-        yield
-    finally:
-        registry._REGISTRY.clear()
-        registry._REGISTRY.update(before)
-
 
 GATE = "development_to_execution"
 CONTRACT_DOC = "m02_contract_management_frame"

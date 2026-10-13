@@ -105,8 +105,8 @@ async def test_the_seed_runs_on_a_catalogue_without_the_form_it_prefers(factory)
     async with w.factory() as s:
         packages = await project_packages(s, w.project_id)
     assert len(packages) == out["packages"] and all(p.code and p.title for p in packages)
-    # Under this governance model procurement is released from the first phase: a seeded item without a
-    # route would put an error on the screen that nobody scripted.
+    # A seeded item without a route would put a finding on the screen that nobody scripted, and an error
+    # under a governance model that releases procurement from its first phase.
     items = await call(w, "ofi_views")
     assert {i["procurement_route"] for i in items} == {"framework", "existing_stock"}
     report = await call(w, "consistency")

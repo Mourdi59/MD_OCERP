@@ -472,33 +472,3 @@ def register_kinds() -> None:
             ),
         )
     )
-
-
-def default_catalogue_id_for_country(country_code: str | None) -> str:
-    """The shipped catalogue whose ``jurisdiction_countries`` names exactly this country, else ``neutral``.
-
-    A pack may declare ``delivery_forms: {CC: id}`` in its config; when the national packs agree, that wins.
-    """
-    from app.core import regional_packs
-    from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
-
-    country = (country_code or "").strip().upper()
-    if not country:
-        return DEFAULT_CATALOGUE_ID
-    register_kinds()
-    shipped = get_catalogue_kind(DELIVERY_FORMS_KIND).shipped()
-    ids = {s.id for s in shipped}
-    declared: set[str] = set()
-    try:
-        for config in regional_packs.packs_for_country(country):
-            if config.get("parent_pack"):
-                continue
-            block = config.get(DELIVERY_FORMS_KIND)
-            if isinstance(block, dict) and isinstance(block.get(country), str):
-                declared.add(block[country].strip())
-    except Exception:
-        declared = set()
-    if len(declared) == 1 and (value := declared.pop()) in ids:
-        return value
-    claims = [s.id for s in shipped if country in s.jurisdiction_countries]
-    return claims[0] if len(claims) == 1 else DEFAULT_CATALOGUE_ID

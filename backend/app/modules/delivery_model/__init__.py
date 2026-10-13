@@ -24,3 +24,7 @@ async def on_startup() -> None:
     register_delivery_model_rules()
     register_delivery_model_subscribers()
     register_gate_evidence()
+    # The plant register reads the package plan here; it is optional and may not be installed.
+    from app.modules.delivery_model import plant_port
+
+    plant_port.register()

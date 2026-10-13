@@ -128,6 +128,17 @@ async def four_eyes(session: Any, project_id: uuid.UUID) -> bool:
     return (await public.project_controls(session, project_id)).four_eyes
 
 
+async def gates_in_use(session: Any, project_id: uuid.UUID) -> bool:
+    """Whether the project has gates at all. A project that never adopted a phase model has none.
+
+    Asked of the gates and not of the model: a pinned model that cannot be read
+    leaves its gates on the project, and there approval still belongs to them.
+    """
+    from app.modules.project_governance import public
+
+    return bool(await public.project_gates(session, project_id))
+
+
 async def construction_not_released(session: Any, project_id: uuid.UUID) -> bool:
     """Is the project still before the gate that starts construction?
 

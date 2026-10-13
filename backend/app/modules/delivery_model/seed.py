@@ -16,14 +16,14 @@ may lack: the forms compared are taken from the catalogue, and a step whose
 codes are missing is left out.
 
 The decision is proposed last, so its record carries the matrix and the plan,
-and it stays ``proposed``: approval happens at the governance gate, never in a
-seeder. A project that cannot take a proposal (its governance model names no
-frame document for the decision, or its catalogue has fewer than two forms)
-gets everything but the proposal, and the result says so: ``ok`` is false and
-``no_decision`` lists the project with the reason, so an integration seed can
-fail on it. A project without a governance model is listed too, but it is a
-legal state of the product and not this module's failure: it is logged at info
-and leaves ``ok`` alone. The governance seed owns that verdict.
+and it stays ``proposed``: approval happens at the governance gate, or by hand
+on a project without gates, never in a seeder. A project that cannot take a
+proposal (it uses gates and its governance model names no frame document for
+the decision, or its catalogue has fewer than two forms) gets everything but
+the proposal, and the result says so: ``ok`` is false and ``no_decision``
+lists the project with the reason, so an integration seed can fail on it. A
+project without a governance model uses no gates and takes the proposal like
+any other.
 
 Dates. A project still before the gate that starts construction (read through
 the governance port, never from a catalogue id or a name) is told as a
@@ -32,9 +32,13 @@ the start of construction, the main package needed at award. Any other project
 keeps the running-project story. Offsets are days from the seed day.
 
 The plant register seeds after this module, because its routes read the
-package plan. So the owner-furnished item that is also a plant item is linked
-in a second step, :func:`link_demo_plant_items`, which the demo run calls after
-the plant register has seeded. Without the register it links nothing.
+package plan. So the one demo item that both lists hold comes in a second
+step, :func:`link_demo_plant_items`, which the demo run calls after the plant
+register has seeded: it has the register record that the owner supplies one of
+its plant items, and the register asks this module for the owner-furnished
+item. The link is never written from here, so the two lists cannot disagree.
+Without the register, or where the register refuses, nothing is linked. The
+two items seeded here stay unlinked and show their own figures.
 
 Only projects carrying the demo marker are touched; a project whose model
 already compares forms is skipped, so a re-run never duplicates. A model that
@@ -65,11 +69,10 @@ SEEDED_RISKS = ("design_errors", "ground_conditions", "price_escalation")
 AWARD = 165
 START = 190
 
-# Reasons a project has no proposal that are a legal state of the product, not a failure of this seed.
-NOT_OURS = frozenset({"governance_model_missing"})
-
-# Seeded owner-furnished item -> code of the demo plant item that is the same thing. The furniture is no plant.
-DEMO_PLANT_LINKS = {"OFI-01": "PL-010"}
+# The demo plant item the owner supplies (the register's seed code): medium voltage switchgear, still
+# before its order when the register has seeded, so its route can be set.
+DEMO_PLANT_ITEM = "PL-002"
+DEMO_PLANT_ROUTE = "framework"
 
 RATIONALE_CHOSEN = (
     "Design and build scores highest: the owner has no in-house design team, wants one point of "
@@ -110,8 +113,7 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
     """Seed the delivery model of every demo project in ``project_ids`` that has none. The caller commits.
 
     Returns counts plus ``no_decision`` (projects seeded without a proposal, with the reason), ``failed``
-    (projects whose seed raised and was rolled back) and ``ok``: nothing failed, and every project that
-    has a governance model got its proposal.
+    (projects whose seed raised and was rolled back) and ``ok`` (both lists empty).
     """
     from app.core.demo_marker import demo_id_of
     from app.modules.delivery_model.models import DeliveryOption
@@ -150,52 +152,81 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
             totals["no_decision"].append({"project_id": str(pid), "reason": reason})
         for k, v in counts.items():
             totals[k] += v
-    totals["ok"] = not totals["failed"] and all(r["reason"] in NOT_OURS for r in totals["no_decision"])
+    totals["ok"] = not totals["failed"] and not totals["no_decision"]
     return totals
 
 
 async def link_demo_plant_items(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, Any]:
-    """Link the seeded owner-furnished items to the demo plant items that are the same thing.
+    """Have the plant register record that the owner supplies the demo switchgear; the caller commits.
 
-    Runs after the plant register's demo seed; the caller commits. An item is
-    linked once: a run that finds it linked, finds no such plant item, or finds
-    no plant register changes nothing. Returns ``{"linked": n}``.
+    Runs after the plant register's demo seed. Per demo project it asks the
+    register to set an owner-furnished route on :data:`DEMO_PLANT_ITEM`, with
+    the package that builds as installer; the register then asks this module
+    for the owner-furnished item, which is how the link comes to exist. The
+    item gets a procurement route like every seeded item.
+
+    Nothing is asked that is known to be refused: a project is skipped, at
+    info, when there is no register, no such plant item, the item is ordered
+    or cancelled (its route is frozen), or it is already owner-furnished.
+    Returns ``{"linked": n, "skipped": [{project_id, reason}]}``.
     """
     from app.core.demo_marker import demo_id_of
-    from app.modules.delivery_model import plant
     from app.modules.delivery_model.repository import DeliveryModelRepository
     from app.modules.delivery_model.service import DeliveryModelService
     from app.modules.projects.models import Project
 
-    linked = 0
+    out: dict[str, Any] = {"linked": 0, "skipped": []}
     ids = list(project_ids)
-    if not ids or not plant.installed():
-        return {"linked": linked}
+    if not ids:
+        return out
     rows = (
         await session.execute(select(Project.id, Project.owner_id, Project.metadata_).where(Project.id.in_(ids)))
     ).all()
     for pid, owner, meta in rows:
         if not demo_id_of(meta):
             continue
-        items = await DeliveryModelRepository(session).ofis(pid)
-        taken = {i.plant_item_id for i in items if i.plant_item_id is not None}
-        for item in items:
-            code = DEMO_PLANT_LINKS.get(item.code)
-            if code is None or item.plant_item_id is not None:
-                continue
-            plant_item_id = await plant.plant_item_id_by_code(session, pid, code)
-            if plant_item_id is None or plant_item_id in taken:
-                continue
-            await DeliveryModelService(session).update_ofi(pid, item.id, {"plant_item_id": plant_item_id}, owner)
-            taken.add(plant_item_id)
-            linked += 1
-    return {"linked": linked}
+        reason = await _link_demo_plant_item(session, pid, owner)
+        if reason is None:
+            item = next(i for i in await DeliveryModelRepository(session).ofis(pid) if i.plant_item_id is not None)
+            if item.procurement_route == "none_yet":
+                await DeliveryModelService(session).set_ofi_route(
+                    pid, item.id, route=DEMO_PLANT_ROUTE, link_kind=None, link_id=None, actor_id=owner
+                )
+            out["linked"] += 1
+        else:
+            logger.info("delivery_model demo: plant item not linked for project %s (%s)", pid, reason)
+            out["skipped"].append({"project_id": str(pid), "reason": reason})
+    return out
+
+
+async def _link_demo_plant_item(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID) -> str | None:
+    """``None`` when the register recorded the owner-furnished route, else why nothing was asked or done."""
+    from app.modules.delivery_model import plant
+    from app.modules.delivery_model.repository import DeliveryModelRepository
+
+    if not plant.installed():
+        return "plant_register_unavailable"
+    repo = DeliveryModelRepository(session)
+    if await repo.get_model(project_id) is None:
+        return "delivery_model_missing"
+    plant_item_id = await plant.plant_item_id_by_code(session, project_id, DEMO_PLANT_ITEM)
+    dates = await plant.plant_item_dates(session, project_id, plant_item_id) if plant_item_id is not None else None
+    if dates is None:
+        return "plant_item_missing"
+    if plant.keeps_owner_furnished_item(dates):
+        return "already_owner_furnished"
+    if not plant.route_open(dates):
+        return "plant_item_route_frozen"
+    # The package that builds installs what the owner supplies; without one the owner installs.
+    installer = next((p.id for p in await repo.packages(project_id) if p.builds and p.status != "cancelled"), None)
+    return await plant.set_owner_furnished_route(
+        session, project_id, plant_item_id, installer_package_id=installer, actor_id=owner
+    )
 
 
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, Any]:
     from app.modules.contracts.models import Contract
     from app.modules.delivery_model import hosting
-    from app.modules.delivery_model.errors import DeliveryModelError
     from app.modules.delivery_model.service import DeliveryModelService
     from app.modules.projects.models import Project
 
@@ -289,7 +320,12 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     if leading is None or len(options) < 2:
         reason = "too_few_forms"
     else:
-        try:
+        # Asked first, not tried: a project that uses gates and has no frame document for the decision
+        # would refuse the proposal.
+        blocked = (await svc._action_blocks(await svc.require_model(project_id)))["propose"]
+        if blocked in (hosting.NO_CARRIER, hosting.NO_GOVERNANCE_MODEL):
+            reason = blocked
+        else:
             await svc.propose(
                 project_id,
                 option_id=options[leading],
@@ -299,15 +335,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                 actor_id=actor,
             )
             decisions = 1
-        except DeliveryModelError as exc:
-            if exc.code not in (hosting.NO_CARRIER, hosting.NO_GOVERNANCE_MODEL):
-                raise
-            reason = exc.code
-    if reason in NOT_OURS:
-        logger.info("delivery_model demo: no decision proposed for project %s (%s)", project_id, reason)
-    elif reason:
-        # Loud on purpose: a demo project that has a governance model and still no proposed decision
-        # shows an empty decision screen.
+    if reason:
+        # Loud on purpose: a demo project without a proposed decision shows an empty decision screen.
         logger.error("delivery_model demo: no decision proposed for project %s (%s)", project_id, reason)
     return {
         "packages": len(packages),
