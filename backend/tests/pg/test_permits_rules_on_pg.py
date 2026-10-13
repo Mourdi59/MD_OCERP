@@ -224,7 +224,10 @@ async def test_the_default_catalogue_follows_the_projects_subdivision(world: Wor
 
 
 async def test_a_granted_requirement_raises_no_schedule_conflict(world: World) -> None:
-    rid = await requirement(world, BUILDING, needed_by_date=TODAY + timedelta(days=5))
+    # The catalogue gives a building permit no statutory period: the forecast is the expected day.
+    rid = await requirement(
+        world, BUILDING, needed_by_date=TODAY + timedelta(days=5), expected_decision_date=TODAY + timedelta(days=30)
+    )
     aid = await file(world, rid, TODAY - timedelta(days=20))
     async with world.factory() as s:
         before = {r["requirement_id"]: r for r in (await PermitService(s).timeline(world.project_id, TODAY))["items"]}
@@ -413,7 +416,7 @@ async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_
         permits = await svc.repo.list_permits(pid)
         conditions = [c for c in await svc.repo.list_conditions(pid) if c.confirmed]
         # Nothing of the execution has happened: no early start permit, its application is with the authority.
-        assert [p.scope for p in permits] == ["full"]
+        assert sorted(p.scope for p in permits) == ["full", "preliminary"]
         early = [a for a in apps if types[reqs[a.requirement_id].permit_type_code].scope == "early_start"]
         assert [a.status for a in early] == ["under_review"]
         assert sorted(a.status for a in apps if a.kind == "new" and a not in early) == [

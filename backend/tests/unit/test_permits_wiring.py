@@ -159,11 +159,32 @@ def _hook_indexes(table_name: str) -> set[str]:
     """Indexes ``app.core.pg_optimizations`` attaches to a table after any ``create_all`` in the process.
 
     No revision creates them, and whether they are on ``table.indexes`` depends on what
-    ran earlier in the same test process, so they are not part of the comparison.
+    ran earlier in the same test process, so they are not part of the comparison: the two
+    project composites, one index per foreign-key column and one GIN index per JSON column.
     """
     from app.core.pg_optimizations import _index_name
+    from app.database import Base
 
-    return {_index_name(table_name, ["project_id", second]) for second in ("created_at", "status")}
+    names = {_index_name(table_name, ["project_id", second]) for second in ("created_at", "status")}
+    for column in Base.metadata.tables[table_name].columns:
+        names |= {_index_name(table_name, [column.name]), _index_name(table_name, [column.name], gin=True)}
+    return names
+
+
+def test_an_index_the_platform_attaches_later_does_not_fail_the_migration_comparison() -> None:
+    """The comparison holds whether or not another test ran ``create_all`` first in the process."""
+    from sqlalchemy import Index
+
+    from app.database import Base
+
+    table = Base.metadata.tables["oe_permits_roadmap"]
+    late = [Index(f"ix_oe_permits_roadmap_{name}", table.c[name]) for name in ("project_id", "governance_document_id")]
+    try:
+        assert {ix.name for ix in late} <= _hook_indexes("oe_permits_roadmap")
+        test_migration_matches_models()
+    finally:
+        for ix in late:
+            table.indexes.discard(ix)
 
 
 def _model_names() -> dict[str, set[str]]:
@@ -279,3 +300,17 @@ def test_the_sweep_is_a_registered_periodic_process() -> None:
     src = inspect.getsource(builtin.register_builtin_processes)
     assert '"permits_sweep"' in src and "permits_tick" in src
     assert "run_sweep_once" in inspect.getsource(builtin.permits_tick)
+
+
+def test_the_register_export_declares_the_language_it_was_written_in() -> None:
+    """The bundle answers a missing locale in English, so that is what the header must say."""
+    import inspect
+
+    from app.modules.permits import export, router
+
+    for asked, written in (("en", "en"), ("de", "de"), ("fr", "en"), ("", "en"), (None, "en"), ("zz", "en")):
+        assert export.written_locale(asked) == written, asked
+    source = inspect.getsource(router.export)
+    assert "Content-Language" in source and "written_locale" in source
+    # The sheet is rendered in that same language, not in the one asked for.
+    assert "get_locale() or" not in source
