@@ -1414,6 +1414,17 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
       // Undefined, not a no-op, when there is nothing to call: the section
       // renderer draws its delete control only when this is set.
       onDeleteSection: canDelete && !readOnly ? onDeleteSection : undefined,
+      // Editing is open to a rank that deleting is not. That caller is told
+      // so on the control itself instead of finding no control at all.
+      onDeleteDenied: !canDelete && !readOnly && onDeleteSection
+        ? () => addToast({
+            type: 'warning',
+            title: t('boq.delete_unavailable_title', { defaultValue: 'Deleting is not available for your role' }),
+            message: t('boq.delete_needs_editor', {
+              defaultValue: 'Your role can add and edit rows but not delete them. Ask a project administrator for the editor role.',
+            }),
+          })
+        : undefined,
       onReorderSections: onReorderSections ?? (() => {}),
       // Issue #90: FormulaCellEditor reads onFormulaApplied via context
       // because the Quantity column doesn't supply cellEditorParams.
@@ -1447,7 +1458,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
      onDuplicatePosition, showContextMenu, anomalyMap, onApplyAnomalySuggestion, bimModelId,
      onUpdatePosition, onHighlightBIMElements, onLinkFromModel, onDeleteSection, onReorderSections, onFormulaApplied,
      positions, boqVariablesMap, customColumns, showResourceSplit, showResourceSplitPill, renderInlineCopilot, displayQuantity,
-     sectionTotalBasis, variationTraces, variationUntracedBadge, readOnly, canDelete],
+     sectionTotalBasis, variationTraces, variationUntracedBadge, readOnly, canDelete, addToast],
   );
 
   /* ── Column defs (standard + custom) ─────────────────────────────── */

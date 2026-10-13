@@ -2268,9 +2268,11 @@ export function BOQEditorPage() {
       if (pendingSectionDeleteRef.current?.toastId === pending.toastId) {
         pendingSectionDeleteRef.current = null;
       }
+      let sent = true;
       try {
         await boqApi.deletePosition(pending.sectionId, { cascade: true });
       } catch (err) {
+        sent = false;
         // The rows come back with the refetch, so nothing is lost silently.
         for (const id of pending.removedIds) deletedIdsRef.current.delete(id);
         addToast({
@@ -2282,9 +2284,27 @@ export function BOQEditorPage() {
         });
       }
       invalidateAll();
+      return sent;
     },
     [addToast, invalidateAll, t],
   );
+
+  /**
+   * Send a section delete that is still in its undo window before a section
+   * is added. The new section is numbered from the rows on screen, where the
+   * deleted one is already gone, while the server keeps it until the window
+   * ends: delete section 01, add a section, and the new one asked for the
+   * number 01 again and was refused as taken. False when the delete failed,
+   * so the rows are coming back and nothing should be numbered around them.
+   */
+  const settleSectionDelete = useCallback(async (): Promise<boolean> => {
+    const pending = pendingSectionDeleteRef.current;
+    if (!pending) return true;
+    removeToast(pending.toastId);
+    return flushSectionDelete(pending);
+  }, [flushSectionDelete, removeToast]);
+  /** True while an add is waiting on that delete, so a second click does not race it. */
+  const sectionAddSettlingRef = useRef(false);
 
   const handleDeleteSection = useCallback(
     async (sectionId: string) => {
@@ -2654,15 +2674,21 @@ export function BOQEditorPage() {
    * (gap-of-10, mirroring handleAddPosition).
    */
   const handleAddSubSection = useCallback(
-    (parentSectionId: string) => {
-      if (!boqId) return;
+    async (parentSectionId: string) => {
+      if (!boqId || sectionAddSettlingRef.current) return;
+      sectionAddSettlingRef.current = true;
+      try {
+        if (!(await settleSectionDelete())) return;
+      } finally {
+        sectionAddSettlingRef.current = false;
+      }
       const all = boq?.positions ?? [];
       const parent = all.find((p) => p.id === parentSectionId);
       const parentOrdinal = parent?.ordinal ?? '01';
       const ordinal = computeNextSubOrdinal(all, parentOrdinal);
       sectionMutation.mutate({ ordinal, description: '', parent_id: parentSectionId });
     },
-    [boqId, boq?.positions, sectionMutation],
+    [boqId, boq?.positions, sectionMutation, settleSectionDelete],
   );
 
   /** Section name modal */
@@ -2716,8 +2742,14 @@ export function BOQEditorPage() {
     [boqId],
   );
 
-  const handleConfirmAddSection = useCallback(() => {
-    if (!boqId || sectionMutation.isPending) return;
+  const handleConfirmAddSection = useCallback(async () => {
+    if (!boqId || sectionMutation.isPending || sectionAddSettlingRef.current) return;
+    sectionAddSettlingRef.current = true;
+    try {
+      if (!(await settleSectionDelete())) return;
+    } finally {
+      sectionAddSettlingRef.current = false;
+    }
     // The dialog closes only once the section exists. Closing it up front
     // threw the typed name away when the server could not be reached.
     const closeOnSuccess = {
@@ -2746,6 +2778,7 @@ export function BOQEditorPage() {
     sectionMutation,
     sectionNameInput,
     sectionParentInput,
+    settleSectionDelete,
   ]);
 
   const handleAddPosition = useCallback(
@@ -6074,7 +6107,7 @@ export function BOQEditorPage() {
               aria-label={t('boq.section_name_prompt', { defaultValue: 'Enter section name:' })}
               value={sectionNameInput}
               onChange={(e) => setSectionNameInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmAddSection(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') void handleConfirmAddSection(); }}
               className="w-full rounded-lg border border-border-light bg-surface-primary px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue"
               placeholder={t('boq.section_name_placeholder', { defaultValue: 'e.g. Structural Works, MEP, Finishes...' })}
               autoFocus
@@ -6120,7 +6153,7 @@ export function BOQEditorPage() {
                 {t('common.cancel', { defaultValue: 'Cancel' })}
               </button>
               <button
-                onClick={handleConfirmAddSection}
+                onClick={() => void handleConfirmAddSection()}
                 disabled={sectionMutation.isPending}
                 data-testid="boq-add-section-confirm"
                 className="px-3 py-1.5 text-xs font-medium rounded-lg bg-oe-blue text-white hover:bg-oe-blue-hover transition-colors disabled:opacity-60 disabled:cursor-wait"

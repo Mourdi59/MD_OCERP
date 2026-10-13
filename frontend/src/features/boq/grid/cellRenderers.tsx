@@ -445,6 +445,29 @@ export function SectionFullWidthRenderer(params: ICellRendererParams) {
         </button>
       )}
 
+      {/* A role that may add a section but not delete one still gets the
+          control where it expects it. It is marked unavailable and a click
+          says why, where a missing button would only look like a defect. */}
+      {!(ctx as FullGridContext | undefined)?.onDeleteSection && !readOnly
+        && (ctx as FullGridContext | undefined)?.onDeleteDenied && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            (ctx as FullGridContext).onDeleteDenied!();
+          }}
+          aria-disabled="true"
+          className="shrink-0 h-6 w-6 flex items-center justify-center rounded
+                     text-content-tertiary bg-transparent opacity-40 cursor-not-allowed
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
+          title={t('boq.delete_needs_editor', {
+            defaultValue: 'Your role can add and edit rows but not delete them. Ask a project administrator for the editor role.',
+          })}
+          aria-label={t('boq.delete_section_unavailable', { defaultValue: 'Delete section (not available for your role)' })}
+        >
+          <Trash2 size={12} />
+        </button>
+      )}
+
       {/* The same actions button the position rows carry, opening the section
           context menu (add position, sub-section, collapse, delete) for
           anyone who does not know about right-click, or has none. */}
@@ -686,6 +709,9 @@ export type FullGridContext = ActionsContext & ResourceGridContext & SectionGrou
   onLinkFromModel?: (positionId: string) => void;
   /** Delete a section with all its child positions. */
   onDeleteSection?: (sectionId: string) => void;
+  /** Set instead of ``onDeleteSection`` when the caller's role may edit the
+   *  bill but not delete from it: says so, rather than leave no control. */
+  onDeleteDenied?: () => void;
   /** Reorder sections via drag-and-drop. */
   onReorderSections?: (fromId: string, toId: string) => void;
   /** Issue #90: persist a Quantity-cell formula on the row's metadata. */

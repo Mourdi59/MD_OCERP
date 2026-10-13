@@ -66,8 +66,22 @@ describe('SectionFullWidthRenderer actions', () => {
     expect(screen.getByRole('button', { name: 'Actions for section Walls' })).toBeTruthy();
   });
 
+  it('tells a role that cannot delete why, on the control itself', () => {
+    const onDeleteDenied = vi.fn();
+    const { onDeleteSection } = renderSection({ onDeleteSection: undefined, onDeleteDenied });
+
+    expect(screen.queryByRole('button', { name: 'Delete section with all positions' })).toBeNull();
+    const trash = screen.getByRole('button', { name: 'Delete section (not available for your role)' });
+    expect(trash.getAttribute('aria-disabled')).toBe('true');
+    expect(trash.getAttribute('title')).toMatch(/can add and edit rows but not delete them/);
+
+    fireEvent.click(trash);
+    expect(onDeleteDenied).toHaveBeenCalledTimes(1);
+    expect(onDeleteSection).not.toHaveBeenCalled();
+  });
+
   it('draws no delete control on a locked bill', () => {
-    renderSection({ readOnly: true });
+    renderSection({ readOnly: true, onDeleteDenied: vi.fn() });
 
     expect(screen.queryByRole('button', { name: 'Delete section with all positions' })).toBeNull();
   });
