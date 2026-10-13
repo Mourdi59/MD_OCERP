@@ -33,6 +33,36 @@ class PlantItemDates:
     status: str
 
 
+@dataclass(frozen=True)
+class PlantItemOption:
+    """One row of a picker another module offers: enough to name the item, nothing derived."""
+
+    id: uuid.UUID
+    code: str
+    title: str
+    status: str
+
+
+async def plant_item_options(session: Any, project_id: uuid.UUID) -> list[PlantItemOption]:
+    """Every plant item of this project and of no other, by register code, for a picker.
+
+    Cancelled items are listed too, with their status: a row that already
+    links to one must still be able to name it, and the reader decides whether
+    to offer it. Read only, never raises; a project without items gives ``[]``.
+    """
+    from sqlalchemy import select
+
+    from app.modules.plant_register.models import PlantItem
+
+    stmt = (
+        select(PlantItem.id, PlantItem.code, PlantItem.title, PlantItem.status)
+        .where(PlantItem.project_id == project_id)
+        .order_by(PlantItem.code, PlantItem.id)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [PlantItemOption(id=r.id, code=r.code, title=r.title, status=r.status) for r in rows]
+
+
 async def plant_item_for_submittal(
     session: Any, project_id: uuid.UUID, submittal_id: uuid.UUID, *, today: date | None = None
 ) -> PlantItemDates | None:
