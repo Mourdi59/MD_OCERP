@@ -41,9 +41,11 @@ ENABLING_PHASES: dict[str, dict[str, tuple[str, ...]]] = {
         "handover": ("handover",),
         "operation": ("operation",),
     },
-    # Two phases only: procurement runs in development, building and handover in execution.
+    # Two phases only, and one gate between them. Awards wait for that gate, so it is
+    # execution that enables procurement: the gate out of development is the one that
+    # releases it. A package that has to be ordered earlier is released by a commitment.
     "elf_module_framework": {
-        "procurement": ("development",),
+        "procurement": ("execution",),
         "construction_start": ("execution",),
         "handover": ("execution",),
         "operation": (),
@@ -360,10 +362,58 @@ def test_the_framework_catalogue_names_its_source_without_quoting_a_publication(
 
 
 def test_the_demo_seed_signs_in_as_the_platform_demo_accounts() -> None:
+    from app.core import demo_cast
     from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, SHOWCASE_OWNER_EMAIL
     from app.modules.project_governance import seed
 
     assert seed._OWNER_EMAIL == SHOWCASE_OWNER_EMAIL
-    assert {seed._OWNER_EMAIL, seed._DECIDER_EMAIL, seed._COST_EMAIL} == set(DEMO_ACCOUNT_EMAILS)
+    # The owner and the two parts of the cast are the three demo logins where they exist.
+    assert {seed._OWNER_EMAIL} | set(demo_cast.CAST.values()) == set(DEMO_ACCOUNT_EMAILS)
+    assert sorted(demo_cast.CAST) == ["cost", "decider"]
+    # ``cost`` joins first: a seeder that takes "the first member who is not the owner" gets it.
+    assert demo_cast.JOIN_ORDER == ("cost", "decider")
     source = inspect.getsource(seed)
     assert "demo@" not in source
+    assert "manager@" not in source and "estimator@" not in source
+
+
+def test_the_demo_cast_cannot_create_a_user() -> None:
+    """The cast is the demo logins an installation has. A demo is not worth a new account."""
+    import ast
+
+    from app.core import demo_cast
+
+    tree = ast.parse(inspect.getsource(demo_cast))
+    imported = {alias.name for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) for alias in node.names}
+    called = {
+        node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", "")
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+    }
+    assert "User" in imported, "the module no longer reads users; this test reads nothing"
+    # Read through a select, never built and never handed to the session.
+    assert "User" not in called
+    assert not called & {"add", "add_all", "merge", "hash_password", "create_user", "register"}
+    assert not imported & {"hash_password", "UserRepository", "UserService"}
+    assert not {"remove_demo_cast", "CAST_TAG", "CastPart"} & set(vars(demo_cast))
+
+
+def test_the_cast_left_the_users_module_and_the_project_purge_alone() -> None:
+    from app.core import demo_accounts, demo_cast
+
+    assert not hasattr(demo_accounts, "DEMO_CAST_EMAILS")
+    modules = Path(demo_cast.__file__).parents[1] / "modules"
+    readers = [*sorted((modules / "users").rglob("*.py")), modules / "projects" / "service.py"]
+    assert len(readers) > 3
+    naming = [str(path.relative_to(modules)) for path in readers if "demo_cast" in path.read_text(encoding="utf-8")]
+    assert naming == []
+
+
+def test_the_one_gate_of_the_eleven_area_model_is_the_gate_that_releases_procurement() -> None:
+    """A module asks for the gates whose target phase enables procurement; an empty answer means never."""
+    catalogue = cat.get_catalogue("elf_module_framework")
+    enabling = set(public.phases_enabling_in(catalogue, "procurement"))
+    releasing = [g.code for g in catalogue.gates if g.to_phase in enabling]
+    assert releasing == ["development_to_execution"]
+    first = min(catalogue.phases, key=lambda p: p.order)
+    assert first.code not in enabling

@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,74 @@ _FOCUS_DEMO_IDS: tuple[str, ...] = (
 )
 
 
-async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
+async def _demo_cast(session_factory: Any, demo_pids: list[uuid.UUID]) -> dict[str, Any]:
+    """Give the demo the people its stories need besides the owner, and hand the result back.
+
+    A demo project is installed with its owner on it and nobody else, and a
+    gate cannot be decided by whoever owns one of its areas. See
+    ``app.core.demo_cast``. Never raises; a failure is reported as
+    ``{"ok": False, "error": name}``.
+    """
+    try:
+        from app.core.demo_cast import ensure_demo_cast
+
+        async with session_factory() as _cs:
+            _cast = await ensure_demo_cast(_cs, demo_pids)
+            await _cs.commit()
+        return _cast
+    except Exception as exc:
+        logger.warning("demo cast skipped (non-fatal)", exc_info=True)
+        return {"ok": False, "error": type(exc).__name__}
+
+
+async def _seed_governance(session_factory: Any, demo_pids: list[uuid.UUID]) -> dict[str, Any]:
+    """Run the governance demo seed in its own session and hand its result back.
+
+    Never raises: on a running install a failing seed must not stop the boot.
+    A caller that builds the demo reads the result instead. ``ok`` is false
+    when a project was not left at its planned moment, and when the seed
+    itself failed (then with ``error``, the name of the exception).
+    """
+    try:
+        from app.modules.project_governance.seed import seed_project_governance_demo
+
+        async with session_factory() as _gs:
+            _gov = await seed_project_governance_demo(_gs, demo_pids)
+            await _gs.commit()
+        if _gov.get("projects") or _gov.get("fallbacks"):
+            logger.info(
+                "project_governance demo seed: %s project(s), %s fallback(s)",
+                _gov.get("projects"),
+                len(_gov.get("fallbacks") or []),
+            )
+        return _gov
+    except Exception as exc:
+        logger.warning("project_governance demo seed skipped (non-fatal)", exc_info=True)
+        return {"ok": False, "error": type(exc).__name__}
+
+
+async def _settle_governance(session_factory: Any, demo_pids: list[uuid.UUID]) -> dict[str, Any]:
+    """Clear the at-risk conditions the module seeders have answered, and hand the counts back.
+
+    Never raises, for the same reason as :func:`_seed_governance`. The result
+    is ``{"cleared": n, "left_open": m}``, or ``{"ok": False, "error": name}``
+    when the step failed.
+    """
+    try:
+        from app.modules.project_governance.seed import settle_demo_conditions
+
+        async with session_factory() as _gs:
+            _settled = await settle_demo_conditions(_gs, demo_pids)
+            await _gs.commit()
+        if _settled.get("cleared"):
+            logger.info("project_governance demo conditions settled: %s", _settled)
+        return _settled
+    except Exception as exc:
+        logger.warning("project_governance demo settle skipped (non-fatal)", exc_info=True)
+        return {"ok": False, "error": type(exc).__name__}
+
+
+async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
     """Run every per-module demo seeder across the given projects.
 
     Mirrors the first-boot enrichment block that used to live inline in
@@ -82,9 +150,17 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
     Args:
         project_ids: The projects to consider. Typically every project at boot,
             or the single project a partner-pack apply just installed.
+
+    Returns:
+        What the steps that report handed back, by module. Today that is
+        ``{"demo_cast": ..., "project_governance": {"seed": ..., "settle": ...}}``; a key is
+        missing when the enrichment never reached that step (no demo project,
+        or a failure before it). Nothing here raises, so a caller that must
+        not ship a broken demo checks this report.
     """
+    report: dict[str, Any] = {}
     if not project_ids:
-        return
+        return report
 
     try:
         from sqlalchemy import func as _func
@@ -187,7 +263,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             logger.warning("Demo project discovery failed - demo seeds skipped", exc_info=True)
             _demo_pids = []
         if not _demo_pids:
-            return
+            return report
         _first_pid = _demo_pids[0]
 
         # Which projects the seeders that fill a few projects rather than all of
@@ -426,16 +502,10 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         # never pin one themselves: this seed skips a project that already has
         # a model, so a model pinned earlier would leave the project without
         # owners, gates and decisions. The same skip makes a re-run a no-op.
-        try:
-            from app.modules.project_governance.seed import seed_project_governance_demo
-
-            async with async_session_factory() as _gs:
-                _gov = await seed_project_governance_demo(_gs, _demo_pids)
-                await _gs.commit()
-                if _gov.get("projects"):
-                    logger.info("project_governance demo seed: %s", _gov)
-        except Exception:
-            logger.warning("project_governance demo seed skipped (non-fatal)", exc_info=True)
+        # Before it, the cast: the decider and the second member every story
+        # below may count on, on any installation.
+        report["demo_cast"] = await _demo_cast(async_session_factory, _demo_pids)
+        report["project_governance"] = {"seed": await _seed_governance(async_session_factory, _demo_pids)}
 
         for _name, _marker, _build in _module_seeders:
             try:
@@ -451,6 +521,12 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
                         logger.info("%s demo seed: %s", _name, _counts)
             except Exception:
                 logger.warning("%s demo seed skipped (non-fatal)", _name, exc_info=True)
+
+        # Governance decided its gates before the modules had rows, so an area
+        # whose module answered "not met" passed at risk with an open condition.
+        # Now that the modules have seeded, the conditions whose area reads
+        # ready are cleared by their owner; the others stay open.
+        report["project_governance"]["settle"] = await _settle_governance(async_session_factory, _demo_pids)
 
         # The project roster seeds one project at a time and guards itself on
         # the project already having roster lines, so a re-run is a no-op.
@@ -482,14 +558,18 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
                 logger.warning("qms demo seed skipped for %s (non-fatal)", _pid, exc_info=True)
     except Exception:
         logger.warning("Feature-module demo seeds skipped (non-fatal)", exc_info=True)
+    return report
 
 
-async def enrich_all() -> None:
+async def enrich_all() -> dict[str, Any]:
     """Enrich every project that currently exists in the database.
 
     Convenience wrapper used at boot: discovers all project ids and runs
     :func:`enrich_projects` over them. Fail-soft; a discovery error logs and
     returns without raising.
+
+    Returns:
+        The report of :func:`enrich_projects`, empty when discovery failed.
     """
     try:
         from sqlalchemy import select as _msel
@@ -508,6 +588,6 @@ async def enrich_all() -> None:
             )
     except Exception:
         logger.warning("Feature-module demo seeds skipped (project discovery failed)", exc_info=True)
-        return
+        return {}
 
-    await enrich_projects(_all_pids)
+    return await enrich_projects(_all_pids)

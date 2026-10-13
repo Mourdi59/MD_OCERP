@@ -178,7 +178,7 @@ class EvidenceState:
 
     area_code: str
     code: str
-    state: str  # met | not_met | unknown
+    state: str  # met | not_met | unknown | warning
     blocking: bool = False
     provider: str = ""
 
@@ -604,9 +604,16 @@ def evidence_to_acknowledge(ctx: GateContext) -> list[EvidenceState]:
     area it is registered for, has not said the area is unready. It is not a
     yes either, so the decider names each item and the record keeps the list.
     An item is one code in one area; the same code in two areas is two items.
+
+    A ``warning`` is named the same way, whoever reports it: the provider says
+    the gate may pass by its rule and that something is still outstanding.
     """
     applicable = {a.code for a in ctx.areas if a.applicable}
-    return [e for e in ctx.evidence if e.blocking and e.state == "unknown" and e.area_code in applicable]
+    return [
+        e
+        for e in ctx.evidence
+        if e.area_code in applicable and (e.state == "warning" or (e.blocking and e.state == "unknown"))
+    ]
 
 
 # ── Decisions ───────────────────────────────────────────────────────────────
@@ -773,7 +780,7 @@ def build_snapshot(ctx: GateContext, req: DecisionRequest) -> dict[str, Any]:
         # Only what was unknown when the decision was taken: a name the request carried for an
         # item that had been answered meanwhile is not part of the record.
         "acknowledged_evidence": [
-            {"area_code": e.area_code, "code": e.code, "provider": e.provider}
+            {"area_code": e.area_code, "code": e.code, "provider": e.provider, "state": e.state}
             for e in evidence_to_acknowledge(ctx)
             if (e.area_code, e.code) in {(area, code) for area, code in req.acknowledged_evidence}
         ],

@@ -25,7 +25,16 @@ preparation story or a running-site story from it (``seed_story.PLACEMENT``):
   change request against the binding business case.
 
 A placement that cannot be completed falls back to the last story, so a demo
-project never ends up without a model. The caller commits.
+project never ends up without a model.
+
+A decision takes a second person, and the only second people this seed knows
+are the product's demo logins (``app.core.demo_cast``). On an installation
+without them a project has its owner only and gets the one-person story
+(``seed_story.OWNER_ONLY``): model, areas, frame documents and the readiness
+of the first gate, no route and no decision. That is a legal state and is
+reported at info. The one project that cannot be told that way is the one the
+active pack's demo file names: it is filmed, so it is left untouched and the
+result says so loudly. The seed creates no user. The caller commits.
 """
 
 from __future__ import annotations
@@ -39,11 +48,19 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import demo_cast
 from app.core.demo_accounts import SHOWCASE_OWNER_EMAIL
+from app.core.events import publish_after_commit
 from app.modules.project_governance import catalogue_packs, seed_story
 from app.modules.project_governance import evaluator as ev
 from app.modules.project_governance.catalogue_store import resolve_catalogue
-from app.modules.project_governance.models import GovernanceArea, GovernanceDocument, GovernanceGate
+from app.modules.project_governance.evidence import GateAttempt, collect_evidence
+from app.modules.project_governance.models import (
+    GovernanceArea,
+    GovernanceCondition,
+    GovernanceDocument,
+    GovernanceGate,
+)
 from app.modules.project_governance.seed_story import DocumentPlan, PackStory
 from app.modules.project_governance.service import GovernanceService
 
@@ -51,8 +68,6 @@ logger = logging.getLogger(__name__)
 
 # The logins the platform seeds for its walkthrough (``app.core.demo_accounts``).
 _OWNER_EMAIL = SHOWCASE_OWNER_EMAIL
-_DECIDER_EMAIL = "manager@openconstructionerp.com"
-_COST_EMAIL = "estimator@openconstructionerp.com"
 
 #: The catalogue a demo project pins; AREA_OWNERS names its areas.
 DEMO_CATALOGUE = "neutral"
@@ -80,8 +95,6 @@ def owner_for(area_code: str, *, owner: uuid.UUID, cost_owner: uuid.UUID) -> uui
     return cost_owner if AREA_OWNERS.get(area_code) == "cost" else owner
 
 
-_TEAM_NAME = "Governance board"
-
 #: The frame documents of the first-gate story, with the titles a reader sees in the CDE.
 _DOCS: dict[str, DocumentPlan] = {
     "business_case": DocumentPlan("business_case", "GOV-BC-001", "Business case", "business-case.pdf"),
@@ -92,19 +105,30 @@ _DOCS: dict[str, DocumentPlan] = {
 }
 
 _AT_RISK_DAYS = 30
+#: The condition the walk attaches to an area that passes a gate at risk. ``settle_demo_conditions``
+#: finds its own conditions by this text and touches no other.
+AT_RISK_CONDITION = "Close the open readiness items of this area."
+_SETTLED_EVIDENCE = "The readiness evidence of this area is met."
 _HANDOVER_TARGET_DAYS = 30
 
 
 class SeedStop(RuntimeError):
-    """A story cannot go on; the project falls back to the first-gate story."""
+    """A story cannot go on; the project falls back to the first-gate story.
+
+    ``code`` is one of ``seed_story.FALLBACK_REASONS`` and ends up in the seed result.
+    """
+
+    def __init__(self, code: str, detail: str = "") -> None:
+        super().__init__(f"{code}: {detail}" if detail else code)
+        self.code = code
 
 
 @dataclass(frozen=True)
 class Cast:
-    """The three demo logins of a project."""
+    """The people of a demo project. ``decider`` is ``None`` when the project has nobody to decide."""
 
     owner: uuid.UUID
-    decider: uuid.UUID
+    decider: uuid.UUID | None
     cost_owner: uuid.UUID
 
     def named(self, word: str) -> uuid.UUID:
@@ -119,29 +143,6 @@ async def _user_id(session: AsyncSession, email: str) -> uuid.UUID | None:
     return (
         await session.execute(select(User.id).where(User.email == email, User.is_active.is_(True)))
     ).scalar_one_or_none()
-
-
-async def _ensure_members(
-    session: AsyncSession, svc: GovernanceService, project_id: uuid.UUID, owner: uuid.UUID, users: list[uuid.UUID]
-) -> None:
-    """Put the demo logins on the project team so they may own areas and decide."""
-    from sqlalchemy import select
-
-    from app.modules.teams.models import Team
-    from app.modules.teams.schemas import AddMemberRequest, TeamCreate
-    from app.modules.teams.service import TeamService
-
-    missing = [u for u in users if not await svc.user_can_access_project(project_id, u)]
-    if not missing:
-        return
-    teams = TeamService(session)
-    team = (
-        await session.execute(select(Team).where(Team.project_id == project_id, Team.name == _TEAM_NAME))
-    ).scalar_one_or_none()
-    if team is None:
-        team = await teams.create_team(TeamCreate(project_id=project_id, name=_TEAM_NAME), actor_id=owner)
-    for uid in missing:
-        await teams.add_member(team.id, AddMemberRequest(user_id=uid), actor_id=owner)
 
 
 async def _ensure_route(session: AsyncSession, project_id: uuid.UUID, kind: str, approver: uuid.UUID) -> uuid.UUID:
@@ -194,11 +195,10 @@ class _Stage:
         four_eyes: bool,
         owner_of: Callable[[str], uuid.UUID],
     ) -> None:
-        """Team, routes, the pinned model and an owner on every area."""
+        """Team, the pinned model, an owner on every area and, with a decider, the two routes."""
         cast, pid = self.cast, self.project_id
-        await _ensure_members(self.session, self.svc, pid, cast.owner, [cast.decider, cast.cost_owner])
-        gate_route = await _ensure_route(self.session, pid, "phase_gate", cast.decider)
-        change_route = await _ensure_route(self.session, pid, "frame_change", cast.decider)
+        # One writer for the memberships and their order; a no-op after the enrichment's cast step.
+        await demo_cast.join_project(self.session, pid)
         await self.svc.set_model(
             pid,
             source=source,
@@ -208,14 +208,19 @@ class _Stage:
             actor_id=cast.owner,
             tenant_id=str(cast.owner),
         )
-        await self.svc.update_settings(
-            pid,
-            four_eyes=None,
-            decision_route_id=gate_route,
-            change_route_id=change_route,
-            fields_set={"decision_route_id", "change_route_id"},
-            actor_id=cast.owner,
-        )
+        if cast.decider is not None:
+            # A route names who decides. Without a decider none is pinned: the gate can be
+            # prepared, and the screen says a route is missing where a real project would too.
+            gate_route = await _ensure_route(self.session, pid, "phase_gate", cast.decider)
+            change_route = await _ensure_route(self.session, pid, "frame_change", cast.decider)
+            await self.svc.update_settings(
+                pid,
+                four_eyes=None,
+                decision_route_id=gate_route,
+                change_route_id=change_route,
+                fields_set={"decision_route_id", "change_route_id"},
+                actor_id=cast.owner,
+            )
         self.areas = list(await self.svc.repo.list_areas(pid))
         for area in self.areas:
             who = owner_of(area.code)
@@ -286,6 +291,8 @@ class _Stage:
         are named as proceeding at risk, one condition each. Without a stated
         outcome a clear gate gets a go, and any other blocker stops the story.
         """
+        if self.cast.decider is None:
+            raise SeedStop("no_decider", f"gate {gate.code} has nobody to decide it")
         model = await self.svc.require_model(self.project_id)
         ctx, _, _ = await self.svc.gate_context(model, gate, self.today)
         blockers = ev.gate_blockers(ctx)
@@ -293,7 +300,7 @@ class _Stage:
         other = sorted({b.code for b in blockers if b.code not in ev.PROCEED_AT_RISK_LIFTABLE or not b.area_code})
         if outcome is None:
             if other:
-                raise SeedStop(f"gate {gate.code} is blocked by {other}")
+                raise SeedStop("gate_blocked", f"gate {gate.code} is blocked by {other}")
             outcome = "go_with_conditions" if gaps else "go"
             if gaps:
                 rationale = "Readiness of some areas is still open. The gate passes at risk, each gap with an owner."
@@ -304,7 +311,7 @@ class _Stage:
                 ev.ProposedCondition(
                     area_code=code,
                     document_type=None,
-                    text="Close the open readiness items of this area.",
+                    text=AT_RISK_CONDITION,
                     owner_user_id=str(owner_of[code]),
                     due_date=self.today + timedelta(days=_AT_RISK_DAYS),
                     severity="essential",
@@ -336,6 +343,30 @@ class _Stage:
 
 
 # ── the stories ──
+
+
+async def _owner_only_story(stage: _Stage) -> None:
+    """Everything one person can do: the model, the areas, the documents, the readiness of the first gate.
+
+    The gate is left in preparation. Submitting it needs a route and deciding
+    it a second person, and this story has neither.
+    """
+    cast, svc, pid = stage.cast, stage.svc, stage.project_id
+    await stage.open(
+        source="shipped",
+        catalogue_id=DEMO_CATALOGUE,
+        version=None,
+        four_eyes=True,
+        owner_of=lambda code: owner_for(code, owner=cast.owner, cost_owner=cast.cost_owner),
+    )
+    for plan in _DOCS.values():
+        await stage.issue(plan)
+    first = seed_story.first_gate(await svc.catalogue_for(await svc.require_model(pid)))
+    gate = stage.gates[first or ""]
+    await stage.issue_required(gate.code)
+    await svc.start_preparation(pid, gate.id, actor_id=cast.owner)
+    for area in stage.areas:
+        await stage.confirm(gate, area, "ready", "green", "Reviewed by the area owner.")
 
 
 async def _first_gate_story(stage: _Stage) -> None:
@@ -438,7 +469,7 @@ async def _execution_story(stage: _Stage, *, near_handover: bool) -> None:
     catalogue = await svc.catalogue_for(await svc.require_model(pid))
     walk = seed_story.gates_until(catalogue, "construction_start")
     if not walk:
-        raise SeedStop("no phase of the model enables construction_start")
+        raise SeedStop("no_construction_phase", "no phase of the model enables construction_start")
     for code in walk:
         await stage.pass_gate(code)
     if not near_handover:
@@ -515,23 +546,33 @@ async def _pack_story(stage: _Stage, told: PackStory, pin: tuple[str, int]) -> N
 
 
 async def _pack_telling(
-    session: AsyncSession, demo_id: str | None, locale: str
-) -> tuple[PackStory, tuple[str, int]] | None:
-    """The pack story for this project, or ``None`` when no pack tells one about it."""
-    data = catalogue_packs.active_pack_demo()
-    if data is None or not demo_id:
-        return None
-    project = data.get("project")
-    if not isinstance(project, dict) or project.get("demo_template_id") != demo_id:
-        return None
+    session: AsyncSession, data: dict[str, Any] | None, demo_id: str | None, locale: str
+) -> tuple[tuple[PackStory, tuple[str, int]] | None, str | None]:
+    """The pack story for this project, and why there is none although the pack names the project.
+
+    Returns:
+        ``(telling, None)`` for a story that can be told, ``(None, None)`` when
+        the demo file is about another project, and ``(None, reason)`` when it
+        is about this one and cannot be used: the built-in story instead, and
+        the reason goes into the seed result.
+    """
+    if not demo_id or seed_story.pack_demo_id(data) != demo_id:
+        return None, None
     try:
         pin = seed_story.pack_pin(data)
-        catalogue = await resolve_catalogue(session, "pack", pin[0], pin[1])
-        return seed_story.pack_story(data, catalogue, locale), pin
     except Exception:
-        # A file that breaks a rule, or a catalogue that does not load: the built-in story instead.
         logger.exception("demo file of the active pack is not usable for %s", demo_id)
-        return None
+        return None, "demo_file_invalid"
+    try:
+        catalogue = await resolve_catalogue(session, "pack", pin[0], pin[1])
+    except Exception:
+        logger.exception("the phase model the demo file pins did not load for %s", demo_id)
+        return None, "pack_catalogue_unavailable"
+    try:
+        return (seed_story.pack_story(data, catalogue, locale), pin), None
+    except Exception:
+        logger.exception("demo file of the active pack is not usable for %s", demo_id)
+        return None, "demo_file_invalid"
 
 
 Story = Callable[[], Awaitable[None]]
@@ -544,38 +585,66 @@ def _stories(
     today: date,
     demo_id: str | None,
     telling: tuple[PackStory, tuple[str, int]] | None,
+    outbox: list[tuple[str, dict[str, Any]]],
 ) -> list[tuple[str, Story]]:
-    """The stories to try for one project, the wanted one first and the first-gate story last."""
+    """The stories to try for one project, the wanted one first and the first-gate story last.
+
+    A cast without a decider has one story, the one a single person can tell.
+    """
 
     def stage() -> _Stage:
         # A fresh stage per try: a story that failed was rolled back with everything it loaded.
-        return _Stage(session, project_id, cast, today)
+        fresh = _Stage(session, project_id, cast, today)
+        fresh.svc.outbox = outbox
+        return fresh
 
+    if cast.decider is None:
+        return [(seed_story.OWNER_ONLY, lambda: _owner_only_story(stage()))]
     stories: list[tuple[str, Story]] = []
     if telling is not None:
         told, pin = telling
-        stories.append(("pack", lambda: _pack_story(stage(), told, pin)))
+        stories.append((seed_story.PACK, lambda: _pack_story(stage(), told, pin)))
     elif demo_id in seed_story.PLACEMENT:
         placement = seed_story.PLACEMENT[demo_id]
         stories.append((placement, lambda: _execution_story(stage(), near_handover=placement == "near_handover")))
-    stories.append(("first gate", lambda: _first_gate_story(stage())))
+    stories.append((seed_story.FIRST_GATE, lambda: _first_gate_story(stage())))
     return stories
 
 
-async def _attempt(session: AsyncSession, name: str, project_id: uuid.UUID, story: Story) -> bool:
-    """Run one story in its own savepoint; a story that fails leaves nothing behind."""
+async def _attempt(
+    session: AsyncSession,
+    name: str,
+    project_id: uuid.UUID,
+    story: Story,
+    outbox: list[tuple[str, dict[str, Any]]],
+) -> str | None:
+    """Run one story in its own savepoint; a story that fails leaves nothing behind.
+
+    Governance events of the story wait in ``outbox`` and are handed to the bus
+    only once the savepoint is released. An event deferred inside a savepoint
+    that is then rolled back would still fire on the outer commit.
+
+    Returns:
+        ``None`` when the story was written, otherwise why it was not (one of
+        ``seed_story.FALLBACK_REASONS``).
+    """
+    outbox.clear()
     try:
         async with session.begin_nested():
             await story()
             await session.flush()
-        return True
-    except Exception:
+        for event_name, data in outbox:
+            publish_after_commit(session, event_name, data, source_module="project_governance")
+        outbox.clear()
+        return None
+    except Exception as exc:
+        outbox.clear()
         # Kept from stopping the other projects, but loud: a silent skip reads as "0 projects".
         logger.exception("governance demo seed: the %s story failed for %s", name, project_id)
-        return False
+        return exc.code if isinstance(exc, SeedStop) else "story_error"
 
 
-async def seed_project_governance_demo(session: AsyncSession, project_ids: list[uuid.UUID]) -> dict[str, int]:
+async def seed_project_governance_demo(session: AsyncSession, project_ids: list[uuid.UUID]) -> dict[str, Any]:
     """Seed governance on each demo project that has no governance model yet.
 
     Args:
@@ -583,35 +652,130 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
         project_ids: Demo projects, already filtered by the caller.
 
     Returns:
-        ``{"projects": n}``, the number of projects seeded by this run.
+        ``seed_story.seed_result``: ``projects`` (models written by this run),
+        ``placements`` (one row per project handed in: planned moment, reached
+        moment, ``fallback_reason``, ``loud``), ``fallbacks`` (the rows that missed
+        their planned moment), ``pack_demo_file`` and ``ok``. A project that
+        falls back still gets the first-gate story, so nothing here raises; a
+        caller that must not ship a demo told at the wrong moment checks ``ok``.
+
+    The decider and the cost owner are the demo cast (``app.core.demo_cast``):
+    the product's demo logins where the installation has them, nobody where it
+    does not. This function creates no user. Without a decider a project gets
+    the one-person story, reported with reason ``no_decider`` at info while
+    ``ok`` stays true. The project the active pack names is the exception: its
+    story needs the logins, so it is left untouched and reported loudly.
     """
     owner_by_email = await _user_id(session, _OWNER_EMAIL)
-    decider = await _user_id(session, _DECIDER_EMAIL)
-    cost_owner = await _user_id(session, _COST_EMAIL)
-    if decider is None:
-        # Four-eyes needs a decider who owns no area; without the manager login
-        # there is none, and a half-seeded gate is worse than an empty screen.
-        return {"projects": 0}
+    players = await demo_cast.find_cast(session)
+    decider = players.get("decider")
+    cost_owner = players.get("cost")
 
     from app.modules.projects.models import Project
 
     svc = GovernanceService(session)
     today = datetime.now(UTC).date()
-    seeded = 0
+    pack_file, pack_data = catalogue_packs.active_pack_demo_reading()
+    pack_project = seed_story.pack_demo_id(pack_data)
+    rows: list[dict[str, Any]] = []
     for pid in project_ids:
-        if await svc.repo.get_model(pid) is not None:
-            continue
         project = await session.get(Project, pid)
         if project is None:
+            rows.append(seed_story.placement(pid, None, seed_story.FIRST_GATE, None, "project_not_found"))
+            continue
+        demo_id = (project.metadata_ or {}).get("demo_id") if isinstance(project.metadata_, dict) else None
+        planned = seed_story.planned_moment(demo_id, pack_project)
+        if await svc.repo.get_model(pid) is not None:
+            rows.append(seed_story.placement(pid, demo_id, planned, None, skipped=True))
             continue
         owner = project.owner_id or owner_by_email
-        if owner is None or owner == decider:
+        if owner is None:
+            rows.append(seed_story.placement(pid, demo_id, planned, None, "no_owner"))
             continue
-        cast = Cast(owner=owner, decider=decider, cost_owner=cost_owner or owner)
-        demo_id = (project.metadata_ or {}).get("demo_id") if isinstance(project.metadata_, dict) else None
-        telling = await _pack_telling(session, demo_id, getattr(project, "locale", None) or "en")
-        for name, story in _stories(session, pid, cast, today, demo_id, telling):
-            if await _attempt(session, name, pid, story):
-                seeded += 1
+        # Four-eyes needs a decider who owns no area. Without one the owner tells the story alone.
+        alone = "no_decider" if decider is None else "owner_is_decider" if owner == decider else None
+        if alone and planned == seed_story.PACK:
+            # The filmed project is told from the pack's file and on the pack's model, with a
+            # decision on camera. A neutral model in its place would be the wrong film and would
+            # keep a later run from telling the right one, so nothing is written.
+            rows.append(seed_story.placement(pid, demo_id, planned, None, alone))
+            continue
+        cast = Cast(owner=owner, decider=None if alone else decider, cost_owner=cost_owner or owner)
+        locale = getattr(project, "locale", None) or "en"
+        telling, reason = (None, None) if alone else await _pack_telling(session, pack_data, demo_id, locale)
+        reached: str | None = None
+        outbox: list[tuple[str, dict[str, Any]]] = []
+        for name, story in _stories(session, pid, cast, today, demo_id, telling, outbox):
+            failed = await _attempt(session, name, pid, story, outbox)
+            if failed is None:
+                reached = name
                 break
-    return {"projects": seeded}
+            # The first failure is the cause; what the fallback then trips over is its consequence.
+            reason = reason or failed
+        rows.append(seed_story.placement(pid, demo_id, planned, reached, reason or alone))
+    result = seed_story.seed_result(rows, pack_file)
+    for row in result["fallbacks"]:
+        # Loud for a fault (``seed_story.placement`` says which rows are). A project told
+        # by its owner alone because the installation has no demo logins is not one.
+        logger.log(
+            logging.ERROR if row["loud"] else logging.INFO,
+            "governance demo seed: project %s (%s) was planned at %s and left at %s: %s",
+            row["project_id"],
+            row["demo_id"] or "no demo id",
+            row["planned"],
+            row["reached"] or "nothing",
+            row["fallback_reason"],
+        )
+    return result
+
+
+async def settle_demo_conditions(session: AsyncSession, project_ids: list[uuid.UUID] | None = None) -> dict[str, int]:
+    """Clear the at-risk conditions of the walk whose area now reads ready. Run AFTER the module seeders.
+
+    Governance seeds first, so a module without rows answers its evidence as
+    not met and the walk passes the gate with the area at risk and one open
+    condition. Once the modules have seeded, this step asks the same providers
+    again for the gate the condition belongs to. Where no blocking provider
+    says not met or unknown for the area any more, the owner of the condition
+    clears it through the service, with the evidence as the reason. Every other
+    condition stays open with its due date. Safe to run again.
+
+    Args:
+        session: Open session; the caller commits.
+        project_ids: Limit to these projects; every project when omitted.
+
+    Returns:
+        ``{"cleared": n, "left_open": m}`` over the conditions the walk created.
+    """
+    from sqlalchemy import select
+
+    stmt = select(GovernanceCondition).where(
+        GovernanceCondition.text == AT_RISK_CONDITION,
+        GovernanceCondition.status.in_(("open", "overdue")),
+        GovernanceCondition.area_code.is_not(None),
+        GovernanceCondition.owner_user_id.is_not(None),
+    )
+    if project_ids is not None:
+        stmt = stmt.where(GovernanceCondition.project_id.in_(project_ids))
+    conditions = list((await session.execute(stmt.order_by(GovernanceCondition.created_at))).scalars())
+    svc = GovernanceService(session)
+    cleared = 0
+    for cond in conditions:
+        try:
+            async with session.begin_nested():
+                gate = await svc.repo.get_gate(cond.project_id, cond.gate_id)
+                area = next((a for a in await svc.repo.list_areas(cond.project_id) if a.code == cond.area_code), None)
+                if gate is None or area is None:
+                    continue
+                collected = await collect_evidence(
+                    session, cond.project_id, GateAttempt(gate.id, gate.code, gate.attempt_no), [area]
+                )
+                if any(e.blocking and e.item.state in ("not_met", "unknown") for e in collected):
+                    continue
+                await svc.clear_condition(
+                    cond.project_id, cond.id, evidence=_SETTLED_EVIDENCE, actor_id=cond.owner_user_id
+                )
+                cleared += 1
+        except Exception:
+            logger.exception("governance demo seed: could not settle condition %s", cond.id)
+    return {"cleared": cleared, "left_open": len(conditions) - cleared}

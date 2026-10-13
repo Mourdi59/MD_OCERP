@@ -10,7 +10,6 @@ seeder must leave every count where the first run put it.
 
 from __future__ import annotations
 
-import inspect
 import uuid
 from datetime import UTC, datetime
 
@@ -229,14 +228,48 @@ async def test_second_run_is_a_no_op(factory) -> None:
     assert await _counts(factory, pid) == first
 
 
-async def test_without_a_distinct_decider_the_project_is_skipped(factory) -> None:
-    """With the owners deciding their own areas four-eyes would refuse; seed nothing rather than half."""
+async def test_without_a_decider_the_project_gets_what_needs_no_second_person(factory) -> None:
+    """Four-eyes would refuse an owner deciding their own areas, so nothing is decided; the rest is written."""
     pid, _ = await _world(factory, with_manager=False)
-    counts = await _seed(factory, pid)
-    assert counts["projects"] == 0
+    result = await _seed(factory, pid)
+    assert (result["projects"], result["ok"]) == (1, True)
+    assert [(r["planned"], r["reached"], r["fallback_reason"], r["loud"]) for r in result["placements"]] == [
+        ("first_gate", "owner_only", "no_decider", False)
+    ]
+    counts = await _counts(factory, pid)
+    assert (counts["models"], counts["decisions"], counts["routes"], counts["conditions"]) == (1, 0, 0, 0)
+    assert counts["documents"] > 0 and counts["containers"] >= 3 and counts["revisions"] >= 3
+    # The estimator login of this world joined as the cost owner; nobody was created for the missing part.
+    assert (counts["teams"], counts["memberships"]) == (1, 1)
+
+
+async def test_the_enrichment_step_seeds_commits_and_hands_the_result_back(factory) -> None:
+    """The step ``enrich_projects`` runs (its place in the order is tests/unit/test_governance_seed_order.py)."""
+    pid, _ = await _world(factory)
+    seeded = await demo_enrichment._seed_governance(factory, [pid])
+    assert (seeded["ok"], seeded["projects"], seeded["fallbacks"]) == (True, 1, [])
+    assert [(r["project_id"], r["planned"], r["reached"]) for r in seeded["placements"]] == [
+        (str(pid), "first_gate", "first_gate")
+    ]
+    # Read in another session: the step committed what it seeded.
+    assert (await _counts(factory, pid))["models"] == 1
+
+    settled = await demo_enrichment._settle_governance(factory, [pid])
+    assert set(settled) == {"cleared", "left_open"}
+    assert all(isinstance(n, int) for n in settled.values())
+
+
+async def test_a_governance_step_that_fails_is_reported_and_does_not_raise(
+    factory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.modules.project_governance import seed as governance_seed
+
+    async def _broken(session, project_ids):
+        raise RuntimeError("the seed broke")
+
+    monkeypatch.setattr(governance_seed, "seed_project_governance_demo", _broken)
+    monkeypatch.setattr(governance_seed, "settle_demo_conditions", _broken)
+    pid, _ = await _world(factory)
+    assert await demo_enrichment._seed_governance(factory, [pid]) == {"ok": False, "error": "RuntimeError"}
+    assert await demo_enrichment._settle_governance(factory, [pid]) == {"ok": False, "error": "RuntimeError"}
     assert (await _counts(factory, pid))["models"] == 0
-
-
-async def test_the_seeder_is_wired_into_the_demo_enrichment() -> None:
-    source = inspect.getsource(demo_enrichment.enrich_projects)
-    assert "seed_project_governance_demo" in source

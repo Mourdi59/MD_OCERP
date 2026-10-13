@@ -294,3 +294,135 @@ def test_no_pack_no_path_or_no_file_is_no_demo(pack: dict[str, Any]) -> None:
 def test_a_file_the_seed_cannot_read_is_no_demo(pack: dict[str, Any], raw: bytes) -> None:
     pack["files"][("p", "demo/d.json")] = raw
     assert packs.active_pack_demo() is None
+    # Not the same as a pack that ships no demo: the seed reports this one.
+    assert packs.active_pack_demo_reading() == ("unreadable", None)
+
+
+def test_the_reading_tells_a_pack_without_a_demo_from_one_whose_file_is_lost(pack: dict[str, Any]) -> None:
+    assert packs.active_pack_demo_reading() == ("unreadable", None)  # named, not carried
+    pack["files"][("p", "demo/d.json")] = json.dumps(_file()).encode()
+    assert packs.active_pack_demo_reading() == ("read", _file())
+    pack["active"] = SimpleNamespace(slug="p", metadata={})
+    assert packs.active_pack_demo_reading() == ("absent", None)
+    pack["active"] = None
+    assert packs.active_pack_demo_reading() == ("absent", None)
+
+
+# ── what the seed reports ──
+
+PID = "00000000-0000-0000-0000-000000000001"
+
+
+def test_the_planned_moment_is_known_before_any_story_is_read() -> None:
+    assert story.planned_moment("residential-berlin", None) == "execution"
+    assert story.planned_moment("medical-us", None) == "near_handover"
+    assert story.planned_moment("office-london", None) == "first_gate"
+    assert story.planned_moment(None, None) == "first_gate"
+    # The project the pack names is planned as the pack story even when its file later fails the rules.
+    assert story.planned_moment("office-frankfurt", "office-frankfurt") == "pack"
+    assert story.planned_moment("medical-us", "medical-us") == "pack"
+    assert story.planned_moment(None, None) == "first_gate"
+
+
+def test_the_project_a_demo_file_names() -> None:
+    assert story.pack_demo_id({"project": {"demo_template_id": "office-frankfurt"}}) == "office-frankfurt"
+    for data in (None, [], {}, {"project": "x"}, {"project": {}}, {"project": {"demo_template_id": 7}}):
+        assert story.pack_demo_id(data) is None
+
+
+def test_a_project_left_at_its_planned_moment_is_no_fallback() -> None:
+    row = story.placement(PID, "medical-us", "near_handover", "near_handover")
+    assert row == {
+        "project_id": PID,
+        "demo_id": "medical-us",
+        "planned": "near_handover",
+        "reached": "near_handover",
+        "fallback_reason": None,
+        "skipped": False,
+        "named": True,
+        "loud": False,
+    }
+    assert story.seed_result([row]) == {
+        "projects": 1,
+        "placements": [row],
+        "fallbacks": [],
+        "pack_demo_file": "absent",
+        "ok": True,
+    }
+
+
+def test_a_named_project_left_with_the_first_gate_story_is_a_fallback() -> None:
+    row = story.placement(PID, "residential-berlin", "execution", "first_gate", "gate_blocked")
+    assert (row["fallback_reason"], row["named"], row["loud"]) == ("gate_blocked", True, True)
+    result = story.seed_result([row])
+    # The project did get a model, so it counts; the miss is what the caller has to see.
+    assert (result["projects"], result["fallbacks"], result["ok"]) == (1, [row], False)
+
+
+def test_a_pack_project_whose_file_broke_a_rule_is_a_fallback_although_a_story_was_told() -> None:
+    row = story.placement(PID, "office-frankfurt", "pack", "first_gate", "demo_file_invalid")
+    assert row["fallback_reason"] == "demo_file_invalid"
+    assert story.seed_result([row], "read")["ok"] is False
+
+
+def test_a_project_that_got_nothing_is_loud_and_one_seeded_earlier_is_not() -> None:
+    nothing = story.placement(PID, "office-london", "first_gate", None, "story_error")
+    earlier = story.placement(PID, "medical-us", "near_handover", None, skipped=True)
+    # Nobody placed this project, and still: a demo project without a model is a fault.
+    assert (nothing["fallback_reason"], nothing["named"], nothing["loud"]) == ("story_error", False, True)
+    assert (earlier["fallback_reason"], earlier["skipped"], earlier["loud"]) == (None, True, False)
+    result = story.seed_result([nothing, earlier])
+    assert (result["projects"], result["fallbacks"], result["ok"]) == (0, [nothing], False)
+
+
+def test_a_project_told_by_its_owner_alone_is_reported_and_does_not_fail_the_run() -> None:
+    """An installation without the demo logins is a legal state, for a placed project too."""
+    rows = [
+        story.placement(PID, demo_id, planned, story.OWNER_ONLY, reason)
+        for demo_id, planned in (("office-london", "first_gate"), ("residential-berlin", "execution"))
+        for reason in sorted(story.ONE_PERSON_REASONS)
+    ]
+    assert [(r["fallback_reason"], r["loud"]) for r in rows] == [
+        ("no_decider", False),
+        ("owner_is_decider", False),
+    ] * 2
+    result = story.seed_result(rows)
+    assert (result["projects"], result["fallbacks"], result["ok"]) == (4, rows, True)
+
+
+def test_the_project_the_pack_names_is_loud_without_a_decider_whatever_was_written() -> None:
+    """The filmed project needs the demo logins; without them the run fails."""
+    for reached in (None, story.OWNER_ONLY):
+        row = story.placement(PID, "office-frankfurt", "pack", reached, "no_decider")
+        assert (row["fallback_reason"], row["loud"]) == ("no_decider", True)
+        assert story.seed_result([row], "read")["ok"] is False
+
+
+def test_a_placed_project_that_missed_for_another_reason_stays_loud() -> None:
+    blocked = story.placement(PID, "residential-berlin", "execution", story.OWNER_ONLY, "gate_blocked")
+    with_people = story.placement(PID, "residential-berlin", "execution", "first_gate", "no_decider")
+    assert (blocked["loud"], with_people["loud"]) == (True, True)
+    assert story.seed_result([blocked])["ok"] is False
+
+
+def test_a_miss_without_a_known_reason_still_carries_one() -> None:
+    assert story.placement(PID, None, "first_gate", None)["fallback_reason"] == "story_error"
+    assert story.placement(PID, None, "first_gate", None, "made up")["fallback_reason"] == "story_error"
+
+
+def test_a_demo_file_nobody_could_read_fails_the_result_without_any_project() -> None:
+    assert story.seed_result([], "unreadable")["ok"] is False
+    assert story.seed_result([], "absent")["ok"] is True
+
+
+def test_every_stop_of_the_seed_names_a_reason_the_result_knows() -> None:
+    import ast
+
+    source = Path(story.__file__).with_name("seed.py").read_text(encoding="utf-8")
+    codes = [
+        node.args[0].value if node.args and isinstance(node.args[0], ast.Constant) else None
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "SeedStop"
+    ]
+    assert codes, "the seed raises SeedStop nowhere; this test reads nothing"
+    assert set(codes) <= story.FALLBACK_REASONS, codes
