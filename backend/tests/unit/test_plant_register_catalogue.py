@@ -160,6 +160,20 @@ _FALLBACK_LEAD_TIMES = {
 }
 
 
+def test_the_demo_item_another_module_takes_over_can_still_change_its_route() -> None:
+    """PL-002 becomes the owner-furnished demo item: the delivery model sets its route after this seed.
+
+    ``set_route`` refuses ``route_frozen`` from ``ordered`` on, so the seed
+    must leave this one before the order, on a healthy and on a before-gate
+    project alike (the before-gate story only ever stops earlier).
+    """
+    from app.modules.plant_register import calc
+    from app.modules.plant_register.seed import _ITEMS
+
+    spec = next(spec for spec in _ITEMS if spec["code"] == "PL-002")
+    assert not calc.is_ordered(spec["reach"]), spec["reach"]
+
+
 def _reads_the_plant_item(module: str) -> bool:
     """Whether ``module`` can link its row to a plant item and reads that item's dates from the register."""
     root = MODULES / module

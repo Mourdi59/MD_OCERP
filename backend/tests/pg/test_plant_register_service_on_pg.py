@@ -443,6 +443,14 @@ async def test_other_modules_read_lead_time_and_dates_through_the_plant_item(wor
         ]
         assert await plant_item_options(s, uuid.uuid4()) == []
         assert d.status == "identified"
+        # No route yet; once the register has one the read says which, in the single and the batch read.
+        assert d.procurement_route is None
+        row.procurement_route = "owner_furnished_owner_installed"
+        await s.flush()
+        routed = await plant_item_dates(s, world.project_id, iid, today=TODAY)
+        assert routed.procurement_route == "owner_furnished_owner_installed"
+        assert (await plant_items_dates(s, world.project_id, [iid], today=TODAY))[iid] == routed
+        await s.rollback()
         assert await plant_items_dates(s, uuid.uuid4(), [iid], today=TODAY) == {}
         assert await plant_items_dates(s, world.project_id, [], today=TODAY) == {}
     assert foreign is None

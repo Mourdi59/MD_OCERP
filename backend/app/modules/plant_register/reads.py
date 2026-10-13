@@ -31,6 +31,9 @@ class PlantItemDates:
     long_lead: bool
     # The item's own state. A cancelled item still has dates; the reader decides what to show.
     status: str
+    # Who supplies and installs, as the register has it; ``None`` while no route is set. A module that
+    # keeps an owner-furnished item reads it here before it accepts a link to this plant item.
+    procurement_route: str | None
 
 
 @dataclass(frozen=True)
@@ -144,5 +147,6 @@ async def plant_items_dates(
             lead_source=v["lead_source"],
             long_lead=v["long_lead"],
             status=v["item"].status,
+            procurement_route=v["item"].procurement_route,
         )
     return out
