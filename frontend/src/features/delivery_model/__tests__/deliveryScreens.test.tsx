@@ -483,6 +483,7 @@ describe('OfiPanel', () => {
 
   const linked = ofi('pump', {
     description: 'Fire pump',
+    install_by: 'owner',
     plant_item_id: 'pl1',
     plant_item: { code: 'PL-014', missing: false },
     dates_source: 'plant_register',

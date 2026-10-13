@@ -303,7 +303,7 @@ export function PreconditionList({ projectId, item, editVerdict, personName, onC
       {adding && (
         <div className="mt-2 space-y-2 rounded-lg bg-surface-secondary p-3" data-testid="precondition-add-form">
           {add.isError && <RefusalBox message={refusalText(t, add.error)} />}
-          <div className="grid gap-2 sm:grid-cols-[1fr_2fr]">
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
             <select
               aria-label={t('commitment.preconditions.kind', { defaultValue: 'Kind of precondition' })}
               className={FIELD_CLASS}

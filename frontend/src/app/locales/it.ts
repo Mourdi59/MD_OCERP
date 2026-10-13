@@ -50857,7 +50857,7 @@ const resource = {
     "delivery_model.ui.packages.action.close": "Chiudi",
     "delivery_model.ui.packages.action.reopen": "Rimetti nel piano",
     "delivery_model.ui.packages.add": "Aggiungi un pacchetto",
-    "delivery_model.ui.packages.boq_ref": "Riferimento del BOQ",
+    "delivery_model.ui.packages.boq_ref": "Riferimento del computo metrico",
     "delivery_model.ui.packages.code": "Codice",
     "delivery_model.ui.packages.col_contract": "Contratto con",
     "delivery_model.ui.packages.col_duties": "Fa",
