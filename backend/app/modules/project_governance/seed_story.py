@@ -28,6 +28,15 @@ PLACEMENT: dict[str, str] = {
 #: The story of the project the active pack's demo file names, and the story of every other one.
 PACK = "pack"
 FIRST_GATE = "first_gate"
+#: What a project is left at when nobody but its owner can act on it: the model
+#: pinned, every area owned, the frame documents issued and the first gate in
+#: preparation with its readiness confirmed. No gate is decided; under four-eyes
+#: that takes a second person.
+OWNER_ONLY = "owner_only"
+
+#: The reasons that mean "this installation has no second person". A legal
+#: state of an installation without the demo logins, not a fault of the seed.
+ONE_PERSON_REASONS = frozenset({"no_decider", "owner_is_decider"})
 
 #: Why a project was not left at its planned moment. Stable codes: the
 #: integration seed fails the demo build on any of them.
@@ -38,9 +47,9 @@ FALLBACK_REASONS = frozenset(
         "demo_file_invalid",  # the demo file of the pack breaks a rule of this seed
         "pack_catalogue_unavailable",  # the phase model the demo file pins did not load
         "story_error",  # a story raised anything else; the traceback is in the log
-        "no_decider",  # the manager login is missing, so four-eyes has nobody to decide
+        "no_decider",  # no demo login to decide: the project gets the one-person story
         "no_owner",  # the project has no owner and the owner login is missing
-        "owner_is_decider",  # the owner is the decider; four-eyes would refuse every decision
+        "owner_is_decider",  # the owner is the decider login: the one-person story as well
         "project_not_found",
     }
 )
@@ -307,8 +316,14 @@ def placement(
     Returns:
         The row. ``fallback_reason`` is ``None`` only for a project that reached
         its planned moment or was skipped; any other row carries a code.
+        ``loud`` says whether the miss is a fault: a project left with nothing,
+        the project the pack names missing its story for any reason, or a
+        placed project that fell back although a second person was there. A
+        project that got the one-person story because the installation has no
+        demo logins missed its plan and is not loud.
     """
     missed = not skipped and reached != planned
+    alone = reached == OWNER_ONLY and reason in ONE_PERSON_REASONS
     return {
         "project_id": str(project_id),
         "demo_id": demo_id,
@@ -317,15 +332,19 @@ def placement(
         "fallback_reason": (reason if reason in FALLBACK_REASONS else "story_error") if missed else None,
         "skipped": skipped,
         "named": planned != FIRST_GATE,
+        "loud": missed and (reached is None or planned == PACK or (planned != FIRST_GATE and not alone)),
     }
 
 
 def seed_result(placements: list[dict[str, Any]], pack_demo_file: str = "absent") -> dict[str, Any]:
     """The result of a seed run, one row per project handed in.
 
-    ``ok`` is false when any project missed its planned moment, or when the
+    ``ok`` is false when a row is ``loud`` (see :func:`placement`), or when the
     active pack names a demo file nobody could read (``pack_demo_file`` is
-    ``unreadable``; no row can show that, the file would have named the project).
+    ``unreadable``; no row can show that, the file would have named the
+    project). A project that missed quietly is listed under ``fallbacks`` and
+    does not fail the run: an installation without the demo logins tells the
+    one-person story on every project, and that is a legal state.
     """
     fallbacks = [row for row in placements if row["fallback_reason"]]
     return {
@@ -333,5 +352,5 @@ def seed_result(placements: list[dict[str, Any]], pack_demo_file: str = "absent"
         "placements": placements,
         "fallbacks": fallbacks,
         "pack_demo_file": pack_demo_file,
-        "ok": not fallbacks and pack_demo_file != "unreadable",
+        "ok": not any(row["loud"] for row in fallbacks) and pack_demo_file != "unreadable",
     }

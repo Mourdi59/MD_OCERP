@@ -340,6 +340,7 @@ def test_a_project_left_at_its_planned_moment_is_no_fallback() -> None:
         "fallback_reason": None,
         "skipped": False,
         "named": True,
+        "loud": False,
     }
     assert story.seed_result([row]) == {
         "projects": 1,
@@ -352,7 +353,7 @@ def test_a_project_left_at_its_planned_moment_is_no_fallback() -> None:
 
 def test_a_named_project_left_with_the_first_gate_story_is_a_fallback() -> None:
     row = story.placement(PID, "residential-berlin", "execution", "first_gate", "gate_blocked")
-    assert (row["fallback_reason"], row["named"]) == ("gate_blocked", True)
+    assert (row["fallback_reason"], row["named"], row["loud"]) == ("gate_blocked", True, True)
     result = story.seed_result([row])
     # The project did get a model, so it counts; the miss is what the caller has to see.
     assert (result["projects"], result["fallbacks"], result["ok"]) == (1, [row], False)
@@ -364,13 +365,44 @@ def test_a_pack_project_whose_file_broke_a_rule_is_a_fallback_although_a_story_w
     assert story.seed_result([row], "read")["ok"] is False
 
 
-def test_a_project_that_got_nothing_is_reported_and_one_seeded_earlier_is_not() -> None:
-    nothing = story.placement(PID, "office-london", "first_gate", None, "no_decider")
+def test_a_project_that_got_nothing_is_loud_and_one_seeded_earlier_is_not() -> None:
+    nothing = story.placement(PID, "office-london", "first_gate", None, "story_error")
     earlier = story.placement(PID, "medical-us", "near_handover", None, skipped=True)
-    assert (nothing["fallback_reason"], nothing["named"]) == ("no_decider", False)
-    assert (earlier["fallback_reason"], earlier["skipped"]) == (None, True)
+    # Nobody placed this project, and still: a demo project without a model is a fault.
+    assert (nothing["fallback_reason"], nothing["named"], nothing["loud"]) == ("story_error", False, True)
+    assert (earlier["fallback_reason"], earlier["skipped"], earlier["loud"]) == (None, True, False)
     result = story.seed_result([nothing, earlier])
     assert (result["projects"], result["fallbacks"], result["ok"]) == (0, [nothing], False)
+
+
+def test_a_project_told_by_its_owner_alone_is_reported_and_does_not_fail_the_run() -> None:
+    """An installation without the demo logins is a legal state, for a placed project too."""
+    rows = [
+        story.placement(PID, demo_id, planned, story.OWNER_ONLY, reason)
+        for demo_id, planned in (("office-london", "first_gate"), ("residential-berlin", "execution"))
+        for reason in sorted(story.ONE_PERSON_REASONS)
+    ]
+    assert [(r["fallback_reason"], r["loud"]) for r in rows] == [
+        ("no_decider", False),
+        ("owner_is_decider", False),
+    ] * 2
+    result = story.seed_result(rows)
+    assert (result["projects"], result["fallbacks"], result["ok"]) == (4, rows, True)
+
+
+def test_the_project_the_pack_names_is_loud_without_a_decider_whatever_was_written() -> None:
+    """The filmed project needs the demo logins; without them the run fails."""
+    for reached in (None, story.OWNER_ONLY):
+        row = story.placement(PID, "office-frankfurt", "pack", reached, "no_decider")
+        assert (row["fallback_reason"], row["loud"]) == ("no_decider", True)
+        assert story.seed_result([row], "read")["ok"] is False
+
+
+def test_a_placed_project_that_missed_for_another_reason_stays_loud() -> None:
+    blocked = story.placement(PID, "residential-berlin", "execution", story.OWNER_ONLY, "gate_blocked")
+    with_people = story.placement(PID, "residential-berlin", "execution", "first_gate", "no_decider")
+    assert (blocked["loud"], with_people["loud"]) == (True, True)
+    assert story.seed_result([blocked])["ok"] is False
 
 
 def test_a_miss_without_a_known_reason_still_carries_one() -> None:

@@ -272,7 +272,9 @@ class GovernanceCondition(Base):
 
     __tablename__ = "oe_governance_condition"
     __table_args__ = (
-        Index("ix_oe_gov_condition_project_status", "project_id", "status"),
+        # The name ``app.core.pg_optimizations`` gives these columns. Under a name of our own
+        # the hook would add the same index a second time after any ``create_all``.
+        Index("ix_oe_governance_condition_project_id_status", "project_id", "status"),
         Index("ix_oe_gov_condition_decision", "decision_id"),
     )
 
