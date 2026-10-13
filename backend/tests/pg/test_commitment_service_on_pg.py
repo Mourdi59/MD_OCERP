@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -19,7 +20,6 @@ from app.modules.commitment_release.errors import CommitmentError
 from app.modules.commitment_release.service import CommitmentService
 from tests._pg import isolated_engine
 from tests.pg.commitment_fixtures import (
-    TODAY,
     World,
     add_contract,
     add_po,
@@ -31,6 +31,8 @@ from tests.pg.commitment_fixtures import (
     set_contract_value,
     state,
 )
+
+TODAY = date(2026, 10, 11)
 
 pytestmark = pytest.mark.asyncio
 

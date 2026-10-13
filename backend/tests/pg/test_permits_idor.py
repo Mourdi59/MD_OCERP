@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -12,7 +14,9 @@ from app.modules.permits import router as permits_router
 from app.modules.permits.errors import PermitError
 from app.modules.permits.service import PermitService
 from tests._pg import isolated_engine
-from tests.pg.permits_fixtures import TODAY, World, build_world, cond, decide, file, requirement
+from tests.pg.permits_fixtures import World, build_world, cond, decide, file, requirement
+
+TODAY = date(2026, 10, 11)
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
 

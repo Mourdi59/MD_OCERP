@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -30,7 +30,6 @@ from app.modules.permits.service import PermitService
 from tests._pg import isolated_engine
 from tests.pg.governance_fixtures import add_container, add_revision, add_user
 from tests.pg.permits_fixtures import (
-    TODAY,
     World,
     add_project,
     application,
@@ -41,6 +40,8 @@ from tests.pg.permits_fixtures import (
     move,
     requirement,
 )
+
+TODAY = date(2026, 10, 11)
 
 pytestmark = pytest.mark.asyncio
 

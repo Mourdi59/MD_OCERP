@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 import pytest_asyncio
@@ -15,7 +15,6 @@ from app.modules.permits.errors import PermitError
 from app.modules.permits.service import PermitService
 from tests._pg import isolated_engine
 from tests.pg.permits_fixtures import (
-    TODAY,
     World,
     application,
     build_world,
@@ -26,6 +25,8 @@ from tests.pg.permits_fixtures import (
     requirement,
     state,
 )
+
+TODAY = date(2026, 10, 11)
 
 pytestmark = pytest.mark.asyncio
 

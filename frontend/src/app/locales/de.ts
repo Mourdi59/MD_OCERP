@@ -33244,6 +33244,7 @@ const resource = {
     "issues.title": "Problem-Hub",
     "issues.unassigned": "Nicht zugewiesen",
   "issues.source_bcf": "BCF",
+  "issues.source_neighbour": "Nachbarschaft",
   "issues.source_markup": "Markup",
   "issues.source_clash": "Kollision",
   "issues.source_ncr": "Abweichungsbericht (NCR)",

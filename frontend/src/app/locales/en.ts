@@ -30377,6 +30377,7 @@ const resource = {
     "issues.col_due": "Due",
     "issues.open_in_module": "Open in its module",
   "issues.source_bcf": "BCF",
+  "issues.source_neighbour": "Neighbour",
   "issues.source_markup": "Mark-up",
   "issues.source_clash": "Clash",
   "issues.source_ncr": "NCR",

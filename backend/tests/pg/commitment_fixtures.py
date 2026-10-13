@@ -24,8 +24,6 @@ from app.modules.commitment_release.events import handle_route_event
 from app.modules.commitment_release.service import CommitmentService
 from tests.pg.governance_fixtures import add_user
 
-TODAY = date(2026, 10, 11)
-
 
 @dataclass
 class World:
@@ -65,7 +63,7 @@ async def add_project(session: AsyncSession, owner: uuid.UUID, members: list[uui
     return pid
 
 
-async def build_world(factory: async_sessionmaker[AsyncSession]) -> World:
+async def build_world(factory: async_sessionmaker[AsyncSession], today: date = date(2026, 10, 11)) -> World:
     from app.modules.commitment_release.catalogue import register_kinds
 
     register_kinds()
@@ -87,7 +85,7 @@ async def build_world(factory: async_sessionmaker[AsyncSession]) -> World:
                 {"project_role": "owner_board_member", "user_id": board},
             ],
             actor_id=manager,
-            today=TODAY,
+            today=today,
         )
         await s.commit()
     return World(factory, pid, manager, pm, sponsor, board, requester, outsider)
@@ -109,7 +107,15 @@ async def item(w: World, code: str = "CR-1", amount: str = "400000", ctype: str 
         return row.id
 
 
-async def request(w: World, item_id: uuid.UUID, amount: str, *, actor: uuid.UUID | None = None, **kw: Any):
+async def request(
+    w: World,
+    item_id: uuid.UUID,
+    amount: str,
+    *,
+    actor: uuid.UUID | None = None,
+    today: date = date(2026, 10, 11),
+    **kw: Any,
+):
     async with w.factory() as s:
         d = await CommitmentService(s).request_release(
             w.project_id,
@@ -119,7 +125,7 @@ async def request(w: World, item_id: uuid.UUID, amount: str, *, actor: uuid.UUID
             tranche_note=kw.pop("tranche_note", ""),
             external_approval_ref=kw.pop("external_approval_ref", ""),
             actor_id=actor or w.requester,
-            today=TODAY,
+            today=today,
             manage=kw.pop("manage", False),
         )
         await s.commit()

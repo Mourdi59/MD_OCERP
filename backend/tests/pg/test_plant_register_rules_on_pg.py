@@ -41,7 +41,9 @@ from app.modules.plant_register.ports import (
 )
 from app.modules.plant_register.service import PlantService
 from tests._pg import isolated_engine
-from tests.pg.plant_fixtures import TODAY, World, build_world, get, item, quote, view
+from tests.pg.plant_fixtures import World, build_world, get, item, quote, view
+
+TODAY = date(2026, 10, 11)
 
 pytestmark = pytest.mark.asyncio
 

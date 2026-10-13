@@ -21,8 +21,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.permits.service import PermitService
 from tests.pg.governance_fixtures import add_user
 
-TODAY = date(2026, 10, 11)
-
 
 @dataclass
 class World:
@@ -117,30 +115,39 @@ async def application(w: World, rid: uuid.UUID, **kw: Any) -> uuid.UUID:
         return row.id
 
 
-async def move(w: World, aid: uuid.UUID, target: str, on: date | None = None, can_manage: bool = True) -> Any:
+async def move(
+    w: World,
+    aid: uuid.UUID,
+    target: str,
+    on: date | None = None,
+    can_manage: bool = True,
+    today: date = date(2026, 10, 11),
+) -> Any:
     async with w.factory() as s:
         row = await PermitService(s).transition_application(
-            w.project_id, aid, target, actor_id=w.manager, can_manage=can_manage, on_date=on, today=TODAY
+            w.project_id, aid, target, actor_id=w.manager, can_manage=can_manage, on_date=on, today=today
         )
         await s.commit()
         return row
 
 
-async def file(w: World, rid: uuid.UUID, on: date | None = None, **kw: Any) -> uuid.UUID:
+async def file(
+    w: World, rid: uuid.UUID, on: date | None = None, today: date = date(2026, 10, 11), **kw: Any
+) -> uuid.UUID:
     aid = await application(w, rid, **kw)
     await move(w, aid, "preparing")
-    await move(w, aid, "submitted", on or TODAY - timedelta(days=60))
+    await move(w, aid, "submitted", on or today - timedelta(days=60), today=today)
     return aid
 
 
-async def decide(w: World, aid: uuid.UUID, outcome: str, **kw: Any) -> dict[str, Any]:
+async def decide(w: World, aid: uuid.UUID, outcome: str, today: date = date(2026, 10, 11), **kw: Any) -> dict[str, Any]:
     async with w.factory() as s:
         out = await PermitService(s).record_decision(
             w.project_id,
             aid,
-            {"outcome": outcome, "decision_date": kw.pop("decision_date", TODAY - timedelta(days=10)), **kw},
+            {"outcome": outcome, "decision_date": kw.pop("decision_date", today - timedelta(days=10)), **kw},
             actor_id=w.manager,
-            today=kw.pop("today", TODAY),
+            today=today,
         )
         await s.commit()
         return out

@@ -12,7 +12,7 @@ drafts, the overdue sweep, gate evidence and the demo seed.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -28,7 +28,6 @@ from app.modules.commitment_release.models import CommitmentItem, CommitmentLink
 from app.modules.commitment_release.service import CommitmentService
 from tests._pg import isolated_engine
 from tests.pg.commitment_fixtures import (
-    TODAY,
     World,
     add_contract,
     add_cost_line,
@@ -41,6 +40,8 @@ from tests.pg.commitment_fixtures import (
     request,
     state,
 )
+
+TODAY = date(2026, 10, 11)
 
 pytestmark = pytest.mark.asyncio
 D = Decimal

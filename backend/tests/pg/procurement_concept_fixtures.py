@@ -24,7 +24,7 @@ from __future__ import annotations
 import copy
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import sqlalchemy as sa
@@ -37,7 +37,6 @@ from app.modules.procurement_concept.service import ProcurementConceptService
 from app.modules.project_governance.catalogue import list_catalogues
 from tests.pg.governance_fixtures import add_project, add_user
 
-TODAY = date(2026, 10, 11)
 MODEL_ID = "neutral"
 MODEL = next(c for c in list_catalogues() if c.id == MODEL_ID)
 HOSTING = hosting_of(MODEL)

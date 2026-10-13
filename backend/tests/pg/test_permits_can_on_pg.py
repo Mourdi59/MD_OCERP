@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import date
 
 import httpx
 import pytest
@@ -24,7 +25,6 @@ from app.modules.permits.service import PermitService, condition_out, roadmap_ou
 from tests._pg import isolated_engine
 from tests.pg.governance_fixtures import add_container, add_revision
 from tests.pg.permits_fixtures import (
-    TODAY,
     World,
     application,
     build_world,
@@ -35,6 +35,8 @@ from tests.pg.permits_fixtures import (
     move,
     requirement,
 )
+
+TODAY = date(2026, 10, 11)
 
 pytestmark = pytest.mark.asyncio
 

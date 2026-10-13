@@ -36,7 +36,6 @@ from tests.pg.procurement_concept_fixtures import (
     OTHER_DOC,
     OTHER_GATE,
     RELEASE_GATE,
-    TODAY,
     UNGATED_DOC,
     World,
     add_condition,
@@ -53,6 +52,8 @@ from tests.pg.procurement_concept_fixtures import (
     set_delivery_form,
     svc_call,
 )
+
+TODAY = date(2026, 10, 11)
 
 pytestmark = pytest.mark.asyncio
 

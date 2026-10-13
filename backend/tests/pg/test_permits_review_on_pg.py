@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 import pytest_asyncio
@@ -21,7 +21,6 @@ from app.modules.project_governance.evidence import GateAttempt
 from tests._pg import isolated_engine
 from tests.pg.governance_fixtures import add_route
 from tests.pg.permits_fixtures import (
-    TODAY,
     World,
     add_project,
     application,
@@ -34,6 +33,8 @@ from tests.pg.permits_fixtures import (
     requirement,
     state,
 )
+
+TODAY = date(2026, 10, 11)
 
 pytestmark = pytest.mark.asyncio
 

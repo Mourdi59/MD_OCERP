@@ -28,8 +28,6 @@ from app.modules.plant_register.ports import (
 from app.modules.plant_register.service import PlantService
 from tests.pg.governance_fixtures import add_project, add_route, add_user
 
-TODAY = date(2026, 10, 11)
-
 
 @dataclass
 class FakePlanProvider:
@@ -144,7 +142,7 @@ async def item(w: World, code: str = "PL-1", cls: str = "mv_switchgear", **extra
         return row.id
 
 
-async def quote(w: World, item_id: uuid.UUID, **kw: Any):
+async def quote(w: World, item_id: uuid.UUID, today: date = date(2026, 10, 11), **kw: Any):
     data = {
         "source": "supplier_quote",
         "source_name": "Manufacturer A",
@@ -154,7 +152,7 @@ async def quote(w: World, item_id: uuid.UUID, **kw: Any):
         **kw,
     }
     async with w.factory() as s:
-        q = await PlantService(s).add_quote(w.project_id, item_id, data, actor_id=w.area_owner, today=TODAY)
+        q = await PlantService(s).add_quote(w.project_id, item_id, data, actor_id=w.area_owner, today=today)
         await s.commit()
         return q
 
@@ -164,6 +162,6 @@ async def get(w: World, model: Any, row_id: uuid.UUID) -> Any:
         return await s.get(model, row_id)
 
 
-async def view(w: World, item_id: uuid.UUID) -> dict[str, Any]:
+async def view(w: World, item_id: uuid.UUID, today: date = date(2026, 10, 11)) -> dict[str, Any]:
     async with w.factory() as s:
-        return (await PlantService(s).item_views(w.project_id, today=TODAY, only=[item_id]))[0]
+        return (await PlantService(s).item_views(w.project_id, today=today, only=[item_id]))[0]

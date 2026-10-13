@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import uuid
 from contextlib import asynccontextmanager
+from datetime import date
 from typing import Any
 
 import pytest
@@ -29,7 +30,9 @@ from app.modules.plant_register.ports import unregister_package_plan_provider
 from app.modules.plant_register.router import router
 from app.modules.plant_register.service import PlantService
 from tests._pg import isolated_engine
-from tests.pg.plant_fixtures import TODAY, World, build_world, get, item, quote
+from tests.pg.plant_fixtures import World, build_world, get, item, quote
+
+TODAY = date(2026, 10, 11)
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
 

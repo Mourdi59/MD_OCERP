@@ -247,6 +247,9 @@ describe('every translation keeps the placeholders its sentence needs', () => {
     // 312 the same way, Arabic and Hebrew again stating one and two in words.
     // The client portal's milestone and overdue badges made it 322: Hebrew
     // says "one day" and "two days" as words ("יום אחד", "יומיים").
+    // The eleven project management modules took the zero forms to 72, Arabic
+    // stating the empty case as a sentence without the number, and the spelled-out
+    // forms to 347, Arabic and Hebrew naming one and two in words.
     let zeroForms = 0;
     let spelledOut = 0;
     for (const { key, missing } of comparisons) {
@@ -254,7 +257,7 @@ describe('every translation keeps the placeholders its sentence needs', () => {
       if (key.endsWith('_zero')) zeroForms += 1;
       else if (missing.length === 1 && missing[0] === 'count') spelledOut += 1;
     }
-    expect(zeroForms, 'zero forms dropping a placeholder').toBeLessThanOrEqual(60);
-    expect(spelledOut, 'singular or dual forms spelling the number out').toBeLessThanOrEqual(330);
+    expect(zeroForms, 'zero forms dropping a placeholder').toBeLessThanOrEqual(80);
+    expect(spelledOut, 'singular or dual forms spelling the number out').toBeLessThanOrEqual(360);
   });
 });
