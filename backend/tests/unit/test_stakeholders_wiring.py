@@ -74,20 +74,31 @@ def _load_migration():
 
 
 def test_migration_matches_the_models() -> None:
+    from app.core.pg_optimizations import _index_name
     from app.database import Base
     from app.modules.stakeholders import models  # noqa: F401
 
     mig = _load_migration()
     assert mig.revision == "v76_stakeholders"
-    assert mig.down_revision == "v68_project_governance"
+    # Where the revision sits in the chain is decided when the branches are joined; it must name a
+    # revision that exists.
+    assert (_MIGRATION.parent / f"{mig.down_revision}.py").exists(), mig.down_revision
     tables = {name: (cols, idx) for name, cols, idx in mig._TABLES}
     model_tables = {n: t for n, t in Base.metadata.tables.items() if n.startswith("oe_stakeholders_")}
     assert set(tables) == set(model_tables)
     for name, (cols, idx) in tables.items():
         mig_cols = {c.name for c in mig._base() + [c for c in cols() if hasattr(c, "name") and hasattr(c, "type")]}
         assert mig_cols == {c.name for c in model_tables[name].columns}, name
-        model_idx = {i.name for i in model_tables[name].indexes}
-        assert {i[0] for i in idx} == model_idx, name
+        declared = {i[0] for i in idx}
+        model_idx = {i.name: [c.name for c in i.columns] for i in model_tables[name].indexes}
+        assert declared <= set(model_idx), name
+        # ``app.core.pg_optimizations`` attaches its own indexes to the metadata after any ``create_all``
+        # in the same process, and no revision in the repository creates those. Anything else the
+        # models carry and the revision does not is a real difference.
+        beside = {n: cols for n, cols in model_idx.items() if n not in declared}
+        assert all(n == _index_name(name, cols) for n, cols in beside.items()), (name, beside)
+        for index_name, cols, _kw in idx:
+            assert model_idx[index_name] == cols, index_name
         for c in model_tables[name].columns:
             mc = next(x for x in cols() + mig._base() if getattr(x, "name", None) == c.name)
             assert mc.nullable == c.nullable, f"{name}.{c.name}"

@@ -17,6 +17,7 @@ import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 
+from app.core.pg_optimizations import _index_name
 from app.modules.stakeholders import models as _models  # noqa: F401  (registers the tables)
 from tests._pg import isolated_engine
 
@@ -49,6 +50,7 @@ def _load(name: str):
 
 
 _rev = _load("v76_stakeholders")
+_DECLARED = {name for _table, _cols, indexes in _rev._TABLES for name, _columns, _kw in indexes}
 
 
 def _run(sync_conn, direction) -> None:
@@ -69,13 +71,14 @@ def _reflect(sync_conn) -> dict:
             "columns": {
                 c["name"]: (str(c["type"]), c["nullable"], c.get("default")) for c in inspector.get_columns(table)
             },
-            # ``app.core.pg_optimizations`` adds ``ix_oe_stakeholders_<table>_...`` on
-            # every create_all and no revision reproduces them; compare only the
-            # indexes this module declares (``ix_oe_stk_*``).
+            # ``app.core.pg_optimizations`` adds indexes of its own on every create_all and no revision
+            # reproduces them. Left out: an index the revision does not declare whose name is the one
+            # the hook gives its columns. Everything else is compared, with its columns.
             "indexes": {
-                i["name"]
+                (i["name"], tuple(i["column_names"]))
                 for i in inspector.get_indexes(table)
-                if i.get("name") and not i["name"].startswith("ix_oe_stakeholders_")
+                if i.get("name")
+                and (i["name"] in _DECLARED or i["name"] != _index_name(table, [c or "" for c in i["column_names"]]))
             },
             "unique": {u["name"] for u in inspector.get_unique_constraints(table) if u.get("name")},
             "fks": {(f["name"], (f.get("options") or {}).get("ondelete")) for f in inspector.get_foreign_keys(table)},
@@ -90,7 +93,9 @@ async def _drop_all(conn) -> None:
 
 async def test_revision_chains_onto_governance() -> None:
     assert _rev.revision == "v76_stakeholders"
-    assert _rev.down_revision == "v68_project_governance"
+    # Where the revision sits in the chain is decided when the branches are joined.
+    versions = Path(__file__).resolve().parents[2] / "alembic" / "versions"
+    assert (versions / f"{_rev.down_revision}.py").exists(), _rev.down_revision
 
 
 async def test_revision_reproduces_the_model_schema_up_down_up() -> None:

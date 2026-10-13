@@ -743,13 +743,14 @@ async def validation(
 
 async def _render(
     svc: StakeholderService, project_id: uuid.UUID, which: str, fmt: str, can_read_personal: bool
-) -> tuple[bytes, str]:
+) -> tuple[bytes, str, str]:
+    """The document, its file name and the language it was written in."""
     from app.modules.projects.models import Project
     from app.modules.stakeholders import export
 
     _settings, fw = await _run(svc.context(project_id))
     day = _today(None)
-    locale = get_locale() or "en"
+    locale = export.written_locale(get_locale())
     project = await svc.session.get(Project, project_id)
     name = getattr(project, "name", "") or ""
     if which == "organisation":
@@ -772,7 +773,7 @@ async def _render(
             locale=locale,
         )
         stem = "stakeholder_and_communication_plan"
-    return export.render(docs, fmt), f"{stem}.{fmt}"
+    return export.render(docs, fmt), f"{stem}.{fmt}", locale
 
 
 @router.get("/projects/{project_id}/gates", dependencies=[READ])
@@ -806,11 +807,14 @@ async def export_register(
 ) -> Response:
     """Stakeholder and communication plan as PDF or XLSX; private names masked without ``read_personal``."""
     await verify_project_access(project_id, user_id, session)
-    content, file_name = await _render(
+    content, file_name, locale = await _render(
         StakeholderService(session), project_id, "register", fmt, _has(payload, "stakeholders.read_personal")
     )
     return Response(
-        content=content, media_type=_MEDIA[fmt], headers={"Content-Disposition": f'attachment; filename="{file_name}"'}
+        content=content,
+        media_type=_MEDIA[fmt],
+        # The language the document was written in, which is not always the one asked for.
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"', "Content-Language": locale},
     )
 
 
@@ -824,7 +828,7 @@ async def file_frame_document(
     """
     await verify_project_access(project_id, user_id, session)
     svc = StakeholderService(session)
-    content, file_name = await _render(svc, project_id, body.document, body.format, False)
+    content, file_name, _locale = await _render(svc, project_id, body.document, body.format, False)
     return await _run(
         svc.file_frame_document(
             project_id,
@@ -994,7 +998,10 @@ async def export_organisation(
 ) -> Response:
     """Project organisation and mandates as PDF or XLSX."""
     await verify_project_access(project_id, user_id, session)
-    content, file_name = await _render(StakeholderService(session), project_id, "organisation", fmt, payload)
+    # The organisation tables carry roles and bodies, no private person, so nothing is masked.
+    content, file_name, locale = await _render(StakeholderService(session), project_id, "organisation", fmt, True)
     return Response(
-        content=content, media_type=_MEDIA[fmt], headers={"Content-Disposition": f'attachment; filename="{file_name}"'}
+        content=content,
+        media_type=_MEDIA[fmt],
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"', "Content-Language": locale},
     )

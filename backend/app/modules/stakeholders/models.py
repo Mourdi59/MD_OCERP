@@ -68,7 +68,10 @@ class Stakeholder(Base):
     __tablename__ = "oe_stakeholders_stakeholder"
     __table_args__ = (
         UniqueConstraint("project_id", "code", name="uq_oe_stk_stakeholder_code"),
-        Index("ix_oe_stk_stakeholder_project", "project_id", "status"),
+        # The name is the platform's: ``app.core.pg_optimizations`` adds a ``(project_id, status)`` index
+        # under exactly this name after ``create_all`` unless one is declared, and any other name would
+        # leave the table with the same index twice.
+        Index("ix_oe_stakeholders_stakeholder_project_id_status", "project_id", "status"),
         Index("ix_oe_stk_stakeholder_contact", "contact_id"),
     )
 
@@ -128,7 +131,8 @@ class CommunicationPlanItem(Base):
     """A planned communication. Occurrences are computed, never stored ahead (decision f)."""
 
     __tablename__ = "oe_stakeholders_plan_item"
-    __table_args__ = (Index("ix_oe_stk_plan_project", "project_id", "status"),)
+    # Named as ``app.core.pg_optimizations`` would name it, see ``Stakeholder``.
+    __table_args__ = (Index("ix_oe_stakeholders_plan_item_project_id_status", "project_id", "status"),)
 
     project_id: Mapped[uuid.UUID] = _project("fk_oe_stk_plan_project")
     title: Mapped[str] = mapped_column(String(255), nullable=False)

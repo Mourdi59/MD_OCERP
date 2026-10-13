@@ -69,6 +69,7 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     "modules/punchlist/router.py": {"export_pdf"},
     "modules/reporting/router.py": {"download_report"},
     "modules/rfi/router.py": {"export_rfi_pdf"},
+    "modules/stakeholders/router.py": {"export_organisation", "export_register"},
     "modules/subcontractors/router.py": {"export_payment_hakedis_pdf"},
     "modules/tendering/router.py": {
         "export_award_letter_pdf",
