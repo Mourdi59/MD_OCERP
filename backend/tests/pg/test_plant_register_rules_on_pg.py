@@ -1216,7 +1216,8 @@ async def test_the_demo_seed_fills_every_list_by_the_rules_and_is_idempotent(wor
     async with world.factory() as s:
         first = await seed_plant_register_demo(s, [world.project_id])
         await s.commit()
-    assert first == {"projects": 1, "items": 13, "quotes": 12}
+    # The route of this world is signed by a member of the project's team, so the paper is decided.
+    assert first == {"projects": 1, "items": 13, "quotes": 12, "papers_left_draft": 0, "notes": []}
 
     async with world.factory() as s:
         items = list((await s.execute(select(PlantItem).where(PlantItem.project_id == world.project_id))).scalars())
@@ -1263,7 +1264,7 @@ async def test_the_demo_seed_fills_every_list_by_the_rules_and_is_idempotent(wor
         count = await s.scalar(
             select(func.count()).select_from(PlantItem).where(PlantItem.project_id == world.project_id)
         )
-    assert again == {"projects": 0, "items": 0, "quotes": 0} and count == 13
+    assert again == {"projects": 0, "items": 0, "quotes": 0, "papers_left_draft": 0, "notes": []} and count == 13
 
 
 async def test_the_demo_seed_leaves_a_project_without_the_demo_marker_alone(world: World) -> None:
@@ -1272,4 +1273,4 @@ async def test_the_demo_seed_leaves_a_project_without_the_demo_marker_alone(worl
     async with world.factory() as s:
         out = await seed_plant_register_demo(s, [world.project_id])  # no demo marker
         await s.commit()
-    assert out == {"projects": 0, "items": 0, "quotes": 0}
+    assert out == {"projects": 0, "items": 0, "quotes": 0, "papers_left_draft": 0, "notes": []}
