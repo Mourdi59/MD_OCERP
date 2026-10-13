@@ -42,9 +42,9 @@ from app.modules.commitment_release import evaluator as ev
 from app.modules.commitment_release.catalogue import (
     ABORT_BASIS_KIND,
     AUTHORITY_SCHEDULE_KIND,
+    DEFAULT_SCHEDULE_ID,
     AbortBasis,
     AuthoritySchedule,
-    default_schedule_id_for_country,
     parse_amount,
     register_kinds,
 )
@@ -289,17 +289,16 @@ class CommitmentService:
         if fx_policy is not None and fx_policy not in FX_POLICIES:
             raise CommitmentError("fx_policy_invalid", 422)
         if matrix is None and schedule_id is None and schedule_source is None:
-            # A new matrix with no schedule named: the active pack is asked first, and this module's
-            # own default applies only when the pack has no opinion.
+            # A new matrix with no schedule named: the governance port is the only country default.
+            # It answers for the active pack, the regional packs and the shipped schedule that claims
+            # the country; when it has no answer the neutral schedule is pinned.
             from app.modules.project_governance.public import default_catalogue_pin
 
             pin = default_catalogue_pin(AUTHORITY_SCHEDULE_KIND, getattr(project, "country_code", None))
             if pin is not None:
                 schedule_source, schedule_id, schedule_version = pin.source, pin.catalogue_id, pin.version
         source = schedule_source or (matrix.schedule_source if matrix else "shipped")
-        sid = schedule_id or (
-            matrix.schedule_id if matrix else default_schedule_id_for_country(getattr(project, "country_code", None))
-        )
+        sid = schedule_id or (matrix.schedule_id if matrix else DEFAULT_SCHEDULE_ID)
         before: dict[str, Any] = {}
         if matrix is None or schedule_id is not None or schedule_version is not None or schedule_source is not None:
             try:
