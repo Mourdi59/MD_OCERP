@@ -54,7 +54,7 @@ async def seed_commitment_release_demo(session: AsyncSession, project_ids: Itera
     from app.modules.commitment_release.models import CommitmentMatrix
     from app.modules.projects.models import Project
 
-    totals = {"projects": 0, "items": 0, "links": 0, "releases": 0}
+    totals = {"projects": 0, "items": 0, "links": 0, "releases": 0, "scenarios": 0}
     ids = list(project_ids)
     if not ids:
         return totals
@@ -74,7 +74,8 @@ async def seed_commitment_release_demo(session: AsyncSession, project_ids: Itera
             continue
         totals["projects"] += 1
         for k, v in counts.items():
-            totals[k] += v
+            # A count the story adds later must not undo a project that was seeded.
+            totals[k] = totals.get(k, 0) + v
     return totals
 
 
@@ -364,12 +365,13 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     ccy = (project.currency or "").strip().upper()
     if owner is None or not ccy:
         # No owner to hold the tiers, or no currency to plan in: nothing honest can be seeded.
-        logger.warning("commitment_release demo: project %s has no owner or no currency, skipped", project_id)
+        logger.info("commitment_release demo: project %s has no owner or no currency, skipped", project_id)
         return counts
     planner = await _second_person(session, project_id, owner)
     if planner is None:
-        # Four eyes: the owner holds the tiers and cannot approve a request of their own.
-        logger.warning(
+        # Four eyes: the owner holds the tiers and cannot approve a request of their own. A
+        # one-person project is an ordinary install, so this is said quietly and nothing fails.
+        logger.info(
             "commitment_release demo: project %s has nobody but its owner, items are seeded without a release",
             project_id,
         )

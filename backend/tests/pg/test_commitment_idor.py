@@ -175,7 +175,9 @@ async def test_a_release_request_ignores_a_date_in_the_query(world: World) -> No
         r = await c.post(f"{p}/items/{iid}/releases?today=2020-01-01", json={"amount": "1000", "currency": "GBP"})
     assert r.status_code == 201, r.text
     assert r.json()["fx_rate_date"] != "2020-01-01"
-    assert r.json()["fx_rate_date"] in (None, datetime.now(UTC).date().isoformat())
+    # The rate is the stored one in force on the server day. It is dated after the day in the
+    # query, so it could not have been chosen for that day.
+    assert r.json()["fx_rate_date"] is None or r.json()["fx_rate_date"] > "2020-01-01"
     # The day the request was frozen is the server's, whatever the rate's own date says.
     stored = (await state_of_release(world, uuid.UUID(r.json()["id"]))).snapshot
     assert stored["requested_at"][:10] == datetime.now(UTC).date().isoformat()
@@ -338,7 +340,7 @@ async def test_references_are_empty_lists_without_a_governance_model_and_targets
     iid = await item(world, amount="10000")
     other = await item(world, code="CR-8", amount="10000")
     async with client_as(world, world.manager, "manager") as c:
-        targets = (await c.get(f"{url}/items/{iid}/transfer-targets")).json()
+        targets = (await c.get(f"{url}/items/{iid}/transfer-targets")).json()["items"]
     assert [t["project_id"] for t in targets] == [str(world.project_id), str(mine)]
     assert targets[0]["same_project"] is True
     assert targets[0]["items"] == [{"id": str(other), "code": "CR-8", "title": "Item CR-8"}]
@@ -347,5 +349,5 @@ async def test_references_are_empty_lists_without_a_governance_model_and_targets
     cid = await add_contract(world, "10000")
     await link(world, iid, "contract", cid)
     async with client_as(world, world.manager, "manager") as c:
-        targets = (await c.get(f"{url}/items/{iid}/transfer-targets")).json()
+        targets = (await c.get(f"{url}/items/{iid}/transfer-targets")).json()["items"]
     assert [t["can"]["reason"] for t in targets] == [None, "transfer_links_stay_in_project"]
