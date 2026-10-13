@@ -119,7 +119,7 @@ async def seed_staffing_demo(session: AsyncSession, project_ids: Iterable[uuid.U
     from app.modules.projects.models import Project
     from app.modules.staffing.models import StaffingPlan
 
-    totals = {"projects": 0, "positions": 0, "fills": 0, "files": 0, "documents": 0}
+    totals = {"projects": 0, "positions": 0, "fills": 0, "files": 0, "documents": 0, "submitted": 0}
     ids = list(project_ids)
     if not ids:
         return totals
@@ -169,7 +169,13 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         (
             await session.execute(
                 select(RosterMember)
-                .where(RosterMember.project_id == project_id)
+                # Only the invented people of the demo roster. A roster row linked to an account or a
+                # contact is a real person, and a personnel file is never seeded about one.
+                .where(
+                    RosterMember.project_id == project_id,
+                    RosterMember.user_id.is_(None),
+                    RosterMember.contact_id.is_(None),
+                )
                 .order_by(RosterMember.created_at, RosterMember.id)
             )
         ).scalars()
@@ -194,7 +200,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         commissioning_date=today + timedelta(days=commissioning),
     )
     catalogue = await svc.catalogue_for(await svc.require_plan(project_id))
-    counts = {"positions": 0, "fills": 0, "files": 0, "documents": 0}
+    counts = {"positions": 0, "fills": 0, "files": 0, "documents": 0, "submitted": 0}
 
     positions: dict[str, Any] = {}
     for role_code, phase, entry, leaving, status in planned:
@@ -351,19 +357,27 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                 owner,
             )
     if early:
-        await _submit_for_the_gate(svc, project_id, owner)
+        counts["submitted"] = int(await _submit_for_the_gate(svc, project_id, owner))
     return counts
 
 
-async def _submit_for_the_gate(svc: Any, project_id: uuid.UUID, owner: uuid.UUID) -> None:
-    """Before the gate the plan is with the reviewer. Approval stays the gate's decision, never the seeder's."""
+async def _submit_for_the_gate(svc: Any, project_id: uuid.UUID, owner: uuid.UUID) -> bool:
+    """Before the gate the plan is with the reviewer. Approval stays the gate's decision, never the seeder's.
+
+    Asked first, never tried: a submission that would be refused is not sent.
+    """
     from app.modules.staffing import rules
 
     frame = await svc._resolve_frame_document(project_id)
     refused = rules.plan_action_refusal("submit", "draft", can_edit=True, has_frame_document=frame is not None)
-    errors = [f.code for f in await svc.submission_findings(project_id) if f.severity == rules.ERROR]
-    if refused or errors:
-        # A demo plan that cannot be submitted is a seed defect worth reading, not a reason to lose the project.
-        logger.warning("staffing demo seed: plan of %s stays a draft (%s)", project_id, refused or sorted(errors))
-        return
+    if refused:
+        # A legal state: the project's phase model carries no document for staffing. The plan stays a draft.
+        logger.info("staffing demo seed: plan of %s stays a draft (%s)", project_id, refused)
+        return False
+    errors = sorted(f.code for f in await svc.submission_findings(project_id) if f.severity == rules.ERROR)
+    if errors:
+        # The seeded plan itself is incomplete: a seed defect worth reading, not a reason to lose the project.
+        logger.warning("staffing demo seed: plan of %s stays a draft (%s)", project_id, errors)
+        return False
     await svc.submit(project_id, owner)
+    return True
