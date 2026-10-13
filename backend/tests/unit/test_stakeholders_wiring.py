@@ -73,21 +73,80 @@ def _load_migration():
     return mod
 
 
+def _index_differences(table: str, declared: dict[str, list[str]], carried: dict[str, list[str]]) -> list[str]:
+    """What separates the indexes a revision declares from the ones a model table carries.
+
+    ``app.core.pg_optimizations`` attaches its own indexes to the metadata after
+    any ``create_all`` in the same process, and no revision in the repository
+    creates those. An index the revision does not declare is therefore accepted
+    only when its name is exactly the one the hook gives its columns. Anything
+    else is a difference.
+    """
+    from app.core.pg_optimizations import _index_name
+
+    out = [f"{n}: declared by the revision, missing on the model" for n in sorted(set(declared) - set(carried))]
+    for name, cols in sorted(carried.items()):
+        if name in declared:
+            if declared[name] != cols:
+                out.append(f"{name}: revision {declared[name]}, model {cols}")
+        elif name != _index_name(table, cols):
+            out.append(f"{name}: on the model, not in the revision")
+    return out
+
+
+def test_only_an_index_named_by_the_platform_hook_may_be_missing_from_the_revision() -> None:
+    import sqlalchemy as sa
+
+    from app.core.pg_optimizations import _index_name
+
+    table = sa.Table(
+        "oe_stakeholders_probe",
+        sa.MetaData(),
+        sa.Column("project_id", sa.String(36)),
+        sa.Column("status", sa.String(20)),
+        sa.Column("created_at", sa.DateTime()),
+        sa.Index("ix_oe_stk_probe_own", "project_id", "status"),
+    )
+    declared = {"ix_oe_stk_probe_own": ["project_id", "status"]}
+
+    def carried() -> dict[str, list[str]]:
+        return {i.name: [c.name for c in i.columns] for i in table.indexes}
+
+    assert _index_differences(table.name, declared, carried()) == []
+    # What the hook leaves behind after a create_all somewhere earlier in the same process.
+    sa.Index(_index_name(table.name, ["project_id"]), table.c.project_id)
+    sa.Index(_index_name(table.name, ["project_id", "created_at"]), table.c.project_id, table.c.created_at)
+    assert _index_differences(table.name, declared, carried()) == []
+    # A hook name on other columns, a stray index, a changed column list and a dropped index are all differences.
+    sa.Index(_index_name(table.name, ["project_id", "status"]), table.c.status)
+    sa.Index("ix_oe_stk_probe_stray", table.c.status)
+    found = _index_differences(table.name, {**declared, "ix_oe_stk_probe_gone": ["status"]}, carried())
+    assert [line.split(":")[0] for line in found] == [
+        "ix_oe_stk_probe_gone",
+        "ix_oe_stakeholders_probe_project_id_status",
+        "ix_oe_stk_probe_stray",
+    ]
+    assert _index_differences(table.name, {"ix_oe_stk_probe_own": ["status"]}, {"ix_oe_stk_probe_own": ["project_id"]})
+
+
 def test_migration_matches_the_models() -> None:
     from app.database import Base
     from app.modules.stakeholders import models  # noqa: F401
 
     mig = _load_migration()
     assert mig.revision == "v76_stakeholders"
-    assert mig.down_revision == "v74_design_management"
+    # Where the revision sits in the chain is decided when the branches are joined; it must name a
+    # revision that exists.
+    assert (_MIGRATION.parent / f"{mig.down_revision}.py").exists(), mig.down_revision
     tables = {name: (cols, idx) for name, cols, idx in mig._TABLES}
     model_tables = {n: t for n, t in Base.metadata.tables.items() if n.startswith("oe_stakeholders_")}
     assert set(tables) == set(model_tables)
     for name, (cols, idx) in tables.items():
         mig_cols = {c.name for c in mig._base() + [c for c in cols() if hasattr(c, "name") and hasattr(c, "type")]}
         assert mig_cols == {c.name for c in model_tables[name].columns}, name
-        model_idx = {i.name for i in model_tables[name].indexes}
-        assert {i[0] for i in idx} == model_idx, name
+        declared = {index_name: index_cols for index_name, index_cols, _kw in idx}
+        carried = {i.name: [c.name for c in i.columns] for i in model_tables[name].indexes}
+        assert _index_differences(name, declared, carried) == [], name
         for c in model_tables[name].columns:
             mc = next(x for x in cols() + mig._base() if getattr(x, "name", None) == c.name)
             assert mc.nullable == c.nullable, f"{name}.{c.name}"

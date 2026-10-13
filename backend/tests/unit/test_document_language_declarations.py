@@ -75,6 +75,7 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     "modules/rfi/router.py": {"export_rfi_pdf"},
     # The one function both staffing exports answer through; it takes the locale the labels were written in.
     "modules/staffing/router.py": {"_file"},
+    "modules/stakeholders/router.py": {"export_organisation", "export_register"},
     "modules/subcontractors/router.py": {"export_payment_hakedis_pdf"},
     "modules/tendering/router.py": {
         "export_award_letter_pdf",

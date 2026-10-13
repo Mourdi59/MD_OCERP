@@ -141,7 +141,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[_Index]]] = [
             sa.UniqueConstraint("project_id", "code", name="uq_oe_stk_stakeholder_code"),
         ],
         [
-            ("ix_oe_stk_stakeholder_project", ["project_id", "status"], {}),
+            ("ix_oe_stakeholders_stakeholder_project_id_status", ["project_id", "status"], {}),
             ("ix_oe_stk_stakeholder_contact", ["contact_id"], {}),
         ],
     ),
@@ -188,7 +188,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[_Index]]] = [
             _date("overdue_notified_for"),
             _guid("created_by"),
         ],
-        [("ix_oe_stk_plan_project", ["project_id", "status"], {})],
+        [("ix_oe_stakeholders_plan_item_project_id_status", ["project_id", "status"], {})],
     ),
     (
         "oe_stakeholders_event",

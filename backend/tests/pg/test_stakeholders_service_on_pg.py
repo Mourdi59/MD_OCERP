@@ -656,3 +656,51 @@ async def test_the_demo_seed_fills_every_list_and_ends_with_a_verified_commitmen
     assert {"agreed", "in_progress", "verified"} <= statuses
     assert "client" not in roles["vacant"]
     assert all(e.held_on is None or e.held_on <= TODAY for e in events if e.status == "held")
+
+
+@pytest.mark.parametrize("team_size", [0, 2])
+async def test_the_demo_seed_uses_only_the_projects_people_and_logs_nothing_above_info(
+    factory, caplog, team_size: int
+) -> None:
+    """Owner only, and the demo cast of three: both are healthy installs."""
+    import logging
+
+    import sqlalchemy as sa
+
+    from app.database import Base
+    from app.modules.stakeholders.seed import _seed_project
+    from app.modules.teams.models import RosterMember
+    from tests.pg.governance_fixtures import add_project, add_user
+
+    async with factory() as s:
+        owner = await add_user(s, "manager")
+        members = [await add_user(s, "editor") for _ in range(team_size)]
+        # Somebody's real account on the same installation, with the widest role and on no project.
+        foreign = await add_user(s, "admin")
+        pid = await add_project(s, owner, members)
+        await s.commit()
+    with caplog.at_level(logging.INFO):
+        async with factory() as s:
+            counts = await _seed_project(s, pid)
+            await s.commit()
+    loud = [r for r in caplog.records if r.levelno > logging.INFO and r.name.startswith("app.modules.stakeholders")]
+    assert [(r.name, r.getMessage()) for r in loud] == []
+    assert counts["stakeholders"] == 14
+    # Owner only: both roles a colleague would hold stay vacant, said at info and counted in the result.
+    assert counts["unfilled_roles"] == (2 if team_size == 0 else 0)
+    told = [r for r in caplog.records if r.name == "app.modules.stakeholders.seed" and r.levelno == logging.INFO]
+    assert len(told) == (1 if team_size == 0 else 0)
+
+    people = {owner, *members}
+    async with factory() as s:
+        seen: set[uuid.UUID] = set()
+        for name, table in Base.metadata.tables.items():
+            if not name.startswith("oe_stakeholders_"):
+                continue
+            for row in (await s.execute(sa.select(table).where(table.c.project_id == pid))).mappings():
+                seen |= {v for k, v in row.items() if isinstance(v, uuid.UUID) and k.endswith(("user_id", "_by"))}
+        roster = (await s.execute(sa.select(RosterMember.user_id).where(RosterMember.project_id == pid))).scalars()
+        seen |= {u for u in roster if u}
+    assert foreign not in seen
+    assert seen <= people, seen - people
+    assert seen, "the seed names nobody, so the check above proves nothing"
