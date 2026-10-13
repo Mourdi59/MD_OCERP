@@ -637,7 +637,8 @@ async def test_a_project_without_gates_takes_its_concept_from_draft_to_in_force_
         required_by_kind="date",
         required_by_ref="2027-03-01",
     )
-    assert (await _refused(svc.create_proof(pid, extra, p.manager))).status_code == 409
+    err = await _refused(svc.create_proof(pid, extra, p.manager))
+    assert (err.code, err.status_code) == ("binding_requires_reopen", 409)
     await svc.reopen_by_hand(pid, "The services package was split in two", p.manager)
     assert concept.state == "revising"
     reopened = (await svc.revisions(pid))[-1]

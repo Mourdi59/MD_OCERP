@@ -383,13 +383,15 @@ class QualityConceptService:
             for area in await public.project_areas(self.session, project_id)
         )
 
-    def _assert_plan_editable(self, concept: QualityConcept) -> None:
-        _refuse(caps.plan_refusal(concept.state), detail=concept.state)
+    async def _assert_plan_editable(self, concept: QualityConcept) -> None:
+        # Whether gates exist only matters for the wording of a plan in force.
+        gates = await self.gates_in_use(concept.project_id) if concept.state == "binding" else True
+        _refuse(caps.plan_refusal(concept.state, gates), detail=concept.state)
 
     async def _plan_concept(self, project_id: uuid.UUID) -> QualityConcept:
         await self.reconcile_governance(project_id, reopen=True)
         concept = await self.require_concept(project_id)
-        self._assert_plan_editable(concept)
+        await self._assert_plan_editable(concept)
         return concept
 
     async def pin_catalogue(
@@ -1032,7 +1034,7 @@ class QualityConceptService:
             await self.reconcile_governance(project_id, reopen=True)
         concept = await self.require_concept(project_id)
         if data.confirm is not None:
-            self._assert_plan_editable(concept)
+            await self._assert_plan_editable(concept)
         cat = await self.catalogue_for(concept)
         stages = await self.repo.list(CommissioningStageDef, project_id, CommissioningStageDef.order)
         if not stages:
@@ -1725,7 +1727,7 @@ class QualityConceptService:
             raise QualityConceptError("null_not_allowed", detail="preconditions")
         plan_fields = set(fields) - {"handover_package_id"}
         if plan_fields:
-            self._assert_plan_editable(concept)
+            await self._assert_plan_editable(concept)
         await self._check_unit(concept, {"kind": unit.kind, "package_refs": unit.package_refs, **fields})
         if "preconditions" in fields:
             fields["preconditions"]["include_units"] = [

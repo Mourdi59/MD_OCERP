@@ -185,6 +185,7 @@ def test_every_reason_has_a_message_in_both_languages_and_a_status() -> None:
         "only_after_surveys_pair",
         "refusal_is_final",
         "binding_requires_change_request",
+        "binding_requires_reopen",
         "concept_not_editable",
     ],
 )
@@ -296,3 +297,20 @@ def test_without_gates_the_concept_is_approved_by_a_second_manager_and_with_gate
         for locale in ("en", "de"):
             messages = json.loads((MODULE / "messages" / f"{locale}.json").read_text(encoding="utf-8"))
             assert f"quality_concept.errors.{code}" in messages, (locale, code)
+
+
+def test_a_plan_in_force_names_the_way_to_change_it_that_exists_on_the_project() -> None:
+    """With gates a change request reopens the plan; without gates there is none, a manager reopens it."""
+    assert caps.plan_refusal("binding") == "binding_requires_change_request"
+    assert caps.plan_refusal("binding", gates_in_use=False) == "binding_requires_reopen"
+    assert caps.plan_refusal("in_review", gates_in_use=False) == "concept_not_editable"
+    assert caps.plan_refusal("draft", gates_in_use=False) is None
+    row = caps.plan_row(MANAGER, "binding", False)
+    assert row["can_reason"] == {"edit": "binding_requires_reopen", "delete": "binding_requires_reopen"}
+    assert (
+        _proof(MANAGER, concept_state="binding", gates_in_use=False)["can_reason"]["edit"] == "binding_requires_reopen"
+    )
+    assert caps.status_of("binding_requires_reopen") == 409
+    for locale in ("en", "de"):
+        messages = json.loads((MODULE / "messages" / f"{locale}.json").read_text(encoding="utf-8"))
+        assert "quality_concept.errors.binding_requires_reopen" in messages, locale

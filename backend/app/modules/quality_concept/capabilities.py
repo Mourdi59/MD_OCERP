@@ -41,6 +41,7 @@ _STATUS = {
     "deemed_acceptance_not_due": 409,
     "concept_not_editable": 409,
     "binding_requires_change_request": 409,
+    "binding_requires_reopen": 409,
     "concept_missing": 404,
     "approved_by_gate": 409,
     "reopened_by_change_request": 409,
@@ -90,12 +91,16 @@ def transition_refusal(machine: str, state: str, action: str) -> str | None:
     return None
 
 
-def plan_refusal(concept_state: str | None) -> str | None:
-    """The plan a governance gate reads is open while the concept is drafted or revised."""
+def plan_refusal(concept_state: str | None, gates_in_use: bool = True) -> str | None:
+    """The plan is open while the concept is drafted or revised.
+
+    A plan in force changes through an approved change request where the project has gates, and
+    through a manager reopening it where it has none; the refusal names the way that exists.
+    """
     if concept_state is None:
         return "concept_missing"
     if concept_state == "binding":
-        return "binding_requires_change_request"
+        return "binding_requires_change_request" if gates_in_use else "binding_requires_reopen"
     return None if concept_state in PLAN_OPEN_STATES else "concept_not_editable"
 
 
@@ -148,9 +153,9 @@ def concept_approval(
     }
 
 
-def plan_row(caller: Caller, concept_state: str | None) -> dict[str, Any]:
+def plan_row(caller: Caller, concept_state: str | None, gates_in_use: bool = True) -> dict[str, Any]:
     """Flags of a row that is part of the plan: standards, stage definitions, proofs, units."""
-    code = first(caller.needs("manage"), plan_refusal(concept_state))
+    code = first(caller.needs("manage"), plan_refusal(concept_state, gates_in_use))
     return flags({"edit": code, "delete": code})
 
 
@@ -189,6 +194,7 @@ def proof(
     caller: Caller,
     *,
     concept_state: str | None,
+    gates_in_use: bool = True,
     decision: str,
     requested_by: uuid.UUID | None,
     rationale: str,
@@ -196,7 +202,7 @@ def proof(
     evidence_authors: Iterable[uuid.UUID | None],
     four_eyes: bool,
 ) -> dict[str, Any]:
-    plan = first(caller.needs("manage"), plan_refusal(concept_state))
+    plan = first(caller.needs("manage"), plan_refusal(concept_state, gates_in_use))
     return flags(
         {
             "edit": plan,
@@ -263,6 +269,7 @@ def acceptance_unit(
     caller: Caller,
     *,
     concept_state: str | None,
+    gates_in_use: bool = True,
     state: str,
     has_regime: bool,
     blocked: bool,
@@ -270,7 +277,7 @@ def acceptance_unit(
 ) -> dict[str, Any]:
     """``blocked``: preconditions stay unmet even when every reservable one is taken as a reservation."""
     edit, manage = caller.needs("edit"), caller.needs("manage")
-    plan = first(manage, plan_refusal(concept_state))
+    plan = first(manage, plan_refusal(concept_state, gates_in_use))
     request = first(
         edit,
         transition_refusal("acceptance", state, "request"),

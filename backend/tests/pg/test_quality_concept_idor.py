@@ -526,9 +526,10 @@ async def test_a_project_without_gates_approves_and_reopens_its_concept_over_htt
         assert (last["reason"], last["created_by"]) == ("approved", str(second))
         assert last["created_at"]
         # In force: the plan is closed until it is reopened, and reopening needs a reason.
-        assert (
-            await c.post(base + "proofs", json=_proof("warranty_certificate", package_ref="P-02"))
-        ).status_code == 409
+        locked = await c.post(base + "proofs", json=_proof("warranty_certificate", package_ref="P-02"))
+        assert _code(locked) == (409, "binding_requires_reopen")
+        listed = (await c.get(base + "proofs")).json()["items"]
+        assert {i["can_reason"].get("edit") for i in listed} == {"binding_requires_reopen"}
         assert (await c.post(base + "concept/reopen", json={})).status_code == 422
         reopened = await c.post(base + "concept/reopen", json={"rationale": "The services package was split in two"})
         assert reopened.status_code == 200, reopened.text
