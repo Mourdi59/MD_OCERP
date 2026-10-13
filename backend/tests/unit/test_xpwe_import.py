@@ -802,7 +802,26 @@ def test_parsing_does_not_hold_the_event_loop() -> None:
         _, idle_gap = await watch(asyncio.sleep(min(elapsed, 2.0)))
         return elapsed, worst_gap, idle_gap
 
-    elapsed, worst_gap, idle_gap = asyncio.run(run())
-    assert worst_gap < max(0.25, elapsed / 4, 5 * idle_gap), (
-        f"loop held for {worst_gap:.2f}s of a {elapsed:.2f}s parse, idle jitter {idle_gap:.2f}s"
-    )
+    # A parser that holds the loop holds it on every run. A runner that froze
+    # the whole process for a moment does not do it three times in a row at the
+    # same place, and the idle control, taken after the parse, cannot see a
+    # freeze that fell inside it. So the bound is the same as ever and one
+    # clean run out of three is enough; a real hold fails all three.
+    seen: list[str] = []
+    for _attempt in range(3):
+        elapsed, worst_gap, idle_gap = asyncio.run(run())
+        if worst_gap < max(0.25, elapsed / 4, 5 * idle_gap):
+            return
+        seen.append(f"{worst_gap:.2f}s of a {elapsed:.2f}s parse, idle jitter {idle_gap:.2f}s")
+    pytest.fail("loop held on every one of three runs: " + "; ".join(seen))
+
+
+def test_parsing_inline_would_fail_the_event_loop_check(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The check above is not satisfied by retrying: a parse on the loop fails all three runs."""
+
+    async def inline(func: Callable[..., object], *args: object) -> object:
+        return func(*args)
+
+    monkeypatch.setattr(asyncio, "to_thread", inline)
+    with pytest.raises(pytest.fail.Exception, match="every one of three runs"):
+        test_parsing_does_not_hold_the_event_loop()
