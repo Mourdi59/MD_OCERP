@@ -553,7 +553,7 @@ async def test_a_project_without_gates_approves_and_reopens_its_concept_by_hand(
             can = (await c.get(_p(w, "/concept"))).json()["can"]
             assert can["approve"] == _no("approver_is_submitter")
             own = await c.post(_p(w, "/concept/approve"))
-            assert (own.status_code, own.json()["detail"]["code"]) == (409, can["approve"]["reason"])
+            assert (own.status_code, own.json()["detail"]["code"]) == (403, can["approve"]["reason"])
         async with client_as(w, w.editor, "editor") as c:
             assert (await c.get(_p(w, "/concept"))).json()["can"]["approve"] == _no("approval_needs_manager")
             denied = await c.post(_p(w, "/concept/approve"))

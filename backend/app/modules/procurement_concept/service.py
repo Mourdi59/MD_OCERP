@@ -526,7 +526,7 @@ class ProcurementConceptService:
         if concept.state != "in_review":
             return conflict("concept_not_submitted", detail=concept.state), True
         if (await project_controls(self.session, project_id)).four_eyes and concept.submitted_by == actor_id:
-            return conflict("approver_is_submitter"), True
+            return forbidden("approver_is_submitter"), True
         blocking = [f for f in await self.findings(project_id) if f["blocks_approval"]]
         if blocking:
             return ProcurementError("concept_has_blocking_findings", 422, violations=blocking), True
