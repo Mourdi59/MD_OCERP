@@ -2548,6 +2548,34 @@ class StakeholderService:
             if d.code == found.doc_type and d.area_code == found.area_code
         ]
 
+    async def filing_can(self, project_id: uuid.UUID, *, can_manage: bool) -> dict[str, dict[str, Any]]:
+        """Whether each export can be filed as a frame document: ``{applies, allowed, reason}`` per export.
+
+        A project run without gates has no frame documents, so the action does
+        not exist there. Where it exists and is refused, the reason is the code
+        the write would answer.
+        """
+        from app.modules.stakeholders import hosting
+
+        in_use = await hosting.project_catalogue(self.session, project_id) is not None
+        out: dict[str, dict[str, Any]] = {}
+        for which in hosting.EXPORT_TAGS:
+            if not in_use:
+                out[which] = {"applies": False, "allowed": False, "reason": "gates_not_in_use"}
+                continue
+            docs = [d for d in await self.frame_documents(project_id, which) if d.container_id is not None]
+            reason = (
+                "no_permission"
+                if not can_manage
+                else "frame_document_missing"
+                if not docs
+                else "frame_document_read_only"
+                if any(d.read_only for d in docs)
+                else None
+            )
+            out[which] = {"applies": True, "allowed": reason is None, "reason": reason}
+        return out
+
     async def file_frame_document(
         self,
         project_id: uuid.UUID,

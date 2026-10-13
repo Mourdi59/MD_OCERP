@@ -259,7 +259,7 @@ def _can(payload: dict[str, Any]) -> dict[str, bool]:
     }
 
 
-def _settings_out(s: Any, fw: Any, payload: dict[str, Any]) -> dict[str, Any]:
+def _settings_out(s: Any, fw: Any, payload: dict[str, Any], can_file: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(s.id),
         "project_id": str(s.project_id),
@@ -272,7 +272,13 @@ def _settings_out(s: Any, fw: Any, payload: dict[str, Any]) -> dict[str, Any]:
         "commitment_route_id": str(s.commitment_route_id) if s.commitment_route_id else None,
         "framework": fw.model_dump(mode="json"),
         "can": _can(payload),
+        # Filing an export as a frame document, per export: absent on a project run without gates.
+        "can_file": can_file,
     }
+
+
+async def _can_file(svc: StakeholderService, project_id: uuid.UUID, payload: dict[str, Any]) -> dict[str, Any]:
+    return await _run(svc.filing_can(project_id, can_manage=_has(payload, "organisation.manage")))
 
 
 @router.get("/projects/{project_id}/settings", dependencies=[READ])
@@ -291,7 +297,7 @@ async def get_settings(
         if exc.status_code == 404 and isinstance(exc.detail, dict) and exc.detail.get("code") == "settings_missing":
             raise HTTPException(status_code=404, detail={**exc.detail, "can": _can(payload)}) from exc
         raise
-    return _settings_out(settings, fw, payload)
+    return _settings_out(settings, fw, payload, await _can_file(svc, project_id, payload))
 
 
 @router.put("/projects/{project_id}/settings", dependencies=[ORG])
@@ -303,7 +309,7 @@ async def put_settings(
     svc = StakeholderService(session)
     await _run(svc.put_settings(project_id, _data(body), actor_id=_uid(user_id), tenant_id=resolve_tenant_id(payload)))
     settings, fw = await _run(svc.context(project_id))
-    return _settings_out(settings, fw, payload)
+    return _settings_out(settings, fw, payload, await _can_file(svc, project_id, payload))
 
 
 # ── stakeholders and assessments ───────────────────────────────────────────

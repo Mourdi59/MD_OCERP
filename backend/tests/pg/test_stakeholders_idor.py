@@ -507,7 +507,13 @@ async def test_a_project_without_gates_is_walked_to_the_end_and_takes_no_gate_tr
             )
         ]
         readiness = await c.get(f"{p}/readiness")
+        settings = await c.get(f"{p}/settings")
+        filing = await c.post(f"{p}/frame-documents/file", json={"document": "register"})
     assert gates.json() == {"items": [], "gates_in_use": False}
+    # No frame documents without gates: the filing action does not exist, and the write agrees.
+    gone = {"applies": False, "allowed": False, "reason": "gates_not_in_use"}
+    assert settings.json()["can_file"] == {"register": gone, "organisation": gone}
+    assert (filing.status_code, _code(filing)) == (409, "frame_document_missing")
     assert (dead.status_code, _code(dead)) == (422, "gates_not_in_use")
     assert live.status_code == 201, live.text
     assert (retriggered.status_code, _code(retriggered)) == (422, "gates_not_in_use")
