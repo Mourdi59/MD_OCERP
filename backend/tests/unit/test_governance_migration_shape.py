@@ -1,0 +1,122 @@
+# DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+# Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+"""Revision v68 declares the schema the governance models declare, compared without a database.
+
+A fresh install builds these tables from the models (``create_all``); an
+upgraded one builds them from the revision. The round trip on PostgreSQL
+(``tests/pg/test_governance_migration.py``) reflects both, but it runs only
+where PostgreSQL does. This file compares the two declarations themselves:
+column types, nullability, server defaults, primary keys, the column lists of
+indexes and unique constraints, and what each foreign key points at.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+from typing import Any
+
+import pytest
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+from app.database import GUID
+from app.modules.project_governance import models as gm
+
+_MODELS = (
+    gm.GovernanceCatalogue,
+    gm.GovernanceCatalogueVersion,
+    gm.GovernanceModel,
+    gm.GovernanceArea,
+    gm.GovernanceGate,
+    gm.GovernanceDocument,
+    gm.GovernanceCheck,
+    gm.GovernanceDecision,
+    gm.GovernanceCondition,
+    gm.GovernanceChangeRequest,
+)
+TABLES = [m.__tablename__ for m in _MODELS]
+_PG = postgresql.dialect()
+
+
+def _revision() -> Any:
+    path = Path(__file__).resolve().parents[2] / "alembic" / "versions" / "v68_project_governance.py"
+    spec = importlib.util.spec_from_file_location("v68_project_governance_shape", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _tables_of_the_revision() -> dict[str, sa.Table]:
+    """The tables ``upgrade`` creates, built from the same declarations it hands to ``create_table``."""
+    rev = _revision()
+    metadata = sa.MetaData()
+    # The one table outside the module a governance foreign key points at.
+    sa.Table("oe_projects_project", metadata, sa.Column("id", GUID(), primary_key=True))
+    out: dict[str, sa.Table] = {}
+    for name, columns, indexes in rev._TABLES:
+        table = sa.Table(name, metadata, *rev._base(), *columns())
+        for index_name, index_columns in indexes:
+            sa.Index(index_name, *[table.c[c] for c in index_columns])
+        out[name] = table
+    return out
+
+
+def _default(column: sa.Column) -> str | None:
+    if column.server_default is None:
+        return None
+    arg = column.server_default.arg
+    return arg if isinstance(arg, str) else str(arg.compile(dialect=_PG))
+
+
+def _shape(table: sa.Table) -> dict[str, Any]:
+    return {
+        "columns": {c.name: (c.type.compile(dialect=_PG), bool(c.nullable), _default(c)) for c in table.columns},
+        "primary_key": [c.name for c in table.primary_key.columns],
+        # ``app.core.pg_optimizations`` hangs ``ix_oe_governance_<table>_...`` on the
+        # metadata of the models whenever a test before this one built a schema.
+        # No revision reproduces those; the indexes the module declares are ``ix_oe_gov_*``.
+        "indexes": {
+            i.name: ([c.name for c in i.columns], bool(i.unique))
+            for i in table.indexes
+            if not str(i.name).startswith("ix_oe_governance_")
+        },
+        "unique": {
+            u.name: [c.name for c in u.columns] for u in table.constraints if isinstance(u, sa.UniqueConstraint)
+        },
+        "foreign_keys": {
+            fk.name: (
+                [c.name for c in fk.columns],
+                [e.target_fullname for e in fk.elements],
+                fk.ondelete,
+            )
+            for fk in table.foreign_key_constraints
+        },
+    }
+
+
+def test_the_revision_creates_the_ten_tables_of_the_models() -> None:
+    assert sorted(_tables_of_the_revision()) == sorted(TABLES)
+    assert len(TABLES) == 10
+
+
+@pytest.mark.parametrize("model", _MODELS, ids=lambda m: m.__tablename__)
+@pytest.mark.parametrize("part", ["columns", "primary_key", "indexes", "unique", "foreign_keys"])
+def test_the_revision_and_the_model_declare_the_same(model: Any, part: str) -> None:
+    from_models = _shape(model.__table__)[part]
+    from_revision = _shape(_tables_of_the_revision()[model.__tablename__])[part]
+    assert from_revision == from_models
+
+
+def test_the_comparison_reads_real_defaults_and_targets() -> None:
+    """Guards the comparison itself: an empty shape on both sides would compare equal."""
+    shape = _shape(gm.GovernanceGate.__table__)
+    assert shape["columns"]["created_at"][2] == "now()"
+    assert shape["columns"]["id"][1] is False
+    assert shape["primary_key"] == ["id"]
+    assert any("oe_projects_project.id" in targets for _, targets, _ in shape["foreign_keys"].values())
+    assert all(columns for columns, _ in shape["indexes"].values()) and shape["indexes"]
+    everything = [_shape(m.__table__) for m in _MODELS]
+    assert sum(len(s["foreign_keys"]) for s in everything) >= 8
+    assert sum(len(s["unique"]) for s in everything) >= 2

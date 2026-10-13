@@ -293,6 +293,10 @@ def test_the_migration_declares_the_same_indexes_as_the_models() -> None:
         for t in models.Base.metadata.tables.values()
         if t.name.startswith("oe_governance_")
         for ix in t.indexes
+        # ``app.core.pg_optimizations`` hangs ``ix_oe_governance_<table>_...`` on the
+        # metadata whenever a test before this one built a schema; no revision
+        # reproduces those, the module's own are ``ix_oe_gov_*``.
+        if not str(ix.name).startswith("ix_oe_governance_")
     }
     assert declared == in_models
 
