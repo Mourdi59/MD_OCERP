@@ -32,7 +32,7 @@ import {
   Table,
   ToneBadge,
   hasRows,
-  phaseOptions,
+  phaseField,
   roleOptions,
   roleTitle,
   type DesignContext,
@@ -87,9 +87,7 @@ export function ReportsPanel({ ctx }: { ctx: DesignContext }) {
           },
         ]),
     { name: 'title', label: ui(t, 'design.ui.field.title'), type: 'text', hint: editing ? undefined : ui(t, 'design.ui.reports.title_hint') },
-    phases.length > 0
-      ? { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'select', options: phaseOptions(ctx) }
-      : { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'text' },
+    phaseField(ctx, t),
     // Who writes and who checks a report are gate fields: the server says whether this user may still change them.
     ...(gate ? [{ name: 'author_role_id', label: ui(t, 'design.ui.reports.author'), type: 'select' as const, options: roleOptions(ctx) }] : []),
     {

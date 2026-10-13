@@ -36,7 +36,7 @@ import {
   SUITABILITY_OPTIONS,
   Table,
   ToneBadge,
-  phaseOptions,
+  phaseField,
   roleOptions,
   roleTitle,
   wbsOptions,
@@ -99,15 +99,13 @@ export function SchedulePanel({ ctx }: { ctx: DesignContext }) {
   const points = useDesignList(ctx.projectId, 'approval-points', listApprovalPoints);
   const forms = useDesignOptions(ctx.projectId, 'forms', ctx.labels);
   const gates = useDesignOptions(ctx.projectId, 'governance_gates', ctx.labels);
+  const noGates = ctx.setup.gates_in_use === false;
   const phases = ctx.setup.phases;
-  const phaseField: FieldSpec =
-    phases.length > 0
-      ? { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'select', required: true, options: phaseOptions(ctx) }
-      : { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'text', required: true, hint: ui(t, 'design.ui.field.phase_free_hint') };
+  const linePhase = phaseField(ctx, t, true);
 
   const lineFields = (line: Deliverable | null): FieldSpec[] => [
     { name: 'title', label: ui(t, 'design.ui.schedule.line_title'), type: 'text', required: true },
-    phaseField,
+    linePhase,
     { name: 'role_id', label: ui(t, 'design.ui.schedule.by'), type: 'select', options: roleOptions(ctx) },
     { name: 'planned_count', label: ui(t, 'design.ui.schedule.planned_count'), type: 'number', required: true },
     ...(line
@@ -157,9 +155,9 @@ export function SchedulePanel({ ctx }: { ctx: DesignContext }) {
   const pointFields: FieldSpec[] = [
     { name: 'title', label: ui(t, 'design.ui.schedule.point_title'), type: 'text', required: true },
     { name: 'kind', label: ui(t, 'design.ui.schedule.point_kind'), type: 'select', required: true, options: vocabOptions(t, APPROVAL_KIND) },
-    { ...phaseField, required: false },
+    phaseField(ctx, t),
     { name: 'approver_role_id', label: ui(t, 'design.ui.schedule.approver'), type: 'select', options: roleOptions(ctx) },
-    ...pickerField('governance_gate_id', ui(t, 'design.ui.schedule.gate'), gates),
+    ...(noGates ? [] : pickerField('governance_gate_id', ui(t, 'design.ui.schedule.gate'), gates)),
     { name: 'code', label: ui(t, 'design.ui.field.code'), type: 'text', hint: ui(t, 'design.ui.field.code_hint') },
     { name: 'note', label: ui(t, 'design.ui.field.note'), type: 'textarea' },
   ];
@@ -310,7 +308,7 @@ export function SchedulePanel({ ctx }: { ctx: DesignContext }) {
               ? updateDeliverable(
                   ctx.projectId,
                   dialog.line.id,
-                  lineBody(changedFields(lineValues(dialog.line), values, ['role_id', 'discipline_code', 'form_code', 'wbs_node_id', 'target_suitability'])),
+                  lineBody(changedFields(lineValues(dialog.line), values, ['phase_code', 'role_id', 'discipline_code', 'form_code', 'wbs_node_id', 'target_suitability'])),
                 )
               : createDeliverable(ctx.projectId, lineBody(filledFields(values)))
           }
@@ -336,6 +334,7 @@ export function SchedulePanel({ ctx }: { ctx: DesignContext }) {
         <FormDialog
           projectId={ctx.projectId}
           title={dialog.point ? ui(t, 'design.ui.schedule.point_edit') : ui(t, 'design.ui.schedule.point_add')}
+          subtitle={noGates ? ui(t, 'design.ui.no_gates') : undefined}
           fields={pointFields}
           initial={pointValues(dialog.point)}
           submitLabel={dialog.point ? ui(t, 'design.ui.action.save') : ui(t, 'design.ui.schedule.point_add')}

@@ -93,6 +93,7 @@
       "permit_not_found": "Genehmigungspaket nicht gefunden.",
       "permit_profile_unknown": "Unbekanntes Genehmigungsprofil.",
       "permit_state_read_from_cycle": "Nach der Einreichung folgt der Status dem Prüfzyklus der Behörde.",
+      "phase_required": "Bitte die Phase wählen, zu der dies gehört.",
       "phase_unknown": "Diese Phase ist nicht im Phasenmodell des Projekts.",
       "planned_count_reduction_needs_rationale": "Das Verringern der geplanten Anzahl braucht eine Begründung.",
       "project_not_found": "Projekt nicht gefunden.",

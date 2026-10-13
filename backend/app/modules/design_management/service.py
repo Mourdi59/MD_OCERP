@@ -39,11 +39,11 @@ from app.modules.design_management import wbs as wr
 from app.modules.design_management import wbs_refs
 from app.modules.design_management.catalogue import (
     DEFAULT_REPORTS_ID,
+    DEFAULT_SCHEME_ID,
     NUMBERING_KIND,
     REPORTS_KIND,
     DesignReports,
     DrawingNumbering,
-    default_scheme_id_for_country,
     register_kinds,
 )
 from app.modules.design_management.errors import DesignError, conflict, forbidden, not_found
@@ -256,12 +256,29 @@ class DesignService:
             for p in sorted(catalogue.phases, key=lambda p: p.order)
         ]
 
+    async def gates_in_use(self, project_id: uuid.UUID) -> bool:
+        """Whether the project decides gates at all.
+
+        Nothing in design waits for a gate: approval points and releases are decided on
+        approval routes, reports and permits by hand. Without gates the frame document
+        never turns binding either, so the registers stay editable. The read says so,
+        and the screen names it instead of an unknown gate.
+        """
+        from app.modules.project_governance.public import project_gates
+
+        return bool(await project_gates(self.session, project_id))
+
     async def _check_phase(self, project_id: uuid.UUID, phase_code: str | None) -> None:
         if not phase_code:
             return
         codes = {p["code"] for p in await self.phases(project_id)}
         if codes and phase_code not in codes:
             raise DesignError("phase_unknown", 422, detail=phase_code)
+
+    async def _require_phase(self, project_id: uuid.UUID, phase_code: str | None) -> None:
+        """A deliverable or review belongs to a phase where the project has phases; without a model it may have none."""
+        if not phase_code and await self.phases(project_id):
+            raise DesignError("phase_required", 422)
 
     # ── setup and catalogues ──────────────────────────────────────────────
 
@@ -345,12 +362,13 @@ class DesignService:
         country = getattr(project, "country_code", None)
         register_kinds()
         if scheme_id is None:
-            # The active pack may name the scheme new projects pin; this module's own default is the fallback.
+            # Which scheme a country starts with is module 1's to say (pack, regional pack, the one shipped
+            # scheme claiming the country). This module only knows what to pin when the port names nothing.
             pin = default_catalogue_pin(NUMBERING_KIND, country)
             if pin is not None:
                 scheme_source, scheme_id, scheme_version = pin.source, pin.catalogue_id, pin.version
             else:
-                scheme_id = default_scheme_id_for_country(country)
+                scheme_id = DEFAULT_SCHEME_ID
         if reports_id is None:
             pin = default_catalogue_pin(REPORTS_KIND, country)
             if pin is not None:
@@ -1096,6 +1114,7 @@ class DesignService:
     # ── deliverables (rule 15) ────────────────────────────────────────────
 
     async def create_deliverable(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID):
+        await self._require_phase(project_id, data.get("phase_code"))
         await self._check_phase(project_id, data.get("phase_code"))
         if data.get("role_id"):
             await self._get(DesignRole, project_id, data["role_id"], "role_not_found")
@@ -1106,7 +1125,7 @@ class DesignService:
                 project_id=project_id,
                 code=code,
                 title=data.get("title") or "",
-                phase_code=data["phase_code"],
+                phase_code=data.get("phase_code") or None,
                 role_id=_uuid(data.get("role_id")),
                 discipline_code=data.get("discipline_code"),
                 form_code=data.get("form_code"),
@@ -1135,6 +1154,8 @@ class DesignService:
             row.waived = bool(data["waived"])
             row.waived_rationale = data.get("waived_rationale") or ""
         if "phase_code" in data:
+            data["phase_code"] = data["phase_code"] or None
+            await self._require_phase(project_id, data["phase_code"])
             await self._check_phase(project_id, data["phase_code"])
         if "wbs_node_id" in data:
             row.wbs_node_id = await self.assert_wbs_usable(project_id, data["wbs_node_id"])
@@ -2281,6 +2302,7 @@ class DesignService:
     # ── reviews ───────────────────────────────────────────────────────────
 
     async def create_review(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID):
+        await self._require_phase(project_id, data.get("phase_code"))
         await self._check_phase(project_id, data.get("phase_code"))
         for did in data.get("deliverable_ids") or []:
             await self._get(DesignDeliverable, project_id, did, "deliverable_not_found")
@@ -2293,7 +2315,7 @@ class DesignService:
                 project_id=project_id,
                 code=code,
                 title=data.get("title") or code,
-                phase_code=data["phase_code"],
+                phase_code=data.get("phase_code") or None,
                 deliverable_ids=_uuids(data.get("deliverable_ids")),
                 reviewer_role_ids=_uuids(data.get("reviewer_role_ids")),
                 status="planned",
@@ -2907,8 +2929,8 @@ class DesignService:
 
     # ── readiness, frame documents, validation ────────────────────────────
 
-    async def readiness(self, project_id: uuid.UUID, phase_code: str) -> dr.PhaseBlockers:
-        """Rule 16: what still blocks a design phase."""
+    async def readiness(self, project_id: uuid.UUID, phase_code: str | None) -> dr.PhaseBlockers:
+        """Rule 16: what still blocks a design phase, or the whole project when ``phase_code`` is ``None``."""
         deliverables = await self.deliverables(project_id)
         reports = await self._list(DesignReport, project_id)
         reviews = {r.id: r for r in await self._list(DesignReview, project_id)}

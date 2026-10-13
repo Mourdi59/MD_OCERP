@@ -60,6 +60,18 @@ export function phaseOptions(ctx: DesignContext): FieldOption[] {
   return ctx.setup.phases.map((p) => ({ value: p.code, label: phaseName(ctx.labels, ctx.setup.phases, p.code) }));
 }
 
+/**
+ * The phase of a record. With a phase model it is one of the model's phases
+ * and `required` decides whether the form insists on it. Without one there is
+ * nothing to choose from: the field is plain optional text and says why.
+ */
+export function phaseField(ctx: DesignContext, t: TFn, required = false): FieldSpec {
+  const label = ui(t, 'design.ui.field.phase');
+  if (ctx.setup.phases.length > 0) return { name: 'phase_code', label, type: 'select', required, options: phaseOptions(ctx) };
+  const hint = ctx.setup.gates_in_use === false ? 'design.ui.field.phase_no_gates' : 'design.ui.field.phase_free_hint';
+  return { name: 'phase_code', label, type: 'text', hint: ui(t, hint) };
+}
+
 export function wbsOptions(ctx: DesignContext): FieldOption[] {
   return ctx.wbs.filter((n) => !n.closed).map((n) => ({ value: n.id, label: n.name ? `${n.code} ${n.name}` : n.code }));
 }

@@ -93,6 +93,7 @@
       "permit_not_found": "Permit package not found.",
       "permit_profile_unknown": "Unknown permit profile.",
       "permit_state_read_from_cycle": "After submission the state follows the authority review cycle.",
+      "phase_required": "Choose the phase this belongs to.",
       "phase_unknown": "This phase is not in the project's phase model.",
       "planned_count_reduction_needs_rationale": "Reducing the planned count needs a rationale.",
       "project_not_found": "Project not found.",

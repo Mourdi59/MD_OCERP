@@ -33,7 +33,7 @@ import {
   Table,
   ToneBadge,
   deliverableOptions,
-  phaseOptions,
+  phaseField,
   roleOptions,
   roleTitle,
   wbsOptions,
@@ -88,9 +88,7 @@ export function DrawingsPanel({ ctx }: { ctx: DesignContext }) {
 
   const shared: FieldSpec[] = [
     { name: 'role_id', label: ui(t, 'design.ui.drawings.by'), type: 'select', options: roleOptions(ctx) },
-    phases.length > 0
-      ? { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'select', options: phaseOptions(ctx) }
-      : { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'text' },
+    phaseField(ctx, t),
     { name: 'deliverable_id', label: ui(t, 'design.ui.drawings.schedule_line'), type: 'select', options: deliverableOptions(ctx) },
     { name: 'wbs_node_id', label: ui(t, 'design.ui.field.wbs'), type: 'select', options: wbsOptions(ctx) },
     { name: 'sheet_size', label: ui(t, 'design.ui.drawings.sheet_size'), type: 'text' },

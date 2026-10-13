@@ -29,8 +29,13 @@ class DesignWorld:
     roles: dict[str, uuid.UUID] = field(default_factory=dict)
 
 
-async def build_design_world(factory: async_sessionmaker[AsyncSession], *, governance: str = "neutral") -> DesignWorld:
-    """``governance`` picks the pinned governance catalogue; only ``elf_module_framework`` has the m07 design area."""
+async def build_design_world(
+    factory: async_sessionmaker[AsyncSession], *, governance: str | None = "neutral"
+) -> DesignWorld:
+    """``governance`` picks the pinned governance catalogue; only ``elf_module_framework`` has the m07 design area.
+
+    ``None`` pins no phase model at all: a project that does not use gates.
+    """
     if governance == "neutral":
         gov = await build_world(factory, routes=False)
         w = DesignWorld(factory, gov.project_id, gov.manager, gov.decider, gov.editor, gov.outsider)
@@ -42,15 +47,16 @@ async def build_design_world(factory: async_sessionmaker[AsyncSession], *, gover
             manager, approver = await add_user(s, "manager"), await add_user(s, "manager")
             editor, outsider = await add_user(s, "editor"), await add_user(s, "manager")
             pid = await add_project(s, manager, [approver, editor])
-            await GovernanceService(s).set_model(
-                pid,
-                source="shipped",
-                catalogue_id=governance,
-                version=None,
-                four_eyes=True,
-                actor_id=manager,
-                tenant_id=str(manager),
-            )
+            if governance is not None:
+                await GovernanceService(s).set_model(
+                    pid,
+                    source="shipped",
+                    catalogue_id=governance,
+                    version=None,
+                    four_eyes=True,
+                    actor_id=manager,
+                    tenant_id=str(manager),
+                )
             await s.commit()
         w = DesignWorld(factory, pid, manager, approver, editor, outsider)
     async with factory() as s:

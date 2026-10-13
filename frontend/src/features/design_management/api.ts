@@ -165,6 +165,8 @@ export interface DesignPhase {
 
 export interface DesignSetup {
   id: string;
+  /** False on a project without a phase model: no phases, no gates, no frame document. */
+  gates_in_use?: boolean;
   project_id: string;
   scheme_source: CatalogueSource;
   scheme_id: string;
@@ -245,7 +247,8 @@ export interface Deliverable {
   id: string;
   code: string;
   title: string;
-  phase_code: string;
+  /** Null on a project without a phase model. */
+  phase_code: string | null;
   role_id: string | null;
   discipline_code: string | null;
   form_code: string | null;
@@ -404,7 +407,7 @@ export interface Review {
   id: string;
   code: string;
   title: string;
-  phase_code: string;
+  phase_code: string | null;
   deliverable_ids: string[];
   reviewer_role_ids: string[];
   state: ReviewState;
@@ -502,9 +505,10 @@ export interface Permit {
 }
 
 export interface PhaseReadiness {
-  code: string;
+  /** Null on the one row a project without a phase model answers: the whole project. */
+  code: string | null;
   order: number;
-  name: DesignLabel;
+  name: DesignLabel | null;
   met: boolean;
   open_deliverables: string[];
   open_reports: string[];
@@ -734,7 +738,7 @@ export function listDeliverables(projectId: string): Promise<Deliverable[]> {
 export interface DeliverableInput {
   code?: string;
   title?: string;
-  phase_code?: string;
+  phase_code?: string | null;
   role_id?: string | null;
   discipline_code?: string | null;
   form_code?: string | null;
@@ -912,7 +916,7 @@ export function listReviews(projectId: string): Promise<Review[]> {
 export interface ReviewInput {
   code?: string;
   title?: string;
-  phase_code: string;
+  phase_code?: string | null;
   deliverable_ids: string[];
   reviewer_role_ids: string[];
 }

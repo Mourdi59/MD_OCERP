@@ -181,6 +181,7 @@ async def _setup_out(svc: DesignService, project_id: uuid.UUID) -> dict[str, Any
         scheme=scheme.model_dump(mode="json"),
         reports_catalogue=reports.model_dump(mode="json"),
         phases=await svc.phases(project_id),
+        gates_in_use=await svc.gates_in_use(project_id),
     )
 
 
@@ -476,7 +477,6 @@ async def dl_create(
     project_id: uuid.UUID, body: DeliverableIn, user_id: CurrentUserId, payload: CurrentUserPayload, session: SessionDep
 ):
     data = dump(body)
-    _require(data, "phase_code")
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     return await _row(
@@ -1151,7 +1151,9 @@ async def readiness(project_id: uuid.UUID, user_id: CurrentUserId, session: Sess
     await verify_project_access(project_id, user_id, session)
     svc = DesignService(session)
     out = []
-    for phase in await _run(svc.phases(project_id)):
+    # Without a phase model there is one row for the whole project, under no phase.
+    whole = [{"code": None, "order": 0, "spine_key": None, "name": None}]
+    for phase in await _run(svc.phases(project_id)) or whole:
         b = await _run(svc.readiness(project_id, phase["code"]))
         out.append(
             {

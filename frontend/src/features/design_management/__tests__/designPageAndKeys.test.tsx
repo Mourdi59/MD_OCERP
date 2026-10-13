@@ -170,6 +170,25 @@ describe('DesignManagementPage states', () => {
     expect(findings[0]).toHaveTextContent('Code 1.2 is used twice.');
   });
 
+  it('on a project without gates the overview shows one row for the whole project and no filing action', async () => {
+    withSetup();
+    mocked.getSetup.mockResolvedValue(setup({ phases: [], gates_in_use: false }));
+    mocked.listReadiness.mockResolvedValue([readiness({ code: null, order: 0, name: null, open_deliverables: ['DL-001'] })]);
+    renderPage();
+    const card = await screen.findByTestId('readiness-card');
+    expect(card).toHaveTextContent('Whole project');
+    expect(await screen.findByTestId('no-frame-document')).toHaveTextContent('This project does not use gates');
+    expect(screen.queryByTestId('file-register')).toBeNull();
+    expect(screen.getByTestId('export-register-pdf')).toBeEnabled();
+  });
+
+  it('with gates the registers can be filed as a frame document', async () => {
+    withSetup();
+    renderPage();
+    expect(await screen.findByTestId('file-register')).toBeEnabled();
+    expect(screen.queryByTestId('no-frame-document')).toBeNull();
+  });
+
   it('the tab in the URL opens that list, and a failing list is an error', async () => {
     withSetup();
     mocked.listWbs.mockResolvedValue([wbsNode()]);

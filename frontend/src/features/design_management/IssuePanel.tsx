@@ -189,7 +189,9 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
     { name: 'min_suitability', label: ui(t, 'design.ui.issue.min_status'), type: 'select', options: SUITABILITY_OPTIONS, hint: ui(t, 'design.ui.issue.min_status_hint') },
     { name: 'copies_paper', label: ui(t, 'design.ui.issue.paper_copies'), type: 'number' },
     { name: 'discipline_codes', label: ui(t, 'design.ui.issue.disciplines'), type: 'multi', options: disciplineChoices, hint: ui(t, 'design.ui.issue.all_when_empty') },
-    { name: 'phase_codes', label: ui(t, 'design.ui.issue.phases'), type: 'multi', options: phaseOptions(ctx), hint: ui(t, 'design.ui.issue.all_when_empty') },
+    ...(phases.length > 0
+      ? [{ name: 'phase_codes', label: ui(t, 'design.ui.issue.phases'), type: 'multi' as const, options: phaseOptions(ctx), hint: ui(t, 'design.ui.issue.all_when_empty') }]
+      : []),
     ...(forms ? [{ name: 'form_codes', label: ui(t, 'design.ui.issue.forms'), type: 'multi' as const, options: forms, hint: ui(t, 'design.ui.issue.all_when_empty') }] : []),
     ...(ctx.wbs.length > 0
       ? [{ name: 'wbs_node_ids', label: ui(t, 'design.ui.issue.wbs'), type: 'multi' as const, options: wbsOptions(ctx), hint: ui(t, 'design.ui.issue.all_when_empty') }]

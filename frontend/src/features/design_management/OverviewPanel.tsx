@@ -47,6 +47,7 @@ export function OverviewPanel({ ctx, onOpenGovernance }: { ctx: DesignContext; o
     },
     onError,
   });
+  const noGates = ctx.setup.gates_in_use === false;
   const failed = (validation.data ?? []).filter((f) => !f.passed);
 
   return (
@@ -63,9 +64,9 @@ export function OverviewPanel({ ctx, onOpenGovernance }: { ctx: DesignContext; o
       {hasRows(readiness) && (
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="readiness-list">
           {(readiness.data ?? []).map((phase) => (
-            <li key={phase.code} className="rounded-lg border border-border-light p-3" data-testid="readiness-card" data-met={phase.met}>
+            <li key={phase.code ?? 'project'} className="rounded-lg border border-border-light p-3" data-testid="readiness-card" data-met={phase.met}>
               <div className="flex items-center justify-between gap-2">
-                <h3 className="font-medium text-content-primary">{labelOf(ctx.labels, phase.name, phase.code)}</h3>
+                <h3 className="font-medium text-content-primary">{phase.code ? labelOf(ctx.labels, phase.name, phase.code) : ui(t, 'design.ui.overview.whole_project')}</h3>
                 <ToneBadge tone={phase.met ? 'success' : 'warning'}>
                   {phase.met ? ui(t, 'design.ui.overview.ready') : ui(t, 'design.ui.overview.not_ready')}
                 </ToneBadge>
@@ -148,13 +149,20 @@ export function OverviewPanel({ ctx, onOpenGovernance }: { ctx: DesignContext; o
                 >
                   {ui(t, 'design.ui.overview.as_sheet')}
                 </Button>
-                <Button size="sm" variant="ghost" disabled={file.isPending} onClick={() => file.mutate(register)} data-testid={`file-${register}`}>
-                  {ui(t, 'design.ui.overview.file_in_cde')}
-                </Button>
+                {!noGates && (
+                  <Button size="sm" variant="ghost" disabled={file.isPending} onClick={() => file.mutate(register)} data-testid={`file-${register}`}>
+                    {ui(t, 'design.ui.overview.file_in_cde')}
+                  </Button>
+                )}
               </span>
             </li>
           ))}
         </ul>
+        {noGates && (
+          <p className="mt-2 text-xs text-content-secondary" data-testid="no-frame-document">
+            {ui(t, 'design.ui.overview.no_frame_document')}
+          </p>
+        )}
       </section>
     </div>
   );

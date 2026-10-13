@@ -391,15 +391,3 @@ def register_kinds() -> None:
             diff_groups=("report_kinds", "permit_steps"),
         )
     )
-
-
-def default_scheme_id_for_country(country_code: str | None) -> str:
-    """The shipped scheme whose ``jurisdiction_countries`` names exactly this country, else the ISO generic one."""
-    from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
-
-    country = (country_code or "").strip().upper()
-    if not country:
-        return DEFAULT_SCHEME_ID
-    register_kinds()
-    claims = [s.id for s in get_catalogue_kind(NUMBERING_KIND).shipped() if country in s.jurisdiction_countries]
-    return claims[0] if len(claims) == 1 else DEFAULT_SCHEME_ID
