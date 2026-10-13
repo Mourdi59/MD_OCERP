@@ -115,7 +115,11 @@ export function ConceptRecord({
     [
       t('procurement_concept.ui.record.release_gate', { defaultValue: 'Gate that releases procurement' }),
       concept.resolved_release_gate_code ??
-        t('procurement_concept.ui.record.release_gate_unresolved', { defaultValue: 'Not known yet' }),
+        (concept.released_from_start
+          ? t('procurement_concept.ui.record.released_from_start', {
+              defaultValue: 'None, procurement is open from the project start',
+            })
+          : t('procurement_concept.ui.record.release_gate_unresolved', { defaultValue: 'Not known yet' })),
     ],
   ];
   if (concept.approved_at) {

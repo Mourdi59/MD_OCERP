@@ -10,7 +10,9 @@ module never matches one by code. The pinned phase model says it in tags, and
   document that carries the concept (it becoming binding is the approval), and
   its area is the procurement area (its owner and deputy steer the concept);
 * a phase that enables the capability ``procurement`` is one procurement may
-  start in: the gate into that phase releases procurement.
+  start in: the gate into that phase releases procurement. When that phase is
+  the model's first one and no gate leads into it, nothing releases
+  procurement because nothing holds it: it is released from project start.
 
 Resolved at read time and never stored: a project may move to another model.
 A model without a tag answers ``None`` / empty, and every caller treats that as
@@ -36,6 +38,9 @@ class ProcurementHosting:
     area_code: str | None = None
     document_types: tuple[str, ...] = ()
     release_gate_codes: tuple[str, ...] = ()
+    #: The model's first phase enables procurement and no gate leads into it. There is no release
+    #: gate then, and that is an answer, not a gap: ``release_gate_codes`` is empty on purpose.
+    released_from_start: bool = False
 
 
 def hosting_of(catalogue: Any) -> ProcurementHosting:
@@ -44,10 +49,13 @@ def hosting_of(catalogue: Any) -> ProcurementHosting:
         return ProcurementHosting()
     host = host_in(catalogue, SUBJECT)
     phases = set(phases_enabling_in(catalogue, CAPABILITY))
-    gates = tuple(g.code for g in catalogue.gates if g.to_phase in phases)
+    first = min(catalogue.phases, key=lambda p: p.order).code if catalogue.phases else None
+    from_start = first in phases and all(g.to_phase != first for g in catalogue.gates)
+    # Open from the start wins over a later phase that enables it again: a gate cannot release what was never held.
+    gates = () if from_start else tuple(g.code for g in catalogue.gates if g.to_phase in phases)
     if host is None:
-        return ProcurementHosting(None, (), gates)
-    return ProcurementHosting(host.area_code, (host.doc_type,), gates)
+        return ProcurementHosting(None, (), gates, from_start)
+    return ProcurementHosting(host.area_code, (host.doc_type,), gates, from_start)
 
 
 async def project_hosting(session: Any, project_id: uuid.UUID) -> ProcurementHosting:

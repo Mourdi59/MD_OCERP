@@ -31,6 +31,7 @@
       "reopened": "Reopened"
     },
     "errors": {
+      "advance_not_applicable": "No gate holds procurement back in this project's phase model, so a package cannot be run in advance.",
       "advance_release_kind_required": "Say what releases this advance package: a gate decision, a condition or a released commitment.",
       "advance_release_not_found": "The releasing gate decision, condition or commitment was not found in this project.",
       "advance_release_other_gate": "Only a decision or a cleared condition of the gate that releases procurement can release an advance package.",
@@ -147,11 +148,13 @@
       "yes": "Yes"
     },
     "findings": {
+      "advance_flag_not_applicable": "Marked as advance, but this phase model has no gate that releases procurement",
       "advance_package_not_released": "Advance package not released by a gate decision, a condition or a released commitment",
       "advance_without_reason": "Advance package without reason",
       "award_schedule_infeasible": "Procurement would have to start in the past or before the releasing gate",
       "candidate_not_registered": "Short-listed company is not registered",
       "capacity_unmitigated": "Tight market capacity without mitigation",
+      "concept_required_at_no_gate": "This phase model asks for the procurement concept at no gate",
       "design_fee_estimate_missing": "Design package without fee estimate",
       "design_package_uses_works_rules": "Design package uses works rules instead of services",
       "excluded_candidate_without_rationale": "Excluded candidate without rationale",
@@ -219,12 +222,16 @@
       "two_stage_negotiated": "Two-stage negotiated (private)"
     },
     "rules": {
+      "advance_flag_has_release_gate": "Package {ref}: advance flag has a release gate",
+      "advance_flag_has_release_gate_fix": "Clear the advance flag: no gate holds procurement back in this phase model.",
       "advance_package_released": "Package {ref}: advance package released",
       "advance_package_released_fix": "Link the gate decision or condition that releases it.",
       "award_schedule_feasible": "Package {ref}: award schedule feasible",
       "award_schedule_feasible_fix": "Move the need date, shorten the procedure or make it an advance package.",
       "capacity_risk_mitigated": "Sounding {ref}: capacity risk mitigated",
       "capacity_risk_mitigated_fix": "Record a mitigation or re-split the package.",
+      "concept_asked_at_a_gate": "{ref}: procurement concept asked for at a gate",
+      "concept_asked_at_a_gate_fix": "Require the procurement document at a gate of the phase model, or name a release gate on the concept.",
       "design_package_uses_services_rules": "Package {ref}: design package rules",
       "design_package_uses_services_rules_fix": "Enter the fee estimate.",
       "excluded_candidate_has_rationale": "Candidate {ref}: exclusion rationale",

@@ -82,6 +82,9 @@ class PackageFacts:
     is_advance: bool = False
     advance_reason: str = ""
     advance_released: bool = False
+    #: False on a project whose phase model holds procurement behind no gate: there is nothing to be
+    #: ahead of, so the flag is a leftover and rule 12 has nothing to ask for.
+    advance_applies: bool = True
     framework_agreement_id: str | None = None
     need_date: date | None = None
     lead_time_days: int | None = None
@@ -459,6 +462,10 @@ def package_findings(catalogue: ProcurementCatalogue, pkg: PackageFacts) -> list
             out.append(finding("design_package_uses_works_rules", ERROR, pkg.code, contract_kind=ck))
         if pkg.estimated_value is None or pkg.estimated_value <= ZERO:
             out.append(finding("design_fee_estimate_missing", ERROR, pkg.code))
+    if pkg.is_advance and not pkg.advance_applies:
+        # The flag was set under a phase model that had a release gate. It is shown, and it blocks nothing.
+        out.append(finding("advance_flag_not_applicable", WARNING, pkg.code))
+        return out
     if pkg.is_advance and not pkg.advance_reason.strip():
         out.append(finding("advance_without_reason", ERROR, pkg.code))
     if pkg.is_advance and not pkg.advance_released:

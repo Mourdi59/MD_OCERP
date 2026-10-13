@@ -147,6 +147,8 @@ export interface Concept {
   release_gate_code: string | null;
   /** The gate actually used. Null when none is named or tagged. */
   resolved_release_gate_code: string | null;
+  /** The phase model opens procurement in its first phase: no gate releases it, and none is missing. */
+  released_from_start?: boolean;
   governance_area_code: string | null;
   default_profile_id: string | null;
   submitted_by: string | null;
@@ -317,6 +319,8 @@ export interface PackageView {
   /** What the caller may do with this package now. `create_execution` also answers for linking a tender package. */
   can: {
     edit: Capability;
+    /** The advance switch and its release fields. Not applicable where no gate holds procurement back. */
+    set_advance: Capability;
     hold: Capability;
     resume: Capability;
     cancel: Capability;

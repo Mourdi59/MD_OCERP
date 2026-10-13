@@ -23,15 +23,21 @@ from app.modules.procurement_concept import commitments
 from app.modules.procurement_concept import plan_source as plan
 from app.modules.procurement_concept.errors import ProcurementError
 from app.modules.procurement_concept.events import handle_frame_document, handle_read_back
+from app.modules.procurement_concept.evidence import concept_ready
 from app.modules.procurement_concept.models import AwardPackage, ProcurementConcept
 from app.modules.procurement_concept.service import ProcurementConceptService
+from app.modules.project_governance.evidence import GateAttempt
+from app.modules.project_governance.public import project_areas
 from tests._pg import isolated_engine
 from tests.pg.procurement_concept_fixtures import (
+    AREA,
+    HOST_GATE,
     OTHER_AREA,
     OTHER_DOC,
     OTHER_GATE,
     RELEASE_GATE,
     TODAY,
+    UNGATED_DOC,
     World,
     add_condition,
     add_contract_package,
@@ -291,6 +297,167 @@ async def _untagged_model_says_release_unknown(world: World) -> None:
     ]
     await _set(world, {"release_gate_code": RELEASE_GATE})
     assert "release_gate_unresolved" not in {f["code"] for f in await svc_call(world, "findings", world.project_id)}
+
+
+async def _evidence(w: World, gate_code: str, area_code: str = AREA) -> list:
+    async with w.factory() as s:
+        area = next(a for a in await project_areas(s, w.project_id) if a.code == area_code)
+        return await concept_ready(s, w.project_id, GateAttempt(w.gates[gate_code], gate_code, 1), area)
+
+
+async def _from_start_world(engine, *, ungated_doc: bool = False) -> World:
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    world = await build_world(factory, from_start=True, ungated_doc=ungated_doc)
+    # Same areas, documents and gates as the shipped model, same codes; only the first phase enables procurement.
+    assert set(world.gates) >= {RELEASE_GATE, HOST_GATE} and world.document_id is not None
+    return world
+
+
+async def test_a_model_that_opens_procurement_in_its_first_phase_has_no_release_gate_to_miss() -> None:
+    """No gate leads into the first phase: nothing is waited for and nothing is reported unknown."""
+    async with isolated_engine() as engine:
+        world = await _from_start_world(engine)
+        gates = await svc_call(world, "gate_options", world.project_id)
+        assert gates["released_from_start"] is True
+        assert gates["resolved_release_gate_code"] is None
+        assert not any(g["tagged_release_gate"] or g["selected"] for g in gates["items"])
+        await add_contract_package(world, "W1", "construction")
+        await put(world, "W1", OPEN_WORKS)
+        found = await svc_call(world, "findings", world.project_id)
+        assert [f["code"] for f in found if f["ref"] == "project"] == []
+        # The concept is asked for where the model asks for its document, on its area, and nowhere else.
+        (item,) = await _evidence(world, HOST_GATE)
+        assert (item.state, item.code) == ("not_met", f"procurement_concept_ready:{HOST_GATE}")
+        assert await _evidence(world, RELEASE_GATE) == []
+        assert await _evidence(world, HOST_GATE, OTHER_AREA) == []
+        # A manager who names a gate decides to wait for it: the ordinary rules are back.
+        await _set(world, {"release_gate_code": RELEASE_GATE})
+        gates = await svc_call(world, "gate_options", world.project_id)
+        assert (gates["released_from_start"], gates["resolved_release_gate_code"]) == (False, RELEASE_GATE)
+        assert await _evidence(world, HOST_GATE) == []
+        (item,) = await _evidence(world, RELEASE_GATE)
+        assert item.state == "not_met"
+        # A named gate the project does not have is "not known", never "open from the start".
+        async with world.factory() as s:
+            concept = await ProcurementConceptService(s).get_concept(world.project_id)
+            concept.release_gate_code = "gate_of_a_model_the_project_left"
+            await s.commit()
+        (item,) = await _evidence(world, HOST_GATE)
+        assert (item.state, item.detail) == ("unknown", "release_gate_unresolved")
+        found = await svc_call(world, "findings", world.project_id)
+        assert [(f["code"], f["severity"]) for f in found if f["ref"] == "project"] == [
+            ("release_gate_unresolved", "warning")
+        ]
+
+
+async def test_open_from_the_start_without_a_host_document_is_unknown_at_whichever_gate_asks() -> None:
+    """Without the document there is no gate to report at, and silence would read as "met"."""
+    async with isolated_engine() as engine:
+        world = await _from_start_world(engine)
+        await drop_frame_document(world)
+        for code in (HOST_GATE, RELEASE_GATE):
+            (item,) = await _evidence(world, code)
+            assert (item.state, item.detail) == ("unknown", "frame_document_unresolved")
+
+
+async def _can(w: World, code: str = "W1") -> dict:
+    async with w.factory() as s:
+        svc = ProcurementConceptService(s)
+        access = await svc.access(w.project_id, w.manager, can_edit=True, can_manage=True)
+        rows = await svc.package_views(w.project_id, access=access)
+    return next(r for r in rows if r["contract_package"]["code"] == code)["can"]
+
+
+async def _package_codes(w: World, code: str = "W1") -> set[str]:
+    return {f["code"] for f in await svc_call(w, "findings", w.project_id) if f["ref"] == code}
+
+
+async def test_open_from_the_start_has_no_advance_packages() -> None:
+    """Advance means ahead of the release gate. Without one the action does not exist, and a leftover blocks nothing."""
+    async with isolated_engine() as engine:
+        world = await _from_start_world(engine)
+        await add_contract_package(world, "W1", "construction")
+        await put(world, "W1", OPEN_WORKS)
+        can = await _can(world)
+        assert can["edit"] == {"allowed": True, "reason": None, "applies": True}
+        assert can["set_advance"] == {"allowed": False, "reason": "advance_not_applicable", "applies": False}
+        with pytest.raises(ProcurementError) as exc:
+            await put(world, "W1", {"is_advance": True, "advance_reason": "Piling before permit"})
+        assert (exc.value.code, exc.value.status_code) == (can["set_advance"]["reason"], 409)
+        with pytest.raises(ProcurementError) as exc:
+            await put(world, "W1", {"advance_release_kind": "commitment", "advance_release_id": str(uuid.uuid4())})
+        assert (exc.value.code, exc.value.status_code) == ("advance_not_applicable", 409)
+        assert (await _award(world, "W1")).is_advance is False
+        # A row that carries the flag from a phase model that had a release gate.
+        async with world.factory() as s:
+            row = await s.get(AwardPackage, world.packages["W1"])
+            row.is_advance = True
+            row.advance_reason = ""
+            await s.commit()
+        found = await _package_codes(world)
+        assert "advance_flag_not_applicable" in found
+        assert not found & {"advance_package_not_released", "advance_without_reason"}
+        # It can still be edited, and cleared; the note goes with the flag.
+        await put(world, "W1", {"procedure_code": "open"})
+        await put(world, "W1", {"is_advance": False})
+        assert "advance_flag_not_applicable" not in await _package_codes(world)
+        # Once a manager names a gate the project waits for it, and an advance package means something again.
+        await _set(world, {"release_gate_code": RELEASE_GATE})
+        assert (await _can(world))["set_advance"] == {"allowed": True, "reason": None, "applies": True}
+        await put(world, "W1", {"is_advance": True, "advance_reason": "Piling before permit"})
+        assert "advance_package_not_released" in await _package_codes(world)
+
+
+async def _award(w: World, code: str) -> AwardPackage:
+    async with w.factory() as s:
+        return await s.get(AwardPackage, w.packages[code])
+
+
+async def test_a_concept_carried_by_a_document_no_gate_asks_for_says_so_in_its_validation() -> None:
+    """No release gate and no gate that requires the document: no decision would ever look at the concept."""
+    async with isolated_engine() as engine:
+        world = await _from_start_world(engine, ungated_doc=True)
+        # The host document is required at a gate (governance refuses a model where it is not): no warning.
+        found = await svc_call(world, "findings", world.project_id)
+        assert "concept_required_at_no_gate" not in {f["code"] for f in found}
+        # A manager names another document to carry the concept, one the model requires at no gate.
+        ungated = await add_frame_document(world, doc_type=UNGATED_DOC)
+        await _set(world, {"governance_document_id": ungated})
+        found = await svc_call(world, "findings", world.project_id)
+        assert [(f["code"], f["severity"], f["blocks_approval"]) for f in found if f["ref"] == "project"] == [
+            ("concept_required_at_no_gate", "warning", False)
+        ]
+        # It is a property of the phase model, said in the validation and not as gate evidence.
+        for code in (HOST_GATE, RELEASE_GATE):
+            assert await _evidence(world, code) == []
+        # Naming a release gate gives the concept a gate to be asked at.
+        await _set(world, {"release_gate_code": RELEASE_GATE})
+        found = await svc_call(world, "findings", world.project_id)
+        assert [f["code"] for f in found if f["ref"] == "project"] == []
+        (item,) = await _evidence(world, RELEASE_GATE)
+        assert item.state == "not_met"
+
+
+async def test_a_leftover_advance_flag_never_lets_a_package_start_before_the_concept_is_approved(
+    matrix: _Matrix,
+) -> None:
+    """Even with a released commitment named on it: where no gate releases procurement nothing is in advance."""
+    async with isolated_engine() as engine:
+        world = await _from_start_world(engine)
+        await add_contract_package(world, "S1", "supply")
+        await put(world, "S1", {"estimated_value": "50000", "currency": "EUR", "procedure_code": "open"})
+        released = matrix.add(world.project_id, "CR-1", released=True, lead=120)
+        async with world.factory() as s:
+            row = await s.get(AwardPackage, world.packages["S1"])
+            row.is_advance = True
+            row.advance_reason = "Long lead item"
+            row.advance_release_kind, row.advance_release_id = commitments.KIND, released
+            await s.commit()
+        can = (await _can(world, "S1"))["create_execution"]
+        assert (can["allowed"], can["reason"]) == (False, "concept_not_approved")
+        with pytest.raises(ProcurementError) as exc:
+            await execute(world, "S1")
+        assert (exc.value.code, exc.value.status_code) == ("concept_not_approved", 409)
 
 
 # ── Plan and steering ───────────────────────────────────────────────────

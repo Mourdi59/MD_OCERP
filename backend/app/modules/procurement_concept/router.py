@@ -158,6 +158,8 @@ async def _concept_out(
         "release_gate_code": c.release_gate_code,
         # The gate actually used: the named one, else the one the governance catalogue tags; null = unresolved.
         "resolved_release_gate_code": gate.code if gate is not None else None,
+        # True when the model opens procurement in its first phase and no gate is named: null above is then final.
+        "released_from_start": await svc.released_from_start(project_id, c),
         "governance_area_code": hosting.area_code,
         "default_profile_id": str(c.default_profile_id) if c.default_profile_id else None,
         "submitted_by": str(c.submitted_by) if c.submitted_by else None,
@@ -286,7 +288,7 @@ async def list_packages(
 ) -> dict[str, Any]:
     """The package board: mod3 ContractPackages joined with award attributes, threshold badge, schedule.
 
-    Every row carries ``can`` (edit, hold, resume, cancel, confirm_shortlist, create_execution), each
+    Every row carries ``can`` (edit, set_advance, hold, resume, cancel, confirm_shortlist, create_execution), each
     ``{allowed, reason}`` from the checks the writes enforce.
     """
     await verify_project_access(project_id, user_id, session)
@@ -304,6 +306,7 @@ async def list_gates(project_id: uuid.UUID, session: SessionDep, user_id: Curren
         data["items"],
         release_gate_code=data["release_gate_code"],
         resolved_release_gate_code=data["resolved_release_gate_code"],
+        released_from_start=data["released_from_start"],
     )
 
 
@@ -802,11 +805,12 @@ async def export(
     package_id: uuid.UUID | None = None,
 ) -> Response:
     """The concept record, package list, shortlist (``package_id``) or award schedule as PDF or XLSX."""
-    from app.modules.procurement_concept.export import render
+    from app.modules.procurement_concept.export import render, written_locale
     from app.modules.projects.models import Project
 
     await verify_project_access(project_id, user_id, session)
     project = await session.get(Project, project_id)
+    locale = written_locale(get_locale())
     content = await _run(
         render(
             ProcurementConceptService(session),
@@ -814,7 +818,7 @@ async def export(
             part=part,
             package_id=package_id,
             project_name=getattr(project, "name", "") or "",
-            locale=get_locale() or "en",
+            locale=locale,
             fmt=fmt,
         )
     )
@@ -822,7 +826,11 @@ async def export(
     return Response(
         content=content,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="procurement_{part}.{fmt}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="procurement_{part}.{fmt}"',
+            # The language the document was written in, which is not always the one asked for.
+            "Content-Language": locale,
+        },
     )
 
 

@@ -13,8 +13,10 @@ and frame documents are the rows governance itself builds, and the module finds
 its area, its frame document and its release gate through the model's tags.
 The constants below are read off that model the same way, so no test names a
 code of it. ``tagged=False`` pins a company copy of the model with the
-procurement tags removed and every code kept; ``model=False`` pins no phase
-model at all, so governance has no row for the project.
+procurement tags removed and every code kept; ``from_start=True`` pins a
+company copy whose first phase enables procurement, so no gate leads into the
+phase that opens it; ``model=False`` pins no phase model at all, so governance
+has no row for the project.
 """
 
 from __future__ import annotations
@@ -44,8 +46,16 @@ DOC_TYPE = HOSTING.document_types[0]
 RELEASE_GATE = HOSTING.release_gate_codes[0]
 GATE_CODES = tuple(g.code for g in MODEL.gates)
 OTHER_GATE = next(code for code in GATE_CODES if code not in HOSTING.release_gate_codes)
+#: A gate the model asks for the host document at, and that is not the release gate.
+HOST_GATE = next(
+    code
+    for code in next(d for d in MODEL.document_types if d.code == DOC_TYPE).required_at_gates
+    if code not in HOSTING.release_gate_codes
+)
 OTHER_AREA = next(a.code for a in MODEL.areas if a.code != AREA)
 OTHER_DOC = next(d.code for d in MODEL.document_types if d.code != DOC_TYPE)
+#: A document type that hosts no subject, so a company model may require it at no gate.
+UNGATED_DOC = next(d.code for d in MODEL.document_types if not d.hosts)
 
 
 @dataclass
@@ -229,26 +239,44 @@ async def approve(w: World, *, submitter: uuid.UUID | None = None, by: uuid.UUID
     assert await bind_frame_document(w, by=by) is True
 
 
-async def _untagged_model(session: AsyncSession, manager: uuid.UUID) -> str:
-    """A published company copy of the shipped model that says nothing about procurement."""
+async def _company_model(
+    session: AsyncSession, manager: uuid.UUID, *, from_start: bool, ungated_doc: bool = False
+) -> str:
+    """A published company copy of the shipped model with its procurement tags changed, every code kept.
+
+    ``from_start=False``: it says nothing about procurement. ``from_start=True``:
+    the host document stays and the first phase, which no gate leads into, is
+    the only one that enables procurement. ``ungated_doc=True`` also has
+    the model require :data:`UNGATED_DOC`, which hosts nothing, at no gate.
+    The host document itself cannot be left without a gate: governance
+    refuses such a model from every source.
+    """
     from app.modules.project_governance.catalogue_store import CatalogueStore
 
     store = CatalogueStore(session)
     tenant = str(manager)
     row = await store.create(
         tenant,
-        code="untagged",
-        name="Model without procurement tags",
+        code="from_start" if from_start else "untagged",
+        name="Model that opens procurement at once" if from_start else "Model without procurement tags",
         based_on_source="shipped",
         based_on_id=MODEL_ID,
         based_on_version=None,
         actor_id=manager,
     )
     body = copy.deepcopy(dict(row.draft_body))
-    for doc in body["document_types"]:
-        doc["hosts"] = [h for h in doc.get("hosts") or [] if h != SUBJECT]
+    if not from_start:
+        for doc in body["document_types"]:
+            doc["hosts"] = [h for h in doc.get("hosts") or [] if h != SUBJECT]
     for phase in body["phases"]:
         phase["enables"] = [c for c in phase.get("enables") or [] if c != CAPABILITY]
+    if from_start:
+        first = min(body["phases"], key=lambda p: p["order"])
+        first["enables"] = [*first["enables"], CAPABILITY]
+    if ungated_doc:
+        for doc in body["document_types"]:
+            if doc["code"] == UNGATED_DOC:
+                doc["required_at_gates"] = []
     await store.update_draft(tenant, row.id, body=body, name=None)
     await store.publish(tenant, row.id, actor_id=manager)
     return str(row.id)
@@ -279,7 +307,13 @@ async def _read_governance_rows(w: World) -> None:
 
 
 async def build_world(
-    factory: async_sessionmaker[AsyncSession], *, concept: bool = True, tagged: bool = True, model: bool = True
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    concept: bool = True,
+    tagged: bool = True,
+    model: bool = True,
+    from_start: bool = False,
+    ungated_doc: bool = False,
 ) -> World:
     from app.modules.procurement_concept.catalogue import register_kind
     from app.modules.project_governance.service import GovernanceService
@@ -293,8 +327,11 @@ async def build_world(
         outsider = await add_user(s, "manager")
         pid = await add_project(s, manager, [area_owner, editor])
         source, model_id = "shipped", MODEL_ID
-        if not tagged:
-            source, model_id = "tenant", await _untagged_model(s, manager)
+        if from_start or not tagged:
+            source, model_id = (
+                "tenant",
+                await _company_model(s, manager, from_start=from_start, ungated_doc=ungated_doc),
+            )
         if model:
             await GovernanceService(s).set_model(
                 pid,

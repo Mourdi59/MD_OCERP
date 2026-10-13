@@ -396,6 +396,12 @@ describe('ConceptRecord', () => {
     expect(screen.getByTestId('concept-record')).toHaveTextContent('Not known yet');
   });
 
+  it('says procurement is open from the start where the phase model has no release gate', () => {
+    record({ concept: concept({ resolved_release_gate_code: null, released_from_start: true }) });
+    expect(screen.getByTestId('concept-record')).toHaveTextContent('None, procurement is open from the project start');
+    expect(screen.getByTestId('concept-record')).not.toHaveTextContent('Not known yet');
+  });
+
   it('says so when the person who submitted also approved', () => {
     record({ concept: concept({ state: 'approved', can: LOCKED, four_eyes_violated: true }) });
     expect(screen.getByTestId('four-eyes')).toBeInTheDocument();
@@ -490,6 +496,47 @@ describe('PackageDialog', () => {
     expect(await screen.findByTestId('commitments-unavailable')).toHaveTextContent(
       en.translation['procurement_concept.errors.commitment_release_unavailable']!,
     );
+  });
+
+  it('leaves the advance switch out where no gate holds procurement back', () => {
+    mocked.getThreshold.mockResolvedValue(thresholdCheck);
+    const base = packageView();
+    dialog({ ...base, can: { ...base.can, set_advance: denied('advance_not_applicable', false) } });
+    expect(screen.queryByTestId('package-advance')).toBeNull();
+    expect(screen.queryByTestId('advance-leftover')).toBeNull();
+    expect(document.getElementById('pk-advance-reason')).toBeNull();
+    expect(mocked.listAdvanceReleases).not.toHaveBeenCalled();
+  });
+
+  it('keeps the switch on a package that still carries the mark, so it can be cleared', async () => {
+    mocked.getThreshold.mockResolvedValue(thresholdCheck);
+    mocked.putPackage.mockResolvedValue(packageView() as never);
+    const base = packageView({}, { is_advance: true, advance_reason: 'Long lead item' });
+    dialog({ ...base, can: { ...base.can, set_advance: denied('advance_not_applicable', false) } });
+    const tick = screen.getByTestId('package-advance') as HTMLInputElement;
+    expect(tick.checked).toBe(true);
+    expect(screen.getByTestId('advance-leftover')).toHaveTextContent(en.translation['procurement_concept.errors.advance_not_applicable']!);
+    // The release fields make no sense here and nothing is asked of the server for them.
+    expect(document.getElementById('pk-advance-reason')).toBeNull();
+    expect(document.getElementById('pk-advance-release')).toBeNull();
+    expect(mocked.listAdvanceReleases).not.toHaveBeenCalled();
+    fireEvent.click(tick);
+    expect(screen.queryByTestId('advance-leftover')).toBeNull();
+    fireEvent.click(screen.getByTestId('package-save'));
+    await waitFor(() => expect(mocked.putPackage).toHaveBeenCalledTimes(1));
+    expect(mocked.putPackage.mock.calls[0]![2]).toMatchObject({ is_advance: false });
+  });
+
+  it('lets a package that carries the mark without a reason be saved with other edits', async () => {
+    mocked.getThreshold.mockResolvedValue(thresholdCheck);
+    mocked.putPackage.mockResolvedValue(packageView() as never);
+    const base = packageView({}, { is_advance: true, advance_reason: '' });
+    dialog({ ...base, can: { ...base.can, set_advance: denied('advance_not_applicable', false) } });
+    fireEvent.change(document.getElementById('pk-notes') as HTMLTextAreaElement, { target: { value: 'Checked with the planner' } });
+    expect(screen.getByTestId('package-save')).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId('package-save'));
+    await waitFor(() => expect(mocked.putPackage).toHaveBeenCalledTimes(1));
+    expect(mocked.putPackage.mock.calls[0]![2]).toEqual({ notes: 'Checked with the planner' });
   });
 
   it('names what releases an advance package from the acts of the release gate', async () => {
