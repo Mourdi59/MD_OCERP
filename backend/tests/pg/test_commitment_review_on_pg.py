@@ -1202,6 +1202,20 @@ async def test_the_demo_of_a_project_before_construction_releases_nothing_of_the
         assert "nothing_committed" in [line["code"] for line in exposure[code]["lines"]]
     # What procurement reads: the reservation is the released item with a lead time, the design has none.
     assert (options["CR-002"].released, options["CR-002"].lead_time_days) == (True, 120)
+    # CR-002 is the transformer order that is not placed yet. Its release note says the slot is held
+    # free of charge, no stage of its cancellation terms has begun, and without the plant register
+    # it reads its own 120 days and no date it could be overdue against.
+    slot = views["CR-002"]
+    assert slot["title"] == seed.DEMO_SLOT_ITEM_TITLE
+    assert (slot["lead_time_in_force_days"], slot["lead_time_source"], slot["plant_item_id"]) == (120, "item", None)
+    assert (slot["latest_decision_date"], slot["date_basis"], slot["decision_overdue"]) == (None, "none", False)
+    note = next(r.tranche_note for r in releases if str(r.item_id) == slot["id"])
+    assert "held free of charge" in note and "not signed" in note
+    async with world.factory() as s:
+        terms = (await CommitmentService(s).repo.list_abort_terms(pid, [uuid.UUID(slot["id"])]))[0]
+    stages = [(e["milestone"], e["from_date"]) for e in terms.cancellation_schedule]
+    assert [m for m, _d in stages] == ["order_signed", "manufacturing_started"]
+    assert all(d > today.isoformat() for _m, d in stages)
     assert options["CR-002"].released_on == today - timedelta(days=30)
     assert options["CR-003"].lead_time_days is None
     with_lead = [o.code for o in options.values() if o.released and o.lead_time_days]
@@ -1641,7 +1655,7 @@ async def test_the_demo_link_points_a_commitment_item_at_its_plant_item_once(wor
     plant_id = uuid.uuid4()
     _plant_register(monkeypatch, {})
     reads = sys.modules["app.modules.plant_register.reads"]
-    iid = await item(world, code="CR-002", amount="10000")
+    iid = await item(world, code="CR-002", amount="10000", title=seed.DEMO_SLOT_ITEM_TITLE)
 
     async def link_now() -> dict[str, str]:
         async with world.factory() as s:
@@ -1737,3 +1751,76 @@ async def test_a_matrix_read_asks_the_plant_register_once_for_all_linked_items(w
         "CR-C": (5, "item"),
     }
     assert len(calls) == 1 and sorted(calls[0], key=str) == sorted([a, b], key=str)
+
+
+async def test_the_demo_link_is_not_made_where_the_item_is_another_thing(world: World, monkeypatch) -> None:
+    import sys
+
+    from app.modules.commitment_release import seed
+    from app.modules.projects.models import Project
+
+    _plant_register(monkeypatch, {})
+    plant_id = uuid.uuid4()
+
+    async def plant_item_id_by_code(session, project_id, code):
+        return plant_id
+
+    sys.modules["app.modules.plant_register.reads"].plant_item_id_by_code = plant_item_id_by_code
+    # The construction story: the same code is the facade units, which no plant item is.
+    iid = await item(world, code="CR-002", amount="10000", title="Long-lead facade units")
+    async with world.factory() as s:
+        project = await s.get(Project, world.project_id)
+        project.metadata_ = {**(project.metadata_ or {}), "demo_id": "demo-test"}
+        await s.commit()
+    async with world.factory() as s:
+        out = await seed.link_demo_plant_items(s, world.project_id)
+        await s.commit()
+    assert out == {"CR-002": "not_this_story"}
+    assert (await state(world, iid)).plant_item_id is None
+
+
+async def test_after_the_plant_seed_the_transformer_order_reads_the_registers_dates(world: World) -> None:
+    """Both demo seeders on one project before construction, the plant register's first, then the link."""
+    plant_seed = pytest.importorskip("app.modules.plant_register.seed")
+    from app.modules.commitment_release import seed
+    from app.modules.plant_register.reads import plant_item_dates, plant_item_id_by_code
+    from app.modules.project_governance.service import GovernanceService
+    from app.modules.projects.models import Project
+
+    today = datetime.now(UTC).date()
+    async with world.factory() as s:
+        pid = await add_project(s, world.manager, [world.requester])
+        project = await s.get(Project, pid)
+        project.metadata_ = {"demo_id": "demo-test"}
+        await GovernanceService(s).set_model(
+            pid,
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            actor_id=world.manager,
+            tenant_id=str(world.manager),
+        )
+        await s.flush()
+        await plant_seed.seed_plant_register_demo(s, [pid])
+        await seed._seed_project(s, pid)
+        linked = await seed.link_demo_plant_items(s, pid)
+        await s.commit()
+    assert linked == {"CR-002": "linked"}
+    async with world.factory() as s:
+        plant_id = await plant_item_id_by_code(s, pid, "PL-001")
+        register = await plant_item_dates(s, pid, plant_id, today=today)
+        view = next(
+            v for v in (await CommitmentService(s).item_views(pid, today=today))["items"] if v["code"] == "CR-002"
+        )
+    # One story on both screens: not ordered in the register, released and unbound in the matrix.
+    assert register.status not in ("ordered", "manufactured", "delivered", "commissioned", "handed_over", "cancelled")
+    assert (view["status"], view["links"], view["plant_item_code"]) == ("released", [], "PL-001")
+    # The register's lead time governs, whatever it is; the row's own 120 days are no longer in force.
+    assert (view["lead_time_in_force_days"], view["lead_time_source"]) == (register.lead_time_days, "plant_item")
+    assert register.lead_time_days != 120 and view["lead_time_days"] == 120
+    # The date is the register's latest order date, not a copy: ahead of today, and not a year out or overdue.
+    assert view["date_basis"] == "plant_item"
+    assert view["latest_decision_date"] == register.latest_order_date.isoformat()
+    assert today <= register.latest_order_date <= today + timedelta(days=60)
+    assert view["decision_overdue"] is False

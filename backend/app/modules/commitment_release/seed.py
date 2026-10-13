@@ -24,9 +24,12 @@ A project that stands before construction tells another story. It is known by
 its own state, read through the governance port: the gate that opens the phase
 enabling the construction start exists and is not decided. Nothing of the main
 works is released there. Its works package is planned and due at the award;
-the design appointment (first tranche decided, second pending) and one
-long-lead supply reservation are released before the gate, each with what
-stopping would cost; one planned item is past its decision date; the
+the design appointment (first tranche decided, second pending) and the supply
+order of the main power transformers are released before the gate, each with
+what stopping would cost. That order is not placed yet: the manufacturer holds a
+slot free of charge, and the release is the authority to sign before the slot
+lapses. It is the one item that is a piece of equipment of the plant register,
+so it is the one item :func:`link_demo_plant_items` links; one planned item is past its decision date; the
 contingency drawdown is planned. All days are offsets from the seed day.
 
 Only projects carrying the demo marker are touched; a project that already
@@ -46,6 +49,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+# The one demo item that is a piece of equipment of the plant register, in the story of a project
+# before construction. The same code names another thing in the construction story (facade units),
+# so the link is made by code AND title, never by code alone.
+DEMO_SLOT_ITEM_CODE = "CR-002"
+DEMO_SLOT_ITEM_TITLE = "Main power transformers: supply order on the held manufacturing slot"
+DEMO_SLOT_RELEASE_NOTE = (
+    "Authority to sign the supply order before the gate. The manufacturing slot is held free of charge "
+    "and lapses if the order is not signed by its conversion date."
+)
 
 
 async def seed_commitment_release_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
@@ -284,15 +297,17 @@ async def _seed_before_construction(
         latest_decision_date_fixed=(today + timedelta(days=165)).isoformat(),
     )
 
-    # The reservation that lets the long-lead supply start before the gate. It carries the lead
-    # time; the design appointment below carries none.
+    # The supply order that has to be signed before the gate, because the equipment takes longer
+    # to make than the wait for it. Not ordered yet: the manufacturer holds a slot free of charge,
+    # so the 420,000 is the order itself and no fee exists beside it. The 120 days are this row's
+    # own figure for an install without the plant register; linked to its plant item, the
+    # register's lead time and latest order date govern, and no need date is copied here.
     reservation = await add(
-        "CR-002",
-        "Long-lead supply reservation",
+        DEMO_SLOT_ITEM_CODE,
+        DEMO_SLOT_ITEM_TITLE,
         "supplies",
         "420000",
         lead_time_days=120,
-        decision_buffer_days=14,
         **before_gate,
     )
     await svc.put_abort_terms(
@@ -301,16 +316,21 @@ async def _seed_before_construction(
         {
             "basis_code": "supply_cancellation_schedule",
             "cancellation_schedule": [
-                {"milestone": "order", "from_date": (today - timedelta(days=30)).isoformat(), "charge_pct": "0.10"},
+                # Stages of an order that is still to be signed: nothing is charged before it exists.
                 {
-                    "milestone": "fabrication",
-                    "from_date": (today + timedelta(days=60)).isoformat(),
+                    "milestone": "order_signed",
+                    "from_date": (today + timedelta(days=45)).isoformat(),
+                    "charge_pct": "0.10",
+                },
+                {
+                    "milestone": "manufacturing_started",
+                    "from_date": (today + timedelta(days=300)).isoformat(),
                     "charge_pct": "0.50",
                 },
             ],
             "transferable": "resale",
             "salvage_value_estimate": "60000",
-            "source_note": "Supplier quotation, cancellation terms",
+            "source_note": "Budget quotation: cancellation terms that apply once the order is signed",
         },
         actor_id=owner,
         manage=True,
@@ -323,7 +343,7 @@ async def _seed_before_construction(
         ccy,
         requester=planner,
         approver=owner,
-        note="Reservation of the production slot",
+        note=DEMO_SLOT_RELEASE_NOTE,
         days_ago=33,
     ):
         counts["releases"] += 1
@@ -609,7 +629,9 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
 
 
 # Which demo item of this module is which demo item of the plant register (by their codes).
-DEMO_PLANT_LINKS: dict[str, str] = {"CR-002": "PL-001"}
+DEMO_PLANT_LINKS: dict[str, str] = {DEMO_SLOT_ITEM_CODE: "PL-001"}
+# The title a commitment item must carry to be that equipment; a code missing here links on the code alone.
+DEMO_PLANT_LINK_TITLES: dict[str, str] = {DEMO_SLOT_ITEM_CODE: DEMO_SLOT_ITEM_TITLE}
 
 
 async def link_demo_plant_items(
@@ -619,8 +641,9 @@ async def link_demo_plant_items(
 
     Called by the integration seed after both seeders ran: neither seeder knows the other's ids.
     The plant item is looked up by its code through the plant register's read port. Answers, per
-    commitment item code, ``linked``, ``already_linked``, ``no_commitment_item``, ``no_plant_item``
-    or ``plant_register_unavailable``. Nothing is created and no link is overwritten.
+    commitment item code, ``linked``, ``already_linked``, ``no_commitment_item``, ``not_this_story``
+    (the item of that code is another thing in this project's story, so there is nothing to link),
+    ``no_plant_item`` or ``plant_register_unavailable``. Nothing is created and no link is overwritten.
     """
     from app.core.demo_marker import demo_id_of
     from app.modules.commitment_release.models import CommitmentItem
@@ -646,6 +669,14 @@ async def link_demo_plant_items(
         item = items.get(item_code)
         if item is None:
             result[item_code] = "no_commitment_item"
+            continue
+        expected = DEMO_PLANT_LINK_TITLES.get(item_code)
+        if expected is not None and item.title != expected:
+            # A link says the commitment IS that equipment. Here it is not.
+            logger.info(
+                "commitment_release demo: %s of %s is not the plant item's order, not linked", item_code, project_id
+            )
+            result[item_code] = "not_this_story"
             continue
         if item.plant_item_id is not None:
             result[item_code] = "already_linked"
