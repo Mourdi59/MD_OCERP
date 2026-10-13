@@ -15,7 +15,17 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.core.register_export import RegisterColumn, RegisterDocument, build_register_pdf, build_register_xlsx
-from app.modules.permits.messages import translate
+from app.modules.permits.messages import DEFAULT_LOCALE, available_locales, translate
+
+
+def written_locale(requested: str | None) -> str:
+    """The language an export is actually written in for a requested locale.
+
+    The message bundle answers a locale it does not ship in English, so that is what the
+    response has to declare, not what the reader asked for.
+    """
+    return requested if requested and requested in available_locales() else DEFAULT_LOCALE
+
 
 _COLUMNS: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
     "roadmap": [

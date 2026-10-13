@@ -1031,18 +1031,19 @@ async def export(
     today: date | None = None,
 ) -> Response:
     """One register as PDF or XLSX; also the content of the governance frame documents (rule 18)."""
-    from app.modules.permits.export import render
+    from app.modules.permits.export import render, written_locale
     from app.modules.projects.models import Project
 
     svc = await _permits_service(project_id, user_id, session)
     day = _today(today)
+    locale = written_locale(get_locale())
     rows = await _run(svc.register_rows(project_id, register, day))
     project = await session.get(Project, project_id)
     content = render(
         register,
         rows,
         project_name=getattr(project, "name", "") or "",
-        locale=get_locale() or "en",
+        locale=locale,
         as_of=day.isoformat(),
         fmt=fmt,
     )
@@ -1050,7 +1051,11 @@ async def export(
     return Response(
         content=content,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="permits_{register}.{fmt}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="permits_{register}.{fmt}"',
+            # The language the register was written in, which is not always the one asked for.
+            "Content-Language": locale,
+        },
     )
 
 

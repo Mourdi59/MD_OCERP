@@ -155,54 +155,98 @@ def test_every_rule_has_messages() -> None:
             assert is_key_present(f"permits.rules.{rule.key}.suggestion", loc), rule.key
 
 
-def _hook_indexes(table_name: str) -> set[str]:
-    """Indexes ``app.core.pg_optimizations`` attaches to a table after any ``create_all`` in the process.
-
-    No revision creates them, and whether they are on ``table.indexes`` depends on what
-    ran earlier in the same test process, so they are not part of the comparison.
-    """
-    from app.core.pg_optimizations import _index_name
-
-    return {_index_name(table_name, ["project_id", second]) for second in ("created_at", "status")}
-
-
-def _model_names() -> dict[str, set[str]]:
-    from app.modules.permits import models
-
-    out: dict[str, set[str]] = {}
-    for obj in vars(models).values():
-        table = getattr(obj, "__table__", None)
-        if table is None or not table.name.startswith("oe_permits_"):
-            continue
-        names = {ix.name for ix in table.indexes} | {c.name for c in table.constraints if c.name}
-        names |= {fk.name for c in table.columns for fk in c.foreign_keys if fk.name}
-        out[table.name] = {n for n in names if n and not n.startswith("pk_")}
-        out[table.name + ":columns"] = {c.name for c in table.columns}
-    return out
-
-
-def test_migration_matches_models() -> None:
-    """Index, constraint and column names are the same strings in model and migration."""
+def _load_migration():
     spec = importlib.util.spec_from_file_location("v73_permits", MIGRATION)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    assert mod.revision == "v73_permits" and mod.down_revision == "v70_delivery_model"
-    models = _model_names()
-    tables = {t for t in models if ":" not in t}
-    assert {t for t, _c, _i in mod._TABLES} == tables
-    for table, columns, indexes in mod._TABLES:
+    return mod
+
+
+def _hook_name(table_name: str, columns: list[str]) -> set[str]:
+    """The names ``app.core.pg_optimizations`` gives an index it attaches on exactly these columns."""
+    from app.core.pg_optimizations import _index_name
+
+    return {_index_name(table_name, columns), _index_name(table_name, columns, gin=True)}
+
+
+def _permits_tables() -> dict[str, typing.Any]:
+    from app.database import Base
+    from app.modules.permits import models  # noqa: F401
+
+    return {n: t for n, t in Base.metadata.tables.items() if n.startswith("oe_permits_")}
+
+
+def test_migration_matches_models() -> None:
+    """Columns, constraint names and indexes with their columns are the same in model and migration.
+
+    ``app.core.pg_optimizations`` attaches its own indexes to the shared metadata after any
+    ``create_all`` in the same process, and no revision creates those. An index the models carry
+    and the revision does not is accepted only under exactly the name the hook gives its columns,
+    so the comparison holds whatever ran before it; anything else is a real difference.
+    """
+    mod = _load_migration()
+    assert mod.revision == "v73_permits"
+    # Where the revision sits in the chain is decided when the branches are joined; it must name
+    # a revision that exists.
+    assert (MIGRATION.parent / f"{mod.down_revision}.py").exists(), mod.down_revision
+    tables = _permits_tables()
+    assert {t for t, _c, _i in mod._TABLES} == set(tables)
+    for name, columns, indexes in mod._TABLES:
+        table = tables[name]
         cols = columns()
-        names = {n for n, _ in indexes}
+        constraints = set()
         col_names = {"id", "created_at", "updated_at"}
         for c in cols:
             if hasattr(c, "foreign_keys"):
                 col_names.add(c.name)
-                names |= {fk.name for fk in c.foreign_keys}
+                constraints |= {fk.name for fk in c.foreign_keys}
             elif getattr(c, "name", None):
-                names.add(c.name)
-        # A hook index counts only where the migration creates it under that very name.
-        assert names == models[table] - (_hook_indexes(table) - names), table
-        assert col_names == models[table + ":columns"], table
+                constraints.add(c.name)
+        assert col_names == {c.name for c in table.columns}, name
+        model_constraints = {c.name for c in table.constraints if c.name and not c.name.startswith("pk_")}
+        model_constraints |= {fk.name for c in table.columns for fk in c.foreign_keys if fk.name}
+        assert constraints == model_constraints, name
+        declared = {n: list(c) for n, c in indexes}
+        model_idx = {i.name: [c.name for c in i.columns] for i in table.indexes}
+        assert all(model_idx.get(n) == c for n, c in declared.items()), (name, declared, model_idx)
+        beside = {n: c for n, c in model_idx.items() if n not in declared}
+        assert all(n in _hook_name(name, c) for n, c in beside.items()), (name, beside)
+
+
+def test_the_comparison_holds_after_the_platform_attached_its_indexes() -> None:
+    """Run alone or after a ``create_all`` elsewhere in the process, the answer is the same."""
+    from sqlalchemy import Index
+
+    from app.core.pg_optimizations import _index_name
+
+    table = _permits_tables()["oe_permits_roadmap"]
+    late = [
+        Index(_index_name(table.name, [column]), table.c[column])
+        for column in ("project_id", "governance_document_id")
+        if _index_name(table.name, [column]) not in {i.name for i in table.indexes}
+    ]
+    stray = Index("ix_oe_permits_roadmap_stray", table.c["jurisdiction"])
+    try:
+        with pytest.raises(AssertionError, match="stray"):
+            test_migration_matches_models()
+        table.indexes.discard(stray)
+        test_migration_matches_models()
+    finally:
+        for ix in [*late, stray]:
+            table.indexes.discard(ix)
+
+
+def test_no_index_repeats_one_the_platform_attaches_under_another_name() -> None:
+    """The hook adds (project_id, status) and (project_id, created_at) under its own name.
+
+    A module index on the same columns under another name would be built twice on every
+    install, so those carry the hook's name in the models and in the revision.
+    """
+    for name, table in _permits_tables().items():
+        for ix in table.indexes:
+            cols = [c.name for c in ix.columns]
+            if cols in (["project_id", "status"], ["project_id", "created_at"]):
+                assert ix.name in _hook_name(name, cols), (name, ix.name)
 
 
 def test_migration_is_inspector_guarded() -> None:
@@ -279,3 +323,17 @@ def test_the_sweep_is_a_registered_periodic_process() -> None:
     src = inspect.getsource(builtin.register_builtin_processes)
     assert '"permits_sweep"' in src and "permits_tick" in src
     assert "run_sweep_once" in inspect.getsource(builtin.permits_tick)
+
+
+def test_the_register_export_declares_the_language_it_was_written_in() -> None:
+    """The bundle answers a missing locale in English, so that is what the header must say."""
+    import inspect
+
+    from app.modules.permits import export, router
+
+    for asked, written in (("en", "en"), ("de", "de"), ("fr", "en"), ("", "en"), (None, "en"), ("zz", "en")):
+        assert export.written_locale(asked) == written, asked
+    source = inspect.getsource(router.export)
+    assert "Content-Language" in source and "written_locale" in source
+    # The sheet is rendered in that same language, not in the one asked for.
+    assert "get_locale() or" not in source

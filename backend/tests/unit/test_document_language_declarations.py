@@ -62,6 +62,7 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     "modules/methodology/router.py": {"export_methodology_pdf"},
     "modules/plant_register/router.py": {"export"},
     "modules/delivery_model/router.py": {"export"},
+    "modules/permits/router.py": {"export"},
     "modules/project_governance/router.py": {"export_trail"},
     "modules/property_dev/router.py": {
         "compliance_regulator_report",

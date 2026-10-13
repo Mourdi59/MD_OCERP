@@ -10,11 +10,21 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.permits import guards, jobs
 from app.modules.permits.errors import PermitError
-from app.modules.permits.models import Permit, PermitCondition
+from app.modules.permits.models import (
+    ConditionDischarge,
+    ConditionEvidence,
+    Permit,
+    PermitApplication,
+    PermitCondition,
+    PermitDecision,
+    PermitRequirement,
+    PermitRoadmap,
+)
 from app.modules.permits.service import PermitService
 from tests._pg import isolated_engine
 from tests.pg.governance_fixtures import add_container, add_revision, add_user
@@ -224,7 +234,10 @@ async def test_the_default_catalogue_follows_the_projects_subdivision(world: Wor
 
 
 async def test_a_granted_requirement_raises_no_schedule_conflict(world: World) -> None:
-    rid = await requirement(world, BUILDING, needed_by_date=TODAY + timedelta(days=5))
+    # The catalogue gives a building permit no statutory period: the forecast is the expected day.
+    rid = await requirement(
+        world, BUILDING, needed_by_date=TODAY + timedelta(days=5), expected_decision_date=TODAY + timedelta(days=30)
+    )
     aid = await file(world, rid, TODAY - timedelta(days=20))
     async with world.factory() as s:
         before = {r["requirement_id"]: r for r in (await PermitService(s).timeline(world.project_id, TODAY))["items"]}
@@ -373,7 +386,9 @@ async def test_the_demo_seed_fills_every_list_in_a_plausible_order(world: World)
         assert early.decision_date < full.decision_date
 
 
-async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_story(world: World) -> None:
+async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_story(
+    world: World, caplog: pytest.LogCaptureFixture
+) -> None:
     """Demo timeline: one before-start condition open and one confirmation away, the early start under review."""
     from app.modules.permits import evidence as permits_evidence
     from app.modules.permits.seed import seed_permits_demo
@@ -385,6 +400,8 @@ async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_
 
     async with world.factory() as s:
         second = await add_user(s, "editor")
+        # Somebody else's account on the same installation, on no team of this project.
+        stranger = await add_user(s, "manager")
         pid = await add_project(s, world.manager, [second])
         (await s.get(Project, pid)).metadata_ = {"demo_id": "permits-before-construction"}
         # Recognised by the project's state alone: a pinned model whose gate into construction is undecided.
@@ -403,8 +420,30 @@ async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_
         (await s.get(GovernanceGate, planned.id)).target_date = (NOW + timedelta(days=21)).isoformat()
         await s.commit()
     async with world.factory() as s:
-        assert (await seed_permits_demo(s, [pid]))["projects"] == 1
+        with caplog.at_level(logging.INFO, logger="app.modules.permits"):
+            assert (await seed_permits_demo(s, [pid]))["projects"] == 1
         await s.commit()
+    # A healthy install: the seeder says nothing above info.
+    assert [r.getMessage() for r in caplog.records if r.levelno > logging.INFO and "permits" in r.name] == []
+    async with world.factory() as s:
+        # Only the project's owner and its team members are on a seeded row, in any column.
+        people = {world.manager, second}
+        for model in (
+            PermitRequirement,
+            PermitApplication,
+            PermitDecision,
+            Permit,
+            PermitCondition,
+            ConditionEvidence,
+            ConditionDischarge,
+            PermitRoadmap,
+        ):
+            for row in (await s.execute(select(model).where(model.project_id == pid))).scalars():
+                for column in model.__table__.columns:
+                    value = getattr(row, column.key)
+                    assert value != stranger, (model.__name__, column.key)
+                    if column.key.endswith("_user_id") or column.key.endswith("_by"):
+                        assert value is None or value in people, (model.__name__, column.key, value)
     async with world.factory() as s:
         svc = PermitService(s)
         types = await svc._types(await svc.get_roadmap(pid))
@@ -413,7 +452,7 @@ async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_
         permits = await svc.repo.list_permits(pid)
         conditions = [c for c in await svc.repo.list_conditions(pid) if c.confirmed]
         # Nothing of the execution has happened: no early start permit, its application is with the authority.
-        assert [p.scope for p in permits] == ["full"]
+        assert sorted(p.scope for p in permits) == ["full", "preliminary"]
         early = [a for a in apps if types[reqs[a.requirement_id].permit_type_code].scope == "early_start"]
         assert [a.status for a in early] == ["under_review"]
         assert sorted(a.status for a in apps if a.kind == "new" and a not in early) == [
