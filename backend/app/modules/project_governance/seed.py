@@ -86,7 +86,7 @@ def owner_for(area_code: str, *, owner: uuid.UUID, cost_owner: uuid.UUID) -> uui
     return cost_owner if AREA_OWNERS.get(area_code) == "cost" else owner
 
 
-_TEAM_NAME = "Governance board"
+_TEAM_NAME = demo_cast.TEAM_NAME
 
 #: The frame documents of the first-gate story, with the titles a reader sees in the CDE.
 _DOCS: dict[str, DocumentPlan] = {
@@ -213,7 +213,7 @@ class _Stage:
     ) -> None:
         """Team, routes, the pinned model and an owner on every area."""
         cast, pid = self.cast, self.project_id
-        await _ensure_members(self.session, self.svc, pid, cast.owner, [cast.decider, cast.cost_owner])
+        await _ensure_members(self.session, self.svc, pid, cast.owner, [cast.cost_owner, cast.decider])
         gate_route = await _ensure_route(self.session, pid, "phase_gate", cast.decider)
         change_route = await _ensure_route(self.session, pid, "frame_change", cast.decider)
         await self.svc.set_model(

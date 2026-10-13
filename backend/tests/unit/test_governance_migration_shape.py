@@ -70,17 +70,28 @@ def _default(column: sa.Column) -> str | None:
     return arg if isinstance(arg, str) else str(arg.compile(dialect=_PG))
 
 
+def _added_by_the_hook(index: sa.Index) -> bool:
+    """An index ``app.core.pg_optimizations`` hung on the metadata, recognised by its exact name.
+
+    After any ``create_all`` in the process the hook adds its own indexes to
+    the shared metadata of the models (a foreign key column, ``project_id``
+    with ``created_at`` or ``status``), so in a full run the models carry
+    indexes no revision declares. Only the name the hook would give these very
+    columns is let through; an index of any other name has to be declared.
+    """
+    from app.core.pg_optimizations import _index_name
+
+    columns = [c.name for c in index.columns]
+    table = index.table.name
+    return index.name in (_index_name(table, columns), _index_name(table, columns, gin=True))
+
+
 def _shape(table: sa.Table) -> dict[str, Any]:
     return {
         "columns": {c.name: (c.type.compile(dialect=_PG), bool(c.nullable), _default(c)) for c in table.columns},
         "primary_key": [c.name for c in table.primary_key.columns],
-        # ``app.core.pg_optimizations`` hangs ``ix_oe_governance_<table>_...`` on the
-        # metadata of the models whenever a test before this one built a schema.
-        # No revision reproduces those; the indexes the module declares are ``ix_oe_gov_*``.
         "indexes": {
-            i.name: ([c.name for c in i.columns], bool(i.unique))
-            for i in table.indexes
-            if not str(i.name).startswith("ix_oe_governance_")
+            i.name: ([c.name for c in i.columns], bool(i.unique)) for i in table.indexes if not _added_by_the_hook(i)
         },
         "unique": {
             u.name: [c.name for c in u.columns] for u in table.constraints if isinstance(u, sa.UniqueConstraint)
@@ -107,6 +118,26 @@ def test_the_revision_and_the_model_declare_the_same(model: Any, part: str) -> N
     from_models = _shape(model.__table__)[part]
     from_revision = _shape(_tables_of_the_revision()[model.__tablename__])[part]
     assert from_revision == from_models
+
+
+def test_only_an_index_named_exactly_as_the_hook_names_it_is_let_through() -> None:
+    from app.core.pg_optimizations import _index_name
+
+    metadata = sa.MetaData()
+    table = sa.Table(
+        "oe_governance_probe",
+        metadata,
+        sa.Column("project_id", sa.Integer),
+        sa.Column("status", sa.String(20)),
+    )
+    hooked = sa.Index(_index_name(table.name, ["project_id", "status"]), table.c.project_id, table.c.status)
+    own = sa.Index("ix_oe_gov_probe_status", table.c.status)
+    same_prefix = sa.Index("ix_oe_governance_probe_made_up", table.c.status)
+    assert _added_by_the_hook(hooked) is True
+    assert _added_by_the_hook(own) is False
+    # The prefix alone is no excuse: an undeclared index of the module would hide behind it.
+    assert _added_by_the_hook(same_prefix) is False
+    assert sorted(_shape(table)["indexes"]) == ["ix_oe_gov_probe_status", "ix_oe_governance_probe_made_up"]
 
 
 def test_the_comparison_reads_real_defaults_and_targets() -> None:

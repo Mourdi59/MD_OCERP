@@ -281,6 +281,7 @@ def test_the_migration_declares_the_same_indexes_as_the_models() -> None:
     import importlib.util
 
     import app.modules.project_governance.models as models
+    from app.core.pg_optimizations import _index_name
 
     path = Path(__file__).resolve().parents[2] / "alembic" / "versions" / "v68_project_governance.py"
     spec = importlib.util.spec_from_file_location("v68_project_governance", path)
@@ -293,10 +294,14 @@ def test_the_migration_declares_the_same_indexes_as_the_models() -> None:
         for t in models.Base.metadata.tables.values()
         if t.name.startswith("oe_governance_")
         for ix in t.indexes
-        # ``app.core.pg_optimizations`` hangs ``ix_oe_governance_<table>_...`` on the
-        # metadata whenever a test before this one built a schema; no revision
-        # reproduces those, the module's own are ``ix_oe_gov_*``.
-        if not str(ix.name).startswith("ix_oe_governance_")
+        # ``app.core.pg_optimizations`` hangs its own indexes on the metadata whenever a
+        # test before this one built a schema; no revision reproduces those. Only the
+        # exact name the hook gives these columns is let through.
+        if ix.name
+        not in (
+            _index_name(t.name, [c.name for c in ix.columns]),
+            _index_name(t.name, [c.name for c in ix.columns], gin=True),
+        )
     }
     assert declared == in_models
 

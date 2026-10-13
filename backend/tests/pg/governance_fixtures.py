@@ -12,16 +12,80 @@ as they do in production.
 from __future__ import annotations
 
 import uuid
-from contextlib import asynccontextmanager
+from collections.abc import Callable, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 from datetime import date
+from typing import Any
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.project_governance import evaluator as ev
+from app.modules.project_governance import evidence as evidence_registry
 from app.modules.project_governance.models import GovernanceArea, GovernanceDocument, GovernanceGate
 from app.modules.project_governance.service import GovernanceService
+
+
+@contextmanager
+def only_evidence(*keep: str, register: Callable[[], Any] | None = None) -> Iterator[None]:
+    """Gate evidence of the named providers alone, and the registry as it was afterwards.
+
+    The evidence registry is one per process. With every module installed, the
+    blocking providers of the other modules answer ``not_met`` for a world that
+    has none of their rows, and a gate a test needs to pass is refused for a
+    reason that is not the test's. Inside this block only the wanted providers
+    answer; on leaving it the registry (and the table of evidence links) is
+    exactly what it was, also when the test failed.
+
+    Args:
+        *keep: What stays registered. Each word is matched against a
+            provider's name and against the area code or kind it registered
+            for, so ``"procurement"`` keeps every provider of that area and
+            ``"permits_due"`` keeps the one of that name. No word keeps nothing.
+        register: Called once the registry holds only ``keep``, for a module
+            whose providers are not registered yet in this process, for
+            example ``register=register_gate_evidence``. Whatever it registers
+            is removed again on leaving.
+
+    Usage::
+
+        with only_evidence("delivery_model"):
+            await decide(world, gate, "go")
+
+        @pytest.fixture(autouse=True)
+        def _own_evidence():
+            with only_evidence(register=register_gate_evidence):
+                yield
+    """
+    providers = dict(evidence_registry._REGISTRY)
+    links = dict(evidence_registry._LINK_ROUTES)
+    wanted = set(keep)
+    evidence_registry._REGISTRY.clear()
+    evidence_registry._REGISTRY.update({n: p for n, p in providers.items() if n in wanted or p.key in wanted})
+    try:
+        if register is not None:
+            register()
+        yield
+    finally:
+        evidence_registry._REGISTRY.clear()
+        evidence_registry._REGISTRY.update(providers)
+        evidence_registry._LINK_ROUTES.clear()
+        evidence_registry._LINK_ROUTES.update(links)
+
+
+@pytest.fixture
+def no_foreign_evidence() -> Iterator[None]:
+    """The fixture form of :func:`only_evidence` with nothing kept: an empty registry for one test.
+
+    Import it into the test module (``from tests.pg.governance_fixtures import
+    no_foreign_evidence  # noqa: F401``) and name it in the test, or in
+    ``pytestmark = pytest.mark.usefixtures("no_foreign_evidence")``. A test
+    that needs its own providers registers them inside; they are gone afterwards.
+    """
+    with only_evidence():
+        yield
 
 
 @dataclass

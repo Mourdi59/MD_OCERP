@@ -23,6 +23,15 @@ people, this module creates stand-ins:
 * they live on ``example.com``, which the mail guard already refuses
   (``is_reserved_mail_domain``), so a notification to one never leaves.
 
+Every seeder may count on the same three people on a demo project, all of them
+on its team before the first module seeder runs:
+
+* the owner (``Project.owner_id``);
+* ``cost``, the second person of every four-eyes step. It is the FIRST team
+  membership of the project that is not the owner, by ``created_at``, so a
+  seeder that looks for "another member" finds this one;
+* ``decider``, who decides and owns nothing, the second such membership.
+
 Nothing here raises for a part that cannot be filled: the caller reads which
 parts exist and reports the rest.
 """
@@ -42,6 +51,12 @@ logger = logging.getLogger(__name__)
 
 #: The key on ``User.metadata_`` that marks a stand-in this module created.
 CAST_TAG = "demo_cast"
+
+#: The project team the cast is put on when it is not on the project yet.
+TEAM_NAME = "Governance board"
+
+#: The order the cast joins a project in. ``cost`` first: see the module docstring.
+JOIN_ORDER: tuple[str, ...] = ("cost", "decider")
 
 
 @dataclass(frozen=True)
@@ -110,19 +125,67 @@ async def find_cast(session: AsyncSession) -> dict[str, uuid.UUID]:
     return found
 
 
-async def ensure_demo_cast(session: AsyncSession) -> dict[str, Any]:
-    """Fill every part nobody plays yet with a stand-in. Idempotent; the caller commits.
+async def join_project(session: AsyncSession, project_id: uuid.UUID) -> int:
+    """Put the cast on the team of one demo project, in :data:`JOIN_ORDER`. Idempotent.
 
-    A stand-in address that already belongs to an account this module did not
-    create is left alone, and the part is reported as blocked.
+    Memberships go through ``TeamService`` as the project owner, the way a
+    user would add a colleague. A player who is the owner, or already a member
+    of any team of the project, is left as found.
+
+    Args:
+        session: Open session; the caller commits.
+        project_id: A demo project.
+
+    Returns:
+        The number of memberships written.
+    """
+    from app.modules.projects.models import Project
+    from app.modules.teams.access import is_project_member
+    from app.modules.teams.models import Team
+    from app.modules.teams.schemas import AddMemberRequest, TeamCreate
+    from app.modules.teams.service import TeamService
+
+    project = await session.get(Project, project_id)
+    if project is None or project.owner_id is None:
+        return 0
+    players = await find_cast(session)
+    missing = [
+        players[word]
+        for word in JOIN_ORDER
+        if word in players
+        and players[word] != project.owner_id
+        and not await is_project_member(session, project_id, players[word])
+    ]
+    if not missing:
+        return 0
+    teams = TeamService(session)
+    team = (
+        await session.execute(select(Team).where(Team.project_id == project_id, Team.name == TEAM_NAME))
+    ).scalar_one_or_none()
+    if team is None:
+        team = await teams.create_team(TeamCreate(project_id=project_id, name=TEAM_NAME), actor_id=project.owner_id)
+    for user_id in missing:
+        await teams.add_member(team.id, AddMemberRequest(user_id=user_id), actor_id=project.owner_id)
+    return len(missing)
+
+
+async def ensure_demo_cast(session: AsyncSession, project_ids: list[uuid.UUID] | None = None) -> dict[str, Any]:
+    """Fill every part nobody plays yet with a stand-in and put the cast on the demo projects.
+
+    Idempotent; the caller commits. A stand-in address that already belongs to
+    an account this module did not create is left alone, and the part is
+    reported as blocked. A project the cast could not join is reported and
+    does not stop the others.
 
     Args:
         session: Open session.
+        project_ids: The demo projects whose team the cast joins.
 
     Returns:
-        ``{"present": [...], "created": [...], "blocked": [...], "ok": bool}``,
-        each list the words of the parts; ``ok`` is true when every part is
-        played after the call.
+        ``{"present": [...], "created": [...], "blocked": [...], "memberships": n,
+        "not_joined": [project ids], "ok": bool}``. The first three list the
+        words of the parts; ``ok`` is true when every part is played and every
+        project was joined.
     """
     from app.modules.users.models import User
     from app.modules.users.service import hash_password
@@ -154,7 +217,16 @@ async def ensure_demo_cast(session: AsyncSession) -> dict[str, Any]:
             )
         await session.flush()
         result["created"].append(part.word)
-    result["ok"] = not result["blocked"]
+    result["memberships"] = 0
+    result["not_joined"] = []
+    for project_id in project_ids or []:
+        try:
+            async with session.begin_nested():
+                result["memberships"] += await join_project(session, project_id)
+        except Exception:
+            logger.warning("demo cast: could not join project %s", project_id, exc_info=True)
+            result["not_joined"].append(str(project_id))
+    result["ok"] = not result["blocked"] and not result["not_joined"]
     if result["created"]:
         logger.info("demo cast: stand-ins created for %s", ", ".join(result["created"]))
     return result

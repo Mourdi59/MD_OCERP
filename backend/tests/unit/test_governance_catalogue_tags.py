@@ -41,9 +41,11 @@ ENABLING_PHASES: dict[str, dict[str, tuple[str, ...]]] = {
         "handover": ("handover",),
         "operation": ("operation",),
     },
-    # Two phases only: procurement runs in development, building and handover in execution.
+    # Two phases only, and one gate between them. Awards wait for that gate, so it is
+    # execution that enables procurement: the gate out of development is the one that
+    # releases it. A package that has to be ordered earlier is released by a commitment.
     "elf_module_framework": {
-        "procurement": ("development",),
+        "procurement": ("execution",),
         "construction_start": ("execution",),
         "handover": ("execution",),
         "operation": (),
@@ -402,3 +404,13 @@ def test_a_stand_in_of_the_demo_cast_is_not_counted_as_a_real_person() -> None:
     assert "NOT IN" in clause
     for email in DEMO_CAST_EMAILS | DEMO_ACCOUNT_EMAILS:
         assert f"'{email}'" in clause, email
+
+
+def test_the_one_gate_of_the_eleven_area_model_is_the_gate_that_releases_procurement() -> None:
+    """A module asks for the gates whose target phase enables procurement; an empty answer means never."""
+    catalogue = cat.get_catalogue("elf_module_framework")
+    enabling = set(public.phases_enabling_in(catalogue, "procurement"))
+    releasing = [g.code for g in catalogue.gates if g.to_phase in enabling]
+    assert releasing == ["development_to_execution"]
+    first = min(catalogue.phases, key=lambda p: p.order)
+    assert first.code not in enabling

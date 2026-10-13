@@ -456,9 +456,16 @@ async def test_an_installation_without_the_demo_logins_gets_a_cast_and_every_pro
     estate = await _estate(factory, "office-london", "residential-berlin", "medical-us", owner_only=True)
     pids = [v for k, v in estate.items() if k != "manager"]
     with caplog.at_level(logging.INFO):
-        cast = await demo_enrichment._demo_cast(factory)
+        cast = await demo_enrichment._demo_cast(factory, pids)
         seeded = await demo_enrichment._seed_governance(factory, pids)
-    assert cast == {"present": [], "created": ["decider", "cost"], "blocked": [], "ok": True}
+    assert cast == {
+        "present": [],
+        "created": ["decider", "cost"],
+        "blocked": [],
+        "memberships": 6,
+        "not_joined": [],
+        "ok": True,
+    }
     assert seeded["fallbacks"] == []
     assert seeded["ok"] is True
     assert _told(seeded, estate) == {
@@ -494,21 +501,52 @@ async def test_an_installation_without_the_demo_logins_gets_a_cast_and_every_pro
 
 async def test_the_cast_is_the_demo_logins_where_the_installation_has_them(factory) -> None:
     estate = await _estate(factory, "medical-us")
-    cast = await demo_enrichment._demo_cast(factory)
-    assert cast == {"present": ["decider", "cost"], "created": [], "blocked": [], "ok": True}
+    cast = await demo_enrichment._demo_cast(factory, [estate["medical-us"]])
+    assert (cast["present"], cast["created"], cast["memberships"], cast["ok"]) == (["decider", "cost"], [], 2, True)
     assert set(await _users(factory)) == {DEMO, ESTIMATOR, MANAGER}
     async with factory() as s:
         assert (await demo_cast.find_cast(s))["decider"] == estate["manager"]
 
 
 async def test_filling_the_cast_twice_creates_nobody_twice(factory) -> None:
-    await _estate(factory, "office-london", owner_only=True)
-    first = await demo_enrichment._demo_cast(factory)
+    estate = await _estate(factory, "office-london", owner_only=True)
+    pids = [estate["office-london"]]
+    first = await demo_enrichment._demo_cast(factory, pids)
     before = set(await _users(factory))
-    second = await demo_enrichment._demo_cast(factory)
-    assert first["created"] == ["decider", "cost"]
-    assert second == {"present": ["decider", "cost"], "created": [], "blocked": [], "ok": True}
+    second = await demo_enrichment._demo_cast(factory, pids)
+    assert (first["created"], first["memberships"]) == (["decider", "cost"], 2)
+    assert second == {
+        "present": ["decider", "cost"],
+        "created": [],
+        "blocked": [],
+        "memberships": 0,
+        "not_joined": [],
+        "ok": True,
+    }
     assert set(await _users(factory)) == before
+
+
+async def test_the_second_person_a_module_seeder_finds_on_the_team_is_the_cost_owner(factory) -> None:
+    """Seeders look for "the first member who is not the owner": that is never the decider."""
+    from app.modules.teams.models import Team, TeamMembership
+
+    estate = await _estate(factory, "office-london", owner_only=True)
+    pid = estate["office-london"]
+    await demo_enrichment._demo_cast(factory, [pid])
+    async with factory() as s:
+        players = await demo_cast.find_cast(s)
+        members = list(
+            (
+                await s.execute(
+                    select(TeamMembership.user_id)
+                    .join(Team, Team.id == TeamMembership.team_id)
+                    .where(Team.project_id == pid)
+                    .order_by(TeamMembership.created_at)
+                )
+            ).scalars()
+        )
+    others = [u for u in members if u != estate["manager"]]  # ``manager`` is the owner on this estate
+    assert others == [players["cost"], players["decider"]]
 
 
 async def test_an_address_that_belongs_to_somebody_is_not_taken_over(factory) -> None:
@@ -530,7 +568,7 @@ async def test_an_address_that_belongs_to_somebody_is_not_taken_over(factory) ->
             )
         )
         await s.commit()
-    cast = await demo_enrichment._demo_cast(factory)
+    cast = await demo_enrichment._demo_cast(factory, [estate["medical-us"]])
     assert (cast["blocked"], cast["created"], cast["ok"]) == (["decider"], ["cost"], False)
     users = await _users(factory)
     assert (users["demo-decider@example.com"].role, users["demo-decider@example.com"].full_name) == (
@@ -547,7 +585,7 @@ async def test_the_stand_ins_leave_with_the_last_demo_project_and_not_before(fac
     from app.modules.projects.service import ProjectService
 
     estate = await _estate(factory, "office-london", owner_only=True)
-    await demo_enrichment._demo_cast(factory)
+    await demo_enrichment._demo_cast(factory, [estate["office-london"]])
     await demo_enrichment._seed_governance(factory, [estate["office-london"]])
     async with factory() as s:
         assert await demo_cast.remove_demo_cast(s) == 0  # a demo project still names them
