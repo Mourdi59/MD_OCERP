@@ -95,10 +95,10 @@ def test_migration_matches_the_models() -> None:
         # ``app.core.pg_optimizations`` attaches its own indexes to the metadata after any ``create_all``
         # in the same process, and no revision in the repository creates those. Anything else the
         # models carry and the revision does not is a real difference.
-        beside = {n: cols for n, cols in model_idx.items() if n not in declared}
-        assert all(n == _index_name(name, cols) for n, cols in beside.items()), (name, beside)
-        for index_name, cols, _kw in idx:
-            assert model_idx[index_name] == cols, index_name
+        beside = {n: on for n, on in model_idx.items() if n not in declared}
+        assert all(n == _index_name(name, on) for n, on in beside.items()), (name, beside)
+        for index_name, index_cols, _kw in idx:
+            assert model_idx[index_name] == index_cols, index_name
         for c in model_tables[name].columns:
             mc = next(x for x in cols() + mig._base() if getattr(x, "name", None) == c.name)
             assert mc.nullable == c.nullable, f"{name}.{c.name}"
