@@ -42784,7 +42784,7 @@ const resource = {
     "quality_concept.errors.approved_by_gate": "On this project the governance gate approves the quality concept. Submit it, then decide the gate.",
     "quality_concept.errors.approver_added_evidence": "The person who attached the evidence cannot accept the proof.",
     "quality_concept.errors.approver_is_requester": "The person who requested the waiver cannot approve it.",
-    "quality_concept.errors.approver_is_submitter": "Whoever submitted the quality concept cannot approve it. Ask a second person.",
+    "quality_concept.errors.approver_is_submitter": "Whoever submitted the quality concept cannot approve it. A second person who may manage the quality concept must approve it.",
     "quality_concept.errors.binding_requires_change_request": "The concept is binding; change it through a change request of the frame document.",
     "quality_concept.errors.binding_requires_reopen": "The plan is in force. Reopen the quality concept with a reason to change it.",
     "quality_concept.errors.catalogue_retired": "This catalogue is retired and cannot be pinned any more.",

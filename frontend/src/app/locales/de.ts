@@ -50705,7 +50705,7 @@ const resource = {
     "quality_concept.errors.approved_by_gate": "In diesem Projekt gibt das Governance-Gate das Qualitätskonzept frei. Reichen Sie es ein und entscheiden Sie dann das Gate.",
     "quality_concept.errors.approver_added_evidence": "Wer den Nachweis angehängt hat, kann ihn nicht selbst anerkennen.",
     "quality_concept.errors.approver_is_requester": "Wer den Verzicht beantragt hat, kann ihn nicht genehmigen.",
-    "quality_concept.errors.approver_is_submitter": "Wer das Qualitätskonzept eingereicht hat, kann es nicht freigeben. Bitten Sie eine zweite Person.",
+    "quality_concept.errors.approver_is_submitter": "Wer das Qualitätskonzept eingereicht hat, kann es nicht freigeben. Eine zweite Person, die das Qualitätskonzept verwalten darf, muss es freigeben.",
     "quality_concept.errors.binding_requires_change_request": "Das Konzept ist verbindlich; Änderungen nur über einen Änderungsantrag des Rahmendokuments.",
     "quality_concept.errors.binding_requires_reopen": "Der Plan ist in Kraft. Öffnen Sie das Qualitätskonzept mit einer Begründung wieder, um ihn zu ändern.",
     "quality_concept.errors.catalogue_retired": "Dieser Katalog ist zurückgezogen und kann nicht mehr gewählt werden.",

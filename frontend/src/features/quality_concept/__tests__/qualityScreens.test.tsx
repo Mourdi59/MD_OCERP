@@ -840,7 +840,7 @@ describe('a project without gates', () => {
     renderPage();
     expect(await screen.findByTestId('concept-approve')).toBeDisabled();
     expect(screen.getByTestId('concept-closed-reason').textContent).toBe(
-      'Whoever submitted the quality concept cannot approve it. Ask a second person.',
+      'Whoever submitted the quality concept cannot approve it. A second person who may manage the quality concept must approve it.',
     );
   });
 
