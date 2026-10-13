@@ -18,6 +18,7 @@ import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 
+from app.core.pg_optimizations import _index_name
 from app.modules.staffing.models import ALL_MODELS
 from tests._pg import isolated_engine
 
@@ -38,6 +39,22 @@ def _load(name: str):
 
 
 _rev = _load("v77_staffing")
+_DECLARED = {name for _table, _columns, indexes in _rev._TABLES for name, _cols in indexes}
+
+
+def _compared(table: str, indexes: list[dict]) -> set[tuple[str, tuple[str, ...]]]:
+    """The indexes of ``table`` the revision answers for, each with its columns.
+
+    ``app.core.pg_optimizations`` adds indexes of its own on every create_all and no revision
+    reproduces them. Left out: an index the revision does not declare whose name is exactly the one
+    the hook gives those columns. Everything else is compared, so a stray index is a difference.
+    """
+    return {
+        (i["name"], tuple(i["column_names"]))
+        for i in indexes
+        if i.get("name")
+        and (i["name"] in _DECLARED or i["name"] != _index_name(table, [c or "" for c in i["column_names"]]))
+    }
 
 
 def _run(sync_conn, direction) -> None:
@@ -54,14 +71,7 @@ def _reflect(sync_conn) -> dict:
             continue
         out[table] = {
             "columns": {c["name"]: (str(c["type"]), c["nullable"]) for c in inspector.get_columns(table)},
-            # ``app.core.pg_optimizations`` adds ``ix_oe_staffing_<table>_...`` on
-            # every create_all and no revision reproduces them; compare only the
-            # indexes this module declares (``ix_oe_staff_*``).
-            "indexes": {
-                i["name"]
-                for i in inspector.get_indexes(table)
-                if i.get("name") and not i["name"].startswith("ix_oe_staffing_")
-            },
+            "indexes": _compared(table, inspector.get_indexes(table)),
             "unique": {u["name"] for u in inspector.get_unique_constraints(table) if u.get("name")},
             "fks": {(f["name"], (f.get("options") or {}).get("ondelete")) for f in inspector.get_foreign_keys(table)},
         }
@@ -79,9 +89,25 @@ async def _drop_all(conn) -> None:
     await conn.execute(sa.text(f"ALTER TABLE {BOOKING} DROP COLUMN IF EXISTS roster_member_id"))
 
 
-def test_revision_branches_from_governance() -> None:
+def test_revision_names_a_parent_that_exists() -> None:
     assert _rev.revision == "v77_staffing"
-    assert _rev.down_revision == "v68_project_governance"
+    # Where the revision sits in the chain is decided when the branches are joined.
+    versions = Path(__file__).resolve().parents[2] / "alembic" / "versions"
+    assert (versions / f"{_rev.down_revision}.py").exists(), _rev.down_revision
+
+
+def test_only_an_index_under_the_hooks_own_name_is_left_out_of_the_comparison() -> None:
+    table = "oe_staffing_position"
+    declared = {"name": "ix_oe_staff_position_project", "column_names": ["project_id"]}
+    hook = {"name": _index_name(table, ["project_id", "status"]), "column_names": ["project_id", "status"]}
+    # The hook's columns under another name, and a name that merely looks like the hook's: both stray.
+    renamed = {"name": "ix_oe_staff_position_by_status", "column_names": ["project_id", "status"]}
+    lookalike = {"name": "ix_oe_staffing_position_extra", "column_names": ["title"]}
+    assert _compared(table, [declared, hook, renamed, lookalike]) == {
+        ("ix_oe_staff_position_project", ("project_id",)),
+        ("ix_oe_staff_position_by_status", ("project_id", "status")),
+        ("ix_oe_staffing_position_extra", ("title",)),
+    }
 
 
 async def test_revision_reproduces_the_model_schema_up_down_up() -> None:
