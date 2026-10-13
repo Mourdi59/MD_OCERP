@@ -49,8 +49,11 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     # the search below finds it through a comment that mentions the PDF export.
     # Listing it here rather than narrowing the search keeps the search broad.
     "modules/boq/router.py": {"export_boq_pdf", "export_boq_excel"},
+    "modules/commitment_release/router.py": {"export_matrix"},
     "modules/contracts/router.py": {"export_aia_application_pdf", "export_claim_hakedis_pdf"},
     "modules/daily_diary/router.py": {"diary_pdf"},
+    "modules/delivery_model/router.py": {"export"},
+    "modules/design_management/router.py": {"export"},
     "modules/einvoice/router.py": {"generate_invoice"},
     "modules/fieldreports/router.py": {"export_pdf"},
     # ``_export_tr_einvoice`` writes XML, not a PDF; the search finds it through the
@@ -60,9 +63,8 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     "modules/forms/router.py": {"export_submission_pdf"},
     "modules/meetings/router.py": {"export_meeting_pdf", "export_minutes_pdf"},
     "modules/methodology/router.py": {"export_methodology_pdf"},
-    "modules/plant_register/router.py": {"export"},
-    "modules/delivery_model/router.py": {"export"},
     "modules/permits/router.py": {"export"},
+    "modules/plant_register/router.py": {"export"},
     "modules/procurement_concept/router.py": {"export"},
     "modules/project_governance/router.py": {"export_trail"},
     "modules/property_dev/router.py": {
@@ -71,8 +73,10 @@ RENDERING_ROUTES: dict[str, set[str]] = {
         "warranty_claim_pdf",
     },
     "modules/punchlist/router.py": {"export_pdf"},
+    "modules/quality_concept/router.py": {"export"},
     "modules/reporting/router.py": {"download_report"},
     "modules/rfi/router.py": {"export_rfi_pdf"},
+    "modules/site_logistics/router.py": {"plan_export"},
     # The one function both staffing exports answer through; it takes the locale the labels were written in.
     "modules/staffing/router.py": {"_file"},
     "modules/stakeholders/router.py": {"export_organisation", "export_register"},
