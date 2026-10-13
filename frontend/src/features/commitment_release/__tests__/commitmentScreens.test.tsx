@@ -850,6 +850,36 @@ describe('ItemPanel', () => {
     expect(screen.getByText(enT('commitment.lead_time_source.plant_item'))).toBeInTheDocument();
   });
 
+  it('a plant item the register lost is a warning on the item, and the lead time is the one typed here', () => {
+    panel({
+      lead_time_days: 45,
+      lead_time_in_force_days: 45,
+      lead_time_source: 'item',
+      plant_item_id: 'pl1',
+      plant_item_code: null,
+      plant_item_missing: true,
+    });
+    expect(screen.getByTestId('item-plant-missing').textContent).toContain('no longer knows');
+    expect(screen.getByTestId('item-lead-time').textContent).toBe('45');
+    expect(screen.getByText(enT('commitment.lead_time_source.item'))).toBeInTheDocument();
+    expect(screen.queryByTestId('item-plant-cancelled')).toBeNull();
+  });
+
+  it('a cancelled plant item is marked by its code, and its dates are said to be still in use', () => {
+    panel({
+      lead_time_in_force_days: 120,
+      lead_time_source: 'plant_item',
+      plant_item_id: 'pl1',
+      plant_item_code: 'TC-01',
+      plant_item_status: 'cancelled',
+      plant_item_cancelled: true,
+    });
+    const notice = screen.getByTestId('item-plant-cancelled');
+    expect(notice.textContent).toContain('TC-01');
+    expect(notice.textContent).toContain('still the ones used');
+    expect(screen.queryByTestId('item-plant-missing')).toBeNull();
+  });
+
   it('an answer without a lead time in force shows no lead time figure', () => {
     panel();
     expect(screen.queryByTestId('item-lead-time')).toBeNull();

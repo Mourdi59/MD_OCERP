@@ -303,6 +303,12 @@ export interface CommitmentItem {
   /** An item of the plant register this commitment pays for; its code is null once the register no longer knows it. */
   plant_item_id?: string | null;
   plant_item_code?: string | null;
+  /** The register no longer answers for the linked plant item, so the item's own lead time is in force. */
+  plant_item_missing?: boolean;
+  /** The register's own status of the linked plant item, when it serves one. */
+  plant_item_status?: string | null;
+  /** The linked plant item is cancelled in the register. Its dates are still the ones used. */
+  plant_item_cancelled?: boolean;
   decision_buffer_days: number | null;
   latest_decision_date_fixed: string | null;
   planned: { amount: string | null; currency: string; note: string | null };
