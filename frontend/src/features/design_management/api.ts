@@ -247,7 +247,8 @@ export interface Deliverable {
   id: string;
   code: string;
   title: string;
-  phase_code: string;
+  /** Null on a project without a phase model. */
+  phase_code: string | null;
   role_id: string | null;
   discipline_code: string | null;
   form_code: string | null;
@@ -406,7 +407,7 @@ export interface Review {
   id: string;
   code: string;
   title: string;
-  phase_code: string;
+  phase_code: string | null;
   deliverable_ids: string[];
   reviewer_role_ids: string[];
   state: ReviewState;
@@ -736,7 +737,7 @@ export function listDeliverables(projectId: string): Promise<Deliverable[]> {
 export interface DeliverableInput {
   code?: string;
   title?: string;
-  phase_code?: string;
+  phase_code?: string | null;
   role_id?: string | null;
   discipline_code?: string | null;
   form_code?: string | null;
@@ -914,7 +915,7 @@ export function listReviews(projectId: string): Promise<Review[]> {
 export interface ReviewInput {
   code?: string;
   title?: string;
-  phase_code: string;
+  phase_code?: string | null;
   deliverable_ids: string[];
   reviewer_role_ids: string[];
 }

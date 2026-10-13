@@ -38,7 +38,7 @@ import {
   ToneBadge,
   deliverableOptions,
   hasRows,
-  phaseOptions,
+  phaseField,
   roleOptions,
   roleTitle,
   type DesignContext,
@@ -119,9 +119,7 @@ export function ReviewsPanel({ ctx }: { ctx: DesignContext }) {
 
   const createFields: FieldSpec[] = [
     { name: 'title', label: ui(t, 'design.ui.reviews.review_title'), type: 'text', required: true },
-    phases.length > 0
-      ? { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'select', required: true, options: phaseOptions(ctx) }
-      : { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'text', required: true },
+    phaseField(ctx, t, true),
     { name: 'deliverable_ids', label: ui(t, 'design.ui.reviews.lines'), type: 'multi', options: deliverableOptions(ctx) },
     { name: 'reviewer_role_ids', label: ui(t, 'design.ui.reviews.reviewers'), type: 'multi', options: roleOptions(ctx) },
     { name: 'code', label: ui(t, 'design.ui.field.code'), type: 'text', hint: ui(t, 'design.ui.field.code_hint') },
@@ -229,7 +227,7 @@ export function ReviewsPanel({ ctx }: { ctx: DesignContext }) {
             createReview(ctx.projectId, {
               ...(str(values, 'code') ? { code: str(values, 'code') } : {}),
               title: str(values, 'title'),
-              phase_code: str(values, 'phase_code'),
+              ...(str(values, 'phase_code') ? { phase_code: str(values, 'phase_code') } : {}),
               deliverable_ids: list(values, 'deliverable_ids'),
               reviewer_role_ids: list(values, 'reviewer_role_ids'),
             })

@@ -130,7 +130,7 @@ export function FormDialog({
   };
 
   const control = (f: FieldSpec, id: string) => {
-    const common = { id, 'data-testid': `field-${f.name}` };
+    const common = { id, 'data-testid': `field-${f.name}`, 'aria-required': f.required || undefined };
     switch (f.type) {
       case 'textarea':
         return <textarea {...common} rows={3} className={CONTROL} value={str(values, f.name)} onChange={(e) => set(f.name, e.target.value)} />;

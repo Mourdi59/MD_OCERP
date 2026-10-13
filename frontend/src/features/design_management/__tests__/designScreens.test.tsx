@@ -210,8 +210,17 @@ describe('approval points', () => {
     }));
     wrap(<SchedulePanel ctx={context({ setup: setup({ phases: [], gates_in_use: false }) })} />);
     fireEvent.click(await screen.findByTestId('line-add'));
-    expect((await screen.findByTestId('field-phase_code')).tagName).toBe('INPUT');
-    fireEvent.click(screen.getByText('Cancel'));
+    const phase = await screen.findByTestId('field-phase_code');
+    expect(phase.tagName).toBe('INPUT');
+    expect(phase).not.toBeRequired();
+    expect(screen.getByText('This project does not use gates, so a phase is optional.')).toBeInTheDocument();
+    // a line is saved without a phase: nothing is sent for it
+    mocked.createDeliverable.mockResolvedValue(deliverable({ phase_code: null }));
+    fireEvent.change(screen.getByTestId('field-title'), { target: { value: 'Floor plans' } });
+    fireEvent.click(screen.getByTestId('form-submit'));
+    await waitFor(() => expect(mocked.createDeliverable).toHaveBeenCalled());
+    expect(mocked.createDeliverable.mock.calls[0]![1]).not.toHaveProperty('phase_code');
+    await waitFor(() => expect(screen.queryByTestId('field-title')).toBeNull());
     fireEvent.click(screen.getByTestId('point-add'));
     expect(await screen.findByText('This project does not use gates.')).toBeInTheDocument();
     expect((await screen.findByTestId('field-phase_code')).tagName).toBe('INPUT');
@@ -230,6 +239,9 @@ describe('approval points', () => {
     expect(await screen.findByTestId('field-governance_gate_id')).toHaveTextContent('Brief to concept');
     fireEvent.click(screen.getByText('Cancel'));
     fireEvent.click(screen.getByTestId('line-add'));
+    // with a phase model the phase is one of its phases and the form insists on it
+    expect(screen.getByTestId('field-phase_code').tagName).toBe('SELECT');
+    expect(screen.getByTestId('field-phase_code')).toBeRequired();
     // the pinned scheme has no form list, so the schedule line form has no such field
     expect(screen.queryByTestId('field-form_code')).toBeNull();
   });

@@ -27,7 +27,7 @@ import {
   type NumberIssue,
   type RenumberRow,
 } from './api';
-import { PanelHeader, phaseOptions, roleOptions, wbsOptions, type DesignContext } from './DesignBits';
+import { PanelHeader, phaseField, roleOptions, wbsOptions, type DesignContext } from './DesignBits';
 import { NumberPreviewBox, numberPartFields, numberRequest } from './NumberForm';
 import { FormDialog, type FieldSpec } from './FormDialog';
 import { refusalText } from './hooks';
@@ -72,12 +72,9 @@ export function NumberingTools({ ctx }: { ctx: DesignContext }) {
     </ul>
   );
 
-  const phases = ctx.setup.phases;
   const reserveFields: FieldSpec[] = [
     { name: 'role_id', label: ui(t, 'design.ui.drawings.by'), type: 'select', options: roleOptions(ctx) },
-    phases.length > 0
-      ? { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'select', options: phaseOptions(ctx) }
-      : { name: 'phase_code', label: ui(t, 'design.ui.field.phase'), type: 'text' },
+    phaseField(ctx, t),
     { name: 'wbs_node_id', label: ui(t, 'design.ui.field.wbs'), type: 'select', options: wbsOptions(ctx) },
     { name: 'sheet_size', label: ui(t, 'design.ui.drawings.sheet_size'), type: 'text' },
     ...numberPartFields(ctx.labels, typedFields(scheme)),
