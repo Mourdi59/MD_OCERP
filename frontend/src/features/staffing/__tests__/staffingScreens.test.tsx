@@ -460,7 +460,11 @@ describe('read views', () => {
     const summary = screen.getAllByTestId('compliance-summary-row');
     expect(summary).toHaveLength(2);
     expect(within(summary[0]!).getByText('Employment contract')).toBeInTheDocument();
-    expect([...summary[0]!.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['1', '0', '0', '1', '0']);
+    expect([...summary[0]!.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['6', '5', '0', '0', '1', '0']);
+    // A row whose people all stand the same carries the number of people and no split per state.
+    expect(within(summary[1]!).getByTestId('compliance-summary-people')).toHaveTextContent('5');
+    expect(within(summary[1]!).getByTestId('compliance-summary-uniform')).toHaveTextContent(en.translation['staffing.compliance.summary_uniform']!);
+    expect(summary[1]!.querySelectorAll('td[data-state]')).toHaveLength(0);
     expect(screen.getByTestId('compliance-summary')).not.toHaveTextContent('Health certificate');
     // The counts are of the people held back, never presented as project totals.
     expect(screen.getByTestId('compliance-summary')).toHaveTextContent(en.translation['staffing.compliance.summary_title']!);

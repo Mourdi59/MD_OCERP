@@ -50384,6 +50384,8 @@ const resource = {
     "staffing.pva.empty_title": "Noch nichts zu vergleichen",
     "staffing.pva.empty_body": "Eine Stelle wird verglichen, sobald sie ein Startdatum hat. Geplante Tage ergeben sich aus ihrem Pensum, gebuchte Tage aus den Baustellen-Stundenzetteln der zugeordneten Personen.",
     "staffing.pva.intro": "Geplante Personentage bis heute gegenüber den auf Baustellen-Stundenzetteln gebuchten Tagen, {{hours}} Stunden zählen als ein Tag. Nur zur Ansicht.",
+    "staffing.compliance.summary_uniform": "Nicht nach Stand aufgeteilt: alle haben denselben Stand.",
+    "staffing.compliance.summary_people": "Personen",
     "staffing.evidence.nothing_due": "Für dieses Gate ist aus dem Personalplan nichts fällig",
     "staffing.evidence.key_roles_unresolved": "Schlüsselrollen warten auf etwas, das keine Phase dieses Modells freigibt, daher kann kein Gate sie prüfen. Die Voraussetzung dieser Stellen ändern oder dies bei der Entscheidung bestätigen.",
     "staffing.evidence.key_roles_open": "Schlüsselrollen, die dieses Gate nicht verlangt, sind noch unbesetzt. Die Personen benennen oder das Risiko bei der Entscheidung annehmen.",

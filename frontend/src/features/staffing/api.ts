@@ -273,12 +273,15 @@ export interface ComplianceRow {
 /** Counts per document kind over the whole project: no person, no role, no kind of a special category. */
 export interface ComplianceSummaryRow {
   document_kind: string;
+  /** How many of the people held back must hold this document. */
   required: number;
-  valid: number;
-  expiring: number;
-  expired: number;
-  missing: number;
-  waived: number;
+  /** True when all of them stand in the same state: the server then sends no count per state. */
+  uniform?: boolean;
+  valid?: number;
+  expiring?: number;
+  expired?: number;
+  missing?: number;
+  waived?: number;
 }
 
 export interface Compliance {
