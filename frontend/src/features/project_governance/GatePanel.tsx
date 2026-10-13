@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -43,6 +44,7 @@ import {
   submitGate,
   type CheckStatus,
   type DecisionInput,
+  type EvidenceState,
   type GateArea,
   type GateDecision,
   type GateDetail,
@@ -64,6 +66,7 @@ import {
 } from './access';
 import { DecisionDialog } from './DecisionDialog';
 import { GateConditionForm } from './GateConditionForm';
+import { ReadinessCriteria } from './ReadinessCriteria';
 import {
   CHECK_TONE,
   DOCUMENT_TONE,
@@ -83,6 +86,7 @@ import {
   catalogueIdOf,
   catalogueName,
   errorText,
+  evidenceMark,
   evidenceText,
   refusalText,
   vocab,
@@ -149,7 +153,8 @@ export function BlockerList({
   );
 }
 
-function EvidenceIcon({ state }: { state: 'met' | 'not_met' | 'unknown' }) {
+function EvidenceIcon({ state }: { state: EvidenceState }) {
+  if (state === 'warning') return <AlertTriangle size={13} className="text-[#b45309]" aria-hidden />;
   if (state === 'met') return <CheckCircle2 size={13} className="text-semantic-success" aria-hidden />;
   if (state === 'not_met') return <XCircle size={13} className="text-semantic-error" aria-hidden />;
   return <CircleDashed size={13} className="text-content-tertiary" aria-hidden />;
@@ -279,11 +284,22 @@ function AreaReadiness({
             <li key={e.code} className="flex items-start gap-1.5 text-xs text-content-secondary">
               <EvidenceIcon state={e.state} />
               <span>
-                {evidenceText(t, labels, e)}
+                {e.link?.href ? (
+                  <Link to={e.link.href} className="text-oe-blue hover:underline" data-testid="evidence-link">
+                    {evidenceText(t, labels, e)}
+                  </Link>
+                ) : (
+                  evidenceText(t, labels, e)
+                )}
                 {e.detail && <span className="text-content-tertiary"> - {e.detail}</span>}
                 {e.blocking && e.state === 'not_met' && (
                   <span className="ml-1 font-medium text-semantic-error">
                     {t('governance.project.gate.evidence_blocking', { defaultValue: 'blocking' })}
+                  </span>
+                )}
+                {e.state === 'warning' && (
+                  <span className="ml-1 font-medium text-[#b45309]" data-testid="evidence-warning">
+                    {evidenceMark(t, e.state)}
                   </span>
                 )}
                 {e.needs_acknowledgement && (
@@ -298,6 +314,16 @@ function AreaReadiness({
           ))}
         </ul>
       )}
+
+      <ReadinessCriteria
+        projectId={projectId}
+        gateId={gateId}
+        area={area}
+        labels={labels}
+        catalogueId={catalogueId}
+        personName={personName}
+        onChanged={onChanged}
+      />
 
       <div className="mt-2">
         {!editing ? (
@@ -417,7 +443,8 @@ export function SnapshotView({
           <ul className="mt-0.5 space-y-0.5">
             {acknowledged.map((e) => (
               <li key={[e.area_code, e.code].join(' ')}>
-                {catalogueName(labels, { kind: 'area', code: e.area_code, catalogueId })}: {evidenceText(t, labels, e)}
+                {catalogueName(labels, { kind: 'area', code: e.area_code, catalogueId })}: {evidenceText(t, labels, e)}{' '}
+                <span className="text-content-tertiary">({evidenceMark(t, e.state)})</span>
               </li>
             ))}
           </ul>

@@ -33,6 +33,20 @@ DEMO_ACCOUNT_EMAILS: frozenset[str] = frozenset(
 )
 
 
+#: Stand-ins ``app.core.demo_cast`` creates on an installation without the
+#: demo logins, so that a demo project has somebody besides its owner. They are
+#: demo data like the logins above, and that is all they share with them: a
+#: stand-in is NOT in ``DEMO_ACCOUNT_EMAILS``, because that set is the
+#: whitelist of the passwordless sign-in. Whoever asks "has a real person ever
+#: registered here" has to leave out both sets.
+DEMO_CAST_EMAILS: frozenset[str] = frozenset(
+    {
+        "demo-decider@example.com",
+        "demo-cost-owner@example.com",
+    }
+)
+
+
 #: The account that owns the showcase projects. Seeders used to take the first
 #: row with role ``admin``, which on a live installation is a real person, and
 #: could be one whose account had been deactivated.
