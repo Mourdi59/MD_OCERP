@@ -220,6 +220,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "change_catalogue",
         "close_reopening",
         "reopen",
+        "approve",
         "comparison",
         "list_options",
         "add_option",
