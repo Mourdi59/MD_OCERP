@@ -207,6 +207,21 @@ export function OfiPanel({ projectId, model, items, packages, labels, onChanged 
                         {t('delivery_model.ui.ofi.expected', { defaultValue: 'Expected {{date}}', date: fmtDate(item.expected_delivery_date) })}
                       </span>
                     )}
+                    {item.latest_order_date && (
+                      <span className="block" data-testid="ofi-order-by">
+                        {t('delivery_model.ui.ofi.order_by', { defaultValue: 'Order by {{date}}', date: fmtDate(item.latest_order_date) })}
+                      </span>
+                    )}
+                    {item.plant_item && (
+                      <span className={item.plant_item.missing ? 'block text-semantic-warning' : 'block'} data-testid="ofi-plant-item">
+                        {item.plant_item.missing
+                          ? t('delivery_model.ui.ofi.plant_missing', {
+                              defaultValue: 'Linked plant item {{code}} was not found in the plant register',
+                              code: item.plant_item.code,
+                            })
+                          : t('delivery_model.ui.ofi.plant_linked', { defaultValue: 'Plant item {{code}}', code: item.plant_item.code })}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     <ToneBadge tone={OFI_TONE[item.status]} testId="ofi-status">
@@ -292,6 +307,7 @@ function draftOfItem(item: OwnerFurnishedItem | null): OfiInput {
     expected_delivery_date: item?.expected_delivery_date ?? null,
     enquiry_date: item?.enquiry_date ?? null,
     lead_time_days: item?.lead_time_days ?? null,
+    plant_item_id: item?.plant_item_id ?? null,
   };
 }
 
@@ -303,6 +319,12 @@ export function OfiDialog({ projectId, item, packages, labels, onClose, onDone }
   const [tried, setTried] = useState(false);
   const problems = ofiProblems(draft, isNew);
   const set = <K extends keyof OfiInput>(key: K, value: OfiInput[K]) => setDraft((d) => ({ ...d, [key]: value }));
+  // While the plant register answers for the item, the enquiry date and the lead time are its figures.
+  const fromRegister = item?.dates_source === 'plant_register';
+  const plantCode = item?.plant_item?.code ?? '';
+  const registerHint = fromRegister
+    ? t('delivery_model.ui.ofi.from_register', { defaultValue: 'Read from plant item {{code}} in the plant register.', code: plantCode })
+    : undefined;
 
   const save = useMutation({
     mutationFn: () => {
@@ -408,20 +430,56 @@ export function OfiDialog({ projectId, item, packages, labels, onClose, onDone }
               onChange={(e) => set('expected_delivery_date', e.target.value || null)}
             />
           </Field>
-          <Field label={t('delivery_model.ui.ofi.enquiry_date', { defaultValue: 'Enquiry sent on' })}>
-            <input type="date" className={INPUT_CLASS} value={draft.enquiry_date ?? ''} onChange={(e) => set('enquiry_date', e.target.value || null)} />
+          <Field label={t('delivery_model.ui.ofi.enquiry_date', { defaultValue: 'Enquiry sent on' })} hint={registerHint}>
+            <input
+              type="date"
+              className={INPUT_CLASS}
+              disabled={fromRegister}
+              data-testid="ofi-enquiry-date"
+              value={draft.enquiry_date ?? ''}
+              onChange={(e) => set('enquiry_date', e.target.value || null)}
+            />
           </Field>
-          <Field label={t('delivery_model.ui.ofi.lead_time', { defaultValue: 'Lead time in days' })}>
+          <Field label={t('delivery_model.ui.ofi.lead_time', { defaultValue: 'Lead time in days' })} hint={registerHint}>
             <input
               type="number"
               min={0}
               max={3650}
+              disabled={fromRegister}
               className={INPUT_CLASS}
               value={draft.lead_time_days ?? ''}
               onChange={(e) => set('lead_time_days', e.target.value === '' ? null : Math.max(0, Math.trunc(Number(e.target.value))))}
             />
           </Field>
         </div>
+        {item?.plant_item && (
+          <div className="space-y-1 rounded-lg border border-border-light p-3 text-sm" data-testid="ofi-plant-link">
+            <p className="text-content-primary">
+              {item.plant_item.missing
+                ? t('delivery_model.ui.ofi.plant_missing', {
+                    defaultValue: 'Linked plant item {{code}} was not found in the plant register',
+                    code: item.plant_item.code,
+                  })
+                : t('delivery_model.ui.ofi.plant_linked', { defaultValue: 'Plant item {{code}}', code: item.plant_item.code })}
+            </p>
+            {item.latest_order_date && (
+              <p className="text-xs text-content-secondary">
+                {t('delivery_model.ui.ofi.order_by', { defaultValue: 'Order by {{date}}', date: fmtDate(item.latest_order_date) })}
+              </p>
+            )}
+            <label className="flex items-center gap-2 text-xs text-content-secondary">
+              <input
+                type="checkbox"
+                data-testid="ofi-plant-unlink"
+                checked={draft.plant_item_id === null}
+                onChange={(e) => set('plant_item_id', e.target.checked ? null : (item.plant_item_id ?? null))}
+              />
+              {t('delivery_model.ui.ofi.plant_unlink', {
+                defaultValue: 'Remove the link to the plant item. The dates are then kept on this item.',
+              })}
+            </label>
+          </div>
+        )}
         {tried && <ProblemList problems={problems} testId="ofi-problems" />}
       </div>
     </WideModal>

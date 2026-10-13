@@ -380,6 +380,18 @@ export interface OwnerFurnishedItem {
   expected_delivery_date: string | null;
   enquiry_date: string | null;
   lead_time_days: number | null;
+  /** The plant register item this one is, when it is linked to one. */
+  plant_item_id?: string | null;
+  /** null when unlinked. `missing`: the link is set but the plant register does not answer for it. */
+  plant_item?: { code: string; missing: boolean } | null;
+  /**
+   * Whose figures `enquiry_date`, `lead_time_days` and `latest_order_date` are.
+   * With `plant_register` they are read from the linked plant item and cannot
+   * be edited here.
+   */
+  dates_source?: 'own' | 'plant_register';
+  /** Only the plant register has one; null for every unlinked item. */
+  latest_order_date?: string | null;
   status: OfiStatus;
   findings: Finding[];
 }
@@ -394,6 +406,8 @@ export interface OfiInput {
   expected_delivery_date: string | null;
   enquiry_date: string | null;
   lead_time_days: number | null;
+  /** null on an update removes the link to the plant item. */
+  plant_item_id?: string | null;
 }
 
 export interface Readiness {

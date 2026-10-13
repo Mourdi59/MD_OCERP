@@ -221,6 +221,7 @@ class OfiIn(_In):
     enquiry_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     lead_time_days: int | None = Field(default=None, ge=0, le=3650)
     schedule_activity_id: uuid.UUID | None = None
+    plant_item_id: uuid.UUID | None = None
 
 
 class OfiPatch(_In):
@@ -233,6 +234,7 @@ class OfiPatch(_In):
     enquiry_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     lead_time_days: int | None = Field(default=None, ge=0, le=3650)
     schedule_activity_id: uuid.UUID | None = None
+    plant_item_id: uuid.UUID | None = None
 
     @model_validator(mode="after")
     def _no_nulls(self) -> OfiPatch:
@@ -245,6 +247,7 @@ class OfiPatch(_In):
                 "enquiry_date",
                 "lead_time_days",
                 "schedule_activity_id",
+                "plant_item_id",
             ),
         )
         return self

@@ -20,6 +20,7 @@ vi.mock('../api', async (importOriginal) => {
   return {
     ...actual,
     closeReopening: vi.fn(),
+    updateOfi: vi.fn(),
     proposeDecision: vi.fn(),
     putScores: vi.fn(),
     patchWeights: vi.fn(),
@@ -478,6 +479,43 @@ describe('OfiPanel', () => {
     expect(advance).toHaveTextContent('Mark as ordered');
     fireEvent.click(advance);
     await waitFor(() => expect(mocked.setOfiStatus).toHaveBeenCalledWith('p1', 'chiller', 'ordered'));
+  });
+
+  const linked = ofi('pump', {
+    description: 'Fire pump',
+    plant_item_id: 'pl1',
+    plant_item: { code: 'PL-014', missing: false },
+    dates_source: 'plant_register',
+    enquiry_date: '2026-11-02',
+    lead_time_days: 84,
+    latest_order_date: '2026-12-01',
+  });
+
+  it('an item linked to a plant item shows the register figures and where they come from', () => {
+    wrap(<OfiPanel {...props} items={[linked, items[0]!]} />);
+    const rows = screen.getAllByTestId('ofi-row');
+    expect(within(rows[0]!).getByTestId('ofi-plant-item')).toHaveTextContent('Plant item PL-014');
+    expect(within(rows[0]!).getByTestId('ofi-order-by')).toBeInTheDocument();
+    // an unlinked item has neither, and renders nothing for them
+    expect(within(rows[1]!).queryByTestId('ofi-plant-item')).toBeNull();
+    expect(within(rows[1]!).queryByTestId('ofi-order-by')).toBeNull();
+  });
+
+  it('says so when the linked plant item is not found', () => {
+    const gone = { ...linked, plant_item: { code: 'PL-014', missing: true }, dates_source: 'own' as const, latest_order_date: null };
+    wrap(<OfiPanel {...props} items={[gone]} />);
+    expect(screen.getByTestId('ofi-plant-item')).toHaveTextContent('Linked plant item PL-014 was not found');
+  });
+
+  it('the register figures cannot be edited here, and removing the link sends an explicit null', async () => {
+    mocked.updateOfi.mockResolvedValue(linked);
+    wrap(<OfiPanel {...props} items={[linked]} />);
+    fireEvent.click(screen.getByTestId('ofi-edit'));
+    expect(screen.getByTestId('ofi-enquiry-date')).toBeDisabled();
+    expect(screen.getByTestId('ofi-dialog')).toHaveTextContent('Read from plant item PL-014 in the plant register.');
+    fireEvent.click(screen.getByTestId('ofi-plant-unlink'));
+    fireEvent.click(screen.getByTestId('ofi-send'));
+    await waitFor(() => expect(mocked.updateOfi).toHaveBeenCalledWith('p1', 'pump', { plant_item_id: null }));
   });
 
   it('an empty list says what belongs here and offers the first item', () => {

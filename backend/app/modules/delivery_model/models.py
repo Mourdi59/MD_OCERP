@@ -269,8 +269,11 @@ class OwnerFurnishedItem(Base):
     schedule_activity_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     need_by_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
     expected_delivery_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Own figures: in force only while no plant item is linked (see ``plant.py``).
     enquiry_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
     lead_time_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The plant item this is, when the plant register holds it too. Soft id, checked through the register's port.
+    plant_item_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="identified", server_default="identified")
 
 

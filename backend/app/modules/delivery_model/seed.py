@@ -31,6 +31,11 @@ pre-construction story: nothing delivered, owner-furnished items needed after
 the start of construction, the main package needed at award. Any other project
 keeps the running-project story. Offsets are days from the seed day.
 
+The plant register seeds after this module, because its routes read the
+package plan. So the owner-furnished item that is also a plant item is linked
+in a second step, :func:`link_demo_plant_items`, which the demo run calls after
+the plant register has seeded. Without the register it links nothing.
+
 Only projects carrying the demo marker are touched; a project whose model
 already compares forms is skipped, so a re-run never duplicates. A model that
 is pinned and still empty is filled on the catalogue it pins. Runs after the governance,
@@ -62,6 +67,9 @@ START = 190
 
 # Reasons a project has no proposal that are a legal state of the product, not a failure of this seed.
 NOT_OURS = frozenset({"governance_model_missing"})
+
+# Seeded owner-furnished item -> code of the demo plant item that is the same thing. The furniture is no plant.
+DEMO_PLANT_LINKS = {"OFI-01": "PL-010"}
 
 RATIONALE_CHOSEN = (
     "Design and build scores highest: the owner has no in-house design team, wants one point of "
@@ -144,6 +152,44 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
             totals[k] += v
     totals["ok"] = not totals["failed"] and all(r["reason"] in NOT_OURS for r in totals["no_decision"])
     return totals
+
+
+async def link_demo_plant_items(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, Any]:
+    """Link the seeded owner-furnished items to the demo plant items that are the same thing.
+
+    Runs after the plant register's demo seed; the caller commits. An item is
+    linked once: a run that finds it linked, finds no such plant item, or finds
+    no plant register changes nothing. Returns ``{"linked": n}``.
+    """
+    from app.core.demo_marker import demo_id_of
+    from app.modules.delivery_model import plant
+    from app.modules.delivery_model.repository import DeliveryModelRepository
+    from app.modules.delivery_model.service import DeliveryModelService
+    from app.modules.projects.models import Project
+
+    linked = 0
+    ids = list(project_ids)
+    if not ids or not plant.installed():
+        return {"linked": linked}
+    rows = (
+        await session.execute(select(Project.id, Project.owner_id, Project.metadata_).where(Project.id.in_(ids)))
+    ).all()
+    for pid, owner, meta in rows:
+        if not demo_id_of(meta):
+            continue
+        items = await DeliveryModelRepository(session).ofis(pid)
+        taken = {i.plant_item_id for i in items if i.plant_item_id is not None}
+        for item in items:
+            code = DEMO_PLANT_LINKS.get(item.code)
+            if code is None or item.plant_item_id is not None:
+                continue
+            plant_item_id = await plant.plant_item_id_by_code(session, pid, code)
+            if plant_item_id is None or plant_item_id in taken:
+                continue
+            await DeliveryModelService(session).update_ofi(pid, item.id, {"plant_item_id": plant_item_id}, owner)
+            taken.add(plant_item_id)
+            linked += 1
+    return {"linked": linked}
 
 
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, Any]:
