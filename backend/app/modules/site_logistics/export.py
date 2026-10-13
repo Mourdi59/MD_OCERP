@@ -100,6 +100,17 @@ def register_document(
     )
 
 
+def written_locale(requested: str | None) -> str:
+    """The language a register is actually written in for a requested locale.
+
+    The message bundle answers a locale it does not ship in English, so that is
+    what the response has to declare, not what the reader asked for.
+    """
+    from app.modules.site_logistics.messages import available_locales
+
+    return requested if requested and requested in available_locales() else "en"
+
+
 def render(
     register: str, rows: Sequence[dict[str, Any]], *, project_name: str, locale: str, as_of: str, fmt: str
 ) -> bytes:

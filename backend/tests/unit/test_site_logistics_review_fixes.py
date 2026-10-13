@@ -782,3 +782,97 @@ def test_evidence_items_open_the_plan_of_their_project() -> None:
     assert gov.evidence_link_href(evidence.LINK_KIND, str(pid), pid) is None
     evidence.register_gate_evidence()
     assert gov.evidence_link_href(evidence.LINK_KIND, str(pid), pid) == f"/projects/{pid}/site-logistics"
+
+
+# ── integration verdict of 2026-10-13 ───────────────────────────────────────
+
+
+def test_no_table_of_the_previous_release_points_at_a_new_table_by_foreign_key() -> None:
+    """The upgrade lane: the boot heal alters existing tables before the new ones exist.
+
+    A foreign key from the gate, laydown zone or delivery table (all three shipped
+    in the previous release) to a table this release adds is refused on every
+    upgraded install and leaves ``schema_heal_incomplete`` true.
+    """
+    from app.modules.site_logistics import models as m
+
+    shipped_before = {m.Gate.__tablename__, m.LaydownZone.__tablename__, m.DeliveryBooking.__tablename__}
+    line_table = m.DeliveryLine.__tablename__
+    for model in (m.Gate, m.LaydownZone, m.DeliveryBooking):
+        for fk in model.__table__.foreign_key_constraints:
+            target = fk.elements[0].column.table.name
+            assert not target.startswith("oe_site_logistics_") or target in shipped_before | {line_table}, (
+                model.__tablename__,
+                fk.name,
+                target,
+            )
+    assert not m.LaydownZone.__table__.c.site_area_id.foreign_keys
+    assert not m.DeliveryBooking.__table__.c.transport_id.foreign_keys
+    migration = (MODULE.parents[2] / "alembic" / "versions" / "v78_site_logistics_ext.py").read_text(encoding="utf-8")
+    assert "fk_oe_site_zone_area" not in migration and "fk_oe_site_delivery_transport" not in migration
+
+
+def test_deleting_an_area_or_a_transport_unlinks_what_pointed_at_it() -> None:
+    import inspect
+
+    area = inspect.getsource(plan_service.LogisticsPlanService.delete_area)
+    transport = inspect.getsource(plan_service.LogisticsPlanService.delete_transport)
+    assert "update(LaydownZone)" in area and "site_area_id=None" in area
+    assert "update(DeliveryBooking)" in transport and "transport_id=None" in transport
+
+
+def test_the_plan_drawing_is_a_constrained_document_reference() -> None:
+    from app.modules.site_logistics import models as m
+
+    (fk,) = m.ExpansionStage.__table__.c.plan_document_id.foreign_keys
+    assert fk.target_fullname == "oe_documents_document.id"
+    assert fk.ondelete == "SET NULL"
+
+
+@pytest.mark.parametrize("bad", ["1", "1.5", None, True, [1], {"x": 1}])
+def test_a_coordinate_is_a_number_and_nothing_else(bad) -> None:
+    from app.modules.site_logistics.geometry import GeometryError, polygon_area_m2, validate_point, validate_route
+
+    with pytest.raises(GeometryError):
+        validate_point({"type": "Point", "coordinates": [bad, 1]})
+    with pytest.raises(GeometryError):
+        validate_route({"type": "LineString", "coordinates": [[0, 0], [1, bad]]})
+    with pytest.raises(GeometryError):
+        polygon_area_m2({"type": "Polygon", "coordinates": [[[0, 0], [10, 0], [10, bad], [0, 0]]]})
+
+
+def _ring(x0: float, y0: float, w: float, h: float) -> list[list[float]]:
+    return [[x0, y0], [x0 + w, y0], [x0 + w, y0 + h], [x0, y0 + h], [x0, y0]]
+
+
+def test_a_hole_lies_inside_its_polygon() -> None:
+    from decimal import Decimal
+
+    from app.modules.site_logistics.geometry import GeometryError, polygon_area_m2
+
+    outer = _ring(0, 0, 10, 10)
+
+    def area(*holes: list[list[float]]) -> Decimal:
+        return polygon_area_m2({"type": "Polygon", "coordinates": [outer, *holes]})
+
+    assert area(_ring(2, 2, 4, 4)) == Decimal("84.00")
+    # A hole that shares an edge with the outline is still inside it.
+    assert area(_ring(0, 0, 4, 4)) == Decimal("84.00")
+    for hole in (_ring(20, 20, 4, 4), _ring(8, 8, 4, 4), _ring(-1, -1, 12, 12)):
+        # Away from the polygon, half out of it, and around it.
+        with pytest.raises(GeometryError, match="geometry_bad_hole"):
+            area(hole)
+    # Every corner on the outline and one edge outside it: a notch the corners do not show.
+    notched = [[0, 0], [10, 0], [10, 10], [5, 5], [0, 10], [0, 0]]
+    with pytest.raises(GeometryError, match="geometry_bad_hole"):
+        polygon_area_m2({"type": "Polygon", "coordinates": [notched, [[0, 10], [10, 10], [5, 5], [0, 10]]]})
+
+
+def test_the_export_declares_the_language_it_was_written_in() -> None:
+    from app.modules.site_logistics import export
+
+    assert export.written_locale("de") == "de"
+    assert export.written_locale("en") == "en"
+    # A language the module has no texts for is written in English, and says so.
+    assert export.written_locale("fr") == "en"
+    assert export.written_locale(None) == "en"

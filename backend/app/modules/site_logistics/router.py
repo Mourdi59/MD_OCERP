@@ -1759,7 +1759,7 @@ async def plan_export(
         data["complaints"] = [complaint_out(c) for c in await svc._list(NeighbourIssue, project_id)]
         data["coordination"] = [coordination_out(e) for e in await svc._list(CoordinationEntry, project_id)]
     project = await session.get(Project, project_id)
-    locale = get_locale() or "en"
+    locale = plan_export_mod.written_locale(get_locale())
     body = plan_export_mod.render(
         register,
         plan_export_mod.register_rows(register, data),
@@ -1772,7 +1772,11 @@ async def plan_export(
     return Response(
         content=body,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="logistics_{register}.{fmt}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="logistics_{register}.{fmt}"',
+            # The language the register was written in, which is not always the one asked for.
+            "Content-Language": locale,
+        },
     )
 
 

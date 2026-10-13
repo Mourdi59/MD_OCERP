@@ -132,7 +132,13 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple]]] = [
             _date("from_date"),
             _date("to_date"),
             _str("state", 20, "planned"),
-            _guid("plan_document_id"),
+            _fk(
+                "plan_document_id",
+                "oe_documents_document.id",
+                "fk_oe_site_stage_plan_document",
+                ondelete="SET NULL",
+                nullable=True,
+            ),
             _num("plan_metres_per_pixel", 12, 6),
             _json("plan_origin_px", nullable=True),
             sa.UniqueConstraint("project_id", "code", name="uq_oe_site_stage_code"),
@@ -405,6 +411,8 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple]]] = [
 ]
 
 # New nullable columns on the three existing tables: (table, column factory, fk, index).
+# The two links into new tables (zone to area, delivery to transport) carry no foreign key:
+# the models declare none, see ``LaydownZone.site_area_id`` for the reason.
 _EXTEND: list[tuple[str, Callable[[], sa.Column], tuple[str, str, str] | None, str | None]] = [
     ("oe_site_logistics_gate", lambda: _nstr("access_kind", 40), None, None),
     ("oe_site_logistics_gate", lambda: _num("max_axle_load_t", 10, 2), None, None),
@@ -416,13 +424,13 @@ _EXTEND: list[tuple[str, Callable[[], sa.Column], tuple[str, str, str] | None, s
     (
         "oe_site_logistics_laydown_zone",
         lambda: _guid("site_area_id"),
-        ("fk_oe_site_zone_area", "oe_site_logistics_area", "SET NULL"),
+        None,
         "ix_oe_site_logistics_laydown_zone_site_area_id",
     ),
     (
         "oe_site_logistics_delivery",
         lambda: _guid("transport_id"),
-        ("fk_oe_site_delivery_transport", "oe_site_logistics_transport", "SET NULL"),
+        None,
         "ix_oe_site_logistics_delivery_transport_id",
     ),
     ("oe_site_logistics_delivery", lambda: _str("direction", 10, "inbound"), None, None),

@@ -341,7 +341,7 @@ class SiteLogisticsService:
         for key in ("window_start", "window_end", "status", "direction"):
             if key in fields and fields[key] is None:
                 # These columns are NOT NULL: null is not "leave it", it is a wrong value.
-                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"field_required: {key}")
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"field_required: {key}")
         if "window_start" in fields:
             fields["window_start"] = _ensure_aware(fields["window_start"], tz)
         if "window_end" in fields:

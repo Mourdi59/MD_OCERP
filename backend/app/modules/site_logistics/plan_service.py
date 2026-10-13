@@ -30,7 +30,7 @@ from datetime import UTC, date, datetime, timedelta, tzinfo
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1294,6 +1294,12 @@ class LogisticsPlanService:
 
     async def delete_area(self, project_id: uuid.UUID, area_id: Any, actor_id: Any) -> None:
         row = await self._get(SiteArea, project_id, area_id, "area_not_found", lock=True)
+        # The zones that operate in this area stay; they lose the link (no database key does it).
+        await self.session.execute(
+            update(LaydownZone)
+            .where(LaydownZone.project_id == project_id, LaydownZone.site_area_id == row.id)
+            .values(site_area_id=None)
+        )
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_area", row.id, "area_deleted")
@@ -2002,6 +2008,12 @@ class LogisticsPlanService:
     async def delete_transport(self, project_id: uuid.UUID, transport_id: Any, actor_id: Any) -> None:
         row = await self._get(Transport, project_id, transport_id, "transport_not_found", lock=True)
         self._guard_transport_delete(row)
+        # The gate slots booked for this transport stay; they lose the link (no database key does it).
+        await self.session.execute(
+            update(DeliveryBooking)
+            .where(DeliveryBooking.project_id == project_id, DeliveryBooking.transport_id == row.id)
+            .values(transport_id=None)
+        )
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_transport", row.id, "transport_deleted")
