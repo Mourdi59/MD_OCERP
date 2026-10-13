@@ -50398,6 +50398,7 @@ const resource = {
     "design.ui.schedule.gate": "Meilenstein der Projektsteuerung",
     "design.ui.field.phase_no_gates": "Dieses Projekt arbeitet ohne Meilensteine, eine Phase ist daher freiwillig.",
     "design.ui.no_gates": "Dieses Projekt arbeitet ohne Meilensteine.",
+    "design.ui.overview.whole_project": "Gesamtes Projekt",
     "design.ui.overview.no_frame_document": "Dieses Projekt arbeitet ohne Meilensteine, daher gibt es kein Rahmendokument der Planung, unter dem die Register abgelegt werden.",
     "design.ui.schedule.form": "Dokumentart",
     "design.ui.drawings.title": "Planliste",

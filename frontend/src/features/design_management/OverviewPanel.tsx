@@ -64,9 +64,9 @@ export function OverviewPanel({ ctx, onOpenGovernance }: { ctx: DesignContext; o
       {hasRows(readiness) && (
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="readiness-list">
           {(readiness.data ?? []).map((phase) => (
-            <li key={phase.code} className="rounded-lg border border-border-light p-3" data-testid="readiness-card" data-met={phase.met}>
+            <li key={phase.code ?? 'project'} className="rounded-lg border border-border-light p-3" data-testid="readiness-card" data-met={phase.met}>
               <div className="flex items-center justify-between gap-2">
-                <h3 className="font-medium text-content-primary">{labelOf(ctx.labels, phase.name, phase.code)}</h3>
+                <h3 className="font-medium text-content-primary">{phase.code ? labelOf(ctx.labels, phase.name, phase.code) : ui(t, 'design.ui.overview.whole_project')}</h3>
                 <ToneBadge tone={phase.met ? 'success' : 'warning'}>
                   {phase.met ? ui(t, 'design.ui.overview.ready') : ui(t, 'design.ui.overview.not_ready')}
                 </ToneBadge>

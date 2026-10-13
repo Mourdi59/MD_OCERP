@@ -505,9 +505,10 @@ export interface Permit {
 }
 
 export interface PhaseReadiness {
-  code: string;
+  /** Null on the one row a project without a phase model answers: the whole project. */
+  code: string | null;
   order: number;
-  name: DesignLabel;
+  name: DesignLabel | null;
   met: boolean;
   open_deliverables: string[];
   open_reports: string[];
