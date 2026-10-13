@@ -249,16 +249,25 @@ _ACTIONS = {"submit": "in_review", "return": "draft"}
 @router.post("/projects/{project_id}/concept/{action}", dependencies=[EDIT])
 async def concept_action(
     project_id: uuid.UUID,
-    action: Literal["submit", "return"],
+    action: Literal["submit", "return", "approve", "reopen"],
     session: SessionDep,
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    """Submit for the governance gate, or take it back. Approval is the gate decision, never a call here."""
+    """Submit the concept, or take it back; approve or reopen it by hand on a project without gates.
+
+    Where the project has gates the gate decision approves and a change request reopens: ``approve``
+    and ``reopen`` are then refused with 409 and the concept's ``can`` says they do not apply.
+    """
     await verify_project_access(project_id, user_id, session)
     svc = ProcurementConceptService(session)
     can_manage = await _manage(payload)
-    await _run(svc.transition(project_id, _ACTIONS[action], actor_id=_uid(user_id), can_manage=can_manage))
+    if action == "approve":
+        await _run(svc.approve_by_hand(project_id, actor_id=_uid(user_id), can_manage=can_manage))
+    elif action == "reopen":
+        await _run(svc.reopen_by_hand(project_id, actor_id=_uid(user_id), can_manage=can_manage))
+    else:
+        await _run(svc.transition(project_id, _ACTIONS[action], actor_id=_uid(user_id), can_manage=can_manage))
     return await _run(_concept_out(svc, project_id, user_id, can_manage))
 
 

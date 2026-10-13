@@ -511,6 +511,72 @@ async def test_a_framework_supplier_link_can_be_changed_and_cleared(world: World
     assert (cleared.status_code, cleared.json()["subcontractor_id"]) == (200, None)
 
 
+async def test_a_project_without_gates_approves_and_reopens_its_concept_by_hand() -> None:
+    """No gate decision exists to approve it, so a second person with the manage right does."""
+    from app.modules.procurement_concept.permissions import register_procurement_concept_permissions
+
+    register_procurement_concept_permissions()
+    async with isolated_engine() as engine:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        w = await build_world(factory, model=False)
+        await add_contract_package(w, "W1", "construction")
+        async with client_as(w, w.manager, "manager") as c:
+            assert (await c.put(_pkg(w), json=OPEN_WORKS)).status_code == 200
+            can = (await c.get(_p(w, "/concept"))).json()["can"]
+            assert can["approve"] == _no("concept_not_submitted")
+            assert can["reopen"] == _na("invalid_transition")
+            early = await c.post(_p(w, "/concept/approve"))
+            assert (early.status_code, early.json()["detail"]["code"]) == (409, "concept_not_submitted")
+            assert (await c.post(_p(w, "/concept/submit"))).json()["state"] == "in_review"
+            # Four-eyes is on for a project without a phase model: the submitter does not approve.
+            can = (await c.get(_p(w, "/concept"))).json()["can"]
+            assert can["approve"] == _no("approver_is_submitter")
+            own = await c.post(_p(w, "/concept/approve"))
+            assert (own.status_code, own.json()["detail"]["code"]) == (409, can["approve"]["reason"])
+        async with client_as(w, w.editor, "editor") as c:
+            assert (await c.get(_p(w, "/concept"))).json()["can"]["approve"] == _no("approval_needs_manager")
+            denied = await c.post(_p(w, "/concept/approve"))
+            assert (denied.status_code, denied.json()["detail"]["code"]) == (403, "approval_needs_manager")
+        async with client_as(w, w.editor, "manager") as c:
+            assert (await c.get(_p(w, "/concept"))).json()["can"]["approve"] == YES
+            approved = await c.post(_p(w, "/concept/approve"))
+            body = approved.json()
+            assert (approved.status_code, body["state"]) == (200, "approved")
+            # Who and when is on the record, and it is not the submitter.
+            assert (body["approved_by"], body["submitted_by"]) == (str(w.editor), str(w.manager))
+            assert body["approved_at"] and body["four_eyes_violated"] is False
+            assert (await c.get(_p(w, "/readiness"))).json()["approved"] is True
+            # An approved concept lets a package go to tendering like on any other project.
+            assert (await _row(c, w))["can"]["create_execution"]["reason"] != "concept_not_approved"
+            # Approved, the plan is locked; reopening is what lets it change again.
+            locked = await c.put(_pkg(w), json={"procedure_code": "restricted"})
+            assert (locked.status_code, locked.json()["detail"]["code"]) == (409, "concept_locked")
+        async with client_as(w, w.manager, "editor") as c:
+            denied = await c.post(_p(w, "/concept/reopen"))
+            assert (denied.status_code, denied.json()["detail"]["code"]) == (403, "approval_needs_manager")
+        async with client_as(w, w.manager, "manager") as c:
+            assert (await c.get(_p(w, "/concept"))).json()["can"]["reopen"] == YES
+            reopened = await c.post(_p(w, "/concept/reopen"))
+            assert (reopened.status_code, reopened.json()["state"]) == (200, "reopened")
+            assert (await c.put(_pkg(w), json={"procedure_code": "restricted"})).status_code == 200
+            assert (await c.post(_p(w, "/concept/submit"))).json()["state"] == "in_review"
+
+
+async def test_where_gates_are_in_use_the_concept_is_never_approved_or_reopened_by_hand(world: World) -> None:
+    """The gate decision approves and a change request reopens: the hand actions do not exist there."""
+    async with client_as(world, world.manager, "manager") as c:
+        assert (await c.put(_pkg(world), json=OPEN_WORKS)).status_code == 200
+        assert (await c.post(_p(world, "/concept/submit"))).json()["state"] == "in_review"
+    async with client_as(world, world.editor, "manager") as c:
+        can = (await c.get(_p(world, "/concept"))).json()["can"]
+        assert can["approve"] == _na("approved_by_gate_decision")
+        assert can["reopen"] == _na("reopened_by_change_request")
+        for action, code in (("approve", "approved_by_gate_decision"), ("reopen", "reopened_by_change_request")):
+            refused = await c.post(_p(world, f"/concept/{action}"))
+            assert (refused.status_code, refused.json()["detail"]["code"]) == (409, code)
+        assert (await c.get(_p(world, "/concept"))).json()["state"] == "in_review"
+
+
 async def test_a_project_without_a_phase_model_answers_unknown_and_empty_pickers() -> None:
     """Governance has no row for the project: every read answers, nothing is guessed, nothing is a 500."""
     from types import SimpleNamespace

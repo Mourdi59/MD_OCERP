@@ -79,6 +79,7 @@ from app.modules.project_governance.public import (
     project_areas,
     project_change_requests,
     project_conditions,
+    project_controls,
     project_documents,
     project_gate_decisions,
     project_gates,
@@ -476,7 +477,11 @@ class ProcurementConceptService:
     async def transition(
         self, project_id: uuid.UUID, target: str, *, actor_id: uuid.UUID, can_manage: bool
     ) -> ProcurementConcept:
-        """submit (-> in_review) or return (-> draft). Approval is the governance gate, never a call here."""
+        """submit (-> in_review) or return (-> draft).
+
+        Approval is the governance gate where the project has gates, and
+        :meth:`approve_by_hand` where it has none; it is never a call here.
+        """
         await self._require_steer(project_id, actor_id, can_manage)
         concept = await self.get_concept(project_id, lock=True)
         current = await self.effective_state(concept)
@@ -502,6 +507,90 @@ class ProcurementConceptService:
         await self._audit(actor_id, "procurement_concept", concept.id, target, from_status=current, to_status=target)
         self._publish(
             "procurement_concept.concept.state_changed", {"project_id": str(project_id), "from": current, "to": target}
+        )
+        return concept
+
+    async def hand_approval_refusal(
+        self, project_id: uuid.UUID, concept: ProcurementConcept, actor_id: uuid.UUID, can_manage: bool
+    ) -> tuple[ProcurementError | None, bool]:
+        """Why this caller cannot approve the concept by hand now, and whether the action exists here.
+
+        It exists only on a project without gates: with gates the gate decision
+        approves. Four-eyes is the project control governance states, which is
+        on for a project without a phase model: whoever submitted does not approve.
+        """
+        if await self.gates_in_use(project_id):
+            return conflict("approved_by_gate_decision"), False
+        if not can_manage:
+            return forbidden("approval_needs_manager"), True
+        if concept.state != "in_review":
+            return conflict("concept_not_submitted", detail=concept.state), True
+        if (await project_controls(self.session, project_id)).four_eyes and concept.submitted_by == actor_id:
+            return conflict("approver_is_submitter"), True
+        blocking = [f for f in await self.findings(project_id) if f["blocks_approval"]]
+        if blocking:
+            return ProcurementError("concept_has_blocking_findings", 422, violations=blocking), True
+        return None, True
+
+    async def approve_by_hand(
+        self, project_id: uuid.UUID, *, actor_id: uuid.UUID, can_manage: bool
+    ) -> ProcurementConcept:
+        """Approve the submitted concept on a project that has no gates to approve it."""
+        concept = await self.get_concept(project_id, lock=True)
+        refusal, _ = await self.hand_approval_refusal(project_id, concept, actor_id, can_manage)
+        if refusal is not None:
+            raise refusal
+        concept.state = "approved"
+        concept.approved_by = actor_id
+        concept.approved_at = datetime.now(UTC)
+        await self.session.flush()
+        await self._audit(
+            actor_id,
+            "procurement_concept",
+            concept.id,
+            "approved",
+            from_status="in_review",
+            to_status="approved",
+            metadata={"source": "hand", "four_eyes_violated": actor_id == concept.submitted_by},
+        )
+        self._publish(
+            "procurement_concept.concept.state_changed",
+            {"project_id": str(project_id), "from": "in_review", "to": "approved"},
+        )
+        return concept
+
+    async def hand_reopen_refusal(
+        self, project_id: uuid.UUID, concept: ProcurementConcept, can_manage: bool
+    ) -> tuple[ProcurementError | None, bool]:
+        """Why this caller cannot reopen the approved concept by hand now, and whether the action exists here.
+
+        With gates a change request on the frame document reopens the concept.
+        Without gates nothing else could, and an approved plan would be frozen for good.
+        """
+        if await self.gates_in_use(project_id):
+            return conflict("reopened_by_change_request"), False
+        if concept.state != "approved":
+            return conflict("invalid_transition", detail=f"{concept.state}->reopened"), False
+        if not can_manage:
+            return forbidden("approval_needs_manager"), True
+        return None, True
+
+    async def reopen_by_hand(
+        self, project_id: uuid.UUID, *, actor_id: uuid.UUID, can_manage: bool
+    ) -> ProcurementConcept:
+        """Open the approved concept for changes on a project without gates; it is submitted and approved again."""
+        concept = await self.get_concept(project_id, lock=True)
+        refusal, _ = await self.hand_reopen_refusal(project_id, concept, can_manage)
+        if refusal is not None:
+            raise refusal
+        concept.state = "reopened"
+        await self.session.flush()
+        await self._audit(
+            actor_id, "procurement_concept", concept.id, "reopened", from_status="approved", to_status="reopened"
+        )
+        self._publish(
+            "procurement_concept.concept.state_changed",
+            {"project_id": str(project_id), "from": "approved", "to": "reopened"},
         )
         return concept
 
@@ -2442,10 +2531,16 @@ class ProcurementConceptService:
         gate_fields = no_steer or (None if can_manage else "manage_required")
         if gate_fields is None and concept.state != "draft":
             gate_fields = "gate_fields_frozen"
+        approve, approve_applies = await self.hand_approval_refusal(project_id, concept, actor_id, can_manage)
+        reopen, reopen_applies = await self.hand_reopen_refusal(project_id, concept, can_manage)
         return {
             "steer": answer(no_steer),
             "edit_plan": answer(no_steer or locked),
             "submit": answer(no_steer or move("in_review")),
             "return": answer(no_steer or move("draft")),
             "set_gate_fields": answer(gate_fields),
+            # By hand only where the project has no gates; with gates the gate decision approves and a
+            # change request reopens, so neither action exists and the screen hides both.
+            "approve": answer(approve.code if approve else None, applies=approve_applies),
+            "reopen": answer(reopen.code if reopen else None, applies=reopen_applies),
         }
