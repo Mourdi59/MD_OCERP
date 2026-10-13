@@ -479,6 +479,14 @@ async def test_an_installation_without_the_demo_logins_gets_a_cast_and_every_pro
     # No stand-in is a login of the passwordless demo sign-in, and none can receive mail.
     assert not set(stand_ins) & DEMO_ACCOUNT_EMAILS
     assert all(is_reserved_mail_domain(email) for email in stand_ins)
+    # The installation still reads as one nobody has taken over: the next person to
+    # register is the first real one, and is handed admin.
+    from app.modules.users.repository import UserRepository
+
+    async with factory() as s:
+        users_repo = UserRepository(s)
+        assert await users_repo.has_real_user() is False
+        assert await users_repo.has_real_active_user() is False
     decisions = await _decisions(factory, estate["residential-berlin"])
     assert decisions and {d.decided_by for d in decisions} == {stand_ins["demo-decider@example.com"].id}
     assert estate["manager"] not in {d.decided_by for d in decisions}  # the owner decided nothing

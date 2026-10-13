@@ -537,8 +537,12 @@ async def test_a_showcase_template_no_pack_installs_still_installs(demo_id: str,
 _GOVERNANCE_LOGGERS = ("app.modules.project_governance", "app.core.demo_cast")
 
 
+# One pack, in one shard: the question is asked of the installer, not of each pack.
 @pytest.mark.timeout(1500)
-async def test_a_fresh_pack_install_leaves_every_demo_project_at_its_planned_gate(fresh_db, caplog) -> None:
+@pytest.mark.parametrize("pack_dir", _shard(["germany-de"]))
+async def test_a_fresh_pack_install_leaves_every_demo_project_at_its_planned_gate(
+    pack_dir: str, fresh_db, caplog
+) -> None:
     """A pack install creates the demo projects and their owner, and nobody else.
 
     Under four-eyes the owner of an area cannot decide its gate, so without a
@@ -551,7 +555,7 @@ async def test_a_fresh_pack_install_leaves_every_demo_project_at_its_planned_gat
 
     caplog.set_level(logging.INFO)
     factory = fresh_db
-    slug = _load_manifest("germany-de").slug
+    slug = _load_manifest(pack_dir).slug
     done = await _stream_install(slug)
     assert done["ok"], f"{slug}: install reported ok=False: {done['steps']}"
     expected = _expected_demos(slug)

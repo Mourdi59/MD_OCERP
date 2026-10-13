@@ -385,3 +385,20 @@ def test_a_stand_in_of_the_demo_cast_can_neither_sign_in_without_a_password_nor_
     assert all(is_reserved_mail_domain(email) for email in stand_ins)
     assert all(email == email.lower() for email in stand_ins)
     assert sorted(part.word for part in demo_cast.CAST) == ["cost", "decider"]
+
+
+def test_a_stand_in_of_the_demo_cast_is_not_counted_as_a_real_person() -> None:
+    """Counted as real, a pack install would keep the first registrant from becoming admin."""
+    from sqlalchemy.dialects import postgresql
+
+    from app.core import demo_cast
+    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, DEMO_CAST_EMAILS
+    from app.modules.users import repository
+
+    assert {part.email for part in demo_cast.CAST} == set(DEMO_CAST_EMAILS)
+    clause = str(
+        repository._NOT_SEEDED_DEMO.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
+    )
+    assert "NOT IN" in clause
+    for email in DEMO_CAST_EMAILS | DEMO_ACCOUNT_EMAILS:
+        assert f"'{email}'" in clause, email
