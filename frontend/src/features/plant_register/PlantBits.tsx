@@ -102,7 +102,7 @@ export function WriteButton({
   disabled,
   title,
   ...rest
-}: ComponentProps<typeof Button> & { need?: keyof PlantCan }) {
+}: ComponentProps<typeof Button> & { need?: 'edit' | 'manage' }) {
   const { t } = useTranslation();
   const can = usePlantCan();
   if (can[need].applies === false) return null;
