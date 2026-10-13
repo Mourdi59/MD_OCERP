@@ -241,6 +241,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _str("expected_delivery_date", 40, None, nullable=True),
             _str("enquiry_date", 40, None, nullable=True),
             _int("lead_time_days", nullable=True),
+            _guid("plant_item_id"),
             _str("status", 20, "identified"),
             sa.UniqueConstraint("project_id", "code", name="uq_oe_dm_ofi_code"),
         ],

@@ -39,7 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit_log import log_activity
 from app.core.events import publish_after_commit
 from app.core.fsm import FSMError
-from app.modules.delivery_model import hosting, rules
+from app.modules.delivery_model import hosting, plant, rules
 from app.modules.delivery_model.catalogue import (
     DELIVERY_FORMS_KIND,
     SHARED_PARTY,
@@ -95,6 +95,7 @@ OFI_NULLABLE = (
     "enquiry_date",
     "lead_time_days",
     "schedule_activity_id",
+    "plant_item_id",
 )
 # Reason codes ``sync_with_governance`` stores on a proposed decision it could not approve.
 BLOCKED_NEEDS_CHANGE_REQUEST = "approval_needs_change_request"
@@ -1455,6 +1456,7 @@ class DeliveryModelService:
 
     async def ofi_rows(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
         items = await self.repo.ofis(project_id)
+        today = datetime.now(UTC).date()
         linked = await self._linked_rows(
             [(i.link_kind, i.link_id) for i in items if i.link_kind and i.link_id], OFI_LINKS
         )
@@ -1484,9 +1486,17 @@ class DeliveryModelService:
                     "expected_delivery_date": arrival or i.expected_delivery_date,
                     "enquiry_date": i.enquiry_date,
                     "lead_time_days": i.lead_time_days,
+                    "plant_item_id": _s(i.plant_item_id),
                     "status": i.status,
                 }
             )
+            # A linked item shows the register's enquiry date, lead time and latest order date, not its own.
+            dates = (
+                await plant.plant_item_dates(self.session, project_id, i.plant_item_id, today=today)
+                if i.plant_item_id is not None
+                else None
+            )
+            out[-1] = plant.with_dates(out[-1], dates)
         return out
 
     async def ofi_views(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
@@ -1505,21 +1515,40 @@ class DeliveryModelService:
         if package_id is not None and await self.repo.package(project_id, package_id) is None:
             raise not_found("package_not_found")
 
+    async def _check_plant_item(
+        self, project_id: uuid.UUID, plant_item_id: uuid.UUID | None, *, own_id: uuid.UUID | None = None
+    ) -> None:
+        """A plant item may be linked when the register holds it in this project and no other item is it."""
+        if plant_item_id is None:
+            return
+        if not plant.installed():
+            raise DeliveryModelError("plant_register_unavailable", 422)
+        if await plant.plant_item_dates(self.session, project_id, plant_item_id) is None:
+            # Missing and of another project read the same, here as in the register.
+            raise not_found("plant_item_not_found")
+        if any(o.plant_item_id == plant_item_id and o.id != own_id for o in await self.repo.ofis(project_id)):
+            raise conflict("plant_item_already_linked")
+
     async def create_ofi(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> OwnerFurnishedItem:
         await self.require_model(project_id, lock=True)
         if any(o.code == data["code"] for o in await self.repo.ofis(project_id)):
             raise conflict("ofi_code_exists")
         await self._check_package(project_id, data.get("package_id"))
+        await self._check_plant_item(project_id, data.get("plant_item_id"))
         row = await self.repo.add(OwnerFurnishedItem(project_id=project_id, status="identified", **data))
         await self._audit(actor_id, "delivery_ofi", row.id, "ofi_created", metadata={"code": row.code})
         self._publish("ofi.created", {"project_id": str(project_id), "ofi_id": str(row.id)})
         return row
 
     async def update_ofi(self, project_id: uuid.UUID, ofi_id: uuid.UUID, changes: dict[str, Any], actor_id: Any):
+        if changes.get("plant_item_id") is not None:
+            # Two items must not claim one plant item: linking waits for the model row, as creating does.
+            await self.require_model(project_id, lock=True)
         row = await self.repo.ofi(project_id, ofi_id, lock=True)
         if row is None:
             raise not_found("ofi_not_found")
         await self._check_package(project_id, changes.get("package_id"))
+        await self._check_plant_item(project_id, changes.get("plant_item_id"), own_id=row.id)
         for key, value in changes.items():
             if value is None and key not in OFI_NULLABLE:
                 raise DeliveryModelError("field_not_nullable", 422, detail=key)
