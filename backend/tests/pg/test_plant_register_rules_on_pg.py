@@ -461,7 +461,7 @@ async def test_readiness_counts_a_long_lead_item_with_no_need_date_as_open_until
 
 
 async def _evidence(
-    w: World, area_code: str, gate_code: str = "development_to_execution"
+    w: World, area_code: str, gate_code: str = "development_to_execution", *, label: bool = False
 ) -> list[tuple[str, str, str]]:
     from types import SimpleNamespace
 
@@ -472,16 +472,22 @@ async def _evidence(
         found = await plant_readiness(
             s, w.project_id, GateAttempt(uuid.uuid4(), gate_code, 1), SimpleNamespace(code=area_code, applicable=True)
         )
-    return [(e.code, e.state, e.detail) for e in found]
+    # A reason the reader must understand travels as the label key; ``detail`` carries data only.
+    return [
+        (e.code, e.state, (e.label_key or "").removeprefix("plant.evidence.") if label else e.detail) for e in found
+    ]
 
 
 async def test_evidence_is_given_for_the_tagged_area_at_the_tagged_gate_and_says_what_is_missing(world: World) -> None:
     from app.modules.plant_register.evidence import PROVIDER_NAME, register_gate_evidence
     from app.modules.project_governance.evidence import evidence_providers
+    from tests.pg.governance_fixtures import only_evidence
 
-    register_gate_evidence()
-    reg = next(r for r in evidence_providers() if r.name == PROVIDER_NAME)
-    assert (reg.key, reg.blocking) == ("*", True)  # no area code is named anywhere in the module
+    # The registry is one per process: registered here, it is put back as it was, so a gate another
+    # test decides later is not answered by this module's blocking provider.
+    with only_evidence(register=register_gate_evidence):
+        reg = next(r for r in evidence_providers() if r.name == PROVIDER_NAME)
+        assert (reg.key, reg.blocking) == ("*", True)  # no area code is named anywhere in the module
 
     assert await _evidence(world, "m04_equipment") == []  # no items: nothing to say
     await item(world)  # critical switchgear, no route, no paper
@@ -557,7 +563,7 @@ async def test_evidence_is_unknown_with_a_reason_when_the_model_does_not_say_whe
 
     await item(world)
     with _host_read_as(PlantHost(first_area_code="m01_project_management")):
-        first = await _evidence(world, "m01_project_management")
+        first = await _evidence(world, "m01_project_management", label=True)
         elsewhere = await _evidence(world, "m04_equipment")
         # Nobody owns the register then: only a holder of the manage permission edits it.
         code, _, _ = await _refused(
@@ -567,7 +573,7 @@ async def test_evidence_is_unknown_with_a_reason_when_the_model_does_not_say_whe
     assert code == "not_equipment_owner"
 
     with _host_read_as(PlantHost("m04_equipment", ("m04_equipment_frame",), (), "m01_project_management")):
-        no_gate = await _evidence(world, "m04_equipment")
+        no_gate = await _evidence(world, "m04_equipment", label=True)
     assert no_gate == [("plant:host_unresolved", "unknown", "no_phase_enables_construction_start")]
 
     # The model names the document type, but this project has no such document row.
@@ -579,8 +585,10 @@ async def test_evidence_is_unknown_with_a_reason_when_the_model_does_not_say_whe
             if doc.doc_type == "m04_equipment_frame":
                 await s.delete(doc)
         await s.commit()
-    no_row = {code: (state, detail) for code, state, detail in await _evidence(world, "m04_equipment")}
+    no_row = {code: (state, label) for code, state, label in await _evidence(world, "m04_equipment", label=True)}
     assert no_row["plant:frame_document_attached"] == ("unknown", "frame_document_missing")
+    raw = {code: detail for code, _, detail in await _evidence(world, "m04_equipment")}
+    assert raw["plant:frame_document_attached"] == ""  # no code that stands for a sentence in the shown detail
 
 
 # ── the catalogue a project pins ──────────────────────────────────────────
@@ -1211,7 +1219,8 @@ async def test_the_demo_seed_fills_every_list_by_the_rules_and_is_idempotent(wor
     async with world.factory() as s:
         first = await seed_plant_register_demo(s, [world.project_id])
         await s.commit()
-    assert first == {"projects": 1, "items": 13, "quotes": 12}
+    # The route of this world is signed by a member of the project's team, so the paper is decided.
+    assert first == {"projects": 1, "items": 13, "quotes": 12, "papers_left_draft": 0, "notes": []}
 
     async with world.factory() as s:
         items = list((await s.execute(select(PlantItem).where(PlantItem.project_id == world.project_id))).scalars())
@@ -1258,7 +1267,7 @@ async def test_the_demo_seed_fills_every_list_by_the_rules_and_is_idempotent(wor
         count = await s.scalar(
             select(func.count()).select_from(PlantItem).where(PlantItem.project_id == world.project_id)
         )
-    assert again == {"projects": 0, "items": 0, "quotes": 0} and count == 13
+    assert again == {"projects": 0, "items": 0, "quotes": 0, "papers_left_draft": 0, "notes": []} and count == 13
 
 
 async def test_the_demo_seed_leaves_a_project_without_the_demo_marker_alone(world: World) -> None:
@@ -1267,4 +1276,4 @@ async def test_the_demo_seed_leaves_a_project_without_the_demo_marker_alone(worl
     async with world.factory() as s:
         out = await seed_plant_register_demo(s, [world.project_id])  # no demo marker
         await s.commit()
-    assert out == {"projects": 0, "items": 0, "quotes": 0}
+    assert out == {"projects": 0, "items": 0, "quotes": 0, "papers_left_draft": 0, "notes": []}

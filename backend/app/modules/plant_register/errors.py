@@ -50,10 +50,35 @@ def forbidden(code: str, **kw: Any) -> PlantError:
     return PlantError(code, 403, **kw)
 
 
+def finding_keys(finding: str) -> tuple[str, str, str | None]:
+    """``code[:reason]`` as ``(code, message key of the code, message key of the reason or None)``."""
+    code, _, reason = finding.partition(":")
+    return code, f"plant.errors.{code}", f"plant.reasons.{reason}" if reason else None
+
+
 def blocked(violations: list[str]) -> PlantError:
-    """A 422 listing every rule that blocks, each as ``{code, message_key}``."""
-    rows = [
-        {"code": v.split(":")[0], "reason": v.partition(":")[2], "message_key": f"plant.errors.{v.split(':')[0]}"}
+    """A 422 listing every rule that blocks.
+
+    Each row is ``{code, message_key, reason, reason_key}``. ``reason`` is a
+    sub-code for machines (which part of the rule), never a text to show:
+    ``reason_key`` is its message key, ``None`` when the rule has no sub-reason.
+    """
+    rows = []
+    for v in violations:
+        code, key, reason_key = finding_keys(v)
+        rows.append({"code": code, "message_key": key, "reason": v.partition(":")[2], "reason_key": reason_key})
+    return PlantError(rows[0]["code"] if len(rows) == 1 else "transition_blocked", 422, violations=rows)
+
+
+def worded(violations: list[dict[str, Any]], locale: str) -> list[dict[str, Any]]:
+    """The violations with ``message`` and ``reason_message`` in ``locale``, for a reader."""
+    from app.modules.plant_register.messages import translate
+
+    return [
+        {
+            **v,
+            "message": translate(v["message_key"], locale=locale),
+            "reason_message": translate(v["reason_key"], locale=locale) if v.get("reason_key") else None,
+        }
         for v in violations
     ]
-    return PlantError(rows[0]["code"] if len(rows) == 1 else "transition_blocked", 422, violations=rows)

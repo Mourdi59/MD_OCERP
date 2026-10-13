@@ -11,6 +11,7 @@ column of their own (rule 12, grep-tested).
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any
@@ -28,6 +29,41 @@ class PlantItemDates:
     enquiry_date: date | None
     lead_source: str
     long_lead: bool
+    # The item's own state. A cancelled item still has dates; the reader decides what to show.
+    status: str
+    # Who supplies and installs, as the register has it; ``None`` while no route is set. A module that
+    # keeps an owner-furnished item reads it here before it accepts a link to this plant item.
+    procurement_route: str | None
+
+
+@dataclass(frozen=True)
+class PlantItemOption:
+    """One row of a picker another module offers: enough to name the item, nothing derived."""
+
+    id: uuid.UUID
+    code: str
+    title: str
+    status: str
+
+
+async def plant_item_options(session: Any, project_id: uuid.UUID) -> list[PlantItemOption]:
+    """Every plant item of this project and of no other, by register code, for a picker.
+
+    Cancelled items are listed too, with their status: a row that already
+    links to one must still be able to name it, and the reader decides whether
+    to offer it. Read only, never raises; a project without items gives ``[]``.
+    """
+    from sqlalchemy import select
+
+    from app.modules.plant_register.models import PlantItem
+
+    stmt = (
+        select(PlantItem.id, PlantItem.code, PlantItem.title, PlantItem.status)
+        .where(PlantItem.project_id == project_id)
+        .order_by(PlantItem.code, PlantItem.id)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [PlantItemOption(id=r.id, code=r.code, title=r.title, status=r.status) for r in rows]
 
 
 async def plant_item_for_submittal(
@@ -55,30 +91,62 @@ async def plant_item_for_submittal(
     return None if item_id is None else await plant_item_dates(session, project_id, item_id, today=today)
 
 
+async def plant_item_id_by_code(session: Any, project_id: uuid.UUID, code: str) -> uuid.UUID | None:
+    """The id of the item with this register code in this project; ``None`` when the project has none.
+
+    Codes are unique per project, so a code of another project is simply not
+    found here. Read only, never raises: for a module that links its row to a
+    plant item by the code a user or a seed names.
+    """
+    from sqlalchemy import select
+
+    from app.modules.plant_register.models import PlantItem
+
+    if not code:
+        return None
+    stmt = select(PlantItem.id).where(PlantItem.project_id == project_id, PlantItem.code == code).limit(1)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def plant_item_dates(
     session: Any, project_id: uuid.UUID, plant_item_id: uuid.UUID, *, today: date | None = None
 ) -> PlantItemDates | None:
     """Derived dates of one item of this project; ``None`` for a missing or foreign item."""
-    from app.modules.plant_register.models import PlantItem
+    return (await plant_items_dates(session, project_id, [plant_item_id], today=today)).get(plant_item_id)
+
+
+async def plant_items_dates(
+    session: Any, project_id: uuid.UUID, plant_item_ids: Iterable[uuid.UUID], *, today: date | None = None
+) -> dict[uuid.UUID, PlantItemDates]:
+    """Derived dates of several items of this project in one read, keyed by item id.
+
+    An id that is missing, or belongs to another project, is simply absent
+    from the result. A caller with many linked rows (a matrix, a register)
+    asks once here instead of once per row: the quotes, slots and activities
+    of the project are loaded one time for all of them.
+    """
     from app.modules.plant_register.service import PlantService
 
-    svc = PlantService(session)
-    if await svc.repo.get_scoped(PlantItem, project_id, plant_item_id) is None:
-        return None
-    views = await svc.item_views(project_id, today=today or datetime.now(UTC).date(), only=[plant_item_id])
-    if not views:
-        return None
-    v = views[0]
-    weeks = v["effective_lead_weeks"]
-    return PlantItemDates(
-        plant_item_id=plant_item_id,
-        code=v["code"],
-        need_date=v["need_date"],
-        date_basis=v["date_basis"],
-        latest_order_date=v["latest_order_date"],
-        effective_lead_weeks=weeks,
-        lead_time_days=weeks * 7 if weeks is not None else None,
-        enquiry_date=v["basis_enquiry_date"],
-        lead_source=v["lead_source"],
-        long_lead=v["long_lead"],
-    )
+    wanted = list(dict.fromkeys(plant_item_ids))
+    if not wanted:
+        return {}
+    views = await PlantService(session).item_views(project_id, today=today or datetime.now(UTC).date(), only=wanted)
+    out: dict[uuid.UUID, PlantItemDates] = {}
+    for v in views:
+        weeks = v["effective_lead_weeks"]
+        item_id = v["item"].id
+        out[item_id] = PlantItemDates(
+            plant_item_id=item_id,
+            code=v["code"],
+            need_date=v["need_date"],
+            date_basis=v["date_basis"],
+            latest_order_date=v["latest_order_date"],
+            effective_lead_weeks=weeks,
+            lead_time_days=weeks * 7 if weeks is not None else None,
+            enquiry_date=v["basis_enquiry_date"],
+            lead_source=v["lead_source"],
+            long_lead=v["long_lead"],
+            status=v["item"].status,
+            procurement_route=v["item"].procurement_route,
+        )
+    return out

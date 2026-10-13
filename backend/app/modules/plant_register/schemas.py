@@ -73,6 +73,9 @@ class Capability(BaseModel):
     applies: bool
     allowed: bool
     reason: str | None = None
+    # Every rule that blocks, when ``reason`` is ``transition_blocked`` or one blocking rule:
+    # ``{code, message_key, reason, reason_key}``, worded by the client through the two keys.
+    violations: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class SettingsOut(BaseModel):
@@ -277,9 +280,15 @@ class ItemOut(BaseModel):
     redundancy_ok: bool
     vendor_findings: list[str]
     delivery_model: str  # installed | not_installed
+    # What the caller may do with this item: edit, edit_specification, edit_classification, set_route, handover
+    # and transition_<state> for each state set by hand. Computed by the functions the writes raise from.
+    can: dict[str, Capability]
 
     @classmethod
     def from_view(cls, v: dict[str, Any]) -> ItemOut:
+        if "can" not in v:
+            # What the caller may do is the server's answer; a response without it would leave the client guessing.
+            raise ValueError("item view without capabilities: pass it through PlantService.item_capabilities")
         item = v["item"]
         base = {c: getattr(item, c) for c in cls.model_fields if hasattr(item, c) and c not in v}
         derived = {k: v[k] for k in cls.model_fields if k in v and k != "item"}
