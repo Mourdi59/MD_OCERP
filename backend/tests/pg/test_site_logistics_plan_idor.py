@@ -165,7 +165,9 @@ async def test_list_envelope_and_coded_errors(world: World) -> None:
     async with client_as(world, world.manager, "manager") as c:
         listed = await c.get(f"{BASE}/projects/{world.project_id}/stages")
         bad = await c.post(f"{BASE}/projects/{world.project_id}/areas", json={"code": "Z", "area_kind": "moon_base"})
-    assert set(listed.json()) == {"items", "total", "offset", "limit"}
+    # The envelope, and whether this caller may add a record to the list.
+    assert set(listed.json()) == {"items", "total", "offset", "limit", "can"}
+    assert set(listed.json()["can"]) == {"create"}
     assert bad.status_code == 422
     detail = bad.json()["detail"]
     assert detail["code"] == "unknown_area_kind"

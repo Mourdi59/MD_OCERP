@@ -124,14 +124,15 @@ class LaydownZone(Base):
     # laydown capacity on site is judged, not metered.
     capacity_desc: Mapped[str | None] = mapped_column(String(255), nullable=True)
     usage_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # The planned site area this zone operates in (rule 4). SET NULL so removing
-    # an area never deletes the zone; an unlinked zone reads as ``zone_not_mapped``.
-    site_area_id: Mapped[uuid.UUID | None] = mapped_column(
-        GUID(),
-        ForeignKey("oe_site_logistics_area.id", ondelete="SET NULL", name="fk_oe_site_zone_area"),
-        nullable=True,
-        index=True,
-    )
+    # The planned site area this zone operates in (rule 4). No database foreign key:
+    # this table exists on every install of the previous release and the area table
+    # does not, and the boot-time schema heal alters existing tables BEFORE the new
+    # ones are created, so a key from here to there is refused on every upgrade.
+    # The service checks the area on write and unlinks the zone when the area is
+    # deleted (``LogisticsPlanService.delete_area``); an unlinked zone reads as
+    # ``zone_not_mapped``. Do not add the key back before the heal in
+    # ``app/core/postgres_migrator.py`` skips keys whose target table is still missing.
+    site_area_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
@@ -176,12 +177,9 @@ class DeliveryBooking(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     # The movement this gate slot belongs to (Decision 3): a transport may own
     # several bookings, a booking stays the slot.
-    transport_id: Mapped[uuid.UUID | None] = mapped_column(
-        GUID(),
-        ForeignKey("oe_site_logistics_transport.id", ondelete="SET NULL", name="fk_oe_site_delivery_transport"),
-        nullable=True,
-        index=True,
-    )
+    # No database foreign key, for the reason given at ``LaydownZone.site_area_id``:
+    # checked on write, unlinked by ``LogisticsPlanService.delete_transport``.
+    transport_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     direction: Mapped[str] = mapped_column(String(10), nullable=False, default="inbound", server_default="inbound")
     gross_weight_t: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     # Soft links: the plant register item (module 5) and the takt location (JIT, rule 11).
@@ -346,9 +344,14 @@ class ExpansionStage(Base):
     from_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     to_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="planned")
-    # The site plan drawing of this stage: a document of the project (soft link, checked
-    # on write) and how its pixels map to the local metre frame the areas are drawn in.
-    plan_document_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # The site plan drawing of this stage: a document of the project (checked on write)
+    # and how its pixels map to the local metre frame the areas are drawn in. Deleting
+    # the document takes the drawing off the stage; the areas keep their geometry.
+    plan_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_documents_document.id", ondelete="SET NULL", name="fk_oe_site_stage_plan_document"),
+        nullable=True,
+    )
     plan_metres_per_pixel: Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)
     plan_origin_px: Mapped[list | None] = mapped_column(JSON, nullable=True)
 

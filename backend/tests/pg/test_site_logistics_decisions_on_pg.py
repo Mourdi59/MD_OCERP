@@ -354,3 +354,39 @@ async def test_the_pack_catalogue_is_the_default_of_its_country_only(bare: World
     async with bare.factory() as s:
         concept = await LogisticsPlanService(s).concept(bare.project_id)
         assert (concept.catalogue_source, concept.catalogue_id, concept.catalogue_version) == ("pack", PACK_ID, 1)
+
+
+async def test_deleting_an_area_or_a_transport_unlinks_the_zone_and_the_slot(world: World) -> None:
+    """These two links carry no database foreign key (the upgrade lane), so the service unlinks them."""
+    pid = world.project_id
+    start, end = window(3, 9, 1)
+    async with world.factory() as s:
+        svc = LogisticsPlanService(s)
+        area = await svc.create_area(pid, {"area_kind": "storage", "name": "Yard"}, world.manager)
+        kept = await svc.create_area(pid, {"area_kind": "storage", "name": "Yard 2"}, world.manager)
+        zone = m.LaydownZone(project_id=pid, name="Laydown A", site_area_id=area.id)
+        other = m.LaydownZone(project_id=pid, name="Laydown B", site_area_id=kept.id)
+        gate = m.Gate(project_id=pid, name="North", open_time="07:00", close_time="18:00")
+        s.add_all([zone, other, gate])
+        transport = await svc.create_transport(
+            pid, {"direction": "inbound", "transport_kind": "inbound_delivery", "title": "Rebar"}, world.manager
+        )
+        await s.flush()
+        slot = await SiteLogisticsService(s).create_delivery(
+            _request(pid, gate.id, start, end, transport_id=transport.id), str(world.manager)
+        )
+        await s.commit()
+        assert slot.transport_id == transport.id
+
+    async with world.factory() as s:
+        svc = LogisticsPlanService(s)
+        await svc.delete_area(pid, area.id, world.manager)
+        await svc.delete_transport(pid, transport.id, world.manager)
+        await s.commit()
+
+    async with world.factory() as s:
+        assert (await s.get(m.LaydownZone, zone.id)).site_area_id is None
+        # A zone of another area keeps its link.
+        assert (await s.get(m.LaydownZone, other.id)).site_area_id == kept.id
+        assert (await s.get(m.DeliveryBooking, slot.id)).transport_id is None
+        assert await s.get(m.SiteArea, area.id) is None and await s.get(m.Transport, transport.id) is None

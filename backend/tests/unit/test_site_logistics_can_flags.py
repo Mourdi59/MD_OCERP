@@ -169,27 +169,34 @@ def test_a_demand_of_a_plant_position_keeps_its_number() -> None:
 
 def test_a_customs_case_follows_its_documents_lines_and_state() -> None:
     svc = LogisticsPlanService(None)
-    case = SimpleNamespace(state="open", id=uuid.uuid4())
+
+    # A case as the service reads it: its state, and the incoterm it was opened under,
+    # which the move to ``declared`` looks up in the catalogue.
+    def a_case(state: str) -> SimpleNamespace:
+        return SimpleNamespace(state=state, id=uuid.uuid4(), incoterm="DAP", incoterm_version="2020")
+
+    catalogue = SimpleNamespace(incoterm_version="2020", entry=lambda group, code: {"code": code})
+    case = a_case("open")
     missing = [{"kind": "commercial_invoice", "required": True, "state": "missing"}]
     there = [{"kind": "commercial_invoice", "required": True, "state": "received"}]
     assert pl.missing_required(missing) and not pl.missing_required(there)
 
     def can(row, docs, lines):
-        return _run(svc.can(PID, "customs", row, ALL, cat=object(), docs=docs, line_count=lines))
+        return _run(svc.can(PID, "customs", row, ALL, cat=catalogue, docs=docs, line_count=lines))
 
     assert can(case, missing, 1)["transitions"]["documents_complete"] == _no("required_document_missing")
     assert can(case, there, 0)["transitions"]["documents_complete"] == _no("customs_without_lines")
     assert can(case, there, 1)["transitions"]["documents_complete"] == OK
     assert can(case, there, 1)["add_line"] == OK
 
-    declared = can(SimpleNamespace(state="declared", id=uuid.uuid4()), there, 1)
+    declared = can(a_case("declared"), there, 1)
     assert declared["delete"] == declared["add_line"] == _no("customs_declared")
     assert declared["frozen_fields"] == sorted(plan_service._CUSTOMS_CHECKLIST_FIELDS)
     assert declared["edit"] == OK
-    held = can(SimpleNamespace(state="held", id=uuid.uuid4()), there, 1)
+    held = can(a_case("held"), there, 1)
     # A held case may still receive what customs asked for.
     assert held["add_document"] == OK and held["add_line"] == _no("customs_declared")
-    cleared = can(SimpleNamespace(state="cleared", id=uuid.uuid4()), there, 1)
+    cleared = can(a_case("cleared"), there, 1)
     assert cleared["edit"] == cleared["add_document"] == _no("customs_closed")
 
 
@@ -371,7 +378,8 @@ def test_every_record_route_returns_can() -> None:
                 "plan_concept",
             )
         )
-        if route.path.endswith(("/allocations", "/plant-positions/power-demand")):
+        # The export writes a file from the read models; it serves no record to act on.
+        if route.path.endswith(("/allocations", "/plant-positions/power-demand", "/export/{register}")):
             continue
         if serializes or "transport_view(" in source:
             assert "_with_can(" in source or "_transport_body(" in source, route.path

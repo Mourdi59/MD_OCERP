@@ -25,7 +25,7 @@ manifest = ModuleManifest(
     # bill-coverage table reads the estimate directly.
     # oe_project_governance: catalogue kind, gate evidence and the frame document
     # document; oe_schedule: stage dates are read from schedule activities.
-    depends=["oe_projects", "oe_users", "oe_boq", "oe_project_governance", "oe_schedule"],
+    depends=["oe_projects", "oe_users", "oe_boq", "oe_project_governance", "oe_schedule", "oe_documents"],
     auto_install=True,
     enabled=True,
 )

@@ -44,11 +44,13 @@ class GeometryError(ValueError):
 def _point(pt: Any, frame: str) -> Point:
     if not isinstance(pt, list | tuple) or len(pt) < 2:
         raise GeometryError("geometry_bad_point")
-    if isinstance(pt[0], bool) or isinstance(pt[1], bool):
+    # A coordinate is a JSON number. Text that happens to parse ("1") and a boolean are not:
+    # ``float`` would take both, and the stored geometry would then hold what no reader expects.
+    if any(isinstance(v, bool) or not isinstance(v, int | float) for v in pt[:2]):
         raise GeometryError("geometry_bad_point")
     try:
         x, y = float(pt[0]), float(pt[1])
-    except (TypeError, ValueError, OverflowError) as exc:
+    except OverflowError as exc:
         raise GeometryError("geometry_bad_point") from exc
     if not (math.isfinite(x) and math.isfinite(y)):
         raise GeometryError("geometry_bad_point")
@@ -116,7 +118,12 @@ def polygon_area_m2(geometry: dict[str, Any], frame: str = "local") -> Decimal:
     rings = _rings(geometry, frame)
     origin = _centroid(rings[0])
     outer = _shoelace(_project(rings[0], frame, origin))
-    holes = sum(_shoelace(_project(r, frame, origin)) for r in rings[1:])
+    shell = _project(rings[0], frame, origin)
+    cut_out = [_project(r, frame, origin) for r in rings[1:]]
+    if not all(_lies_within(hole, shell) for hole in cut_out):
+        # A hole anywhere else would still be subtracted and the area would be wrong.
+        raise GeometryError("geometry_bad_hole")
+    holes = sum(_shoelace(hole) for hole in cut_out)
     area = outer - holes
     if area < 0:
         raise GeometryError("geometry_bad_hole")
@@ -195,6 +202,30 @@ def _strictly_inside(p: Point, ring: list[Point]) -> bool:
             if p[0] < x_cross:
                 inside = not inside
     return inside
+
+
+def _on_boundary(p: Point, ring: list[Point]) -> bool:
+    n = len(ring)
+    return any(_on_segment(p, ring[i], ring[(i + 1) % n]) for i in range(n))
+
+
+def _lies_within(ring: list[Point], outer: list[Point]) -> bool:
+    """True when no part of ``ring``'s boundary leaves ``outer`` (touching its boundary is inside).
+
+    Every edge is cut where it meets the boundary of ``outer``; each cut point and
+    the middle of each piece has to be inside or on that boundary. Checking the
+    corners alone would pass a hole whose edge runs out through a notch.
+    """
+    n = len(ring)
+    for i in range(n):
+        a, b = ring[i], ring[(i + 1) % n]
+        stops = sorted({0.0, 1.0, *_cuts(a, b, outer)})
+        probes = [*stops, *((t1 + t2) / 2.0 for t1, t2 in zip(stops, stops[1:], strict=False))]
+        for t in probes:
+            p = (a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]))
+            if not (_strictly_inside(p, outer) or _on_boundary(p, outer)):
+                return False
+    return True
 
 
 def _centroid(ring: list[Point]) -> Point:

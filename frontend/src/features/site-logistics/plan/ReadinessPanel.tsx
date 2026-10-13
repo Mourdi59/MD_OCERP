@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { AlertTriangle, CheckCircle2, CircleAlert, Download, RefreshCw, XCircle } from 'lucide-react';
 
+import { fmtList } from '@/shared/lib/formatters';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { useToastStore } from '@/stores/useToastStore';
@@ -148,7 +149,7 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
                         const titles = (item.transports?.[list] ?? []).map((x) => x.title);
                         return titles.length > 0 ? (
                           <span key={list} className="block text-xs text-content-secondary" data-testid="plan-ready-open">
-                            {tx(t, key, { titles: titles.join(', ') })}
+                            {tx(t, key, { titles: fmtList(titles) })}
                           </span>
                         ) : null;
                       })}
