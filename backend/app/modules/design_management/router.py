@@ -181,6 +181,7 @@ async def _setup_out(svc: DesignService, project_id: uuid.UUID) -> dict[str, Any
         scheme=scheme.model_dump(mode="json"),
         reports_catalogue=reports.model_dump(mode="json"),
         phases=await svc.phases(project_id),
+        gates_in_use=await svc.gates_in_use(project_id),
     )
 
 

@@ -256,6 +256,18 @@ class DesignService:
             for p in sorted(catalogue.phases, key=lambda p: p.order)
         ]
 
+    async def gates_in_use(self, project_id: uuid.UUID) -> bool:
+        """Whether the project decides gates at all.
+
+        Nothing in design waits for a gate: approval points and releases are decided on
+        approval routes, reports and permits by hand. Without gates the frame document
+        never turns binding either, so the registers stay editable. The read says so,
+        and the screen names it instead of an unknown gate.
+        """
+        from app.modules.project_governance.public import project_gates
+
+        return bool(await project_gates(self.session, project_id))
+
     async def _check_phase(self, project_id: uuid.UUID, phase_code: str | None) -> None:
         if not phase_code:
             return
