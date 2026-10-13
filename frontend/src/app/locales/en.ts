@@ -42786,6 +42786,7 @@ const resource = {
     "quality_concept.errors.approver_is_requester": "The person who requested the waiver cannot approve it.",
     "quality_concept.errors.approver_is_submitter": "Whoever submitted the quality concept cannot approve it. Ask a second person.",
     "quality_concept.errors.binding_requires_change_request": "The concept is binding; change it through a change request of the frame document.",
+    "quality_concept.errors.binding_requires_reopen": "The plan is in force. Reopen the quality concept with a reason to change it.",
     "quality_concept.errors.catalogue_retired": "This catalogue is retired and cannot be pinned any more.",
     "quality_concept.errors.cde_document_not_found": "The document was not found in this project.",
     "quality_concept.errors.concept_exists": "This project already has a quality concept.",

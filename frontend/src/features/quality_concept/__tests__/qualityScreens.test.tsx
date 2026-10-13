@@ -885,3 +885,13 @@ describe('a project without gates', () => {
     expect(list.textContent).toContain('Facade system changed');
   });
 });
+
+describe('a plan in force without gates', () => {
+  it('says beside the packages button that the concept must be reopened', async () => {
+    mocked.getConcept.mockResolvedValue(concept({ state: 'binding', gates_in_use: false, can: PLAN_CLOSED }));
+    renderPage();
+    expect((await screen.findByTestId('scope-closed-reason')).textContent).toBe(
+      'The plan is in force. Reopen the quality concept with a reason to change it.',
+    );
+  });
+});

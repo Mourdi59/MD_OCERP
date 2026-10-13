@@ -69,8 +69,6 @@ export function ConceptPanel(props: PanelProps) {
   const [scopeOpen, setScopeOpen] = useState(false);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
-  // A project without gates has nobody else to approve or reopen the concept, so both happen on this page.
-  const noGates = concept.gates_in_use === false;
   const mayApproveHere = !!concept.can.approve_applies && concept.state === 'in_review';
   const mayReopenHere = !!concept.can.reopen_applies && concept.state === 'binding';
   const closedHere = [
@@ -81,7 +79,17 @@ export function ConceptPanel(props: PanelProps) {
 
   const actions = CONCEPT_ACTIONS[concept.state] ?? [];
   // Why the plan is closed to this reader: the concept is past its draft, or the reader does not manage it.
-  const planClosed = editable ? [] : [conceptEditable(concept.state) ? 'manage_required' : 'concept_not_editable'];
+  // A project without gates has nobody else to approve or reopen the concept, so both happen on this page.
+  const noGates = concept.gates_in_use === false;
+  const planClosed = editable
+    ? []
+    : [
+        conceptEditable(concept.state)
+          ? 'manage_required'
+          : noGates && concept.state === 'binding'
+            ? 'binding_requires_reopen'
+            : 'concept_not_editable',
+      ];
   const blocking = concept.findings.filter((f) => f.severity === 'error');
   const refName = (f: Finding) =>
     f.code.startsWith('stage_')
