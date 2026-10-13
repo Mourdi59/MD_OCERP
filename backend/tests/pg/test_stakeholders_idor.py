@@ -347,7 +347,8 @@ async def test_commitment_links_and_their_pickers_stay_inside_the_project(world:
     assert (own.status_code, own.json()["requirement_id"]) == (200, ids["mine"])
     assert [o["id"] for o in options.json()["items"]] == [ids["mine"]]
     assert release.json() == {"items": [], "available": False, "reason": "commitment_release_not_installed"}
-    assert gates.json() == {"items": []}
+    # This world is a project run without gates.
+    assert gates.json() == {"items": [], "gates_in_use": False}
     assert [r.status_code for r in strangers] == [404, 404, 404]
 
 
@@ -463,3 +464,58 @@ async def test_a_release_item_is_stored_only_when_its_module_confirms_it(world: 
     assert (foreign.status_code, _code(foreign)) == (404, "release_item_not_found")
     assert (own.status_code, own.json()["release_item_id"]) == (200, str(mine))
     assert (cleared.status_code, cleared.json()["release_item_id"]) == (200, None)
+
+
+# ── a project run without gates ───────────────────────────────────────────
+
+
+async def test_a_project_without_gates_is_walked_to_the_end_and_takes_no_gate_trigger(world: World) -> None:
+    """Nothing in this module waits for a gate: a promise goes from proposed to verified by hand."""
+    from datetime import UTC, datetime
+
+    p = f"/api/v1/stakeholders/projects/{world.project_id}"
+    sid = await stakeholder(world, "Residents east", is_group=True)
+    await seat(world, "client_pm", world.manager)
+    plan = {"title": "Briefing", "audience_stakeholder_ids": [str(sid)], "participation_level": "inform"}
+    async with client_as(world, world.editor, "editor") as c:
+        gates = await c.get(f"{p}/gates")
+        dead = await c.post(f"{p}/plan-items", json={**plan, "channel": "meeting", "trigger_kind": "gate"})
+        live = await c.post(
+            f"{p}/plan-items",
+            json={**plan, "channel": "meeting", "frequency": "FREQ=MONTHLY", "starts_on": TODAY.isoformat()},
+        )
+        retriggered = await c.patch(f"{p}/plan-items/{live.json().get('id')}", json={"trigger_kind": "gate"})
+        promise = await c.post(
+            f"{p}/commitments",
+            json={
+                "stakeholder_ids": [str(sid)],
+                "text": "No deliveries before seven",
+                "category": "information",
+                "owner_user_id": str(world.editor),
+                "due_date": (TODAY + timedelta(days=10)).isoformat(),
+            },
+        )
+        cid = promise.json().get("id")
+    async with client_as(world, world.manager, "manager") as c:
+        steps = [
+            await c.post(f"{p}/commitments/{cid}/transition", json={"target": target, **extra})
+            for target, extra in (
+                ("agreed", {}),
+                ("in_progress", {}),
+                ("fulfilled", {}),
+                ("verified", {"communicated_back_at": datetime.now(UTC).isoformat()}),
+            )
+        ]
+        readiness = await c.get(f"{p}/readiness")
+    assert gates.json() == {"items": [], "gates_in_use": False}
+    assert (dead.status_code, _code(dead)) == (422, "gates_not_in_use")
+    assert live.status_code == 201, live.text
+    assert (retriggered.status_code, _code(retriggered)) == (422, "gates_not_in_use")
+    assert promise.status_code == 201, promise.text
+    assert [(r.status_code, r.json().get("status")) for r in steps] == [
+        (200, "agreed"),
+        (200, "in_progress"),
+        (200, "fulfilled"),
+        (200, "verified"),
+    ], [r.text for r in steps]
+    assert readiness.status_code == 200

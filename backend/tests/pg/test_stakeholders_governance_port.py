@@ -223,6 +223,8 @@ async def test_a_plan_trigger_must_name_a_gate_of_the_project(world: gov.World) 
         await s.commit()
     assert (exc.value.code, exc.value.status_code) == ("unknown_gate", 422)
     assert (item.trigger_ref, any_gate.trigger_ref) == (real, "")
+    # Where gates are in use an item may wait for any of them: that is not the refusal of a gateless project.
+    assert any_gate.trigger_kind == "gate"
 
 
 async def test_a_binding_frame_document_changes_only_through_a_reasoned_change_request(world: gov.World) -> None:

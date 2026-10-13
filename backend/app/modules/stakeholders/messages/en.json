@@ -201,6 +201,7 @@
       "event_not_found": "Engagement event not found",
       "frame_document_missing": "The owner area has no frame document with a document container yet",
       "frame_document_read_only": "The frame document is read-only and takes no new revision",
+      "gates_not_in_use": "This project does not use gates, so nothing would trigger this item. Give it a start date and a rhythm.",
       "held_on_required": "A held event needs the date it was held",
       "holder_required": "A role holder needs a roster entry or a contact",
       "invalid_amount": "The amount is not a valid number",

@@ -1117,9 +1117,13 @@ class StakeholderService:
             raise StakeholderError("schedule_or_trigger")
         if merged["trigger_kind"] == "event" and merged["trigger_ref"] not in EVENT_TRIGGERS:
             raise StakeholderError("schedule_or_trigger")
-        if merged["trigger_kind"] == "gate" and merged["trigger_ref"] and {"trigger_kind", "trigger_ref"} & set(out):
+        if merged["trigger_kind"] == "gate" and {"trigger_kind", "trigger_ref"} & set(out):
+            codes = {g["code"] for g in await self.gates(project_id)}
+            if not codes:
+                # Nothing would ever make such an item due: the project is run without gates.
+                raise StakeholderError("gates_not_in_use")
             # Empty means every gate. A named gate must be one of this project's.
-            if merged["trigger_ref"] not in {g["code"] for g in await self.gates(project_id)}:
+            if merged["trigger_ref"] and merged["trigger_ref"] not in codes:
                 raise StakeholderError("unknown_gate")
         if merged["starts_on"] and merged["ends_on"] and merged["ends_on"] < merged["starts_on"]:
             raise StakeholderError("invalid_validity")

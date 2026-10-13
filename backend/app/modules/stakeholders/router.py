@@ -778,9 +778,14 @@ async def _render(
 
 @router.get("/projects/{project_id}/gates", dependencies=[READ])
 async def list_gates(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
-    """The project's gates for the plan trigger picker; empty when the project has no phase model."""
+    """The project's gates for the plan trigger picker.
+
+    ``gates_in_use`` is false on a project run without gates: there is nothing
+    to pick then, and a plan item cannot be triggered by a gate.
+    """
     await verify_project_access(project_id, user_id, session)
-    return {"items": await _run(StakeholderService(session).gates(project_id))}
+    items = await _run(StakeholderService(session).gates(project_id))
+    return {"items": items, "gates_in_use": bool(items)}
 
 
 @router.get("/projects/{project_id}/requirements", dependencies=[READ])
