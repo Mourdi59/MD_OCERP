@@ -711,10 +711,11 @@ async def test_gates_areas_and_documents_come_from_the_governance_port(world: Wo
     async with world.factory() as s:
         svc = CommitmentService(s)
         # Nothing is decided and nothing is binding yet, and an id the project does not own is not met.
-        assert await svc._gate_state(world.project_id, gate) == "open"
-        assert await svc._document_state(world.project_id, str(documents[0].id)) == "open"
-        assert await svc._document_state(world.project_id, str(uuid.uuid4())) == "open"
-        assert await svc._document_state(world.project_id, "not-a-uuid") == "open"
+        assert await svc.linked_state(world.project_id, "gate_decided", gate) == "open"
+        doc_kind = "frame_document_binding"
+        assert await svc.linked_state(world.project_id, doc_kind, str(documents[0].id)) == "open"
+        assert await svc.linked_state(world.project_id, doc_kind, str(uuid.uuid4())) == "open"
+        assert await svc.linked_state(world.project_id, doc_kind, "not-a-uuid") == "open"
 
 
 async def test_a_handed_over_item_names_its_successor_only_to_a_reader_of_the_receiving_project(
@@ -1872,6 +1873,13 @@ async def test_a_project_without_gates_walks_from_a_planned_item_to_a_committed_
         stale_id = stale.id
     view = await _item_view(world, iid)
     assert [(p["state"], p["unreachable_reason"]) for p in view["preconditions"]] == [("open", "gates_not_in_use")]
+    # Read without the manage right: the screen is told who may remove it.
+    assert view["can"]["remove_precondition"] == {"allowed": False, "reason": "manage_required"}
+    async with world.factory() as s:
+        as_manager = await CommitmentService(s).item_views(
+            world.project_id, today=TODAY, item_ids=[iid], actor_id=world.manager, manage=True
+        )
+    assert as_manager["items"][0]["can"]["remove_precondition"] == {"allowed": True, "reason": None}
     with pytest.raises(CommitmentError) as exc:
         await request(world, iid, "40000")
     assert exc.value.code == "preconditions_open"
@@ -1950,3 +1958,64 @@ async def test_a_precondition_on_a_gate_is_accepted_only_for_a_gate_of_the_proje
     assert [(p["kind"], p["state"], p["unreachable_reason"]) for p in view["preconditions"]] == [
         ("gate_decided", "open", None)
     ]
+
+
+async def test_linked_preconditions_of_many_items_ask_the_governance_port_once(world: World, monkeypatch) -> None:
+    """Six gate preconditions and three document ones over three items: one read of gates, one of documents."""
+    from app.modules.commitment_release.models import CommitmentPrecondition
+    from app.modules.project_governance import public
+    from app.modules.project_governance.service import GovernanceService
+
+    async with world.factory() as s:
+        await GovernanceService(s).set_model(
+            world.project_id,
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            actor_id=world.manager,
+            tenant_id=str(world.manager),
+        )
+        await s.commit()
+    async with world.factory() as s:
+        gates = [g.code for g in await public.project_gates(s, world.project_id)][:2]
+        document = str((await public.project_documents(s, world.project_id))[0].id)
+    assert len(gates) == 2
+    ids = [await item(world, code=f"CR-N{n}", amount="10000") for n in range(3)]
+    async with world.factory() as s:
+        for iid in ids:
+            for kind, ref in (
+                ("gate_decided", gates[0]),
+                ("gate_decided", gates[1]),
+                ("frame_document_binding", document),
+            ):
+                s.add(
+                    CommitmentPrecondition(
+                        project_id=world.project_id, item_id=iid, kind=kind, ref_id=ref, text="", state="open"
+                    )
+                )
+        await s.commit()
+
+    asked = {"gates": 0, "documents": 0}
+    real_gates, real_documents = public.project_gates, public.project_documents
+
+    async def counting_gates(session, project_id):
+        asked["gates"] += 1
+        return await real_gates(session, project_id)
+
+    async def counting_documents(session, project_id):
+        asked["documents"] += 1
+        return await real_documents(session, project_id)
+
+    async with world.factory() as s:
+        svc = CommitmentService(s)
+        rows = await svc.repo.list_preconditions(world.project_id, ids)
+        assert len(rows) == 9
+        monkeypatch.setattr(public, "project_gates", counting_gates)
+        monkeypatch.setattr(public, "project_documents", counting_documents)
+        targets = await svc.linked_targets(world.project_id, rows)
+        states = await svc.precondition_states(
+            world.project_id, rows, planned=Decimal("10000"), cumulative=Decimal("0"), targets=targets
+        )
+    assert asked == {"gates": 1, "documents": 1}
+    assert {(p["state"], p["unreachable_reason"]) for p in states} == {("open", None)}
