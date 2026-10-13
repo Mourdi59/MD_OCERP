@@ -21,6 +21,8 @@ export interface RoadmapTableProps {
   binding: boolean;
   /** What the reader may do with the roadmap, as the server says; absent on an older answer. */
   can?: RoadmapCan;
+  /** False when the project runs without gates; the roadmap then stays a working list. */
+  gatesInUse?: boolean;
   labels: LabelContext;
   onOpen: (requirementId: string) => void;
   onAdd: () => void;
@@ -28,7 +30,7 @@ export interface RoadmapTableProps {
   onSettings: () => void;
 }
 
-export function RoadmapTable({ rows, binding, can, labels, onOpen, onAdd, onPropose, onSettings }: RoadmapTableProps) {
+export function RoadmapTable({ rows, binding, can, gatesInUse, labels, onOpen, onAdd, onPropose, onSettings }: RoadmapTableProps) {
   const { t } = useTranslation();
   const summary = summariseRoadmap(rows);
 
@@ -96,6 +98,14 @@ export function RoadmapTable({ rows, binding, can, labels, onOpen, onAdd, onProp
         {toolbar}
       </div>
       {reasons}
+      {gatesInUse === false && (
+        <p role="status" className="rounded-md border border-border-light bg-surface-secondary px-3 py-2 text-sm text-content-secondary" data-testid="roadmap-no-gates">
+          {t('permits.ui.roadmap.no_gates', {
+            defaultValue:
+              'This project does not use gates. The roadmap is a working list: it is not agreed at a gate, and permits can be added or removed without a change request.',
+          })}
+        </p>
+      )}
       {binding && (
         <p role="status" className="rounded-md border border-border-light bg-surface-secondary px-3 py-2 text-sm text-content-secondary" data-testid="roadmap-binding">
           {t('permits.ui.roadmap.binding', {

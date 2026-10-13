@@ -166,6 +166,8 @@ export interface CatalogueBody {
 
 export interface Roadmap {
   can?: RoadmapCan;
+  /** False when the project has no phase model: no gate agrees the roadmap and no frame document hosts it. */
+  gates_in_use?: boolean;
   /** Approved change requests a structural change already used up; each covers one change. */
   consumed_change_request_ids?: string[];
   id: string;

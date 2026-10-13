@@ -42839,6 +42839,7 @@ const resource = {
     "permits.ui.roadmap.estimate": "estimate",
     "permits.ui.roadmap.late_by_one": "decision {{count}} day late",
     "permits.ui.roadmap.late_by_other": "decision {{count}} days late",
+    "permits.ui.roadmap.no_gates": "This project does not use gates. The roadmap is a working list: it is not agreed at a gate, and permits can be added or removed without a change request.",
     "permits.ui.roadmap.propose": "Take from the permit route",
     "permits.ui.roadmap.settings": "Settings",
     "permits.ui.roadmap.summary": "Permits needed: {{total}}. Granted: {{granted}}. With the authority or in preparation: {{inProgress}}.",
