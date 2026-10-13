@@ -165,7 +165,7 @@ describe('PlanPanel', () => {
     renderPlan({
       plan: plan({
         status: 'in_review',
-        can: { ...plan().can, submit: no('plan_not_editable'), return: yes, change_catalogue: no('plan_in_review') },
+        can: { ...plan().can, edit: no('plan_in_review'), submit: no('plan_not_editable'), return: yes, change_catalogue: no('plan_in_review') },
       }),
     });
     expect(screen.getByTestId('plan-status')).toHaveTextContent('In review');
@@ -211,6 +211,18 @@ describe('PlanPanel', () => {
     expect(screen.queryByTestId('plan-submit-refused')).toBeNull();
     expect(screen.queryByTestId('plan-return')).toBeNull();
     expect(screen.getByTestId('plan-locked-hint')).toBeInTheDocument();
+  });
+
+  it('takes the lock from the edit flag of the server, not from the state of the plan', () => {
+    // A reader without the edit permission on a draft: nothing in the state says locked.
+    renderPlan({ plan: plan({ can: { ...plan().can, edit: no('edit_permission_required') } }) });
+    const reason = en.translation['staffing.errors.edit_permission_required']!;
+    for (const id of ['add-position', 'add-from-catalogue', 'plan-settings', 'add-handover']) {
+      expect(screen.getByTestId(id)).toBeDisabled();
+      expect(screen.getByTestId(id)).toHaveAttribute('title', reason);
+    }
+    expect(screen.getByTestId('plan-edit-refused')).toHaveTextContent(reason);
+    expect(screen.queryByTestId('plan-locked-hint')).toBeNull();
   });
 
   it('offers the submission where the server allows it', () => {

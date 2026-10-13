@@ -134,7 +134,8 @@ export interface StaffingPlan {
   approved_at: string | null;
   approval_source: string | null;
   has_bound_snapshot: boolean;
-  can: { manage: Can; assign_owner: Can; submit: Can; return: Can; change_catalogue: Can };
+  /** `edit` covers positions, plan settings, handovers and proposing a person. */
+  can: { edit: Can; manage: Can; assign_owner: Can; submit: Can; return: Can; change_catalogue: Can };
 }
 
 export interface Fill {

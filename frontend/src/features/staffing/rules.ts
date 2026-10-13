@@ -16,11 +16,6 @@ import type {
   TravelStatus,
 } from './api';
 
-/** A plan in review is locked for everybody until it is returned or decided. */
-export function planIsLocked(status: PlanStatus): boolean {
-  return status === 'in_review';
-}
-
 /**
  * Whether a submission fits the plan's state at all: only a draft or a revision
  * is something one submits. This picks which control the screen shows; whether

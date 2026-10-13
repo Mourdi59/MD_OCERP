@@ -146,7 +146,7 @@ export function plan(over: Partial<StaffingPlan> = {}): StaffingPlan {
     approved_at: null,
     approval_source: null,
     has_bound_snapshot: false,
-    can: { manage: yes, assign_owner: yes, submit: yes, return: no('plan_not_in_review'), change_catalogue: yes },
+    can: { edit: yes, manage: yes, assign_owner: yes, submit: yes, return: no('plan_not_in_review'), change_catalogue: yes },
     ...over,
   };
 }

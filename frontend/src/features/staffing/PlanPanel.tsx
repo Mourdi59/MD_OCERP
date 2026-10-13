@@ -47,7 +47,6 @@ import {
   PLAN_STATUS,
   POSITION_STATUS,
   catalogueName,
-  errorText,
   findingText,
   offered,
   positionName,
@@ -57,7 +56,7 @@ import {
 } from './labels';
 import { ChangeCatalogueDialog, PlanSettingsDialog } from './PlanDialogs';
 import { FillDialog, FromCatalogueDialog, HandoverDialog, PositionDialog } from './PositionDialogs';
-import { allowedStatusMoves, fteDecimals, groupByPhase, phasesOf, planIsLocked, planIsSubmittable } from './rules';
+import { allowedStatusMoves, fteDecimals, groupByPhase, phasesOf, planIsSubmittable } from './rules';
 import {
   ClearedBadge,
   ExportButtons,
@@ -140,8 +139,10 @@ export function PlanPanel({
   const addToast = useToastStore((s) => s.addToast);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [refused, setRefused] = useState<Finding[]>([]);
-  const locked = planIsLocked(plan.status);
-  const lockedReason = locked ? errorText(labels.t, 'plan_in_review') : undefined;
+  // One flag of the server covers everything a plan freezes or a reader may not do:
+  // positions, settings, handovers and proposing a person.
+  const locked = !plan.can.edit.allowed;
+  const lockedReason = whyNot(labels.t, plan.can.edit) || undefined;
   // Submitting, returning and re-pinning the catalogue follow the server's flags, state and permission both.
   // The state only picks which control is on screen: nobody submits an approved plan.
   const submittable = maySubmit.applies ?? planIsSubmittable(plan.status);
@@ -282,7 +283,12 @@ export function PlanPanel({
             })}
           </p>
         )}
-        {locked && (
+        {locked && plan.status !== 'in_review' && lockedReason && (
+          <p className="mt-3 text-sm text-content-secondary" role="status" data-testid="plan-edit-refused">
+            {lockedReason}
+          </p>
+        )}
+        {plan.status === 'in_review' && (
           <p className="mt-3 text-sm text-content-secondary" role="status" data-testid="plan-locked-hint">
             {t('staffing.plan.in_review_hint', {
               defaultValue:
