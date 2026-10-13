@@ -121,6 +121,7 @@
       "not_requester": "Nur die antragstellende Person oder die Leitung kann den Antrag zurückziehen",
       "planned_source_invalid": "Unbekannte Quelle für den geplanten Betrag",
       "planned_source_not_found": "Budgetzeile, Kostenzeile oder Position in diesem Projekt nicht gefunden",
+      "plant_item_not_found": "Die Position des Geräte- und Anlagenregisters wurde in diesem Projekt nicht gefunden",
       "precondition_is_computed": "Diese Voraussetzung wird aus ihrem Modul gelesen und kann nicht abgehakt werden",
       "precondition_kind_invalid": "Unbekannte Art der Voraussetzung",
       "precondition_needs_evidence": "Geben Sie den Nachweis an",

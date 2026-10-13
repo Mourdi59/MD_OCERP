@@ -153,8 +153,9 @@ def tolerance_ceiling(released: Decimal, absolute: Decimal, percent: Decimal) ->
 class DecisionDate:
     """``latest`` decision date and which input it was computed from.
 
-    ``basis``: ``late_start`` (CPM ran), ``start_date`` (no CPM, planned start used),
-    ``fixed`` (entered on the item) or ``none`` (nothing to compute from).
+    ``basis``: ``plant_item`` (the latest order date of the linked plant item), ``late_start``
+    (CPM ran), ``start_date`` (no CPM, planned start used), ``fixed`` (entered on the item) or
+    ``none`` (nothing to compute from).
     """
 
     latest: date | None
@@ -196,6 +197,57 @@ def latest_decision_date(
     if fixed_day is not None:
         return DecisionDate(fixed_day, "fixed", None)
     return DecisionDate(None, "none", None)
+
+
+LEAD_SOURCES = ("plant_item", "item", "requisition")
+
+
+def lead_time_in_force(
+    *, plant_item_days: int | None = None, own_days: int | None = None, requisition_days: int | None = None
+) -> tuple[int | None, str | None]:
+    """``(lead time in days, where it comes from)`` for one item.
+
+    1. ``plant_item``: the item names an item of the plant register and the register has a lead
+       time for it. The register is the one place a plant item's lead time is kept, so the
+       figure typed on this row never competes with it.
+    2. ``item``: the figure the planner typed on the row.
+    3. ``requisition``: the lead time of the linked material requisition, read when nothing is
+       typed (the typed figure is the planner's deliberate override of it, as before).
+    """
+    for days, source in ((plant_item_days, "plant_item"), (own_days, "item"), (requisition_days, "requisition")):
+        if days is not None:
+            return days, source
+    return None, None
+
+
+def decision_date_for_item(
+    *,
+    plant_latest_order: object = None,
+    plant_need_date: object = None,
+    late_start: object = None,
+    start_date: object = None,
+    fixed: object = None,
+    lead_time_days: int | None = None,
+    decision_buffer_days: int | None = None,
+) -> DecisionDate:
+    """The latest decision date of an item, the plant register's order date first.
+
+    A linked plant item with a latest order date decides by that date less the decision buffer:
+    the register already took the need date, the lead time and its own buffers into it, so
+    nothing of this row is subtracted twice. Without such a date the item's own inputs apply
+    (:func:`latest_decision_date`), with whatever lead time is in force.
+    """
+    order_by = _day(plant_latest_order)
+    if order_by is not None:
+        buffer = timedelta(days=max(decision_buffer_days or 0, 0))
+        return DecisionDate(order_by - buffer, "plant_item", _day(plant_need_date))
+    return latest_decision_date(
+        late_start=late_start,
+        start_date=start_date,
+        fixed=fixed,
+        lead_time_days=lead_time_days,
+        decision_buffer_days=decision_buffer_days,
+    )
 
 
 RELEASED_STATES = frozenset({"released", "committed", "closed", "re_release_required"})

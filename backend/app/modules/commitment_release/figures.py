@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -468,6 +469,24 @@ async def requisition_lead_time(session: AsyncSession, project_id: uuid.UUID, re
     if row is None or row.project_id != project_id:
         return None
     return int(row.lead_time_days or 0)
+
+
+async def plant_item_dates_of(
+    session: AsyncSession, project_id: uuid.UUID, plant_item_id: uuid.UUID | None, *, today: date
+) -> Any:
+    """What the plant register says about a linked plant item, or ``None``.
+
+    ``None`` when the row names no plant item, when the register does not know the id in this
+    project, and when the plant register is not installed: the module is optional, and without it
+    an item keeps its own lead time. Read through the register's port, never its tables.
+    """
+    if plant_item_id is None:
+        return None
+    try:
+        from app.modules.plant_register.reads import plant_item_dates
+    except ImportError:
+        return None
+    return await plant_item_dates(session, project_id, plant_item_id, today=today)
 
 
 SUNK_PARTS: tuple[str, ...] = ("paid", "invoiced_unpaid", "certified_not_invoiced", "received_not_invoiced")

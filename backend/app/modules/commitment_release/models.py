@@ -133,6 +133,9 @@ class CommitmentItem(Base):
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="")
     need_activity_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     requisition_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # Soft link to an item of the plant register (an optional module, so no foreign key). When
+    # set, the lead time and the latest order date are the register's, not this row's.
+    plant_item_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     lead_time_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     decision_buffer_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     latest_decision_date_fixed: Mapped[str | None] = mapped_column(String(40), nullable=True)

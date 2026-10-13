@@ -121,6 +121,7 @@
       "not_requester": "Only the requester or a manager can withdraw this request",
       "planned_source_invalid": "Unknown source for the planned amount",
       "planned_source_not_found": "The budget line, cost line or position was not found in this project",
+      "plant_item_not_found": "The plant item was not found in this project",
       "precondition_is_computed": "This precondition is read from its module and cannot be ticked",
       "precondition_kind_invalid": "Unknown precondition kind",
       "precondition_needs_evidence": "Attach the evidence reference",

@@ -676,6 +676,14 @@ class CommitmentService:
         if data.get("requisition_id"):
             if await figures.requisition_lead_time(self.session, project_id, _uuid(data["requisition_id"])) is None:
                 raise not_found("requisition_not_found")
+        if data.get("plant_item_id"):
+            # Unknown, of another project, or no plant register installed: nothing this row could
+            # read its dates from, so the link is not stored.
+            known = await figures.plant_item_dates_of(
+                self.session, project_id, _uuid(data["plant_item_id"]), today=datetime.now(UTC).date()
+            )
+            if known is None:
+                raise not_found("plant_item_not_found")
         for flag in data.get("flags") or []:
             if flag not in {f.code for f in schedule.novelty_flags}:
                 raise CommitmentError("flag_unknown", 422)
@@ -759,6 +767,7 @@ class CommitmentService:
         "currency",
         "need_activity_id",
         "requisition_id",
+        "plant_item_id",
         "lead_time_days",
         "decision_buffer_days",
         "latest_decision_date_fixed",
@@ -1327,10 +1336,17 @@ class CommitmentService:
             released = self.released_in_schedule_currency(rel)
             planned, planned_ccy, planned_note = await figures.planned_amount(self.session, item, base)
             late, start, _found = await figures.activity_dates(self.session, project_id, item.need_activity_id)
-            lead = item.lead_time_days
-            if lead is None:
-                lead = await figures.requisition_lead_time(self.session, project_id, item.requisition_id)
-            dd = ev.latest_decision_date(
+            plant = await figures.plant_item_dates_of(self.session, project_id, item.plant_item_id, today=today)
+            lead, lead_source = ev.lead_time_in_force(
+                plant_item_days=plant.lead_time_days if plant is not None else None,
+                own_days=item.lead_time_days,
+                requisition_days=await figures.requisition_lead_time(self.session, project_id, item.requisition_id)
+                if item.lead_time_days is None
+                else None,
+            )
+            dd = ev.decision_date_for_item(
+                plant_latest_order=plant.latest_order_date if plant is not None else None,
+                plant_need_date=plant.need_date if plant is not None else None,
                 late_start=late,
                 start_date=start,
                 fixed=item.latest_decision_date_fixed,
@@ -1402,6 +1418,11 @@ class CommitmentService:
                 "need_activity_id": _s(item.need_activity_id),
                 "requisition_id": _s(item.requisition_id),
                 "lead_time_days": item.lead_time_days,
+                "plant_item_id": _s(item.plant_item_id),
+                # The plant item as the register names it; null when unlinked or no longer known there.
+                "plant_item_code": plant.code if plant is not None else None,
+                "lead_time_in_force_days": lead,
+                "lead_time_source": lead_source,
                 "decision_buffer_days": item.decision_buffer_days,
                 "latest_decision_date_fixed": item.latest_decision_date_fixed,
                 "planned": {"amount": _money_str(planned), "currency": planned_ccy, "note": planned_note},

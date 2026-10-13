@@ -259,3 +259,37 @@ def test_an_expired_release_covers_what_is_bound_and_nothing_new() -> None:
     assert release_in_force(D("160000"), D("100000"), D("40000")) == D("100000")
     # A credit never turns an expired release into authority.
     assert release_in_force(D("100000"), D("100000"), D("-500")) == D("0")
+
+
+@pytest.mark.parametrize(
+    ("plant", "own", "requisition", "expected"),
+    [
+        (84, 30, 14, (84, "plant_item")),  # the register wins over everything typed here
+        (84, None, None, (84, "plant_item")),
+        (0, 30, 14, (0, "plant_item")),  # zero is an answer, not a gap
+        (None, 30, 14, (30, "item")),  # linked but the register has no lead time, or not linked
+        (None, 0, 14, (0, "item")),
+        (None, None, 14, (14, "requisition")),
+        (None, None, None, (None, None)),
+    ],
+)
+def test_the_lead_time_in_force_follows_one_precedence(plant, own, requisition, expected) -> None:
+    from app.modules.commitment_release.evaluator import lead_time_in_force
+
+    assert lead_time_in_force(plant_item_days=plant, own_days=own, requisition_days=requisition) == expected
+
+
+def test_a_plant_item_order_date_decides_before_the_items_own_dates() -> None:
+    from datetime import date as day
+
+    from app.modules.commitment_release.evaluator import decision_date_for_item
+
+    own = {"late_start": "2027-06-01", "fixed": "2027-01-10", "lead_time_days": 30}
+    # The register's latest order date already holds its need date and lead time: only the buffer comes off.
+    got = decision_date_for_item(
+        plant_latest_order=day(2027, 2, 1), plant_need_date=day(2027, 8, 1), decision_buffer_days=10, **own
+    )
+    assert (got.latest, got.basis) == (day(2027, 1, 22), "plant_item")
+    # No order date from the register (no need date there): the item's own inputs apply unchanged.
+    got = decision_date_for_item(plant_latest_order=None, decision_buffer_days=10, **own)
+    assert (got.latest, got.basis) == (day(2027, 4, 22), "late_start")

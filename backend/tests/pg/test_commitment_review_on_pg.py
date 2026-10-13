@@ -1426,3 +1426,97 @@ async def test_an_item_past_its_decision_date_is_its_own_warning_evidence_item(w
     assert evidence_link_href("commitment_matrix", str(world.project_id), world.project_id) == (
         f"/projects/{world.project_id}/commitments"
     )
+
+
+# ── the plant item link (plant register rule 12: one lead time per plant item) ─────────────
+
+
+def _plant_register(monkeypatch, known: dict) -> None:
+    """Stand in for ``plant_register.reads`` with the contract of its ``plant_item_dates``."""
+    import sys
+    import types
+
+    async def plant_item_dates(session, project_id, plant_item_id, *, today=None):
+        owner, dates = known.get(plant_item_id, (None, None))
+        return dates if owner == project_id else None
+
+    reads = types.ModuleType("app.modules.plant_register.reads")
+    reads.plant_item_dates = plant_item_dates
+    monkeypatch.setitem(sys.modules, "app.modules.plant_register.reads", reads)
+
+
+async def _item_view(world: World, iid: uuid.UUID) -> dict:
+    async with world.factory() as s:
+        return (await CommitmentService(s).item_views(world.project_id, today=TODAY, item_ids=[iid]))["items"][0]
+
+
+async def test_a_linked_plant_item_gives_the_lead_time_and_the_order_date(world: World, monkeypatch) -> None:
+    from datetime import date as day
+
+    from app.modules.commitment_release.public import item_options
+
+    plant_id = uuid.uuid4()
+    dates = SimpleNamespace(
+        plant_item_id=plant_id,
+        code="PL-07",
+        need_date=day(2027, 8, 1),
+        latest_order_date=day(2027, 2, 1),
+        lead_time_days=84,
+        long_lead=True,
+    )
+    _plant_register(monkeypatch, {plant_id: (world.project_id, dates)})
+    iid = await item(
+        world,
+        code="CR-P",
+        amount="10000",
+        ctype="supplies",
+        plant_item_id=plant_id,
+        lead_time_days=30,
+        decision_buffer_days=10,
+        latest_decision_date_fixed="2027-06-30",
+    )
+    v = await _item_view(world, iid)
+    assert (v["plant_item_id"], v["plant_item_code"]) == (str(plant_id), "PL-07")
+    # The register's figures, not the 30 days and the fixed date typed on the row.
+    assert (v["lead_time_in_force_days"], v["lead_time_source"]) == (84, "plant_item")
+    assert (v["latest_decision_date"], v["date_basis"]) == ("2027-01-22", "plant_item")
+    assert v["lead_time_days"] == 30
+    async with world.factory() as s:
+        assert [o.lead_time_days for o in await item_options(s, world.project_id) if o.id == iid] == [84]
+
+    # The register no longer knows the item: the row falls back to its own figures and says so.
+    _plant_register(monkeypatch, {})
+    v = await _item_view(world, iid)
+    assert (v["plant_item_code"], v["lead_time_in_force_days"], v["lead_time_source"]) == (None, 30, "item")
+    assert (v["latest_decision_date"], v["date_basis"]) == ("2027-06-30", "fixed")
+
+
+async def test_a_plant_item_of_another_project_or_an_unknown_one_is_refused(world: World, monkeypatch) -> None:
+    foreign, unknown = uuid.uuid4(), uuid.uuid4()
+    _plant_register(monkeypatch, {foreign: (uuid.uuid4(), SimpleNamespace(code="PL-X"))})
+    for plant_id in (foreign, unknown):
+        with pytest.raises(CommitmentError) as exc:
+            await item(world, code=f"CR-{plant_id.hex[:4]}", amount="10000", plant_item_id=plant_id)
+        assert (exc.value.code, exc.value.status_code) == ("plant_item_not_found", 404)
+    iid = await item(world, code="CR-Q", amount="10000")
+    async with world.factory() as s:
+        with pytest.raises(CommitmentError) as exc:
+            await CommitmentService(s).update_item(
+                world.project_id, iid, {"plant_item_id": foreign}, actor_id=world.requester
+            )
+    assert exc.value.code == "plant_item_not_found"
+
+
+async def test_without_the_plant_register_an_item_keeps_its_own_lead_time(world: World, monkeypatch) -> None:
+    import sys
+
+    # ``None`` in sys.modules makes the import fail, as on an install without the module.
+    monkeypatch.setitem(sys.modules, "app.modules.plant_register.reads", None)
+    iid = await item(world, code="CR-N", amount="10000", lead_time_days=30, latest_decision_date_fixed="2027-06-30")
+    v = await _item_view(world, iid)
+    assert (v["lead_time_in_force_days"], v["lead_time_source"], v["plant_item_id"]) == (30, "item", None)
+    assert (v["latest_decision_date"], v["date_basis"]) == ("2027-06-30", "fixed")
+    # A link cannot be stored when nothing can answer for it.
+    with pytest.raises(CommitmentError) as exc:
+        await item(world, code="CR-O", amount="10000", plant_item_id=uuid.uuid4())
+    assert exc.value.code == "plant_item_not_found"
