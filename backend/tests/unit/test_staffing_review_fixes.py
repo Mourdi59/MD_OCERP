@@ -376,6 +376,26 @@ def test_every_unknown_evidence_item_has_its_own_code_and_a_sentence_in_both_lan
         assert bundle["staffing.evidence.nothing_due"]
 
 
+def test_a_country_gets_the_shipped_staffing_catalogue_that_claims_it_through_the_port(monkeypatch) -> None:
+    from app.modules.project_governance import catalogue_packs
+    from app.modules.project_governance import public as governance
+    from app.modules.staffing.catalogue import STAFFING_MODEL_KIND, register_kinds
+
+    register_kinds()
+    # No pack opinion: the answer comes from the shipped files alone.
+    monkeypatch.setattr(catalogue_packs, "pack_default_candidates", lambda kind, country=None: ())
+    for country, expected in (("DE", "de"), ("gb", "uk"), ("US", "us")):
+        pin = governance.default_catalogue_pin(STAFFING_MODEL_KIND, country)
+        assert (pin.source, pin.catalogue_id) == ("shipped", expected)
+    # Nobody claims the country, or there is none: the module pins its neutral file.
+    assert governance.default_catalogue_pin(STAFFING_MODEL_KIND, "FR") is None
+    assert governance.default_catalogue_pin(STAFFING_MODEL_KIND, None) is None
+    # The module keeps no country rule of its own.
+    from app.modules.staffing import catalogue
+
+    assert not hasattr(catalogue, "default_catalogue_id_for_country")
+
+
 def test_the_hosting_area_always_gets_an_answer() -> None:
     from app.modules.staffing import evidence
 
