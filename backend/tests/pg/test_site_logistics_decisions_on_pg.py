@@ -390,3 +390,33 @@ async def test_deleting_an_area_or_a_transport_unlinks_the_zone_and_the_slot(wor
         assert (await s.get(m.LaydownZone, other.id)).site_area_id == kept.id
         assert (await s.get(m.DeliveryBooking, slot.id)).transport_id is None
         assert await s.get(m.SiteArea, area.id) is None and await s.get(m.Transport, transport.id) is None
+
+
+# -- a project that does not use gates (programme rule 26) --------------------
+
+
+async def test_a_project_without_gates_can_complete_its_readiness_list(world: World) -> None:
+    """No phase model, no gates: there is no frame document, so a saved concept is all the item can ask.
+
+    The item used to read ``unknown: no_frame_document`` for ever on such a
+    project, so the list could never be complete there.
+    """
+    pid = world.project_id
+    async with world.factory() as s:
+        svc = LogisticsPlanService(s)
+        before = await svc.readiness(pid)
+        item = next(i for i in before["items"] if i["code"] == "concept_saved_and_exported")
+        assert before["gates_in_use"] is False
+        assert (before["governance"], before["gates"], before["area"]) == ("no_governance_model", [], None)
+        # Nothing written into the concept yet: not met, and for that reason.
+        assert (item["state"], item["detail"]) == ("not_met", "concept_empty")
+        await svc.put_concept(pid, {"rules_text": "Deliveries by road through the north entrance."}, world.manager)
+        await s.commit()
+    async with world.factory() as s:
+        after = await LogisticsPlanService(s).readiness(pid)
+        item = next(i for i in after["items"] if i["code"] == "concept_saved_and_exported")
+        assert (item["state"], item["detail"]) == ("met", "")
+        assert after["gates_in_use"] is False
+    async with client_as(world, world.manager, "manager") as http:
+        served = (await http.get(f"{BASE}/projects/{pid}/readiness")).json()
+        assert served["gates_in_use"] is False

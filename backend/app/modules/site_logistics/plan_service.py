@@ -3174,8 +3174,13 @@ class LogisticsPlanService:
         items.append(_item("first_stage_media_contracted", not first_short, ",".join(sorted(set(first_short)))))
         concept = await self.concept(project_id)
         saved = bool(concept and (concept.strategy or concept.rules_text.strip()))
+        gates_in_use = await hosting.gates_in_use(self.session, project_id)
         if not saved:
             items.append(_item("concept_saved_and_exported", False, "concept_empty"))
+        elif not target.has_model and not gates_in_use:
+            # The project does not use gates: there is no frame document to export
+            # into, so the saved concept is all this item can ask for.
+            items.append(_item("concept_saved_and_exported", True, ""))
         elif target.frame_doc_type is None:
             # No frame document in this governance model: nothing can prove the export.
             items.append({"code": "concept_saved_and_exported", "state": "unknown", "detail": "no_frame_document"})
@@ -3239,6 +3244,8 @@ class LogisticsPlanService:
             "frame_doc_type": target.frame_doc_type,
             # Why the plan cannot be placed in the governance model, else null.
             "governance": target.reason,
+            # False on a project without gates: the screen says so instead of naming an unknown gate.
+            "gates_in_use": gates_in_use,
             "ready": all(i["state"] == "met" for i in items),
             "items": items,
             "passed_by_permit": passed_by_permit,
