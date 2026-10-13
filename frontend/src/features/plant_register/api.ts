@@ -417,6 +417,8 @@ export interface Readiness {
   critical_open: string[];
   long_lead_open: string[];
   frame_document_attached: boolean;
+  /** False when the project pinned no phase model: no gate and no frame document exist. */
+  gates_in_use?: boolean;
 }
 
 export interface Finding {

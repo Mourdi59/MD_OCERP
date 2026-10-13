@@ -620,6 +620,38 @@ describe('FrameSummary', () => {
     );
   });
 
+  it('on a project without gates it names no gate and does not list the frame document as missing', () => {
+    wrap(
+      <FrameSummary
+        projectId="p1"
+        summary={frame()}
+        readiness={readiness({ gates_in_use: false, frame_document_attached: false })}
+        findings={[]}
+        catalogue={cat}
+        labels={labels}
+      />,
+    );
+    const panel = screen.getByTestId('frame-readiness');
+    expect(panel).toHaveTextContent('This project does not use gates.');
+    expect(panel).not.toHaveTextContent('gate to execution');
+    const open = within(screen.getByTestId('readiness-open')).getAllByRole('listitem');
+    expect(open.map((li) => li.getAttribute('data-open'))).toEqual(['critical', 'long_lead']);
+  });
+
+  it('on a project without gates a complete register says so without naming a gate', () => {
+    wrap(
+      <FrameSummary
+        projectId="p1"
+        summary={frame()}
+        readiness={readiness({ gates_in_use: false, ready: true, critical_open: [], long_lead_open: [] })}
+        findings={[]}
+        catalogue={cat}
+        labels={labels}
+      />,
+    );
+    expect(screen.getByTestId('readiness-ready')).toHaveTextContent('Nothing is open in the plant register.');
+  });
+
   it('says the register is ready when it is, and that every check passes', () => {
     wrap(
       <FrameSummary
