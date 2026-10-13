@@ -1665,3 +1665,75 @@ async def test_the_demo_link_points_a_commitment_item_at_its_plant_item_once(wor
     assert await link_now() == {"CR-002": "linked", "CR-404": "no_commitment_item"}
     assert (await state(world, iid)).plant_item_id == plant_id
     assert (await link_now())["CR-002"] == "already_linked"
+
+
+# ── the plant items a form may pick from ───────────────────────────────────────────────────
+
+
+async def test_references_list_the_plant_items_of_this_project_only(world: World, monkeypatch) -> None:
+    import sys
+
+    async def refs() -> dict:
+        async with world.factory() as s:
+            return (await CommitmentService(s).references(world.project_id))["plant_items"]
+
+    # No plant register installed: nothing to link to, and the answer says so.
+    monkeypatch.setitem(sys.modules, "app.modules.plant_register.reads", None)
+    assert await refs() == {"available": False, "items": []}
+
+    mine, theirs = uuid.uuid4(), uuid.uuid4()
+    other_project = uuid.uuid4()
+    register = {
+        world.project_id: [
+            SimpleNamespace(id=mine, code="PL-002", title="Switchgear", status="identified"),
+            SimpleNamespace(id=uuid.uuid4(), code="PL-001", title="Transformer", status="cancelled"),
+        ],
+        other_project: [SimpleNamespace(id=theirs, code="PL-900", title="Foreign", status="identified")],
+    }
+    asked: list[uuid.UUID] = []
+
+    async def plant_item_options(session, project_id):
+        asked.append(project_id)
+        return register.get(project_id, [])
+
+    _plant_register(monkeypatch, {})
+    sys.modules["app.modules.plant_register.reads"].plant_item_options = plant_item_options
+    got = await refs()
+    assert got["available"] is True
+    # By code, every status served as the register names it, and only this project was asked for.
+    assert [(r["code"], r["name"], r["status"]) for r in got["items"]] == [
+        ("PL-001", "Transformer", "cancelled"),
+        ("PL-002", "Switchgear", "identified"),
+    ]
+    assert got["items"][1]["id"] == str(mine)
+    assert asked == [world.project_id]
+    assert str(theirs) not in {r["id"] for r in got["items"]}
+
+
+async def test_a_matrix_read_asks_the_plant_register_once_for_all_linked_items(world: World, monkeypatch) -> None:
+    import sys
+
+    a, b = uuid.uuid4(), uuid.uuid4()
+    dates = {
+        a: SimpleNamespace(code="PL-A", need_date=None, latest_order_date=None, lead_time_days=70, status="ordered"),
+        b: SimpleNamespace(code="PL-B", need_date=None, latest_order_date=None, lead_time_days=21, status="ordered"),
+    }
+    _plant_register(monkeypatch, {k: (world.project_id, v) for k, v in dates.items()})
+    for code, plant_id in (("CR-A", a), ("CR-B", b)):
+        await item(world, code=code, amount="10000", plant_item_id=plant_id)
+    await item(world, code="CR-C", amount="10000", lead_time_days=5)
+    calls: list[list[uuid.UUID]] = []
+
+    async def plant_items_dates(session, project_id, plant_item_ids, *, today=None):
+        calls.append(list(plant_item_ids))
+        return {i: dates[i] for i in plant_item_ids if i in dates and project_id == world.project_id}
+
+    sys.modules["app.modules.plant_register.reads"].plant_items_dates = plant_items_dates
+    async with world.factory() as s:
+        views = (await CommitmentService(s).item_views(world.project_id, today=TODAY))["items"]
+    assert {v["code"]: (v["lead_time_in_force_days"], v["lead_time_source"]) for v in views} == {
+        "CR-A": (70, "plant_item"),
+        "CR-B": (21, "plant_item"),
+        "CR-C": (5, "item"),
+    }
+    assert len(calls) == 1 and sorted(calls[0], key=str) == sorted([a, b], key=str)

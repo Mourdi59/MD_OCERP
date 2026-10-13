@@ -1329,6 +1329,10 @@ class CommitmentService:
         tol = schedule.variation_tolerance
         views = []
         totals = {"planned": ZERO, "released": ZERO, "released_in_force": ZERO, "committed": ZERO}
+        # One read of the plant register for every linked item of this read.
+        plants = await figures.plant_items_dates_of(
+            self.session, project_id, [i.plant_item_id for i in items if i.plant_item_id is not None], today=today
+        )
         unconverted: set[str] = set()
         currencies: set[str] = set()
         for item in items:
@@ -1336,7 +1340,7 @@ class CommitmentService:
             released = self.released_in_schedule_currency(rel)
             planned, planned_ccy, planned_note = await figures.planned_amount(self.session, item, base)
             late, start, _found = await figures.activity_dates(self.session, project_id, item.need_activity_id)
-            plant = await figures.plant_item_dates_of(self.session, project_id, item.plant_item_id, today=today)
+            plant = plants.get(item.plant_item_id) if item.plant_item_id is not None else None
             lead, lead_source = ev.lead_time_in_force(
                 plant_item_days=plant.lead_time_days if plant is not None else None,
                 own_days=item.lead_time_days,
@@ -2823,8 +2827,11 @@ class CommitmentService:
             .where(FundingApplication.project_id == project_id)
             .order_by(FundingApplication.code)
         )
+        plant_register, plant_items = await figures.plant_item_options(self.session, project_id)
         return {
             "has_model": has_model,
+            # ``available`` is false when the plant register is not installed: there is nothing to link to.
+            "plant_items": {"available": plant_register, "items": plant_items},
             "gates": [
                 {
                     "code": g.code,

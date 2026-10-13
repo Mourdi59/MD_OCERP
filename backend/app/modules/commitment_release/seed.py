@@ -601,11 +601,9 @@ async def link_demo_plant_items(
     project = await session.get(Project, project_id)
     if project is None or not demo_id_of(project.metadata_):
         return {}
-    try:
-        from app.modules.plant_register import reads
-    except ImportError:
-        return dict.fromkeys(wanted, "plant_register_unavailable")
-    by_code = getattr(reads, "plant_item_id_by_code", None)
+    from app.modules.commitment_release.figures import plant_register_reads
+
+    by_code = getattr(plant_register_reads(), "plant_item_id_by_code", None)
     if by_code is None:
         return dict.fromkeys(wanted, "plant_register_unavailable")
     items = {

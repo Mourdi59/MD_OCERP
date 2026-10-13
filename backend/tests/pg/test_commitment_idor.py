@@ -323,7 +323,10 @@ async def test_references_are_empty_lists_without_a_governance_model_and_targets
     async with client_as(world, world.requester, "editor") as c:
         refs = await c.get(f"{url}/references")
     assert refs.status_code == 200, refs.text
-    assert refs.json() == {
+    body = refs.json()
+    # Whether the plant register is installed differs by install; a project without plant items lists none.
+    assert body.pop("plant_items")["items"] == []
+    assert body == {
         "has_model": False,
         "gates": [],
         "areas": [],

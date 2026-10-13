@@ -68,9 +68,12 @@ async def item_options(session: Any, project_id: uuid.UUID) -> list[ItemOption]:
 
     today = datetime.now(UTC).date()
     lead: dict[uuid.UUID, int | None] = {}
+    plants = await figures.plant_items_dates_of(
+        session, project_id, [i.plant_item_id for i in items if i.plant_item_id is not None], today=today
+    )
     for i in items:
         # The same lead time the matrix shows: a linked plant item's comes from the plant register.
-        plant = await figures.plant_item_dates_of(session, project_id, i.plant_item_id, today=today)
+        plant = plants.get(i.plant_item_id) if i.plant_item_id is not None else None
         lead[i.id], _source = ev.lead_time_in_force(
             plant_item_days=plant.lead_time_days if plant is not None else None,
             own_days=i.lead_time_days,
