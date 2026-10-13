@@ -140,7 +140,7 @@ class PermitApplication(Base):
     __tablename__ = "oe_permits_application"
     __table_args__ = (
         UniqueConstraint("requirement_id", "kind", "attempt", name="uq_oe_permits_application_attempt"),
-        Index("ix_oe_permits_application_state", "project_id", "status"),
+        Index("ix_oe_permits_application_project_id_status", "project_id", "status"),
     )
 
     project_id: Mapped[uuid.UUID] = _project("fk_oe_permits_application_project")
@@ -218,7 +218,7 @@ class Permit(Base):
     __tablename__ = "oe_permits_permit"
     __table_args__ = (
         UniqueConstraint("decision_id", name="uq_oe_permits_permit_decision"),
-        Index("ix_oe_permits_permit_state", "project_id", "status"),
+        Index("ix_oe_permits_permit_project_id_status", "project_id", "status"),
     )
 
     project_id: Mapped[uuid.UUID] = _project("fk_oe_permits_permit_project")
@@ -247,7 +247,7 @@ class PermitCondition(Base):
     __tablename__ = "oe_permits_condition"
     __table_args__ = (
         UniqueConstraint("permit_id", "number", name="uq_oe_permits_condition_number"),
-        Index("ix_oe_permits_condition_state", "project_id", "status"),
+        Index("ix_oe_permits_condition_project_id_status", "project_id", "status"),
         Index("ix_oe_permits_condition_trigger", "project_id", "trigger", "status"),
         Index("ix_oe_permits_condition_due", "project_id", "due_date"),
     )

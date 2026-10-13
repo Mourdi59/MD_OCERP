@@ -198,7 +198,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _guid("created_by"),
             sa.UniqueConstraint("requirement_id", "kind", "attempt", name="uq_oe_permits_application_attempt"),
         ],
-        [("ix_oe_permits_application_state", ["project_id", "status"])],
+        [("ix_oe_permits_application_project_id_status", ["project_id", "status"])],
     ),
     (
         "oe_permits_clock_event",
@@ -258,7 +258,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _guid("superseded_by_id"),
             sa.UniqueConstraint("decision_id", name="uq_oe_permits_permit_decision"),
         ],
-        [("ix_oe_permits_permit_state", ["project_id", "status"])],
+        [("ix_oe_permits_permit_project_id_status", ["project_id", "status"])],
     ),
     (
         "oe_permits_condition",
@@ -301,7 +301,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             sa.UniqueConstraint("permit_id", "number", name="uq_oe_permits_condition_number"),
         ],
         [
-            ("ix_oe_permits_condition_state", ["project_id", "status"]),
+            ("ix_oe_permits_condition_project_id_status", ["project_id", "status"]),
             ("ix_oe_permits_condition_trigger", ["project_id", "trigger", "status"]),
             ("ix_oe_permits_condition_due", ["project_id", "due_date"]),
         ],
