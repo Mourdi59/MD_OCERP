@@ -92,7 +92,7 @@ async def test_a_stranger_cannot_issue_a_release_of_this_project(world: DesignWo
         made = await c.post(f"{BASE}/projects/{world.project_id}/releases", json={"revision_ids": [str(rev)]})
     assert made.status_code == 201
     rel = made.json()
-    assert rel["can"]["issue"] == {"allowed": False, "reason": "release_not_ready"}
+    assert rel["can"]["issue"] == {"allowed": False, "applies": True, "reason": "release_not_ready"}
     async with client_as(world, world.outsider, "manager") as c:
         issue = await c.post(f"{BASE}/projects/{world.project_id}/releases/{rel['id']}/issue", json={})
         ready = await c.post(

@@ -51,6 +51,7 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     "modules/boq/router.py": {"export_boq_pdf", "export_boq_excel"},
     "modules/contracts/router.py": {"export_aia_application_pdf", "export_claim_hakedis_pdf"},
     "modules/daily_diary/router.py": {"diary_pdf"},
+    "modules/design_management/router.py": {"export"},
     "modules/einvoice/router.py": {"generate_invoice"},
     "modules/fieldreports/router.py": {"export_pdf"},
     # ``_export_tr_einvoice`` writes XML, not a PDF; the search finds it through the

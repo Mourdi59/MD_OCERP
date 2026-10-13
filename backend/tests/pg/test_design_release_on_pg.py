@@ -81,8 +81,8 @@ async def test_a_release_needs_an_approval_route_and_someone_else_to_approve_it(
         ready = await svc.release_transition(world.project_id, rel.id, "ready", actor_id=world.approver)
         assert (ready.approval_status, ready.content_changed_by) == ("pending", world.approver)
         can = await svc.release_can(ready, actor_id=world.approver, may_release=True)
-        assert can["issue"] == {"allowed": False, "reason": "release_not_approved"}
-        assert can["approve"] == {"allowed": False, "reason": "release_four_eyes"}
+        assert can["issue"] == {"allowed": False, "applies": True, "reason": "release_not_approved"}
+        assert can["approve"] == {"allowed": False, "applies": True, "reason": "release_four_eyes"}
         assert (await svc.release_can(ready, actor_id=world.manager, may_release=True))["approve"]["allowed"]
         for actor in (world.manager, world.approver, world.editor):
             with pytest.raises(DesignError) as early:

@@ -97,6 +97,10 @@ async def test_the_naming_hook_is_skipped_only_inside_a_server_write() -> None:
     async def refuse(_session, _project_id, code, _parts):
         return [{"code": "numbering_invalid", "field": None, "value": code}]
 
+    # Only this test's checker: another module's checker registered earlier in the run would be
+    # called with the missing session and fail for a reason that has nothing to do with the hook.
+    others = dict(cn._CHECKERS)
+    cn._CHECKERS.clear()
     cn.register_container_code_checker("test.refuse_everything", refuse)
     try:
         with pytest.raises(HTTPException) as err:
@@ -105,7 +109,8 @@ async def test_the_naming_hook_is_skipped_only_inside_a_server_write() -> None:
         with cn.server_write():
             await cn.check_container_code(None, uuid.uuid4(), "DESIGN-FRAME-REGISTER", {})
     finally:
-        cn._CHECKERS.pop("test.refuse_everything", None)
+        cn._CHECKERS.clear()
+        cn._CHECKERS.update(others)
 
 
 # ── gates that answer the request and the ``can`` flag alike ──
@@ -120,7 +125,11 @@ def test_a_release_is_issued_only_when_ready_permitted_and_approved() -> None:
     actor = uuid.uuid4()
     four_eyes, off = SimpleNamespace(four_eyes_release=True), SimpleNamespace(four_eyes_release=False)
     gate = DesignService._issue_gate
-    assert gate(_release(), four_eyes, actor_id=actor, may_release=True) == {"allowed": True, "reason": None}
+    assert gate(_release(), four_eyes, actor_id=actor, may_release=True) == {
+        "allowed": True,
+        "applies": True,
+        "reason": None,
+    }
     assert gate(_release(), four_eyes, actor_id=actor, may_release=False)["reason"] == "forbidden"
     assert gate(_release(status="draft"), four_eyes, actor_id=actor, may_release=True)["reason"] == "release_not_ready"
     for state in ("none", "pending", "rejected"):
@@ -164,7 +173,11 @@ def test_report_fields_a_gate_reads_need_manage_and_freeze_on_submission() -> No
     assert svc.report_gate_gate(submitted, {"review_cycle_id": str(uuid.uuid4())}, may_manage=True) is None
     assert svc.report_can(submitted, may_manage=True)["edit_gate_fields"]["reason"] == "report_fields_frozen"
     assert svc.report_can(_report(), may_manage=False)["edit_gate_fields"]["reason"] == "manage_required"
-    assert svc.report_can(_report(), may_manage=True)["edit_gate_fields"] == {"allowed": True, "reason": None}
+    assert svc.report_can(_report(), may_manage=True)["edit_gate_fields"] == {
+        "allowed": True,
+        "applies": True,
+        "reason": None,
+    }
 
 
 def test_an_authority_decision_is_typed_only_without_a_cycle_or_for_a_partial_approval() -> None:

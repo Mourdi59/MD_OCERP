@@ -264,6 +264,34 @@ def test_migration_chains_onto_governance_and_names_every_model_table() -> None:
     assert [t for t, _c, _i in mig._TABLES] == [m.__tablename__ for m in ALL_MODELS]
 
 
+def _hook_index_names(table) -> set[str]:
+    """Every index name the platform's ``after_create`` hook may add to a table."""
+    from app.core.pg_optimizations import GIN_JSON_COLUMNS, _index_name
+
+    names = {_index_name(table.name, [c.name]) for c in table.columns if c.foreign_keys}
+    for pair in (["project_id", "created_at"], ["project_id", "status"]):
+        if set(pair) <= set(table.c.keys()):
+            names.add(_index_name(table.name, pair))
+    names |= {_index_name(table.name, [c.name], gin=True) for c in table.columns if c.name in GIN_JSON_COLUMNS}
+    return names
+
+
+def test_the_hook_index_names_are_the_hooks_own() -> None:
+    """The rule above must name what the hook really builds, or it would hide a missing index."""
+    from app.core.pg_optimizations import _desired_indexes
+    from app.modules.design_management.models import ALL_MODELS
+
+    for model in ALL_MODELS:
+        table = model.__table__
+        before = set(table.indexes)
+        try:
+            built = {ix.name for ix in _desired_indexes(table)}
+        finally:
+            # Building an index attaches it to the shared metadata; leave the table as it was found.
+            table.indexes.difference_update(set(table.indexes) - before)
+        assert built <= _hook_index_names(table), (table.name, sorted(built - _hook_index_names(table)))
+
+
 def test_migration_columns_and_names_match_the_models() -> None:
     """Same columns, nullability, constraint and index names as ``create_all`` (no drift between installs)."""
     from sqlalchemy import Index, UniqueConstraint
@@ -287,7 +315,12 @@ def test_migration_columns_and_names_match_the_models() -> None:
         model_uq = {c.name for c in table.constraints if isinstance(c, UniqueConstraint)}
         assert mig_uq == model_uq, table.name
         partial = {n: (cols, where) for n, t, cols, where in mig._PARTIAL_UNIQUE if t == table.name}
-        assert {n for n, _ in idx} | set(partial) == {i.name for i in table.indexes if isinstance(i, Index)}, table.name
+        declared = {n for n, _ in idx} | set(partial)
+        on_model = {i.name for i in table.indexes if isinstance(i, Index)}
+        # ``create_all`` runs the platform's index hook, which attaches its own indexes to the shared
+        # metadata; whether it ran before this test depends on the order of the run. No revision creates
+        # those, so they are set aside by the hook's own naming rule, not by a list of names.
+        assert declared == on_model - (_hook_index_names(table) - declared), table.name
         for index in table.indexes:
             if index.name in partial:
                 cols, where = partial[index.name]

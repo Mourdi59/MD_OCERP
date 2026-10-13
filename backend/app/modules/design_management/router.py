@@ -1282,7 +1282,11 @@ async def export(
     return Response(
         content=data,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="design_{register}_{stamp}.{format}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="design_{register}_{stamp}.{format}"',
+            # The labels were written in ``locale``; say so, or the reader's request language is assumed.
+            "Content-Language": locale,
+        },
     )
 
 
