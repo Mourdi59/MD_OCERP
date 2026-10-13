@@ -3,6 +3,7 @@
   "version": 1,
   "name_key": "site_logistics.catalogue.uk",
   "jurisdiction": "GB",
+  "jurisdiction_countries": ["GB"],
   "extends": "neutral",
   "review_status": "unconfirmed",
   "load_classes": [

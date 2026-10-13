@@ -570,6 +570,8 @@ export interface Finding {
 
 export interface Readiness {
   ready: boolean;
+  /** False on a project without gates: the checks then stand for themselves and no gate is named. */
+  gates_in_use?: boolean;
   /** Why the plan could not be placed in the governance model; null when it could. */
   governance: string | null;
   /** `unknown` is a check the server could not evaluate, which is not the same as failed. */

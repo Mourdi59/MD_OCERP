@@ -359,9 +359,12 @@ async def test_demo_seed_runs_closes_its_balances_and_is_idempotent(bare: World)
         codes = {f["code"] for f in await svc.findings(world.project_id)}
     assert again["projects"] == 0
     assert [i["area"]["closed"] for i in bal["items"]] == [True, True]
-    # No governance model in this world, so the export cannot be proven and the plan is not ready.
-    assert readiness["ready"] is False
+    # No governance model and no gates in this world: there is no frame document to
+    # export into, so the saved concept meets the item.
     assert readiness["governance"] == "no_governance_model"
+    assert readiness["gates_in_use"] is False
+    exported = next(i for i in readiness["items"] if i["code"] == "concept_saved_and_exported")
+    assert exported["state"] == "met"
     # The demo is a valid plan on its own clock: nothing was skipped for a missing zone,
     # and the flagship heavy transport is scheduled on its granted permits.
     assert (

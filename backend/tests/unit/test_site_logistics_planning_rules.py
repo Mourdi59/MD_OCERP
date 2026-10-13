@@ -15,7 +15,6 @@ from app.modules.site_logistics.catalogue import (
     INCOTERM_CODES_2020,
     DocumentRule,
     SiteLogisticsCatalogue,
-    default_catalogue_id,
     has_figure,
     resolved_shipped,
     shipped_catalogues,
@@ -673,8 +672,56 @@ def test_validator_flags_incomplete_incoterms() -> None:
 @pytest.mark.parametrize(
     ("country", "expected"), [("DE", "de"), ("GB", "uk"), ("us", "us"), ("FR", "neutral"), (None, "neutral")]
 )
-def test_default_catalogue_id(country, expected) -> None:
-    assert default_catalogue_id(country) == expected
+def test_the_governance_port_names_the_catalogue_of_a_country(country, expected, monkeypatch) -> None:
+    """The shipped files name their countries and the port reads them; ``None`` is the neutral file."""
+    from app.modules.project_governance import catalogue_packs, catalogue_store, public
+    from app.modules.site_logistics import catalogue as cat
+
+    cat.register_kind()
+    # No active pack and no regional pack has a say here: the shipped files answer alone.
+    monkeypatch.setattr(catalogue_packs, "pack_default_candidates", lambda kind, country_code: ())
+    monkeypatch.setattr(catalogue_store, "regional_pack_entry", lambda kind, country_code: None)
+    pin = public.default_catalogue_pin(cat.SITE_LOGISTICS_KIND, country)
+    assert (pin.catalogue_id if pin is not None else cat.DEFAULT_CATALOGUE_ID) == expected
+    if pin is not None:
+        assert (pin.source, pin.version) == ("shipped", cat.shipped_catalogues()[expected].version)
+
+
+def test_the_port_is_the_only_country_default_in_the_module() -> None:
+    """No function of the module maps a country to a catalogue; the default pin asks the port once."""
+    import inspect
+    import pathlib
+
+    from app.modules.site_logistics import catalogue as cat
+    from app.modules.site_logistics import plan_service
+
+    assert not hasattr(cat, "default_catalogue_id")
+    module = pathlib.Path(cat.__file__).parent
+    readers = [
+        p.name
+        for p in sorted(module.glob("*.py"))
+        if "jurisdiction_countries" in p.read_text(encoding="utf-8") and p.name != "catalogue.py"
+    ]
+    assert readers == [], "only the governance port reads the countries of a catalogue"
+    source = inspect.getsource(plan_service.LogisticsPlanService._default_pin)
+    assert source.count("default_catalogue_pin(SITE_LOGISTICS_KIND, country)") == 1
+    assert "DEFAULT_CATALOGUE_ID" in source
+    shipped = cat.shipped_catalogues()
+    assert {c.id: c.jurisdiction_countries for c in shipped.values()} == {
+        "neutral": (),
+        "de": ("DE",),
+        "uk": ("GB",),
+        "us": ("US",),
+    }
+
+
+def test_a_catalogue_with_a_country_that_is_not_a_code_is_refused() -> None:
+    from app.modules.site_logistics import catalogue as cat
+
+    body = cat.shipped_catalogues()["de"].model_dump(mode="json")
+    body["jurisdiction_countries"] = ["Germany"]
+    errors = validate_site_logistics_catalogue(SiteLogisticsCatalogue.model_validate(body), "tenant")
+    assert "bad_country_code: Germany" in errors
 
 
 # ── JSON columns ───────────────────────────────────────────────────────────

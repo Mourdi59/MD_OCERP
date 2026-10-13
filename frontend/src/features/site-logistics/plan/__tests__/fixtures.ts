@@ -242,6 +242,7 @@ export const overdueComplaint: Complaint = {
 
 export const notReady: Readiness = {
   ready: false,
+  gates_in_use: true,
   governance: null,
   passed_by_permit: [],
   items: [

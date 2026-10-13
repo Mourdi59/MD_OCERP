@@ -548,6 +548,7 @@ async def test_gate_evidence_is_placed_by_catalogue_tags() -> None:
                     None,
                 )
                 assert readiness["frame_doc_type"] == placed.frame_doc_type
+                assert readiness["gates_in_use"] is True
                 exported = next(i for i in readiness["items"] if i["code"] == "concept_saved_and_exported")
                 # Saved, and the frame document of this project has no revision bound yet.
                 assert (exported["state"], exported["detail"]) == ("not_met", "not_exported")

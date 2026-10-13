@@ -711,6 +711,22 @@ describe('gate readiness', () => {
     expect(within(items[1]!).queryByTestId('plan-ready-open')).toBeNull();
   });
 
+  it('a project that does not use gates is told so, and no gate is named or missed', async () => {
+    mocked.getReadiness.mockResolvedValue({
+      ...notReady,
+      ready: true,
+      gates_in_use: false,
+      governance: 'no_governance_model',
+      items: [{ code: 'concept_saved_and_exported', state: 'met', detail: '' }],
+      findings: [],
+    });
+    renderPlan('readiness');
+    expect(await screen.findByTestId('plan-ready-no-gates')).toHaveTextContent('This project does not use gates.');
+    expect(screen.queryByTestId('plan-ready-governance')).toBeNull();
+    expect(screen.getByTestId('plan-ready-verdict')).toHaveTextContent('Logistics plan complete');
+    expect(screen.getByTestId('plan-readiness')).not.toHaveTextContent(/gate from development|for the gate/);
+  });
+
   it('the plan checks are run on request and list only what does not hold', async () => {
     mocked.validatePlan.mockResolvedValue({
       status: 'errors',

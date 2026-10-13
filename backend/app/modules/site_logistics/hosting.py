@@ -104,6 +104,17 @@ async def before_construction(session: Any, project_id: uuid.UUID) -> bool:
     return bool(gates) and any(g.status != "decided" for g in gates)
 
 
+async def gates_in_use(session: Any, project_id: uuid.UUID) -> bool:
+    """Whether the project has gates at all; a project that never adopted a phase model has none.
+
+    Asked of the gate rows and not of the model: a pinned model that cannot be
+    read leaves its gates on the project, and that is "not known", not "no gates".
+    """
+    from app.modules.project_governance.public import project_gates
+
+    return bool(await project_gates(session, project_id))
+
+
 async def area_owner(session: Any, project_id: uuid.UUID, area_code: str | None) -> uuid.UUID | None:
     """The owner of the hosting area, the addressee of logistics notifications."""
     from app.modules.project_governance.public import project_areas

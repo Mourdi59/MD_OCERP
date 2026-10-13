@@ -265,6 +265,10 @@ export const EN = {
   'readiness.not_ready': 'Not ready for the gate yet',
   'readiness.lead':
     'These checks feed the readiness of the logistics area at the gate from development to execution.',
+  'readiness.no_gates': 'This project does not use gates.',
+  'readiness.lead_plain': 'These checks show whether the logistics plan is complete.',
+  'readiness.ready_plain': 'Logistics plan complete',
+  'readiness.not_ready_plain': 'Logistics plan not complete yet',
   'readiness.met': 'Met',
   'readiness.not_met': 'Not met',
   'readiness.findings': 'Open findings',
