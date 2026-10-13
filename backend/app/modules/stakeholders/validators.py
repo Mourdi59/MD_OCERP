@@ -271,3 +271,8 @@ def register_stakeholder_rules() -> None:
     """Idempotently register the stakeholders rules."""
     for rule in STAKEHOLDER_RULES:
         rule_registry.register(rule(), rule_sets=[STAKEHOLDER_RULE_SET])
+
+
+# Registered on import as well, like the platform rule modules: whoever imports the rules sees them,
+# not only an app that ran the startup hook. Registration is idempotent.
+register_stakeholder_rules()

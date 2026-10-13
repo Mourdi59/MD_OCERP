@@ -242,3 +242,8 @@ def register_staffing_rules() -> None:
     """Idempotently register the staffing rules."""
     for rule in STAFFING_RULES:
         rule_registry.register(rule(), rule_sets=[STAFFING_RULE_SET])
+
+
+# Registered on import as well, like the platform rule modules: whoever imports the rules sees them,
+# not only an app that ran the startup hook. Registration is idempotent.
+register_staffing_rules()

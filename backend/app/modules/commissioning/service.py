@@ -137,7 +137,7 @@ class CommissioningService:
             return
         if not plant_reader_registered():
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="No plant register is installed, so a plant item cannot be linked",
             )
         if await plant_item_facts(self.session, project_id, plant_item_id) is None:

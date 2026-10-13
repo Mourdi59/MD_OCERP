@@ -376,3 +376,8 @@ async def run_rules(payload: dict[str, Any], locale: str) -> list[dict[str, Any]
                 }
             )
     return out
+
+
+# Registered on import as well, like the platform rule modules: whoever imports the rules sees them,
+# not only an app that ran the startup hook. Registration is idempotent.
+register_plant_rules()

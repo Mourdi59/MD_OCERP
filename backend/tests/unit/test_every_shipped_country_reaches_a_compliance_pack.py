@@ -107,6 +107,13 @@ MIN_SHIPPED_PACKS = 30
 #: from a country's contract-signature gate would enforce something that has
 #: nothing to do with the country. The reason matters more than the entry - a
 #: set parked here to make the gate green would defeat the gate.
+# The eleven project management modules check their own records (a frame document, a plan, a register)
+# on any project of any country. They run where the module runs, not at contract signature.
+_MODULE_RECORD_CHECKS = (
+    "checks a project management module's own records, on every project that uses the module, "
+    "whatever its country; the contract-signature gate is a different decision"
+)
+
 NON_JURISDICTION_RULE_SETS: dict[str, str] = {
     "formwork": (
         "Registered by the formwork module's own validators and run by that "
@@ -122,6 +129,17 @@ NON_JURISDICTION_RULE_SETS: dict[str, str] = {
         "it from a country's contract-signature gate would be a different "
         "decision from this one."
     ),
+    "project_governance": _MODULE_RECORD_CHECKS,
+    "commitment_release": _MODULE_RECORD_CHECKS,
+    "delivery_model": _MODULE_RECORD_CHECKS,
+    "permits": _MODULE_RECORD_CHECKS,
+    "plant_register": _MODULE_RECORD_CHECKS,
+    "procurement_concept": _MODULE_RECORD_CHECKS,
+    "design_management": _MODULE_RECORD_CHECKS,
+    "stakeholders": _MODULE_RECORD_CHECKS,
+    "quality_concept": _MODULE_RECORD_CHECKS,
+    "staffing": _MODULE_RECORD_CHECKS,
+    "site_logistics": _MODULE_RECORD_CHECKS,
 }
 
 

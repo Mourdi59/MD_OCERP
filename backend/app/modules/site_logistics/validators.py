@@ -599,3 +599,8 @@ def register_site_logistics_validation_rules() -> None:
     for rule in PLAN_RULES:
         rule_registry.register(rule(), ["site_logistics"])
     logger.debug("site_logistics: registered %d validation rules", 3 + len(PLAN_RULES))
+
+
+# Registered on import as well, like the platform rule modules: whoever imports the rules sees them,
+# not only an app that ran the startup hook. Registration is idempotent.
+register_site_logistics_validation_rules()

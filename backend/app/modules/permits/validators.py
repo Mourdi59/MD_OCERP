@@ -328,3 +328,8 @@ def register_permit_rules() -> None:
     """Idempotently register the permits rules."""
     for rule in PERMIT_RULES:
         rule_registry.register(rule(), rule_sets=[PERMIT_RULE_SET])
+
+
+# Registered on import as well, like the platform rule modules: whoever imports the rules sees them,
+# not only an app that ran the startup hook. Registration is idempotent.
+register_permit_rules()
