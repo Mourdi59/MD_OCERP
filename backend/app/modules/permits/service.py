@@ -443,7 +443,15 @@ class PermitService:
             **roadmap_out(roadmap),
             "state": _binding_status(doc),
             "governance_document_id": str(doc.id) if doc is not None else _s(roadmap.governance_document_id),
+            "gates_in_use": await self.gates_in_use(project_id),
         }
+
+    async def gates_in_use(self, project_id: uuid.UUID) -> bool:
+        """Whether the project has gates at all. Without them nothing in permits waits for a gate
+        or a frame document: the roadmap stays ``draft`` and every step is taken by hand."""
+        from app.modules.project_governance import public
+
+        return bool(await public.project_gates(self.session, project_id))
 
     async def _roadmap_document(self, project_id: uuid.UUID) -> Any:
         """The frame document the governance model hosts permits in, as the port lists it; ``None``

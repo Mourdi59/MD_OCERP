@@ -194,3 +194,66 @@ async def test_two_concurrent_decisions_one_wins_one_409(world: World) -> None:
     errors = [r for r in results if isinstance(r, BaseException)]
     assert len(errors) == 1, results
     assert isinstance(errors[0], PermitError) and errors[0].status_code == 409
+
+
+# ── programme rule 26: a project that does not use gates is worked to the end ──
+
+
+async def test_a_project_without_gates_is_walked_from_the_roadmap_to_a_ready_start(world: World) -> None:
+    """No phase model, no gate, no frame document: nothing in permits waits for one.
+
+    The roadmap is never ``agreed`` here (that state only mirrors a binding frame document
+    and only adds the change request duty), so structural changes stay free, the authority's
+    decision is recorded by hand, the condition is discharged four-eyes and the start of
+    works reads ready.
+    """
+    from app.modules.project_governance import public
+
+    p = world.project_id
+    async with world.factory() as s:
+        assert await public.project_gates(s, p) == ()
+        view = await PermitService(s).roadmap_view(p)
+    assert view["gates_in_use"] is False and view["state"] == "draft"
+
+    rid = await requirement(world, BUILDING, needed_by_date=TODAY)
+    aid = await file(world, rid)
+    out = await decide(
+        world, aid, "granted_with_conditions", conditions=[cond("1", "suspensive", owner_user_id=world.owner_user)]
+    )
+    c = (await _conditions(world, out["permit"].id))["1"]
+    async with world.factory() as s:
+        before = await PermitService(s).readiness(p, "start", TODAY)
+    assert before["status"] == "not_ready"
+    async with world.factory() as s:
+        svc = PermitService(s)
+        await svc.add_evidence(
+            p, c.id, {"kind": "photo", "note": "Checked calculations"}, actor_id=world.owner_user, can_manage=False
+        )
+        await svc.submit_evidence(p, c.id, actor_id=world.owner_user, can_manage=False)
+        await svc.discharge(p, c.id, {"mode": "self_certified"}, actor_id=world.verifier, today=TODAY)
+        await s.commit()
+    async with world.factory() as s:
+        svc = PermitService(s)
+        after = await svc.readiness(p, "start", TODAY)
+        view = await svc.roadmap_view(p)
+    assert after["status"] == "ready", after
+    assert view["state"] == "draft" and view["gates_in_use"] is False
+
+
+async def test_a_project_with_a_phase_model_says_its_gates_are_in_use(world: World) -> None:
+    from app.modules.project_governance.service import GovernanceService
+
+    async with world.factory() as s:
+        await GovernanceService(s).set_model(
+            world.project_id,
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            actor_id=world.manager,
+            tenant_id=str(world.manager),
+        )
+        await s.commit()
+    async with world.factory() as s:
+        view = await PermitService(s).roadmap_view(world.project_id)
+    assert view["gates_in_use"] is True
