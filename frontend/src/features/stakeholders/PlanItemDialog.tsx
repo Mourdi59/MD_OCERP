@@ -46,7 +46,11 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
   // Null for a trigger this screen does not offer: it is shown as kept and not sent.
   const storedStart = planStartOf(item);
   const storedGate = item?.trigger_kind === 'gate' ? (item.trigger_ref ?? '') : '';
-  const gates = useGateOptions(projectId).options;
+  const gateChoices = useGateOptions(projectId);
+  const gates = gateChoices.options;
+  // A project run without gates: the server refuses a line that waits for one, so it is not offered.
+  // A line that already waits for a gate keeps showing it, with the reason it will never start.
+  const gatesOff = !gateChoices.inUse;
   const [draft, setDraft] = useState({
     title: item?.title ?? '',
     purpose: item?.purpose ?? '',
@@ -233,11 +237,15 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
           <WideModalField
             label={t('stakeholders.ui.plan.start', { defaultValue: 'What sets it off' })}
             hint={
-              triggered
-                ? t('stakeholders.ui.plan.triggered_hint', {
-                    defaultValue: 'This item is started by a project event, so it needs no first date.',
+              gatesOff && draft.start !== 'gate'
+                ? t('stakeholders.ui.plan.gates_off', {
+                    defaultValue: 'This project does not use gates, so a gate cannot set a line off.',
                   })
-                : undefined
+                : triggered
+                  ? t('stakeholders.ui.plan.triggered_hint', {
+                      defaultValue: 'This item is started by a project event, so it needs no first date.',
+                    })
+                  : undefined
             }
             htmlFor="plan-start"
           >
@@ -250,7 +258,9 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
               {storedStart === null && (
                 <option value="kept">{t('stakeholders.ui.start.kept', { defaultValue: 'Another project event (kept as it is)' })}</option>
               )}
-              {(Object.keys(PLAN_START) as PlanStart[]).map((s) => (
+              {(Object.keys(PLAN_START) as PlanStart[])
+                .filter((s) => s !== 'gate' || !gatesOff || draft.start === 'gate' || storedStart === 'gate')
+                .map((s) => (
                 <option key={s} value={s}>
                   {vocab(t, PLAN_START, s)}
                 </option>
@@ -261,9 +271,16 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
             <WideModalField
               label={t('stakeholders.ui.plan.gate', { defaultValue: 'Which gate' })}
               hint={
-                gates.length === 0
+                !gatesOff && gates.length === 0
                   ? t('stakeholders.ui.plan.gate_none', {
                       defaultValue: 'This project has no phase model yet, so there are no gates to choose from.',
+                    })
+                  : undefined
+              }
+              error={
+                gatesOff
+                  ? t('stakeholders.ui.plan.gates_off_stored', {
+                      defaultValue: 'This project does not use gates, so nothing sets this line off. Give it fixed dates instead.',
                     })
                   : undefined
               }

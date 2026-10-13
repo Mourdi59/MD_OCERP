@@ -696,6 +696,8 @@ export interface ProjectGate {
 
 export interface ProjectGateList {
   items: ProjectGate[];
+  /** False for a project run without gates: nothing would ever set off a line that waits for one. */
+  gates_in_use: boolean;
 }
 
 /** Empty when the project has no phase model. */

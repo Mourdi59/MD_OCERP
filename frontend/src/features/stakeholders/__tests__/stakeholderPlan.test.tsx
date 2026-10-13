@@ -41,6 +41,7 @@ vi.mock('../api', async (original) => ({
       { code: 'G2', name: 'Design freeze', status: 'planned' },
       { code: 'G3', name: 'Start of works', status: 'planned' },
     ],
+    gates_in_use: true,
   })),
   createPlanItem: vi.fn(),
   updatePlanItem: vi.fn(),
@@ -263,6 +264,27 @@ describe('planning a communication', () => {
     fireEvent.click(save());
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(2));
     expect(mocked.updatePlanItem.mock.calls[1]?.[2]).toMatchObject({ trigger_kind: 'gate', trigger_ref: 'G3' });
+  });
+
+  it('does not offer the gate trigger on a project run without gates, and says why', async () => {
+    mocked.listGates.mockResolvedValueOnce({ items: [], gates_in_use: false });
+    dialog();
+    const starts = () => [...field('#plan-start').querySelectorAll('option')].map((o) => (o as HTMLOptionElement).value);
+    await waitFor(() => expect(starts()).not.toContain('gate'));
+    expect(starts()).toContain('schedule');
+    expect(page.getByText('This project does not use gates, so a gate cannot set a line off.')).toBeTruthy();
+  });
+
+  it('keeps showing a line that waits for a gate on such a project, with the reason it never starts', async () => {
+    mocked.listGates.mockResolvedValueOnce({ items: [], gates_in_use: false });
+    dialog(planItem({ trigger_kind: 'gate', trigger_ref: '', frequency: '', starts_on: null }));
+    expect(
+      await page.findByText('This project does not use gates, so nothing sets this line off. Give it fixed dates instead.'),
+    ).toBeTruthy();
+    expect(field('#plan-start').value).toBe('gate');
+    type('#plan-start', 'schedule');
+    expect(field('#plan-gate')).toBeNull();
+    expect(field('#plan-starts')).toBeTruthy();
   });
 
   it('names the project event a line waits for', async () => {
