@@ -481,10 +481,13 @@ async def _evidence(
 async def test_evidence_is_given_for_the_tagged_area_at_the_tagged_gate_and_says_what_is_missing(world: World) -> None:
     from app.modules.plant_register.evidence import PROVIDER_NAME, register_gate_evidence
     from app.modules.project_governance.evidence import evidence_providers
+    from tests.pg.governance_fixtures import only_evidence
 
-    register_gate_evidence()
-    reg = next(r for r in evidence_providers() if r.name == PROVIDER_NAME)
-    assert (reg.key, reg.blocking) == ("*", True)  # no area code is named anywhere in the module
+    # The registry is one per process: registered here, it is put back as it was, so a gate another
+    # test decides later is not answered by this module's blocking provider.
+    with only_evidence(register=register_gate_evidence):
+        reg = next(r for r in evidence_providers() if r.name == PROVIDER_NAME)
+        assert (reg.key, reg.blocking) == ("*", True)  # no area code is named anywhere in the module
 
     assert await _evidence(world, "m04_equipment") == []  # no items: nothing to say
     await item(world)  # critical switchgear, no route, no paper
