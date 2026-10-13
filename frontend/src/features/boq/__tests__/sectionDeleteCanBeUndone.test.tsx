@@ -182,6 +182,8 @@ afterEach(() => {
 });
 
 describe('deleting a section', () => {
+  // Keep this test first. The two below leave the fake clock ahead of the
+  // real one, and a page mounted after them stays empty past the wait.
   it('sends the waiting delete before a section added inside the undo window is numbered', async () => {
     // One section, 01. Deleted on screen, the next free number there is 01
     // again, which the server still holds until the undo window ends.
