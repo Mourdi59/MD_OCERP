@@ -11784,7 +11784,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Механика",
     "sheets.discipline_name.plumbing": "ВК",
     "sheets.discipline_name.landscape": "Благоустройство",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Инженерные системы",
     "costs.base_family_desc.global": "Единый полный каталог видов работ, локализованный и переоценённый для 30 рынков и девяти языков. Выберите свой рынок, чтобы получить его на своём языке, в своей валюте и с местным уровнем цен.",
     "costs.base_family_desc.china": "Китай: оригинальная национальная база. Источник: Dinge, официальная система норм.",
     "costs.base_family_desc.turkey": "Турция: оригинальная национальная база. Источник: Birim Fiyat, официальный сборник единичных расценок.",

@@ -14506,7 +14506,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "যান্ত্রিক",
     "sheets.discipline_name.plumbing": "প্লাম্বিং",
     "sheets.discipline_name.landscape": "ল্যান্ডস্কেপ",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "এমইপি",
     "costs.base_family_desc.global": "৩০টি বাজার ও নয়টি ভাষার জন্য স্থানীয়করণ ও পুনর্মূল্যায়ন করা কাজের আইটেমের একটি সমন্বিত ক্যাটালগ। আপনার বাজার বেছে নিন এবং নিজের ভাষা, মুদ্রা ও স্থানীয় মূল্যস্তরে এটি পান।",
     "costs.base_family_desc.china": "চীন: মূল জাতীয় ভিত্তি. উৎস: Dinge, সরকারি মান-ব্যবস্থা.",
     "costs.base_family_desc.turkey": "তুরস্ক: মূল জাতীয় ভিত্তি. উৎস: Birim Fiyat, সরকারি একক-দর তালিকা.",

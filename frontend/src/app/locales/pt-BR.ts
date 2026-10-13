@@ -9927,7 +9927,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Mecânica",
     "sheets.discipline_name.plumbing": "Hidrossanitária",
     "sheets.discipline_name.landscape": "Paisagismo",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Instalações",
     "costs.base_family_desc.global": "Um único catálogo completo de itens de serviço, localizado e reprecificado para 30 mercados e nove idiomas. Escolha seu mercado para recebê-lo no seu idioma, na sua moeda e no nível de preços local.",
     "costs.base_family_desc.china": "China: base nacional original. Fonte: Dinge, sistema de normas oficial.",
     "costs.base_family_desc.turkey": "Turquia: base nacional original. Fonte: Birim Fiyat, lista oficial de preços unitários.",

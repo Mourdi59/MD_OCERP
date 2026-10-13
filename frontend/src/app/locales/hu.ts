@@ -10165,7 +10165,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Gépészet",
     "sheets.discipline_name.plumbing": "Vízvezeték",
     "sheets.discipline_name.landscape": "Tájépítészet",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Épületgépészet",
     "costs.base_family_desc.global": "Egyetlen átfogó tételkatalógus, 30 piacra és kilenc nyelvre lokalizálva és újraárazva. Válassza ki piacát, és megkapja a saját nyelvén, pénznemében és helyi árszintjén.",
     "costs.base_family_desc.china": "Kína: eredeti nemzeti adatbázis. Forrás: Dinge, hivatalos normarendszer.",
     "costs.base_family_desc.turkey": "Törökország: eredeti nemzeti adatbázis. Forrás: Birim Fiyat, hivatalos egységárjegyzék.",

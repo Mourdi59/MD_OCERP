@@ -10338,7 +10338,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Mécanique",
     "sheets.discipline_name.plumbing": "Plomberie",
     "sheets.discipline_name.landscape": "Paysage",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Lots techniques",
     "costs.base_family_desc.global": "Un catalogue complet de postes de travaux, localisé et repricé pour 30 marchés et neuf langues. Choisissez votre marché pour l'obtenir dans votre langue, votre devise et votre niveau de prix local.",
     "costs.base_family_desc.china": "Chine: base nationale d'origine. Source: Dinge, système de normes officiel.",
     "costs.base_family_desc.turkey": "Turquie: base nationale d'origine. Source: Birim Fiyat, bordereau de prix unitaires officiel.",

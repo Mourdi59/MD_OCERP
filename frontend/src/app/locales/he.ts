@@ -14910,7 +14910,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "מכונות",
     "sheets.discipline_name.plumbing": "אינסטלציה",
     "sheets.discipline_name.landscape": "פיתוח נוף",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "מערכות אלקטרומכניות",
     "costs.base_family_desc.global": "קטלוג מקיף אחד של סעיפי עבודה, מותאם מקומית ומתומחר מחדש ל-30 שווקים ותשע שפות. בחרו את השוק שלכם כדי לקבל אותו בשפה, במטבע וברמת המחירים המקומית שלכם.",
     "costs.base_family_desc.china": "סין: בסיס לאומי מקורי. מקור: Dinge, מערכת תקנים רשמית.",
     "costs.base_family_desc.turkey": "טורקיה: בסיס לאומי מקורי. מקור: Birim Fiyat, מחירון יחידות רשמי.",

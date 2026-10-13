@@ -11915,7 +11915,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Mechaniczna",
     "sheets.discipline_name.plumbing": "Sanitarna",
     "sheets.discipline_name.landscape": "Zagospodarowanie terenu",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Instalacje",
     "costs.base_family_desc.global": "Jeden kompletny katalog pozycji robót, zlokalizowany i przeceniony dla 30 rynków i dziewięciu języków. Wybierz swój rynek, aby otrzymać go w swoim języku, walucie i lokalnym poziomie cen.",
     "costs.base_family_desc.china": "Chiny: oryginalna baza krajowa. Źródło: Dinge, oficjalny system norm.",
     "costs.base_family_desc.turkey": "Turcja: oryginalna baza krajowa. Źródło: Birim Fiyat, oficjalny wykaz cen jednostkowych.",

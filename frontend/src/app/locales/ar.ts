@@ -16215,7 +16215,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "ميكانيكي",
     "sheets.discipline_name.plumbing": "سباكة",
     "sheets.discipline_name.landscape": "تنسيق المواقع",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "الأعمال الكهروميكانيكية",
     "costs.base_family_desc.global": "كتالوج شامل واحد لبنود الأعمال، موطّن ومعاد تسعيره لـ 30 سوقًا وتسع لغات. اختر سوقك لتحصل عليه بلغتك وعملتك ومستوى الأسعار المحلي.",
     "costs.base_family_desc.china": "الصين: قاعدة وطنية أصلية. المصدر: Dinge, نظام المعايير الرسمي.",
     "costs.base_family_desc.turkey": "تركيا: قاعدة وطنية أصلية. المصدر: Birim Fiyat, قائمة أسعار الوحدات الرسمية.",

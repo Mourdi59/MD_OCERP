@@ -11845,7 +11845,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Mexanika",
     "sheets.discipline_name.plumbing": "Santexnika",
     "sheets.discipline_name.landscape": "Obodonlashtirish",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Muhandislik tizimlari",
     "costs.base_family_desc.global": "30 ta bozor va toʻqqiz tilga moslashtirilgan, narxlari qayta hisoblangan ish turlarining yagona toʻliq katalogi. Oʻz bozoringizni tanlang va uni oʻz tilingizda, valyutangizda va mahalliy narx darajasida oling.",
     "costs.base_family_desc.china": "Xitoy: asl milliy baza. Manba: Dinge, rasmiy meʼyorlar tizimi.",
     "costs.base_family_desc.turkey": "Turkiya: asl milliy baza. Manba: Birim Fiyat, birlik narxlarning rasmiy roʻyxati.",

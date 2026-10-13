@@ -12134,7 +12134,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Mekanik",
     "sheets.discipline_name.plumbing": "Tesisat",
     "sheets.discipline_name.landscape": "Peyzaj",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Mekanik ve elektrik tesisatı",
     "costs.base_family_desc.global": "30 pazara ve dokuz dile yerelleştirilmiş, yeniden fiyatlandırılmış tek ve kapsamlı bir iş kalemi kataloğu. Pazarınızı seçin; kendi dilinizde, para biriminizde ve yerel fiyat düzeyinde edinin.",
     "costs.base_family_desc.china": "Çin: özgün ulusal baz. Kaynak: Dinge, resmi norm sistemi.",
     "costs.base_family_desc.turkey": "Türkiye: özgün ulusal baz. Kaynak: Birim Fiyat, resmi birim fiyat listesi.",

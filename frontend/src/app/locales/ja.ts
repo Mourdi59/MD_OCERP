@@ -11365,7 +11365,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "機械",
     "sheets.discipline_name.plumbing": "給排水",
     "sheets.discipline_name.landscape": "造園",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "設備",
     "costs.base_family_desc.global": "30市場・9言語にローカライズし、価格を再設定した、包括的な工種カタログです。市場を選ぶと、お使いの言語・通貨・現地の価格水準で利用できます。",
     "costs.base_family_desc.china": "中国：オリジナルの国別ベース。出典：Dinge、公式の積算基準体系。",
     "costs.base_family_desc.turkey": "トルコ：オリジナルの国別ベース。出典：Birim Fiyat、公式の単価表。",

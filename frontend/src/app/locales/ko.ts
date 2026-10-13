@@ -11383,7 +11383,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "기계",
     "sheets.discipline_name.plumbing": "배관",
     "sheets.discipline_name.landscape": "조경",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "기계·전기·설비",
     "costs.base_family_desc.global": "30개 시장과 9개 언어로 현지화하고 가격을 재산정한 하나의 포괄적인 공종 카탈로그입니다. 시장을 선택하면 해당 언어, 통화, 현지 가격 수준으로 받아보실 수 있습니다.",
     "costs.base_family_desc.china": "중국: 원본 국가 기준 데이터. 출처: Dinge, 공식 기준 체계.",
     "costs.base_family_desc.turkey": "튀르키예: 원본 국가 기준 데이터. 출처: Birim Fiyat, 공식 단가표.",

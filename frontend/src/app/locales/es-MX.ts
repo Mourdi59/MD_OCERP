@@ -9957,7 +9957,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Mecánica",
     "sheets.discipline_name.plumbing": "Plomería",
     "sheets.discipline_name.landscape": "Paisajismo",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Instalaciones",
     "costs.base_family_desc.global": "Un único catálogo completo de partidas, localizado y reajustado de precios para 30 mercados y nueve idiomas. Elige tu mercado para obtenerlo en tu idioma, moneda y nivel de precios local.",
     "costs.base_family_desc.china": "China: base nacional original. Fuente: Dinge, sistema de normas oficial.",
     "costs.base_family_desc.turkey": "Turquía: base nacional original. Fuente: Birim Fiyat, lista oficial de precios unitarios.",

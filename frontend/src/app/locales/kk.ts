@@ -14802,7 +14802,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Механика",
     "sheets.discipline_name.plumbing": "Сантехника",
     "sheets.discipline_name.landscape": "Абаттандыру",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Инженерлік жүйелер",
     "costs.base_family_desc.global": "30 нарық пен тоғыз тілге бейімделген және бағасы қайта есептелген жұмыс түрлерінің бірыңғай толық каталогы. Өз нарығыңызды таңдап, оны өз тіліңізде, валютаңызда және жергілікті баға деңгейінде алыңыз.",
     "costs.base_family_desc.china": "Қытай: төл ұлттық база. Дереккөз: Dinge, ресми нормалар жүйесі.",
     "costs.base_family_desc.turkey": "Түркия: төл ұлттық база. Дереккөз: Birim Fiyat, бірлік бағалардың ресми тізбесі.",

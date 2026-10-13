@@ -11886,7 +11886,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Cơ khí",
     "sheets.discipline_name.plumbing": "Cấp thoát nước",
     "sheets.discipline_name.landscape": "Cảnh quan",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Cơ điện",
     "costs.base_family_desc.global": "Một danh mục công tác toàn diện, được địa phương hóa và định giá lại cho 30 thị trường và chín ngôn ngữ. Hãy chọn thị trường của bạn để nhận danh mục bằng ngôn ngữ, tiền tệ và mặt bằng giá địa phương của bạn.",
     "costs.base_family_desc.china": "Trung Quốc: cơ sở dữ liệu quốc gia gốc. Nguồn: Dinge, hệ thống định mức chính thức.",
     "costs.base_family_desc.turkey": "Thổ Nhĩ Kỳ: cơ sở dữ liệu quốc gia gốc. Nguồn: Birim Fiyat, bảng đơn giá chính thức.",

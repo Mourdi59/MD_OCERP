@@ -10458,7 +10458,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Meccanico",
     "sheets.discipline_name.plumbing": "Idraulico",
     "sheets.discipline_name.landscape": "Paesaggistico",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Impianti",
     "costs.base_family_desc.global": "Un unico catalogo completo di voci di lavoro, localizzato e riprezzato per 30 mercati e nove lingue. Scegli il tuo mercato per averlo nella tua lingua, valuta e livello di prezzi locale.",
     "costs.base_family_desc.china": "Cina: base nazionale originale. Fonte: Dinge, sistema normativo ufficiale.",
     "costs.base_family_desc.turkey": "Turchia: base nazionale originale. Fonte: Birim Fiyat, elenco prezzi unitari ufficiale.",

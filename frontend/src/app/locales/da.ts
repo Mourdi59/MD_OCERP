@@ -13896,7 +13896,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Maskin",
     "sheets.discipline_name.plumbing": "Vand og afløb",
     "sheets.discipline_name.landscape": "Landskab",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Installationer",
     "costs.base_family_desc.global": "Ét samlet katalog over arbejdsposter, lokaliseret og genprissat til 30 markeder og ni sprog. Vælg dit marked for at få det på dit sprog, i din valuta og på dit lokale prisniveau.",
     "costs.base_family_desc.china": "Kina: oprindelig national base. Kilde: Dinge, officielt normsystem.",
     "costs.base_family_desc.turkey": "Tyrkiet: oprindelig national base. Kilde: Birim Fiyat, officiel enhedsprisliste.",

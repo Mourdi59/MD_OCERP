@@ -15381,7 +15381,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Mehaanika",
     "sheets.discipline_name.plumbing": "Sanitaar",
     "sheets.discipline_name.landscape": "Maastik",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Tehnosüsteemid",
     "costs.base_family_desc.global": "Üks põhjalik tööde kataloog, lokaliseeritud ja ümber hinnastatud 30 turule ja üheksale keelele. Valige oma turg, et saada see oma keeles, vääringus ja kohalikul hinnatasemel.",
     "costs.base_family_desc.china": "Hiina: algupärane riiklik baas. Allikas: Dinge, ametlik normisüsteem.",
     "costs.base_family_desc.turkey": "Türgi: algupärane riiklik baas. Allikas: Birim Fiyat, ametlik ühikuhindade loetelu.",

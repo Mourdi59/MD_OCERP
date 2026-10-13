@@ -14851,7 +14851,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Μηχανολογικά",
     "sheets.discipline_name.plumbing": "Υδραυλικά",
     "sheets.discipline_name.landscape": "Τοπίο",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Η/Μ",
     "costs.base_family_desc.global": "Ένας ενιαίος, πλήρης κατάλογος εργασιών, εντοπισμένος και επανατιμολογημένος σε 30 αγορές και εννέα γλώσσες. Επιλέξτε την αγορά σας για να τον αποκτήσετε στη γλώσσα, το νόμισμα και το τοπικό επίπεδο τιμών σας.",
     "costs.base_family_desc.china": "Κίνα: αυθεντική εθνική βάση. Πηγή: Dinge, επίσημο σύστημα κανόνων.",
     "costs.base_family_desc.turkey": "Τουρκία: αυθεντική εθνική βάση. Πηγή: Birim Fiyat, επίσημος τιμοκατάλογος μονάδας.",

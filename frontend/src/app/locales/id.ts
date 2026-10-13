@@ -11886,7 +11886,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Mekanikal",
     "sheets.discipline_name.plumbing": "Plumbing",
     "sheets.discipline_name.landscape": "Lanskap",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Mekanikal, Elektrikal, Plambing",
     "costs.base_family_desc.global": "Satu katalog item pekerjaan yang komprehensif, dilokalkan dan dihitung ulang harganya untuk 30 pasar dan sembilan bahasa. Pilih pasar Anda untuk mendapatkannya dalam bahasa, mata uang, dan tingkat harga lokal Anda.",
     "costs.base_family_desc.china": "Tiongkok: basis nasional asli. Sumber: Dinge, sistem norma resmi.",
     "costs.base_family_desc.turkey": "Turki: basis nasional asli. Sumber: Birim Fiyat, daftar harga satuan resmi.",

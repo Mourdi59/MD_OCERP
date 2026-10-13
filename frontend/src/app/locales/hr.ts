@@ -11932,7 +11932,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Strojarski",
     "sheets.discipline_name.plumbing": "Vodovod",
     "sheets.discipline_name.landscape": "Krajobrazni",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Instalacije",
     "costs.base_family_desc.global": "Jedan sveobuhvatan katalog stavki radova, lokaliziran i ponovno ocijenjen za 30 tržišta i devet jezika. Odaberite svoje tržište kako biste ga dobili na svom jeziku, u svojoj valuti i na lokalnoj razini cijena.",
     "costs.base_family_desc.china": "Kina: izvorna nacionalna baza. Izvor: Dinge, službeni sustav normi.",
     "costs.base_family_desc.turkey": "Turska: izvorna nacionalna baza. Izvor: Birim Fiyat, službeni popis jediničnih cijena.",

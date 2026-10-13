@@ -10269,7 +10269,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Werktuigbouwkundig",
     "sheets.discipline_name.plumbing": "Sanitair",
     "sheets.discipline_name.landscape": "Landschap",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Installaties",
     "costs.base_family_desc.global": "Eén uitgebreide catalogus van werkonderdelen, gelokaliseerd en opnieuw geprijsd voor 30 markten en negen talen. Kies uw markt om hem te krijgen in uw taal, valuta en lokaal prijsniveau.",
     "costs.base_family_desc.china": "China: originele nationale basis. Bron: Dinge, officieel normenstelsel.",
     "costs.base_family_desc.turkey": "Turkije: originele nationale basis. Bron: Birim Fiyat, officiële eenheidsprijslijst.",

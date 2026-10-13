@@ -14768,7 +14768,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "مکانیک",
     "sheets.discipline_name.plumbing": "لوله‌کشی",
     "sheets.discipline_name.landscape": "محوطه‌سازی",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "تأسیسات",
     "costs.base_family_desc.global": "یک فهرست جامع از آیتم‌های کاری، بومی‌سازی‌شده و بازقیمت‌گذاری‌شده برای ۳۰ بازار و نه زبان. بازار خود را انتخاب کنید تا آن را به زبان، ارز و سطح قیمت محلی خود دریافت کنید.",
     "costs.base_family_desc.china": "چین: پایگاه ملی اصیل. منبع: Dinge, نظام رسمی ضوابط.",
     "costs.base_family_desc.turkey": "ترکیه: پایگاه ملی اصیل. منبع: Birim Fiyat, فهرست‌بهای رسمی واحد.",

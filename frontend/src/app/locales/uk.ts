@@ -11349,7 +11349,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Механіка",
     "sheets.discipline_name.plumbing": "ВК",
     "sheets.discipline_name.landscape": "Благоустрій",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Інженерні системи",
     "costs.base_family_desc.global": "Єдиний повний каталог видів робіт, локалізований та переоцінений для 30 ринків і дев'яти мов. Оберіть свій ринок, щоб отримати його своєю мовою, у своїй валюті та з місцевим рівнем цін.",
     "costs.base_family_desc.china": "Китай: оригінальна національна база. Джерело: Dinge, офіційна система норм.",
     "costs.base_family_desc.turkey": "Туреччина: оригінальна національна база. Джерело: Birim Fiyat, офіційний збірник одиничних розцінок.",

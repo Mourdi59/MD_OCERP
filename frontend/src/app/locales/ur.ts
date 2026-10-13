@@ -14804,7 +14804,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "مکینیکل",
     "sheets.discipline_name.plumbing": "پلمبنگ",
     "sheets.discipline_name.landscape": "لینڈ سکیپ",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "انجینئرنگ سسٹمز",
     "costs.base_family_desc.global": "کام کی مدوں کا ایک جامع کیٹلاگ، جو 30 منڈیوں اور نو زبانوں کے لیے مقامی بنایا گیا اور نئے سرے سے قیمت لگائی گئی ہے۔ اپنی منڈی منتخب کریں تاکہ اسے اپنی زبان، کرنسی اور مقامی قیمت کی سطح میں حاصل کریں۔",
     "costs.base_family_desc.china": "چین: اصل قومی بنیاد. ماخذ: Dinge, سرکاری معیارات کا نظام.",
     "costs.base_family_desc.turkey": "ترکی: اصل قومی بنیاد. ماخذ: Birim Fiyat, سرکاری فی اکائی نرخ نامہ.",

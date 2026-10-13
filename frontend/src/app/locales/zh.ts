@@ -11402,7 +11402,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "机械",
     "sheets.discipline_name.plumbing": "给排水",
     "sheets.discipline_name.landscape": "景观",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "机电",
     "costs.base_family_desc.global": "一套完整的工程项目目录，已本地化并重新定价，覆盖30个市场和九种语言。选择您的市场，即可获得符合您语言、货币和当地价格水平的版本。",
     "costs.base_family_desc.china": "中国：官方原生国家库。来源：Dinge，官方定额体系。",
     "costs.base_family_desc.turkey": "土耳其：官方原生国家库。来源：Birim Fiyat，官方单价表。",

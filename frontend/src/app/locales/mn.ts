@@ -15203,7 +15203,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Механик",
     "sheets.discipline_name.plumbing": "Сантехник",
     "sheets.discipline_name.landscape": "Ландшафт",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Инженерийн систем",
     "costs.base_family_desc.global": "30 зах зээл, есөн хэлэнд тохируулан нутагшуулсан, үнийг нь дахин тооцсон ажлын төрлийн нэг иж бүрэн каталог. Зах зээлээ сонгоод өөрийн хэл, валют, орон нутгийн үнийн түвшнээр нь аваарай.",
     "costs.base_family_desc.china": "Хятад: жинхэнэ үндэсний сан. Эх сурвалж: Dinge, албан ёсны норматив систем.",
     "costs.base_family_desc.turkey": "Турк: жинхэнэ үндэсний сан. Эх сурвалж: Birim Fiyat, нэгж үнийн албан ёсны жагсаалт.",

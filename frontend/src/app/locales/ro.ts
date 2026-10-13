@@ -12087,7 +12087,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Mecanice",
     "sheets.discipline_name.plumbing": "Sanitare",
     "sheets.discipline_name.landscape": "Peisagistică",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Instalații",
     "costs.base_family_desc.global": "Un singur catalog complet de articole de lucrări, localizat și reevaluat pentru 30 de piețe și nouă limbi. Alegeți-vă piața ca să-l primiți în limba, moneda și la nivelul local de prețuri.",
     "costs.base_family_desc.china": "China: bază națională originală. Sursă: Dinge, sistem normativ oficial.",
     "costs.base_family_desc.turkey": "Turcia: bază națională originală. Sursă: Birim Fiyat, listă oficială de prețuri unitare.",

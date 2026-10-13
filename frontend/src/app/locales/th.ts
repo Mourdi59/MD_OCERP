@@ -11980,7 +11980,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "เครื่องกล",
     "sheets.discipline_name.plumbing": "ประปา",
     "sheets.discipline_name.landscape": "ภูมิสถาปัตยกรรม",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "งานระบบ",
     "costs.base_family_desc.global": "แคตตาล็อกรายการงานฉบับสมบูรณ์เพียงชุดเดียว ปรับให้เข้ากับท้องถิ่นและกำหนดราคาใหม่สำหรับ 30 ตลาดและเก้าภาษา เลือกตลาดของคุณเพื่อรับแคตตาล็อกในภาษา สกุลเงิน และระดับราคาท้องถิ่นของคุณ",
     "costs.base_family_desc.china": "จีน: ฐานข้อมูลระดับประเทศฉบับดั้งเดิม. แหล่งที่มา: Dinge, ระบบมาตรฐานอย่างเป็นทางการ.",
     "costs.base_family_desc.turkey": "ตุรกี: ฐานข้อมูลระดับประเทศฉบับดั้งเดิม. แหล่งที่มา: Birim Fiyat, บัญชีราคาต่อหน่วยอย่างเป็นทางการ.",

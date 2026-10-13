@@ -13860,7 +13860,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Maskin",
     "sheets.discipline_name.plumbing": "VVS",
     "sheets.discipline_name.landscape": "Landskap",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Installationer",
     "costs.base_family_desc.global": "En enda omfattande katalog över arbetsposter, lokaliserad och omprissatt för 30 marknader och nio språk. Välj din marknad för att få den på ditt språk, i din valuta och på din lokala prisnivå.",
     "costs.base_family_desc.china": "Kina: ursprunglig nationell bas. Källa: Dinge, officiellt normsystem.",
     "costs.base_family_desc.turkey": "Turkiet: ursprunglig nationell bas. Källa: Birim Fiyat, officiell á-prislista.",

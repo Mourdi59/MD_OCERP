@@ -14464,7 +14464,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Mekanikal",
     "sheets.discipline_name.plumbing": "Plumbing",
     "sheets.discipline_name.landscape": "Landscape",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Mekanikal, Elektrikal at Plumbing",
     "costs.base_family_desc.global": "Isang komprehensibong katalogo ng mga work item, na-localize at muling pinresyuhan para sa 30 merkado at siyam na wika. Piliin ang iyong merkado upang makuha ito sa iyong wika, currency, at lokal na antas ng presyo.",
     "costs.base_family_desc.china": "Tsina: orihinal na pambansang base. Pinagmulan: Dinge, opisyal na sistema ng norma.",
     "costs.base_family_desc.turkey": "Turkey: orihinal na pambansang base. Pinagmulan: Birim Fiyat, opisyal na listahan ng unit price.",

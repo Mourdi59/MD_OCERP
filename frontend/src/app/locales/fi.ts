@@ -11274,7 +11274,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Kone",
     "sheets.discipline_name.plumbing": "Putki",
     "sheets.discipline_name.landscape": "Maisema",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "LVIS",
     "costs.base_family_desc.global": "Yksi kattava työnimikkeiden luettelo, lokalisoitu ja uudelleenhinnoiteltu 30 markkinalle ja yhdeksälle kielelle. Valitse markkinasi, niin saat sen omalla kielelläsi, valuutallasi ja paikallisella hintatasollasi.",
     "costs.base_family_desc.china": "Kiina: alkuperäinen kansallinen pohja. Lähde: Dinge, virallinen normijärjestelmä.",
     "costs.base_family_desc.turkey": "Turkki: alkuperäinen kansallinen pohja. Lähde: Birim Fiyat, virallinen yksikköhintaluettelo.",

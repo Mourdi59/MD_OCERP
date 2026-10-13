@@ -9656,7 +9656,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Механика",
     "sheets.discipline_name.plumbing": "Сантехника",
     "sheets.discipline_name.landscape": "Абаттоо",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Инженердик системалар",
     "costs.base_family_desc.global": "30 рынокко жана тогуз тилге ылайыкташтырылган, баасы кайра эсептелген иш түрлөрүнүн бирдиктүү толук каталогу. Өз рыногуңузду тандап, аны өз тилиңизде, валютаңызда жана жергиликтүү баа деңгээлинде алыңыз.",
     "costs.base_family_desc.china": "Кытай: баштапкы улуттук база. Булак: Dinge, расмий нормалар тутуму.",
     "costs.base_family_desc.turkey": "Түркия: баштапкы улуттук база. Булак: Birim Fiyat, бирдик баалардын расмий тизмеси.",

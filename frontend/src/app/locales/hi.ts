@@ -11511,7 +11511,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "यांत्रिक",
     "sheets.discipline_name.plumbing": "प्लंबिंग",
     "sheets.discipline_name.landscape": "लैंडस्केप",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "एमईपी",
     "costs.base_family_desc.global": "कार्य-मदों का एक व्यापक कैटलॉग, जिसे 30 बाज़ारों और नौ भाषाओं के लिए स्थानीयकृत और पुनः मूल्यांकित किया गया है। अपना बाज़ार चुनें और इसे अपनी भाषा, मुद्रा और स्थानीय मूल्य-स्तर में पाएँ।",
     "costs.base_family_desc.china": "चीन: मूल राष्ट्रीय आधार. स्रोत: Dinge, आधिकारिक मानक प्रणाली.",
     "costs.base_family_desc.turkey": "तुर्किये: मूल राष्ट्रीय आधार. स्रोत: Birim Fiyat, आधिकारिक इकाई-दर सूची.",

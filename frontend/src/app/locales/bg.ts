@@ -11542,7 +11542,7 @@ const resource = {
     "sheets.discipline_name.mechanical": "Машинна",
     "sheets.discipline_name.plumbing": "ВиК",
     "sheets.discipline_name.landscape": "Ландшафтна",
-    "sheets.discipline_name.mep": "MEP",
+    "sheets.discipline_name.mep": "Сградни инсталации",
     "costs.base_family_desc.global": "Един цялостен каталог на видове работи, локализиран и преоценен за 30 пазара и девет езика. Изберете своя пазар, за да го получите на вашия език, във вашата валута и с местно ценово ниво.",
     "costs.base_family_desc.china": "Китай: оригинална национална база. Източник: Dinge, официална система от норми.",
     "costs.base_family_desc.turkey": "Турция: оригинална национална база. Източник: Birim Fiyat, официален списък с единични цени.",
