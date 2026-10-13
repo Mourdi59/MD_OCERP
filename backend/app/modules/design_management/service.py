@@ -275,6 +275,11 @@ class DesignService:
         if codes and phase_code not in codes:
             raise DesignError("phase_unknown", 422, detail=phase_code)
 
+    async def _require_phase(self, project_id: uuid.UUID, phase_code: str | None) -> None:
+        """A deliverable or review belongs to a phase where the project has phases; without a model it may have none."""
+        if not phase_code and await self.phases(project_id):
+            raise DesignError("phase_required", 422)
+
     # ── setup and catalogues ──────────────────────────────────────────────
 
     async def get_setup(self, project_id: uuid.UUID, *, lock: bool = False) -> DesignSetup | None:
@@ -1109,6 +1114,7 @@ class DesignService:
     # ── deliverables (rule 15) ────────────────────────────────────────────
 
     async def create_deliverable(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID):
+        await self._require_phase(project_id, data.get("phase_code"))
         await self._check_phase(project_id, data.get("phase_code"))
         if data.get("role_id"):
             await self._get(DesignRole, project_id, data["role_id"], "role_not_found")
@@ -1119,7 +1125,7 @@ class DesignService:
                 project_id=project_id,
                 code=code,
                 title=data.get("title") or "",
-                phase_code=data["phase_code"],
+                phase_code=data.get("phase_code") or None,
                 role_id=_uuid(data.get("role_id")),
                 discipline_code=data.get("discipline_code"),
                 form_code=data.get("form_code"),
@@ -1148,6 +1154,8 @@ class DesignService:
             row.waived = bool(data["waived"])
             row.waived_rationale = data.get("waived_rationale") or ""
         if "phase_code" in data:
+            data["phase_code"] = data["phase_code"] or None
+            await self._require_phase(project_id, data["phase_code"])
             await self._check_phase(project_id, data["phase_code"])
         if "wbs_node_id" in data:
             row.wbs_node_id = await self.assert_wbs_usable(project_id, data["wbs_node_id"])
@@ -2294,6 +2302,7 @@ class DesignService:
     # ── reviews ───────────────────────────────────────────────────────────
 
     async def create_review(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID):
+        await self._require_phase(project_id, data.get("phase_code"))
         await self._check_phase(project_id, data.get("phase_code"))
         for did in data.get("deliverable_ids") or []:
             await self._get(DesignDeliverable, project_id, did, "deliverable_not_found")
@@ -2306,7 +2315,7 @@ class DesignService:
                 project_id=project_id,
                 code=code,
                 title=data.get("title") or code,
-                phase_code=data["phase_code"],
+                phase_code=data.get("phase_code") or None,
                 deliverable_ids=_uuids(data.get("deliverable_ids")),
                 reviewer_role_ids=_uuids(data.get("reviewer_role_ids")),
                 status="planned",
@@ -2920,8 +2929,8 @@ class DesignService:
 
     # ── readiness, frame documents, validation ────────────────────────────
 
-    async def readiness(self, project_id: uuid.UUID, phase_code: str) -> dr.PhaseBlockers:
-        """Rule 16: what still blocks a design phase."""
+    async def readiness(self, project_id: uuid.UUID, phase_code: str | None) -> dr.PhaseBlockers:
+        """Rule 16: what still blocks a design phase, or the whole project when ``phase_code`` is ``None``."""
         deliverables = await self.deliverables(project_id)
         reports = await self._list(DesignReport, project_id)
         reviews = {r.id: r for r in await self._list(DesignReview, project_id)}

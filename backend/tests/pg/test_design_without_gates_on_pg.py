@@ -120,3 +120,39 @@ async def test_the_setup_read_says_whether_gates_are_in_use(factory) -> None:
     assert made.status_code == 201, made.text
     assert with_gates.status_code == 200, with_gates.text
     assert with_gates.json()["gates_in_use"] is True and with_gates.json()["phases"]
+
+
+async def test_a_phase_may_stay_empty_only_where_the_project_has_no_phases(factory) -> None:
+    """Over HTTP: schedule lines and reviews without a phase on a bare project, the named refusal with a model."""
+    bare = await build_design_world(factory, governance=None)
+    gated = await build_design_world(factory)
+    async with client_as(bare, bare.manager, "manager") as c:
+        base = f"{BASE}/projects/{bare.project_id}"
+        line = await c.post(f"{base}/deliverables", json={"title": "Plans", "phase_code": None})
+        absent = await c.post(f"{base}/deliverables", json={"title": "Sections"})
+        review = await c.post(f"{base}/reviews", json={"title": "Review", "phase_code": None})
+        worded = await c.post(f"{base}/deliverables", json={"title": "Details", "phase_code": PHASE})
+        cleared = await c.patch(f"{base}/deliverables/{worded.json()['id']}", json={"phase_code": None})
+        ready = await c.get(f"{base}/readiness")
+    for response in (line, absent, review, worded):
+        assert response.status_code == 201, response.text
+    assert (line.json()["phase_code"], absent.json()["phase_code"], review.json()["phase_code"]) == (None, None, None)
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["phase_code"] is None
+    assert ready.status_code == 200, ready.text
+    rows = ready.json()["items"]
+    assert [row["code"] for row in rows] == [None], "one row for the whole project, under no phase"
+    assert len(rows[0]["open_deliverables"]) == 3 and rows[0]["met"] is False
+    async with client_as(gated, gated.manager, "manager") as c:
+        base = f"{BASE}/projects/{gated.project_id}"
+        phase = (await c.get(f"{base}/setup")).json()["phases"][0]["code"]
+        no_line = await c.post(f"{base}/deliverables", json={"title": "Plans"})
+        no_review = await c.post(f"{base}/reviews", json={"title": "Review", "phase_code": None})
+        kept = await c.post(f"{base}/deliverables", json={"title": "Plans", "phase_code": phase})
+        emptied = await c.patch(f"{base}/deliverables/{kept.json()['id']}", json={"phase_code": None})
+        phased = await c.get(f"{base}/readiness")
+    for response in (no_line, no_review, emptied):
+        assert response.status_code == 422, response.text
+        assert response.json()["detail"]["code"] == "phase_required"
+    assert kept.status_code == 201, kept.text
+    assert None not in [row["code"] for row in phased.json()["items"]]

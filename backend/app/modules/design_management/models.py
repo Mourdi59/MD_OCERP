@@ -151,7 +151,8 @@ class DesignDeliverable(Base):
     project_id: Mapped[uuid.UUID] = _project("fk_oe_dsg_deliverable_project")
     code: Mapped[str] = mapped_column(String(40), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-    phase_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Empty only on a project without a phase model; with one the service requires it.
+    phase_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     role_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     discipline_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     form_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -298,7 +299,7 @@ class DesignReview(Base):
     project_id: Mapped[uuid.UUID] = _project("fk_oe_dsg_review_project")
     code: Mapped[str] = mapped_column(String(40), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-    phase_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    phase_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     deliverable_ids: Mapped[list[Any]] = mapped_column(JSON, nullable=False, default=list)
     reviewer_role_ids: Mapped[list[Any]] = mapped_column(JSON, nullable=False, default=list)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="planned")

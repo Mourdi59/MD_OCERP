@@ -146,7 +146,6 @@ class DeliverableIn(_In):
         {
             "code",
             "title",
-            "phase_code",
             "planned_count",
             "planned_count_rationale",
             "required",
@@ -274,7 +273,7 @@ class IssueIn(_In):
 class ReviewIn(_In):
     code: str | None = Code
     title: str | None = Field(default=None, max_length=255)
-    phase_code: str = Field(min_length=1, max_length=64)
+    phase_code: str | None = Phase
     deliverable_ids: list[UUID] = Field(default_factory=list)
     reviewer_role_ids: list[UUID] = Field(default_factory=list)
 

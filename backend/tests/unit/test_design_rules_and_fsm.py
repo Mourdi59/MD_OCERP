@@ -252,6 +252,22 @@ def test_superseded_items_after_submission() -> None:
     assert r.superseded_items({c1: r1, c2: r2, c3: None}, {c1: r1, c2: r3, c3: r3}) == [c2]
 
 
+def test_phase_blockers_for_the_whole_project() -> None:
+    """No phase asked: every open required row counts, whatever word it carries as its phase."""
+    b = r.phase_blockers(
+        None,
+        deliverables=[
+            ("DL-1", None, "planned", True),
+            ("DL-2", "own word", "accepted", True),
+            ("DL-3", "x", "open", False),
+        ],
+        reports=[("RPT-1", "own word", "submitted", True), ("RPT-2", None, "accepted", True)],
+        open_major_comments=[None, "own word"],
+    )
+    assert (b.deliverables, b.reports, b.major_comments, b.met) == (["DL-1"], ["RPT-1"], 2, False)
+    assert r.phase_blockers(None, deliverables=[], reports=[], open_major_comments=[]).met
+
+
 def test_phase_blockers() -> None:
     b = r.phase_blockers(
         "lph3",

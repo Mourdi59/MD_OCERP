@@ -222,7 +222,7 @@ class PhaseBlockers:
 
 
 def phase_blockers(
-    phase_code: str,
+    phase_code: str | None,
     *,
     deliverables: Iterable[tuple[str, str, str, bool]],
     reports: Iterable[tuple[str, str, str, bool]],
@@ -232,8 +232,16 @@ def phase_blockers(
 
     ``deliverables`` and ``reports`` are ``(label, phase_code, state, required)``;
     ``open_major_comments`` lists the phase codes of reviews that still hold an
-    open major comment.
+    open major comment. ``phase_code`` ``None`` asks for the whole project: a
+    project without a phase model has no phase to ask for, and whatever its
+    rows carry as a phase is the user's own word.
     """
+    if phase_code is None:
+        return PhaseBlockers(
+            [lbl for lbl, _ph, st, req in deliverables if req and st not in ("accepted", "waived")],
+            [lbl for lbl, _ph, st, req in reports if req and st not in ("accepted", "not_required")],
+            sum(1 for _ph in open_major_comments),
+        )
     d = [lbl for lbl, ph, st, req in deliverables if ph == phase_code and req and st not in ("accepted", "waived")]
     # A required report filed under no phase blocks every design gate: it cannot be parked out of sight.
     r = [
