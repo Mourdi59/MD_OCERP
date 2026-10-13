@@ -537,3 +537,123 @@ def test_the_staffing_files_resolve_by_country_through_the_port(installed: Packs
     )
     unclaimed = next(code for code in ("FR", "JP", "BR") if not any(code in c.jurisdiction_countries for c in shipped))
     assert public.default_catalogue_pin(staffing.STAFFING_MODEL_KIND, unclaimed) is None
+
+
+# ── a national regional pack is asked before the shipped catalogue of the country ──
+
+
+@pytest.fixture
+def regional(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    """The regional pack configurations of the installation, for one test."""
+    configs: list[dict[str, Any]] = []
+
+    def packs_for_country(country_code: str | None) -> tuple[dict[str, Any], ...]:
+        wanted = (country_code or "").strip().upper()
+        return tuple(c for c in configs if wanted and wanted in c.get("countries", ()))
+
+    monkeypatch.setattr(cat.regional_packs, "packs_for_country", packs_for_country)
+    return configs
+
+
+def test_a_regional_pack_never_loses_to_a_shipped_file(installed: Packs, probe_kind, regional) -> None:
+    assert public.default_catalogue_pin(PROBE_KIND, "DE") == packs.CataloguePin("shipped", "german", 2)
+    regional.append({"countries": ["DE", "AT"], PROBE_KIND: {"DE": "alpine_a", "AT": " alpine_b "}})
+    # One shipped file claims DE; the national pack names another and wins.
+    assert public.default_catalogue_pin(PROBE_KIND, "de") == packs.CataloguePin("shipped", "alpine_a", 1)
+    # Two shipped files claim AT, which alone is no answer; the pack settles it.
+    assert public.default_catalogue_pin(PROBE_KIND, "AT") == packs.CataloguePin("shipped", "alpine_b", 1)
+    # The entry is per country: nothing is said about CH.
+    assert public.default_catalogue_pin(PROBE_KIND, "CH") == packs.CataloguePin("shipped", "alpine_a", 1)
+
+
+def test_a_regional_entry_names_the_newest_version_of_a_shipped_catalogue(
+    installed: Packs, probe_kind, regional
+) -> None:
+    regional.append({"countries": ["FR"], PROBE_KIND: {"FR": "german"}})
+    assert public.default_catalogue_pin(PROBE_KIND, "FR") == packs.CataloguePin("shipped", "german", 2)
+
+
+def test_regional_packs_that_disagree_or_name_nothing_shipped_have_no_say(
+    installed: Packs, probe_kind, regional
+) -> None:
+    regional.append({"countries": ["DE"], PROBE_KIND: {"DE": "no_such_file"}})
+    assert public.default_catalogue_pin(PROBE_KIND, "DE") == packs.CataloguePin("shipped", "german", 2)
+    regional.clear()
+    regional.append({"countries": ["DE"], PROBE_KIND: {"DE": "alpine_a"}})
+    regional.append({"countries": ["DE"], PROBE_KIND: {"DE": "alpine_b"}})
+    assert public.default_catalogue_pin(PROBE_KIND, "DE") == packs.CataloguePin("shipped", "german", 2)
+    # A state pack under a national one does not vote, and an entry of another kind is not read.
+    regional.clear()
+    regional.append({"countries": ["DE"], "parent_pack": "dach", PROBE_KIND: {"DE": "alpine_a"}})
+    regional.append({"countries": ["DE"], "another_kind": {"DE": "alpine_b"}, PROBE_KIND: "alpine_b"})
+    assert public.default_catalogue_pin(PROBE_KIND, "DE") == packs.CataloguePin("shipped", "german", 2)
+
+
+def test_the_active_pack_is_asked_before_a_regional_pack(installed: Packs, probe_kind, regional) -> None:
+    regional.append({"countries": ["DE"], PROBE_KIND: {"DE": "alpine_a"}})
+    entry = _entry("acme_schedule", default_for_new_projects=True) | {"kind": PROBE_KIND}
+    installed.install(_pack("acme", entry), active=True, with_files=False)
+    installed.files[("acme", entry["path"])] = json.dumps({"id": "acme_schedule", "version": 1}).encode("utf-8")
+    assert public.default_catalogue_pin(PROBE_KIND, "DE") == packs.CataloguePin("pack", "acme_schedule", 1)
+
+
+def test_a_regional_registry_that_fails_costs_only_its_own_say(
+    installed: Packs, probe_kind, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(country_code: str | None) -> tuple[dict[str, Any], ...]:
+        raise RuntimeError("the registry did not load")
+
+    monkeypatch.setattr(cat.regional_packs, "packs_for_country", broken)
+    assert public.default_catalogue_pin(PROBE_KIND, "DE") == packs.CataloguePin("shipped", "german", 2)
+
+
+def test_the_phase_model_reads_its_regional_entry_through_the_same_reader(installed: Packs, regional) -> None:
+    regional.append({"countries": ["FR"], "governance_catalogue": {"FR": "riba_2020"}})
+    assert cat.regional_pack_entry("governance_catalogue", "fr") == "riba_2020"
+    assert cat.regional_pack_entry("governance_catalogue", "DE") is None
+    assert cat.default_catalogue_id_for_country("FR") == "riba_2020"
+    assert public.default_catalogue_pin("phase_model", "FR").catalogue_id == "riba_2020"
+
+
+#: The country rule each module carried itself: module, kind constant, the private function.
+#: The port has to give the same catalogue for every country, or the private rule cannot go.
+PRIVATE_COUNTRY_RULES = [
+    ("commitment_release", "AUTHORITY_SCHEDULE_KIND", "default_schedule_id_for_country"),
+    ("delivery_model", "DELIVERY_FORMS_KIND", "default_catalogue_id_for_country"),
+    ("design_management", "NUMBERING_KIND", "default_scheme_id_for_country"),
+    ("staffing", "STAFFING_MODEL_KIND", "default_catalogue_id_for_country"),
+    ("stakeholders", "FRAMEWORK_KIND", "default_framework_id_for_country"),
+    ("site_logistics", "SITE_LOGISTICS_KIND", "default_catalogue_id"),
+]
+
+
+@pytest.mark.parametrize(("module", "kind_name", "rule_name"), PRIVATE_COUNTRY_RULES, ids=lambda v: str(v))
+def test_the_port_answers_what_the_private_country_rule_of_a_module_answered(
+    installed: Packs, module: str, kind_name: str, rule_name: str
+) -> None:
+    """Asked of the module's real files and of the real regional packs, country by country."""
+    from app.core import regional_packs
+    from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
+
+    catalogue = pytest.importorskip(f"app.modules.{module}.catalogue")
+    rule = getattr(catalogue, rule_name, None)
+    if rule is None:
+        pytest.skip(f"{module} no longer carries {rule_name}; the port is its only country rule")
+    register = getattr(catalogue, "register_kinds", None) or getattr(catalogue, "register_kind", None)
+    if register is not None:
+        register()
+    kind = getattr(catalogue, kind_name)
+    neutral = rule(None)
+    countries = {"FR", "JP", "ZZ"}
+    for item in get_catalogue_kind(kind).shipped():
+        countries |= {str(c).upper() for c in getattr(item, "jurisdiction_countries", None) or ()}
+    for config in regional_packs.pack_configs():
+        countries |= {str(c).upper() for c in config.get("countries") or ()}
+    differing = {}
+    for country in sorted(countries):
+        pin = public.default_catalogue_pin(kind, country)
+        answer = pin.catalogue_id if pin is not None else neutral
+        if pin is not None and pin.source != "shipped" or answer != rule(country):
+            differing[country] = (answer, rule(country))
+    assert differing == {}, f"{kind}: port against {module}.{rule_name}: {differing}"
+    assert public.default_catalogue_pin(kind, None) is None
