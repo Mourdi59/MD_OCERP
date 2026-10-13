@@ -431,6 +431,9 @@ export const ERROR_TEXT: Record<string, string> = {
   release_expired:
     'The release of this item is past its validity date: request a renewed release before binding more',
   plant_item_not_found: 'The plant item was not found in this project',
+  frame_document_not_found: 'The frame document was not found in this project',
+  funding_application_not_found: 'The funding application was not found in this project',
+  gates_not_in_use: 'This project does not use gates, so nothing can wait for one',
 };
 
 /** The sentence for a refusal code, translated when the locale has it. */

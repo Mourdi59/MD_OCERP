@@ -407,20 +407,3 @@ def register_kinds() -> None:
             diff_groups=(),
         )
     )
-
-
-def default_schedule_id_for_country(country_code: str | None) -> str:
-    """The shipped schedule whose ``jurisdiction_countries`` names exactly this country, else ``neutral``.
-
-    This is the module's own default. What the active pack wants a new project to pin is asked of
-    the governance port first (``default_catalogue_pin``); no pack manifest is read here.
-    """
-    from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
-
-    country = (country_code or "").strip().upper()
-    if not country:
-        return DEFAULT_SCHEDULE_ID
-    register_kinds()
-    shipped = get_catalogue_kind(AUTHORITY_SCHEDULE_KIND).shipped()
-    claims = [s.id for s in shipped if country in s.jurisdiction_countries]
-    return claims[0] if len(claims) == 1 else DEFAULT_SCHEDULE_ID

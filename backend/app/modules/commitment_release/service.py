@@ -27,6 +27,7 @@ import logging
 import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
 
 from fastapi import HTTPException
@@ -42,9 +43,9 @@ from app.modules.commitment_release import evaluator as ev
 from app.modules.commitment_release.catalogue import (
     ABORT_BASIS_KIND,
     AUTHORITY_SCHEDULE_KIND,
+    DEFAULT_SCHEDULE_ID,
     AbortBasis,
     AuthoritySchedule,
-    default_schedule_id_for_country,
     parse_amount,
     register_kinds,
 )
@@ -91,12 +92,22 @@ SPLIT_FIELDS = ("split_group", "flags")
 # Who owns the item decides who may NOT approve it (four eyes): manage only, ``planned`` only.
 OWNER_FIELDS = ("owner_user_id",)
 ENDED = ("aborted", "transferred")
+# Preconditions whose state is read from another module; nobody ticks them by hand.
+LINKED_PRECONDITIONS = ("gate_decided", "frame_document_binding", "funding_approved")
 # The commitment type an abort is judged as (SPEC rule 15); a schedule without it cannot decide one.
 ABORT_TYPE = "termination_settlement"
 
 
 def _s(value: Any) -> str | None:
     return None if value is None else str(value)
+
+
+def _ref_uuid(value: Any) -> uuid.UUID | None:
+    """A stored reference as an id, or ``None`` when the text is not one (it then names nothing)."""
+    try:
+        return uuid.UUID(str(value))
+    except ValueError:
+        return None
 
 
 def _uuid(value: Any) -> uuid.UUID | None:
@@ -289,17 +300,16 @@ class CommitmentService:
         if fx_policy is not None and fx_policy not in FX_POLICIES:
             raise CommitmentError("fx_policy_invalid", 422)
         if matrix is None and schedule_id is None and schedule_source is None:
-            # A new matrix with no schedule named: the active pack is asked first, and this module's
-            # own default applies only when the pack has no opinion.
+            # A new matrix with no schedule named: the governance port is the only country default.
+            # It answers for the active pack, the regional packs and the shipped schedule that claims
+            # the country; when it has no answer the neutral schedule is pinned.
             from app.modules.project_governance.public import default_catalogue_pin
 
             pin = default_catalogue_pin(AUTHORITY_SCHEDULE_KIND, getattr(project, "country_code", None))
             if pin is not None:
                 schedule_source, schedule_id, schedule_version = pin.source, pin.catalogue_id, pin.version
         source = schedule_source or (matrix.schedule_source if matrix else "shipped")
-        sid = schedule_id or (
-            matrix.schedule_id if matrix else default_schedule_id_for_country(getattr(project, "country_code", None))
-        )
+        sid = schedule_id or (matrix.schedule_id if matrix else DEFAULT_SCHEDULE_ID)
         before: dict[str, Any] = {}
         if matrix is None or schedule_id is not None or schedule_version is not None or schedule_source is not None:
             try:
@@ -1098,6 +1108,7 @@ class CommitmentService:
             raise CommitmentError("precondition_kind_invalid", 422)
         if kind in ("gate_decided", "frame_document_binding", "funding_approved") and not ref_id:
             raise CommitmentError("precondition_needs_ref", 422)
+        self._refuse_with(await self.precondition_ref_refusal(project_id, kind, ref_id))
         row = await self.repo.add(
             CommitmentPrecondition(
                 project_id=project_id, item_id=item.id, kind=kind, ref_id=ref_id, text=text, state="open"
@@ -1107,6 +1118,123 @@ class CommitmentService:
             actor_id, "commitment_item", item.id, "precondition_added", metadata={"kind": kind, "ref": ref_id}
         )
         return row
+
+    @staticmethod
+    def _refuse_with(refusal: tuple[str, int] | None) -> None:
+        if refusal is not None:
+            raise CommitmentError(refusal[0], refusal[1])
+
+    async def linked_targets(self, project_id: uuid.UUID, rows: Any) -> dict[str, Any]:
+        """What the linked preconditions in ``rows`` can name, read once for all of them.
+
+        The governance port is asked once for gates and once for frame documents, and the funding
+        applications are one query, however many rows and items there are; a kind no row uses is
+        not read at all.
+        """
+        kinds = {p.kind for p in rows}
+        targets: dict[str, Any] = {"gates": (), "documents": (), "funding": {}}
+        if "gate_decided" in kinds:
+            from app.modules.project_governance.public import project_gates
+
+            targets["gates"] = await project_gates(self.session, project_id)
+        if "frame_document_binding" in kinds:
+            from app.modules.project_governance.public import project_documents
+
+            targets["documents"] = await project_documents(self.session, project_id)
+        wanted = {_ref_uuid(p.ref_id) for p in rows if p.kind == "funding_approved"} - {None}
+        if wanted:
+            from app.modules.funding.models import FundingApplication
+
+            found = await self.session.execute(
+                select(FundingApplication.id, FundingApplication.status).where(
+                    FundingApplication.project_id == project_id, FundingApplication.id.in_(wanted)
+                )
+            )
+            targets["funding"] = {row.id: row.status for row in found}
+        return targets
+
+    @staticmethod
+    def linked_verdict(kind: str, ref_id: str | None, targets: dict[str, Any]) -> tuple[str, str | None]:
+        """``(state, unreachable_reason)`` of a linked precondition against ``linked_targets``.
+
+        The reason is set when the precondition names a gate of a project without gates, or a gate,
+        document or application the project does not have: it can then never be met.
+        """
+        if kind == "gate_decided":
+            if not targets["gates"]:
+                return "open", "gates_not_in_use"
+            mine = [g for g in targets["gates"] if g.code == ref_id]
+            if not mine:
+                return "open", "gate_unknown"
+            ok = any(g.status == "decided" and g.last_outcome.startswith("go") for g in mine)
+            return ("met" if ok else "open"), None
+        if kind == "frame_document_binding":
+            wanted = _ref_uuid(ref_id)
+            mine = [d for d in targets["documents"] if d.id == wanted]
+            if not mine:
+                return "open", "frame_document_not_found"
+            return ("met" if any(d.status == "binding" for d in mine) else "open"), None
+        if kind == "funding_approved":
+            wanted = _ref_uuid(ref_id)
+            if wanted not in targets["funding"]:
+                return "open", "funding_application_not_found"
+            return ("met" if targets["funding"][wanted] == "approved" else "open"), None
+        raise ValueError(f"not a linked precondition kind: {kind}")
+
+    async def precondition_ref_refusal(
+        self, project_id: uuid.UUID, kind: str, ref_id: str | None
+    ) -> tuple[str, int] | None:
+        """Why a linked precondition cannot wait for what it names: ``(code, status)`` or ``None``.
+
+        A precondition that is read from another module is met only by that module. One that names a
+        gate of a project without gates, or a document or application the project does not have,
+        could never be met and never be ticked by hand, and under ``block`` the item could then
+        never be released. So it is not stored. A project that does not use gates waits for no gate.
+        """
+        if kind not in LINKED_PRECONDITIONS:
+            return None
+        row = SimpleNamespace(kind=kind, ref_id=ref_id)
+        reason = self.linked_verdict(kind, ref_id, await self.linked_targets(project_id, [row]))[1]
+        if reason is None:
+            return None
+        return reason, (422 if reason in ("gates_not_in_use", "gate_unknown") else 404)
+
+    @staticmethod
+    def remove_precondition_refusal(item: CommitmentItem, manage: bool) -> str | None:
+        """Why this person may not take a precondition off the item now; the same for every row of it."""
+        if not manage:
+            return "manage_required"
+        if item.status in ENDED:
+            return "item_closed"
+        # The running request was judged with its preconditions on it.
+        return "release_pending" if item.status == "release_requested" else None
+
+    async def remove_precondition(
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        precondition_id: uuid.UUID,
+        *,
+        reason: str,
+        actor_id: uuid.UUID,
+        manage: bool = False,
+    ) -> None:
+        """Take a precondition off an item: a manager, with a reason, while no request is running.
+
+        Without this a precondition added by mistake, or one that waits for a gate the project does
+        not have, stays for ever. The reason and who removed it are recorded.
+        """
+        item = await self.get_item(project_id, item_id, lock=True)
+        self._refuse(self.remove_precondition_refusal(item, manage))
+        if not reason.strip():
+            raise CommitmentError("rationale_required", 422)
+        row = await self.repo.get_precondition(project_id, item_id, precondition_id)
+        if row is None:
+            raise not_found("precondition_not_found")
+        meta = {"kind": row.kind, "ref": row.ref_id, "text": row.text, "state": row.state, "reason": reason.strip()}
+        await self.session.delete(row)
+        await self.session.flush()
+        await self._audit(actor_id, "commitment_item", item.id, "precondition_removed", metadata=meta)
 
     async def confirm_precondition(
         self,
@@ -1145,18 +1273,29 @@ class CommitmentService:
         return row
 
     async def precondition_states(
-        self, project_id: uuid.UUID, rows: list[CommitmentPrecondition], *, planned: Decimal | None, cumulative: Decimal
+        self,
+        project_id: uuid.UUID,
+        rows: list[CommitmentPrecondition],
+        *,
+        planned: Decimal | None,
+        cumulative: Decimal,
+        targets: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
-        """Each precondition with its state; linked kinds are read from their modules now."""
+        """Each precondition with its state; linked kinds are read from their modules now.
+
+        ``targets`` is ``linked_targets`` of at least these rows; a caller that reads many items
+        passes the one it loaded for all of them.
+        """
+        if targets is None:
+            targets = await self.linked_targets(project_id, rows)
         out = []
         for p in rows:
             state = p.state
-            if p.kind == "gate_decided":
-                state = await self._gate_state(project_id, p.ref_id)
-            elif p.kind == "frame_document_binding":
-                state = await self._document_state(project_id, p.ref_id)
-            elif p.kind == "funding_approved":
-                state = await self._funding_state(project_id, p.ref_id)
+            # Set when the row was stored before the check on write existed, or its target was
+            # removed since: it can never be met, and the screen says so.
+            unreachable = None
+            if p.kind in LINKED_PRECONDITIONS:
+                state, unreachable = self.linked_verdict(p.kind, p.ref_id, targets)
             elif p.kind == "budget_available":
                 state = "met" if planned is not None and cumulative <= planned else "open"
             reader = precondition_reader(p.kind)
@@ -1171,6 +1310,7 @@ class CommitmentService:
                     "ref_id": p.ref_id,
                     "text": p.text,
                     "state": state,
+                    "unreachable_reason": unreachable,
                     "evidence_ref": p.evidence_ref,
                     "confirmed_by": _s(p.confirmed_by),
                     "confirmed_at": p.confirmed_at.isoformat() if p.confirmed_at else None,
@@ -1203,31 +1343,10 @@ class CommitmentService:
             "title": target.title if can_open else None,
         }
 
-    async def _gate_state(self, project_id: uuid.UUID, gate_code: str | None) -> str:
-        from app.modules.project_governance.public import project_gates
-
-        gates = [g for g in await project_gates(self.session, project_id) if g.code == gate_code]
-        ok = any(g.status == "decided" and g.last_outcome.startswith("go") for g in gates)
-        return "met" if ok else "open"
-
-    async def _document_state(self, project_id: uuid.UUID, doc_id: str | None) -> str:
-        from app.modules.project_governance.public import project_documents
-
-        try:
-            wanted = uuid.UUID(str(doc_id))
-        except (TypeError, ValueError):
-            return "open"
-        documents = await project_documents(self.session, project_id)
-        return "met" if any(d.id == wanted and d.status == "binding" for d in documents) else "open"
-
-    async def _funding_state(self, project_id: uuid.UUID, app_id: str | None) -> str:
-        from app.modules.funding.models import FundingApplication
-
-        try:
-            row = await self.session.get(FundingApplication, uuid.UUID(str(app_id)))
-        except (TypeError, ValueError):
-            return "open"
-        return "met" if row is not None and row.project_id == project_id and row.status == "approved" else "open"
+    async def linked_state(self, project_id: uuid.UUID, kind: str, ref_id: str | None) -> str:
+        """The state of one linked precondition, read now."""
+        row = SimpleNamespace(kind=kind, ref_id=ref_id)
+        return self.linked_verdict(kind, ref_id, await self.linked_targets(project_id, [row]))[0]
 
     # ── derived figures ────────────────────────────────────────────────────
 
@@ -1324,6 +1443,7 @@ class CommitmentService:
         ids = [i.id for i in items]
         releases = await self.repo.list_releases(project_id, ids)
         pre = await self.repo.list_preconditions(project_id, ids)
+        pre_targets = await self.linked_targets(project_id, pre)
         terms = await self.repo.list_abort_terms(project_id, ids) if with_exposure else []
         per_item, committed, committed_reason = await self.committed_for_items(matrix, project, schedule, on_date=today)
         tol = schedule.variation_tolerance
@@ -1374,6 +1494,7 @@ class CommitmentService:
                 [p for p in pre if p.item_id == item.id],
                 planned=planned_sched,
                 cumulative=released,
+                targets=pre_targets,
             )
             expired = self.expired_in_schedule_currency(rel, today)
             in_force = ev.release_in_force(released, expired, comm) if comm is not None else None
@@ -1560,6 +1681,13 @@ class CommitmentService:
             "transfer": flag(self.transfer_refusal(item, manage)),
             "defer": flag(self.defer_refusal(item, manage)),
             "edit_gate_fields": flag(self.gate_fields_refusal(item, manage)),
+            # One verdict for every precondition of the item; the rows do not differ. ``applies`` is
+            # false on an ended item, where removal does not exist: the screen hides the action there
+            # and shows it disabled with the reason otherwise.
+            "remove_precondition": {
+                **flag(self.remove_precondition_refusal(item, manage)),
+                "applies": item.status not in ENDED,
+            },
         }
 
     # ── abort exposure ─────────────────────────────────────────────────────
@@ -2830,6 +2958,9 @@ class CommitmentService:
         plant_register, plant_items = await figures.plant_item_options(self.session, project_id)
         return {
             "has_model": has_model,
+            # False: this project does not use gates. Nothing waits for a gate there, and a release is
+            # decided by the tier of the authority schedule alone.
+            "gates_in_use": bool(gates),
             # ``available`` is false when the plant register is not installed: there is nothing to link to.
             "plant_items": {"available": plant_register, "items": plant_items},
             "gates": [

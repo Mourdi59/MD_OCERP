@@ -354,3 +354,29 @@ async def test_references_are_empty_lists_without_a_governance_model_and_targets
     async with client_as(world, world.manager, "manager") as c:
         targets = (await c.get(f"{url}/items/{iid}/transfer-targets")).json()["items"]
     assert [t["can"]["reason"] for t in targets] == [None, "transfer_links_stay_in_project"]
+
+
+async def test_a_precondition_is_removed_over_http_by_a_manager_with_a_reason(world: World) -> None:
+    from app.modules.commitment_release.service import CommitmentService
+
+    iid = await item(world, code="CR-RP", amount="10000")
+    async with world.factory() as s:
+        row = await CommitmentService(s).add_precondition(
+            world.project_id, iid, kind="manual", ref_id=None, text="Brief signed", actor_id=world.requester
+        )
+        await s.commit()
+        pre = row.id
+    url = f"{BASE}/projects/{world.project_id}/items/{iid}/preconditions/{pre}"
+    async with client_as(world, world.requester, "editor") as c:
+        refused = await c.delete(url, params={"reason": "typo"})
+    assert refused.status_code == 403, refused.text
+    async with client_as(world, world.manager, "manager") as c:
+        no_reason = await c.delete(url)
+        assert (no_reason.status_code, no_reason.json()["detail"]["code"]) == (422, "rationale_required")
+        done = await c.delete(url, params={"reason": "Added by mistake"})
+        assert done.status_code == 204, done.text
+        again = await c.delete(url, params={"reason": "Added by mistake"})
+        assert (again.status_code, again.json()["detail"]["code"]) == (404, "precondition_not_found")
+    async with client_as(world, world.outsider, "manager") as c:
+        foreign = await c.delete(url, params={"reason": "x"})
+    assert foreign.status_code in (403, 404), foreign.text

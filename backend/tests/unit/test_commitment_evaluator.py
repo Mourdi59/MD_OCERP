@@ -293,3 +293,29 @@ def test_a_plant_item_order_date_decides_before_the_items_own_dates() -> None:
     # No order date from the register (no need date there): the item's own inputs apply unchanged.
     got = decision_date_for_item(plant_latest_order=None, decision_buffer_days=10, **own)
     assert (got.latest, got.basis) == (day(2027, 4, 22), "late_start")
+
+
+def test_the_governance_port_is_the_only_country_default_of_the_module() -> None:
+    """No file of the module reads a project's country to choose a schedule; ``set_matrix`` asks the port."""
+    import ast
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2] / "app" / "modules" / "commitment_release"
+    sources = {p.name: p.read_text(encoding="utf-8") for p in sorted(root.glob("*.py"))}
+    assert len(sources) > 10, sorted(sources)
+    # The jurisdiction of a shipped schedule is read by nothing here; only the port matches it to a country.
+    # It is declared on the two catalogue models and mentioned nowhere else.
+    mentions = {name: text.count("jurisdiction_countries") for name, text in sources.items()}
+    assert {n: c for n, c in mentions.items() if c} == {"catalogue.py": 2}, mentions
+    assert sources["catalogue.py"].count("jurisdiction_countries: tuple[str, ...] = ()") == 2
+    # The project's country is read in exactly one place, and there it is handed to the port.
+    uses = {name: text.count("country_code") for name, text in sources.items() if "country_code" in text}
+    assert uses == {"service.py": 1}, uses
+    tree = ast.parse(sources["service.py"])
+    calls = [
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "default_catalogue_pin"
+    ]
+    assert len(calls) == 1
+    assert "country_code" in ast.unparse(calls[0])

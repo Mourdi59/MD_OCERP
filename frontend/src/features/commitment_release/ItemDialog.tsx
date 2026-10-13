@@ -55,7 +55,7 @@ export function ItemDialog({
   const mode = item ? 'edit' : 'create';
   const [draft, setDraft] = useState<ItemDraft>(() => draftOfItem(item, matrix.base_currency));
   const [tried, setTried] = useState(false);
-  const problems = itemProblems(draft, mode);
+
   const typeFixed = !!item && item.status !== 'planned';
   // A planned amount read from a budget line, a cost line or a position is
   // set where that record lives; this dialog only types an estimate.
@@ -77,6 +77,10 @@ export function ItemDialog({
     item?.plant_item_id ? { id: item.plant_item_id, code: item.plant_item_code ?? null } : null,
   );
   const tiedToGate = !!draft.gateCode || !!draft.areaCode;
+  // On a project that does not use gates a stored gate or area is kept as it is: shown, never edited, never checked.
+  const gatesOff = refsQ.data?.gates_in_use === false;
+  // A stored gate without its area cannot be repaired there, so it does not stop the item from being saved.
+  const problems = itemProblems(draft, mode).filter((p) => !(gatesOff && p === 'gate_needs_area'));
 
   const save = useMutation({
     mutationFn: () => {
@@ -378,6 +382,13 @@ export function ItemDialog({
                 defaultValue: 'The gates of the project could not be read. The item can be saved without a gate and tied to one later.',
               })}
             </p>
+          ) : refsQ.data?.gates_in_use === false && !tiedToGate ? (
+            <p className="text-sm text-content-secondary" data-testid="item-gates-not-in-use">
+              {t('commitment.item_form.gates_not_in_use', {
+                defaultValue:
+                  'This project does not use gates, so the item is not tied to one. Releases, holds and aborts are decided on the approval tiers as everywhere else.',
+              })}
+            </p>
           ) : !refsQ.isError && !refsQ.data?.has_model && !tiedToGate ? (
             <p className="text-sm text-content-secondary" data-testid="item-gate-no-model">
               {t('commitment.item_form.gate_no_model', {
@@ -393,7 +404,7 @@ export function ItemDialog({
                     id="item-gate"
                     className={FIELD_CLASS}
                     value={draft.gateCode}
-                    disabled={!!gateVerdict}
+                    disabled={!!gateVerdict || gatesOff}
                     onChange={(e) => set({ gateCode: e.target.value })}
                   >
                     <option value="">{t('commitment.item_form.gate_none', { defaultValue: 'No gate' })}</option>
@@ -409,7 +420,7 @@ export function ItemDialog({
                     id="item-area"
                     className={FIELD_CLASS}
                     value={draft.areaCode}
-                    disabled={!!gateVerdict}
+                    disabled={!!gateVerdict || gatesOff}
                     onChange={(e) => set({ areaCode: e.target.value })}
                   >
                     <option value="">{t('commitment.item_form.area_none', { defaultValue: 'No area' })}</option>
@@ -421,8 +432,16 @@ export function ItemDialog({
                   </select>
                 </Field>
               </div>
-              <p className="mt-2 text-xs text-content-tertiary" data-testid={gateVerdict ? 'item-gate-locked' : 'item-gate-hint'}>
-                {gateVerdict
+              <p
+                className="mt-2 text-xs text-content-tertiary"
+                data-testid={gatesOff ? 'item-gates-off-stored' : gateVerdict ? 'item-gate-locked' : 'item-gate-hint'}
+              >
+                {gatesOff
+                  ? t('commitment.item_form.gates_off_stored', {
+                      defaultValue:
+                        'This project does not use gates. What was stored on this item earlier is shown here and kept as it is: it is not checked and cannot be changed.',
+                    })
+                  : gateVerdict
                   ? reasonText(t, gateVerdict)
                   : t('commitment.item_form.gate_hint', {
                       defaultValue:

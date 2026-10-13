@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { fmtDate } from '@/shared/lib/formatters';
@@ -20,14 +20,15 @@ import { fmtDate } from '@/shared/lib/formatters';
 import {
   addPrecondition,
   confirmPrecondition,
+  removePrecondition,
   type CommitmentItem,
   type Precondition,
   type PreconditionKind,
 } from './api';
-import type { Verdict } from './access';
+import { itemVerdict, type Verdict } from './access';
 import { FIELD_CLASS, ReasonedButton, RefusalBox, refusalText } from './CommitmentBits';
 import { useLabelContext, useReferences } from './hooks';
-import { PRECONDITION_KIND, vocab } from './labels';
+import { PRECONDITION_KIND, errorText, vocab } from './labels';
 import { preconditionRefName, refOptions } from './references';
 import { ADDABLE_PRECONDITIONS, REF_PRECONDITIONS, TICKABLE_PRECONDITIONS } from './rules';
 
@@ -48,11 +49,19 @@ export function PreconditionList({ projectId, item, editVerdict, personName, onC
   const [refId, setRefId] = useState('');
   const [evidenceFor, setEvidenceFor] = useState<string | null>(null);
   const [evidence, setEvidence] = useState('');
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [removeReason, setRemoveReason] = useState('');
+  // Whether a precondition may be taken off is the server's answer, like every other action here.
+  const removeVerdict = itemVerdict(item, 'remove_precondition');
 
   // The pick lists are needed to name a record a precondition points at, and to offer one.
   const labels = useLabelContext();
   const refsQ = useReferences(projectId, adding || item.preconditions.some((pre) => !!pre.ref_id));
-  const refKinds = REF_PRECONDITIONS.filter((k) => refOptions(k, refsQ.data, labels).length > 0);
+  const refKinds = REF_PRECONDITIONS.filter(
+    (k) => refOptions(k, refsQ.data, labels).length > 0 && !(k === 'gate_decided' && refsQ.data?.gates_in_use === false),
+  );
+  // A project that does not use gates offers no gate, whatever the list holds.
+  const noGates = refsQ.data?.gates_in_use === false;
   const picksRecord = REF_PRECONDITIONS.includes(kind);
   const records = refOptions(kind, refsQ.data, labels);
 
@@ -79,6 +88,20 @@ export function PreconditionList({ projectId, item, editVerdict, personName, onC
       onChanged();
     },
   });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => removePrecondition(projectId, item.id, id, removeReason.trim()),
+    onSuccess: () => {
+      setRemoving(null);
+      setRemoveReason('');
+      onChanged();
+    },
+  });
+  const startRemoving = (id: string) => {
+    remove.reset();
+    setRemoveReason('');
+    setRemoving(id);
+  };
 
   const tick = (pre: Precondition) => {
     if (pre.state === 'met') {
@@ -183,7 +206,66 @@ export function PreconditionList({ projectId, item, editVerdict, personName, onC
                       })}
                     </span>
                   )}
+                  {removing !== pre.id && (
+                    <ReasonedButton
+                      size="sm"
+                      variant="ghost"
+                      verdict={removeVerdict}
+                      onClick={() => startRemoving(pre.id)}
+                      data-testid="precondition-remove"
+                    >
+                      {t('commitment.preconditions.remove', { defaultValue: 'Remove' })}
+                    </ReasonedButton>
+                  )}
                 </div>
+                {pre.unreachable_reason && (
+                  <p className="mt-1.5 flex items-start gap-1.5 text-xs text-semantic-warning" data-testid="precondition-unreachable">
+                    <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden />
+                    {/* Two sentences, each whole in its language: the server's reason, then what to do. */}
+                    <span>
+                      <span className="block">{errorText(t, pre.unreachable_reason)}</span>
+                      <span className="block">
+                        {t('commitment.preconditions.unreachable', {
+                          defaultValue: 'This precondition can never be met. Remove it, or it keeps blocking the release.',
+                        })}
+                      </span>
+                    </span>
+                  </p>
+                )}
+                {removing === pre.id && (
+                  <div className="mt-2 space-y-2 rounded-md bg-surface-secondary p-2" data-testid="precondition-remove-form">
+                    {remove.isError && <RefusalBox message={refusalText(t, remove.error)} />}
+                    <div>
+                      <label htmlFor={`remove-${pre.id}`} className="mb-1 block text-xs text-content-secondary">
+                        {t('commitment.preconditions.remove_reason', {
+                          defaultValue: 'Why this precondition is removed (required, kept on the record)',
+                        })}
+                      </label>
+                      <textarea
+                        id={`remove-${pre.id}`}
+                        rows={2}
+                        maxLength={2000}
+                        className={FIELD_CLASS}
+                        value={removeReason}
+                        onChange={(e) => setRemoveReason(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        loading={remove.isPending}
+                        disabled={!removeReason.trim()}
+                        onClick={() => remove.mutate(pre.id)}
+                        data-testid="precondition-remove-send"
+                      >
+                        {t('commitment.preconditions.remove_send', { defaultValue: 'Remove the precondition' })}
+                      </Button>
+                      <Button size="sm" variant="ghost" disabled={remove.isPending} onClick={() => setRemoving(null)}>
+                        {t('commitment.cancel', { defaultValue: 'Cancel' })}
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {evidenceFor === pre.id && (
                   <div className="mt-2 flex flex-wrap items-end gap-2 rounded-md bg-surface-secondary p-2">
                     <div className="min-w-[14rem] flex-1">
@@ -263,12 +345,24 @@ export function PreconditionList({ projectId, item, editVerdict, personName, onC
               />
             )}
           </div>
+          {refsQ.isSuccess && noGates && (
+            <p className="text-xs text-content-tertiary" data-testid="precondition-no-gates">
+              {t('commitment.preconditions.no_gates', {
+                defaultValue: 'This project does not use gates, so a gate cannot be made a precondition here.',
+              })}
+            </p>
+          )}
           {refsQ.isSuccess && refKinds.length === 0 && (
             <p className="text-xs text-content-tertiary" data-testid="precondition-no-records">
-              {t('commitment.preconditions.no_records', {
-                defaultValue:
-                  'A gate, a frame document or a funding application can be made a precondition once the project has one.',
-              })}
+              {noGates
+                ? t('commitment.preconditions.no_records_without_gates', {
+                    defaultValue:
+                      'A frame document or a funding application can be made a precondition once the project has one.',
+                  })
+                : t('commitment.preconditions.no_records', {
+                    defaultValue:
+                      'A gate, a frame document or a funding application can be made a precondition once the project has one.',
+                  })}
             </p>
           )}
           <div className="flex gap-2">

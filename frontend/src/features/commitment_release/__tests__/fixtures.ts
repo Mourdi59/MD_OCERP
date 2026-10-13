@@ -127,6 +127,7 @@ const ACTIONS: ItemAction[] = [
   'transfer',
   'defer',
   'edit_gate_fields',
+  'remove_precondition',
 ];
 
 /**

@@ -32,6 +32,7 @@ vi.mock('../api', async (importOriginal) => {
     listTransferTargets: vi.fn(),
     checkDocument: vi.fn(),
     addPrecondition: vi.fn(),
+    removePrecondition: vi.fn(),
     addLink: vi.fn(),
     createItem: vi.fn(),
     updateItem: vi.fn(),
@@ -68,7 +69,7 @@ import {
 import { checkOutcome, draftOfItem, itemProblems, toItemInput } from '../rules';
 import { CHANGE_ORDER_ROW, CONTRACT_LINE_ROW, CONTRACT_ROW, LIST_ANSWERS } from './documentRows';
 import { enT } from './i18nMock';
-import { can, item, link, matrix, precondition } from './fixtures';
+import { OWNER_CAN, can, item, link, matrix, precondition } from './fixtures';
 
 const mocked = vi.mocked(api);
 const apiGetMock = vi.mocked(apiGet);
@@ -350,6 +351,29 @@ describe('gate and area of an item', () => {
     expect(plantItemOptions(references({ plant_items: { available: true, items: [] } }), labels, { id: 'pl9', code: 'PL-009' })).toHaveLength(1);
   });
 
+  it('a project that does not use gates hides the gate and the area, and says why', async () => {
+    mocked.getReferences.mockResolvedValue(references({ gates_in_use: false, gates: [] }));
+    dialog();
+    expect(await screen.findByTestId('item-gates-not-in-use')).toBeInTheDocument();
+    expect(byId('item-gate')).toBeNull();
+    expect(byId('item-area')).toBeNull();
+  });
+
+  it('on a project without gates a stored gate is shown read-only with the reason, and saving does not ask for its area', async () => {
+    mocked.getReferences.mockResolvedValue(references({ gates_in_use: false, gates: [] }));
+    mocked.updateItem.mockResolvedValue(item());
+    dialog({ gate_code: 'old_gate', governance_area_code: null });
+    await waitFor(() => expect(byId('item-gate')).not.toBeNull());
+    expect(byId<HTMLSelectElement>('item-gate').disabled).toBe(true);
+    expect(byId<HTMLSelectElement>('item-area').disabled).toBe(true);
+    expect(byId<HTMLSelectElement>('item-gate').value).toBe('old_gate');
+    expect(screen.getByTestId('item-gates-off-stored').textContent).toContain('does not use gates');
+    fireEvent.change(byId('item-title'), { target: { value: 'Renamed' } });
+    fireEvent.click(screen.getByTestId('item-save'));
+    await waitFor(() => expect(mocked.updateItem).toHaveBeenCalledTimes(1));
+    expect(mocked.updateItem.mock.calls[0]![2]).toEqual({ title: 'Renamed' });
+  });
+
   it('a project without phases and gates says so instead of showing empty selects', async () => {
     mocked.getReferences.mockResolvedValue(NO_MODEL);
     dialog();
@@ -435,6 +459,51 @@ describe('PreconditionList', () => {
     fireEvent.click(screen.getByTestId('precondition-add-send'));
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
     expect(mocked.addPrecondition).toHaveBeenCalledWith('p1', 'i1', { kind: 'gate_decided', ref_id: 'g2', text: '' });
+  });
+
+  it('a project that does not use gates offers no gate and says so, also when a gate list came along', async () => {
+    mocked.getReferences.mockResolvedValue(references({ gates_in_use: false }));
+    list({ preconditions: [] });
+    openForm();
+    expect(await screen.findByTestId('precondition-no-gates')).toBeInTheDocument();
+    const kinds = optionTexts(screen.getByTestId('precondition-kind'));
+    expect(kinds).not.toContain(enT('commitment.precondition.gate_decided'));
+    expect(kinds).toContain(enT('commitment.precondition.frame_document_binding'));
+    expect(screen.queryByTestId('precondition-no-records')).toBeNull();
+  });
+
+  it('a precondition that can never be met says why on its row', () => {
+    list({ preconditions: [precondition({ kind: 'gate_decided', ref_id: 'g2', text: '', unreachable_reason: 'gates_not_in_use' })] });
+    const note = screen.getByTestId('precondition-unreachable');
+    expect(note.textContent).toContain(enT('commitment.errors.gates_not_in_use'));
+    expect(note.textContent).toContain('can never be met');
+  });
+
+  it('removing a precondition needs a reason, sends it, and shows the refusal where the reader works', async () => {
+    mocked.removePrecondition.mockRejectedValueOnce(
+      new ApiError(409, 'Conflict', { detail: { code: 'release_pending', message: 'A release is pending' } }),
+    );
+    mocked.removePrecondition.mockResolvedValueOnce(undefined);
+    const onChanged = list({ preconditions: [precondition()] });
+    fireEvent.click(screen.getByTestId('precondition-remove'));
+    expect(screen.getByTestId('precondition-remove-send')).toBeDisabled();
+    fireEvent.change(byId('remove-pre1'), { target: { value: ' The brief is no longer required ' } });
+    fireEvent.click(screen.getByTestId('precondition-remove-send'));
+    const alert = await within(screen.getByTestId('precondition-remove-form')).findByRole('alert');
+    expect(alert.textContent).toContain(enT('commitment.errors.release_pending'));
+    expect(onChanged).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('precondition-remove-send'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(mocked.removePrecondition).toHaveBeenLastCalledWith('p1', 'i1', 'pre1', 'The brief is no longer required');
+  });
+
+  it('removal follows the server flag: refused with its reason, and off while the server has not said', () => {
+    list({ preconditions: [precondition()], can: can({ remove_precondition: 'manage_required' }) });
+    expect(screen.getByTestId('precondition-remove')).toBeDisabled();
+    cleanup();
+    const { remove_precondition: _absent, ...older } = OWNER_CAN;
+    list({ preconditions: [precondition()], can: older });
+    expect(screen.getByTestId('precondition-remove')).toBeDisabled();
   });
 
   it('offers no kind the project has no record for, and says when that changes', async () => {
