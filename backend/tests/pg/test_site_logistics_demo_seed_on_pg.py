@@ -129,3 +129,49 @@ async def test_the_plan_seed_fills_every_screen_for_both_stories() -> None:
                 ("oversize_permit", "draft", heavy[0].id)
             ]
             assert await _rows(s, m.NeighbourIssue, pid) == []
+
+
+async def test_the_seed_names_nobody_outside_the_project_and_logs_nothing_above_info(caplog) -> None:
+    """A demo seeder runs on real installations, next to real accounts.
+
+    The stranger here is a manager of the installation who is on neither project.
+    After the whole logistics seed (the board and the plan) no row of the module
+    carries that account, and the module's loggers said nothing above info: both
+    stories are healthy states, a project with only its owner included.
+    """
+    import logging
+
+    from app.database import Base
+    from app.modules.site_logistics.demo import seed_site_logistics_demo
+
+    register_site_logistics_permissions()
+    async with isolated_engine() as engine:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        w = await gov.build_world(factory)
+        async with factory() as s:
+            stranger = await gov.add_user(s, "manager")
+            alone = await gov.add_project(s, w.manager, [])  # nobody but its owner
+            await s.commit()
+
+        with caplog.at_level(logging.DEBUG):
+            async with factory() as s:
+                totals = await seed_site_logistics_demo(s, [alone, w.project_id])
+                await s.commit()
+        assert totals["plan_projects"] == 2
+        loud = [
+            (r.name, r.levelname, r.getMessage())
+            for r in caplog.records
+            if r.name.startswith("app.modules.site_logistics") and r.levelno > logging.INFO
+        ]
+        assert not loud, loud
+
+        scanned = 0
+        async with factory() as s:
+            for table in Base.metadata.sorted_tables:
+                if not table.name.startswith("oe_site_logistics_"):
+                    continue
+                for row in (await s.execute(sa.select(table))).mappings():
+                    scanned += 1
+                    assert str(stranger) not in {str(v) for v in row.values()}, table.name
+        # The scan read the seeded plan, not empty tables.
+        assert scanned > 40
