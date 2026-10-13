@@ -530,3 +530,64 @@ async def test_a_showcase_template_no_pack_installs_still_installs(demo_id: str,
     assert not grew, f"{demo_id}: a second install changed row counts: {grew}"
     warnings = _install_warnings(caplog)
     assert not warnings, f"{demo_id}: the install logged warnings:\n" + "\n".join(warnings[:40])
+
+
+# ── Governance on the demo projects of a pack ───────────────────────────────
+
+_GOVERNANCE_LOGGERS = ("app.modules.project_governance", "app.core.demo_cast")
+
+
+@pytest.mark.timeout(1500)
+async def test_a_fresh_pack_install_leaves_every_demo_project_at_its_planned_gate(fresh_db, caplog) -> None:
+    """A pack install creates the demo projects and their owner, and nobody else.
+
+    Under four-eyes the owner of an area cannot decide its gate, so without a
+    second person the governance seed wrote nothing on any pack and every gate
+    screen opened empty. The demo cast gives the stories their decider; this
+    asks the result of a real install, through the port the module seeders use.
+    """
+    from app.modules.project_governance import catalogue_packs, public, seed_story
+    from app.modules.project_governance.models import GovernanceDecision, GovernanceModel
+
+    caplog.set_level(logging.INFO)
+    factory = fresh_db
+    slug = _load_manifest("germany-de").slug
+    done = await _stream_install(slug)
+    assert done["ok"], f"{slug}: install reported ok=False: {done['steps']}"
+    expected = _expected_demos(slug)
+    assert expected, f"{slug} installs no demos, so this test asks nothing"
+
+    projects = await _demo_projects(factory)
+    pack_project = seed_story.pack_demo_id(catalogue_packs.active_pack_demo())
+    placed = 0
+    for demo_id in expected:
+        pid = projects[demo_id].id
+        planned = seed_story.planned_moment(demo_id, pack_project)
+        async with factory() as s:
+            model = (
+                await s.execute(select(GovernanceModel).where(GovernanceModel.project_id == pid))
+            ).scalar_one_or_none()
+            assert model is not None, f"{slug}: demo {demo_id} has no governance model (planned {planned})"
+            decided = (
+                await s.execute(
+                    select(func.count()).select_from(GovernanceDecision).where(GovernanceDecision.project_id == pid)
+                )
+            ).scalar_one()
+            enabling = await public.phases_enabling(s, pid, "construction_start")
+            gates = await public.project_gates(s, pid)
+        if planned in ("execution", "near_handover"):
+            placed += 1
+            into = [g.status for g in gates if g.to_phase in enabling]
+            assert into == ["decided"], f"{slug}: {demo_id} was planned at {planned}, its construction gate is {into}"
+        elif planned == "first_gate":
+            assert decided == 1, f"{slug}: {demo_id} has {decided} gate decisions, the first-gate story takes one"
+    assert placed or pack_project in expected, f"{slug}: none of {expected} is a placed project, pick another pack"
+
+    loud = [
+        f"{r.name}: {r.getMessage()}"
+        for r in caplog.records
+        if r.levelno >= logging.WARNING and r.name.startswith(_GOVERNANCE_LOGGERS)
+    ]
+    assert not loud, f"{slug}: the governance seed logged:\n" + "\n".join(loud[:40])
+    fallbacks = [r.getMessage() for r in caplog.records if "was planned at" in r.getMessage()]
+    assert not fallbacks, f"{slug}: placement fallbacks: {fallbacks}"

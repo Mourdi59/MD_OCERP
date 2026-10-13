@@ -323,9 +323,12 @@ def placement(
 def seed_result(placements: list[dict[str, Any]], pack_demo_file: str = "absent") -> dict[str, Any]:
     """The result of a seed run, one row per project handed in.
 
-    ``ok`` is false when any project missed its planned moment, or when the
-    active pack names a demo file nobody could read (``pack_demo_file`` is
-    ``unreadable``; no row can show that, the file would have named the project).
+    ``ok`` is false when a named project missed its planned moment (the pack's
+    own, or one of :data:`PLACEMENT`), or when the active pack names a demo
+    file nobody could read (``pack_demo_file`` is ``unreadable``; no row can
+    show that, the file would have named the project). A project nobody placed
+    that missed is listed under ``fallbacks`` with ``named`` false and does not
+    fail the run.
     """
     fallbacks = [row for row in placements if row["fallback_reason"]]
     return {
@@ -333,5 +336,5 @@ def seed_result(placements: list[dict[str, Any]], pack_demo_file: str = "absent"
         "placements": placements,
         "fallbacks": fallbacks,
         "pack_demo_file": pack_demo_file,
-        "ok": not fallbacks and pack_demo_file != "unreadable",
+        "ok": not any(row["named"] for row in fallbacks) and pack_demo_file != "unreadable",
     }

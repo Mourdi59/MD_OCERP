@@ -39,6 +39,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import demo_cast
 from app.core.demo_accounts import SHOWCASE_OWNER_EMAIL
 from app.core.events import publish_after_commit
 from app.modules.project_governance import catalogue_packs, seed_story
@@ -58,8 +59,6 @@ logger = logging.getLogger(__name__)
 
 # The logins the platform seeds for its walkthrough (``app.core.demo_accounts``).
 _OWNER_EMAIL = SHOWCASE_OWNER_EMAIL
-_DECIDER_EMAIL = "manager@openconstructionerp.com"
-_COST_EMAIL = "estimator@openconstructionerp.com"
 
 #: The catalogue a demo project pins; AREA_OWNERS names its areas.
 DEMO_CATALOGUE = "neutral"
@@ -640,10 +639,16 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
         planned moment), ``pack_demo_file`` and ``ok``. A project that falls
         back still gets the first-gate story, so nothing here raises; a caller
         that must not ship a demo told at the wrong moment checks ``ok``.
+
+    The decider and the cost owner are the demo cast (``app.core.demo_cast``):
+    the product's demo logins where the installation has them, stand-ins where
+    it does not. This function creates nobody; the enrichment fills the cast
+    before it calls the seed.
     """
     owner_by_email = await _user_id(session, _OWNER_EMAIL)
-    decider = await _user_id(session, _DECIDER_EMAIL)
-    cost_owner = await _user_id(session, _COST_EMAIL)
+    players = await demo_cast.find_cast(session)
+    decider = players.get("decider")
+    cost_owner = players.get("cost")
 
     from app.modules.projects.models import Project
 
@@ -684,7 +689,11 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
         rows.append(seed_story.placement(pid, demo_id, planned, reached, reason))
     result = seed_story.seed_result(rows, pack_file)
     for row in result["fallbacks"]:
-        logger.error(
+        # Loud for a project somebody placed on purpose (the pack's own, or one of
+        # ``seed_story.PLACEMENT``). Any other project is reported on the result only:
+        # an installation is not broken because a plain demo project has no gate story.
+        logger.log(
+            logging.ERROR if row["named"] else logging.INFO,
             "governance demo seed: project %s (%s) was planned at %s and left at %s: %s",
             row["project_id"],
             row["demo_id"] or "no demo id",
