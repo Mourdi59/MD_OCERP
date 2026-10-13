@@ -20,7 +20,7 @@ import { createItem, updateItem, type CommitmentItem, type CommitmentMatrix } fr
 import { FIELD_CLASS, Field, RefusalBox, reasonText, refusalText } from './CommitmentBits';
 import { useReferences } from './hooks';
 import { PLANNED_SOURCE, codeName, vocab, type LabelContext } from './labels';
-import { areaOptions, gateOptions, withCurrent } from './references';
+import { areaOptions, gateOptions, plantItemOptions, withCurrent } from './references';
 import { ITEM_PROBLEM, changedItemInput, draftOfItem, itemProblems, toItemInput, type ItemDraft } from './rules';
 
 export interface ItemDialogProps {
@@ -69,6 +69,13 @@ export function ItemDialog({
   const gateVerdict = item ? itemVerdict(item, 'edit_gate_fields') : null;
   const gates = withCurrent(gateOptions(refsQ.data, labels), draft.gateCode, labels);
   const areas = withCurrent(areaOptions(refsQ.data, labels), draft.areaCode, labels);
+  // Offered only where the server says the project has a plant register to choose from.
+  const plantAvailable = !!refsQ.data?.plant_items?.available;
+  const plantItems = plantItemOptions(
+    refsQ.data,
+    labels,
+    item?.plant_item_id ? { id: item.plant_item_id, code: item.plant_item_code ?? null } : null,
+  );
   const tiedToGate = !!draft.gateCode || !!draft.areaCode;
 
   const save = useMutation({
@@ -299,6 +306,39 @@ export function ItemDialog({
             />
           </Field>
         </div>
+
+        {plantAvailable &&
+          (plantItems.length > 0 ? (
+            <Field
+              id="item-plant"
+              label={t('commitment.item_form.plant_item', { defaultValue: 'Plant item' })}
+              hint={t('commitment.item_form.plant_item_hint', {
+                defaultValue:
+                  'Choose it when this commitment pays for an item of the plant register. Its lead time and latest order date then set the dates of this item.',
+              })}
+            >
+              <select
+                id="item-plant"
+                className={FIELD_CLASS}
+                value={draft.plantItemId}
+                onChange={(e) => set({ plantItemId: e.target.value })}
+              >
+                <option value="">{t('commitment.item_form.plant_item_none', { defaultValue: 'No plant item' })}</option>
+                {plantItems.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          ) : (
+            <p className="text-sm text-content-tertiary" data-testid="item-plant-empty">
+              {t('commitment.item_form.plant_item_empty', {
+                defaultValue:
+                  'The plant register of this project has no item yet. Once it has, this commitment can be linked to one here.',
+              })}
+            </p>
+          ))}
 
         {matrix.novelty_flags.length > 0 && (
           <fieldset className="rounded-lg border border-border-light p-3">

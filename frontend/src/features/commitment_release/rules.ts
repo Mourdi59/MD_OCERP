@@ -163,6 +163,8 @@ export interface ItemDraft {
   /** The readiness gate that reads this item, and the management area its evidence is asked from. */
   gateCode: string;
   areaCode: string;
+  /** The item of the plant register this commitment pays for; empty when it names none. */
+  plantItemId: string;
 }
 
 export type ItemProblem =
@@ -238,6 +240,9 @@ export function toItemInput(draft: ItemDraft, mode: 'create' | 'edit'): ItemInpu
     gate_code: draft.gateCode || null,
     governance_area_code: draft.areaCode || null,
   };
+  // A new item without a plant item says nothing about one. An edit always states
+  // it, so that removing the link shows as a change and travels as null.
+  if (mode === 'edit' || draft.plantItemId) input.plant_item_id = draft.plantItemId || null;
   if (mode === 'create') input.code = draft.code.trim();
   if (draft.plannedSource === 'manual') {
     input.planned_manual_amount = normalizeAmount(draft.plannedAmount);
@@ -302,6 +307,7 @@ export function draftOfItem(item: CommitmentItem | null, defaultCurrency: string
     splitGroup: item?.split_group ?? '',
     gateCode: item?.gate_code ?? '',
     areaCode: item?.governance_area_code ?? '',
+    plantItemId: item?.plant_item_id ?? '',
   };
 }
 

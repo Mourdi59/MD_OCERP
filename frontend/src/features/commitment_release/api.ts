@@ -379,6 +379,8 @@ export interface ItemInput {
   split_group?: string | null;
   governance_area_code?: string | null;
   gate_code?: string | null;
+  /** An item of the plant register; null removes the link. */
+  plant_item_id?: string | null;
   deferred?: boolean;
   deferred_reason?: string | null;
 }
@@ -428,12 +430,22 @@ export interface ReferenceFunding {
 }
 
 /** What the item and precondition forms let a person pick. Every list is empty without a governance model. */
+/** An item of the plant register. The name is the register's own title, the status its own code. */
+export interface ReferencePlantItem {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+}
+
 export interface References {
   has_model: boolean;
   gates: ReferenceGate[];
   areas: ReferenceArea[];
   frame_documents: ReferenceFrameDocument[];
   funding_applications: ReferenceFunding[];
+  /** `available` is false when the project has no plant register to choose from. */
+  plant_items?: { available: boolean; items: ReferencePlantItem[] };
 }
 
 /**

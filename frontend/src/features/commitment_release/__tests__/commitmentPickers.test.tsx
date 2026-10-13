@@ -56,7 +56,15 @@ import { EndItem } from '../ItemDecisions';
 import { LinkList } from '../ItemLinks';
 import { PreconditionList } from '../ItemParts';
 import type { LabelContext } from '../labels';
-import { areaOptions, frameDocumentOptions, fundingOptions, gateOptions, preconditionRefName, withCurrent } from '../references';
+import {
+  areaOptions,
+  frameDocumentOptions,
+  fundingOptions,
+  gateOptions,
+  plantItemOptions,
+  preconditionRefName,
+  withCurrent,
+} from '../references';
 import { checkOutcome, draftOfItem, itemProblems, toItemInput } from '../rules';
 import { CHANGE_ORDER_ROW, CONTRACT_LINE_ROW, CONTRACT_ROW, LIST_ANSWERS } from './documentRows';
 import { enT } from './i18nMock';
@@ -266,6 +274,80 @@ describe('gate and area of an item', () => {
     fireEvent.click(screen.getByTestId('item-save'));
     await waitFor(() => expect(mocked.createItem).toHaveBeenCalledTimes(1));
     expect(mocked.createItem.mock.calls[0]![1]).toMatchObject({ gate_code: 'g2', governance_area_code: 'procurement' });
+  });
+
+  const PLANT = {
+    available: true,
+    items: [
+      { id: 'pl1', code: 'PL-001', name: 'Tower crane', status: 'ordered' },
+      { id: 'pl2', code: 'PL-002', name: 'Site transformer', status: 'cancelled' },
+      { id: 'pl3', code: 'PL-003', name: 'Chiller', status: 'identified' },
+    ],
+  };
+
+  it('a project without a plant register shows no plant item field, and a new item says nothing about one', async () => {
+    mocked.createItem.mockResolvedValue(item());
+    dialog();
+    await waitFor(() => expect(byId('item-gate')).not.toBeNull());
+    expect(byId('item-plant')).toBeNull();
+    expect(screen.queryByTestId('item-plant-empty')).toBeNull();
+    fillNewItem();
+    fireEvent.click(screen.getByTestId('item-save'));
+    await waitFor(() => expect(mocked.createItem).toHaveBeenCalledTimes(1));
+    expect('plant_item_id' in mocked.createItem.mock.calls[0]![1]).toBe(false);
+  });
+
+  it('offers the plant items of the project by code and name, without the cancelled ones, and sends the id', async () => {
+    mocked.getReferences.mockResolvedValue(references({ plant_items: PLANT }));
+    mocked.createItem.mockResolvedValue(item());
+    dialog();
+    await waitFor(() => expect(byId('item-plant')).not.toBeNull());
+    expect(optionTexts(byId('item-plant'))).toEqual(['No plant item', 'PL-001 Tower crane', 'PL-003 Chiller']);
+    fillNewItem();
+    fireEvent.change(byId('item-plant'), { target: { value: 'pl3' } });
+    fireEvent.click(screen.getByTestId('item-save'));
+    await waitFor(() => expect(mocked.createItem).toHaveBeenCalledTimes(1));
+    expect(mocked.createItem.mock.calls[0]![1]).toMatchObject({ plant_item_id: 'pl3' });
+  });
+
+  it('a plant register without items says so instead of showing an empty select', async () => {
+    mocked.getReferences.mockResolvedValue(references({ plant_items: { available: true, items: [] } }));
+    dialog();
+    expect(await screen.findByTestId('item-plant-empty')).toBeInTheDocument();
+    expect(byId('item-plant')).toBeNull();
+  });
+
+  it('an edit sends the plant item only when it changed, and null when the link is removed', async () => {
+    mocked.getReferences.mockResolvedValue(references({ plant_items: PLANT }));
+    mocked.updateItem.mockResolvedValue(item());
+    dialog({ plant_item_id: 'pl1', plant_item_code: 'PL-001' });
+    await waitFor(() => expect(byId('item-plant')).not.toBeNull());
+    expect(byId<HTMLSelectElement>('item-plant').value).toBe('pl1');
+    fireEvent.change(byId('item-title'), { target: { value: 'Tower crane hire' } });
+    fireEvent.click(screen.getByTestId('item-save'));
+    await waitFor(() => expect(mocked.updateItem).toHaveBeenCalledTimes(1));
+    expect(mocked.updateItem.mock.calls[0]![2]).toEqual({ title: 'Tower crane hire' });
+
+    fireEvent.change(byId('item-plant'), { target: { value: '' } });
+    fireEvent.click(screen.getByTestId('item-save'));
+    await waitFor(() => expect(mocked.updateItem).toHaveBeenCalledTimes(2));
+    expect(mocked.updateItem.mock.calls[1]![2]).toMatchObject({ plant_item_id: null });
+  });
+
+  it('keeps a stored plant item that is cancelled or gone from the register, and says which it is', () => {
+    const refs = references({ plant_items: PLANT });
+    expect(plantItemOptions(refs, labels, { id: 'pl2', code: 'PL-002' }).map((o) => o.label)).toEqual([
+      'PL-001 Tower crane',
+      'PL-002 Site transformer (cancelled)',
+      'PL-003 Chiller',
+    ]);
+    expect(plantItemOptions(refs, labels, { id: 'pl9', code: 'PL-009' }).at(-1)).toEqual({
+      value: 'pl9',
+      label: 'PL-009 (no longer in the register)',
+    });
+    expect(plantItemOptions(refs, labels, { id: 'pl9', code: null }).at(-1)?.label).toBe('No longer in the register');
+    // A list without the stored item is still a list: the stored one is the only option then.
+    expect(plantItemOptions(references({ plant_items: { available: true, items: [] } }), labels, { id: 'pl9', code: 'PL-009' })).toHaveLength(1);
   });
 
   it('a project without phases and gates says so instead of showing empty selects', async () => {
