@@ -48,8 +48,6 @@ from app.modules.quality_concept.models import QualityConcept
 logger = logging.getLogger(__name__)
 
 _REGIME = "fidic_taking_over"
-# Who may sign off in the demo, most senior first.
-_SIGN_OFF_ROLES = ("manager", "admin", "estimator", "editor")
 # Before construction the demo is told under the German standard form of the catalogue.
 _REGIME_BEFORE_CONSTRUCTION = "de_vob_b"
 # Days from the seed day to the start of construction in the story before construction.
@@ -119,25 +117,36 @@ async def _named(session: AsyncSession, pid: uuid.UUID, user_id: uuid.UUID, owne
     return user_id if await public.user_can_access_project(session, pid, user_id) else owner_id
 
 
+async def _team_members(session: AsyncSession, pid: uuid.UUID) -> list[uuid.UUID]:
+    """The users on a team of this project, longest standing first."""
+    from app.modules.teams.models import Team, TeamMembership
+
+    stmt = (
+        select(TeamMembership.user_id)
+        .join(Team, Team.id == TeamMembership.team_id)
+        .where(Team.project_id == pid)
+        .order_by(TeamMembership.created_at)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
 async def _actors(session: AsyncSession, pid: uuid.UUID, owner_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID]:
-    """``(engineer, authority)``: who records and who signs off.
+    """``(recorder, second person)``: who records and who signs off.
 
-    Who signs off is a second person who can open the project when the project has one;
-    the owner stands in for a missing side.
+    The recorder is the project's owner. The second person is the demo cast's cost owner, else
+    its decider, else a member of one of the project's teams, and in every case somebody who can
+    open this project. Nobody else is eligible: an account that merely exists in the installation
+    may be a real person, of another tenant, and is never made the author of demo records. With
+    nobody but the owner both sides are the owner and the two-person steps are left out.
     """
+    from app.core import demo_cast
     from app.modules.project_governance import public
-    from app.modules.users.models import User
 
-    stmt = select(User.id, User.role).where(User.role.in_(_SIGN_OFF_ROLES)).order_by(User.email).limit(200)
-    users = [(uid, str(role or "")) for uid, role in (await session.execute(stmt)).all()]
-    by_role: dict[str, uuid.UUID] = {}
-    for uid, role in users:
-        by_role.setdefault(role, uid)
-    engineer = by_role.get("editor") or owner_id
-    for uid, _role in sorted(users, key=lambda item: _SIGN_OFF_ROLES.index(item[1])):
-        if uid != engineer and await public.user_can_access_project(session, pid, uid):
-            return engineer, uid
-    return engineer, by_role.get("manager") or by_role.get("admin") or owner_id
+    cast = await demo_cast.find_cast(session)
+    for uid in (cast.get("cost"), cast.get("decider"), *await _team_members(session, pid)):
+        if uid is not None and uid != owner_id and await public.user_can_access_project(session, pid, uid):
+            return owner_id, uid
+    return owner_id, owner_id
 
 
 async def _seed_plan(
@@ -284,7 +293,8 @@ async def _seed_stages(
         if index:
             continue
         if authority == engineer:
-            logger.warning("quality_concept demo seed: project %s has no second person to release a stage", pid)
+            # Not a fault of the installation: a project with nobody but its owner shows the request only.
+            logger.info("quality_concept demo seed: project %s has no second person to release a stage", pid)
             continue
         await GatingService(session).release_gate(
             gate.id, HoldGateReleaseIn(party_role=first.release_party_role), str(authority), signature_ip=None
@@ -378,7 +388,7 @@ async def _seed_proofs(
         for proof in delivered[:2]:
             await svc.accept_proof(pid, proof.id, authority)
     elif delivered:
-        logger.warning("quality_concept demo seed: project %s has no second person to accept a proof", pid)
+        logger.info("quality_concept demo seed: project %s has no second person to accept a proof", pid)
     open_proofs = [p for p in proofs if p not in delivered]
     if open_proofs:
         await svc.request_waiver(
