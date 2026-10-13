@@ -85,7 +85,8 @@ export function PackageDialog({
   const [original] = useState<PackageDraft>(() => packageDraft(view));
   const [draft, setDraft] = useState<PackageDraft>(original);
   const set = <K extends keyof PackageDraft>(key: K, value: PackageDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
-  const problems = packageProblems(draft);
+  // Where a package cannot run in advance the reason field is not shown, and the server asks for no reason either.
+  const problems = packageProblems(draft).filter((p) => p !== 'advance_without_reason' || !notApplicable(view.can.set_advance));
   // Going to lowest price removes the criteria the package holds, so the reader says yes to that first.
   const [dropConfirmed, setDropConfirmed] = useState(false);
   const mustConfirmDrop = dropsCriteria(draft, original);

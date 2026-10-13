@@ -527,6 +527,18 @@ describe('PackageDialog', () => {
     expect(mocked.putPackage.mock.calls[0]![2]).toMatchObject({ is_advance: false });
   });
 
+  it('lets a package that carries the mark without a reason be saved with other edits', async () => {
+    mocked.getThreshold.mockResolvedValue(thresholdCheck);
+    mocked.putPackage.mockResolvedValue(packageView() as never);
+    const base = packageView({}, { is_advance: true, advance_reason: '' });
+    dialog({ ...base, can: { ...base.can, set_advance: denied('advance_not_applicable', false) } });
+    fireEvent.change(document.getElementById('pk-notes') as HTMLTextAreaElement, { target: { value: 'Checked with the planner' } });
+    expect(screen.getByTestId('package-save')).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId('package-save'));
+    await waitFor(() => expect(mocked.putPackage).toHaveBeenCalledTimes(1));
+    expect(mocked.putPackage.mock.calls[0]![2]).toEqual({ notes: 'Checked with the planner' });
+  });
+
   it('names what releases an advance package from the acts of the release gate', async () => {
     mocked.getThreshold.mockResolvedValue(thresholdCheck);
     mocked.putPackage.mockResolvedValue(packageView() as never);
