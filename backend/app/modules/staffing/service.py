@@ -390,8 +390,8 @@ class StaffingService:
         country = getattr(project, "country_code", None)
         cid = catalogue_id
         if cid is None:
-            # Which catalogue a country gets is the active pack's opinion. Without one the module pins its
-            # neutral catalogue; it holds no country table of its own.
+            # Governance answers for the country: the active pack's default, else the one shipped catalogue
+            # that claims it. Without an answer the module pins its neutral file; it has no country rule.
             pin = governance.default_catalogue_pin(STAFFING_MODEL_KIND, country)
             if pin is not None:
                 catalogue_source, cid, catalogue_version = pin.source, pin.catalogue_id, pin.version
