@@ -10,6 +10,7 @@ system that could be commissioned before the seed held back after it.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime
 
@@ -34,6 +35,7 @@ from app.modules.quality_concept.models import (
     PreservationSurvey,
     ProofRequirement,
     QualityConcept,
+    QualityConceptRevision,
     StageProgress,
 )
 from app.modules.quality_concept.seed import seed_quality_concept_demo
@@ -91,6 +93,31 @@ async def _project(session, owner: uuid.UUID, *, demo: bool) -> uuid.UUID:
     return pid
 
 
+async def _member(session, pid: uuid.UUID, user_id: uuid.UUID) -> None:
+    from app.modules.teams.models import Team, TeamMembership
+
+    team = Team(project_id=pid, name="Core")
+    session.add(team)
+    await session.flush()
+    session.add(TeamMembership(team_id=team.id, user_id=user_id))
+    await session.flush()
+
+
+async def _rows_naming(session, pid: uuid.UUID, user_id: uuid.UUID) -> list[str]:
+    """Every seeded row of the project that carries this user in any column, as ``Model.column``."""
+    wanted = str(user_id)
+    found = []
+    for model in (*_REGISTERS, QualityConcept, QualityConceptRevision, HoldGate):
+        rows = (await session.execute(select(model).where(model.project_id == pid))).scalars()
+        for row in rows:
+            for column in row.__mapper__.column_attrs:
+                value = getattr(row, column.key)
+                values = value if isinstance(value, list) else [value]
+                if any(str(v) == wanted for v in values):
+                    found.append(f"{model.__name__}.{column.key}")
+    return sorted(set(found))
+
+
 async def _counts(session, pid: uuid.UUID) -> dict[str, int]:
     out = {}
     for model in _REGISTERS:
@@ -101,8 +128,11 @@ async def _counts(session, pid: uuid.UUID) -> dict[str, int]:
 
 async def test_the_demo_seed_fills_every_register_once_and_holds_no_system_back(pg_session) -> None:
     manager = await _user(pg_session, "manager")
-    await _user(pg_session, "editor")
+    # An account that exists in the installation and is not on the project: never part of the demo.
+    outsider = await _user(pg_session, "editor")
+    colleague = await _user(pg_session, "editor")
     pid = await _project(pg_session, manager, demo=True)
+    await _member(pg_session, pid, colleague)
     live = await _project(pg_session, manager, demo=False)
     await seed_construction_control_demo(pg_session, [pid])
     await seed_commissioning_demo(pg_session, [pid])
@@ -148,6 +178,11 @@ async def test_the_demo_seed_fills_every_register_once_and_holds_no_system_back(
     assert (gate.status, gate.attached_kind, gate.attached_id) == ("released", "cx_stage", str(released.id))
     assert released.released_by is not None
 
+    # The people of the demo are the project's own: its owner records, a team member signs off.
+    assert await _rows_naming(pg_session, pid, outsider) == []
+    assert concept.created_by == manager
+    assert str(gate.released_by) == str(colleague)
+
     # Proofs carry evidence from the project's own records, accepted by someone else than the linker.
     proofs = await svc.repo.list(ProofRequirement, pid)
     assert {p.package_ref for p in proofs} == {"PKG-STR", "PKG-MEP"}
@@ -176,6 +211,29 @@ async def test_the_demo_seed_fills_every_register_once_and_holds_no_system_back(
     assert await _counts(pg_session, pid) == counts
     stmt = select(func.count()).select_from(QualityConcept).where(QualityConcept.project_id == live)
     assert (await pg_session.execute(stmt)).scalar_one() == 0
+
+
+async def test_a_project_with_nobody_but_its_owner_is_seeded_without_a_warning(pg_session, caplog) -> None:
+    """Two-person steps are left out, said at info level; no account from outside the project stands in."""
+    owner = await _user(pg_session, "manager")
+    outsider = await _user(pg_session, "editor")
+    pid = await _project(pg_session, owner, demo=True)
+    await seed_construction_control_demo(pg_session, [pid])
+    await seed_commissioning_demo(pg_session, [pid])
+    await seed_closeout_demo(pg_session, [pid])
+    await pg_session.flush()
+
+    with caplog.at_level(logging.INFO, logger="app.modules.quality_concept"):
+        totals = await seed_quality_concept_demo(pg_session, [pid])
+    await pg_session.flush()
+    assert totals["projects"] == 1, totals
+    loud = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING and "quality_concept" in r.name]
+    assert loud == []
+
+    svc = QualityConceptService(pg_session)
+    assert await _rows_naming(pg_session, pid, outsider) == []
+    assert "accepted" not in {p.decision for p in await svc.repo.list(ProofRequirement, pid)}
+    assert "released" not in {r.state for r in await svc.repo.list(StageProgress, pid)}
 
 
 async def test_a_project_before_its_construction_gate_gets_the_plan_and_nothing_delivered(pg_session) -> None:

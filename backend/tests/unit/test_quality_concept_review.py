@@ -855,3 +855,21 @@ async def test_a_project_wide_fact_is_read_once_per_request() -> None:
     assert await facts.get("proofs", load) == ["row"]
     assert await facts.get("progress", load) == ["row"]
     assert len(reads) == 2
+
+
+def test_the_export_declares_the_language_it_was_written_in() -> None:
+    import ast
+    import inspect
+
+    from app.modules.quality_concept import export
+    from app.modules.quality_concept import router as qc_router
+
+    assert export.rendered_language("de") == "de"
+    assert export.rendered_language("de-AT") == "de"
+    assert export.rendered_language("en") == "en"
+    # No French texts ship: the document comes out in English and says so.
+    assert export.rendered_language("fr") == "en"
+    assert export.rendered_language("") == "en"
+    source = inspect.getsource(qc_router.export)
+    assert ast.parse(source) is not None
+    assert '"Content-Language": rendered_language(locale)' in source

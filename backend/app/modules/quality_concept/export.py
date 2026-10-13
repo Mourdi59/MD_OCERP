@@ -20,7 +20,7 @@ from typing import Any
 
 from app.core.register_export import RegisterColumn, RegisterDocument, build_register_pdf, build_register_xlsx
 from app.modules.quality_concept import evaluator as ev
-from app.modules.quality_concept.messages import translate
+from app.modules.quality_concept.messages import DEFAULT_LOCALE, is_key_present, translate
 from app.modules.quality_concept.models import (
     AcceptanceUnit,
     CertificationTarget,
@@ -102,6 +102,21 @@ def _text(value: Any) -> Any:
     if isinstance(value, uuid.UUID):
         return str(value)
     return "" if value is None else value
+
+
+def rendered_language(locale: str) -> str:
+    """The language the export's own texts come out in for a reader who asked for ``locale``.
+
+    The module ships fewer languages than the interface offers. A regional code falls back to
+    its base language and anything else to English, which is what ``translate`` does; this says
+    which of the three happened, so the response can declare it.
+    """
+    probe = "quality_concept.export.empty"
+    base = locale.replace("_", "-").split("-")[0]
+    for candidate in (locale, base):
+        if candidate and is_key_present(probe, locale=candidate):
+            return candidate
+    return DEFAULT_LOCALE
 
 
 async def render(svc: Any, project_id: uuid.UUID, *, what: str, fmt: str, locale: str) -> bytes:
