@@ -1828,3 +1828,125 @@ async def test_after_the_plant_seed_the_transformer_order_reads_the_registers_da
     assert view["latest_decision_date"] == register.latest_order_date.isoformat()
     assert today <= register.latest_order_date <= today + timedelta(days=60)
     assert view["decision_overdue"] is False
+
+
+# ── a project that does not use gates (programme rule 26) ──────────────────────────────────
+
+
+async def test_a_project_without_gates_walks_from_a_planned_item_to_a_committed_one(world: World) -> None:
+    """No governance model, enforcement ``block``: request, approval by the tier, contract bound, nothing waits for a gate."""
+    from app.modules.commitment_release.models import CommitmentPrecondition
+    from tests.pg.commitment_fixtures import set_enforcement
+
+    async with world.factory() as s:
+        refs = await CommitmentService(s).references(world.project_id)
+    assert (refs["has_model"], refs["gates_in_use"], refs["gates"]) == (False, False, [])
+    await set_enforcement(world, "block")
+    iid = await item(world, code="CR-NG", amount="40000", ctype="works")
+
+    async def add(kind: str, ref_id: str | None):
+        async with world.factory() as s:
+            row = await CommitmentService(s).add_precondition(
+                world.project_id, iid, kind=kind, ref_id=ref_id, text="", actor_id=world.requester
+            )
+            await s.commit()
+            return row
+
+    # Nothing can wait for a gate, a frame document or an application this project does not have.
+    for kind, ref, code, status in (
+        ("gate_decided", "G1", "gates_not_in_use", 422),
+        ("frame_document_binding", str(uuid.uuid4()), "frame_document_not_found", 404),
+        ("funding_approved", str(uuid.uuid4()), "funding_application_not_found", 404),
+    ):
+        with pytest.raises(CommitmentError) as exc:
+            await add(kind, ref)
+        assert (exc.value.code, exc.value.status_code) == (code, status)
+
+    # A precondition stored before that check existed: it can never be met, and it says so.
+    async with world.factory() as s:
+        stale = CommitmentPrecondition(
+            project_id=world.project_id, item_id=iid, kind="gate_decided", ref_id="G1", text="", state="open"
+        )
+        s.add(stale)
+        await s.commit()
+        stale_id = stale.id
+    view = await _item_view(world, iid)
+    assert [(p["state"], p["unreachable_reason"]) for p in view["preconditions"]] == [("open", "gates_not_in_use")]
+    with pytest.raises(CommitmentError) as exc:
+        await request(world, iid, "40000")
+    assert exc.value.code == "preconditions_open"
+
+    async def remove(actor: uuid.UUID, *, manage: bool, reason: str) -> None:
+        async with world.factory() as s:
+            await CommitmentService(s).remove_precondition(
+                world.project_id, iid, stale_id, reason=reason, actor_id=actor, manage=manage
+            )
+            await s.commit()
+
+    # Only a manager removes it, and only with a reason.
+    with pytest.raises(CommitmentError) as exc:
+        await remove(world.requester, manage=False, reason="not needed")
+    assert (exc.value.code, exc.value.status_code) == ("manage_required", 403)
+    with pytest.raises(CommitmentError) as exc:
+        await remove(world.manager, manage=True, reason="  ")
+    assert (exc.value.code, exc.value.status_code) == ("rationale_required", 422)
+    await remove(world.manager, manage=True, reason="This project has no gates")
+    assert (await _item_view(world, iid))["preconditions"] == []
+
+    # To the end: requested, approved by the tier holder, and the first thing the release unlocks,
+    # a contract bound under it, passes the guard that blocks unreleased commitments.
+    d = await request(world, iid, "40000")
+    with pytest.raises(CommitmentError) as exc:
+        async with world.factory() as s:
+            await CommitmentService(s).remove_precondition(
+                world.project_id, iid, uuid.uuid4(), reason="x", actor_id=world.manager, manage=True
+            )
+    assert exc.value.code == "release_pending"
+    await decide(world, d, world.pm)
+    assert (await state(world, iid)).status == "released"
+    cid = await add_contract(world, "40000")
+    await link(world, iid, "contract", cid)
+    async with world.factory() as s:
+        verdict = await CommitmentService(s).check_document(
+            world.project_id, kind="contract", document_id=cid, new_amount="40000", currency="EUR"
+        )
+    assert verdict["result"] == "ok"
+    assert (await state(world, iid)).status == "committed"
+
+
+async def test_a_precondition_on_a_gate_is_accepted_only_for_a_gate_of_the_project(world: World) -> None:
+    from app.modules.project_governance.public import project_gates
+    from app.modules.project_governance.service import GovernanceService
+
+    async with world.factory() as s:
+        await GovernanceService(s).set_model(
+            world.project_id,
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            actor_id=world.manager,
+            tenant_id=str(world.manager),
+        )
+        await s.commit()
+    async with world.factory() as s:
+        gate = (await project_gates(s, world.project_id))[0].code
+        refs = await CommitmentService(s).references(world.project_id)
+    assert refs["gates_in_use"] is True
+    iid = await item(world, code="CR-WG", amount="40000")
+    async with world.factory() as s:
+        svc = CommitmentService(s)
+        with pytest.raises(CommitmentError) as exc:
+            await svc.add_precondition(
+                world.project_id, iid, kind="gate_decided", ref_id="no-such-gate", text="", actor_id=world.requester
+            )
+        assert (exc.value.code, exc.value.status_code) == ("gate_unknown", 422)
+        await svc.add_precondition(
+            world.project_id, iid, kind="gate_decided", ref_id=gate, text="", actor_id=world.requester
+        )
+        await s.commit()
+    view = await _item_view(world, iid)
+    # Waiting for a gate the project has is an ordinary open precondition, not an unreachable one.
+    assert [(p["kind"], p["state"], p["unreachable_reason"]) for p in view["preconditions"]] == [
+        ("gate_decided", "open", None)
+    ]

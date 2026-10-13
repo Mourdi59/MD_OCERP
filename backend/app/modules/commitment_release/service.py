@@ -1098,6 +1098,7 @@ class CommitmentService:
             raise CommitmentError("precondition_kind_invalid", 422)
         if kind in ("gate_decided", "frame_document_binding", "funding_approved") and not ref_id:
             raise CommitmentError("precondition_needs_ref", 422)
+        self._refuse_with(await self.precondition_ref_refusal(project_id, kind, ref_id))
         row = await self.repo.add(
             CommitmentPrecondition(
                 project_id=project_id, item_id=item.id, kind=kind, ref_id=ref_id, text=text, state="open"
@@ -1107,6 +1108,80 @@ class CommitmentService:
             actor_id, "commitment_item", item.id, "precondition_added", metadata={"kind": kind, "ref": ref_id}
         )
         return row
+
+    @staticmethod
+    def _refuse_with(refusal: tuple[str, int] | None) -> None:
+        if refusal is not None:
+            raise CommitmentError(refusal[0], refusal[1])
+
+    async def precondition_ref_refusal(
+        self, project_id: uuid.UUID, kind: str, ref_id: str | None
+    ) -> tuple[str, int] | None:
+        """Why a linked precondition cannot wait for what it names: ``(code, status)`` or ``None``.
+
+        A precondition that is read from another module is met only by that module. One that names a
+        gate of a project without gates, or a document or application the project does not have,
+        could never be met and never be ticked by hand, and under ``block`` the item could then
+        never be released. So it is not stored. A project that does not use gates waits for no gate.
+        """
+        if kind == "gate_decided":
+            from app.modules.project_governance.public import project_gates
+
+            gates = {g.code for g in await project_gates(self.session, project_id)}
+            if not gates:
+                return "gates_not_in_use", 422
+            return None if ref_id in gates else ("gate_unknown", 422)
+        if kind == "frame_document_binding":
+            from app.modules.project_governance.public import project_documents
+
+            try:
+                wanted = uuid.UUID(str(ref_id))
+            except ValueError:
+                return "frame_document_not_found", 404
+            known = {d.id for d in await project_documents(self.session, project_id)}
+            return None if wanted in known else ("frame_document_not_found", 404)
+        if kind == "funding_approved":
+            from app.modules.funding.models import FundingApplication
+
+            try:
+                row = await self.session.get(FundingApplication, uuid.UUID(str(ref_id)))
+            except ValueError:
+                return "funding_application_not_found", 404
+            return None if row is not None and row.project_id == project_id else ("funding_application_not_found", 404)
+        return None
+
+    async def remove_precondition(
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        precondition_id: uuid.UUID,
+        *,
+        reason: str,
+        actor_id: uuid.UUID,
+        manage: bool = False,
+    ) -> None:
+        """Take a precondition off an item: a manager, with a reason, while no request is running.
+
+        Without this a precondition added by mistake, or one that waits for a gate the project does
+        not have, stays for ever. The reason and who removed it are recorded.
+        """
+        item = await self.get_item(project_id, item_id, lock=True)
+        if not manage:
+            raise forbidden("manage_required")
+        if item.status in ENDED:
+            raise conflict("item_closed")
+        if item.status == "release_requested":
+            # The running request was judged with this precondition on it.
+            raise conflict("release_pending")
+        if not reason.strip():
+            raise CommitmentError("rationale_required", 422)
+        row = await self.repo.get_precondition(project_id, item_id, precondition_id)
+        if row is None:
+            raise not_found("precondition_not_found")
+        meta = {"kind": row.kind, "ref": row.ref_id, "text": row.text, "state": row.state, "reason": reason.strip()}
+        await self.session.delete(row)
+        await self.session.flush()
+        await self._audit(actor_id, "commitment_item", item.id, "precondition_removed", metadata=meta)
 
     async def confirm_precondition(
         self,
@@ -1151,6 +1226,13 @@ class CommitmentService:
         out = []
         for p in rows:
             state = p.state
+            # Stored before the check on write existed, or its target was removed since: it can
+            # never be met, and the screen says so instead of showing it as merely open.
+            unreachable = (
+                await self.precondition_ref_refusal(project_id, p.kind, p.ref_id)
+                if p.kind in ("gate_decided", "frame_document_binding", "funding_approved")
+                else None
+            )
             if p.kind == "gate_decided":
                 state = await self._gate_state(project_id, p.ref_id)
             elif p.kind == "frame_document_binding":
@@ -1171,6 +1253,7 @@ class CommitmentService:
                     "ref_id": p.ref_id,
                     "text": p.text,
                     "state": state,
+                    "unreachable_reason": unreachable[0] if unreachable is not None else None,
                     "evidence_ref": p.evidence_ref,
                     "confirmed_by": _s(p.confirmed_by),
                     "confirmed_at": p.confirmed_at.isoformat() if p.confirmed_at else None,
@@ -2830,6 +2913,9 @@ class CommitmentService:
         plant_register, plant_items = await figures.plant_item_options(self.session, project_id)
         return {
             "has_model": has_model,
+            # False: this project does not use gates. Nothing waits for a gate there, and a release is
+            # decided by the tier of the authority schedule alone.
+            "gates_in_use": bool(gates),
             # ``available`` is false when the plant register is not installed: there is nothing to link to.
             "plant_items": {"available": plant_register, "items": plant_items},
             "gates": [

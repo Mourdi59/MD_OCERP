@@ -685,6 +685,28 @@ async def add_precondition(
     return await _view(svc, project_id, item_id, _today(None), user_id, payload)
 
 
+@router.delete(
+    "/projects/{project_id}/items/{item_id}/preconditions/{precondition_id}", status_code=204, dependencies=[MANAGE]
+)
+async def remove_precondition(
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    precondition_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    reason: str = Query("", max_length=2000),
+) -> Response:
+    """Remove a precondition: a manager, with a reason, while no release request is running."""
+    await verify_project_access(project_id, user_id, session)
+    await _run(
+        CommitmentService(session).remove_precondition(
+            project_id, item_id, precondition_id, reason=reason, actor_id=_uid(user_id), manage=_may_manage(payload)
+        )
+    )
+    return Response(status_code=204)
+
+
 @router.post("/projects/{project_id}/items/{item_id}/preconditions/{precondition_id}/confirm", dependencies=[EDIT])
 async def confirm_precondition(
     project_id: uuid.UUID,
