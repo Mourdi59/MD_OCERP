@@ -288,7 +288,7 @@ async def list_packages(
 ) -> dict[str, Any]:
     """The package board: mod3 ContractPackages joined with award attributes, threshold badge, schedule.
 
-    Every row carries ``can`` (edit, hold, resume, cancel, confirm_shortlist, create_execution), each
+    Every row carries ``can`` (edit, set_advance, hold, resume, cancel, confirm_shortlist, create_execution), each
     ``{allowed, reason}`` from the checks the writes enforce.
     """
     await verify_project_access(project_id, user_id, session)

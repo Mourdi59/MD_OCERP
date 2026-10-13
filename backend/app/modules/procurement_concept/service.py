@@ -275,6 +275,14 @@ class ProcurementConceptService:
         """
         return not concept.release_gate_code and (await self.hosting(project_id)).released_from_start
 
+    async def advance_applies(self, project_id: uuid.UUID, concept: ProcurementConcept) -> bool:
+        """Whether a package of this project can be an advance package at all.
+
+        "Advance" means ahead of the release gate. Where procurement is open
+        from project start there is no such gate, so the action does not exist.
+        """
+        return not await self.released_from_start(project_id, concept)
+
     async def _release_date(self, project_id: uuid.UUID, gate: Any) -> date | None:
         """Date procurement is released: the go decision of the release gate, else its target date."""
         if gate is None:
@@ -558,18 +566,21 @@ class ProcurementConceptService:
         rows = {str(r.id): r for r in await self._award_rows(project_id)}
         concept = await self.find_concept(project_id)
         gate = await self.release_gate(project_id, concept) if concept is not None else None
+        applies = concept is None or await self.advance_applies(project_id, concept)
         facts = []
         for cp in cps:
             r = rows.get(str(cp.id))
             if r is None:
                 continue
-            facts.append(await self._facts_of(project_id, cp, r, gate))
+            facts.append(await self._facts_of(project_id, cp, r, gate, advance_applies=applies))
         return cps, rows, facts
 
     async def _facts_of(
-        self, project_id: uuid.UUID, cp: plan.PlanPackage, r: AwardPackage, gate: Any
+        self, project_id: uuid.UUID, cp: plan.PlanPackage, r: AwardPackage, gate: Any, *, advance_applies: bool
     ) -> ev.PackageFacts:
-        released = r.is_advance and await self.advance_release_status(project_id, r, gate) == "released"
+        released = (
+            advance_applies and r.is_advance and await self.advance_release_status(project_id, r, gate) == "released"
+        )
         return ev.PackageFacts(
             id=str(r.id),
             code=cp.code,
@@ -584,6 +595,7 @@ class ProcurementConceptService:
             is_advance=r.is_advance,
             advance_reason=r.advance_reason,
             advance_released=released,
+            advance_applies=advance_applies,
             framework_agreement_id=str(r.framework_agreement_id) if r.framework_agreement_id else None,
             need_date=_day(r.need_date) or _day(cp.need_date),
             lead_time_days=r.lead_time_days,
@@ -614,7 +626,14 @@ class ProcurementConceptService:
         cps, rows, pkgs = await self._package_facts(project_id)
         out = ev.plan_findings([{"id": str(c.id), "code": c.code, "kind": c.kind} for c in cps], set(rows))
         gate = await self.release_gate(project_id, concept)
-        if gate is None and not await self.released_from_start(project_id, concept):
+        from_start = gate is None and await self.released_from_start(project_id, concept)
+        if from_start:
+            doc = await self._frame_document(project_id, concept)
+            if doc is not None and not doc.required_at_gates:
+                # No release gate and no gate that asks for the document: no decision would ever look at the
+                # concept. That is a property of the phase model, so it is said here and not as gate evidence.
+                out.append(ev.finding("concept_required_at_no_gate", ev.WARNING, "project"))
+        if gate is None and not from_start:
             # Without a release gate rule 11 cannot test "before the releasing gate"; say so, never skip it silently.
             # A model that opens procurement in its first phase has no such gate and rule 11 nothing to test.
             out.append(ev.finding("release_gate_unresolved", ev.WARNING, "project"))
@@ -754,8 +773,11 @@ class ProcurementConceptService:
             refusal = await self._execution_refusal(project_id, concept, row, cp, findings=findings)
             code = refusal.code if refusal is not None else None
             execution = _flag(code if code in _EXECUTION_NOT_APPLICABLE else None, steer_reason or code)
+        advance_na = None if await self.advance_applies(project_id, concept) else "advance_not_applicable"
         return {
             "edit": _flag(edit_na, plan_reason),
+            # Marking a package as advance is an edit that exists only where a gate releases procurement.
+            "set_advance": _flag(advance_na or edit_na, plan_reason),
             "hold": move("on_hold", ""),
             "resume": move(resume_to, "package_not_on_hold"),
             "cancel": move("cancelled", ""),
@@ -825,6 +847,7 @@ class ProcurementConceptService:
             raise conflict("package_closed", detail=row.state)
         cat = await self.catalogue_of(concept)
         procedure_before = row.procedure_code
+        advance_before = bool(row.is_advance)
         for key, value in data.items():
             if key in ("need_date", "planned_start"):
                 setattr(row, key, _iso(value))
@@ -837,10 +860,17 @@ class ProcurementConceptService:
             raise ProcurementError("currency_required", 422)
         if "procedure_code" in data and row.procedure_code and cat.procedure(row.procedure_code) is None:
             raise ProcurementError("procedure_unknown", 422, detail=row.procedure_code)
-        if row.is_advance and not (row.advance_reason or "").strip():
+        advance_applies = await self.advance_applies(project_id, concept)
+        if not advance_applies and (
+            (row.is_advance and not advance_before) or data.get("advance_release_id") is not None
+        ):
+            # No gate holds procurement back here, so nothing can be run ahead of one. A row that carries the
+            # flag from an earlier phase model may still be edited, and cleared.
+            raise conflict("advance_not_applicable")
+        if advance_applies and row.is_advance and not (row.advance_reason or "").strip():
             # Rule 12: an advance package without a reason is rejected outright.
             raise ProcurementError("advance_without_reason", 422)
-        if row.advance_release_id is not None:
+        if advance_applies and row.advance_release_id is not None:
             if not row.advance_release_kind:
                 raise ProcurementError("advance_release_kind_required", 422)
             # A condition that is still open, or a commitment not released yet, may be named: the package then
@@ -1316,7 +1346,8 @@ class ProcurementConceptService:
                 refs.setdefault(r.candidate_id, []).append(r)
         cp = await plan.get_package(self.session, project_id, package_id)
         gate = await self.release_gate(project_id, concept)
-        pf = await self._facts_of(project_id, cp, award, gate) if cp else None
+        applies = await self.advance_applies(project_id, concept)
+        pf = await self._facts_of(project_id, cp, award, gate, advance_applies=applies) if cp else None
         bp = ev.backward_pass(cat, pf) if pf else None
         items = []
         rule_rows = []
@@ -1556,7 +1587,8 @@ class ProcurementConceptService:
             cp = cps.get(str(pid))
             if cp is None:
                 raise not_found("package_not_found")
-            facts = await self._facts_of(project_id, cp, row, gate)
+            applies = await self.advance_applies(project_id, concept)
+            facts = await self._facts_of(project_id, cp, row, gate, advance_applies=applies)
             bp = ev.backward_pass(cat, facts)
             if bp is None:
                 raise ProcurementError("schedule_needs_need_date_and_procedure", 422, detail=cp.code)

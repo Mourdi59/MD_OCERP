@@ -172,6 +172,20 @@ PROCUREMENT_RULES: tuple[type[ValidationRule], ...] = (
         ("advance_without_reason", "advance_package_not_released"),
     ),
     _rule(
+        "advance_flag_has_release_gate",
+        "Advance Flag Has Release Gate",
+        "A package is marked as advance only where a gate releases procurement.",
+        ("advance_flag_not_applicable",),
+        Severity.WARNING,
+    ),
+    _rule(
+        "concept_asked_at_a_gate",
+        "Concept Asked At A Gate",
+        "The phase model asks for the procurement concept at one gate at least.",
+        ("concept_required_at_no_gate",),
+        Severity.WARNING,
+    ),
+    _rule(
         "framework_call_off_valid",
         "Framework Call-Off Valid",
         "A call-off uses an active framework covering the package, running past award, with value left.",

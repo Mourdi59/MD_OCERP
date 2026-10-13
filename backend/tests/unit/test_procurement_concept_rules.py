@@ -316,6 +316,37 @@ def test_advance_package_needs_reason_and_release() -> None:
     assert ev.package_findings(_cat("eu"), ok) == []
 
 
+def test_an_advance_flag_where_no_gate_releases_procurement_is_a_note_and_blocks_nothing() -> None:
+    """Nothing can be run ahead of a gate that does not exist, so rule 12 has nothing to ask for."""
+    leftover = pkg(is_advance=True, procedure_code="open", advance_applies=False)
+    found = ev.package_findings(_cat("eu"), leftover)
+    assert [(f["code"], f["severity"], f["blocks_approval"]) for f in found] == [
+        ("advance_flag_not_applicable", "warning", False)
+    ]
+    # The same row where a gate does release procurement is asked for its reason and its release.
+    gated = pkg(is_advance=True, procedure_code="open")
+    assert {"advance_without_reason", "advance_package_not_released"} <= set(
+        codes(ev.package_findings(_cat("eu"), gated))
+    )
+    # A package that never carried the flag gets no note.
+    assert ev.package_findings(_cat("eu"), pkg(procedure_code="open", advance_applies=False)) == []
+
+
+def test_every_finding_the_new_states_raise_has_a_rule_and_both_languages() -> None:
+    from app.modules.procurement_concept.messages import is_key_present
+    from app.modules.procurement_concept.validators import PROCUREMENT_RULES
+
+    by_code = {code: rule for rule in PROCUREMENT_RULES for code in rule.codes}
+    for code in ("advance_flag_not_applicable", "concept_required_at_no_gate"):
+        rule = by_code[code]
+        for locale in ("en", "de"):
+            assert is_key_present(f"procurement_concept.findings.{code}", locale), (code, locale)
+            assert is_key_present(f"procurement_concept.rules.{rule.key}", locale), (rule.key, locale)
+            assert is_key_present(f"procurement_concept.rules.{rule.key}_fix", locale), (rule.key, locale)
+    for locale in ("en", "de"):
+        assert is_key_present("procurement_concept.errors.advance_not_applicable", locale), locale
+
+
 def test_design_build_package_needs_functional_tender_basis() -> None:
     db = pkg("DB", "design_and_construction", procedure_code="open", tender_basis="detailed")
     assert codes(ev.consistency_findings(_cat("eu"), "design_build", [db])) == [

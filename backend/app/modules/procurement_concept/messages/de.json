@@ -31,6 +31,7 @@
       "reopened": "Wieder geöffnet"
     },
     "errors": {
+      "advance_not_applicable": "Im Phasenmodell dieses Projekts hält kein Gate die Vergabe zurück, ein Paket kann daher nicht vorgezogen werden.",
       "advance_release_kind_required": "Geben Sie an, was dieses vorgezogene Paket freigibt: eine Gate-Entscheidung, eine Auflage oder eine freigegebene Verpflichtung.",
       "advance_release_not_found": "Die freigebende Gate-Entscheidung, Auflage oder Verpflichtung wurde in diesem Projekt nicht gefunden.",
       "advance_release_other_gate": "Nur eine Entscheidung oder eine erfüllte Auflage des Gates, das die Vergabe freigibt, kann ein vorgezogenes Paket freigeben.",
@@ -147,11 +148,13 @@
       "yes": "Ja"
     },
     "findings": {
+      "advance_flag_not_applicable": "Als vorgezogen markiert, aber dieses Phasenmodell hat kein Gate, das die Vergabe freigibt",
       "advance_package_not_released": "Vorgezogenes Paket nicht durch Gate-Entscheidung, Auflage oder freigegebene Verpflichtung freigegeben",
       "advance_without_reason": "Vorgezogenes Paket ohne Begründung",
       "award_schedule_infeasible": "Die Vergabe müsste in der Vergangenheit oder vor dem freigebenden Gate beginnen",
       "candidate_not_registered": "Unternehmen auf der Auswahlliste ist nicht angelegt",
       "capacity_unmitigated": "Knappe Marktkapazität ohne Gegenmaßnahme",
+      "concept_required_at_no_gate": "Dieses Phasenmodell verlangt das Vergabekonzept an keinem Gate",
       "design_fee_estimate_missing": "Planungspaket ohne Honorarschätzung",
       "design_package_uses_works_rules": "Planungspaket nutzt Bau- statt Dienstleistungsregeln",
       "excluded_candidate_without_rationale": "Ausgeschlossener Kandidat ohne Begründung",
@@ -219,12 +222,16 @@
       "two_stage_negotiated": "Zweistufige Verhandlung (privat)"
     },
     "rules": {
+      "advance_flag_has_release_gate": "Paket {ref}: Vorziehen hat ein Freigabe-Gate",
+      "advance_flag_has_release_gate_fix": "Entfernen Sie die Markierung als vorgezogen: In diesem Phasenmodell hält kein Gate die Vergabe zurück.",
       "advance_package_released": "Paket {ref}: vorgezogenes Paket freigegeben",
       "advance_package_released_fix": "Verknüpfen Sie die freigebende Gate-Entscheidung oder Auflage.",
       "award_schedule_feasible": "Paket {ref}: Vergabeterminplan machbar",
       "award_schedule_feasible_fix": "Verschieben Sie den Bedarfstermin, verkürzen Sie das Verfahren oder ziehen Sie das Paket vor.",
       "capacity_risk_mitigated": "Erkundung {ref}: Kapazitätsrisiko behandelt",
       "capacity_risk_mitigated_fix": "Erfassen Sie eine Gegenmaßnahme oder teilen Sie das Paket neu.",
+      "concept_asked_at_a_gate": "{ref}: Vergabekonzept wird an einem Gate verlangt",
+      "concept_asked_at_a_gate_fix": "Verlangen Sie das Vergabedokument an einem Gate des Phasenmodells oder benennen Sie ein Freigabe-Gate im Konzept.",
       "design_package_uses_services_rules": "Paket {ref}: Regeln für Planungspakete",
       "design_package_uses_services_rules_fix": "Geben Sie die Honorarschätzung ein.",
       "excluded_candidate_has_rationale": "Kandidat {ref}: Ausschlussbegründung",

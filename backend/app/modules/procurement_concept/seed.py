@@ -217,6 +217,9 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     svc = ProcurementConceptService(session)
     release_date = await svc._release_date(project_id, await svc.release_gate(project_id, concept))
     plan_from = max(today, release_date) if release_date is not None else today
+    if not await svc.advance_applies(project_id, concept):
+        # No gate holds procurement back in this project's phase model, so there is no advance package to seed.
+        release = None
     awards: list[AwardPackage] = []
     advance_done = False
     framework_used = False

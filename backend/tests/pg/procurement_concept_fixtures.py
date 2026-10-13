@@ -237,12 +237,15 @@ async def approve(w: World, *, submitter: uuid.UUID | None = None, by: uuid.UUID
     assert await bind_frame_document(w, by=by) is True
 
 
-async def _company_model(session: AsyncSession, manager: uuid.UUID, *, from_start: bool) -> str:
+async def _company_model(
+    session: AsyncSession, manager: uuid.UUID, *, from_start: bool, asked_at_gate: bool = True
+) -> str:
     """A published company copy of the shipped model with its procurement tags changed, every code kept.
 
     ``from_start=False``: it says nothing about procurement. ``from_start=True``:
     the host document stays and the first phase, which no gate leads into, is
-    the only one that enables procurement.
+    the only one that enables procurement. ``asked_at_gate=False`` also has
+    the model require the host document at no gate.
     """
     from app.modules.project_governance.catalogue_store import CatalogueStore
 
@@ -266,6 +269,10 @@ async def _company_model(session: AsyncSession, manager: uuid.UUID, *, from_star
     if from_start:
         first = min(body["phases"], key=lambda p: p["order"])
         first["enables"] = [*first["enables"], CAPABILITY]
+    if not asked_at_gate:
+        for doc in body["document_types"]:
+            if SUBJECT in (doc.get("hosts") or []):
+                doc["required_at_gates"] = []
     await store.update_draft(tenant, row.id, body=body, name=None)
     await store.publish(tenant, row.id, actor_id=manager)
     return str(row.id)
@@ -302,6 +309,7 @@ async def build_world(
     tagged: bool = True,
     model: bool = True,
     from_start: bool = False,
+    asked_at_gate: bool = True,
 ) -> World:
     from app.modules.procurement_concept.catalogue import register_kind
     from app.modules.project_governance.service import GovernanceService
@@ -316,7 +324,10 @@ async def build_world(
         pid = await add_project(s, manager, [area_owner, editor])
         source, model_id = "shipped", MODEL_ID
         if from_start or not tagged:
-            source, model_id = "tenant", await _company_model(s, manager, from_start=from_start)
+            source, model_id = (
+                "tenant",
+                await _company_model(s, manager, from_start=from_start, asked_at_gate=asked_at_gate),
+            )
         if model:
             await GovernanceService(s).set_model(
                 pid,
