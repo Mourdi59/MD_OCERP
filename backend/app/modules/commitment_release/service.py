@@ -1681,8 +1681,13 @@ class CommitmentService:
             "transfer": flag(self.transfer_refusal(item, manage)),
             "defer": flag(self.defer_refusal(item, manage)),
             "edit_gate_fields": flag(self.gate_fields_refusal(item, manage)),
-            # One verdict for every precondition of the item; the rows do not differ.
-            "remove_precondition": flag(self.remove_precondition_refusal(item, manage)),
+            # One verdict for every precondition of the item; the rows do not differ. ``applies`` is
+            # false on an ended item, where removal does not exist: the screen hides the action there
+            # and shows it disabled with the reason otherwise.
+            "remove_precondition": {
+                **flag(self.remove_precondition_refusal(item, manage)),
+                "applies": item.status not in ENDED,
+            },
         }
 
     # ── abort exposure ─────────────────────────────────────────────────────

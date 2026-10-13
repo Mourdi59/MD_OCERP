@@ -1874,12 +1874,12 @@ async def test_a_project_without_gates_walks_from_a_planned_item_to_a_committed_
     view = await _item_view(world, iid)
     assert [(p["state"], p["unreachable_reason"]) for p in view["preconditions"]] == [("open", "gates_not_in_use")]
     # Read without the manage right: the screen is told who may remove it.
-    assert view["can"]["remove_precondition"] == {"allowed": False, "reason": "manage_required"}
+    assert view["can"]["remove_precondition"] == {"allowed": False, "reason": "manage_required", "applies": True}
     async with world.factory() as s:
         as_manager = await CommitmentService(s).item_views(
             world.project_id, today=TODAY, item_ids=[iid], actor_id=world.manager, manage=True
         )
-    assert as_manager["items"][0]["can"]["remove_precondition"] == {"allowed": True, "reason": None}
+    assert as_manager["items"][0]["can"]["remove_precondition"] == {"allowed": True, "reason": None, "applies": True}
     with pytest.raises(CommitmentError) as exc:
         await request(world, iid, "40000")
     assert exc.value.code == "preconditions_open"
@@ -1910,6 +1910,16 @@ async def test_a_project_without_gates_walks_from_a_planned_item_to_a_committed_
                 world.project_id, iid, uuid.uuid4(), reason="x", actor_id=world.manager, manage=True
             )
     assert exc.value.code == "release_pending"
+    async with world.factory() as s:
+        pending = await CommitmentService(s).item_views(
+            world.project_id, today=TODAY, item_ids=[iid], actor_id=world.manager, manage=True
+        )
+    # Shown disabled with the reason while the request runs, not hidden.
+    assert pending["items"][0]["can"]["remove_precondition"] == {
+        "allowed": False,
+        "reason": "release_pending",
+        "applies": True,
+    }
     await decide(world, d, world.pm)
     assert (await state(world, iid)).status == "released"
     cid = await add_contract(world, "40000")
