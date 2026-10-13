@@ -29,6 +29,8 @@ class PlantItemDates:
     enquiry_date: date | None
     lead_source: str
     long_lead: bool
+    # The item's own state. A cancelled item still has dates; the reader decides what to show.
+    status: str
 
 
 async def plant_item_for_submittal(
@@ -54,6 +56,23 @@ async def plant_item_for_submittal(
     )
     item_id = (await session.execute(stmt)).scalar_one_or_none()
     return None if item_id is None else await plant_item_dates(session, project_id, item_id, today=today)
+
+
+async def plant_item_id_by_code(session: Any, project_id: uuid.UUID, code: str) -> uuid.UUID | None:
+    """The id of the item with this register code in this project; ``None`` when the project has none.
+
+    Codes are unique per project, so a code of another project is simply not
+    found here. Read only, never raises: for a module that links its row to a
+    plant item by the code a user or a seed names.
+    """
+    from sqlalchemy import select
+
+    from app.modules.plant_register.models import PlantItem
+
+    if not code:
+        return None
+    stmt = select(PlantItem.id).where(PlantItem.project_id == project_id, PlantItem.code == code).limit(1)
+    return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def plant_item_dates(
@@ -94,5 +113,6 @@ async def plant_items_dates(
             enquiry_date=v["basis_enquiry_date"],
             lead_source=v["lead_source"],
             long_lead=v["long_lead"],
+            status=v["item"].status,
         )
     return out

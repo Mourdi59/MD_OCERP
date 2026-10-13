@@ -415,7 +415,7 @@ async def test_slot_held_needs_terms_and_a_commitment_for_a_fee_and_expires(worl
 
 
 async def test_other_modules_read_lead_time_and_dates_through_the_plant_item(world: World) -> None:
-    from app.modules.plant_register.reads import plant_item_dates, plant_items_dates
+    from app.modules.plant_register.reads import plant_item_dates, plant_item_id_by_code, plant_items_dates
 
     iid = await item(world, need_date_fixed=date(2027, 11, 15))
     await quote(world, iid, lead_weeks_max=44, lead_basis="from_approved_drawings")
@@ -425,6 +425,12 @@ async def test_other_modules_read_lead_time_and_dates_through_the_plant_item(wor
         # The batch read answers the same for the same item and leaves out what is not of this project.
         many = await plant_items_dates(s, world.project_id, [iid, uuid.uuid4(), iid], today=TODAY)
         assert many == {iid: d}
+        code = (await s.get(PlantItem, iid)).code
+        assert await plant_item_id_by_code(s, world.project_id, code) == iid
+        assert await plant_item_id_by_code(s, uuid.uuid4(), code) is None  # another project
+        assert await plant_item_id_by_code(s, world.project_id, "NO-SUCH") is None
+        assert await plant_item_id_by_code(s, world.project_id, "") is None
+        assert d.status == "identified"
         assert await plant_items_dates(s, uuid.uuid4(), [iid], today=TODAY) == {}
         assert await plant_items_dates(s, world.project_id, [], today=TODAY) == {}
     assert foreign is None
