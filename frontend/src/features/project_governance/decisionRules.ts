@@ -67,7 +67,7 @@ export const DECISION_PROBLEM: Record<DecisionProblem, KeyText> = {
   ],
   evidence_not_acknowledged: [
     'governance.project.decision.problem.evidence_not_acknowledged',
-    'Tick every evidence item that no module could confirm.',
+    'Tick every evidence item listed for confirmation.',
   ],
 };
 
@@ -90,7 +90,7 @@ export function evidenceKey(ref: EvidenceRef): string {
  * The unknown evidence a passing decision has to name. This is the server's list
  * (`can.acknowledge`), not one worked out here from the evidence states.
  */
-export function evidenceToAcknowledge(detail: GateDetail): EvidenceRef[] {
+export function evidenceToAcknowledge(detail: GateDetail): NonNullable<GateDetail['can']['acknowledge']> {
   return detail.can.acknowledge ?? [];
 }
 

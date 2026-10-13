@@ -288,6 +288,46 @@ describe('GatePanel', () => {
       });
     });
 
+    it('a warning has its own mark, with its label and detail, in the readiness view and in the dialog', async () => {
+      const warning = {
+        ...unknown,
+        code: 'permit_expiry',
+        state: 'warning' as const,
+        label: { key: null, text: { en: 'Building permit' } },
+        detail: 'expires in 20 days',
+        provider: 'permits',
+        blocking: false,
+      };
+      open(
+        detail({
+          gate: gate({ status: 'in_review' }),
+          areas: [{ code: 'cost_finance', evidence: [unknown, warning] }],
+          can: {
+            edit: true,
+            decide: true,
+            go: true,
+            acknowledge: [
+              { area_code: 'cost_finance', code: 'budget:no_answer', provider: 'budget', state: 'unknown' },
+              { area_code: 'cost_finance', code: 'permit_expiry', provider: 'permits', state: 'warning' },
+            ],
+          },
+        }),
+      );
+      const marks = await screen.findAllByTestId('evidence-warning');
+      expect(marks).toHaveLength(1);
+      expect(marks[0]!.closest('li')).toHaveTextContent('Building permit - expires in 20 days');
+      fireEvent.click(screen.getByTestId('open-decision'));
+      fireEvent.click(screen.getByRole('radio', { name: /^Go\b(?! with)/ }));
+      const box = within(screen.getByTestId('acknowledge-evidence'));
+      expect(box.getAllByTestId('acknowledge-mark').map((m) => m.getAttribute('data-state'))).toEqual(['unknown', 'warning']);
+      expect(box.getByText('Building permit - expires in 20 days')).toBeInTheDocument();
+      const ticks = box.getAllByTestId('acknowledge-item');
+      fireEvent.click(ticks[0]!);
+      expect(screen.getByTestId('decision-submit')).toBeDisabled();
+      fireEvent.click(ticks[1]!);
+      expect(screen.getByTestId('decision-submit')).not.toBeDisabled();
+    });
+
     it('a stop does not ask for it', async () => {
       open(asked());
       fireEvent.click(await screen.findByTestId('open-decision'));
@@ -305,10 +345,10 @@ describe('GatePanel', () => {
       ticked_by: met ? 'u-me' : null,
       ticked_at: met ? '2026-10-10T08:00:00Z' : null,
     });
-    const withCriteria = (owner: string) =>
+    const withCriteria = (canTick: boolean) =>
       detail({
         gate: gate({ status: 'in_preparation' }),
-        areas: [{ area_id: 'a1', code: 'cost_finance', owner_user_id: owner, criteria: [criterion('one', true), criterion('two', false)] }],
+        areas: [{ area_id: 'a1', code: 'cost_finance', owner_user_id: 'u-somebody', can_tick: canTick, criteria: [criterion('one', true), criterion('two', false)] }],
       });
 
     it('is not shown for an area whose model defines none', async () => {
@@ -318,7 +358,7 @@ describe('GatePanel', () => {
     });
 
     it('the owner ticks one and the server is asked with the opposite of what stands', async () => {
-      open(withCriteria('u-me'));
+      open(withCriteria(true));
       mocked.setCriterion.mockResolvedValue({} as never);
       const block = within(await screen.findByTestId('readiness-criteria'));
       expect(block.getByTestId('criteria-progress')).toHaveTextContent('1 of 2 met');
@@ -333,13 +373,13 @@ describe('GatePanel', () => {
     });
 
     it('somebody who does not answer for the area can read it and not tick it', async () => {
-      open(withCriteria('u-somebody'));
+      open(withCriteria(false));
       const block = within(await screen.findByTestId('readiness-criteria'));
       for (const box of block.getAllByRole('checkbox')) expect(box).toBeDisabled();
     });
 
     it('a refused tick says why and leaves the list as the server has it', async () => {
-      open(withCriteria('u-me'));
+      open(withCriteria(true));
       mocked.setCriterion.mockRejectedValue(refusal(422, 'unknown_criterion'));
       const block = within(await screen.findByTestId('readiness-criteria'));
       fireEvent.click(block.getAllByRole('checkbox')[1]!);

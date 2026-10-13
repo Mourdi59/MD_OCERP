@@ -41,7 +41,16 @@ import {
   type DecisionDraft,
 } from './decisionRules';
 import { VerdictReason } from './GovernanceBits';
-import { OUTCOME, OUTCOME_HINT, catalogueName, errorText, evidenceText, vocab, type LabelContext } from './labels';
+import {
+  OUTCOME,
+  OUTCOME_HINT,
+  catalogueName,
+  errorText,
+  evidenceMark,
+  evidenceText,
+  vocab,
+  type LabelContext,
+} from './labels';
 
 const OUTCOMES: Outcome[] = ['go', 'go_with_conditions', 'hold', 'recycle', 'stop'];
 
@@ -402,17 +411,18 @@ export function DecisionDialog({
         {unknownEvidence.length > 0 && letsGatePass(draft.outcome) && (
           <fieldset className="rounded-lg border border-semantic-warning/40 p-3" data-testid="acknowledge-evidence">
             <legend className="px-1 text-xs font-semibold text-content-secondary">
-              {t('governance.project.decision.acknowledge', { defaultValue: 'Evidence no module could confirm' })}
+              {t('governance.project.decision.acknowledge', { defaultValue: 'Evidence to confirm before the gate passes' })}
             </legend>
             <p className="mb-1.5 text-xs text-content-secondary">
               {t('governance.project.decision.acknowledge_hint', {
                 defaultValue:
-                  'A module could not say whether these are ready. Tick each one to confirm that you have seen it before the gate passes.',
+                  'These items are unconfirmed or carry a warning. Tick each one to confirm that you have seen it before the gate passes.',
               })}
             </p>
             {unknownEvidence.map((ref) => {
               const key = evidenceKey(ref);
               const item = detail.areas.find((a) => a.code === ref.area_code)?.evidence.find((e) => e.code === ref.code);
+              const state = ref.state ?? item?.state;
               return (
                 <label key={key} className="flex items-start gap-1.5 py-0.5 text-sm">
                   <input
@@ -424,6 +434,16 @@ export function DecisionDialog({
                   />
                   <span>
                     {areaName(ref.area_code)}
+                    <span
+                      className={clsx(
+                        'ml-1.5 text-xs font-medium',
+                        state === 'warning' ? 'text-[#b45309]' : 'text-content-tertiary',
+                      )}
+                      data-testid="acknowledge-mark"
+                      data-state={state === 'warning' ? 'warning' : 'unknown'}
+                    >
+                      {evidenceMark(t, state)}
+                    </span>
                     <span className="block text-xs text-content-tertiary">
                       {evidenceText(t, labels, item ?? ref)}
                       {item?.detail ? ` - ${item.detail}` : ''}

@@ -42,6 +42,16 @@ async def world(monkeypatch: pytest.MonkeyPatch):
         yield w
 
 
+async def test_the_tick_is_offered_to_the_owner_only(world: World) -> None:
+    g = await gate(world, GATE)
+    offered = {}
+    for name, user in (("owner", world.owner), ("editor", world.editor), ("manager", world.manager)):
+        async with client_as(world, user, "editor") as c:
+            detail = (await c.get(f"{project_url(world)}/gates/{g.id}")).json()
+        offered[name] = {a["code"]: a for a in detail["areas"]}[AREA]["can_tick"]
+    assert offered == {"owner": True, "editor": False, "manager": False}
+
+
 async def _checklist(w: World, gate_id: uuid.UUID, area_code: str = AREA) -> list[dict]:
     async with client_as(w, w.manager, "manager") as c:
         r = await c.get(f"{project_url(w)}/gates/{gate_id}")

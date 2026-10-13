@@ -41,6 +41,7 @@ from app.modules.project_governance.catalogue import (
     UnknownCatalogueError,
     default_catalogue_id_for_country,
     label_of,
+    regional_pack_entry,
 )
 from app.modules.project_governance.catalogue_kinds import PHASE_MODEL_KIND, get_catalogue_kind
 from app.modules.project_governance.catalogue_packs import CataloguePin
@@ -216,9 +217,24 @@ def default_catalogue_pin(kind: str = PHASE_MODEL_KIND, country_code: str | None
 
     The active pack is asked first (:func:`catalogue_packs.pack_default_pin`);
     a default whose file does not load is passed over, so a broken pack never
-    becomes what new projects pin. Without a pack opinion the phase model
-    falls back to the shipped catalogue of the project's country. For another
-    kind ``None`` says the owning module's own default applies.
+    becomes what new projects pin.
+
+    Without an opinion of the active pack the order is the same for every
+    registered kind, and this function is the only place that knows it:
+
+    1. the shipped catalogue the national regional packs name for the
+       project's country (``<kind>: {CC: id}`` in a pack's configuration, see
+       :func:`catalogue.regional_pack_entry`). A regional pack never loses to
+       a shipped file;
+    2. the one shipped catalogue of the kind whose ``jurisdiction_countries``
+       names the country;
+    3. ``None``: no shipped catalogue claims the country, more than one does
+       (a choice the module or the user has to make), or the country is empty.
+       ``None`` says the owning module pins its neutral file.
+
+    So a module needs no country rule of its own. The phase model alone has a
+    last resort here, its neutral catalogue: governance is the owning module
+    of that kind.
     """
     for pin in catalogue_packs.pack_default_candidates(kind, country_code):
         ref = catalogue_packs.find_pack_catalogue(kind, pin.catalogue_id, pin.version, active_only=True)
@@ -229,9 +245,41 @@ def default_catalogue_pin(kind: str = PHASE_MODEL_KIND, country_code: str | None
         except InvalidCatalogueError as exc:
             logger.warning("the active pack names a default %s catalogue that does not load: %s", kind, exc)
     if kind != PHASE_MODEL_KIND:
-        return None
+        return _country_pin(kind, country_code)
     cid = default_catalogue_id_for_country(country_code)
     return CataloguePin("shipped", cid, _kind(kind).get_shipped(cid).version)
+
+
+def _country_pin(kind: str, country_code: str | None) -> CataloguePin | None:
+    """The shipped catalogue of ``kind`` for a country: the regional packs' choice, else the one claimant."""
+    country = (country_code or "").strip().upper()
+    if not country:
+        return None
+    try:
+        shipped = get_catalogue_kind(kind).shipped()
+    except UnknownCatalogueError:
+        return None
+    except InvalidCatalogueError as exc:
+        logger.warning("the shipped %s catalogues do not load, so none is a default: %s", kind, exc)
+        return None
+    newest: dict[str, int] = {}
+    claimants: set[str] = set()
+    for item in shipped:
+        newest[item.id] = max(newest.get(item.id, 0), getattr(item, "version", 0) or 0)
+        if country in {str(c).strip().upper() for c in getattr(item, "jurisdiction_countries", None) or ()}:
+            claimants.add(item.id)
+    try:
+        named = regional_pack_entry(kind, country)
+    except Exception:
+        # The registry of another module failing must not take a project's default with it.
+        logger.warning("the regional packs could not be asked for the %s catalogue of %s", kind, country, exc_info=True)
+        named = None
+    if named in newest:
+        return CataloguePin("shipped", named, newest[named])
+    if len(claimants) != 1:
+        return None
+    (catalogue_id,) = claimants
+    return CataloguePin("shipped", catalogue_id, newest[catalogue_id])
 
 
 def _phase_items(phases: Any) -> list[dict[str, Any]]:
