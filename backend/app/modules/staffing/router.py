@@ -249,6 +249,17 @@ async def submit_plan(
     return await _run(svc.plan_view(project_id, _actor(user_id, payload)))
 
 
+@router.post("/projects/{project_id}/plan/approve", dependencies=[Depends(RequirePermission(MANAGE))])
+async def approve_plan(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """In review -> binding by hand, on a project without gates. With gates the gate decision approves."""
+    await verify_project_access(project_id, user_id, session)
+    svc = StaffingService(session)
+    await _run(svc.approve_by_hand(project_id, _uid(user_id)))
+    return await _run(svc.plan_view(project_id, _actor(user_id, payload)))
+
+
 @router.post("/projects/{project_id}/plan/return", dependencies=[EDIT])
 async def return_plan(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload

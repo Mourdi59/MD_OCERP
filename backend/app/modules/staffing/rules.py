@@ -299,7 +299,9 @@ def file_transition_refusal(action: str, status: str) -> str | None:
 NO_EDIT = "edit_permission_required"
 
 
-def plan_action_refusal(action: str, status: str, *, can_edit: bool, has_frame_document: bool = True) -> str | None:
+def plan_action_refusal(
+    action: str, status: str, *, can_edit: bool, has_frame_document: bool = True, gates_in_use: bool = True
+) -> str | None:
     """Why the plan cannot be submitted, returned or re-pinned now; ``None`` when it can.
 
     Completeness (rule 6) is not asked here: a submission of an incomplete plan
@@ -310,8 +312,9 @@ def plan_action_refusal(action: str, status: str, *, can_edit: bool, has_frame_d
     if action == "submit":
         if status not in ("draft", "revising"):
             return "plan_not_editable"
-        # Without a frame document nothing could ever bind the plan: it would sit in review for good.
-        return None if has_frame_document else "frame_document_missing"
+        # With gates, a plan without a frame document could never be bound: it would sit in review for good.
+        # Without gates it is approved by hand and needs no document.
+        return None if has_frame_document or not gates_in_use else "frame_document_missing"
     if action == "return":
         return None if status == "in_review" else "plan_not_in_review"
     if action in ("change_catalogue", "edit"):
@@ -319,6 +322,30 @@ def plan_action_refusal(action: str, status: str, *, can_edit: bool, has_frame_d
         # all of them (rules 5 and 6), so they stand still while the plan is in review.
         return "plan_in_review" if status == "in_review" else None
     raise ValueError(action)
+
+
+APPROVED_BY_GATE = "approved_by_gate_decision"
+APPROVER_IS_SUBMITTER = "approver_is_submitter"
+NO_APPROVE = "approval_permission_required"
+
+
+def plan_approval_refusal(
+    status: str, *, can_manage: bool, gates_in_use: bool, four_eyes: bool, is_submitter: bool
+) -> str | None:
+    """Why this person cannot approve the plan by hand now; ``None`` when they can.
+
+    Hand approval exists only on a project without gates: where gates are in
+    use the gate decision approves and nobody does it here.
+    """
+    if gates_in_use:
+        return APPROVED_BY_GATE
+    if status != "in_review":
+        return "plan_not_in_review"
+    if not can_manage:
+        return NO_APPROVE
+    if four_eyes and is_submitter:
+        return APPROVER_IS_SUBMITTER
+    return None
 
 
 # Refusals that mean "this action does not exist for the record as it stands": a client hides the control.
@@ -331,6 +358,7 @@ NOT_APPLICABLE = frozenset(
         "status_is_derived",
         "plan_not_editable",
         "plan_not_in_review",
+        "approved_by_gate_decision",
         "position_not_recruiting",
         "resource_request_exists",
         "fill_not_confirmed",

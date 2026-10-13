@@ -707,3 +707,30 @@ def test_every_error_code_the_module_raises_has_a_message_in_each_bundle() -> No
         messages = json.loads((MODULE_DIR / "messages" / f"{bundle}.json").read_text(encoding="utf-8"))
         missing = sorted(c for c in codes if f"staffing.errors.{c}" not in messages)
         assert not missing, (bundle, missing)
+
+
+def test_a_plan_is_approved_by_hand_only_where_no_gates_are_in_use() -> None:
+    from app.modules.staffing import rules
+
+    assert rules.plan_action_refusal("submit", "draft", can_edit=True, has_frame_document=False) == (
+        "frame_document_missing"
+    )
+    assert (
+        rules.plan_action_refusal("submit", "draft", can_edit=True, has_frame_document=False, gates_in_use=False)
+        is None
+    )
+
+    def approve(status: str = "in_review", **kw: bool) -> str | None:
+        asked = {"can_manage": True, "gates_in_use": False, "four_eyes": True, "is_submitter": False} | kw
+        return rules.plan_approval_refusal(status, **asked)
+
+    assert approve() is None
+    assert approve(gates_in_use=True) == "approved_by_gate_decision"
+    assert approve("draft") == "plan_not_in_review"
+    assert approve(can_manage=False) == "approval_permission_required"
+    assert approve(is_submitter=True) == "approver_is_submitter"
+    assert approve(is_submitter=True, four_eyes=False) is None
+    # With gates, or outside review, the control is hidden; a missing right or the same person shows it disabled.
+    assert rules.capability(approve(gates_in_use=True), approve(gates_in_use=True))["applies"] is False
+    assert rules.capability(approve("binding"), approve("binding"))["applies"] is False
+    assert rules.capability(approve(is_submitter=True), approve())["applies"] is True

@@ -26,6 +26,7 @@ import {
   downloadExport,
   endFill,
   requestResource,
+  approvePlan,
   returnPlan,
   setPositionStatus,
   staffingViolations,
@@ -148,6 +149,9 @@ export function PlanPanel({
   const maySubmit = plan.can.submit;
   const submittable = maySubmit.applies ?? planIsSubmittable(plan.status);
   const mayReturn = plan.can.return;
+  // Offered only where the project uses no gates; with gates the server says the action does not apply.
+  const mayApprove = plan.can.approve;
+  const byHand = plan.gates_in_use === false;
   const mayRepin = plan.can.change_catalogue;
 
   const submit = useStaffingAction(
@@ -164,6 +168,18 @@ export function PlanPanel({
     () => onChanged(),
   );
   const giveBack = useStaffingAction(() => returnPlan(projectId), () => onChanged());
+  const approve = useStaffingAction(
+    async () => {
+      setRefused([]);
+      try {
+        return await approvePlan(projectId);
+      } catch (err) {
+        setRefused(staffingViolations(err));
+        throw err;
+      }
+    },
+    () => onChanged(),
+  );
   const confirm = useStaffingAction(
     (fillId: string) => confirmFill(projectId, fillId),
     (result) => {
@@ -261,6 +277,18 @@ export function PlanPanel({
                 {t('staffing.plan.submit', { defaultValue: 'Submit for review' })}
               </Button>
             )}
+            {mayApprove && offered(mayApprove) && (
+              <Button
+                size="sm"
+                loading={approve.isPending}
+                disabled={!mayApprove.allowed}
+                title={whyNot(labels.t, mayApprove) || undefined}
+                onClick={() => approve.mutate()}
+                data-testid="plan-approve"
+              >
+                {t('staffing.plan.approve', { defaultValue: 'Approve plan' })}
+              </Button>
+            )}
             {offered(mayReturn) && (
               <Button
                 size="sm"
@@ -290,10 +318,15 @@ export function PlanPanel({
         )}
         {plan.status === 'in_review' && (
           <p className="mt-3 text-sm text-content-secondary" role="status" data-testid="plan-locked-hint">
-            {t('staffing.plan.in_review_hint', {
-              defaultValue:
-                'The plan is in review and cannot be edited. It is approved at the governance gate of the personnel area. Return it to draft to change it.',
-            })}
+            {byHand
+              ? t('staffing.plan.in_review_hint_no_gates', {
+                  defaultValue:
+                    'The plan is in review and cannot be edited. This project does not use gates, so a second person with the staffing management permission approves it here. Return it to draft to change it.',
+                })
+              : t('staffing.plan.in_review_hint', {
+                  defaultValue:
+                    'The plan is in review and cannot be edited. It is approved at the governance gate of the personnel area. Return it to draft to change it.',
+                })}
           </p>
         )}
         {(plan.status === 'approved' || plan.status === 'binding') && (
@@ -306,6 +339,11 @@ export function PlanPanel({
         {submittable && !maySubmit.allowed && positions.length > 0 && (
           <p className="mt-3 text-sm text-content-secondary" role="status" data-testid="plan-submit-refused">
             {whyNot(labels.t, maySubmit)}
+          </p>
+        )}
+        {mayApprove && offered(mayApprove) && !mayApprove.allowed && (
+          <p className="mt-3 text-sm text-content-secondary" role="status" data-testid="plan-approve-refused">
+            {whyNot(labels.t, mayApprove)}
           </p>
         )}
         {offered(mayReturn) && !mayReturn.allowed && (

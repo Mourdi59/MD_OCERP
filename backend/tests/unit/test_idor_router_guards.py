@@ -810,6 +810,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "change_catalogue",
         "preview_catalogue_change",
         "submit_plan",
+        "approve_plan",
         "return_plan",
         "plan_findings",
         "list_positions",

@@ -135,7 +135,17 @@ export interface StaffingPlan {
   approval_source: string | null;
   has_bound_snapshot: boolean;
   /** `edit` covers positions, plan settings, handovers and proposing a person. */
-  can: { edit: Can; manage: Can; assign_owner: Can; submit: Can; return: Can; change_catalogue: Can };
+  /** False on a project without gates: the plan is then approved by hand through `can.approve`. */
+  gates_in_use?: boolean;
+  can: {
+    edit: Can;
+    manage: Can;
+    assign_owner: Can;
+    submit: Can;
+    return: Can;
+    approve?: Can;
+    change_catalogue: Can;
+  };
 }
 
 export interface Fill {
@@ -562,6 +572,10 @@ export function changeCatalogue(projectId: string, body: CatalogueChangeBody): P
 
 export function submitPlan(projectId: string): Promise<StaffingPlan> {
   return apiPost<StaffingPlan>(`/v1/staffing/projects/${projectId}/plan/submit`, {});
+}
+
+export function approvePlan(projectId: string): Promise<StaffingPlan> {
+  return apiPost<StaffingPlan>(`/v1/staffing/projects/${projectId}/plan/approve`, {});
 }
 
 export function returnPlan(projectId: string): Promise<StaffingPlan> {

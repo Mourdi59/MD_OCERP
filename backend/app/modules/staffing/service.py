@@ -567,10 +567,20 @@ class StaffingService:
             await self.mirror_binding(project_id, plan.governance_document_id)
         who = _as_actor(actor)
         has_frame = await self._resolve_frame_document(project_id) is not None
+        gates = await hosting.gates_in_use(self.session, project_id)
+        four_eyes = await hosting.four_eyes(self.session, project_id)
 
         def plan_can(action: str) -> dict[str, Any]:
-            refused = rules.plan_action_refusal(action, plan.status, can_edit=who.edit, has_frame_document=has_frame)
-            by_state = rules.plan_action_refusal(action, plan.status, can_edit=True, has_frame_document=has_frame)
+            state = {"has_frame_document": has_frame, "gates_in_use": gates}
+            refused = rules.plan_action_refusal(action, plan.status, can_edit=who.edit, **state)
+            by_state = rules.plan_action_refusal(action, plan.status, can_edit=True, **state)
+            return _can(refused is None, refused, by_state)
+
+        def approve_can() -> dict[str, Any]:
+            asked = {"gates_in_use": gates, "four_eyes": four_eyes}
+            mine = who.user_id is not None and plan.submitted_by == who.user_id
+            refused = rules.plan_approval_refusal(plan.status, can_manage=who.manage, is_submitter=mine, **asked)
+            by_state = rules.plan_approval_refusal(plan.status, can_manage=True, is_submitter=False, **asked)
             return _can(refused is None, refused, by_state)
 
         return {
@@ -590,11 +600,14 @@ class StaffingService:
             "approval_source": plan.approval_source,
             "has_bound_snapshot": bool(plan.bound_snapshot),
             "bound_snapshot": plan.bound_snapshot or None,
+            # False on a project without gates: the plan is then approved by hand, and no gate is named.
+            "gates_in_use": gates,
             "can": {
                 "manage": _can(who.manage, "manage_permission_required"),
                 "assign_owner": _can(await self._may_assign_owner(project_id, who), "owner_assignment_forbidden"),
                 "submit": plan_can("submit"),
                 "return": plan_can("return"),
+                "approve": approve_can(),
                 "change_catalogue": plan_can("change_catalogue"),
                 # Add, edit and delete positions and handovers, the plan's settings, and who fills what.
                 "edit": plan_can("edit"),
@@ -649,18 +662,57 @@ class StaffingService:
         """Rule 6: draft or revising -> in_review, only when the plan is complete and something can approve it."""
         plan = await self.require_plan(project_id, lock=True)
         doc = await self._resolve_frame_document(project_id)
-        refused = rules.plan_action_refusal("submit", plan.status, can_edit=True, has_frame_document=doc is not None)
+        refused = rules.plan_action_refusal(
+            "submit",
+            plan.status,
+            can_edit=True,
+            has_frame_document=doc is not None,
+            gates_in_use=await hosting.gates_in_use(self.session, project_id),
+        )
         if refused:
             raise conflict(refused)
-        findings = [f for f in await self.submission_findings(project_id) if f.severity == rules.ERROR]
-        if findings:
-            raise StaffingError(findings[0].code, 422, violations=[f.as_dict() for f in findings])
+        await self._refuse_open_findings(project_id)
         await self._fsm(PLAN_FSM, plan, "in_review", actor_id)
-        plan.governance_document_id = doc.id
+        # Without gates no document carries the plan: it is approved by hand.
+        plan.governance_document_id = doc.id if doc is not None else None
         plan.submitted_by, plan.submitted_at = actor_id, _now()
         await self.session.flush()
         await self._audit(actor_id, "staffing_plan", plan.id, "plan_submitted")
         self._publish("plan.submitted", {"project_id": str(project_id), "plan_id": str(plan.id)})
+        return plan
+
+    async def _refuse_open_findings(self, project_id: uuid.UUID) -> None:
+        """Rule 6: an incomplete plan answers 422 with what is missing, at submission and at hand approval alike."""
+        findings = [f for f in await self.submission_findings(project_id) if f.severity == rules.ERROR]
+        if findings:
+            raise StaffingError(findings[0].code, 422, violations=[f.as_dict() for f in findings])
+
+    async def approve_by_hand(self, project_id: uuid.UUID, actor_id: uuid.UUID) -> StaffingPlan:
+        """In review -> binding on a project that has no gates to approve the plan.
+
+        Never weaker than the gate: four-eyes holds, and the plan is refused on
+        the findings a submission is refused on. The manage right is the route's.
+        """
+        plan = await self.require_plan(project_id, lock=True)
+        refused = rules.plan_approval_refusal(
+            plan.status,
+            can_manage=True,
+            gates_in_use=await hosting.gates_in_use(self.session, project_id),
+            four_eyes=await hosting.four_eyes(self.session, project_id),
+            is_submitter=plan.submitted_by == actor_id,
+        )
+        if refused == rules.APPROVER_IS_SUBMITTER:
+            raise forbidden(refused)
+        if refused:
+            raise conflict(refused)
+        await self._refuse_open_findings(project_id)
+        await self._fsm(PLAN_FSM, plan, "approved", actor_id)
+        await self._fsm(PLAN_FSM, plan, "binding", actor_id)
+        plan.bound_snapshot = await self.snapshot(project_id)
+        plan.approved_by, plan.approved_at, plan.approval_source = actor_id, _now(), "hand"
+        plan.bound_revision_id = None
+        await self.session.flush()
+        await self._audit(actor_id, "staffing_plan", plan.id, "plan_bound", metadata={"source": "hand"})
         return plan
 
     async def return_plan(self, project_id: uuid.UUID, actor_id: uuid.UUID) -> StaffingPlan:

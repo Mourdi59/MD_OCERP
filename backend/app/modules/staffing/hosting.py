@@ -49,3 +49,17 @@ def enabled_tags(catalogue: Any) -> frozenset[str]:
 async def project_catalogue(session: Any, project_id: uuid.UUID) -> Any | None:
     """The project's pinned governance catalogue, or ``None`` without a governance model."""
     return await governance.project_catalogue(session, project_id)
+
+
+async def gates_in_use(session: Any, project_id: uuid.UUID) -> bool:
+    """Whether the project has gates at all. A project that never adopted a phase model has none.
+
+    Asked of the gates and not of the model: a pinned model that cannot be read
+    leaves its gates on the project, and there approval still belongs to them.
+    """
+    return bool(await governance.project_gates(session, project_id))
+
+
+async def four_eyes(session: Any, project_id: uuid.UUID) -> bool:
+    """The four-eyes setting of the project's governance model; on when the project has no model."""
+    return (await governance.project_controls(session, project_id)).four_eyes

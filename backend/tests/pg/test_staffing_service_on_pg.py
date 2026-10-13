@@ -106,21 +106,14 @@ async def test_submission_refuses_an_incomplete_plan_and_lists_what_is_missing(f
 
 
 async def test_a_plan_with_no_frame_document_to_carry_it_cannot_be_submitted(factory, monkeypatch) -> None:
-    # No governance model at all: nothing could ever approve the plan.
-    bare = await build_world(factory, governance=False)
-    await submittable_plan(bare)
-    with pytest.raises(StaffingError) as err:
-        await call(bare, "submit", bare.manager)
-    assert (err.value.code, err.value.status_code) == ("frame_document_missing", 409)
-    assert (await _plan(bare)).status == "draft"
-
-    # The model hosts staffing, but this project has no document row of that type: the same refusal, no guess.
+    # A project with no gates at all is another story: test_staffing_without_gates_on_pg walks it by hand.
+    # The model hosts staffing, but this project has no document row of that type: refused, no guess.
     rowless = await build_world(factory)
     await drop_frame_document(rowless)
     await submittable_plan(rowless)
     with pytest.raises(StaffingError) as err:
         await call(rowless, "submit", rowless.manager)
-    assert err.value.code == "frame_document_missing"
+    assert (err.value.code, err.value.status_code) == ("frame_document_missing", 409)
     view = await call(rowless, "plan_view", Actor(rowless.manager, edit=True))
     assert view["can"]["submit"] == {"allowed": False, "reason": "frame_document_missing"}
 
