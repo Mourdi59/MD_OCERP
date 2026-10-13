@@ -94,6 +94,17 @@ EVENT_TRIGGERS: tuple[str, ...] = (
     "project_governance.phase.changed",
     "stakeholders.commitment.fulfilled",
 )
+# The listened events the governance module publishes. A project run without gates has no gate to decide
+# and no phase to change, so none of them can ever fire there. Derived, so a new governance event joins by
+# being listed above.
+GATE_BOUND_EVENT_TRIGGERS: tuple[str, ...] = tuple(n for n in EVENT_TRIGGERS if n.startswith("project_governance."))
+
+
+def trigger_needs_gates(kind: str | None, ref: str | None) -> bool:
+    """Whether a plan trigger can only fire on a project that uses gates."""
+    return kind == "gate" or (kind == "event" and ref in GATE_BOUND_EVENT_TRIGGERS)
+
+
 QUORUM_KINDS: tuple[str, ...] = ("min_members", "majority", "unanimous")
 LIVE_PLAN: tuple[str, ...] = ("planned", "active")
 _OVERDUE_OPEN: tuple[str, ...] = ("proposed", "agreed", "in_progress")
@@ -1117,13 +1128,15 @@ class StakeholderService:
             raise StakeholderError("schedule_or_trigger")
         if merged["trigger_kind"] == "event" and merged["trigger_ref"] not in EVENT_TRIGGERS:
             raise StakeholderError("schedule_or_trigger")
-        if merged["trigger_kind"] == "gate" and {"trigger_kind", "trigger_ref"} & set(out):
+        if trigger_needs_gates(merged["trigger_kind"], merged["trigger_ref"]) and (
+            {"trigger_kind", "trigger_ref"} & set(out)
+        ):
             codes = {g["code"] for g in await self.gates(project_id)}
             if not codes:
                 # Nothing would ever make such an item due: the project is run without gates.
                 raise StakeholderError("gates_not_in_use")
-            # Empty means every gate. A named gate must be one of this project's.
-            if merged["trigger_ref"] and merged["trigger_ref"] not in codes:
+            # For a gate trigger empty means every gate. A named gate must be one of this project's.
+            if merged["trigger_kind"] == "gate" and merged["trigger_ref"] and merged["trigger_ref"] not in codes:
                 raise StakeholderError("unknown_gate")
         if merged["starts_on"] and merged["ends_on"] and merged["ends_on"] < merged["starts_on"]:
             raise StakeholderError("invalid_validity")

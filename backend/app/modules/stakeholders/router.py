@@ -787,11 +787,18 @@ async def list_gates(project_id: uuid.UUID, session: SessionDep, user_id: Curren
     """The project's gates for the plan trigger picker.
 
     ``gates_in_use`` is false on a project run without gates: there is nothing
-    to pick then, and a plan item cannot be triggered by a gate.
+    to pick then, and a plan item takes neither the gate trigger nor one of
+    ``gate_bound_event_triggers``, the listened events only a gate can cause.
     """
+    from app.modules.stakeholders.service import GATE_BOUND_EVENT_TRIGGERS
+
     await verify_project_access(project_id, user_id, session)
     items = await _run(StakeholderService(session).gates(project_id))
-    return {"items": items, "gates_in_use": bool(items)}
+    return {
+        "items": items,
+        "gates_in_use": bool(items),
+        "gate_bound_event_triggers": list(GATE_BOUND_EVENT_TRIGGERS),
+    }
 
 
 @router.get("/projects/{project_id}/requirements", dependencies=[READ])

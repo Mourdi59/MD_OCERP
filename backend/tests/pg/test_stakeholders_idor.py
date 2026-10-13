@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.stakeholders.permissions import register_stakeholder_permissions
 from app.modules.stakeholders.router import router
+from app.modules.stakeholders.service import EVENT_TRIGGERS, GATE_BOUND_EVENT_TRIGGERS
 from tests._pg import isolated_engine
 from tests.pg.stakeholders_fixtures import TODAY, World, build_world, commitment, contact, seat, stakeholder
 
@@ -348,7 +349,7 @@ async def test_commitment_links_and_their_pickers_stay_inside_the_project(world:
     assert [o["id"] for o in options.json()["items"]] == [ids["mine"]]
     assert release.json() == {"items": [], "available": False, "reason": "commitment_release_not_installed"}
     # This world is a project run without gates.
-    assert gates.json() == {"items": [], "gates_in_use": False}
+    assert (gates.json()["items"], gates.json()["gates_in_use"]) == ([], False)
     assert [r.status_code for r in strangers] == [404, 404, 404]
 
 
@@ -477,14 +478,33 @@ async def test_a_project_without_gates_is_walked_to_the_end_and_takes_no_gate_tr
     sid = await stakeholder(world, "Residents east", is_group=True)
     await seat(world, "client_pm", world.manager)
     plan = {"title": "Briefing", "audience_stakeholder_ids": [str(sid)], "participation_level": "inform"}
+    # Every trigger only a gate can cause, taken from the service's own list, not written out here.
+    gate_bound = [("gate", ""), *(("event", name) for name in GATE_BOUND_EVENT_TRIGGERS)]
+    gateless = [name for name in EVENT_TRIGGERS if name not in GATE_BOUND_EVENT_TRIGGERS]
+    assert "project_governance.gate.decided" in GATE_BOUND_EVENT_TRIGGERS and gateless
     async with client_as(world, world.editor, "editor") as c:
         gates = await c.get(f"{p}/gates")
-        dead = await c.post(f"{p}/plan-items", json={**plan, "channel": "meeting", "trigger_kind": "gate"})
+        dead = {
+            (kind, ref): await c.post(
+                f"{p}/plan-items", json={**plan, "channel": "meeting", "trigger_kind": kind, "trigger_ref": ref}
+            )
+            for kind, ref in gate_bound
+        }
+        # A listened event that needs no gate still works here.
+        free = await c.post(
+            f"{p}/plan-items",
+            json={**plan, "channel": "meeting", "trigger_kind": "event", "trigger_ref": gateless[0]},
+        )
         live = await c.post(
             f"{p}/plan-items",
             json={**plan, "channel": "meeting", "frequency": "FREQ=MONTHLY", "starts_on": TODAY.isoformat()},
         )
-        retriggered = await c.patch(f"{p}/plan-items/{live.json().get('id')}", json={"trigger_kind": "gate"})
+        retriggered = {
+            (kind, ref): await c.patch(
+                f"{p}/plan-items/{live.json().get('id')}", json={"trigger_kind": kind, "trigger_ref": ref}
+            )
+            for kind, ref in gate_bound
+        }
         promise = await c.post(
             f"{p}/commitments",
             json={
@@ -509,14 +529,21 @@ async def test_a_project_without_gates_is_walked_to_the_end_and_takes_no_gate_tr
         readiness = await c.get(f"{p}/readiness")
         settings = await c.get(f"{p}/settings")
         filing = await c.post(f"{p}/frame-documents/file", json={"document": "register"})
-    assert gates.json() == {"items": [], "gates_in_use": False}
+    assert gates.json() == {
+        "items": [],
+        "gates_in_use": False,
+        "gate_bound_event_triggers": list(GATE_BOUND_EVENT_TRIGGERS),
+    }
     # No frame documents without gates: the filing action does not exist, and the write agrees.
     gone = {"applies": False, "allowed": False, "reason": "gates_not_in_use"}
     assert settings.json()["can_file"] == {"register": gone, "organisation": gone}
     assert (filing.status_code, _code(filing)) == (409, "frame_document_missing")
-    assert (dead.status_code, _code(dead)) == (422, "gates_not_in_use")
+    for trigger, response in dead.items():
+        assert (response.status_code, _code(response)) == (422, "gates_not_in_use"), trigger
+    assert free.status_code == 201, free.text
     assert live.status_code == 201, live.text
-    assert (retriggered.status_code, _code(retriggered)) == (422, "gates_not_in_use")
+    for trigger, response in retriggered.items():
+        assert (response.status_code, _code(response)) == (422, "gates_not_in_use"), trigger
     assert promise.status_code == 201, promise.text
     assert [(r.status_code, r.json().get("status")) for r in steps] == [
         (200, "agreed"),

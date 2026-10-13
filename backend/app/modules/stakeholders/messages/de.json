@@ -201,7 +201,7 @@
       "event_not_found": "Beteiligungstermin nicht gefunden",
       "frame_document_missing": "Der zuständige Bereich hat noch kein Rahmendokument mit Dokumentcontainer",
       "frame_document_read_only": "Das Rahmendokument ist schreibgeschützt und nimmt keine neue Fassung auf",
-      "gates_not_in_use": "Dieses Projekt arbeitet ohne Gates, nichts würde diesen Eintrag auslösen. Geben Sie ihm ein Startdatum und einen Rhythmus.",
+      "gates_not_in_use": "Dieses Projekt arbeitet ohne Gates, nichts würde diesen Eintrag auslösen. Geben Sie ihm ein Startdatum und einen Rhythmus oder einen anderen Auslöser.",
       "held_on_required": "Ein durchgeführter Termin braucht sein Datum",
       "holder_required": "Eine Rolle braucht einen Eintrag in der Projektliste oder einen Kontakt",
       "invalid_amount": "Der Betrag ist keine gültige Zahl",
