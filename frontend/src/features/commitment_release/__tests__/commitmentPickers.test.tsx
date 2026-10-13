@@ -32,6 +32,7 @@ vi.mock('../api', async (importOriginal) => {
     listTransferTargets: vi.fn(),
     checkDocument: vi.fn(),
     addPrecondition: vi.fn(),
+    removePrecondition: vi.fn(),
     addLink: vi.fn(),
     createItem: vi.fn(),
     updateItem: vi.fn(),
@@ -68,7 +69,7 @@ import {
 import { checkOutcome, draftOfItem, itemProblems, toItemInput } from '../rules';
 import { CHANGE_ORDER_ROW, CONTRACT_LINE_ROW, CONTRACT_ROW, LIST_ANSWERS } from './documentRows';
 import { enT } from './i18nMock';
-import { can, item, link, matrix, precondition } from './fixtures';
+import { OWNER_CAN, can, item, link, matrix, precondition } from './fixtures';
 
 const mocked = vi.mocked(api);
 const apiGetMock = vi.mocked(apiGet);
@@ -435,6 +436,51 @@ describe('PreconditionList', () => {
     fireEvent.click(screen.getByTestId('precondition-add-send'));
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
     expect(mocked.addPrecondition).toHaveBeenCalledWith('p1', 'i1', { kind: 'gate_decided', ref_id: 'g2', text: '' });
+  });
+
+  it('a project that does not use gates offers no gate and says so, also when a gate list came along', async () => {
+    mocked.getReferences.mockResolvedValue(references({ gates_in_use: false }));
+    list({ preconditions: [] });
+    openForm();
+    expect(await screen.findByTestId('precondition-no-gates')).toBeInTheDocument();
+    const kinds = optionTexts(screen.getByTestId('precondition-kind'));
+    expect(kinds).not.toContain(enT('commitment.precondition.gate_decided'));
+    expect(kinds).toContain(enT('commitment.precondition.frame_document_binding'));
+    expect(screen.queryByTestId('precondition-no-records')).toBeNull();
+  });
+
+  it('a precondition that can never be met says why on its row', () => {
+    list({ preconditions: [precondition({ kind: 'gate_decided', ref_id: 'g2', text: '', unreachable_reason: 'gates_not_in_use' })] });
+    const note = screen.getByTestId('precondition-unreachable');
+    expect(note.textContent).toContain(enT('commitment.errors.gates_not_in_use'));
+    expect(note.textContent).toContain('can never be met');
+  });
+
+  it('removing a precondition needs a reason, sends it, and shows the refusal where the reader works', async () => {
+    mocked.removePrecondition.mockRejectedValueOnce(
+      new ApiError(409, 'Conflict', { detail: { code: 'release_pending', message: 'A release is pending' } }),
+    );
+    mocked.removePrecondition.mockResolvedValueOnce(undefined);
+    const onChanged = list({ preconditions: [precondition()] });
+    fireEvent.click(screen.getByTestId('precondition-remove'));
+    expect(screen.getByTestId('precondition-remove-send')).toBeDisabled();
+    fireEvent.change(byId('remove-pre1'), { target: { value: ' The brief is no longer required ' } });
+    fireEvent.click(screen.getByTestId('precondition-remove-send'));
+    const alert = await within(screen.getByTestId('precondition-remove-form')).findByRole('alert');
+    expect(alert.textContent).toContain(enT('commitment.errors.release_pending'));
+    expect(onChanged).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('precondition-remove-send'));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(mocked.removePrecondition).toHaveBeenLastCalledWith('p1', 'i1', 'pre1', 'The brief is no longer required');
+  });
+
+  it('removal follows the server flag: refused with its reason, and off while the server has not said', () => {
+    list({ preconditions: [precondition()], can: can({ remove_precondition: 'manage_required' }) });
+    expect(screen.getByTestId('precondition-remove')).toBeDisabled();
+    cleanup();
+    const { remove_precondition: _absent, ...older } = OWNER_CAN;
+    list({ preconditions: [precondition()], can: older });
+    expect(screen.getByTestId('precondition-remove')).toBeDisabled();
   });
 
   it('offers no kind the project has no record for, and says when that changes', async () => {

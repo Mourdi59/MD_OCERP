@@ -378,6 +378,13 @@ export function ItemDialog({
                 defaultValue: 'The gates of the project could not be read. The item can be saved without a gate and tied to one later.',
               })}
             </p>
+          ) : refsQ.data?.gates_in_use === false && !tiedToGate ? (
+            <p className="text-sm text-content-secondary" data-testid="item-gates-not-in-use">
+              {t('commitment.item_form.gates_not_in_use', {
+                defaultValue:
+                  'This project does not use gates, so the item is not tied to one. Releases, holds and aborts are decided on the approval tiers as everywhere else.',
+              })}
+            </p>
           ) : !refsQ.isError && !refsQ.data?.has_model && !tiedToGate ? (
             <p className="text-sm text-content-secondary" data-testid="item-gate-no-model">
               {t('commitment.item_form.gate_no_model', {

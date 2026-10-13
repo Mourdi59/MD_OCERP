@@ -186,6 +186,8 @@ export interface Precondition {
   evidence_ref: string | null;
   confirmed_by: string | null;
   confirmed_at: string | null;
+  /** A refusal code when the precondition names something the project does not have, so it can never be met. */
+  unreachable_reason?: string | null;
 }
 
 export interface ItemLink {
@@ -260,7 +262,8 @@ export type ItemAction =
   | 'resume'
   | 'transfer'
   | 'defer'
-  | 'edit_gate_fields';
+  | 'edit_gate_fields'
+  | 'remove_precondition';
 
 /** What is left to do by hand after an abort was decided: the module ends no contract or order itself. */
 export interface AbortFollowUp {
@@ -440,6 +443,8 @@ export interface ReferencePlantItem {
 
 export interface References {
   has_model: boolean;
+  /** False on a project that does not use gates; `gates` is empty then. */
+  gates_in_use?: boolean;
   gates: ReferenceGate[];
   areas: ReferenceArea[];
   frame_documents: ReferenceFrameDocument[];
@@ -826,6 +831,11 @@ export function addPrecondition(
   body: { kind: PreconditionKind; ref_id?: string | null; text: string },
 ): Promise<CommitmentItem> {
   return apiPost<CommitmentItem>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/preconditions`, body);
+}
+
+/** Take a precondition off the item. The reason is kept on the record. */
+export function removePrecondition(projectId: string, itemId: string, preconditionId: string, reason: string): Promise<void> {
+  return apiDelete(`/v1/commitment-release/projects/${projectId}/items/${itemId}/preconditions/${preconditionId}?reason=${encodeURIComponent(reason)}`);
 }
 
 export function confirmPrecondition(
