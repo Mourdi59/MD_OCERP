@@ -94,11 +94,40 @@ async def _team_member(session: AsyncSession, project_id: uuid.UUID, exclude: uu
     return None
 
 
+async def _cast_cost_person(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID) -> uuid.UUID | None:
+    """The demo cast's cost person, when the install has a cast and that person is on this project's team.
+
+    Asked by role so that the requester of the story does not depend on which of two memberships
+    written in one transaction happens to sort first. ``None`` on an install without a demo cast.
+    """
+    import importlib
+
+    from app.modules.teams.models import Team, TeamMembership
+
+    try:
+        demo_cast = importlib.import_module("app.core.demo_cast")
+    except ImportError:
+        return None
+    cost = (await demo_cast.find_cast(session) or {}).get("cost")
+    if cost is None or cost == owner:
+        return None
+    stmt = (
+        select(TeamMembership.id)
+        .join(Team, Team.id == TeamMembership.team_id)
+        .where(Team.project_id == project_id, TeamMembership.user_id == cost)
+        .limit(1)
+    )
+    return cost if (await session.execute(stmt)).scalar_one_or_none() is not None else None
+
+
 async def _second_person(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID) -> uuid.UUID | None:
     """Who plans and requests while the owner approves: a team member, else another demo login."""
     from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS
     from app.modules.users.models import User
 
+    cost = await _cast_cost_person(session, project_id, owner)
+    if cost is not None:
+        return cost
     member = await _team_member(session, project_id, owner)
     if member is not None:
         return member
