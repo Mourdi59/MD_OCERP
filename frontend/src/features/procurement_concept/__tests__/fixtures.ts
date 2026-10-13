@@ -40,7 +40,27 @@ const no = (reason: string) => ({ allowed: false, reason, applies: !NOT_APPLICAB
 /** The capability block as the server sends it: everything allowed, or each key refused with its code. */
 export function can(refused: Partial<Record<keyof Can, string>> = {}): Can {
   const of = (k: keyof Can) => (refused[k] ? no(refused[k] as string) : yes);
-  return { steer: of('steer'), edit_plan: of('edit_plan'), submit: of('submit'), return: of('return'), set_gate_fields: of('set_gate_fields') };
+  // Gates are in use unless a test says otherwise: approval and reopening by hand do not apply.
+  const gated = (k: 'approve' | 'reopen', reason: string) => (refused[k] ? no(refused[k] as string) : { allowed: false, reason, applies: false });
+  return {
+    steer: of('steer'),
+    edit_plan: of('edit_plan'),
+    submit: of('submit'),
+    return: of('return'),
+    set_gate_fields: of('set_gate_fields'),
+    approve: gated('approve', 'approved_by_gate_decision'),
+    reopen: gated('reopen', 'reopened_by_change_request'),
+  };
+}
+
+/** The flags on a project without gates: approval by hand applies, reopening only once approved. */
+export function noGatesCan(refused: Partial<Record<keyof Can, string>> = {}, patch: Partial<Can> = {}): Can {
+  return {
+    ...can(refused),
+    approve: refused.approve ? no(refused.approve) : yes,
+    reopen: no(refused.reopen ?? 'invalid_transition'),
+    ...patch,
+  };
 }
 
 type PackageCan = PackageView['can'];

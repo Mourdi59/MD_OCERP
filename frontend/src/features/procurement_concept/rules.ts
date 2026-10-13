@@ -69,16 +69,20 @@ export interface ConceptStep {
 }
 
 /**
- * The hand moves the server says apply now. There are two: submit for the
- * gate and return to draft. Approval is not one of them: the governance gate
- * approves, when the frame document that carries the concept becomes binding.
+ * The hand moves the server says apply now. With gates there are two: submit
+ * for the gate and return to draft; the governance gate approves. On a project
+ * without gates the server also offers approval and reopening by hand.
  */
 export function conceptSteps(concept: Concept): ConceptStep[] {
   const steps: ConceptStep[] = [];
   const submit = offer(concept.can.submit);
   const back = offer(concept.can.return);
+  const approve = offer(concept.can.approve);
+  const reopen = offer(concept.can.reopen);
   if (submit.show) steps.push({ action: 'submit', verdict: submit.verdict, primary: true });
+  if (approve.show) steps.push({ action: 'approve', verdict: approve.verdict, primary: !submit.show });
   if (back.show) steps.push({ action: 'return', verdict: back.verdict, primary: false });
+  if (reopen.show) steps.push({ action: 'reopen', verdict: reopen.verdict, primary: false });
   return steps;
 }
 

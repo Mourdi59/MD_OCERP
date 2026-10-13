@@ -60,6 +60,7 @@ import {
   can,
   catalogue,
   closedCan,
+  noGatesCan,
   concept,
   framework,
   ledger,
@@ -354,7 +355,7 @@ describe('ConceptRecord', () => {
     const props = record();
     fireEvent.click(screen.getByTestId('concept-submit'));
     await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
-    expect(mocked.conceptAction).toHaveBeenCalledWith('p1', 'submit');
+    expect(mocked.conceptAction).toHaveBeenCalledWith('p1', 'submit', undefined);
   });
 
   it('a refused submit lists every finding the server named', async () => {
@@ -374,11 +375,61 @@ describe('ConceptRecord', () => {
     expect(screen.getByTestId('concept-return')).toBeEnabled();
   });
 
+  it('lets a manager approve by hand on a project without gates, and says who approves', async () => {
+    mocked.conceptAction.mockResolvedValue(concept({ state: 'approved' }) as never);
+    const submitted = concept({ state: 'in_review', gates_in_use: false, can: noGatesCan({ edit_plan: 'concept_locked', submit: 'invalid_transition' }) });
+    const props = record({ concept: submitted });
+    expect(screen.queryByTestId('approval-by-gate')).toBeNull();
+    expect(screen.getByTestId('approval-by-hand')).toHaveTextContent('a person with the manage right approves the concept');
+    expect(screen.getByTestId('concept-record')).toHaveTextContent('A manager approves it');
+    expect(screen.getByTestId('concept-approve')).toHaveTextContent('Approve concept');
+    fireEvent.click(screen.getByTestId('concept-approve'));
+    await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
+    expect(mocked.conceptAction).toHaveBeenCalledWith('p1', 'approve', undefined);
+  });
+
+  it('keeps approval closed with the reason for the person who submitted', () => {
+    const own = concept({
+      state: 'in_review',
+      gates_in_use: false,
+      can: noGatesCan({ edit_plan: 'concept_locked', submit: 'invalid_transition', approve: 'approver_is_submitter' }),
+    });
+    record({ concept: own });
+    expect(screen.getByTestId('concept-approve')).toBeDisabled();
+    expect(screen.getByTestId('concept-record')).toHaveTextContent(en.translation['procurement_concept.errors.approver_is_submitter']!);
+  });
+
+  it('names submit for approval, not for a gate, on a project without gates', () => {
+    record({ concept: concept({ gates_in_use: false, can: noGatesCan({ approve: 'concept_not_submitted', return: 'invalid_transition' }) }) });
+    expect(screen.getByTestId('concept-submit')).toHaveTextContent('Submit for approval');
+    expect(screen.getByTestId('concept-approve')).toBeDisabled();
+    expect(screen.getByTestId('concept-record')).not.toHaveTextContent('for the gate');
+  });
+
+  it('reopens an approved concept by hand where the server offers it', async () => {
+    mocked.conceptAction.mockResolvedValue(concept({ state: 'reopened' }) as never);
+    const approved = concept({
+      state: 'approved',
+      gates_in_use: false,
+      can: noGatesCan({ edit_plan: 'concept_locked', submit: 'invalid_transition', return: 'invalid_transition', approve: 'invalid_transition' }, { reopen: yes }),
+    });
+    record({ concept: approved });
+    expect(screen.queryByTestId('concept-approve')).toBeNull();
+    fireEvent.click(screen.getByTestId('concept-reopen'));
+    // Nothing is sent until the reason is given: the server records it with the reopening.
+    expect(mocked.conceptAction).not.toHaveBeenCalled();
+    expect(screen.getByTestId('concept-reopen-confirm')).toBeDisabled();
+    fireEvent.change(document.getElementById('pc-reopen-reason') as HTMLTextAreaElement, { target: { value: '  Scope of the facade changed ' } });
+    fireEvent.click(screen.getByTestId('concept-reopen-confirm'));
+    await waitFor(() => expect(mocked.conceptAction).toHaveBeenCalledWith('p1', 'reopen', 'Scope of the facade changed'));
+    await waitFor(() => expect(screen.queryByTestId('concept-reopen-form')).toBeNull());
+  });
+
   it('returns a submitted concept to draft', async () => {
     mocked.conceptAction.mockResolvedValue(concept() as never);
     record({ concept: concept({ state: 'in_review', can: LOCKED }) });
     fireEvent.click(screen.getByTestId('concept-return'));
-    await waitFor(() => expect(mocked.conceptAction).toHaveBeenCalledWith('p1', 'return'));
+    await waitFor(() => expect(mocked.conceptAction).toHaveBeenCalledWith('p1', 'return', undefined));
   });
 
   it('keeps submit closed with the reason the server gave', () => {
