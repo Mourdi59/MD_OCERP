@@ -23,9 +23,7 @@
         "tender",
         "award"
       ],
-      "enables": [
-        "procurement"
-      ],
+      "enables": [],
       "source_ref": null,
       "review_status": "verified"
     },
@@ -38,6 +36,7 @@
         "handover"
       ],
       "enables": [
+        "procurement",
         "construction_start",
         "handover"
       ],

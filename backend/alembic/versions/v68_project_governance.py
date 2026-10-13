@@ -278,7 +278,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _ts("escalated_at"),
         ],
         [
-            ("ix_oe_gov_condition_project_status", ["project_id", "status"]),
+            ("ix_oe_governance_condition_project_id_status", ["project_id", "status"]),
             ("ix_oe_gov_condition_decision", ["decision_id"]),
         ],
     ),
