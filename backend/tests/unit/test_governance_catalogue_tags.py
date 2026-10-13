@@ -41,9 +41,11 @@ ENABLING_PHASES: dict[str, dict[str, tuple[str, ...]]] = {
         "handover": ("handover",),
         "operation": ("operation",),
     },
-    # Two phases only: procurement runs in development, building and handover in execution.
+    # Two phases only, and one gate between them. Awards wait for that gate, so it is
+    # execution that enables procurement: the gate out of development is the one that
+    # releases it. A package that has to be ordered earlier is released by a commitment.
     "elf_module_framework": {
-        "procurement": ("development",),
+        "procurement": ("execution",),
         "construction_start": ("execution",),
         "handover": ("execution",),
         "operation": (),
@@ -360,10 +362,55 @@ def test_the_framework_catalogue_names_its_source_without_quoting_a_publication(
 
 
 def test_the_demo_seed_signs_in_as_the_platform_demo_accounts() -> None:
+    from app.core import demo_cast
     from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, SHOWCASE_OWNER_EMAIL
     from app.modules.project_governance import seed
 
     assert seed._OWNER_EMAIL == SHOWCASE_OWNER_EMAIL
-    assert {seed._OWNER_EMAIL, seed._DECIDER_EMAIL, seed._COST_EMAIL} == set(DEMO_ACCOUNT_EMAILS)
+    # The owner and the two parts of the cast are the three demo logins where they exist.
+    assert {seed._OWNER_EMAIL} | {part.demo_login for part in demo_cast.CAST} == set(DEMO_ACCOUNT_EMAILS)
     source = inspect.getsource(seed)
     assert "demo@" not in source
+    assert "manager@" not in source and "estimator@" not in source
+
+
+def test_a_stand_in_of_the_demo_cast_can_neither_sign_in_without_a_password_nor_get_mail() -> None:
+    from app.core import demo_cast
+    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, is_reserved_mail_domain
+    from app.modules.users.service import _DEMO_EMAIL_WHITELIST
+
+    stand_ins = {part.email for part in demo_cast.CAST}
+    assert len(stand_ins) == len(demo_cast.CAST) == 2
+    # The whitelist is what the passwordless sign-in accepts; a stand-in on it would be a back door.
+    assert not stand_ins & set(DEMO_ACCOUNT_EMAILS)
+    assert not stand_ins & set(_DEMO_EMAIL_WHITELIST)
+    assert all(is_reserved_mail_domain(email) for email in stand_ins)
+    assert all(email == email.lower() for email in stand_ins)
+    assert sorted(part.word for part in demo_cast.CAST) == ["cost", "decider"]
+
+
+def test_a_stand_in_of_the_demo_cast_is_not_counted_as_a_real_person() -> None:
+    """Counted as real, a pack install would keep the first registrant from becoming admin."""
+    from sqlalchemy.dialects import postgresql
+
+    from app.core import demo_cast
+    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, DEMO_CAST_EMAILS
+    from app.modules.users import repository
+
+    assert {part.email for part in demo_cast.CAST} == set(DEMO_CAST_EMAILS)
+    clause = str(
+        repository._NOT_SEEDED_DEMO.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
+    )
+    assert "NOT IN" in clause
+    for email in DEMO_CAST_EMAILS | DEMO_ACCOUNT_EMAILS:
+        assert f"'{email}'" in clause, email
+
+
+def test_the_one_gate_of_the_eleven_area_model_is_the_gate_that_releases_procurement() -> None:
+    """A module asks for the gates whose target phase enables procurement; an empty answer means never."""
+    catalogue = cat.get_catalogue("elf_module_framework")
+    enabling = set(public.phases_enabling_in(catalogue, "procurement"))
+    releasing = [g.code for g in catalogue.gates if g.to_phase in enabling]
+    assert releasing == ["development_to_execution"]
+    first = min(catalogue.phases, key=lambda p: p.order)
+    assert first.code not in enabling

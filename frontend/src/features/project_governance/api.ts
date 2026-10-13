@@ -35,7 +35,8 @@ export type DocumentStatus = 'draft' | 'in_review' | 'approved_at_gate' | 'bindi
 export type ConditionStatus = 'open' | 'cleared' | 'waived' | 'overdue';
 export type Severity = 'critical' | 'essential' | 'recommended';
 export type ChangeRequestStatus = 'submitted' | 'approved' | 'rejected' | 'cancelled';
-export type EvidenceState = 'met' | 'not_met' | 'unknown';
+/** A `warning` never blocks a gate, and a passing decision has to name it as it names an unknown item. */
+export type EvidenceState = 'met' | 'not_met' | 'unknown' | 'warning';
 
 /** Where a catalogue comes from: the platform, the organisation, or the active pack. */
 export type CatalogueSource = 'shipped' | 'tenant' | 'pack';
@@ -202,6 +203,8 @@ export interface GateArea {
   documents: GateAreaDocument[];
   /** The model's criteria for this gate and area in catalogue order; empty when it defines none. */
   criteria?: GateCriterion[];
+  /** Whether the caller may tick the criteria: owner or deputy, on a gate that is neither decided nor historic. */
+  can_tick?: boolean;
   name?: GovernanceLabel;
 }
 
@@ -222,7 +225,7 @@ export interface DecisionSnapshot {
   }>;
   checks?: Array<{ area_code: string; status: string; rag?: string; stale?: boolean }>;
   /** The unknown evidence the decider named when the decision was taken. */
-  acknowledged_evidence?: Array<EvidenceRef & { provider?: string }>;
+  acknowledged_evidence?: Array<EvidenceRef & { provider?: string; state?: 'unknown' | 'warning' }>;
   [key: string]: unknown;
 }
 
@@ -281,7 +284,7 @@ export interface GateCan {
    * request sends it back. Empty when nothing is pending. It is content of the
    * request, so `go` stays open while this list is not empty.
    */
-  acknowledge?: Array<EvidenceRef & { provider: string }>;
+  acknowledge?: Array<EvidenceRef & { provider: string; state?: 'unknown' | 'warning' }>;
 }
 
 export interface MatrixCellOut {
@@ -585,10 +588,7 @@ export function setCriterion(
   code: string,
   body: { met: boolean; note?: string },
 ): Promise<GateCheck> {
-  return apiPut<GateCheck>(
-    `/v1/project-governance/projects/${projectId}/gates/${gateId}/checks/${areaId}/criteria/${code}`,
-    body,
-  );
+  return apiPut<GateCheck>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/checks/${areaId}/criteria/${code}`, body);
 }
 
 export function markCheckNotApplicable(

@@ -1612,6 +1612,12 @@ class ProjectService:
         self.session.expire_all()
         deleted = int(result.rowcount or 0)
 
+        # The stand-ins a demo project needed besides its owner (decider, cost
+        # owner) go with the last demo project. The demo logins stay.
+        from app.core.demo_cast import remove_demo_cast
+
+        await remove_demo_cast(self.session)
+
         await _safe_audit(
             self.session,
             action="purge_demo_data",
