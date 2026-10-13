@@ -128,7 +128,9 @@ class LaydownZone(Base):
     # does not, and the boot-time schema heal alters existing tables BEFORE the new
     # ones are created, so a key from here to there is refused on every upgrade.
     # The service checks the area on write and unlinks the zone when the area is
-    # deleted; an unlinked zone reads as ``zone_not_mapped``.
+    # deleted (``LogisticsPlanService.delete_area``); an unlinked zone reads as
+    # ``zone_not_mapped``. Do not add the key back before the heal in
+    # ``app/core/postgres_migrator.py`` skips keys whose target table is still missing.
     site_area_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
@@ -175,7 +177,7 @@ class DeliveryBooking(Base):
     # The movement this gate slot belongs to (Decision 3): a transport may own
     # several bookings, a booking stays the slot.
     # No database foreign key, for the reason given at ``LaydownZone.site_area_id``:
-    # checked on write, unlinked by the service when the transport is deleted.
+    # checked on write, unlinked by ``LogisticsPlanService.delete_transport``.
     transport_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     direction: Mapped[str] = mapped_column(String(10), nullable=False, default="inbound", server_default="inbound")
     gross_weight_t: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
