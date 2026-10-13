@@ -28,7 +28,9 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-EVIDENCE_STATES = ("met", "not_met", "unknown")
+# ``warning``: by the provider's own rule the gate may pass, and something is still outstanding.
+# It never blocks; a go has to name it, exactly like an unknown item of a blocking provider.
+EVIDENCE_STATES = ("met", "not_met", "unknown", "warning")
 ANY_AREA = "*"
 
 

@@ -48,7 +48,7 @@ import {
 } from '../decisionRules';
 import { frameContainerCode } from '../documentFiles';
 import { buildMatrix } from '../matrix';
-import { catalogueIdOf, catalogueName, humanizeCode, type LabelContext } from '../labels';
+import { catalogueIdOf, catalogueName, evidenceText, humanizeCode, type LabelContext } from '../labels';
 import { area, blocker, condition, detail, frameDocument, gate, gateDocument, matrixArea, matrixResponse, model } from './fixtures';
 
 const editor: Viewer = { userId: 'u-editor' };
@@ -601,6 +601,34 @@ describe('labels', () => {
     // hoai borrows its areas from neutral, so the neutral key must still be found
     expect(catalogueName(ctx(known), { kind: 'area', code: 'cost_finance', catalogueId: 'hoai_lph' })).toBe('Kosten und Finanzen');
     expect(catalogueName(ctx({}), { kind: 'area', code: 'cost_finance', catalogueId: 'hoai_lph' })).toBe('Cost finance');
+  });
+  describe('the text of an evidence item', () => {
+    const key = 'stakeholders.evidence.commitment_overdue';
+    const known = { [key]: 'Zusage {code} war am {due} f\u00e4llig' };
+    const text = { en: 'Commitment C-7 was due on 2026-10-01', de: 'Zusage C-7 war am 01.10.2026 f\u00e4llig' };
+    const say = (c: LabelContext, label: { key: string | null; text: Record<string, string> | null }) =>
+      evidenceText(c.t, c, { code: 'commitment_overdue', label });
+    it('is the sentence the server filled, so a sentence with values never shows its placeholders', () => {
+      const said = say(ctx(known), { key, text });
+      expect(said).toBe('Zusage C-7 war am 01.10.2026 f\u00e4llig');
+      expect(said).not.toMatch(/[{}]/);
+    });
+    it('falls back to the English the server filled when the reader has another language', () => {
+      expect(say(ctx(known), { key, text: { en: text.en } })).toBe('Commitment C-7 was due on 2026-10-01');
+      expect(say({ ...ctx(known), language: 'de-AT' }, { key, text })).toBe('Zusage C-7 war am 01.10.2026 f\u00e4llig');
+    });
+    it('reads the key only when the server filled no text', () => {
+      const plain = { 'plant.evidence.inspection_due': 'Pr\u00fcfung f\u00e4llig' };
+      expect(say(ctx(plain), { key: 'plant.evidence.inspection_due', text: null })).toBe('Pr\u00fcfung f\u00e4llig');
+      expect(say(ctx(plain), { key: 'plant.evidence.inspection_due', text: {} })).toBe('Pr\u00fcfung f\u00e4llig');
+      expect(say(ctx({}), { key: null, text: null })).toBe('Commitment overdue');
+    });
+    it('a source that failed or gave no answer keeps its own sentence', () => {
+      expect(evidenceText((k) => k, ctx({}), { code: 'x', error: true, label: { key, text } })).toBe(
+        'governance.evidence.provider_failed',
+      );
+      expect(evidenceText((k) => k, ctx({}), { code: 'budget:no_answer' })).toBe('governance.evidence.no_answer');
+    });
   });
   it('never returns a raw key', () => {
     expect(humanizeCode('schedule_logistics')).toBe('Schedule logistics');
