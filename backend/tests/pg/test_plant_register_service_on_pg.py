@@ -415,13 +415,18 @@ async def test_slot_held_needs_terms_and_a_commitment_for_a_fee_and_expires(worl
 
 
 async def test_other_modules_read_lead_time_and_dates_through_the_plant_item(world: World) -> None:
-    from app.modules.plant_register.reads import plant_item_dates
+    from app.modules.plant_register.reads import plant_item_dates, plant_items_dates
 
     iid = await item(world, need_date_fixed=date(2027, 11, 15))
     await quote(world, iid, lead_weeks_max=44, lead_basis="from_approved_drawings")
     async with world.factory() as s:
         d = await plant_item_dates(s, world.project_id, iid, today=TODAY)
         foreign = await plant_item_dates(s, uuid.uuid4(), iid, today=TODAY)
+        # The batch read answers the same for the same item and leaves out what is not of this project.
+        many = await plant_items_dates(s, world.project_id, [iid, uuid.uuid4(), iid], today=TODAY)
+        assert many == {iid: d}
+        assert await plant_items_dates(s, uuid.uuid4(), [iid], today=TODAY) == {}
+        assert await plant_items_dates(s, world.project_id, [], today=TODAY) == {}
     assert foreign is None
     assert (d.lead_time_days, d.enquiry_date, d.latest_order_date, d.long_lead) == (
         308,

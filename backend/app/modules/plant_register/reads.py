@@ -11,6 +11,7 @@ column of their own (rule 12, grep-tested).
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any
@@ -59,26 +60,39 @@ async def plant_item_dates(
     session: Any, project_id: uuid.UUID, plant_item_id: uuid.UUID, *, today: date | None = None
 ) -> PlantItemDates | None:
     """Derived dates of one item of this project; ``None`` for a missing or foreign item."""
-    from app.modules.plant_register.models import PlantItem
+    return (await plant_items_dates(session, project_id, [plant_item_id], today=today)).get(plant_item_id)
+
+
+async def plant_items_dates(
+    session: Any, project_id: uuid.UUID, plant_item_ids: Iterable[uuid.UUID], *, today: date | None = None
+) -> dict[uuid.UUID, PlantItemDates]:
+    """Derived dates of several items of this project in one read, keyed by item id.
+
+    An id that is missing, or belongs to another project, is simply absent
+    from the result. A caller with many linked rows (a matrix, a register)
+    asks once here instead of once per row: the quotes, slots and activities
+    of the project are loaded one time for all of them.
+    """
     from app.modules.plant_register.service import PlantService
 
-    svc = PlantService(session)
-    if await svc.repo.get_scoped(PlantItem, project_id, plant_item_id) is None:
-        return None
-    views = await svc.item_views(project_id, today=today or datetime.now(UTC).date(), only=[plant_item_id])
-    if not views:
-        return None
-    v = views[0]
-    weeks = v["effective_lead_weeks"]
-    return PlantItemDates(
-        plant_item_id=plant_item_id,
-        code=v["code"],
-        need_date=v["need_date"],
-        date_basis=v["date_basis"],
-        latest_order_date=v["latest_order_date"],
-        effective_lead_weeks=weeks,
-        lead_time_days=weeks * 7 if weeks is not None else None,
-        enquiry_date=v["basis_enquiry_date"],
-        lead_source=v["lead_source"],
-        long_lead=v["long_lead"],
-    )
+    wanted = list(dict.fromkeys(plant_item_ids))
+    if not wanted:
+        return {}
+    views = await PlantService(session).item_views(project_id, today=today or datetime.now(UTC).date(), only=wanted)
+    out: dict[uuid.UUID, PlantItemDates] = {}
+    for v in views:
+        weeks = v["effective_lead_weeks"]
+        item_id = v["item"].id
+        out[item_id] = PlantItemDates(
+            plant_item_id=item_id,
+            code=v["code"],
+            need_date=v["need_date"],
+            date_basis=v["date_basis"],
+            latest_order_date=v["latest_order_date"],
+            effective_lead_weeks=weeks,
+            lead_time_days=weeks * 7 if weeks is not None else None,
+            enquiry_date=v["basis_enquiry_date"],
+            lead_source=v["lead_source"],
+            long_lead=v["long_lead"],
+        )
+    return out
