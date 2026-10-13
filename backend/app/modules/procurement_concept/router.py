@@ -42,6 +42,7 @@ from app.modules.procurement_concept.messages import translate
 from app.modules.procurement_concept.schemas import (
     CandidateIn,
     CandidatePatch,
+    ConceptActionIn,
     ConceptSet,
     ExecutionIn,
     ExecutionLinkIn,
@@ -160,6 +161,8 @@ async def _concept_out(
         "resolved_release_gate_code": gate.code if gate is not None else None,
         # True when the model opens procurement in its first phase and no gate is named: null above is then final.
         "released_from_start": await svc.released_from_start(project_id, c),
+        # False on a project that never adopted a phase model: no gate is missing, gates are not used.
+        "gates_in_use": await svc.gates_in_use(project_id),
         "governance_area_code": hosting.area_code,
         "default_profile_id": str(c.default_profile_id) if c.default_profile_id else None,
         "submitted_by": str(c.submitted_by) if c.submitted_by else None,
@@ -247,16 +250,28 @@ _ACTIONS = {"submit": "in_review", "return": "draft"}
 @router.post("/projects/{project_id}/concept/{action}", dependencies=[EDIT])
 async def concept_action(
     project_id: uuid.UUID,
-    action: Literal["submit", "return"],
+    action: Literal["submit", "return", "approve", "reopen"],
     session: SessionDep,
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
+    body: ConceptActionIn | None = None,
 ) -> dict[str, Any]:
-    """Submit for the governance gate, or take it back. Approval is the gate decision, never a call here."""
+    """Submit the concept, or take it back; approve or reopen it by hand on a project without gates.
+
+    Where the project has gates the gate decision approves and a change request reopens: ``approve``
+    and ``reopen`` are then refused with 409 and the concept's ``can`` says they do not apply.
+    ``reopen`` takes ``{"reason": "..."}``, which is recorded; the other actions take no body.
+    """
     await verify_project_access(project_id, user_id, session)
     svc = ProcurementConceptService(session)
     can_manage = await _manage(payload)
-    await _run(svc.transition(project_id, _ACTIONS[action], actor_id=_uid(user_id), can_manage=can_manage))
+    if action == "approve":
+        await _run(svc.approve_by_hand(project_id, actor_id=_uid(user_id), can_manage=can_manage))
+    elif action == "reopen":
+        reason = (body.reason if body is not None else None) or ""
+        await _run(svc.reopen_by_hand(project_id, reason, actor_id=_uid(user_id), can_manage=can_manage))
+    else:
+        await _run(svc.transition(project_id, _ACTIONS[action], actor_id=_uid(user_id), can_manage=can_manage))
     return await _run(_concept_out(svc, project_id, user_id, can_manage))
 
 
@@ -307,6 +322,7 @@ async def list_gates(project_id: uuid.UUID, session: SessionDep, user_id: Curren
         release_gate_code=data["release_gate_code"],
         resolved_release_gate_code=data["resolved_release_gate_code"],
         released_from_start=data["released_from_start"],
+        gates_in_use=data["gates_in_use"],
     )
 
 

@@ -54,6 +54,7 @@ import {
   blockingFinding,
   can,
   closedCan,
+  noGatesCan,
   concept,
   packageCan,
   packageView,
@@ -151,6 +152,27 @@ describe('conceptSteps', () => {
   it('an approved and a binding concept offer no hand move', () => {
     expect(conceptSteps(concept({ state: 'approved', can: closedCan('concept_locked') }))).toEqual([]);
     expect(conceptSteps(concept({ state: 'binding', can: closedCan('binding_requires_change_request') }))).toEqual([]);
+  });
+
+  it('offers approval and reopening by hand only where the server says they apply', () => {
+    const submitted = concept({ state: 'in_review', gates_in_use: false, can: noGatesCan({ edit_plan: 'concept_locked', submit: 'invalid_transition' }) });
+    expect(conceptSteps(submitted)).toEqual([
+      { action: 'approve', verdict: null, primary: true },
+      { action: 'return', verdict: null, primary: false },
+    ]);
+    // A draft shows approval refused with its reason, beside the submit that leads to it.
+    const draft = concept({ gates_in_use: false, can: noGatesCan({ approve: 'concept_not_submitted', return: 'invalid_transition' }) });
+    expect(conceptSteps(draft)).toEqual([
+      { action: 'submit', verdict: null, primary: true },
+      { action: 'approve', verdict: 'concept_not_submitted', primary: false },
+    ]);
+    const open = { allowed: true, reason: null, applies: true };
+    const approved = concept({
+      state: 'approved',
+      gates_in_use: false,
+      can: noGatesCan({ edit_plan: 'concept_locked', submit: 'invalid_transition', return: 'invalid_transition', approve: 'invalid_transition' }, { reopen: open }),
+    });
+    expect(conceptSteps(approved)).toEqual([{ action: 'reopen', verdict: null, primary: false }]);
   });
 
   it('reads the steps from the flags, never from the state', () => {

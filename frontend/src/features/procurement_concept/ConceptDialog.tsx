@@ -66,7 +66,9 @@ export function ConceptDialog({ open, onClose, projectId, concept, catalogues, c
 
   // The gate is named on an existing concept only: who may name it is the server's call, sent with the concept.
   const gateOff = concept ? gateVerdict(concept) : null;
-  const gatesQ = useGates(projectId, open && !!concept);
+  // The server's answer: the project never adopted a phase model, so there is no gate to name.
+  const gatesUnused = concept?.gates_in_use === false;
+  const gatesQ = useGates(projectId, open && !!concept && !gatesUnused);
   const gates = gatesQ.data ?? [];
   const tagged = gates.find((g) => g.tagged_release_gate);
   // The server's answer: the phase model opens procurement in its first phase, so no gate releases it.
@@ -215,7 +217,19 @@ export function ConceptDialog({ open, onClose, projectId, concept, catalogues, c
           </div>
         )}
 
-        {concept && (
+        {concept && gatesUnused && (
+          <div className="text-sm" role="note" data-testid="gates-not-used">
+            <p className="font-medium text-content-primary">
+              {t('procurement_concept.ui.concept.release_gate', { defaultValue: 'Gate that releases procurement' })}
+            </p>
+            <p className="mt-1 text-content-secondary">
+              {t('procurement_concept.ui.concept.gates_not_used', {
+                defaultValue: 'This project does not use gates, so no gate releases procurement. A gate can be named here once the project has a phase model.',
+              })}
+            </p>
+          </div>
+        )}
+        {concept && !gatesUnused && (
           <Field
             label={t('procurement_concept.ui.concept.release_gate', { defaultValue: 'Gate that releases procurement' })}
             htmlFor="pc-gate"

@@ -170,6 +170,16 @@ describe('ProcurementConceptPage states', () => {
     });
   });
 
+  it('says gates are not used instead of an empty picker, and asks for no gates', async () => {
+    loaded();
+    mocked.getConcept.mockResolvedValue(concept({ resolved_release_gate_code: null, gates_in_use: false }));
+    renderPage('/projects/p1/procurement-concept?tab=record');
+    fireEvent.click(await screen.findByTestId('concept-edit'));
+    expect(await screen.findByTestId('gates-not-used')).toHaveTextContent('This project does not use gates');
+    expect(document.getElementById('pc-gate')).toBeNull();
+    expect(mocked.listGates).not.toHaveBeenCalled();
+  });
+
   it('offers no gate as the standing choice where procurement is open from the start', async () => {
     loaded();
     mocked.getConcept.mockResolvedValue(concept({ resolved_release_gate_code: null, released_from_start: true }));

@@ -289,6 +289,8 @@ async def _untagged_model_says_release_unknown(world: World) -> None:
     gates = await svc_call(world, "gate_options", world.project_id)
     assert [g["tagged_release_gate"] for g in gates["items"]] == [False] * len(gates["items"])
     assert gates["resolved_release_gate_code"] is None
+    # The project has gates and none of them is the release gate: that is the gap worth a warning.
+    assert gates["gates_in_use"] is True
     await add_contract_package(world, "W1", "construction")
     await put(world, "W1", OPEN_WORKS)
     found = await svc_call(world, "findings", world.project_id)
@@ -458,6 +460,31 @@ async def test_a_leftover_advance_flag_never_lets_a_package_start_before_the_con
         with pytest.raises(ProcurementError) as exc:
             await execute(world, "S1")
         assert (exc.value.code, exc.value.status_code) == ("concept_not_approved", 409)
+
+
+async def test_a_concept_with_a_blocking_finding_is_not_approved_by_hand() -> None:
+    """The same bar the gate evidence sets: submitted, and nothing that blocks."""
+    async with isolated_engine() as engine:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        world = await build_world(factory, model=False)
+        await add_contract_package(world, "W1", "construction")
+        # An advance package nothing released is an error on any project.
+        await put(world, "W1", {**OPEN_WORKS, "is_advance": True, "advance_reason": "Piling before permit"})
+        await svc_call(world, "transition", world.project_id, "in_review", actor_id=world.manager, can_manage=True)
+        with pytest.raises(ProcurementError) as exc:
+            await svc_call(world, "approve_by_hand", world.project_id, actor_id=world.editor, can_manage=True)
+        assert (exc.value.code, exc.value.status_code) == ("concept_has_blocking_findings", 422)
+        assert "advance_package_not_released" in {v["code"] for v in exc.value.violations}
+        concept, state = await _concept(world)
+        assert (state, concept.approved_by, concept.approved_at) == ("in_review", None, None)
+        # Taken back, corrected and submitted again, the second person approves it.
+        await svc_call(world, "transition", world.project_id, "draft", actor_id=world.manager, can_manage=True)
+        await put(world, "W1", {"is_advance": False})
+        await svc_call(world, "transition", world.project_id, "in_review", actor_id=world.manager, can_manage=True)
+        await svc_call(world, "approve_by_hand", world.project_id, actor_id=world.editor, can_manage=True)
+        concept, state = await _concept(world)
+        assert (state, concept.approved_by) == ("approved", world.editor)
+        assert concept.approved_at is not None
 
 
 # ── Plan and steering ───────────────────────────────────────────────────

@@ -66,6 +66,14 @@ class Page[T](BaseModel):
 # ── Concept ──────────────────────────────────────────────────────────────
 
 
+class ConceptActionIn(BaseModel):
+    """Body of a concept action. Only ``reopen`` reads it: the reason is recorded with the reopening."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str | None = Field(default=None, max_length=2000)
+
+
 class ConceptSet(_In):
     """Create or change the concept. Absent fields keep their value."""
 

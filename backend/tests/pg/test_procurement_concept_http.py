@@ -120,13 +120,18 @@ async def test_a_viewer_reads_and_cannot_write(world: World) -> None:
     assert [r.status_code for r in writes] == [403, 403, 403]
 
 
-async def test_there_is_no_approve_or_reopen_route(world: World) -> None:
+async def test_no_route_sets_a_concept_state_by_name_and_gates_leave_no_approval_by_hand(world: World) -> None:
     async with client_as(world, world.manager, "manager") as c:
         assert (await c.put(_pkg(world), json=OPEN_WORKS)).status_code == 200
         assert (await c.post(_p(world, "/concept/submit"))).status_code == 200
-        for action in ("approve", "reopen", "approved", "binding"):
+        for action in ("approved", "binding", "reopened"):
             r = await c.post(_p(world, f"/concept/{action}"))
             assert r.status_code in (404, 405, 422), action
+        # The two hand actions are routes since a project without gates needs them. This project has gates,
+        # so the gate decision approves and both are refused by name.
+        for action in ("approve", "reopen"):
+            r = await c.post(_p(world, f"/concept/{action}"))
+            assert r.status_code == 409, action
     assert await _stored_state(world) == "in_review"
 
 
@@ -511,6 +516,94 @@ async def test_a_framework_supplier_link_can_be_changed_and_cleared(world: World
     assert (cleared.status_code, cleared.json()["subcontractor_id"]) == (200, None)
 
 
+async def _reopen_reasons(w: World) -> list[str | None]:
+    from sqlalchemy import select
+
+    from app.core.audit_log import ActivityLog
+
+    async with w.factory() as s:
+        rows = await s.execute(
+            select(ActivityLog.reason).where(
+                ActivityLog.entity_type == "procurement_concept", ActivityLog.action == "reopened"
+            )
+        )
+        return list(rows.scalars().all())
+
+
+async def test_a_project_without_gates_approves_and_reopens_its_concept_by_hand() -> None:
+    """No gate decision exists to approve it, so a second person with the manage right does."""
+    from app.modules.procurement_concept.permissions import register_procurement_concept_permissions
+
+    register_procurement_concept_permissions()
+    async with isolated_engine() as engine:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        w = await build_world(factory, model=False)
+        await add_contract_package(w, "W1", "construction")
+        await add_contract_package(w, "W2", "construction")
+        async with client_as(w, w.manager, "manager") as c:
+            assert (await c.put(_pkg(w), json=OPEN_WORKS)).status_code == 200
+            assert (await c.put(_pkg(w, "W2"), json=OPEN_WORKS)).status_code == 200
+            can = (await c.get(_p(w, "/concept"))).json()["can"]
+            assert can["approve"] == _no("concept_not_submitted")
+            assert can["reopen"] == _na("invalid_transition")
+            early = await c.post(_p(w, "/concept/approve"))
+            assert (early.status_code, early.json()["detail"]["code"]) == (409, "concept_not_submitted")
+            assert (await c.post(_p(w, "/concept/submit"))).json()["state"] == "in_review"
+            # Four-eyes is on for a project without a phase model: the submitter does not approve.
+            can = (await c.get(_p(w, "/concept"))).json()["can"]
+            assert can["approve"] == _no("approver_is_submitter")
+            own = await c.post(_p(w, "/concept/approve"))
+            assert (own.status_code, own.json()["detail"]["code"]) == (403, can["approve"]["reason"])
+        async with client_as(w, w.editor, "editor") as c:
+            assert (await c.get(_p(w, "/concept"))).json()["can"]["approve"] == _no("approval_needs_manager")
+            denied = await c.post(_p(w, "/concept/approve"))
+            assert (denied.status_code, denied.json()["detail"]["code"]) == (403, "approval_needs_manager")
+        async with client_as(w, w.editor, "manager") as c:
+            assert (await c.get(_p(w, "/concept"))).json()["can"]["approve"] == YES
+            approved = await c.post(_p(w, "/concept/approve"))
+            body = approved.json()
+            assert (approved.status_code, body["state"]) == (200, "approved")
+            # Who and when is on the record, and it is not the submitter.
+            assert (body["approved_by"], body["submitted_by"]) == (str(w.editor), str(w.manager))
+            assert body["approved_at"] and body["four_eyes_violated"] is False
+            assert (await c.get(_p(w, "/readiness"))).json()["approved"] is True
+            # The first thing approval unlocks: a package goes to tendering like on any other project.
+            assert (await _row(c, w, "W2"))["can"]["create_execution"] == YES
+            assert (await c.post(_pkg(w, "W2", tail="/execution"), json={})).status_code == 201
+            # Approved, the plan is locked; reopening is what lets it change again.
+            locked = await c.put(_pkg(w), json={"procedure_code": "restricted"})
+            assert (locked.status_code, locked.json()["detail"]["code"]) == (409, "concept_locked")
+        async with client_as(w, w.manager, "editor") as c:
+            denied = await c.post(_p(w, "/concept/reopen"), json={"reason": "Scope of the works package changed"})
+            assert (denied.status_code, denied.json()["detail"]["code"]) == (403, "approval_needs_manager")
+        async with client_as(w, w.manager, "manager") as c:
+            assert (await c.get(_p(w, "/concept"))).json()["can"]["reopen"] == YES
+            # Reopening an approved plan is an act with a reason, and the reason is kept.
+            for body in (None, {}, {"reason": "   "}):
+                bare = await c.post(_p(w, "/concept/reopen"), json=body)
+                assert (bare.status_code, bare.json()["detail"]["code"]) == (422, "reopen_reason_required"), body
+            reopened = await c.post(_p(w, "/concept/reopen"), json={"reason": "Scope of the works package changed"})
+            assert (reopened.status_code, reopened.json()["state"]) == (200, "reopened")
+            assert await _reopen_reasons(w) == ["Scope of the works package changed"]
+            assert (await c.put(_pkg(w), json={"procedure_code": "restricted"})).status_code == 200
+            assert (await c.post(_p(w, "/concept/submit"))).json()["state"] == "in_review"
+
+
+async def test_where_gates_are_in_use_the_concept_is_never_approved_or_reopened_by_hand(world: World) -> None:
+    """The gate decision approves and a change request reopens: the hand actions do not exist there."""
+    async with client_as(world, world.manager, "manager") as c:
+        assert (await c.put(_pkg(world), json=OPEN_WORKS)).status_code == 200
+        assert (await c.post(_p(world, "/concept/submit"))).json()["state"] == "in_review"
+    async with client_as(world, world.editor, "manager") as c:
+        can = (await c.get(_p(world, "/concept"))).json()["can"]
+        assert can["approve"] == _na("approved_by_gate_decision")
+        assert can["reopen"] == _na("reopened_by_change_request")
+        for action, code in (("approve", "approved_by_gate_decision"), ("reopen", "reopened_by_change_request")):
+            refused = await c.post(_p(world, f"/concept/{action}"))
+            assert (refused.status_code, refused.json()["detail"]["code"]) == (409, code)
+        assert (await c.get(_p(world, "/concept"))).json()["state"] == "in_review"
+
+
 async def test_a_project_without_a_phase_model_answers_unknown_and_empty_pickers() -> None:
     """Governance has no row for the project: every read answers, nothing is guessed, nothing is a 500."""
     from types import SimpleNamespace
@@ -548,8 +641,10 @@ async def test_a_project_without_a_phase_model_answers_unknown_and_empty_pickers
             gates = reads["/gates"].json()
             assert (gates["items"], gates["resolved_release_gate_code"]) == ([], None)
             assert reads["/advance-releases"].json()["items"] == []
-            # The release is not known, and the findings say so instead of treating it as nothing to wait for.
-            assert "release_gate_unresolved" in {f["code"] for f in reads["/findings"].json()["items"]}
+            # The project never adopted gates. That is how it is run, so both reads say so and no finding
+            # reports a release gate as missing: there is none to miss.
+            assert (gates["gates_in_use"], reads["/concept"].json()["gates_in_use"]) == (False, False)
+            assert "release_gate_unresolved" not in {f["code"] for f in reads["/findings"].json()["items"]}
             # A gate cannot be named either: the project has none.
             named = await c.put(_p(w, "/concept"), json={"release_gate_code": "any_gate"})
             assert (named.status_code, named.json()["detail"]["code"]) == (422, "release_gate_unknown")

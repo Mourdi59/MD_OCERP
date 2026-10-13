@@ -46,7 +46,7 @@ export type PriceSignal = 'below_estimate' | 'in_line' | 'above_estimate' | 'unk
 export type SoundingMethod = 'survey' | 'meeting' | 'rfi' | 'notice';
 export type CallOffMode = 'direct' | 'mini_competition';
 export type PackageAction = 'hold' | 'resume' | 'cancel';
-export type ConceptAction = 'submit' | 'return';
+export type ConceptAction = 'submit' | 'return' | 'approve' | 'reopen';
 export type AdvanceReleaseKind = 'gate_decision' | 'condition' | 'commitment';
 export type EvaluationMethod = 'lowest_price' | 'best_value';
 export type CostRefKind = 'boq_section';
@@ -149,6 +149,8 @@ export interface Concept {
   resolved_release_gate_code: string | null;
   /** The phase model opens procurement in its first phase: no gate releases it, and none is missing. */
   released_from_start?: boolean;
+  /** False on a project that never adopted a phase model: it has no gates, so none releases procurement. */
+  gates_in_use?: boolean;
   governance_area_code: string | null;
   default_profile_id: string | null;
   submitted_by: string | null;
@@ -165,6 +167,9 @@ export interface Concept {
     submit: Capability;
     return: Capability;
     set_gate_fields: Capability;
+    /** Approval and reopening by hand exist only on a project without gates; with gates they do not apply. */
+    approve: Capability;
+    reopen: Capability;
   };
 }
 
@@ -704,10 +709,18 @@ export function setConcept(projectId: string, body: ConceptInput): Promise<Conce
   return apiPut<Concept>(`/v1/procurement-concept/projects/${projectId}/concept`, body);
 }
 
-/** Submit for the gate, or return to draft. Approval is the governance gate's, so there is no route for it here. */
-export function conceptAction(projectId: string, action: ConceptAction): Promise<Concept> {
-  return apiPost<Concept>(`/v1/procurement-concept/projects/${projectId}/concept/${action}`, {});
+/**
+ * A hand move on the concept. Submit and return exist everywhere. Approve and
+ * reopen exist only on a project without gates; with gates the gate decision
+ * approves and a change request reopens, and the server refuses both here.
+ * Reopening carries its reason, which the server records; no other move has a body.
+ */
+export function conceptAction(projectId: string, action: ConceptAction, reason?: string): Promise<Concept> {
+  return apiPost<Concept>(`/v1/procurement-concept/projects/${projectId}/concept/${action}`, action === 'reopen' ? { reason: reason ?? '' } : {});
 }
+
+/** The longest reason the server keeps with a reopening. */
+export const REOPEN_REASON_MAX = 2000;
 
 export function getReadiness(projectId: string): Promise<Readiness> {
   return apiGet<Readiness>(`/v1/procurement-concept/projects/${projectId}/readiness`);
