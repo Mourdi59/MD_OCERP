@@ -396,6 +396,16 @@ describe('ConceptRecord', () => {
     expect(screen.getByTestId('concept-record')).toHaveTextContent('Not known yet');
   });
 
+  it('says gates are not used on a project without a phase model', () => {
+    record({ concept: concept({ resolved_release_gate_code: null, gates_in_use: false }) });
+    expect(screen.getByTestId('concept-record')).toHaveTextContent('None, this project does not use gates');
+    expect(screen.getByTestId('concept-record')).not.toHaveTextContent('Not known yet');
+    cleanup();
+    // Gates in use and none resolved is the real gap and keeps its words.
+    record({ concept: concept({ resolved_release_gate_code: null, gates_in_use: true, released_from_start: false }) });
+    expect(screen.getByTestId('concept-record')).toHaveTextContent('Not known yet');
+  });
+
   it('says procurement is open from the start where the phase model has no release gate', () => {
     record({ concept: concept({ resolved_release_gate_code: null, released_from_start: true }) });
     expect(screen.getByTestId('concept-record')).toHaveTextContent('None, procurement is open from the project start');
