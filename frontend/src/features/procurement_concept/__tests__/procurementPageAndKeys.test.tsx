@@ -66,6 +66,11 @@ import {
 
 const mocked = vi.mocked(api);
 const page = <T,>(items: T[]) => ({ items, total: items.length, offset: 0, limit: items.length });
+/** A list that also answers what the caller may do with it: every named flag allowed. */
+const pageCan = <T, K extends string>(items: T[], ...flags: K[]) => ({
+  ...page(items),
+  can: Object.fromEntries(flags.map((k) => [k, { allowed: true, reason: null, applies: true }])) as Record<K, api.Capability>,
+});
 
 function renderPage(url = '/projects/p1/procurement-concept') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -85,10 +90,10 @@ function loaded() {
   mocked.listPackages.mockResolvedValue(page([packageView(), unplannedPackage, agreementPackage]));
   mocked.listFindings.mockResolvedValue(page([blockingFinding, warningFinding]));
   mocked.getPinnedCatalogue.mockResolvedValue(catalogue);
-  mocked.listProfiles.mockResolvedValue(page([profile]));
-  mocked.listFrameworks.mockResolvedValue(page([framework]));
+  mocked.listProfiles.mockResolvedValue(pageCan([profile], 'create'));
+  mocked.listFrameworks.mockResolvedValue(pageCan([framework], 'create'));
   mocked.listProjectFrameworks.mockResolvedValue(page([framework]));
-  mocked.listSoundings.mockResolvedValue(page([soundingTight]));
+  mocked.listSoundings.mockResolvedValue(pageCan([soundingTight], 'create', 'edit', 'delete'));
   mocked.getSchedule.mockResolvedValue(schedule);
   mocked.listCandidates.mockResolvedValue(matrix());
 }

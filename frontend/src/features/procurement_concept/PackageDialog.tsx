@@ -17,7 +17,6 @@ import { WideModal } from '@/shared/ui/WideModal';
 import { fmtDate } from '@/shared/lib/formatters';
 
 import {
-  errorText,
   putPackage,
   type EvaluationMethod,
   type Framework,
@@ -36,6 +35,7 @@ import {
   TENDER_BASIS,
   THRESHOLD_STATUS,
   catalogueName,
+  errorText,
   vocab,
   type LabelContext,
 } from './labels';
