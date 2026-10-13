@@ -854,7 +854,9 @@ export function transferItem(projectId: string, itemId: string, body: TransferIn
 
 /** Where the item may go: this project first, then the caller's other projects, each with the server's verdict. */
 export function listTransferTargets(projectId: string, itemId: string): Promise<TransferTarget[]> {
-  return apiGet<TransferTarget[]>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/transfer-targets`);
+  // The route answers the list envelope; the form needs the rows only.
+  const answer = apiGet<Page<TransferTarget>>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/transfer-targets`);
+  return answer.then((page) => page.items);
 }
 
 export function getReferences(projectId: string): Promise<References> {
