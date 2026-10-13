@@ -1593,5 +1593,150 @@
     "en_value": "{{name}}, {{date}}",
     "note": "template made only of placeholders and a comma, nothing to translate",
     "reason_category": "template_only"
+  },
+  "commitment.end.target_option": {
+    "en_value": "{{code}} {{title}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "commitment.page.export_pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "commitment.page.export_xlsx": {
+    "en_value": "Excel",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "commitment.refs.frame_document": {
+    "en_value": "{{document}} ({{area}})",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "commitment.refs.funding": {
+    "en_value": "{{code}} {{title}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "governance.project.attach.container_option": {
+    "en_value": "{{code}}: {{title}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "permits.ui.conditions.view_count": {
+    "en_value": "{{view}} ({{n}})",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "permits.ui.export_pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "permits.ui.refused_line": {
+    "en_value": "{{action}}: {{reason}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "plant.catalogue.redundancy.2n": {
+    "en_value": "2N",
+    "note": "redundancy notation (N, N+1, 2N) used as written in every engineering language",
+    "reason_category": "standard_code"
+  },
+  "plant.catalogue.redundancy.2n_plus_1": {
+    "en_value": "2N+1",
+    "note": "redundancy notation (N, N+1, 2N) used as written in every engineering language",
+    "reason_category": "standard_code"
+  },
+  "plant.catalogue.redundancy.n": {
+    "en_value": "N",
+    "note": "redundancy notation (N, N+1, 2N) used as written in every engineering language",
+    "reason_category": "standard_code"
+  },
+  "plant.catalogue.redundancy.n_plus_1": {
+    "en_value": "N+1",
+    "note": "redundancy notation (N, N+1, 2N) used as written in every engineering language",
+    "reason_category": "standard_code"
+  },
+  "plant.catalogue.redundancy.n_plus_2": {
+    "en_value": "N+2",
+    "note": "redundancy notation (N, N+1, 2N) used as written in every engineering language",
+    "reason_category": "standard_code"
+  },
+  "plant.common.ok": {
+    "en_value": "OK",
+    "note": "status mark OK, kept as is in the locales that share it",
+    "reason_category": "abbreviation"
+  },
+  "plant.common.pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "plant.common.xlsx": {
+    "en_value": "Excel",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "qualityConcept.export.pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "qualityConcept.stages.detail_title": {
+    "en_value": "{{system}}: {{stage}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "stakeholders.ui.assessment.score_value": {
+    "en_value": "{{name}} {{value}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "stakeholders.ui.commitment.blocked_line": {
+    "en_value": "{{action}}: {{reason}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "stakeholders.ui.grid.axis": {
+    "en_value": "{{name}} {{value}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "stakeholders.ui.link.coded": {
+    "en_value": "{{code}}: {{title}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "stakeholders.ui.link.dated": {
+    "en_value": "{{title}} ({{date}})",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "stakeholders.ui.link.requirement": {
+    "en_value": "{{entity}}, {{attribute}} ({{set}})",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "stakeholders.ui.mandate.cell": {
+    "en_value": "{{decision}}: {{holder}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "stakeholders.ui.register.engagement_pair": {
+    "en_value": "{{current}} / {{desired}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "stakeholders.ui.role.person_of_company": {
+    "en_value": "{{name}} ({{company}})",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "stakeholders.ui.stakeholder.position_value": {
+    "en_value": "{{lat}}, {{lon}}",
+    "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
+    "reason_category": "template_only"
   }
 }

@@ -1650,5 +1650,166 @@
     ],
     "key_count_at_seed": 3,
     "note": "Normal, the ordinary word for a priority level in Danish, German, Spanish, Indonesian, Norwegian, Portuguese, Swedish and Turkish, spelled the same as English: rfi.priority_normal, takeoff_crosslink.priority_normal, tasks.priority_normal. Checked each value rather than the count."
+  },
+  {
+    "locale_set": [
+      "fil",
+      "it"
+    ],
+    "key_count_at_seed": 6,
+    "note": "Reviewed 2026-10-13 with the eleven project management modules: the members are words the listed languages write as in English (Status, Position, Investor, Code, Neutral, Regime, File, Project manager in Italian as cases.* already has it) or template-only strings, not an untranslated block."
+  },
+  {
+    "locale_set": [
+      "fil",
+      "fr",
+      "nl"
+    ],
+    "key_count_at_seed": 5,
+    "note": "Reviewed 2026-10-13 with the eleven project management modules: the members are words the listed languages write as in English (Status, Position, Investor, Code, Neutral, Regime, File, Project manager in Italian as cases.* already has it) or template-only strings, not an untranslated block."
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "hr",
+      "id",
+      "nl",
+      "no",
+      "pl",
+      "pt-BR",
+      "sv"
+    ],
+    "key_count_at_seed": 4,
+    "note": "Reviewed 2026-10-13 with the eleven project management modules: the members are words the listed languages write as in English (Status, Position, Investor, Code, Neutral, Regime, File, Project manager in Italian as cases.* already has it) or template-only strings, not an untranslated block."
+  },
+  {
+    "locale_set": [
+      "de",
+      "fr",
+      "sv"
+    ],
+    "key_count_at_seed": 4,
+    "note": "Reviewed 2026-10-13 with the eleven project management modules: the members are words the listed languages write as in English (Status, Position, Investor, Code, Neutral, Regime, File, Project manager in Italian as cases.* already has it) or template-only strings, not an untranslated block."
+  },
+  {
+    "locale_set": [
+      "cs",
+      "da",
+      "de",
+      "et",
+      "id",
+      "no"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-13 with the eleven project management modules: the members are words the listed languages write as in English (Status, Position, Investor, Code, Neutral, Regime, File, Project manager in Italian as cases.* already has it) or template-only strings, not an untranslated block."
+  },
+  {
+    "locale_set": [
+      "it",
+      "pt",
+      "pt-BR"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-13 with the eleven project management modules: the members are words the listed languages write as in English (Status, Position, Investor, Code, Neutral, Regime, File, Project manager in Italian as cases.* already has it) or template-only strings, not an untranslated block."
+  },
+  {
+    "locale_set": [
+      "ar",
+      "bg",
+      "bn",
+      "cs",
+      "da",
+      "de",
+      "el",
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "et",
+      "fa",
+      "fi",
+      "fr",
+      "he",
+      "hi",
+      "hr",
+      "hu",
+      "id",
+      "it",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "pt-BR",
+      "ro",
+      "ru",
+      "sv",
+      "th",
+      "tr",
+      "uk",
+      "ur",
+      "vi"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-13 with the eleven project management modules: the members are words the listed languages write as in English (Status, Position, Investor, Code, Neutral, Regime, File, Project manager in Italian as cases.* already has it) or template-only strings, not an untranslated block."
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "fil",
+      "sv"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-13 with the eleven project management modules: the members are words the listed languages write as in English (Status, Position, Investor, Code, Neutral, Regime, File, Project manager in Italian as cases.* already has it) or template-only strings, not an untranslated block."
+  },
+  {
+    "locale_set": [
+      "ar",
+      "bg",
+      "bn",
+      "cs",
+      "da",
+      "de",
+      "el",
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "et",
+      "fa",
+      "fi",
+      "fil",
+      "he",
+      "hi",
+      "hr",
+      "hu",
+      "id",
+      "it",
+      "ja",
+      "kk",
+      "ko",
+      "ky",
+      "mn",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "pt-BR",
+      "ro",
+      "ru",
+      "sv",
+      "th",
+      "tr",
+      "uk",
+      "ur",
+      "vi"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-13 with the eleven project management modules: the members are words the listed languages write as in English (Status, Position, Investor, Code, Neutral, Regime, File, Project manager in Italian as cases.* already has it) or template-only strings, not an untranslated block."
   }
 ]
