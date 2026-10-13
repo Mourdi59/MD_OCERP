@@ -351,6 +351,29 @@ describe('gate and area of an item', () => {
     expect(plantItemOptions(references({ plant_items: { available: true, items: [] } }), labels, { id: 'pl9', code: 'PL-009' })).toHaveLength(1);
   });
 
+  it('a project that does not use gates hides the gate and the area, and says why', async () => {
+    mocked.getReferences.mockResolvedValue(references({ gates_in_use: false, gates: [] }));
+    dialog();
+    expect(await screen.findByTestId('item-gates-not-in-use')).toBeInTheDocument();
+    expect(byId('item-gate')).toBeNull();
+    expect(byId('item-area')).toBeNull();
+  });
+
+  it('on a project without gates a stored gate is shown read-only with the reason, and saving does not ask for its area', async () => {
+    mocked.getReferences.mockResolvedValue(references({ gates_in_use: false, gates: [] }));
+    mocked.updateItem.mockResolvedValue(item());
+    dialog({ gate_code: 'old_gate', governance_area_code: null });
+    await waitFor(() => expect(byId('item-gate')).not.toBeNull());
+    expect(byId<HTMLSelectElement>('item-gate').disabled).toBe(true);
+    expect(byId<HTMLSelectElement>('item-area').disabled).toBe(true);
+    expect(byId<HTMLSelectElement>('item-gate').value).toBe('old_gate');
+    expect(screen.getByTestId('item-gates-off-stored').textContent).toContain('does not use gates');
+    fireEvent.change(byId('item-title'), { target: { value: 'Renamed' } });
+    fireEvent.click(screen.getByTestId('item-save'));
+    await waitFor(() => expect(mocked.updateItem).toHaveBeenCalledTimes(1));
+    expect(mocked.updateItem.mock.calls[0]![2]).toEqual({ title: 'Renamed' });
+  });
+
   it('a project without phases and gates says so instead of showing empty selects', async () => {
     mocked.getReferences.mockResolvedValue(NO_MODEL);
     dialog();

@@ -41819,6 +41819,7 @@ const resource = {
     "commitment.item_form.gate_none": "No gate",
     "commitment.item_form.gate_title": "Readiness gate",
     "commitment.item_form.gates_not_in_use": "This project does not use gates, so the item is not tied to one. Releases, holds and aborts are decided on the approval tiers as everywhere else.",
+    "commitment.item_form.gates_off_stored": "This project does not use gates. What was stored on this item earlier is shown here and kept as it is: it is not checked and cannot be changed.",
     "commitment.item_form.lead_time": "Lead time, days",
     "commitment.item_form.lead_time_overridden": "The lead time in force comes from the linked plant item. The figure typed here applies only without that link.",
     "commitment.item_form.owner": "Owner",

@@ -49324,6 +49324,7 @@ const resource = {
     "commitment.item_form.gate_none": "Kein Gate",
     "commitment.item_form.gate_title": "Gate der Reifeprüfung",
     "commitment.item_form.gates_not_in_use": "Dieses Projekt arbeitet ohne Gates, die Position ist also keinem zugeordnet. Über Freigaben, Halt und Abbruch entscheiden wie überall die Freigabestufen.",
+    "commitment.item_form.gates_off_stored": "Dieses Projekt arbeitet ohne Gates. Was früher an dieser Position gespeichert wurde, wird hier gezeigt und bleibt unverändert: Es wird nicht geprüft und kann nicht geändert werden.",
     "commitment.item_form.lead_time": "Vorlaufzeit in Tagen",
     "commitment.item_form.lead_time_overridden": "Die geltende Vorlaufzeit kommt aus der verknüpften Position des Geräte- und Anlagenregisters. Der hier eingetragene Wert gilt nur ohne diese Verknüpfung.",
     "commitment.item_form.owner": "Verantwortliche Person",
