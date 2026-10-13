@@ -514,6 +514,54 @@ async def _seed_demo(w) -> dict:
     return totals
 
 
+async def test_the_seed_writes_no_file_about_an_account_and_logs_nothing_above_info(factory, caplog) -> None:
+    import logging
+
+    from app.modules.staffing.models import PersonnelFile, PositionFill
+    from app.modules.teams.models import RosterMember
+    from tests.pg.governance_fixtures import add_user
+
+    w = await build_world(factory)
+    async with w.factory() as s:
+        # Somebody else's account in the installation, on no project of ours.
+        foreign = await add_user(s, "manager")
+        # A real colleague on the roster: the row is linked to an account.
+        first = (
+            (
+                await s.execute(
+                    select(RosterMember)
+                    .where(RosterMember.project_id == w.project_id)
+                    .order_by(RosterMember.created_at, RosterMember.id)
+                )
+            )
+            .scalars()
+            .first()
+        )
+        first.user_id = w.editor
+        linked = first.id
+        await s.commit()
+    with caplog.at_level(logging.INFO, logger="app.modules.staffing"):
+        totals = await _seed_demo(w)
+    assert totals["projects"] == 1 and totals["fills"] >= 5 and totals["submitted"] == 1
+    loud = [r for r in caplog.records if r.name.startswith("app.modules.staffing") and r.levelno > logging.INFO]
+    assert [r.getMessage() for r in loud] == []
+
+    async with w.factory() as s:
+        files = (await s.execute(select(PersonnelFile).where(PersonnelFile.project_id == w.project_id))).scalars().all()
+        fills = (await s.execute(select(PositionFill).where(PositionFill.project_id == w.project_id))).scalars().all()
+        people = {
+            m.id: m
+            for m in (await s.execute(select(RosterMember).where(RosterMember.project_id == w.project_id))).scalars()
+        }
+    assert files and fills
+    assert linked not in {f.roster_member_id for f in files} | {f.roster_member_id for f in fills}
+    assert all(people[f.roster_member_id].user_id is None for f in files)
+    # Line manager and confirmer are the project owner; the foreign account is on no seeded row.
+    positions = await call(w, "position_views", admin(w))
+    assert {p["owner_user_id"] for p in positions} == {str(w.manager)}
+    assert str(foreign) not in str(positions)
+
+
 async def test_before_the_gate_into_construction_the_seed_puts_nobody_on_site(factory) -> None:
     from app.modules.credentials.models import Credential
     from app.modules.project_governance.models import GovernanceGate
@@ -561,9 +609,12 @@ async def test_before_the_gate_into_construction_the_seed_puts_nobody_on_site(fa
     assert ready["key_roles_required"] is True
     # Key roles this gate does not ask for are still vacant, and named as such.
     assert {"commissioning_manager", "operator_plant_manager"} <= set(ready["open_key_roles"])
-    states = {i.code: i.state for i in await _evidence(w, PERSONNEL_AREA)}
+    found = await _evidence(w, PERSONNEL_AREA)
+    states = {i.code: i.state for i in found}
     assert "not_met" not in states.values() and "unknown" not in states.values()
     assert states["staffing_key_roles_filled"] == "met"
+    # One warning for the decider, naming the vacant key roles this gate does not ask for.
+    assert [i.detail for i in found if i.state == "warning"] == ["commissioning_manager, operator_plant_manager"]
     matrix = await call(w, "compliance_matrix", owner)
     cells = {c["state"] for row in matrix["items"] for c in row["cells"].values()}
     assert {"valid", "expiring", "missing", "waived"} <= cells

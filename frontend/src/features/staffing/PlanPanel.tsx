@@ -145,8 +145,8 @@ export function PlanPanel({
   const lockedReason = whyNot(labels.t, plan.can.edit) || undefined;
   // Submitting, returning and re-pinning the catalogue follow the server's flags, state and permission both.
   // The state only picks which control is on screen: nobody submits an approved plan.
-  const submittable = maySubmit.applies ?? planIsSubmittable(plan.status);
   const maySubmit = plan.can.submit;
+  const submittable = maySubmit.applies ?? planIsSubmittable(plan.status);
   const mayReturn = plan.can.return;
   const mayRepin = plan.can.change_catalogue;
 

@@ -159,6 +159,9 @@ export function ComplianceView({
               <thead>
                 <tr className="border-b border-border-light text-left text-xs text-content-tertiary">
                   <th scope="col" className="px-3 py-2 font-medium">{t('staffing.document.kind', { defaultValue: 'Document' })}</th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                    {t('staffing.compliance.summary_people', { defaultValue: 'People' })}
+                  </th>
                   {SUMMARY_STATES.map((state) => (
                     <th key={state} scope="col" className="px-3 py-2 text-right font-medium">
                       {vocab(t, CELL_STATE, state)}
@@ -172,11 +175,21 @@ export function ComplianceView({
                     <th scope="row" className="px-3 py-2 text-left font-medium text-content-primary">
                       {catalogueName(labels, catalogue, 'document_kind', line.document_kind)}
                     </th>
-                    {SUMMARY_STATES.map((state) => (
-                      <td key={state} className="px-3 py-2 text-right tabular-nums" data-state={state}>
-                        {fmtNumber(line[state], 0)}
+                    <td className="px-3 py-2 text-right tabular-nums" data-testid="compliance-summary-people">
+                      {fmtNumber(line.required, 0)}
+                    </td>
+                    {line.uniform ? (
+                      // Everybody held back stands the same: a split would say how each of them stands.
+                      <td colSpan={SUMMARY_STATES.length} className="px-3 py-2 text-xs text-content-tertiary" data-testid="compliance-summary-uniform">
+                        {t('staffing.compliance.summary_uniform', { defaultValue: 'Not split by state: all of them stand the same.' })}
                       </td>
-                    ))}
+                    ) : (
+                      SUMMARY_STATES.map((state) => (
+                        <td key={state} className="px-3 py-2 text-right tabular-nums" data-state={state}>
+                          {fmtNumber(line[state] ?? 0, 0)}
+                        </td>
+                      ))
+                    )}
                   </tr>
                 ))}
               </tbody>

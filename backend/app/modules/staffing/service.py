@@ -49,11 +49,11 @@ from app.core.fsm import FSMError
 from app.modules.project_governance import public as governance
 from app.modules.staffing import hosting, rules
 from app.modules.staffing.catalogue import (
+    DEFAULT_CATALOGUE_ID,
     HEALTH_KIND,
     PHASES,
     STAFFING_MODEL_KIND,
     StaffingModelCatalogue,
-    default_catalogue_id_for_country,
     label_of,
     register_kinds,
 )
@@ -390,12 +390,13 @@ class StaffingService:
         country = getattr(project, "country_code", None)
         cid = catalogue_id
         if cid is None:
-            # The active pack is asked first; the module's own default applies only when it has no opinion.
+            # Which catalogue a country gets is the active pack's opinion. Without one the module pins its
+            # neutral catalogue; it holds no country table of its own.
             pin = governance.default_catalogue_pin(STAFFING_MODEL_KIND, country)
             if pin is not None:
                 catalogue_source, cid, catalogue_version = pin.source, pin.catalogue_id, pin.version
             else:
-                cid = default_catalogue_id_for_country(country)
+                cid = DEFAULT_CATALOGUE_ID
         version = await self._pin(tenant_id, catalogue_source, cid, catalogue_version)
         plan = StaffingPlan(
             project_id=project_id,

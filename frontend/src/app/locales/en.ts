@@ -48199,6 +48199,8 @@ const resource = {
     "staffing.pva.empty_title": "Nothing to compare yet",
     "staffing.pva.empty_body": "A position is compared once it has a start date. Planned days come from its FTE; booked days come from the site timesheets of the people on it.",
     "staffing.pva.intro": "Planned FTE days up to today against the days booked on site timesheets, with {{hours}} hours counted as one day. Read only.",
+    "staffing.compliance.summary_uniform": "Not split by state: all of them stand the same.",
+    "staffing.compliance.summary_people": "People",
     "staffing.evidence.nothing_due": "Nothing of the staffing plan is due at this gate",
     "staffing.evidence.key_roles_unresolved": "Key roles wait for something no phase of this model enables, so no gate can check them. Change what these positions are required before, or acknowledge this at the decision.",
     "staffing.evidence.key_roles_open": "Key roles not asked at this gate are still vacant. Name the people or accept the risk at the decision.",

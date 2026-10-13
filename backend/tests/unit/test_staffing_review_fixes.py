@@ -391,6 +391,11 @@ def test_the_hosting_area_always_gets_an_answer() -> None:
         "open_key_roles": [],
     }
     assert [(i.code, i.state) for i in evidence.items(ready, ("staffing", "p"))] == [("staffing_nothing_due", "met")]
+    # A vacant key role the gate does not ask for is one warning that names the roles; it replaces the fallback.
+    vacant = {**ready, "open_key_roles": ["commissioning_manager", "operator_plant_manager"]}
+    assert [(i.code, i.state, i.detail) for i in evidence.items(vacant, ("staffing", "p"))] == [
+        ("staffing_key_roles_open", "warning", "commissioning_manager, operator_plant_manager")
+    ]
 
 
 def test_the_evidence_link_of_the_module_opens_the_staffing_screen() -> None:
@@ -507,8 +512,24 @@ def test_the_compliance_summary_counts_states_and_leaves_special_categories_out(
     assert rules.compliance_summary(people * 2, ["permit", "health"], ["health"], today, min_group=5) == []
     summary = rules.compliance_summary(people, ["permit", "health"], ["health"], today, min_group=2)
     assert summary == [
-        {"document_kind": "permit", "required": 2, "valid": 1, "expiring": 0, "expired": 0, "missing": 1, "waived": 0}
+        {
+            "document_kind": "permit",
+            "required": 2,
+            "uniform": False,
+            "valid": 1,
+            "expiring": 0,
+            "expired": 0,
+            "missing": 1,
+            "waived": 0,
+        }
     ]
+    # Five withheld people who all lack the permit: a split would say "missing" of each of them by name.
+    lacking = [{"required": ["permit"], "documents": {}} for _ in range(5)]
+    assert rules.compliance_summary(lacking, ["permit"], [], today) == [
+        {"document_kind": "permit", "required": 5, "uniform": True}
+    ]
+    mixed = [*lacking, {"required": ["permit"], "documents": {"permit": valid}}]
+    assert rules.compliance_summary(mixed, ["permit"], [], today)[0]["missing"] == 5
     assert rules.compliance_cell(False, None, today) == {"state": "not_required"}
     soon = {"status": "expiring_soon", "valid_until": D(2027, 1, 11), "waived": False}
     assert rules.compliance_cell(True, soon, today) == {"state": "expiring", "days": 10}
