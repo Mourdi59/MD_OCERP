@@ -288,34 +288,6 @@ def list_frameworks() -> tuple[StakeholderFramework, ...]:
     return get_catalogue_kind(FRAMEWORK_KIND).shipped()
 
 
-def default_framework_id_for_country(country_code: str | None) -> str:
-    """The shipped framework for a project's country, else ``neutral``.
-
-    Order as module 1 (``catalogue.default_catalogue_id_for_country``): the
-    national regional packs' ``stakeholder_framework`` entry for exactly this
-    country when the packs agree, then the one shipped framework whose
-    ``jurisdiction_countries`` names it, then the default.
-    """
-    from app.core import regional_packs
-
-    country = (country_code or "").strip().upper()
-    if not country:
-        return DEFAULT_FRAMEWORK_ID
-    shipped = list_frameworks()
-    ids = {f.id for f in shipped}
-    declared: set[str] = set()
-    for config in regional_packs.packs_for_country(country):
-        if config.get("parent_pack"):
-            continue
-        block = config.get("stakeholder_framework")
-        if isinstance(block, dict) and isinstance(block.get(country), str):
-            declared.add(block[country].strip())
-    if len(declared) == 1 and (only := next(iter(declared))) in ids:
-        return only
-    claims = [f.id for f in shipped if country in f.jurisdiction_countries]
-    return claims[0] if len(claims) == 1 else DEFAULT_FRAMEWORK_ID
-
-
 def register_kind() -> None:
     """Register ``stakeholder_framework`` with module 1's catalogue registry (idempotent)."""
     from app.modules.project_governance.catalogue_kinds import CatalogueKind, register_catalogue_kind
@@ -345,13 +317,16 @@ def register_kind() -> None:
 def default_framework_pin(country_code: str | None) -> tuple[str, str, int | None]:
     """``(source, id, version)`` a new project pins when the caller names no framework.
 
-    The active pack is asked first, through module 1's port. Without a pack
-    opinion the shipped framework of the project's country applies, at its
-    latest version.
+    The governance port is the only place that knows which catalogue a country
+    gets: the active pack, the regional packs, then the one shipped framework
+    that claims the country. This module has no country rule of its own. When
+    the port has no answer the neutral framework is pinned at its latest
+    version.
     """
     from app.modules.project_governance.public import default_catalogue_pin
 
+    register_kind()
     pin = default_catalogue_pin(FRAMEWORK_KIND, country_code)
     if pin is not None:
         return pin.source, pin.catalogue_id, pin.version
-    return "shipped", default_framework_id_for_country(country_code), None
+    return "shipped", DEFAULT_FRAMEWORK_ID, None

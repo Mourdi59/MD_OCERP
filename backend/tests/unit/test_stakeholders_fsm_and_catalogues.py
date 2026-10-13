@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -12,7 +13,6 @@ from app.modules.stakeholders.catalogue import (
     CATALOGUE_DIR,
     FRAMEWORK_KIND,
     StakeholderFramework,
-    default_framework_id_for_country,
     list_frameworks,
     register_kind,
     validate_framework,
@@ -212,20 +212,32 @@ def test_statutory_ref_without_url_is_a_schema_error() -> None:
         StakeholderFramework.model_validate(raw)
 
 
-def test_kind_registers_with_module_one_and_country_defaults() -> None:
+def test_kind_registers_with_module_one() -> None:
     from app.modules.project_governance.catalogue_kinds import catalogue_kinds
 
     register_kind()
     assert FRAMEWORK_KIND in catalogue_kinds()
     assert {f.id for f in list_frameworks()} == set(SHIPPED)
-    assert default_framework_id_for_country("de") == "de_public_participation"
-    assert default_framework_id_for_country("GB") == "uk_planning_consultation"
-    assert default_framework_id_for_country("FR") == "neutral"
-    assert default_framework_id_for_country(None) == "neutral"
 
 
-def test_a_new_project_asks_the_active_pack_before_the_country_default(monkeypatch) -> None:
+def test_the_country_default_is_the_answer_of_the_governance_port() -> None:
+    """Asked through the real port: the shipped framework that claims the country, else neutral."""
+    from app.modules.stakeholders.catalogue import default_framework_pin
+
+    versions = {f.id: f.version for f in list_frameworks()}
+    for country, expected in (("de", "de_public_participation"), ("GB", "uk_planning_consultation")):
+        source, fid, version = default_framework_pin(country)
+        assert (source, fid) == ("shipped", expected), country
+        # The port may name the version; when it does it is the shipped one.
+        assert version in (None, versions[expected]), country
+    assert default_framework_pin("FR") == ("shipped", "neutral", None)
+    assert default_framework_pin(None) == ("shipped", "neutral", None)
+
+
+def test_without_an_answer_of_the_port_every_country_gets_the_neutral_framework(monkeypatch) -> None:
+    """The module has no country rule of its own left: silence of the port is neutral, for Germany too."""
     from app.modules.project_governance import public
+    from app.modules.stakeholders import catalogue
     from app.modules.stakeholders.catalogue import FRAMEWORK_KIND, default_framework_pin
 
     asked: list[tuple[str, str | None]] = []
@@ -234,11 +246,19 @@ def test_a_new_project_asks_the_active_pack_before_the_country_default(monkeypat
         asked.append((kind, country_code))
 
     monkeypatch.setattr(public, "default_catalogue_pin", no_opinion)
-    assert default_framework_pin("de") == ("shipped", "de_public_participation", None)
-    assert default_framework_pin(None) == ("shipped", "neutral", None)
-    assert asked == [(FRAMEWORK_KIND, "de"), (FRAMEWORK_KIND, None)]
+    for country in ("de", "GB", "FR", None):
+        assert default_framework_pin(country) == ("shipped", "neutral", None), country
+    assert asked == [(FRAMEWORK_KIND, c) for c in ("de", "GB", "FR", None)]
 
     monkeypatch.setattr(
         public, "default_catalogue_pin", lambda kind, country_code=None: public.CataloguePin("pack", "acme_people", 3)
     )
     assert default_framework_pin("de") == ("pack", "acme_people", 3)
+
+    assert not hasattr(catalogue, "default_framework_id_for_country")
+    module = Path(catalogue.__file__).parent
+    for path in sorted(module.glob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        # Reading the regional packs or matching a framework's countries is the port's work.
+        assert "regional_packs" not in source and "packs_for_country" not in source, path.name
+        assert ".jurisdiction_countries" not in source, path.name
