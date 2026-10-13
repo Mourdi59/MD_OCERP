@@ -31113,6 +31113,7 @@ const resource = {
     "modules.pp_name_uae_ae": "UAE Construction Pack",
     "modules.pp_name_greece_gr": "Greece Construction Pack",
     "modules.pp_name_denmark_dk": "Denmark Construction Pack",
+    "modules.pp_name_eleven_areas_framework": "Eleven module project framework",
     "modules.pp_name_france_fr": "France Construction Pack",
     "modules.pp_name_germany_de": "Germany Construction Pack",
     "modules.pp_name_hungary_hu": "Hungary Construction Pack",

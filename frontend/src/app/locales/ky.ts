@@ -47530,6 +47530,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Бириккен Араб Эмираттары курулуш пакети",
     "modules.pp_name_greece_gr": "Греция курулуш пакети",
     "modules.pp_name_denmark_dk": "Дания курулуш пакети",
+    "modules.pp_name_eleven_areas_framework": "Он бир модулдуу долбоор алкагы",
     "modules.pp_name_france_fr": "Франция курулуш пакети",
     "modules.pp_name_germany_de": "Германия курулуш пакети",
     "modules.pp_name_hungary_hu": "Венгрия курулуш пакети",

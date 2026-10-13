@@ -50144,6 +50144,7 @@ const resource = {
     "modules.pp_name_uae_ae": "حزمة إنشاءات الإمارات العربية المتحدة",
     "modules.pp_name_greece_gr": "حزمة إنشاءات اليونان",
     "modules.pp_name_denmark_dk": "حزمة إنشاءات الدانمرك",
+    "modules.pp_name_eleven_areas_framework": "إطار مشروع من إحدى عشرة وحدة",
     "modules.pp_name_france_fr": "حزمة إنشاءات فرنسا",
     "modules.pp_name_germany_de": "حزمة إنشاءات ألمانيا",
     "modules.pp_name_hungary_hu": "حزمة إنشاءات هنغاريا",

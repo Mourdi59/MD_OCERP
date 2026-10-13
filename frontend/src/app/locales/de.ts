@@ -50173,6 +50173,7 @@ const resource = {
     "modules.pp_name_uae_ae": "VAE-Baupaket",
     "modules.pp_name_greece_gr": "Griechenland-Baupaket",
     "modules.pp_name_denmark_dk": "Dänemark-Baupaket",
+    "modules.pp_name_eleven_areas_framework": "Projektrahmen in elf Modulen",
     "modules.pp_name_france_fr": "Frankreich-Baupaket",
     "modules.pp_name_germany_de": "Deutschland-Baupaket",
     "modules.pp_name_hungary_hu": "Ungarn-Baupaket",

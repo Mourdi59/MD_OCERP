@@ -47483,6 +47483,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Πακέτο Κατασκευών: Ηνωμένα Αραβικά Εμιράτα",
     "modules.pp_name_greece_gr": "Πακέτο Κατασκευών Ελλάδας",
     "modules.pp_name_denmark_dk": "Πακέτο Κατασκευών: Δανία",
+    "modules.pp_name_eleven_areas_framework": "Πλαίσιο έργου σε έντεκα ενότητες",
     "modules.pp_name_france_fr": "Πακέτο Κατασκευών: Γαλλία",
     "modules.pp_name_germany_de": "Πακέτο Κατασκευών: Γερμανία",
     "modules.pp_name_hungary_hu": "Πακέτο Κατασκευών: Ουγγαρία",

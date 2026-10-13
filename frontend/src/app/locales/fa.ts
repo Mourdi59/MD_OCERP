@@ -47362,6 +47362,7 @@ const resource = {
     "modules.pp_name_uae_ae": "بسته ساخت‌وساز امارات متحدهٔ عربی",
     "modules.pp_name_greece_gr": "بسته ساخت‌وساز یونان",
     "modules.pp_name_denmark_dk": "بسته ساخت‌وساز دانمارک",
+    "modules.pp_name_eleven_areas_framework": "چارچوب پروژه در یازده ماژول",
     "modules.pp_name_france_fr": "بسته ساخت‌وساز فرانسه",
     "modules.pp_name_germany_de": "بسته ساخت‌وساز آلمان",
     "modules.pp_name_hungary_hu": "بسته ساخت‌وساز مجارستان",

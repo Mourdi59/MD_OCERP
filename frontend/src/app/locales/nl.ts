@@ -48301,6 +48301,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Bouwpakket Verenigde Arabische Emiraten",
     "modules.pp_name_greece_gr": "Bouwpakket Griekenland",
     "modules.pp_name_denmark_dk": "Bouwpakket Denemarken",
+    "modules.pp_name_eleven_areas_framework": "Projectkader in elf modules",
     "modules.pp_name_france_fr": "Bouwpakket Frankrijk",
     "modules.pp_name_germany_de": "Bouwpakket Duitsland",
     "modules.pp_name_hungary_hu": "Bouwpakket Hongarije",

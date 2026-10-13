@@ -47444,6 +47444,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Ehituspakett: Araabia Ühendemiraadid",
     "modules.pp_name_greece_gr": "Kreeka ehituspakett",
     "modules.pp_name_denmark_dk": "Ehituspakett: Taani",
+    "modules.pp_name_eleven_areas_framework": "Üheteistkümne mooduli projektiraamistik",
     "modules.pp_name_france_fr": "Ehituspakett: Prantsusmaa",
     "modules.pp_name_germany_de": "Ehituspakett: Saksamaa",
     "modules.pp_name_hungary_hu": "Ehituspakett: Ungari",

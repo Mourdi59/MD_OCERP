@@ -1,0 +1,2769 @@
+{
+  "id": "eleven_areas_framework",
+  "version": 1,
+  "name_key": "governance.catalogue.elf_module_framework.name",
+  "description_key": "governance.catalogue.elf_module_framework.description",
+  "source_url": null,
+  "source_title": "Source framework",
+  "review_status": "verified",
+  "jurisdiction_countries": [],
+  "areas_from": null,
+  "phases": [
+    {
+      "code": "development",
+      "order": 1,
+      "name_key": "governance.catalogue.elf_module_framework.phase.development",
+      "spine_keys": [
+        "strategy",
+        "brief",
+        "concept",
+        "design",
+        "approval",
+        "detail",
+        "tender",
+        "award"
+      ],
+      "enables": [],
+      "source_ref": null,
+      "review_status": "verified",
+      "labels": {
+        "en": "Project development",
+        "de": "Projektentwicklung"
+      }
+    },
+    {
+      "code": "execution",
+      "order": 2,
+      "name_key": "governance.catalogue.elf_module_framework.phase.execution",
+      "spine_keys": [
+        "construction",
+        "handover"
+      ],
+      "enables": [
+        "construction_start",
+        "handover",
+        "procurement"
+      ],
+      "source_ref": null,
+      "review_status": "verified",
+      "labels": {
+        "en": "Construction execution",
+        "de": "Bauabwicklung"
+      }
+    }
+  ],
+  "gates": [
+    {
+      "code": "development_to_execution",
+      "from_phase": "development",
+      "to_phase": "execution",
+      "name_key": "governance.catalogue.elf_module_framework.gate.development_to_execution",
+      "labels": {
+        "en": "Gate: Project development to Construction execution",
+        "de": "Gate: Projektentwicklung zu Bauabwicklung"
+      }
+    }
+  ],
+  "areas": [
+    {
+      "code": "m01_project_management",
+      "order": 1,
+      "name_key": "governance.catalogue.elf_module_framework.area.m01_project_management",
+      "parent": null,
+      "labels": {
+        "en": "1 Project management",
+        "de": "1 Projektmanagement"
+      }
+    },
+    {
+      "code": "m02_contract_management",
+      "order": 2,
+      "name_key": "governance.catalogue.elf_module_framework.area.m02_contract_management",
+      "parent": null,
+      "labels": {
+        "en": "2 Contract management",
+        "de": "2 Vertragsmanagement"
+      }
+    },
+    {
+      "code": "m03_engineering_scheduling",
+      "order": 3,
+      "name_key": "governance.catalogue.elf_module_framework.area.m03_engineering_scheduling",
+      "parent": null,
+      "labels": {
+        "en": "3 Engineering and scheduling",
+        "de": "3 Engineering und Terminplanung"
+      }
+    },
+    {
+      "code": "m04_equipment",
+      "order": 4,
+      "name_key": "governance.catalogue.elf_module_framework.area.m04_equipment",
+      "parent": null,
+      "labels": {
+        "en": "4 Equipment",
+        "de": "4 Ausrüstung"
+      }
+    },
+    {
+      "code": "m05_personnel",
+      "order": 5,
+      "name_key": "governance.catalogue.elf_module_framework.area.m05_personnel",
+      "parent": null,
+      "labels": {
+        "en": "5 Personnel management",
+        "de": "5 Personalmanagement"
+      }
+    },
+    {
+      "code": "m06_logistics",
+      "order": 6,
+      "name_key": "governance.catalogue.elf_module_framework.area.m06_logistics",
+      "parent": null,
+      "labels": {
+        "en": "6 Logistics",
+        "de": "6 Logistik"
+      }
+    },
+    {
+      "code": "m07_design_management",
+      "order": 7,
+      "name_key": "governance.catalogue.elf_module_framework.area.m07_design_management",
+      "parent": null,
+      "labels": {
+        "en": "7 Design management",
+        "de": "7 Design Management"
+      }
+    },
+    {
+      "code": "m08_procurement",
+      "order": 8,
+      "name_key": "governance.catalogue.elf_module_framework.area.m08_procurement",
+      "parent": null,
+      "labels": {
+        "en": "8 Procurement (material and subcontractors)",
+        "de": "8 Einkauf (Material und Nachunternehmer)"
+      }
+    },
+    {
+      "code": "m09_commercial",
+      "order": 9,
+      "name_key": "governance.catalogue.elf_module_framework.area.m09_commercial",
+      "parent": null,
+      "labels": {
+        "en": "9 Commercial management",
+        "de": "9 Kaufmännisches Management"
+      }
+    },
+    {
+      "code": "m10_quality",
+      "order": 10,
+      "name_key": "governance.catalogue.elf_module_framework.area.m10_quality",
+      "parent": null,
+      "labels": {
+        "en": "10 Quality management",
+        "de": "10 Qualitätsmanagement"
+      }
+    },
+    {
+      "code": "m11_hse",
+      "order": 11,
+      "name_key": "governance.catalogue.elf_module_framework.area.m11_hse",
+      "parent": null,
+      "labels": {
+        "en": "11 HSE",
+        "de": "11 HSE"
+      }
+    }
+  ],
+  "folders": [
+    {
+      "code": "dev_project_organisation",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_project_organisation",
+      "labels": {
+        "en": "Project organisation",
+        "de": "Projektorganisation"
+      }
+    },
+    {
+      "code": "dev_mandates",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_mandates",
+      "labels": {
+        "en": "Mandates and multiple roles",
+        "de": "Mandate und Mehrfachrollen"
+      }
+    },
+    {
+      "code": "dev_phase_model",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_phase_model",
+      "labels": {
+        "en": "Phase model and milestones",
+        "de": "Phasenmodell und Meilensteine"
+      }
+    },
+    {
+      "code": "dev_project_handbook",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_project_handbook",
+      "labels": {
+        "en": "Project handbook",
+        "de": "Projekthandbuch"
+      }
+    },
+    {
+      "code": "dev_stakeholders",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_stakeholders",
+      "labels": {
+        "en": "Stakeholders",
+        "de": "Stakeholder"
+      }
+    },
+    {
+      "code": "dev_risk_register",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_risk_register",
+      "labels": {
+        "en": "Risk and opportunity register",
+        "de": "Risiko- und Chancenregister"
+      }
+    },
+    {
+      "code": "dev_data_room",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_data_room",
+      "labels": {
+        "en": "Document management and data room",
+        "de": "Dokumentenmanagement und Datenraum"
+      }
+    },
+    {
+      "code": "exec_correspondence",
+      "area": "m01_project_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.exec_correspondence",
+      "labels": {
+        "en": "Correspondence, document management",
+        "de": "Korrespondenz, Dokumentmanagement"
+      }
+    },
+    {
+      "code": "exec_minutes",
+      "area": "m01_project_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.exec_minutes",
+      "labels": {
+        "en": "Minutes and notes",
+        "de": "Protokolle und Notizen"
+      }
+    },
+    {
+      "code": "exec_organisation",
+      "area": "m01_project_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.exec_organisation",
+      "labels": {
+        "en": "Organisation and responsibilities",
+        "de": "Organisation und Verantwortlichkeiten"
+      }
+    },
+    {
+      "code": "exec_principles",
+      "area": "m01_project_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.exec_principles",
+      "labels": {
+        "en": "Principles, processes, project guidelines",
+        "de": "Prinzipien, Prozesse, Projektrichtlinien"
+      }
+    },
+    {
+      "code": "exec_risks",
+      "area": "m01_project_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.exec_risks",
+      "labels": {
+        "en": "Risks and opportunities",
+        "de": "Risiken und Chancen"
+      }
+    },
+    {
+      "code": "dev_contract_requirements",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_contract_requirements",
+      "labels": {
+        "en": "Contractual requirements",
+        "de": "Vertragliche Anforderungen"
+      }
+    },
+    {
+      "code": "dev_delivery_form",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_delivery_form",
+      "labels": {
+        "en": "Project delivery form",
+        "de": "Abwicklungsform"
+      }
+    },
+    {
+      "code": "dev_contract_form",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_contract_form",
+      "labels": {
+        "en": "Contract form",
+        "de": "Vertragsform"
+      }
+    },
+    {
+      "code": "dev_land",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_land",
+      "labels": {
+        "en": "Land",
+        "de": "Grundstück"
+      }
+    },
+    {
+      "code": "dev_permit_roadmap",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_permit_roadmap",
+      "labels": {
+        "en": "Planning law and permit roadmap",
+        "de": "Baurecht und Genehmigungsfahrplan"
+      }
+    },
+    {
+      "code": "dev_special_permits",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_special_permits",
+      "labels": {
+        "en": "Special permits",
+        "de": "Sondergenehmigungen"
+      }
+    },
+    {
+      "code": "dev_utility_contracts",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_utility_contracts",
+      "labels": {
+        "en": "Utility contracts",
+        "de": "Versorgungsverträge"
+      }
+    },
+    {
+      "code": "dev_funding",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_funding",
+      "labels": {
+        "en": "Funding",
+        "de": "Förderung"
+      }
+    },
+    {
+      "code": "dev_user_agreement",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_user_agreement",
+      "labels": {
+        "en": "User agreement",
+        "de": "Nutzervertrag"
+      }
+    },
+    {
+      "code": "dev_partner_structure",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_partner_structure",
+      "labels": {
+        "en": "Partner structure",
+        "de": "Partnerstruktur"
+      }
+    },
+    {
+      "code": "dev_legal",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_legal",
+      "labels": {
+        "en": "Legal matters",
+        "de": "Rechtliche Themen"
+      }
+    },
+    {
+      "code": "exec_contract",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_contract",
+      "labels": {
+        "en": "Contract with annexes",
+        "de": "Vertrag mit Anlagen"
+      }
+    },
+    {
+      "code": "exec_offer",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_offer",
+      "labels": {
+        "en": "Offer",
+        "de": "Angebot"
+      }
+    },
+    {
+      "code": "exec_owner_services",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_owner_services",
+      "labels": {
+        "en": "Owner-furnished services",
+        "de": "Bauseitige Leistungen"
+      }
+    },
+    {
+      "code": "exec_change_management",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_change_management",
+      "labels": {
+        "en": "Change management",
+        "de": "Änderungsmanagement"
+      }
+    },
+    {
+      "code": "exec_instructions",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_instructions",
+      "labels": {
+        "en": "Instructions",
+        "de": "Anordnungen"
+      }
+    },
+    {
+      "code": "exec_acceptance",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_acceptance",
+      "labels": {
+        "en": "Acceptance and handover",
+        "de": "Abnahmen und Übergaben"
+      }
+    },
+    {
+      "code": "exec_permits",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_permits",
+      "labels": {
+        "en": "Permits",
+        "de": "Genehmigungen"
+      }
+    },
+    {
+      "code": "exec_joint_venture",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_joint_venture",
+      "labels": {
+        "en": "Joint venture",
+        "de": "ARGE / Joint Venture"
+      }
+    },
+    {
+      "code": "exec_legal",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_legal",
+      "labels": {
+        "en": "Legal matters",
+        "de": "Rechtliche Themen"
+      }
+    },
+    {
+      "code": "dev_technical_requirements",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_technical_requirements",
+      "labels": {
+        "en": "Technical requirements",
+        "de": "Technische Anforderungen"
+      }
+    },
+    {
+      "code": "dev_site_analysis",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_site_analysis",
+      "labels": {
+        "en": "Site analysis",
+        "de": "Standortanalyse"
+      }
+    },
+    {
+      "code": "dev_technical_concept",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_technical_concept",
+      "labels": {
+        "en": "Technical concept",
+        "de": "Technisches Konzept"
+      }
+    },
+    {
+      "code": "dev_procedure_descriptions",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_procedure_descriptions",
+      "labels": {
+        "en": "Procedure descriptions",
+        "de": "Verfahrensbeschreibungen"
+      }
+    },
+    {
+      "code": "dev_lean",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_lean",
+      "labels": {
+        "en": "Lean construction",
+        "de": "Lean"
+      }
+    },
+    {
+      "code": "dev_area_quantity_programme",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_area_quantity_programme",
+      "labels": {
+        "en": "Area and quantity programme",
+        "de": "Flächen- und Mengenprogramm"
+      }
+    },
+    {
+      "code": "dev_frame_schedule",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_frame_schedule",
+      "labels": {
+        "en": "Frame schedule",
+        "de": "Rahmenterminplan"
+      }
+    },
+    {
+      "code": "dev_commissioning_sequence",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_commissioning_sequence",
+      "labels": {
+        "en": "Commissioning sequence",
+        "de": "Inbetriebnahmereihenfolge"
+      }
+    },
+    {
+      "code": "dev_site_frame",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_site_frame",
+      "labels": {
+        "en": "Site frame",
+        "de": "Baustellenrahmen"
+      }
+    },
+    {
+      "code": "dev_requirements_specification",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_requirements_specification",
+      "labels": {
+        "en": "Requirements specification",
+        "de": "Lastenheft und Spezifikationen"
+      }
+    },
+    {
+      "code": "dev_suitability_studies",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_suitability_studies",
+      "labels": {
+        "en": "Suitability studies",
+        "de": "Eignungsstudien"
+      }
+    },
+    {
+      "code": "exec_technical_concept",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_technical_concept",
+      "labels": {
+        "en": "Technical concept",
+        "de": "Technisches Konzept"
+      }
+    },
+    {
+      "code": "exec_quantities",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_quantities",
+      "labels": {
+        "en": "Quantity take-off",
+        "de": "Massenermittlung"
+      }
+    },
+    {
+      "code": "exec_scheduling",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_scheduling",
+      "labels": {
+        "en": "Scheduling",
+        "de": "Terminplanung"
+      }
+    },
+    {
+      "code": "exec_technical_performance",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_technical_performance",
+      "labels": {
+        "en": "Technical performance",
+        "de": "Technische Leistung"
+      }
+    },
+    {
+      "code": "exec_site_planning",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_site_planning",
+      "labels": {
+        "en": "Site planning",
+        "de": "Baustellenplanung"
+      }
+    },
+    {
+      "code": "exec_specifications",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_specifications",
+      "labels": {
+        "en": "Specifications",
+        "de": "Spezifikationen"
+      }
+    },
+    {
+      "code": "exec_suitability_tests",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_suitability_tests",
+      "labels": {
+        "en": "Suitability tests",
+        "de": "Eignungsprüfungen"
+      }
+    },
+    {
+      "code": "dev_plant_requirements",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_plant_requirements",
+      "labels": {
+        "en": "Plant requirements",
+        "de": "Anlagenanforderungen"
+      }
+    },
+    {
+      "code": "dev_long_lead_items",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_long_lead_items",
+      "labels": {
+        "en": "Main components and long-lead items",
+        "de": "Hauptkomponenten und Long-Lead-Items"
+      }
+    },
+    {
+      "code": "dev_procurement_route",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_procurement_route",
+      "labels": {
+        "en": "Procurement route",
+        "de": "Beschaffungsweg"
+      }
+    },
+    {
+      "code": "dev_user_equipment",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_user_equipment",
+      "labels": {
+        "en": "User equipment",
+        "de": "Nutzerausstattung"
+      }
+    },
+    {
+      "code": "dev_site_setup",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_site_setup",
+      "labels": {
+        "en": "Site setup",
+        "de": "Baustelleneinrichtung"
+      }
+    },
+    {
+      "code": "dev_it_telecom",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_it_telecom",
+      "labels": {
+        "en": "IT and telecommunications for construction",
+        "de": "IT und Telekommunikation für die Bauphase"
+      }
+    },
+    {
+      "code": "dev_operating_equipment",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_operating_equipment",
+      "labels": {
+        "en": "Operating equipment",
+        "de": "Betriebsausstattung"
+      }
+    },
+    {
+      "code": "exec_equipment_plan",
+      "area": "m04_equipment",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.exec_equipment_plan",
+      "labels": {
+        "en": "Equipment plan",
+        "de": "Geräteplan"
+      }
+    },
+    {
+      "code": "exec_spare_parts",
+      "area": "m04_equipment",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.exec_spare_parts",
+      "labels": {
+        "en": "Spare and wear parts",
+        "de": "Ersatz- und Verschleißteile"
+      }
+    },
+    {
+      "code": "exec_site_setup_list",
+      "area": "m04_equipment",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.exec_site_setup_list",
+      "labels": {
+        "en": "Site setup list",
+        "de": "Liste der Baustelleneinrichtung"
+      }
+    },
+    {
+      "code": "exec_it_telecom",
+      "area": "m04_equipment",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.exec_it_telecom",
+      "labels": {
+        "en": "IT and telecommunications",
+        "de": "IT und Telekommunikation"
+      }
+    },
+    {
+      "code": "dev_staffing_needs",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_staffing_needs",
+      "labels": {
+        "en": "Staffing needs",
+        "de": "Personalbedarf"
+      }
+    },
+    {
+      "code": "dev_recruitment",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_recruitment",
+      "labels": {
+        "en": "Search, selection, hiring",
+        "de": "Suche, Auswahl, Einstellung"
+      }
+    },
+    {
+      "code": "dev_development_team",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_development_team",
+      "labels": {
+        "en": "Development team",
+        "de": "Entwicklungsteam"
+      }
+    },
+    {
+      "code": "dev_owner_organisation",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_owner_organisation",
+      "labels": {
+        "en": "Owner organisation for execution",
+        "de": "Bauherrenorganisation für die Ausführung"
+      }
+    },
+    {
+      "code": "dev_external_consultants",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_external_consultants",
+      "labels": {
+        "en": "External consultants",
+        "de": "Externe Berater"
+      }
+    },
+    {
+      "code": "dev_operator_organisation",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_operator_organisation",
+      "labels": {
+        "en": "Operator organisation",
+        "de": "Betreiberorganisation"
+      }
+    },
+    {
+      "code": "dev_hr_admin",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_hr_admin",
+      "labels": {
+        "en": "Personnel administration",
+        "de": "Personalverwaltung"
+      }
+    },
+    {
+      "code": "dev_knowledge_handover",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_knowledge_handover",
+      "labels": {
+        "en": "Knowledge handover",
+        "de": "Wissensübergabe"
+      }
+    },
+    {
+      "code": "exec_staff_planning",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_staff_planning",
+      "labels": {
+        "en": "Staff planning",
+        "de": "Personalplanung"
+      }
+    },
+    {
+      "code": "exec_accommodation",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_accommodation",
+      "labels": {
+        "en": "Accommodation",
+        "de": "Unterkünfte"
+      }
+    },
+    {
+      "code": "exec_travel",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_travel",
+      "labels": {
+        "en": "Travel",
+        "de": "Reisen"
+      }
+    },
+    {
+      "code": "exec_leave",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_leave",
+      "labels": {
+        "en": "Leave",
+        "de": "Urlaub"
+      }
+    },
+    {
+      "code": "exec_hr_admin",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin",
+      "labels": {
+        "en": "Personnel administration",
+        "de": "Personalverwaltung"
+      }
+    },
+    {
+      "code": "exec_hr_admin_contracts",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_contracts",
+      "labels": {
+        "en": "Contracts",
+        "de": "Verträge"
+      }
+    },
+    {
+      "code": "exec_hr_admin_work_permits",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_work_permits",
+      "labels": {
+        "en": "Work permits",
+        "de": "Arbeitsgenehmigungen"
+      }
+    },
+    {
+      "code": "exec_hr_admin_qualifications",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_qualifications",
+      "labels": {
+        "en": "Qualifications",
+        "de": "Qualifikationen"
+      }
+    },
+    {
+      "code": "exec_hr_admin_passports_visas",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_passports_visas",
+      "labels": {
+        "en": "Passports and visas",
+        "de": "Pässe und Visa"
+      }
+    },
+    {
+      "code": "exec_hr_admin_health_check",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_health_check",
+      "labels": {
+        "en": "Health check",
+        "de": "Gesundheitscheck"
+      }
+    },
+    {
+      "code": "exec_hr_admin_acquisition",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_acquisition",
+      "labels": {
+        "en": "Acquisition",
+        "de": "Akquisition"
+      }
+    },
+    {
+      "code": "dev_area_management",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_area_management",
+      "labels": {
+        "en": "Area management",
+        "de": "Flächenmanagement"
+      }
+    },
+    {
+      "code": "dev_traffic_access",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_traffic_access",
+      "labels": {
+        "en": "Traffic access",
+        "de": "Verkehrserschließung"
+      }
+    },
+    {
+      "code": "dev_media_access",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_media_access",
+      "labels": {
+        "en": "Media access",
+        "de": "Medienerschließung"
+      }
+    },
+    {
+      "code": "dev_logistics_concept",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_logistics_concept",
+      "labels": {
+        "en": "Logistics concept",
+        "de": "Logistikkonzept"
+      }
+    },
+    {
+      "code": "dev_heavy_transport",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_heavy_transport",
+      "labels": {
+        "en": "Heavy transports",
+        "de": "Schwertransporte"
+      }
+    },
+    {
+      "code": "dev_import",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_import",
+      "labels": {
+        "en": "Import",
+        "de": "Import"
+      }
+    },
+    {
+      "code": "dev_neighbourhood",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_neighbourhood",
+      "labels": {
+        "en": "Neighbourhood",
+        "de": "Nachbarschaft"
+      }
+    },
+    {
+      "code": "exec_logistics_concept",
+      "area": "m06_logistics",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.exec_logistics_concept",
+      "labels": {
+        "en": "Logistics concept",
+        "de": "Logistikkonzept"
+      }
+    },
+    {
+      "code": "exec_transport_in",
+      "area": "m06_logistics",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.exec_transport_in",
+      "labels": {
+        "en": "Inbound transport",
+        "de": "Transport Eingang"
+      }
+    },
+    {
+      "code": "exec_transport_out",
+      "area": "m06_logistics",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.exec_transport_out",
+      "labels": {
+        "en": "Outbound transport",
+        "de": "Transport Ausgang"
+      }
+    },
+    {
+      "code": "exec_transport_permits",
+      "area": "m06_logistics",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.exec_transport_permits",
+      "labels": {
+        "en": "Transport permits",
+        "de": "Transportgenehmigungen"
+      }
+    },
+    {
+      "code": "exec_customs",
+      "area": "m06_logistics",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.exec_customs",
+      "labels": {
+        "en": "Customs (import, export)",
+        "de": "Zoll (Import, Export)"
+      }
+    },
+    {
+      "code": "dev_design_concept",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_design_concept",
+      "labels": {
+        "en": "Design concept",
+        "de": "Gestaltungskonzept"
+      }
+    },
+    {
+      "code": "dev_technical_design_concept",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_technical_design_concept",
+      "labels": {
+        "en": "Technical design concept",
+        "de": "Technisches Planungskonzept"
+      }
+    },
+    {
+      "code": "dev_wbs",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_wbs",
+      "labels": {
+        "en": "Work breakdown structure",
+        "de": "Projektstrukturplan"
+      }
+    },
+    {
+      "code": "dev_design_organisation",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_design_organisation",
+      "labels": {
+        "en": "Design organisation",
+        "de": "Planungsorganisation"
+      }
+    },
+    {
+      "code": "dev_design_schedule",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_design_schedule",
+      "labels": {
+        "en": "Design schedule",
+        "de": "Planungsterminplan"
+      }
+    },
+    {
+      "code": "dev_data_standard",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_data_standard",
+      "labels": {
+        "en": "Data standard",
+        "de": "Datenstandard"
+      }
+    },
+    {
+      "code": "dev_permit_design",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_permit_design",
+      "labels": {
+        "en": "Permit design steering",
+        "de": "Steuerung der Genehmigungsplanung"
+      }
+    },
+    {
+      "code": "dev_proofs_reports",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_proofs_reports",
+      "labels": {
+        "en": "Proofs and reports",
+        "de": "Nachweise und Gutachten"
+      }
+    },
+    {
+      "code": "exec_design_management",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management",
+      "labels": {
+        "en": "Design management",
+        "de": "Design Management"
+      }
+    },
+    {
+      "code": "exec_design_management_wbs",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_wbs",
+      "labels": {
+        "en": "Work breakdown structure",
+        "de": "Projektstrukturplan"
+      }
+    },
+    {
+      "code": "exec_design_management_design_awards",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_design_awards",
+      "labels": {
+        "en": "Design awards",
+        "de": "Planungsvergaben"
+      }
+    },
+    {
+      "code": "exec_design_management_design_schedule",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_design_schedule",
+      "labels": {
+        "en": "Design schedule",
+        "de": "Planungsterminplan"
+      }
+    },
+    {
+      "code": "exec_design_management_drawing_distribution",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_drawing_distribution",
+      "labels": {
+        "en": "Drawing distribution",
+        "de": "Planverteiler"
+      }
+    },
+    {
+      "code": "exec_design_management_drawing_numbers",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_drawing_numbers",
+      "labels": {
+        "en": "Drawing numbers",
+        "de": "Plannummern"
+      }
+    },
+    {
+      "code": "exec_design_management_data_filing",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_data_filing",
+      "labels": {
+        "en": "Data filing",
+        "de": "Datenablage"
+      }
+    },
+    {
+      "code": "exec_drawings_structural",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_drawings_structural",
+      "labels": {
+        "en": "Drawings and structural analysis",
+        "de": "Pläne und Statik"
+      }
+    },
+    {
+      "code": "exec_reports",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_reports",
+      "labels": {
+        "en": "Inspection reports and expert opinions",
+        "de": "Prüfberichte und Gutachten"
+      }
+    },
+    {
+      "code": "dev_award_concept",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_award_concept",
+      "labels": {
+        "en": "Award concept",
+        "de": "Vergabekonzept"
+      }
+    },
+    {
+      "code": "dev_design_awards",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_design_awards",
+      "labels": {
+        "en": "Design awards",
+        "de": "Planervergaben"
+      }
+    },
+    {
+      "code": "dev_construction_awards",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_construction_awards",
+      "labels": {
+        "en": "Construction awards",
+        "de": "Bauvergaben"
+      }
+    },
+    {
+      "code": "dev_material_awards",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_material_awards",
+      "labels": {
+        "en": "Material awards",
+        "de": "Materialvergaben"
+      }
+    },
+    {
+      "code": "dev_procedure",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_procedure",
+      "labels": {
+        "en": "Award procedure",
+        "de": "Vergabeverfahren"
+      }
+    },
+    {
+      "code": "dev_prequalification",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_prequalification",
+      "labels": {
+        "en": "Prequalification",
+        "de": "Präqualifikation"
+      }
+    },
+    {
+      "code": "dev_award_schedule",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_award_schedule",
+      "labels": {
+        "en": "Award schedule",
+        "de": "Vergabeterminplan"
+      }
+    },
+    {
+      "code": "exec_suppliers",
+      "area": "m08_procurement",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.exec_suppliers",
+      "labels": {
+        "en": "Suppliers",
+        "de": "Lieferanten"
+      }
+    },
+    {
+      "code": "exec_subcontractors",
+      "area": "m08_procurement",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.exec_subcontractors",
+      "labels": {
+        "en": "Subcontractors",
+        "de": "Nachunternehmer"
+      }
+    },
+    {
+      "code": "dev_business_case",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_business_case",
+      "labels": {
+        "en": "Business case",
+        "de": "Business Case"
+      }
+    },
+    {
+      "code": "dev_budget",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_budget",
+      "labels": {
+        "en": "Budget",
+        "de": "Kostenrahmen"
+      }
+    },
+    {
+      "code": "dev_commitment_matrix",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_commitment_matrix",
+      "labels": {
+        "en": "Commitment and release matrix",
+        "de": "Verpflichtungs- und Freigabematrix"
+      }
+    },
+    {
+      "code": "dev_controlling_structure",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_controlling_structure",
+      "labels": {
+        "en": "Controlling structure",
+        "de": "Controlling-Struktur"
+      }
+    },
+    {
+      "code": "dev_financing",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_financing",
+      "labels": {
+        "en": "Financing",
+        "de": "Finanzierung"
+      }
+    },
+    {
+      "code": "dev_cash_flow",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_cash_flow",
+      "labels": {
+        "en": "Cash-flow plan",
+        "de": "Cash-Flow-Plan"
+      }
+    },
+    {
+      "code": "dev_receivables_payables",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_receivables_payables",
+      "labels": {
+        "en": "Receivables and payables",
+        "de": "Forderungen und Verbindlichkeiten"
+      }
+    },
+    {
+      "code": "dev_securities_insurance",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_securities_insurance",
+      "labels": {
+        "en": "Securities and insurance",
+        "de": "Sicherheiten und Versicherungen"
+      }
+    },
+    {
+      "code": "dev_taxes",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_taxes",
+      "labels": {
+        "en": "Taxes",
+        "de": "Steuern"
+      }
+    },
+    {
+      "code": "dev_administration",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_administration",
+      "labels": {
+        "en": "Administration",
+        "de": "Verwaltung"
+      }
+    },
+    {
+      "code": "exec_administration",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_administration",
+      "labels": {
+        "en": "General administration",
+        "de": "Allgemeine Verwaltung"
+      }
+    },
+    {
+      "code": "exec_estimating",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_estimating",
+      "labels": {
+        "en": "Estimating and working estimate",
+        "de": "Kalkulation und Arbeitskalkulation"
+      }
+    },
+    {
+      "code": "exec_securities",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_securities",
+      "labels": {
+        "en": "Bonds, guarantees, insurance",
+        "de": "Bürgschaften, Garantien, Versicherungen"
+      }
+    },
+    {
+      "code": "exec_investments",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_investments",
+      "labels": {
+        "en": "Investments",
+        "de": "Investitionen"
+      }
+    },
+    {
+      "code": "exec_financing",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_financing",
+      "labels": {
+        "en": "Financing and cash flow",
+        "de": "Finanzierung und Cash-Flow"
+      }
+    },
+    {
+      "code": "exec_accounting",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_accounting",
+      "labels": {
+        "en": "Accounting",
+        "de": "Rechnungswesen"
+      }
+    },
+    {
+      "code": "exec_cost_controlling",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_cost_controlling",
+      "labels": {
+        "en": "Cost and performance controlling",
+        "de": "Kosten-Leistungs-Controlling"
+      }
+    },
+    {
+      "code": "exec_taxes",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_taxes",
+      "labels": {
+        "en": "Taxes",
+        "de": "Steuern"
+      }
+    },
+    {
+      "code": "exec_inventory",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_inventory",
+      "labels": {
+        "en": "Inventory management",
+        "de": "Lagerverwaltung"
+      }
+    },
+    {
+      "code": "dev_quality_requirements",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_quality_requirements",
+      "labels": {
+        "en": "Quality requirements",
+        "de": "Qualitätsanforderungen"
+      }
+    },
+    {
+      "code": "dev_certification_targets",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_certification_targets",
+      "labels": {
+        "en": "Certification targets",
+        "de": "Zertifizierungsziele"
+      }
+    },
+    {
+      "code": "dev_proof_concept",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_proof_concept",
+      "labels": {
+        "en": "Proof concept",
+        "de": "Nachweiskonzept"
+      }
+    },
+    {
+      "code": "dev_commissioning_concept",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_commissioning_concept",
+      "labels": {
+        "en": "Commissioning concept",
+        "de": "Inbetriebnahmekonzept"
+      }
+    },
+    {
+      "code": "dev_acceptance_concept",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_acceptance_concept",
+      "labels": {
+        "en": "Acceptance concept",
+        "de": "Abnahmekonzept"
+      }
+    },
+    {
+      "code": "dev_documentation_requirements",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_documentation_requirements",
+      "labels": {
+        "en": "Documentation requirements",
+        "de": "Dokumentationsanforderungen"
+      }
+    },
+    {
+      "code": "dev_evidence_preservation",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_evidence_preservation",
+      "labels": {
+        "en": "Evidence preservation",
+        "de": "Beweissicherung"
+      }
+    },
+    {
+      "code": "dev_construction_reports",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_construction_reports",
+      "labels": {
+        "en": "Reports during construction",
+        "de": "Baubegleitende Gutachten"
+      }
+    },
+    {
+      "code": "exec_procedures",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_procedures",
+      "labels": {
+        "en": "Procedure descriptions",
+        "de": "Verfahrensbeschreibungen"
+      }
+    },
+    {
+      "code": "exec_qa_plans",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_qa_plans",
+      "labels": {
+        "en": "Quality assurance plans",
+        "de": "QS-Pläne"
+      }
+    },
+    {
+      "code": "exec_reports_records",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_reports_records",
+      "labels": {
+        "en": "Reports and production records",
+        "de": "Berichte und Herstellprotokolle"
+      }
+    },
+    {
+      "code": "exec_reports_records_site_diary",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_reports_records",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_reports_records_site_diary",
+      "labels": {
+        "en": "Site diary",
+        "de": "Bautagebuch"
+      }
+    },
+    {
+      "code": "exec_reports_records_production_records",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_reports_records",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_reports_records_production_records",
+      "labels": {
+        "en": "Production records",
+        "de": "Herstellprotokolle"
+      }
+    },
+    {
+      "code": "exec_reports_records_survey_monitoring",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_reports_records",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_reports_records_survey_monitoring",
+      "labels": {
+        "en": "Survey and monitoring",
+        "de": "Vermessung und Überwachung"
+      }
+    },
+    {
+      "code": "exec_material_testing",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_material_testing",
+      "labels": {
+        "en": "Material testing",
+        "de": "Materialprüfung"
+      }
+    },
+    {
+      "code": "exec_material_testing_raw_material",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_material_testing",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_material_testing_raw_material",
+      "labels": {
+        "en": "Raw material",
+        "de": "Rohmaterial"
+      }
+    },
+    {
+      "code": "exec_material_testing_concrete_suspension",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_material_testing",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_material_testing_concrete_suspension",
+      "labels": {
+        "en": "Concrete and suspension",
+        "de": "Beton und Suspension"
+      }
+    },
+    {
+      "code": "exec_material_testing_steel",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_material_testing",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_material_testing_steel",
+      "labels": {
+        "en": "Steel",
+        "de": "Stahl"
+      }
+    },
+    {
+      "code": "exec_calibration",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_calibration",
+      "labels": {
+        "en": "Calibration certificates",
+        "de": "Kalibrierungszertifikate"
+      }
+    },
+    {
+      "code": "exec_defect_reports",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_defect_reports",
+      "labels": {
+        "en": "Defect reports",
+        "de": "Mängelberichte"
+      }
+    },
+    {
+      "code": "exec_as_built",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_as_built",
+      "labels": {
+        "en": "As-built documentation",
+        "de": "Bestandsdokumentation"
+      }
+    },
+    {
+      "code": "exec_evidence_preservation",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_evidence_preservation",
+      "labels": {
+        "en": "Evidence preservation",
+        "de": "Beweissicherung"
+      }
+    },
+    {
+      "code": "exec_expert_reports",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_expert_reports",
+      "labels": {
+        "en": "Construction-phase expert reports",
+        "de": "Baubegleitende Gutachten"
+      }
+    },
+    {
+      "code": "dev_hse_requirements",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_hse_requirements",
+      "labels": {
+        "en": "HSE requirements on designers and contractors",
+        "de": "HSE-Anforderungen an Planer und Unternehmer"
+      }
+    },
+    {
+      "code": "dev_environmental_assessment",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_environmental_assessment",
+      "labels": {
+        "en": "Environmental assessment",
+        "de": "Umweltprüfung"
+      }
+    },
+    {
+      "code": "dev_site_clearance",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_site_clearance",
+      "labels": {
+        "en": "Site clearances",
+        "de": "Freigaben des Geländes"
+      }
+    },
+    {
+      "code": "dev_permit_conditions",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_permit_conditions",
+      "labels": {
+        "en": "Permit conditions",
+        "de": "Genehmigungsauflagen"
+      }
+    },
+    {
+      "code": "dev_energy_climate",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_energy_climate",
+      "labels": {
+        "en": "Energy and climate",
+        "de": "Energie und Klima"
+      }
+    },
+    {
+      "code": "dev_sustainability",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_sustainability",
+      "labels": {
+        "en": "Sustainability",
+        "de": "Nachhaltigkeit"
+      }
+    },
+    {
+      "code": "dev_health_safety_coordination",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_health_safety_coordination",
+      "labels": {
+        "en": "Health and safety coordination",
+        "de": "SiGeKo"
+      }
+    },
+    {
+      "code": "dev_security_concept",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_security_concept",
+      "labels": {
+        "en": "Security concept",
+        "de": "Sicherheitskonzept"
+      }
+    },
+    {
+      "code": "exec_hse_plan",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_hse_plan",
+      "labels": {
+        "en": "HSE plan",
+        "de": "HSE-Plan"
+      }
+    },
+    {
+      "code": "exec_risk_assessment",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_risk_assessment",
+      "labels": {
+        "en": "Risk assessment",
+        "de": "Gefährdungsbeurteilung"
+      }
+    },
+    {
+      "code": "exec_permits_to_work",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_permits_to_work",
+      "labels": {
+        "en": "Permits to work",
+        "de": "Arbeitsfreigaben"
+      }
+    },
+    {
+      "code": "exec_hse_documentation",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_hse_documentation",
+      "labels": {
+        "en": "HSE documentation",
+        "de": "HSE-Dokumentation"
+      }
+    },
+    {
+      "code": "exec_data_sheets",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_data_sheets",
+      "labels": {
+        "en": "Data sheets",
+        "de": "Datenblätter"
+      }
+    },
+    {
+      "code": "exec_environment",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_environment",
+      "labels": {
+        "en": "Environment",
+        "de": "Umwelt"
+      }
+    }
+  ],
+  "document_types": [
+    {
+      "code": "m01_project_management_frame",
+      "area": "m01_project_management",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m01_project_management_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 1",
+      "labels": {
+        "en": "Project handbook with mandates",
+        "de": "Projekthandbuch mit Mandaten"
+      },
+      "hosts": [
+        "organisation",
+        "stakeholders"
+      ]
+    },
+    {
+      "code": "m02_contract_management_frame",
+      "area": "m02_contract_management",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m02_contract_management_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 2",
+      "labels": {
+        "en": "Contract model with delivery form, permit roadmap",
+        "de": "Vertragsmodell mit Abwicklungsform, Genehmigungsfahrplan"
+      },
+      "hosts": [
+        "delivery_model",
+        "permits"
+      ]
+    },
+    {
+      "code": "m03_engineering_scheduling_frame",
+      "area": "m03_engineering_scheduling",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m03_engineering_scheduling_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 3",
+      "labels": {
+        "en": "Client requirements, technical concept, frame schedule with gates",
+        "de": "Lastenheft, technisches Konzept, Rahmenterminplan mit Gates"
+      }
+    },
+    {
+      "code": "m04_equipment_frame",
+      "area": "m04_equipment",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m04_equipment_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 4",
+      "labels": {
+        "en": "Main components and long-lead items with procurement route",
+        "de": "Hauptkomponenten und Long-Lead-Items mit Beschaffungsweg"
+      },
+      "hosts": [
+        "plant"
+      ]
+    },
+    {
+      "code": "m05_personnel_frame",
+      "area": "m05_personnel",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m05_personnel_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 5",
+      "labels": {
+        "en": "Staffing plan for development, construction and operation",
+        "de": "Besetzungsplan für Entwicklung, Bau und Betrieb"
+      },
+      "hosts": [
+        "staffing"
+      ]
+    },
+    {
+      "code": "m06_logistics_frame",
+      "area": "m06_logistics",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m06_logistics_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 6",
+      "labels": {
+        "en": "Area, access and logistics concept",
+        "de": "Flächen-, Erschließungs- und Logistikkonzept"
+      },
+      "hosts": [
+        "site_logistics"
+      ]
+    },
+    {
+      "code": "m07_design_management_frame",
+      "area": "m07_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m07_design_management_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 7",
+      "labels": {
+        "en": "Design concept, design organisation, data standard",
+        "de": "Gestaltungskonzept, Planungsorganisation, Datenstandard"
+      },
+      "hosts": [
+        "design"
+      ]
+    },
+    {
+      "code": "m08_procurement_frame",
+      "area": "m08_procurement",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m08_procurement_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 8",
+      "labels": {
+        "en": "Award concept with packages, procedures and schedule",
+        "de": "Vergabekonzept mit Paketen, Verfahren und Terminplan"
+      },
+      "hosts": [
+        "procurement"
+      ]
+    },
+    {
+      "code": "m09_commercial_frame",
+      "area": "m09_commercial",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m09_commercial_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 9",
+      "labels": {
+        "en": "Business case, cost frame, financing and controlling structure, commitment and release matrix",
+        "de": "Business Case, Kostenrahmen, Finanzierungs- und Controlling-Struktur, Verpflichtungs- und Freigabematrix"
+      },
+      "hosts": [
+        "commitment_release"
+      ]
+    },
+    {
+      "code": "m10_quality_frame",
+      "area": "m10_quality",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m10_quality_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 10",
+      "labels": {
+        "en": "Requirements catalogue, certification targets, acceptance and commissioning concept",
+        "de": "Anforderungskatalog, Zertifizierungsziele, Abnahme- und Inbetriebnahmekonzept"
+      },
+      "hosts": [
+        "quality"
+      ]
+    },
+    {
+      "code": "m11_hse_frame",
+      "area": "m11_hse",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m11_hse_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 11",
+      "labels": {
+        "en": "Environmental and safety frame with permit conditions",
+        "de": "Umwelt- und Sicherheitsrahmen mit Genehmigungsauflagen"
+      }
+    }
+  ],
+  "readiness_criteria": [
+    {
+      "code": "frame_document_approved",
+      "area": "m01_project_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
+      "labels": {
+        "en": "Frame document exists and is approved at the gate",
+        "de": "Rahmendokument liegt vor und ist am Gate freigegeben"
+      }
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m01_project_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
+      "labels": {
+        "en": "Tasks for the next phase are done",
+        "de": "Aufgaben für die nächste Phase sind erledigt"
+      }
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m02_contract_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
+      "labels": {
+        "en": "Frame document exists and is approved at the gate",
+        "de": "Rahmendokument liegt vor und ist am Gate freigegeben"
+      }
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m02_contract_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
+      "labels": {
+        "en": "Tasks for the next phase are done",
+        "de": "Aufgaben für die nächste Phase sind erledigt"
+      }
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
+      "labels": {
+        "en": "Frame document exists and is approved at the gate",
+        "de": "Rahmendokument liegt vor und ist am Gate freigegeben"
+      }
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
+      "labels": {
+        "en": "Tasks for the next phase are done",
+        "de": "Aufgaben für die nächste Phase sind erledigt"
+      }
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m04_equipment",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
+      "labels": {
+        "en": "Frame document exists and is approved at the gate",
+        "de": "Rahmendokument liegt vor und ist am Gate freigegeben"
+      }
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m04_equipment",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
+      "labels": {
+        "en": "Tasks for the next phase are done",
+        "de": "Aufgaben für die nächste Phase sind erledigt"
+      }
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m05_personnel",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
+      "labels": {
+        "en": "Frame document exists and is approved at the gate",
+        "de": "Rahmendokument liegt vor und ist am Gate freigegeben"
+      }
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m05_personnel",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
+      "labels": {
+        "en": "Tasks for the next phase are done",
+        "de": "Aufgaben für die nächste Phase sind erledigt"
+      }
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m06_logistics",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
+      "labels": {
+        "en": "Frame document exists and is approved at the gate",
+        "de": "Rahmendokument liegt vor und ist am Gate freigegeben"
+      }
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m06_logistics",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
+      "labels": {
+        "en": "Tasks for the next phase are done",
+        "de": "Aufgaben für die nächste Phase sind erledigt"
+      }
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m07_design_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
+      "labels": {
+        "en": "Frame document exists and is approved at the gate",
+        "de": "Rahmendokument liegt vor und ist am Gate freigegeben"
+      }
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m07_design_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
+      "labels": {
+        "en": "Tasks for the next phase are done",
+        "de": "Aufgaben für die nächste Phase sind erledigt"
+      }
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m08_procurement",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
+      "labels": {
+        "en": "Frame document exists and is approved at the gate",
+        "de": "Rahmendokument liegt vor und ist am Gate freigegeben"
+      }
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m08_procurement",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
+      "labels": {
+        "en": "Tasks for the next phase are done",
+        "de": "Aufgaben für die nächste Phase sind erledigt"
+      }
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
+      "labels": {
+        "en": "Frame document exists and is approved at the gate",
+        "de": "Rahmendokument liegt vor und ist am Gate freigegeben"
+      }
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
+      "labels": {
+        "en": "Tasks for the next phase are done",
+        "de": "Aufgaben für die nächste Phase sind erledigt"
+      }
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m10_quality",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
+      "labels": {
+        "en": "Frame document exists and is approved at the gate",
+        "de": "Rahmendokument liegt vor und ist am Gate freigegeben"
+      }
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m10_quality",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
+      "labels": {
+        "en": "Tasks for the next phase are done",
+        "de": "Aufgaben für die nächste Phase sind erledigt"
+      }
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m11_hse",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
+      "labels": {
+        "en": "Frame document exists and is approved at the gate",
+        "de": "Rahmendokument liegt vor und ist am Gate freigegeben"
+      }
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m11_hse",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
+      "labels": {
+        "en": "Tasks for the next phase are done",
+        "de": "Aufgaben für die nächste Phase sind erledigt"
+      }
+    },
+    {
+      "code": "technical_requirements_fixed",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.technical_requirements_fixed",
+      "labels": {
+        "en": "Technical requirements are fixed and agreed with the user",
+        "de": "Technische Anforderungen sind festgelegt und mit dem Nutzer abgestimmt"
+      }
+    },
+    {
+      "code": "site_analysis_done",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.site_analysis_done",
+      "labels": {
+        "en": "Site analysis is complete",
+        "de": "Standortanalyse ist abgeschlossen"
+      }
+    },
+    {
+      "code": "technical_concept_approved",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.technical_concept_approved",
+      "labels": {
+        "en": "Technical concept is approved",
+        "de": "Technisches Konzept ist freigegeben"
+      }
+    },
+    {
+      "code": "procedure_descriptions_fixed",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.procedure_descriptions_fixed",
+      "labels": {
+        "en": "Procedure descriptions for the construction methods are fixed",
+        "de": "Verfahrensbeschreibungen der Bauverfahren sind festgelegt"
+      }
+    },
+    {
+      "code": "lean_approach_agreed",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.lean_approach_agreed",
+      "labels": {
+        "en": "Lean approach for execution is agreed",
+        "de": "Lean-Ansatz für die Ausführung ist vereinbart"
+      }
+    },
+    {
+      "code": "area_and_quantity_programme_fixed",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.area_and_quantity_programme_fixed",
+      "labels": {
+        "en": "Area and quantity programme is fixed",
+        "de": "Flächen- und Mengenprogramm ist festgelegt"
+      }
+    },
+    {
+      "code": "frame_schedule_approved",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.frame_schedule_approved",
+      "labels": {
+        "en": "Frame schedule is approved",
+        "de": "Rahmenterminplan ist freigegeben"
+      }
+    },
+    {
+      "code": "commissioning_sequence_fixed",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.commissioning_sequence_fixed",
+      "labels": {
+        "en": "Commissioning sequence is fixed",
+        "de": "Inbetriebnahmereihenfolge ist festgelegt"
+      }
+    },
+    {
+      "code": "site_frame_conditions_fixed",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.site_frame_conditions_fixed",
+      "labels": {
+        "en": "Frame conditions of the site are fixed",
+        "de": "Rahmenbedingungen der Baustelle sind festgelegt"
+      }
+    },
+    {
+      "code": "requirements_specification_issued",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.requirements_specification_issued",
+      "labels": {
+        "en": "Requirements specification is issued",
+        "de": "Lastenheft ist herausgegeben"
+      }
+    },
+    {
+      "code": "suitability_studies_done",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.suitability_studies_done",
+      "labels": {
+        "en": "Suitability studies and tests are complete",
+        "de": "Eignungsuntersuchungen und Eignungsprüfungen sind abgeschlossen"
+      }
+    },
+    {
+      "code": "business_case_confirmed",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.business_case_confirmed",
+      "labels": {
+        "en": "Business case is confirmed",
+        "de": "Wirtschaftlichkeitsrechnung ist bestätigt"
+      }
+    },
+    {
+      "code": "budget_approved",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.budget_approved",
+      "labels": {
+        "en": "Budget is approved",
+        "de": "Budget ist freigegeben"
+      }
+    },
+    {
+      "code": "controlling_structure_set",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.controlling_structure_set",
+      "labels": {
+        "en": "Cost controlling structure is set up",
+        "de": "Controllingstruktur ist eingerichtet"
+      }
+    },
+    {
+      "code": "financing_secured",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.financing_secured",
+      "labels": {
+        "en": "Financing is secured",
+        "de": "Finanzierung ist gesichert"
+      }
+    },
+    {
+      "code": "cash_flow_plan_available",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.cash_flow_plan_available",
+      "labels": {
+        "en": "Cash flow plan is available",
+        "de": "Liquiditätsplan liegt vor"
+      }
+    },
+    {
+      "code": "receivables_payables_process_set",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.receivables_payables_process_set",
+      "labels": {
+        "en": "Handling of receivables and payables is set up",
+        "de": "Abwicklung von Forderungen und Verbindlichkeiten ist eingerichtet"
+      }
+    },
+    {
+      "code": "securities_and_insurance_in_place",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.securities_and_insurance_in_place",
+      "labels": {
+        "en": "Securities and insurance are in place",
+        "de": "Sicherheiten und Versicherungen liegen vor"
+      }
+    },
+    {
+      "code": "tax_treatment_clarified",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.tax_treatment_clarified",
+      "labels": {
+        "en": "Tax treatment is clarified",
+        "de": "Steuerliche Behandlung ist geklärt"
+      }
+    },
+    {
+      "code": "administration_set_up",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.administration_set_up",
+      "labels": {
+        "en": "Commercial administration is set up",
+        "de": "Kaufmännische Verwaltung ist eingerichtet"
+      }
+    },
+    {
+      "code": "hse_requirements_issued",
+      "area": "m11_hse",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.hse_requirements_issued",
+      "labels": {
+        "en": "Requirements on designers and contractors are issued",
+        "de": "Anforderungen an Planer und Auftragnehmer sind herausgegeben"
+      }
+    },
+    {
+      "code": "environmental_assessment_done",
+      "area": "m11_hse",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.environmental_assessment_done",
+      "labels": {
+        "en": "Environmental assessment is complete",
+        "de": "Umweltprüfung ist abgeschlossen"
+      }
+    },
+    {
+      "code": "site_clearances_on_file",
+      "area": "m11_hse",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.site_clearances_on_file",
+      "labels": {
+        "en": "Site clearances are on file",
+        "de": "Freigaben für das Baufeld liegen vor"
+      }
+    },
+    {
+      "code": "energy_and_climate_targets_set",
+      "area": "m11_hse",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.energy_and_climate_targets_set",
+      "labels": {
+        "en": "Energy and climate targets are set",
+        "de": "Energie- und Klimaziele sind festgelegt"
+      }
+    },
+    {
+      "code": "sustainability_targets_set",
+      "area": "m11_hse",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.sustainability_targets_set",
+      "labels": {
+        "en": "Sustainability targets are set",
+        "de": "Nachhaltigkeitsziele sind festgelegt"
+      }
+    },
+    {
+      "code": "safety_coordination_appointed",
+      "area": "m11_hse",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.safety_coordination_appointed",
+      "labels": {
+        "en": "Health and safety coordination is appointed",
+        "de": "Sicherheits- und Gesundheitsschutzkoordination ist bestellt"
+      }
+    },
+    {
+      "code": "security_concept_approved",
+      "area": "m11_hse",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.security_concept_approved",
+      "labels": {
+        "en": "Security concept is approved",
+        "de": "Sicherheitskonzept ist freigegeben"
+      }
+    }
+  ],
+  "labels": {
+    "en": "Eleven module project framework",
+    "de": "Elf Module des Projektmanagements"
+  },
+  "description_labels": {
+    "en": "Eleven management areas shared by development and execution, one frame document per area.",
+    "de": "Elf Steuerungsbereiche für Projektentwicklung und Bauabwicklung, je ein Rahmendokument pro Modul."
+  }
+}

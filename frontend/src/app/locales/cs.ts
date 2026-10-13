@@ -48650,6 +48650,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Stavební balíček Spojené arabské emiráty",
     "modules.pp_name_greece_gr": "Stavební balíček Řecko",
     "modules.pp_name_denmark_dk": "Stavební balíček Dánsko",
+    "modules.pp_name_eleven_areas_framework": "Projektový rámec v jedenácti modulech",
     "modules.pp_name_france_fr": "Stavební balíček Francie",
     "modules.pp_name_germany_de": "Stavební balíček Německo",
     "modules.pp_name_hungary_hu": "Stavební balíček Maďarsko",

@@ -48881,6 +48881,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Pakiet budowlany Zjednoczone Emiraty Arabskie",
     "modules.pp_name_greece_gr": "Pakiet budowlany Grecja",
     "modules.pp_name_denmark_dk": "Pakiet budowlany Dania",
+    "modules.pp_name_eleven_areas_framework": "Ramy projektu w jedenastu modułach",
     "modules.pp_name_france_fr": "Pakiet budowlany Francja",
     "modules.pp_name_germany_de": "Pakiet budowlany Niemcy",
     "modules.pp_name_hungary_hu": "Pakiet budowlany Węgry",

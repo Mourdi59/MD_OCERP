@@ -47797,6 +47797,7 @@ const resource = {
     "modules.pp_name_uae_ae": "아랍에미리트 건설 팩",
     "modules.pp_name_greece_gr": "그리스 건설 팩",
     "modules.pp_name_denmark_dk": "덴마크 건설 팩",
+    "modules.pp_name_eleven_areas_framework": "11개 모듈 프로젝트 프레임워크",
     "modules.pp_name_france_fr": "프랑스 건설 팩",
     "modules.pp_name_germany_de": "독일 건설 팩",
     "modules.pp_name_hungary_hu": "헝가리 건설 팩",

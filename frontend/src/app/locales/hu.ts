@@ -49362,6 +49362,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Építőipari csomag: Egyesült Arab Emírségek",
     "modules.pp_name_greece_gr": "Görög építőipari csomag",
     "modules.pp_name_denmark_dk": "Építőipari csomag: Dánia",
+    "modules.pp_name_eleven_areas_framework": "Tizenegy modulos projektkeret",
     "modules.pp_name_france_fr": "Építőipari csomag: Franciaország",
     "modules.pp_name_germany_de": "Építőipari csomag: Németország",
     "modules.pp_name_hungary_hu": "Építőipari csomag: Magyarország",

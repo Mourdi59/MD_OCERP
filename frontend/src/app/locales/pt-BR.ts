@@ -43924,6 +43924,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Pacote de Construção: Emirados Árabes Unidos",
     "modules.pp_name_greece_gr": "Pacote de Construção da Grécia",
     "modules.pp_name_denmark_dk": "Pacote de Construção: Dinamarca",
+    "modules.pp_name_eleven_areas_framework": "Estrutura de projeto em onze módulos",
     "modules.pp_name_france_fr": "Pacote de Construção: França",
     "modules.pp_name_germany_de": "Pacote de Construção: Alemanha",
     "modules.pp_name_hungary_hu": "Pacote de Construção: Hungria",

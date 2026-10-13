@@ -47338,6 +47338,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Construction Pack ng United Arab Emirates",
     "modules.pp_name_greece_gr": "Construction Pack ng Greece",
     "modules.pp_name_denmark_dk": "Construction Pack ng Denmark",
+    "modules.pp_name_eleven_areas_framework": "Balangkas ng proyekto sa labing-isang module",
     "modules.pp_name_france_fr": "Construction Pack ng France",
     "modules.pp_name_germany_de": "Construction Pack ng Germany",
     "modules.pp_name_hungary_hu": "Construction Pack ng Hungary",

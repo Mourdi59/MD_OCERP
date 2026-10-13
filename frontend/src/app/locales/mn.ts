@@ -47137,6 +47137,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Барилгын багц: Арабын Нэгдсэн Эмират Улс",
     "modules.pp_name_greece_gr": "Грекийн барилгын багц",
     "modules.pp_name_denmark_dk": "Барилгын багц: Дани",
+    "modules.pp_name_eleven_areas_framework": "Арван нэгэн модультай төслийн хүрээ",
     "modules.pp_name_france_fr": "Барилгын багц: Франц",
     "modules.pp_name_germany_de": "Барилгын багц: Герман",
     "modules.pp_name_hungary_hu": "Барилгын багц: Унгар",

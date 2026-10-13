@@ -2429,6 +2429,10 @@ PACK_DEMO_PROJECT: dict[str, str] = {
     "romania-ro": "residential-cluj",
     "greece-gr": "residential-athens",
     "ukraine-ua": "residential-lviv",
+    # Not a country pack: it carries the eleven module catalogues and its own
+    # placement data. The German reference demo is the project those
+    # catalogues were written against.
+    "eleven-areas-framework": "office-frankfurt",
 }
 
 # Country-name → ISO 3166-1 alpha-2, for catalog rows auto-derived from a

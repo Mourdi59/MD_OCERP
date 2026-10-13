@@ -48704,6 +48704,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Birlashgan Arab Amirliklari qurilish paketi",
     "modules.pp_name_greece_gr": "Gretsiya qurilish paketi",
     "modules.pp_name_denmark_dk": "Daniya qurilish paketi",
+    "modules.pp_name_eleven_areas_framework": "O'n bir modulli loyiha doirasi",
     "modules.pp_name_france_fr": "Fransiya qurilish paketi",
     "modules.pp_name_germany_de": "Germaniya qurilish paketi",
     "modules.pp_name_hungary_hu": "Vengriya qurilish paketi",

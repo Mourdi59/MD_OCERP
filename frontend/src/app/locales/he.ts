@@ -47712,6 +47712,7 @@ const resource = {
     "modules.pp_name_uae_ae": "חבילת בנייה לאיחוד האמירויות הערביות",
     "modules.pp_name_greece_gr": "חבילת בנייה ליוון",
     "modules.pp_name_denmark_dk": "חבילת בנייה לדנמרק",
+    "modules.pp_name_eleven_areas_framework": "מסגרת פרויקט באחד עשר מודולים",
     "modules.pp_name_france_fr": "חבילת בנייה לצרפת",
     "modules.pp_name_germany_de": "חבילת בנייה לגרמניה",
     "modules.pp_name_hungary_hu": "חבילת בנייה להונגריה",

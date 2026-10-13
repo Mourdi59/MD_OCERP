@@ -48690,6 +48690,7 @@ const resource = {
     "modules.pp_name_uae_ae": "アラブ首長国連邦建設パック",
     "modules.pp_name_greece_gr": "ギリシャ建設パック",
     "modules.pp_name_denmark_dk": "デンマーク建設パック",
+    "modules.pp_name_eleven_areas_framework": "11モジュールのプロジェクトフレームワーク",
     "modules.pp_name_france_fr": "フランス建設パック",
     "modules.pp_name_germany_de": "ドイツ建設パック",
     "modules.pp_name_hungary_hu": "ハンガリー建設パック",

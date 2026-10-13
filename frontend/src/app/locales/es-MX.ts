@@ -43862,6 +43862,7 @@ const resource = {
     "modules.pp_name_us_california": "Paquete de Construcción de California",
     "modules.pp_name_us_costdata": "Paquete de Construcción de EE. UU.",
     "modules.pp_name_us_texas": "Paquete de Construcción de Texas",
+    "modules.pp_name_eleven_areas_framework": "Marco de proyecto de once módulos",
     "modules.pp_name_turkey_tr_mep": "Paquete para Contratistas de Instalaciones de Turquía",
 
     // --- Property Development → Document appearance ---

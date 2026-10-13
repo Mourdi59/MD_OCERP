@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openconstructionerp-eleven-areas-framework"
+version = "0.1.0"
+description = "Eleven module project framework pack for OpenConstructionERP: two phases, one gate, eleven management areas, one frame document per area."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "AGPL-3.0-or-later" }
+authors = [
+    { name = "OpenConstructionERP", email = "info@datadrivenconstruction.io" },
+]
+keywords = [
+    "openconstructionerp",
+    "pack",
+    "project-governance",
+    "stage-gates",
+    "owner",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Industry-Specific",
+]
+dependencies = [
+    "openconstructionerp",
+    "pydantic>=2.6",
+]
+
+[project.urls]
+Source = "https://github.com/DataDrivenConstruction/openconstructionerp"
+
+[project.entry-points."openconstructionerp.packs"]
+eleven-areas-framework = "openconstructionerp_eleven_areas_framework:MANIFEST"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+openconstructionerp_eleven_areas_framework = [
+    "manifest.json",
+    "locales/*.json",
+    "catalogues/*/*.json",
+    "demo/*.json",
+]

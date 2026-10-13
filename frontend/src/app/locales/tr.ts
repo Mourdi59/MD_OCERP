@@ -48350,6 +48350,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Birleşik Arap Emirlikleri İnşaat Paketi",
     "modules.pp_name_greece_gr": "Yunanistan İnşaat Paketi",
     "modules.pp_name_denmark_dk": "Danimarka İnşaat Paketi",
+    "modules.pp_name_eleven_areas_framework": "On bir modüllü proje çerçevesi",
     "modules.pp_name_france_fr": "Fransa İnşaat Paketi",
     "modules.pp_name_germany_de": "Almanya İnşaat Paketi",
     "modules.pp_name_hungary_hu": "Macaristan İnşaat Paketi",

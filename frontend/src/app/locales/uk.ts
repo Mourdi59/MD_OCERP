@@ -49473,6 +49473,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Будівельний пакет Обʼєднані Арабські Емірати",
     "modules.pp_name_greece_gr": "Будівельний пакет Греція",
     "modules.pp_name_denmark_dk": "Будівельний пакет Данія",
+    "modules.pp_name_eleven_areas_framework": "Проєктна рамка з одинадцяти модулів",
     "modules.pp_name_france_fr": "Будівельний пакет Франція",
     "modules.pp_name_germany_de": "Будівельний пакет Німеччина",
     "modules.pp_name_hungary_hu": "Будівельний пакет Угорщина",

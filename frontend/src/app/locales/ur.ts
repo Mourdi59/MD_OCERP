@@ -47491,6 +47491,7 @@ const resource = {
     "modules.pp_name_uae_ae": "متحدہ عرب امارات تعمیراتی پیکج",
     "modules.pp_name_greece_gr": "یونان تعمیراتی پیکج",
     "modules.pp_name_denmark_dk": "ڈنمارک تعمیراتی پیکج",
+    "modules.pp_name_eleven_areas_framework": "گیارہ ماڈیولز پر مشتمل پروجیکٹ فریم ورک",
     "modules.pp_name_france_fr": "فرانس تعمیراتی پیکج",
     "modules.pp_name_germany_de": "جرمنی تعمیراتی پیکج",
     "modules.pp_name_hungary_hu": "ہنگری تعمیراتی پیکج",

@@ -47267,6 +47267,7 @@ const resource = {
     "modules.pp_name_uae_ae": "แพ็กก่อสร้างสหรัฐอาหรับเอมิเรตส์",
     "modules.pp_name_greece_gr": "แพ็กก่อสร้างกรีซ",
     "modules.pp_name_denmark_dk": "แพ็กก่อสร้างเดนมาร์ก",
+    "modules.pp_name_eleven_areas_framework": "กรอบโครงการสิบเอ็ดโมดูล",
     "modules.pp_name_france_fr": "แพ็กก่อสร้างฝรั่งเศส",
     "modules.pp_name_germany_de": "แพ็กก่อสร้างเยอรมนี",
     "modules.pp_name_hungary_hu": "แพ็กก่อสร้างฮังการี",

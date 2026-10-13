@@ -47779,6 +47779,7 @@ const resource = {
     "modules.pp_name_uae_ae": "সংযুক্ত আরব আমিরাত নির্মাণ প্যাক",
     "modules.pp_name_greece_gr": "গ্রিস নির্মাণ প্যাক",
     "modules.pp_name_denmark_dk": "ডেনমার্ক নির্মাণ প্যাক",
+    "modules.pp_name_eleven_areas_framework": "এগারো মডিউলের প্রকল্প কাঠামো",
     "modules.pp_name_france_fr": "ফ্রান্স নির্মাণ প্যাক",
     "modules.pp_name_germany_de": "জার্মানি নির্মাণ প্যাক",
     "modules.pp_name_hungary_hu": "হাঙ্গেরি নির্মাণ প্যাক",

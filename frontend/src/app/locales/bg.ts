@@ -47506,6 +47506,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Строителен пакет Обединени арабски емирства",
     "modules.pp_name_greece_gr": "Строителен пакет Гърция",
     "modules.pp_name_denmark_dk": "Строителен пакет Дания",
+    "modules.pp_name_eleven_areas_framework": "Проектна рамка в единадесет модула",
     "modules.pp_name_france_fr": "Строителен пакет Франция",
     "modules.pp_name_germany_de": "Строителен пакет Германия",
     "modules.pp_name_hungary_hu": "Строителен пакет Унгария",

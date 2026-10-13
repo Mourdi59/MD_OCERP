@@ -47508,6 +47508,7 @@ const resource = {
     "modules.pp_name_uae_ae": "Byggepakke De Forenede Arabiske Emirater",
     "modules.pp_name_greece_gr": "Byggepakke Grækenland",
     "modules.pp_name_denmark_dk": "Byggepakke Danmark",
+    "modules.pp_name_eleven_areas_framework": "Projektramme i elleve moduler",
     "modules.pp_name_france_fr": "Byggepakke Frankrig",
     "modules.pp_name_germany_de": "Byggepakke Tyskland",
     "modules.pp_name_hungary_hu": "Byggepakke Ungarn",
