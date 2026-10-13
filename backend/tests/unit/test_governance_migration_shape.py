@@ -120,6 +120,39 @@ def test_the_revision_and_the_model_declare_the_same(model: Any, part: str) -> N
     assert from_revision == from_models
 
 
+def _every_index(table: sa.Table) -> dict[str, tuple[list[str], bool]]:
+    return {i.name: ([c.name for c in i.columns], bool(i.unique)) for i in table.indexes}
+
+
+@pytest.mark.parametrize("model", _MODELS, ids=lambda m: m.__tablename__)
+def test_an_index_the_revision_creates_is_an_index_of_the_model_whatever_its_name(model: Any) -> None:
+    """An index the module declares under the hook's own name is filtered above; here it is not."""
+    from_revision = _every_index(_tables_of_the_revision()[model.__tablename__])
+    from_models = _every_index(model.__table__)
+    assert from_revision.items() <= from_models.items()
+
+
+@pytest.mark.parametrize("model", _MODELS, ids=lambda m: m.__tablename__)
+def test_no_index_of_the_model_repeats_an_index_of_the_hook_under_another_name(model: Any) -> None:
+    """Two names for the same columns are two indexes in the database and one too many.
+
+    The hook guards by name only, so an index of ours on (``project_id``,
+    ``status``) under a name of ours gets a twin after any ``create_all``.
+    """
+    from app.core.pg_optimizations import _desired_indexes
+
+    table = model.__table__
+    before = set(table.indexes)
+    try:
+        list(_desired_indexes(table))  # building them hangs them on the table
+        by_columns: dict[tuple[str, ...], list[str]] = {}
+        for index in table.indexes:
+            by_columns.setdefault(tuple(c.name for c in index.columns), []).append(str(index.name))
+        assert {cols: names for cols, names in by_columns.items() if len(names) > 1} == {}
+    finally:
+        table.indexes.difference_update(set(table.indexes) - before)
+
+
 def test_only_an_index_named_exactly_as_the_hook_names_it_is_let_through() -> None:
     from app.core.pg_optimizations import _index_name
 

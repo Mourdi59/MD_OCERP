@@ -368,42 +368,45 @@ def test_the_demo_seed_signs_in_as_the_platform_demo_accounts() -> None:
 
     assert seed._OWNER_EMAIL == SHOWCASE_OWNER_EMAIL
     # The owner and the two parts of the cast are the three demo logins where they exist.
-    assert {seed._OWNER_EMAIL} | {part.demo_login for part in demo_cast.CAST} == set(DEMO_ACCOUNT_EMAILS)
+    assert {seed._OWNER_EMAIL} | set(demo_cast.CAST.values()) == set(DEMO_ACCOUNT_EMAILS)
+    assert sorted(demo_cast.CAST) == ["cost", "decider"]
+    # ``cost`` joins first: a seeder that takes "the first member who is not the owner" gets it.
+    assert demo_cast.JOIN_ORDER == ("cost", "decider")
     source = inspect.getsource(seed)
     assert "demo@" not in source
     assert "manager@" not in source and "estimator@" not in source
 
 
-def test_a_stand_in_of_the_demo_cast_can_neither_sign_in_without_a_password_nor_get_mail() -> None:
-    from app.core import demo_cast
-    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, is_reserved_mail_domain
-    from app.modules.users.service import _DEMO_EMAIL_WHITELIST
-
-    stand_ins = {part.email for part in demo_cast.CAST}
-    assert len(stand_ins) == len(demo_cast.CAST) == 2
-    # The whitelist is what the passwordless sign-in accepts; a stand-in on it would be a back door.
-    assert not stand_ins & set(DEMO_ACCOUNT_EMAILS)
-    assert not stand_ins & set(_DEMO_EMAIL_WHITELIST)
-    assert all(is_reserved_mail_domain(email) for email in stand_ins)
-    assert all(email == email.lower() for email in stand_ins)
-    assert sorted(part.word for part in demo_cast.CAST) == ["cost", "decider"]
-
-
-def test_a_stand_in_of_the_demo_cast_is_not_counted_as_a_real_person() -> None:
-    """Counted as real, a pack install would keep the first registrant from becoming admin."""
-    from sqlalchemy.dialects import postgresql
+def test_the_demo_cast_cannot_create_a_user() -> None:
+    """The cast is the demo logins an installation has. A demo is not worth a new account."""
+    import ast
 
     from app.core import demo_cast
-    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, DEMO_CAST_EMAILS
-    from app.modules.users import repository
 
-    assert {part.email for part in demo_cast.CAST} == set(DEMO_CAST_EMAILS)
-    clause = str(
-        repository._NOT_SEEDED_DEMO.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
-    )
-    assert "NOT IN" in clause
-    for email in DEMO_CAST_EMAILS | DEMO_ACCOUNT_EMAILS:
-        assert f"'{email}'" in clause, email
+    tree = ast.parse(inspect.getsource(demo_cast))
+    imported = {alias.name for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) for alias in node.names}
+    called = {
+        node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", "")
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+    }
+    assert "User" in imported, "the module no longer reads users; this test reads nothing"
+    # Read through a select, never built and never handed to the session.
+    assert "User" not in called
+    assert not called & {"add", "add_all", "merge", "hash_password", "create_user", "register"}
+    assert not imported & {"hash_password", "UserRepository", "UserService"}
+    assert not {"remove_demo_cast", "CAST_TAG", "CastPart"} & set(vars(demo_cast))
+
+
+def test_the_cast_left_the_users_module_and_the_project_purge_alone() -> None:
+    from app.core import demo_accounts, demo_cast
+
+    assert not hasattr(demo_accounts, "DEMO_CAST_EMAILS")
+    modules = Path(demo_cast.__file__).parents[1] / "modules"
+    readers = [*sorted((modules / "users").rglob("*.py")), modules / "projects" / "service.py"]
+    assert len(readers) > 3
+    naming = [str(path.relative_to(modules)) for path in readers if "demo_cast" in path.read_text(encoding="utf-8")]
+    assert naming == []
 
 
 def test_the_one_gate_of_the_eleven_area_model_is_the_gate_that_releases_procurement() -> None:

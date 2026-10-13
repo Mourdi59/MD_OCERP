@@ -25,7 +25,16 @@ preparation story or a running-site story from it (``seed_story.PLACEMENT``):
   change request against the binding business case.
 
 A placement that cannot be completed falls back to the last story, so a demo
-project never ends up without a model. The caller commits.
+project never ends up without a model.
+
+A decision takes a second person, and the only second people this seed knows
+are the product's demo logins (``app.core.demo_cast``). On an installation
+without them a project has its owner only and gets the one-person story
+(``seed_story.OWNER_ONLY``): model, areas, frame documents and the readiness
+of the first gate, no route and no decision. That is a legal state and is
+reported at info. The one project that cannot be told that way is the one the
+active pack's demo file names: it is filmed, so it is left untouched and the
+result says so loudly. The seed creates no user. The caller commits.
 """
 
 from __future__ import annotations
@@ -86,8 +95,6 @@ def owner_for(area_code: str, *, owner: uuid.UUID, cost_owner: uuid.UUID) -> uui
     return cost_owner if AREA_OWNERS.get(area_code) == "cost" else owner
 
 
-_TEAM_NAME = demo_cast.TEAM_NAME
-
 #: The frame documents of the first-gate story, with the titles a reader sees in the CDE.
 _DOCS: dict[str, DocumentPlan] = {
     "business_case": DocumentPlan("business_case", "GOV-BC-001", "Business case", "business-case.pdf"),
@@ -118,10 +125,10 @@ class SeedStop(RuntimeError):
 
 @dataclass(frozen=True)
 class Cast:
-    """The three demo logins of a project."""
+    """The people of a demo project. ``decider`` is ``None`` when the project has nobody to decide."""
 
     owner: uuid.UUID
-    decider: uuid.UUID
+    decider: uuid.UUID | None
     cost_owner: uuid.UUID
 
     def named(self, word: str) -> uuid.UUID:
@@ -136,29 +143,6 @@ async def _user_id(session: AsyncSession, email: str) -> uuid.UUID | None:
     return (
         await session.execute(select(User.id).where(User.email == email, User.is_active.is_(True)))
     ).scalar_one_or_none()
-
-
-async def _ensure_members(
-    session: AsyncSession, svc: GovernanceService, project_id: uuid.UUID, owner: uuid.UUID, users: list[uuid.UUID]
-) -> None:
-    """Put the demo logins on the project team so they may own areas and decide."""
-    from sqlalchemy import select
-
-    from app.modules.teams.models import Team
-    from app.modules.teams.schemas import AddMemberRequest, TeamCreate
-    from app.modules.teams.service import TeamService
-
-    missing = [u for u in users if not await svc.user_can_access_project(project_id, u)]
-    if not missing:
-        return
-    teams = TeamService(session)
-    team = (
-        await session.execute(select(Team).where(Team.project_id == project_id, Team.name == _TEAM_NAME))
-    ).scalar_one_or_none()
-    if team is None:
-        team = await teams.create_team(TeamCreate(project_id=project_id, name=_TEAM_NAME), actor_id=owner)
-    for uid in missing:
-        await teams.add_member(team.id, AddMemberRequest(user_id=uid), actor_id=owner)
 
 
 async def _ensure_route(session: AsyncSession, project_id: uuid.UUID, kind: str, approver: uuid.UUID) -> uuid.UUID:
@@ -211,11 +195,10 @@ class _Stage:
         four_eyes: bool,
         owner_of: Callable[[str], uuid.UUID],
     ) -> None:
-        """Team, routes, the pinned model and an owner on every area."""
+        """Team, the pinned model, an owner on every area and, with a decider, the two routes."""
         cast, pid = self.cast, self.project_id
-        await _ensure_members(self.session, self.svc, pid, cast.owner, [cast.cost_owner, cast.decider])
-        gate_route = await _ensure_route(self.session, pid, "phase_gate", cast.decider)
-        change_route = await _ensure_route(self.session, pid, "frame_change", cast.decider)
+        # One writer for the memberships and their order; a no-op after the enrichment's cast step.
+        await demo_cast.join_project(self.session, pid)
         await self.svc.set_model(
             pid,
             source=source,
@@ -225,14 +208,19 @@ class _Stage:
             actor_id=cast.owner,
             tenant_id=str(cast.owner),
         )
-        await self.svc.update_settings(
-            pid,
-            four_eyes=None,
-            decision_route_id=gate_route,
-            change_route_id=change_route,
-            fields_set={"decision_route_id", "change_route_id"},
-            actor_id=cast.owner,
-        )
+        if cast.decider is not None:
+            # A route names who decides. Without a decider none is pinned: the gate can be
+            # prepared, and the screen says a route is missing where a real project would too.
+            gate_route = await _ensure_route(self.session, pid, "phase_gate", cast.decider)
+            change_route = await _ensure_route(self.session, pid, "frame_change", cast.decider)
+            await self.svc.update_settings(
+                pid,
+                four_eyes=None,
+                decision_route_id=gate_route,
+                change_route_id=change_route,
+                fields_set={"decision_route_id", "change_route_id"},
+                actor_id=cast.owner,
+            )
         self.areas = list(await self.svc.repo.list_areas(pid))
         for area in self.areas:
             who = owner_of(area.code)
@@ -303,6 +291,8 @@ class _Stage:
         are named as proceeding at risk, one condition each. Without a stated
         outcome a clear gate gets a go, and any other blocker stops the story.
         """
+        if self.cast.decider is None:
+            raise SeedStop("no_decider", f"gate {gate.code} has nobody to decide it")
         model = await self.svc.require_model(self.project_id)
         ctx, _, _ = await self.svc.gate_context(model, gate, self.today)
         blockers = ev.gate_blockers(ctx)
@@ -353,6 +343,30 @@ class _Stage:
 
 
 # ── the stories ──
+
+
+async def _owner_only_story(stage: _Stage) -> None:
+    """Everything one person can do: the model, the areas, the documents, the readiness of the first gate.
+
+    The gate is left in preparation. Submitting it needs a route and deciding
+    it a second person, and this story has neither.
+    """
+    cast, svc, pid = stage.cast, stage.svc, stage.project_id
+    await stage.open(
+        source="shipped",
+        catalogue_id=DEMO_CATALOGUE,
+        version=None,
+        four_eyes=True,
+        owner_of=lambda code: owner_for(code, owner=cast.owner, cost_owner=cast.cost_owner),
+    )
+    for plan in _DOCS.values():
+        await stage.issue(plan)
+    first = seed_story.first_gate(await svc.catalogue_for(await svc.require_model(pid)))
+    gate = stage.gates[first or ""]
+    await stage.issue_required(gate.code)
+    await svc.start_preparation(pid, gate.id, actor_id=cast.owner)
+    for area in stage.areas:
+        await stage.confirm(gate, area, "ready", "green", "Reviewed by the area owner.")
 
 
 async def _first_gate_story(stage: _Stage) -> None:
@@ -573,7 +587,10 @@ def _stories(
     telling: tuple[PackStory, tuple[str, int]] | None,
     outbox: list[tuple[str, dict[str, Any]]],
 ) -> list[tuple[str, Story]]:
-    """The stories to try for one project, the wanted one first and the first-gate story last."""
+    """The stories to try for one project, the wanted one first and the first-gate story last.
+
+    A cast without a decider has one story, the one a single person can tell.
+    """
 
     def stage() -> _Stage:
         # A fresh stage per try: a story that failed was rolled back with everything it loaded.
@@ -581,6 +598,8 @@ def _stories(
         fresh.svc.outbox = outbox
         return fresh
 
+    if cast.decider is None:
+        return [(seed_story.OWNER_ONLY, lambda: _owner_only_story(stage()))]
     stories: list[tuple[str, Story]] = []
     if telling is not None:
         told, pin = telling
@@ -635,15 +654,17 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
     Returns:
         ``seed_story.seed_result``: ``projects`` (models written by this run),
         ``placements`` (one row per project handed in: planned moment, reached
-        moment, ``fallback_reason``), ``fallbacks`` (the rows that missed their
-        planned moment), ``pack_demo_file`` and ``ok``. A project that falls
-        back still gets the first-gate story, so nothing here raises; a caller
-        that must not ship a demo told at the wrong moment checks ``ok``.
+        moment, ``fallback_reason``, ``loud``), ``fallbacks`` (the rows that missed
+        their planned moment), ``pack_demo_file`` and ``ok``. A project that
+        falls back still gets the first-gate story, so nothing here raises; a
+        caller that must not ship a demo told at the wrong moment checks ``ok``.
 
     The decider and the cost owner are the demo cast (``app.core.demo_cast``):
-    the product's demo logins where the installation has them, stand-ins where
-    it does not. This function creates nobody; the enrichment fills the cast
-    before it calls the seed.
+    the product's demo logins where the installation has them, nobody where it
+    does not. This function creates no user. Without a decider a project gets
+    the one-person story, reported with reason ``no_decider`` at info while
+    ``ok`` stays true. The project the active pack names is the exception: its
+    story needs the logins, so it is left untouched and reported loudly.
     """
     owner_by_email = await _user_id(session, _OWNER_EMAIL)
     players = await demo_cast.find_cast(session)
@@ -668,15 +689,20 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
             rows.append(seed_story.placement(pid, demo_id, planned, None, skipped=True))
             continue
         owner = project.owner_id or owner_by_email
-        # Four-eyes needs a decider who owns no area; without one a half-seeded
-        # gate is worse than an empty screen, so nothing is written.
-        if decider is None or owner is None or owner == decider:
-            refused = "no_decider" if decider is None else "no_owner" if owner is None else "owner_is_decider"
-            rows.append(seed_story.placement(pid, demo_id, planned, None, refused))
+        if owner is None:
+            rows.append(seed_story.placement(pid, demo_id, planned, None, "no_owner"))
             continue
-        cast = Cast(owner=owner, decider=decider, cost_owner=cost_owner or owner)
+        # Four-eyes needs a decider who owns no area. Without one the owner tells the story alone.
+        alone = "no_decider" if decider is None else "owner_is_decider" if owner == decider else None
+        if alone and planned == seed_story.PACK:
+            # The filmed project is told from the pack's file and on the pack's model, with a
+            # decision on camera. A neutral model in its place would be the wrong film and would
+            # keep a later run from telling the right one, so nothing is written.
+            rows.append(seed_story.placement(pid, demo_id, planned, None, alone))
+            continue
+        cast = Cast(owner=owner, decider=None if alone else decider, cost_owner=cost_owner or owner)
         locale = getattr(project, "locale", None) or "en"
-        telling, reason = await _pack_telling(session, pack_data, demo_id, locale)
+        telling, reason = (None, None) if alone else await _pack_telling(session, pack_data, demo_id, locale)
         reached: str | None = None
         outbox: list[tuple[str, dict[str, Any]]] = []
         for name, story in _stories(session, pid, cast, today, demo_id, telling, outbox):
@@ -686,14 +712,13 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
                 break
             # The first failure is the cause; what the fallback then trips over is its consequence.
             reason = reason or failed
-        rows.append(seed_story.placement(pid, demo_id, planned, reached, reason))
+        rows.append(seed_story.placement(pid, demo_id, planned, reached, reason or alone))
     result = seed_story.seed_result(rows, pack_file)
     for row in result["fallbacks"]:
-        # Loud for a project somebody placed on purpose (the pack's own, or one of
-        # ``seed_story.PLACEMENT``). Any other project is reported on the result only:
-        # an installation is not broken because a plain demo project has no gate story.
+        # Loud for a fault (``seed_story.placement`` says which rows are). A project told
+        # by its owner alone because the installation has no demo logins is not one.
         logger.log(
-            logging.ERROR if row["named"] else logging.INFO,
+            logging.ERROR if row["loud"] else logging.INFO,
             "governance demo seed: project %s (%s) was planned at %s and left at %s: %s",
             row["project_id"],
             row["demo_id"] or "no demo id",
