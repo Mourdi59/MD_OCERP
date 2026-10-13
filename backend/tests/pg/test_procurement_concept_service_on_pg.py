@@ -37,6 +37,7 @@ from tests.pg.procurement_concept_fixtures import (
     OTHER_GATE,
     RELEASE_GATE,
     TODAY,
+    UNGATED_DOC,
     World,
     add_condition,
     add_contract_package,
@@ -304,9 +305,9 @@ async def _evidence(w: World, gate_code: str, area_code: str = AREA) -> list:
         return await concept_ready(s, w.project_id, GateAttempt(w.gates[gate_code], gate_code, 1), area)
 
 
-async def _from_start_world(engine, *, asked_at_gate: bool = True) -> World:
+async def _from_start_world(engine, *, ungated_doc: bool = False) -> World:
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    world = await build_world(factory, from_start=True, asked_at_gate=asked_at_gate)
+    world = await build_world(factory, from_start=True, ungated_doc=ungated_doc)
     # Same areas, documents and gates as the shipped model, same codes; only the first phase enables procurement.
     assert set(world.gates) >= {RELEASE_GATE, HOST_GATE} and world.document_id is not None
     return world
@@ -412,10 +413,16 @@ async def _award(w: World, code: str) -> AwardPackage:
         return await s.get(AwardPackage, w.packages[code])
 
 
-async def test_a_model_that_asks_for_the_concept_at_no_gate_says_so_in_the_concept_validation() -> None:
+async def test_a_concept_carried_by_a_document_no_gate_asks_for_says_so_in_its_validation() -> None:
     """No release gate and no gate that requires the document: no decision would ever look at the concept."""
     async with isolated_engine() as engine:
-        world = await _from_start_world(engine, asked_at_gate=False)
+        world = await _from_start_world(engine, ungated_doc=True)
+        # The host document is required at a gate (governance refuses a model where it is not): no warning.
+        found = await svc_call(world, "findings", world.project_id)
+        assert "concept_required_at_no_gate" not in {f["code"] for f in found}
+        # A manager names another document to carry the concept, one the model requires at no gate.
+        ungated = await add_frame_document(world, doc_type=UNGATED_DOC)
+        await _set(world, {"governance_document_id": ungated})
         found = await svc_call(world, "findings", world.project_id)
         assert [(f["code"], f["severity"], f["blocks_approval"]) for f in found if f["ref"] == "project"] == [
             ("concept_required_at_no_gate", "warning", False)
@@ -431,11 +438,26 @@ async def test_a_model_that_asks_for_the_concept_at_no_gate_says_so_in_the_conce
         assert item.state == "not_met"
 
 
-async def test_a_model_that_asks_for_the_concept_at_a_gate_gets_no_such_warning() -> None:
+async def test_a_leftover_advance_flag_never_lets_a_package_start_before_the_concept_is_approved(
+    matrix: _Matrix,
+) -> None:
+    """Even with a released commitment named on it: where no gate releases procurement nothing is in advance."""
     async with isolated_engine() as engine:
         world = await _from_start_world(engine)
-        found = await svc_call(world, "findings", world.project_id)
-        assert "concept_required_at_no_gate" not in {f["code"] for f in found}
+        await add_contract_package(world, "S1", "supply")
+        await put(world, "S1", {"estimated_value": "50000", "currency": "EUR", "procedure_code": "open"})
+        released = matrix.add(world.project_id, "CR-1", released=True, lead=120)
+        async with world.factory() as s:
+            row = await s.get(AwardPackage, world.packages["S1"])
+            row.is_advance = True
+            row.advance_reason = "Long lead item"
+            row.advance_release_kind, row.advance_release_id = commitments.KIND, released
+            await s.commit()
+        can = (await _can(world, "S1"))["create_execution"]
+        assert (can["allowed"], can["reason"]) == (False, "concept_not_approved")
+        with pytest.raises(ProcurementError) as exc:
+            await execute(world, "S1")
+        assert (exc.value.code, exc.value.status_code) == ("concept_not_approved", 409)
 
 
 # ── Plan and steering ───────────────────────────────────────────────────

@@ -1745,7 +1745,12 @@ class ProcurementConceptService:
         state = await self.effective_state(concept)
         if state not in ("approved", "binding"):
             gate = await self.release_gate(project_id, concept)
-            released = award.is_advance and await self.advance_release_status(project_id, award, gate) == "released"
+            # Where no gate releases procurement nothing is an advance package, whatever a leftover row names.
+            released = (
+                award.is_advance
+                and await self.advance_applies(project_id, concept)
+                and await self.advance_release_status(project_id, award, gate) == "released"
+            )
             if not released:
                 return conflict("concept_not_approved", detail=state)
         if findings is None:

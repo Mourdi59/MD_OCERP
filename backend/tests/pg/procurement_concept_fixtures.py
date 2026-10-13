@@ -54,6 +54,8 @@ HOST_GATE = next(
 )
 OTHER_AREA = next(a.code for a in MODEL.areas if a.code != AREA)
 OTHER_DOC = next(d.code for d in MODEL.document_types if d.code != DOC_TYPE)
+#: A document type that hosts no subject, so a company model may require it at no gate.
+UNGATED_DOC = next(d.code for d in MODEL.document_types if not d.hosts)
 
 
 @dataclass
@@ -238,14 +240,16 @@ async def approve(w: World, *, submitter: uuid.UUID | None = None, by: uuid.UUID
 
 
 async def _company_model(
-    session: AsyncSession, manager: uuid.UUID, *, from_start: bool, asked_at_gate: bool = True
+    session: AsyncSession, manager: uuid.UUID, *, from_start: bool, ungated_doc: bool = False
 ) -> str:
     """A published company copy of the shipped model with its procurement tags changed, every code kept.
 
     ``from_start=False``: it says nothing about procurement. ``from_start=True``:
     the host document stays and the first phase, which no gate leads into, is
-    the only one that enables procurement. ``asked_at_gate=False`` also has
-    the model require the host document at no gate.
+    the only one that enables procurement. ``ungated_doc=True`` also has
+    the model require :data:`UNGATED_DOC`, which hosts nothing, at no gate.
+    The host document itself cannot be left without a gate: governance
+    refuses such a model from every source.
     """
     from app.modules.project_governance.catalogue_store import CatalogueStore
 
@@ -269,9 +273,9 @@ async def _company_model(
     if from_start:
         first = min(body["phases"], key=lambda p: p["order"])
         first["enables"] = [*first["enables"], CAPABILITY]
-    if not asked_at_gate:
+    if ungated_doc:
         for doc in body["document_types"]:
-            if SUBJECT in (doc.get("hosts") or []):
+            if doc["code"] == UNGATED_DOC:
                 doc["required_at_gates"] = []
     await store.update_draft(tenant, row.id, body=body, name=None)
     await store.publish(tenant, row.id, actor_id=manager)
@@ -309,7 +313,7 @@ async def build_world(
     tagged: bool = True,
     model: bool = True,
     from_start: bool = False,
-    asked_at_gate: bool = True,
+    ungated_doc: bool = False,
 ) -> World:
     from app.modules.procurement_concept.catalogue import register_kind
     from app.modules.project_governance.service import GovernanceService
@@ -326,7 +330,7 @@ async def build_world(
         if from_start or not tagged:
             source, model_id = (
                 "tenant",
-                await _company_model(s, manager, from_start=from_start, asked_at_gate=asked_at_gate),
+                await _company_model(s, manager, from_start=from_start, ungated_doc=ungated_doc),
             )
         if model:
             await GovernanceService(s).set_model(
