@@ -1593,15 +1593,22 @@ async def export(
     ] = Query(default="proofs"),
     format: Literal["pdf", "xlsx"] = Query(default="xlsx"),
 ) -> Response:
-    from app.modules.quality_concept.export import render
+    from app.modules.quality_concept.export import render, rendered_language
 
     svc = await _project_service(project_id, user_id, session, payload)
-    data = await _run(render(svc, project_id, what=what, fmt=format, locale=get_locale() or "en"))
+    locale = get_locale() or "en"
+    data = await _run(render(svc, project_id, what=what, fmt=format, locale=locale))
     media = (
         "application/pdf" if format == "pdf" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     return Response(
         content=data,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="quality_{what}.{format}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="quality_{what}.{format}"',
+            # The language the document is written in, not the one asked for: the module has fewer
+            # languages than the interface, and without this the middleware labels a fallback
+            # to English with the reader's own language.
+            "Content-Language": rendered_language(locale),
+        },
     )
