@@ -194,6 +194,23 @@ class ReleaseInDate(_CommitmentRule):
         ]
 
 
+class PlantItemInRegister(_CommitmentRule):
+    key = "plant_item_in_register"
+    rule_id = "commitment_release.plant_item_in_register"
+    name = "Plant Item In Register"
+    severity = Severity.WARNING
+    category = RuleCategory.CONSISTENCY
+    description = "An item that names a plant item reads its lead time from the plant register."
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        loc = _locale(context)
+        return [
+            self._result(loc, not i.get("plant_item_missing"), i["code"], item=i["code"])
+            for i in self._items(context)
+            if i.get("plant_item_id")
+        ]
+
+
 class AbortTermsPresentForCommitted(_CommitmentRule):
     key = "abort_terms_present_for_committed"
     rule_id = "commitment_release.abort_terms_present_for_committed"
@@ -299,6 +316,7 @@ COMMITMENT_RULES: tuple[type[ValidationRule], ...] = (
     CommittedWithinRelease,
     DecisionDateNotPassed,
     ReleaseInDate,
+    PlantItemInRegister,
     AbortTermsPresentForCommitted,
     DocumentLinkedOnce,
     FxRateAvailable,

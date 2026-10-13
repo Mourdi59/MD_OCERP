@@ -630,7 +630,7 @@ async def test_the_demo_seed_shows_a_released_item_a_decided_tranche_and_a_pendi
         await s.flush()
         counts = await seed._seed_project(s, pid)
         await s.commit()
-    assert counts == {"items": 4, "links": 1, "releases": 3, "scenarios": 1}
+    assert counts == {"items": 4, "links": 1, "releases": 3, "scenarios": 1, "releases_skipped_no_rate": 0}
     async with world.factory() as s:
         items = {
             i.code: i
@@ -1162,7 +1162,7 @@ async def test_the_demo_of_a_project_before_construction_releases_nothing_of_the
         await s.flush()
         counts = await seed._seed_project(s, pid)
         await s.commit()
-    assert counts == {"items": 5, "links": 0, "releases": 3, "scenarios": 1}
+    assert counts == {"items": 5, "links": 0, "releases": 3, "scenarios": 1, "releases_skipped_no_rate": 0}
     today = datetime.now(UTC).date()
     async with world.factory() as s:
         phases = set(await phases_enabling(s, pid, "construction_start"))
@@ -1520,3 +1520,148 @@ async def test_without_the_plant_register_an_item_keeps_its_own_lead_time(world:
     with pytest.raises(CommitmentError) as exc:
         await item(world, code="CR-O", amount="10000", plant_item_id=uuid.uuid4())
     assert exc.value.code == "plant_item_not_found"
+
+
+# ── the demo seed and currencies: nothing is requested that is known to be refused ─────────
+
+
+async def _seeded(world: World, caplog, *, currency: str, contract_currency: str) -> tuple[uuid.UUID, dict, list]:
+    """A German demo project in ``currency`` with one subcontract, seeded; its counts and loud log records."""
+    import logging
+
+    from app.modules.commitment_release import seed
+    from app.modules.contracts.models import Contract
+    from app.modules.projects.models import Project
+
+    async with world.factory() as s:
+        pid = await add_project(s, world.manager, [world.requester])
+        project = await s.get(Project, pid)
+        project.country_code, project.currency = "DE", currency
+        s.add(
+            Contract(
+                project_id=pid,
+                code="SC-DEMO",
+                title="Structure",
+                counterparty_type="subcontractor",
+                total_value=D("1200000"),
+                currency=contract_currency,
+                status="active",
+                metadata_={},
+            )
+        )
+        await s.flush()
+        with caplog.at_level(logging.INFO):
+            counts = await seed._seed_project(s, pid)
+        await s.commit()
+    loud = [
+        (r.name, r.getMessage())
+        for r in caplog.records
+        if r.levelno > logging.INFO and r.name.startswith(("app.modules.commitment_release", "app.modules.approval"))
+    ]
+    return pid, counts, loud
+
+
+async def _pinned(world: World, pid: uuid.UUID) -> str:
+    async with world.factory() as s:
+        return (
+            (await s.execute(select(CommitmentMatrix).where(CommitmentMatrix.project_id == pid)))
+            .scalar_one()
+            .schedule_id
+        )
+
+
+async def test_the_demo_seed_keeps_the_national_schedule_on_a_project_in_its_currency(world: World, caplog) -> None:
+    pid, counts, loud = await _seeded(world, caplog, currency="EUR", contract_currency="EUR")
+    assert await _pinned(world, pid) == "de_public_owner"
+    assert (counts["releases"], counts["releases_skipped_no_rate"]) == (3, 0)
+    assert loud == []
+
+
+async def test_the_demo_seed_pins_the_neutral_schedule_on_a_project_in_another_currency(world: World, caplog) -> None:
+    pid, counts, loud = await _seeded(world, caplog, currency="CHF", contract_currency="CHF")
+    assert await _pinned(world, pid) == "neutral"
+    assert (counts["releases"], counts["releases_skipped_no_rate"]) == (3, 0)
+    assert loud == []
+
+
+async def test_the_demo_seed_does_not_request_a_release_it_has_no_rate_for(world: World, caplog) -> None:
+    # The fixture project knows a rate for GBP only: a subcontract in USD cannot be converted.
+    pid, counts, loud = await _seeded(world, caplog, currency="EUR", contract_currency="USD")
+    assert await _pinned(world, pid) == "de_public_owner"
+    assert (counts["releases"], counts["releases_skipped_no_rate"], counts["links"]) == (2, 1, 0)
+    async with world.factory() as s:
+        works = (
+            await s.execute(
+                select(CommitmentItem).where(CommitmentItem.project_id == pid, CommitmentItem.code == "CR-001")
+            )
+        ).scalar_one()
+        asked = (await s.execute(select(ReleaseDecision).where(ReleaseDecision.item_id == works.id))).scalars().all()
+    assert (works.status, asked) == ("planned", [])
+    assert loud == []
+
+
+# ── a plant item link that dangles, and the demo link ──────────────────────────────────────
+
+
+async def test_a_link_to_a_plant_item_the_register_lost_is_a_warning_finding(world: World, monkeypatch) -> None:
+    from app.core.validation.engine import ValidationContext
+    from app.modules.commitment_release.validators import PlantItemInRegister
+
+    plant_id = uuid.uuid4()
+    dates = SimpleNamespace(code="PL-07", need_date=None, latest_order_date=None, lead_time_days=84, status="cancelled")
+    _plant_register(monkeypatch, {plant_id: (world.project_id, dates)})
+    iid = await item(world, code="CR-P", amount="10000", plant_item_id=plant_id, lead_time_days=30)
+    await item(world, code="CR-U", amount="10000")
+
+    async def findings() -> list[tuple[bool, str, str]]:
+        async with world.factory() as s:
+            payload = await CommitmentService(s).validation_payload(world.project_id, today=TODAY)
+        results = await PlantItemInRegister().validate(ValidationContext(data=payload, metadata={"locale": "en"}))
+        return [(r.passed, r.element_ref, str(r.severity.value)) for r in results]
+
+    v = await _item_view(world, iid)
+    # A cancelled plant item is shown as cancelled and still gives its dates.
+    assert (v["plant_item_missing"], v["plant_item_status"], v["plant_item_cancelled"]) == (False, "cancelled", True)
+    assert (v["lead_time_in_force_days"], v["lead_time_source"]) == (84, "plant_item")
+    # Only the linked item is judged; the unlinked one is not a finding at all.
+    assert await findings() == [(True, "CR-P", "warning")]
+
+    _plant_register(monkeypatch, {})
+    v = await _item_view(world, iid)
+    assert (v["plant_item_missing"], v["plant_item_cancelled"], v["lead_time_source"]) == (True, False, "item")
+    assert await findings() == [(False, "CR-P", "warning")]
+
+
+async def test_the_demo_link_points_a_commitment_item_at_its_plant_item_once(world: World, monkeypatch) -> None:
+    import sys
+
+    from app.modules.commitment_release import seed
+    from app.modules.projects.models import Project
+
+    plant_id = uuid.uuid4()
+    _plant_register(monkeypatch, {})
+    reads = sys.modules["app.modules.plant_register.reads"]
+    iid = await item(world, code="CR-002", amount="10000")
+
+    async def link_now() -> dict[str, str]:
+        async with world.factory() as s:
+            out = await seed.link_demo_plant_items(s, world.project_id, links={"CR-002": "PL-001", "CR-404": "PL-001"})
+            await s.commit()
+            return out
+
+    # Not a demo project: nothing is touched.
+    assert await link_now() == {}
+    async with world.factory() as s:
+        project = await s.get(Project, world.project_id)
+        project.metadata_ = {**(project.metadata_ or {}), "demo_id": "demo-test"}
+        await s.commit()
+    # A plant register without the lookup by code answers as unavailable.
+    assert await link_now() == {"CR-002": "plant_register_unavailable", "CR-404": "plant_register_unavailable"}
+
+    async def plant_item_id_by_code(session, project_id, code):
+        return plant_id if (project_id, code) == (world.project_id, "PL-001") else None
+
+    reads.plant_item_id_by_code = plant_item_id_by_code
+    assert await link_now() == {"CR-002": "linked", "CR-404": "no_commitment_item"}
+    assert (await state(world, iid)).plant_item_id == plant_id
+    assert (await link_now())["CR-002"] == "already_linked"

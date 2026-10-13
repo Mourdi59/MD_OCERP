@@ -214,6 +214,10 @@
         "fail": "The planned amount of item {item} cannot be read",
         "suggestion": "Point the item at a budget line, cost line or position, or enter a manual estimate"
       },
+      "plant_item_in_register": {
+        "fail": "Item {item} names a plant item that is no longer in the plant register, so its own lead time applies",
+        "suggestion": "Link the item to the plant item that replaced it, or remove the link"
+      },
       "release_in_date": {
         "fail": "A release of item {item} was valid until {date}: nothing new can be bound under it",
         "suggestion": "Request a renewed release for what is still to be bound"

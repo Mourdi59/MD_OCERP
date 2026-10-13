@@ -54,7 +54,7 @@ async def seed_commitment_release_demo(session: AsyncSession, project_ids: Itera
     from app.modules.commitment_release.models import CommitmentMatrix
     from app.modules.projects.models import Project
 
-    totals = {"projects": 0, "items": 0, "links": 0, "releases": 0, "scenarios": 0}
+    totals = {"projects": 0, "items": 0, "links": 0, "releases": 0, "scenarios": 0, "releases_skipped_no_rate": 0}
     ids = list(project_ids)
     if not ids:
         return totals
@@ -355,11 +355,13 @@ async def _seed_before_construction(
 
 
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
+    from app.modules.commitment_release.catalogue import DEFAULT_SCHEDULE_ID
+    from app.modules.commitment_release.fx import FxRateMissing
     from app.modules.commitment_release.service import CommitmentService
     from app.modules.contracts.models import Contract
     from app.modules.projects.models import Project
 
-    counts = {"items": 0, "links": 0, "releases": 0, "scenarios": 0}
+    counts = {"items": 0, "links": 0, "releases": 0, "scenarios": 0, "releases_skipped_no_rate": 0}
     project = await session.get(Project, project_id)
     owner = project.owner_id
     ccy = (project.currency or "").strip().upper()
@@ -381,6 +383,14 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     svc = CommitmentService(session)
     matrix = await svc.set_matrix(project_id, actor_id=owner, tenant_id=None)
     schedule = await svc.schedule_for(matrix)
+    if schedule.currency and schedule.currency.strip().upper() != ccy:
+        # A national schedule counts in its own currency. On a project in another one every figure
+        # would need an exchange rate the demo does not have, so the neutral schedule (which counts
+        # in the project's currency) is pinned instead. Nothing is released yet, so the pin is free.
+        matrix = await svc.set_matrix(
+            project_id, actor_id=owner, tenant_id=None, schedule_source="shipped", schedule_id=DEFAULT_SCHEDULE_ID
+        )
+        schedule = await svc.schedule_for(matrix)
     roles = [t.approver.ref for t in schedule.tiers if t.approver.kind == "project_role"]
     await svc.put_assignments(
         project_id,
@@ -430,16 +440,34 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         actor_id=owner,
         manage=True,
     )
-    if planner is not None and await _release(
-        svc,
-        project_id,
-        works.id,
-        works_amount,
-        works_ccy,
-        requester=planner,
-        approver=owner,
-        note="Full package",
-        days_ago=21,
+    # A seeder never sends a request it can know will be refused, and never invents a rate: a
+    # subcontract in a currency the schedule cannot convert is left planned, and the result says so.
+    convertible = True
+    try:
+        await svc.quote(matrix, project, works_ccy, svc.schedule_currency(schedule, project), today)
+    except FxRateMissing:
+        convertible = False
+        if planner is not None:
+            counts["releases_skipped_no_rate"] += 1
+            logger.info(
+                "commitment_release demo: project %s has no exchange rate for %s, the works release is not requested",
+                project_id,
+                works_ccy,
+            )
+    if (
+        planner is not None
+        and convertible
+        and await _release(
+            svc,
+            project_id,
+            works.id,
+            works_amount,
+            works_ccy,
+            requester=planner,
+            approver=owner,
+            note="Full package",
+            days_ago=21,
+        )
     ):
         counts["releases"] += 1
         if contract is not None:
@@ -549,3 +577,57 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     await svc.save_scenario(project_id, as_of=today, label="Stop today", actor_id=owner)
     counts["scenarios"] += 1
     return counts
+
+
+# Which demo item of this module is which demo item of the plant register (by their codes).
+DEMO_PLANT_LINKS: dict[str, str] = {"CR-002": "PL-001"}
+
+
+async def link_demo_plant_items(
+    session: AsyncSession, project_id: uuid.UUID, *, links: dict[str, str] | None = None
+) -> dict[str, str]:
+    """Point demo commitment items at their demo plant items. The caller commits.
+
+    Called by the integration seed after both seeders ran: neither seeder knows the other's ids.
+    The plant item is looked up by its code through the plant register's read port. Answers, per
+    commitment item code, ``linked``, ``already_linked``, ``no_commitment_item``, ``no_plant_item``
+    or ``plant_register_unavailable``. Nothing is created and no link is overwritten.
+    """
+    from app.core.demo_marker import demo_id_of
+    from app.modules.commitment_release.models import CommitmentItem
+    from app.modules.projects.models import Project
+
+    wanted = dict(DEMO_PLANT_LINKS if links is None else links)
+    project = await session.get(Project, project_id)
+    if project is None or not demo_id_of(project.metadata_):
+        return {}
+    try:
+        from app.modules.plant_register import reads
+    except ImportError:
+        return dict.fromkeys(wanted, "plant_register_unavailable")
+    by_code = getattr(reads, "plant_item_id_by_code", None)
+    if by_code is None:
+        return dict.fromkeys(wanted, "plant_register_unavailable")
+    items = {
+        i.code: i
+        for i in (await session.execute(select(CommitmentItem).where(CommitmentItem.project_id == project_id)))
+        .scalars()
+        .all()
+    }
+    result: dict[str, str] = {}
+    for item_code, plant_code in wanted.items():
+        item = items.get(item_code)
+        if item is None:
+            result[item_code] = "no_commitment_item"
+            continue
+        if item.plant_item_id is not None:
+            result[item_code] = "already_linked"
+            continue
+        plant_id = await by_code(session, project_id, plant_code)
+        if plant_id is None:
+            result[item_code] = "no_plant_item"
+            continue
+        item.plant_item_id = plant_id
+        result[item_code] = "linked"
+    await session.flush()
+    return result

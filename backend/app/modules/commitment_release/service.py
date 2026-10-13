@@ -1421,6 +1421,12 @@ class CommitmentService:
                 "plant_item_id": _s(item.plant_item_id),
                 # The plant item as the register names it; null when unlinked or no longer known there.
                 "plant_item_code": plant.code if plant is not None else None,
+                # The row names a plant item the register does not answer for (removed there, or the
+                # plant register is not installed): the row's own figures are in force.
+                "plant_item_missing": item.plant_item_id is not None and plant is None,
+                # The register's own status, when it serves one. A cancelled item still gives its dates.
+                "plant_item_status": getattr(plant, "status", None) if plant is not None else None,
+                "plant_item_cancelled": plant is not None and getattr(plant, "status", None) == "cancelled",
                 "lead_time_in_force_days": lead,
                 "lead_time_source": lead_source,
                 "decision_buffer_days": item.decision_buffer_days,
