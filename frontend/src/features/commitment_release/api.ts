@@ -65,7 +65,10 @@ export type PreconditionKind =
 export type ReleaseOutcome = 'pending' | 'released' | 'rejected' | 'withdrawn' | 'aborted';
 /** What a request asks for: money to commit, or stopping the item. */
 export type ReleasePurpose = 'release' | 'abort';
-export type DateBasis = 'fixed' | 'late_start' | 'start_date' | 'none';
+export type DateBasis = 'fixed' | 'late_start' | 'start_date' | 'plant_item' | 'none';
+
+/** Whose lead time is in force on an item. */
+export type LeadTimeSource = 'plant_item' | 'item' | 'requisition';
 export type Transferable = 'no' | 'to_project' | 'resale';
 
 export type RouteState = 'generated' | 'pinned' | 'changed' | 'none';
@@ -292,7 +295,14 @@ export interface CommitmentItem {
   split_group: string | null;
   owner_user_id: string | null;
   planned_source: PlannedSource;
+  /** The figure typed on the item. It is the one in force only when `lead_time_source` is `item`. */
   lead_time_days: number | null;
+  /** The lead time the dates are computed with, and whose it is. */
+  lead_time_in_force_days?: number | null;
+  lead_time_source?: LeadTimeSource | null;
+  /** An item of the plant register this commitment pays for; its code is null once the register no longer knows it. */
+  plant_item_id?: string | null;
+  plant_item_code?: string | null;
   decision_buffer_days: number | null;
   latest_decision_date_fixed: string | null;
   planned: { amount: string | null; currency: string; note: string | null };

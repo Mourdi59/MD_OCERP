@@ -54,6 +54,7 @@ import {
   ITEM_STATUS,
   RELEASE_OUTCOME,
   RELEASE_PURPOSE,
+  LEAD_TIME_SOURCE,
   TRANSFERABLE,
   catalogueName,
   codeName,
@@ -576,6 +577,23 @@ export function ItemPanel({
               : t('commitment.item.no_date', { defaultValue: 'Not set' })}
           </span>
         </Figure>
+        {item.lead_time_in_force_days != null && (
+          <Figure
+            label={t('commitment.item_form.lead_time', { defaultValue: 'Lead time, days' })}
+            hint={
+              item.lead_time_source === 'plant_item' && item.plant_item_code
+                ? t('commitment.lead_time_source.plant_item_named', {
+                    defaultValue: 'From plant item {{code}}',
+                    code: item.plant_item_code,
+                  })
+                : item.lead_time_source
+                  ? vocab(t, LEAD_TIME_SOURCE, item.lead_time_source)
+                  : undefined
+            }
+          >
+            <span data-testid="item-lead-time">{item.lead_time_in_force_days}</span>
+          </Figure>
+        )}
       </dl>
 
       <div className="flex flex-wrap items-start gap-3">

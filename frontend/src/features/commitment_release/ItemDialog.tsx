@@ -269,7 +269,18 @@ export function ItemDialog({
               onChange={(e) => set({ latestDecisionDate: e.target.value })}
             />
           </Field>
-          <Field id="item-lead" label={t('commitment.item_form.lead_time', { defaultValue: 'Lead time, days' })}>
+          <Field
+            id="item-lead"
+            label={t('commitment.item_form.lead_time', { defaultValue: 'Lead time, days' })}
+            hint={
+              item?.lead_time_source === 'plant_item'
+                ? t('commitment.item_form.lead_time_overridden', {
+                    defaultValue:
+                      'The lead time in force comes from the linked plant item. The figure typed here applies only without that link.',
+                  })
+                : undefined
+            }
+          >
             <input
               id="item-lead"
               inputMode="numeric"

@@ -830,6 +830,31 @@ describe('ItemPanel', () => {
     expect(screen.queryByTestId('item-released-lapsed')).toBeNull();
   });
 
+  it('the lead time shown is the one in force, with whose it is, not the figure typed on the item', () => {
+    panel({
+      lead_time_days: 45,
+      lead_time_in_force_days: 120,
+      lead_time_source: 'plant_item',
+      plant_item_id: 'pl1',
+      plant_item_code: 'TC-01',
+      date_basis: 'plant_item',
+    });
+    const figure = screen.getByTestId('item-lead-time');
+    expect(figure.textContent).toBe('120');
+    expect(screen.getByText(enT('commitment.lead_time_source.plant_item_named', { code: 'TC-01' }))).toBeInTheDocument();
+    expect(screen.getByText(enT('commitment.date_basis.plant_item'))).toBeInTheDocument();
+  });
+
+  it('a plant item the register no longer knows is still named as the source, without a code', () => {
+    panel({ lead_time_in_force_days: 120, lead_time_source: 'plant_item', plant_item_id: 'pl1', plant_item_code: null });
+    expect(screen.getByText(enT('commitment.lead_time_source.plant_item'))).toBeInTheDocument();
+  });
+
+  it('an answer without a lead time in force shows no lead time figure', () => {
+    panel();
+    expect(screen.queryByTestId('item-lead-time')).toBeNull();
+  });
+
   it('warns when more is bound than released, with the difference', () => {
     panel({ status: 'committed', committed: '1700000.00', released: '1500000.00', over_release: true });
     const warning = screen.getByTestId('item-over-release');
