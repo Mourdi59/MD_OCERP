@@ -1215,6 +1215,10 @@ async def test_the_demo_of_a_project_before_construction_releases_nothing_of_the
         terms = (await CommitmentService(s).repo.list_abort_terms(pid, [uuid.UUID(slot["id"])]))[0]
     stages = [(e["milestone"], e["from_date"]) for e in terms.cancellation_schedule]
     assert [m for m, _d in stages] == ["order_signed", "manufacturing_started"]
+    assert [d for _m, d in stages] == [
+        (today + timedelta(days=seed.DEMO_ORDER_SIGNED_DAYS)).isoformat(),
+        (today + timedelta(days=seed.DEMO_MANUFACTURING_STARTED_DAYS)).isoformat(),
+    ]
     assert all(d > today.isoformat() for _m, d in stages)
     assert options["CR-002"].released_on == today - timedelta(days=30)
     assert options["CR-003"].lead_time_days is None

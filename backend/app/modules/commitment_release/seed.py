@@ -319,12 +319,12 @@ async def _seed_before_construction(
                 # Stages of an order that is still to be signed: nothing is charged before it exists.
                 {
                     "milestone": "order_signed",
-                    "from_date": (today + timedelta(days=45)).isoformat(),
+                    "from_date": (today + timedelta(days=DEMO_ORDER_SIGNED_DAYS)).isoformat(),
                     "charge_pct": "0.10",
                 },
                 {
                     "milestone": "manufacturing_started",
-                    "from_date": (today + timedelta(days=300)).isoformat(),
+                    "from_date": (today + timedelta(days=DEMO_MANUFACTURING_STARTED_DAYS)).isoformat(),
                     "charge_pct": "0.50",
                 },
             ],
@@ -627,6 +627,15 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     counts["scenarios"] += 1
     return counts
 
+
+# When the stages of that order's cancellation terms begin, in days from the seed day. These are
+# this seed's own numbers and they are meant to agree with the plant register's demo seed
+# (app/modules/plant_register/seed.py, ``_seed_slot``): ``DEMO_ORDER_SIGNED_DAYS`` is the slot's
+# ``convert_by_date`` (the day the free slot lapses without an order) and
+# ``DEMO_MANUFACTURING_STARTED_DAYS`` is its ``slot_from``. The register's read port serves no slot,
+# so nothing checks the pair: whoever moves one of the two seeds moves the other.
+DEMO_ORDER_SIGNED_DAYS = 45
+DEMO_MANUFACTURING_STARTED_DAYS = 300
 
 # Which demo item of this module is which demo item of the plant register (by their codes).
 DEMO_PLANT_LINKS: dict[str, str] = {DEMO_SLOT_ITEM_CODE: "PL-001"}
