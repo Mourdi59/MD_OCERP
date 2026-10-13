@@ -120,13 +120,18 @@ async def test_a_viewer_reads_and_cannot_write(world: World) -> None:
     assert [r.status_code for r in writes] == [403, 403, 403]
 
 
-async def test_there_is_no_approve_or_reopen_route(world: World) -> None:
+async def test_no_route_sets_a_concept_state_by_name_and_gates_leave_no_approval_by_hand(world: World) -> None:
     async with client_as(world, world.manager, "manager") as c:
         assert (await c.put(_pkg(world), json=OPEN_WORKS)).status_code == 200
         assert (await c.post(_p(world, "/concept/submit"))).status_code == 200
-        for action in ("approve", "reopen", "approved", "binding"):
+        for action in ("approved", "binding", "reopened"):
             r = await c.post(_p(world, f"/concept/{action}"))
             assert r.status_code in (404, 405, 422), action
+        # The two hand actions are routes since a project without gates needs them. This project has gates,
+        # so the gate decision approves and both are refused by name.
+        for action in ("approve", "reopen"):
+            r = await c.post(_p(world, f"/concept/{action}"))
+            assert r.status_code == 409, action
     assert await _stored_state(world) == "in_review"
 
 
