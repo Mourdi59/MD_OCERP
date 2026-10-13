@@ -133,10 +133,10 @@ async def test_a_project_before_its_construction_gate_is_seeded_as_that_day(worl
     assert len(urgent) >= 5
     assert {v["code"]: v["latest_order_date"] for v in urgent if v["latest_order_date"] < today} == {}
     assert len({v["latest_order_date"] for v in urgent}) > 1
-    # The transformer's order date is the one the commitment for its supply order reads: a few days out,
+    # The transformer's order date is the one the commitment for its supply order reads: two weeks out,
     # before the gate and well before its production slot has to be converted.
     transformer = next(v for v in views if v["code"] == "PL-001")
-    assert transformer["latest_order_date"] == today + timedelta(days=4)
+    assert transformer["latest_order_date"] == today + timedelta(days=14)
     # Every other long-lead item can be ordered after the decision.
     assert all(v["latest_order_date"] >= gate for v in dated if v not in urgent)
     assert "overdue" not in {v["order_status"] for v in views}
