@@ -79,6 +79,24 @@ DEFAULT_NUMBER_PREFIX = "TR"
 DEFAULT_NUMBER_PAD = 3
 
 
+def highest_in_sequence(numbers: list[str | None], prefix: str = DEFAULT_NUMBER_PREFIX) -> str | None:
+    """The number with the highest counter among those of exactly ``<prefix>-<digits>``, or ``None``.
+
+    Compared by counter, not as text: ``TR-1000`` follows ``TR-999``. Numbers of
+    another shape in the same project (an imported ``TR-2026-003``) belong to no
+    sequence of ``prefix`` and are not read as one, or every new number would
+    repeat the one after them.
+    """
+    clean_prefix = (prefix or DEFAULT_NUMBER_PREFIX).strip() or DEFAULT_NUMBER_PREFIX
+    shape = re.compile(rf"^{re.escape(clean_prefix)}-(\d+)$")
+    best: tuple[int, str] | None = None
+    for number in numbers:
+        match = shape.match((number or "").strip())
+        if match and (best is None or int(match.group(1)) > best[0]):
+            best = (int(match.group(1)), number or "")
+    return best[1] if best else None
+
+
 def next_transmittal_number(
     max_existing: str | None,
     *,

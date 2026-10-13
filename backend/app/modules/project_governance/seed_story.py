@@ -320,7 +320,10 @@ def placement(
         the project the pack names missing its story for any reason, or a
         placed project that fell back although a second person was there. A
         project that got the one-person story because the installation has no
-        demo logins missed its plan and is not loud.
+        demo logins missed its plan and is not loud, and neither is the project
+        the pack names when that is why it was left alone: an install without
+        the demo logins is a legal state (ruling of 2026-10-13), the run says so
+        at info and a later run with the logins tells the pack's story.
     """
     missed = not skipped and reached != planned
     alone = reached == OWNER_ONLY and reason in ONE_PERSON_REASONS
@@ -332,7 +335,9 @@ def placement(
         "fallback_reason": (reason if reason in FALLBACK_REASONS else "story_error") if missed else None,
         "skipped": skipped,
         "named": planned != FIRST_GATE,
-        "loud": missed and (reached is None or planned == PACK or (planned != FIRST_GATE and not alone)),
+        "loud": missed
+        and not (planned == PACK and reason == "no_decider")
+        and (reached is None or planned == PACK or (planned != FIRST_GATE and not alone)),
     }
 
 

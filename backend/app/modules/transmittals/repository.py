@@ -19,6 +19,7 @@ from app.core.orm_write import apply_update
 from app.modules.transmittals.logic import (
     DEFAULT_NUMBER_PAD,
     DEFAULT_NUMBER_PREFIX,
+    highest_in_sequence,
     next_transmittal_number,
 )
 from app.modules.transmittals.models import (
@@ -111,9 +112,9 @@ class TransmittalRepository:
         counter. ``prefix`` and ``pad`` let a project follow its own
         document-control convention.
         """
-        stmt = select(func.max(Transmittal.transmittal_number)).where(Transmittal.project_id == project_id)
-        max_number = (await self.session.execute(stmt)).scalar_one()
-        return next_transmittal_number(max_number, prefix=prefix, pad=pad)
+        stmt = select(Transmittal.transmittal_number).where(Transmittal.project_id == project_id)
+        numbers = list((await self.session.execute(stmt)).scalars())
+        return next_transmittal_number(highest_in_sequence(numbers, prefix), prefix=prefix, pad=pad)
 
     # ── Recipient operations ─────────────────────────────────────────────
 

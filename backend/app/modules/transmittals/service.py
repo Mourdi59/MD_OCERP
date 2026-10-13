@@ -159,12 +159,14 @@ class TransmittalService:
                 metadata_=data.metadata,
             )
             try:
-                transmittal = await self.repo.create(candidate)
+                # A savepoint, so a collision undoes this insert only and not the caller's
+                # whole transaction (a seeder or a release that issues several transmittals).
+                async with self.session.begin_nested():
+                    transmittal = await self.repo.create(candidate)
             except IntegrityError as exc:
-                # Another transaction picked the same number; roll back
-                # and retry with a freshly-bumped suffix.
+                # Another transaction picked the same number: retry with a freshly-bumped suffix.
                 last_exc = exc
-                await self.session.rollback()
+                transmittal = None
                 continue
             break
 

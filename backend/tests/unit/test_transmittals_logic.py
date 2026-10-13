@@ -223,3 +223,15 @@ def test_update_schema_rejects_due_before_issue() -> None:
 
     with pytest.raises(ValidationError, match="cannot be earlier"):
         TransmittalUpdate(issued_date="2026-03-30", response_due_date="2026-03-01")
+
+
+def test_the_sequence_ignores_numbers_of_another_shape_and_compares_counters() -> None:
+    from app.modules.transmittals.logic import highest_in_sequence, next_transmittal_number
+
+    # Demo data numbers by year; read as text it always sorts above TR-004 and every new number repeats.
+    project = ["TR-2026-001", "TR-2026-002", "TR-2026-003", "TR-004", None]
+    assert highest_in_sequence(project) == "TR-004"
+    assert next_transmittal_number(highest_in_sequence(project)) == "TR-005"
+    assert highest_in_sequence(["TR-999", "TR-1000", "TR-0998"]) == "TR-1000"
+    assert highest_in_sequence(["TR-2026-001"]) is None
+    assert highest_in_sequence(["P1-TR-007", "P1-007"], prefix="P1") == "P1-007"

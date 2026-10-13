@@ -390,12 +390,15 @@ def test_a_project_told_by_its_owner_alone_is_reported_and_does_not_fail_the_run
     assert (result["projects"], result["fallbacks"], result["ok"]) == (4, rows, True)
 
 
-def test_the_project_the_pack_names_is_loud_without_a_decider_whatever_was_written() -> None:
-    """The filmed project needs the demo logins; without them the run fails."""
+def test_the_project_the_pack_names_waits_quietly_for_the_demo_logins() -> None:
+    """Without the demo logins the filmed project is left alone at info; any other miss of it stays loud."""
     for reached in (None, story.OWNER_ONLY):
         row = story.placement(PID, "office-frankfurt", "pack", reached, "no_decider")
-        assert (row["fallback_reason"], row["loud"]) == ("no_decider", True)
-        assert story.seed_result([row], "read")["ok"] is False
+        assert (row["fallback_reason"], row["loud"]) == ("no_decider", False)
+        assert story.seed_result([row], "read")["ok"] is True
+    for reason in ("owner_is_decider", "gate_blocked"):
+        row = story.placement(PID, "office-frankfurt", "pack", None, reason)
+        assert row["loud"] is True
 
 
 def test_a_placed_project_that_missed_for_another_reason_stays_loud() -> None:

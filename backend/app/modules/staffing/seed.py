@@ -344,6 +344,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             actor,
         )
 
+    # A handover needs somebody filling the giving role; a demo project with fewer people than roles has none.
+    short_staffed = any(giver not in fills for giver, _, _, _ in HANDOVERS)
     for giver, receiver, overlap, scope in HANDOVERS:
         if giver in fills and receiver in positions:
             await svc.create_handover(
@@ -357,24 +359,36 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                 owner,
             )
     if early:
-        counts["submitted"] = int(await _submit_for_the_gate(svc, project_id, owner))
+        counts["submitted"] = int(await _submit_for_the_gate(svc, project_id, owner, short_staffed=short_staffed))
     return counts
 
 
-async def _submit_for_the_gate(svc: Any, project_id: uuid.UUID, owner: uuid.UUID) -> bool:
+async def _submit_for_the_gate(
+    svc: Any, project_id: uuid.UUID, owner: uuid.UUID, *, short_staffed: bool = False
+) -> bool:
     """Before the gate the plan is with the reviewer. Approval stays the gate's decision, never the seeder's.
 
     Asked first, never tried: a submission that would be refused is not sent.
     """
-    from app.modules.staffing import rules
+    from app.modules.staffing import hosting, rules
 
     frame = await svc._resolve_frame_document(project_id)
-    refused = rules.plan_action_refusal("submit", "draft", can_edit=True, has_frame_document=frame is not None)
+    refused = rules.plan_action_refusal(
+        "submit",
+        "draft",
+        can_edit=True,
+        has_frame_document=frame is not None,
+        gates_in_use=await hosting.gates_in_use(svc.session, project_id),
+    )
     if refused:
         # A legal state: the project's phase model carries no document for staffing. The plan stays a draft.
         logger.info("staffing demo seed: plan of %s stays a draft (%s)", project_id, refused)
         return False
     errors = sorted(f.code for f in await svc.submission_findings(project_id) if f.severity == rules.ERROR)
+    if errors and short_staffed and set(errors) <= {"handover_missing"}:
+        # Too few people on the team to hand anything over: the plan honestly waits for them. Legal, so info.
+        logger.info("staffing demo seed: plan of %s stays a draft, nobody to hand over from (%s)", project_id, errors)
+        return False
     if errors:
         # The seeded plan itself is incomplete: a seed defect worth reading, not a reason to lose the project.
         logger.warning("staffing demo seed: plan of %s stays a draft (%s)", project_id, errors)

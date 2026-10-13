@@ -134,6 +134,50 @@ async def _roster_for(session: AsyncSession, project_id: uuid.UUID, user_id: uui
     return row.id
 
 
+async def _commitment_route(session: AsyncSession, project_id: uuid.UUID, approver: uuid.UUID) -> uuid.UUID:
+    """The project's own single-step route for commitments, naming ``approver``; reused when the seed made it."""
+    from app.modules.approval_routes.schemas import RouteCreate, StepCreate
+    from app.modules.approval_routes.service import ApprovalRouteService
+    from app.modules.stakeholders.service import TARGET_KIND
+
+    routes = ApprovalRouteService(session)
+    name = "Stakeholder commitment"
+    for route in await routes.list_routes(project_id=project_id, target_kind=TARGET_KIND, include_inactive=False):
+        if route.project_id == project_id and route.name == name:
+            return route.id
+    created = await routes.create_route(
+        RouteCreate(
+            project_id=project_id,
+            name=name,
+            target_kind=TARGET_KIND,
+            steps=[StepCreate(ordinal=1, approver_user_id=approver, mode="any")],
+        ),
+        created_by=approver,
+    )
+    return created.id
+
+
+async def _decide(session: AsyncSession, svc: Any, instance_id: uuid.UUID, approver: uuid.UUID) -> None:
+    """Approve a commitment's route instance the way its screen does, then apply the verdict.
+
+    The subscriber applies it too when the event arrives; the second application finds nothing pending.
+    """
+    from app.modules.approval_routes.models import Instance, Step
+    from app.modules.approval_routes.schemas import DecisionSubmit
+    from app.modules.approval_routes.service import ApprovalRouteService
+
+    instance = await session.get(Instance, instance_id)
+    step = (
+        await session.execute(
+            select(Step).where(Step.route_id == instance.route_id, Step.ordinal == instance.current_step_ordinal)
+        )
+    ).scalar_one()
+    await ApprovalRouteService(session).submit_decision(
+        instance_id, DecisionSubmit(step_id=step.id, decision="approved"), approver_id=approver
+    )
+    await svc.apply_route_verdict(instance_id, verdict="approved", decided_by=approver)
+
+
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
     from app.modules.projects.models import Project
     from app.modules.stakeholders.models import StakeholderAssessment
@@ -147,7 +191,10 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     comms = team[2] if len(team) > 2 else pm
     today = datetime.now(UTC).date()
     svc = StakeholderService(session)
-    await svc.put_settings(project_id, {}, actor_id=owner)
+    # Agreeing a commitment goes through the project's commitment route; its approver is a second person.
+    approver = next((u for u in team if u != owner), None)
+    route = await _commitment_route(session, project_id, approver) if approver is not None else None
+    await svc.put_settings(project_id, {"commitment_route_id": str(route)} if route else {}, actor_id=owner)
     # While the gate into construction is undecided the site does not run: promises about site operation
     # are agreed and nothing more, and the committee briefing for that gate is still ahead.
     gate = await _gate_before_construction(session, project_id)
@@ -427,8 +474,18 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         (c3, ("agreed",)),
         (c4, ("agreed",) if gate is not None else ("agreed", "fulfilled")),
     ):
+        if approver is None:
+            # Nobody but the owner could approve: the commitments stay proposed, which is a legal state.
+            break
         for target in steps:
             await svc.transition_commitment(project_id, cid, target, actor_id=owner, today=today)
+            row = next((c for c in await svc.repo.commitments(project_id) if c.id == cid), None)
+            if row is not None and row.pending_target == target and row.approval_instance_id is not None:
+                await _decide(session, svc, row.approval_instance_id, approver)
+    if approver is None:
+        logger.info(
+            "stakeholders demo seed for %s: nobody besides the owner approves, commitments stay proposed", project_id
+        )
     if pm != owner and gate is None:
         # Four eyes: the commitment's owner (the project manager) does not verify it; the client lead does.
         await svc.transition_commitment(
