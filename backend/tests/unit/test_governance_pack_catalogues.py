@@ -623,16 +623,7 @@ PRIVATE_COUNTRY_RULES = [
     ("design_management", "NUMBERING_KIND", "default_scheme_id_for_country"),
     ("staffing", "STAFFING_MODEL_KIND", "default_catalogue_id_for_country"),
     ("stakeholders", "FRAMEWORK_KIND", "default_framework_id_for_country"),
-    pytest.param(
-        "site_logistics",
-        "SITE_LOGISTICS_KIND",
-        "default_catalogue_id",
-        marks=pytest.mark.xfail(
-            strict=True,
-            reason="its files name one `jurisdiction` string where the port reads the `jurisdiction_countries` "
-            "list, so the port answers None for DE, GB and US and the private rule has to stay until they do",
-        ),
-    ),
+    ("site_logistics", "SITE_LOGISTICS_KIND", "default_catalogue_id"),
 ]
 
 
