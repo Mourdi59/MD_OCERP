@@ -564,8 +564,8 @@ async def _seed_project(
             counts["quotes"] += 1
         if before_gate and spec["quotes"]:
             # Between a few days from now and just before the gate, a different day per item. The first
-            # item, the transformer, gets two weeks: the commitment that releases its order reads this date.
-            slack = 4 + ((index + 2) * 5) % (GATE_TARGET_DAYS - 6)
+            # item, the transformer, is the most urgent: the commitment that releases its order reads this date.
+            slack = 4 + (index * 5) % (GATE_TARGET_DAYS - 6)
             await _order_before_the_gate(svc, project_id, item.id, today, slack, owner)
         for category, text, qty, unit in spec["spares"]:
             await svc.create_spare(
