@@ -802,11 +802,12 @@ async def export(
     package_id: uuid.UUID | None = None,
 ) -> Response:
     """The concept record, package list, shortlist (``package_id``) or award schedule as PDF or XLSX."""
-    from app.modules.procurement_concept.export import render
+    from app.modules.procurement_concept.export import render, written_locale
     from app.modules.projects.models import Project
 
     await verify_project_access(project_id, user_id, session)
     project = await session.get(Project, project_id)
+    locale = written_locale(get_locale())
     content = await _run(
         render(
             ProcurementConceptService(session),
@@ -814,7 +815,7 @@ async def export(
             part=part,
             package_id=package_id,
             project_name=getattr(project, "name", "") or "",
-            locale=get_locale() or "en",
+            locale=locale,
             fmt=fmt,
         )
     )
@@ -822,7 +823,11 @@ async def export(
     return Response(
         content=content,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="procurement_{part}.{fmt}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="procurement_{part}.{fmt}"',
+            # The language the document was written in, which is not always the one asked for.
+            "Content-Language": locale,
+        },
     )
 
 
