@@ -10,6 +10,7 @@ from. Each field is broken once to show the validator names that field.
 from __future__ import annotations
 
 import json
+import uuid
 
 import pytest
 
@@ -21,7 +22,6 @@ from app.modules.design_management.catalogue import (
     REPORTS_KIND,
     DesignReports,
     DrawingNumbering,
-    default_scheme_id_for_country,
     register_kinds,
     validate_numbering,
     validate_reports,
@@ -134,12 +134,66 @@ def test_kind_parse_raises_on_invalid_body(schemes) -> None:
         get_catalogue_kind(NUMBERING_KIND).parse_body(body, source="tenant", origin="t")
 
 
-def test_country_default_picks_the_one_claiming_scheme() -> None:
-    assert default_scheme_id_for_country("GB") == "iso19650_uk_na"
-    assert default_scheme_id_for_country("US") == "us_ncs_sheet"
-    assert default_scheme_id_for_country("DE") == "de_planschluessel"
-    assert default_scheme_id_for_country("FR") == "iso19650_generic"
-    assert default_scheme_id_for_country(None) == "iso19650_generic"
+async def _first_setup(monkeypatch, country: str | None, pin) -> tuple[object, list[tuple]]:
+    """``set_setup`` on a project of ``country`` with the governance port answering ``pin``; no database."""
+    from types import SimpleNamespace
+
+    from app.modules.design_management.service import DesignService
+    from app.modules.project_governance import public
+
+    asked: list[tuple] = []
+
+    def port(kind, country_code):
+        asked.append((kind, country_code))
+        return pin if kind == NUMBERING_KIND else None
+
+    async def no_setup(_project_id, **_kw):
+        return None
+
+    async def project(_project_id):
+        return SimpleNamespace(country_code=country)
+
+    async def pinnable(_tenant, _source, _cid, version, _kind):
+        return version or 1
+
+    async def add(row):
+        return row
+
+    async def audit(*_a, **_kw):
+        return None
+
+    monkeypatch.setattr(public, "default_catalogue_pin", port)
+    svc = DesignService.__new__(DesignService)
+    for name, fake in (
+        ("get_setup", no_setup),
+        ("_project", project),
+        ("_pinnable", pinnable),
+        ("_add", add),
+        ("_audit", audit),
+        ("_publish", lambda *_a, **_kw: None),
+    ):
+        monkeypatch.setattr(svc, name, fake, raising=False)
+    setup = await svc.set_setup(uuid.uuid4(), actor_id=uuid.uuid4(), tenant_id=None)
+    return setup, asked
+
+
+@pytest.mark.asyncio
+async def test_the_governance_port_is_the_only_country_default(monkeypatch) -> None:
+    """With the port silent a German project pins the ISO generic scheme: no country rule of this module's own is left."""
+    from types import SimpleNamespace
+
+    from app.modules.design_management import catalogue, service
+    from app.modules.design_management.catalogue import DEFAULT_REPORTS_ID, DEFAULT_SCHEME_ID, REPORTS_KIND
+
+    silent, asked = await _first_setup(monkeypatch, "DE", None)
+    assert (silent.scheme_source, silent.scheme_id) == ("shipped", DEFAULT_SCHEME_ID)
+    assert (silent.reports_source, silent.reports_id) == ("shipped", DEFAULT_REPORTS_ID)
+    assert asked == [(NUMBERING_KIND, "DE"), (REPORTS_KIND, "DE")], "the port is asked once per kind, with the country"
+    named = SimpleNamespace(source="shipped", catalogue_id="de_planschluessel", version=3)
+    pinned, _asked = await _first_setup(monkeypatch, "DE", named)
+    assert (pinned.scheme_source, pinned.scheme_id, pinned.scheme_version) == ("shipped", "de_planschluessel", 3)
+    assert not hasattr(catalogue, "default_scheme_id_for_country")
+    assert not hasattr(service, "default_scheme_id_for_country")
 
 
 def test_shipped_json_is_written_with_keys_not_text() -> None:

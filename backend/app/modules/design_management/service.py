@@ -39,11 +39,11 @@ from app.modules.design_management import wbs as wr
 from app.modules.design_management import wbs_refs
 from app.modules.design_management.catalogue import (
     DEFAULT_REPORTS_ID,
+    DEFAULT_SCHEME_ID,
     NUMBERING_KIND,
     REPORTS_KIND,
     DesignReports,
     DrawingNumbering,
-    default_scheme_id_for_country,
     register_kinds,
 )
 from app.modules.design_management.errors import DesignError, conflict, forbidden, not_found
@@ -357,12 +357,13 @@ class DesignService:
         country = getattr(project, "country_code", None)
         register_kinds()
         if scheme_id is None:
-            # The active pack may name the scheme new projects pin; this module's own default is the fallback.
+            # Which scheme a country starts with is module 1's to say (pack, regional pack, the one shipped
+            # scheme claiming the country). This module only knows what to pin when the port names nothing.
             pin = default_catalogue_pin(NUMBERING_KIND, country)
             if pin is not None:
                 scheme_source, scheme_id, scheme_version = pin.source, pin.catalogue_id, pin.version
             else:
-                scheme_id = default_scheme_id_for_country(country)
+                scheme_id = DEFAULT_SCHEME_ID
         if reports_id is None:
             pin = default_catalogue_pin(REPORTS_KIND, country)
             if pin is not None:
