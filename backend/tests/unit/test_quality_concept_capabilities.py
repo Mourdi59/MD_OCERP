@@ -314,3 +314,12 @@ def test_a_plan_in_force_names_the_way_to_change_it_that_exists_on_the_project()
     for locale in ("en", "de"):
         messages = json.loads((MODULE / "messages" / f"{locale}.json").read_text(encoding="utf-8"))
         assert "quality_concept.errors.binding_requires_reopen" in messages, locale
+
+
+def test_the_four_eyes_refusal_says_who_can_approve_instead() -> None:
+    """The submitter of a one-person project reads what unblocks the approval, not only that it is refused."""
+    key = "quality_concept.errors.approver_is_submitter"
+    for locale, words in (("en", ("second person", "manage")), ("de", ("zweite Person", "verwalten"))):
+        sentence = json.loads((MODULE / "messages" / f"{locale}.json").read_text(encoding="utf-8"))[key]
+        assert all(word in sentence for word in words), sentence
+
