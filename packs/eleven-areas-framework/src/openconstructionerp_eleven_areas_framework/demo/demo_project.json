@@ -1,7 +1,7 @@
 {
   "$note": "Demo story of the pack as data. It carries only what no module seeder can know. Rows on the module screens come from the module seeders. All names are invented; no real company, person or address.",
   "schema_version": 1,
-  "demo_id": "eleven-areas-office",
+  "demo_id": "eleven-areas-residential",
   "project": {
     "demo_template_id": "residential-regensburg",
     "$template_note": "The project row and its bill come from the existing Python demo template of this id (Bavarian residential quarter); the manifest names it in demo_template_ids. A pack never runs code and this file is no second source of the project row."
