@@ -292,7 +292,7 @@ describe('the documents for the gate', () => {
   it('says what is missing when the gate has no place for the document yet', () => {
     show(blockedBy('frame_document_missing'));
     expect(file().disabled).toBe(true);
-    expect(page.getByTestId('export-register-blocked').textContent).toContain('Create its frame document');
+    expect(page.getByTestId('export-register-blocked').textContent).toContain('Attach a document container');
     fireEvent.click(file());
     expect(mocked.fileFrameDocument).not.toHaveBeenCalled();
   });
@@ -304,6 +304,14 @@ describe('the documents for the gate', () => {
     expect(page.queryByTestId('export-register-blocked')).toBeNull();
     expect(page.getByTestId('export-register-pdf')).toBeTruthy();
     expect(page.getByTestId('export-register-xlsx')).toBeTruthy();
+  });
+
+  it('says the project is stopped when its frame documents are frozen', () => {
+    show(blockedBy('frame_document_read_only'));
+    expect(file().disabled).toBe(true);
+    expect(page.getByTestId('export-register-blocked').textContent).toBe(
+      'The project is stopped, so its frame documents take no new revision until it resumes.',
+    );
   });
 
   it('reads a reason it does not know as words, never as a code', () => {

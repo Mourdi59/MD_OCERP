@@ -136,11 +136,11 @@ export const FILE_BLOCK: Record<string, KeyText> = {
   no_permission: ['stakeholders.ui.file_block.no_permission', 'Your role can download this document but not file it for the gate.'],
   frame_document_missing: [
     'stakeholders.ui.file_block.frame_document_missing',
-    'The gate has no place for this document yet. Create its frame document on the project governance screen first.',
+    'The gate has no place to file this document yet. Attach a document container to its frame document on the project governance screen first.',
   ],
   frame_document_read_only: [
     'stakeholders.ui.file_block.frame_document_read_only',
-    'The frame document is closed and takes no new revision.',
+    'The project is stopped, so its frame documents take no new revision until it resumes.',
   ],
 };
 
