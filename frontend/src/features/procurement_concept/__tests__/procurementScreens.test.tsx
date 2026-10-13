@@ -498,6 +498,35 @@ describe('PackageDialog', () => {
     );
   });
 
+  it('leaves the advance switch out where no gate holds procurement back', () => {
+    mocked.getThreshold.mockResolvedValue(thresholdCheck);
+    const base = packageView();
+    dialog({ ...base, can: { ...base.can, set_advance: denied('advance_not_applicable', false) } });
+    expect(screen.queryByTestId('package-advance')).toBeNull();
+    expect(screen.queryByTestId('advance-leftover')).toBeNull();
+    expect(document.getElementById('pk-advance-reason')).toBeNull();
+    expect(mocked.listAdvanceReleases).not.toHaveBeenCalled();
+  });
+
+  it('keeps the switch on a package that still carries the mark, so it can be cleared', async () => {
+    mocked.getThreshold.mockResolvedValue(thresholdCheck);
+    mocked.putPackage.mockResolvedValue(packageView() as never);
+    const base = packageView({}, { is_advance: true, advance_reason: 'Long lead item' });
+    dialog({ ...base, can: { ...base.can, set_advance: denied('advance_not_applicable', false) } });
+    const tick = screen.getByTestId('package-advance') as HTMLInputElement;
+    expect(tick.checked).toBe(true);
+    expect(screen.getByTestId('advance-leftover')).toHaveTextContent(en.translation['procurement_concept.errors.advance_not_applicable']!);
+    // The release fields make no sense here and nothing is asked of the server for them.
+    expect(document.getElementById('pk-advance-reason')).toBeNull();
+    expect(document.getElementById('pk-advance-release')).toBeNull();
+    expect(mocked.listAdvanceReleases).not.toHaveBeenCalled();
+    fireEvent.click(tick);
+    expect(screen.queryByTestId('advance-leftover')).toBeNull();
+    fireEvent.click(screen.getByTestId('package-save'));
+    await waitFor(() => expect(mocked.putPackage).toHaveBeenCalledTimes(1));
+    expect(mocked.putPackage.mock.calls[0]![2]).toMatchObject({ is_advance: false });
+  });
+
   it('names what releases an advance package from the acts of the release gate', async () => {
     mocked.getThreshold.mockResolvedValue(thresholdCheck);
     mocked.putPackage.mockResolvedValue(packageView() as never);

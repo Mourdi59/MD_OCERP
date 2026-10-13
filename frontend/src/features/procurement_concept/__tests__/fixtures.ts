@@ -44,7 +44,7 @@ export function can(refused: Partial<Record<keyof Can, string>> = {}): Can {
 }
 
 type PackageCan = PackageView['can'];
-const PACKAGE_MOVES: Array<keyof PackageCan> = ['edit', 'hold', 'resume', 'cancel', 'confirm_shortlist', 'create_execution'];
+const PACKAGE_MOVES: Array<keyof PackageCan> = ['edit', 'set_advance', 'hold', 'resume', 'cancel', 'confirm_shortlist', 'create_execution'];
 
 /** The flags of one package row: everything allowed, or each key refused with its code. `all` refuses every move. */
 export function packageCan(refused: Partial<Record<keyof PackageCan | 'all', string>> = {}): PackageCan {

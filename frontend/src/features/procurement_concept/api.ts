@@ -319,6 +319,8 @@ export interface PackageView {
   /** What the caller may do with this package now. `create_execution` also answers for linking a tender package. */
   can: {
     edit: Capability;
+    /** The advance switch and its release fields. Not applicable where no gate holds procurement back. */
+    set_advance: Capability;
     hold: Capability;
     resume: Capability;
     cancel: Capability;

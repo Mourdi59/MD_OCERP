@@ -45,6 +45,7 @@ import {
   PACKAGE_PROBLEM,
   awardWeightsTotal,
   dropsCriteria,
+  notApplicable,
   packageDraft,
   packageProblems,
   toPackageInput,
@@ -93,8 +94,13 @@ export function PackageDialog({
   // The check needs the package to exist on the server with its value.
   const thresholdQ = useThreshold(projectId, view.award ? cp.id : null);
   const check = thresholdQ.data ?? null;
+  // The server says whether a package can run in advance at all in this project.
+  const advanceOff = notApplicable(view.can.set_advance);
+  // A package may still carry the mark from an earlier phase model: the switch stays, so the mark can be cleared.
+  const advanceLeftover = advanceOff && original.is_advance;
+  const advanceFields = draft.is_advance && !advanceOff;
   // The acts of the release gate, asked for only once the package is marked as an advance package.
-  const releasesQ = useAdvanceReleases(projectId, draft.is_advance);
+  const releasesQ = useAdvanceReleases(projectId, advanceFields);
   const releases = releasesQ.data?.items ?? [];
   // Set when the commitment matrix is not connected, so released commitments are missing from the list for a reason.
   const commitmentsOff = releasesQ.data?.commitments?.available === false ? (releasesQ.data.commitments.reason ?? 'commitment_release_unavailable') : null;
@@ -550,6 +556,7 @@ export function PackageDialog({
               />
             </Field>
           </div>
+          {(!advanceOff || advanceLeftover) && (
           <label className="mt-3 flex items-start gap-2 text-sm text-content-primary">
             <input
               type="checkbox"
@@ -567,7 +574,16 @@ export function PackageDialog({
               </span>
             </span>
           </label>
-          {draft.is_advance && (
+          )}
+          {advanceLeftover && draft.is_advance && (
+            <p className="mt-1 text-xs text-semantic-warning" role="note" data-testid="advance-leftover">
+              {errorText(labels.t, view.can.set_advance.reason ?? 'advance_not_applicable')}{' '}
+              {t('procurement_concept.ui.package.advance_leftover', {
+                defaultValue: 'This package still carries the mark from an earlier phase model. Clear the tick and save to remove it.',
+              })}
+            </p>
+          )}
+          {advanceFields && (
             <Field
               className="mt-2"
               label={t('procurement_concept.ui.package.advance_reason', { defaultValue: 'Why it goes ahead of the rest (required)' })}
@@ -582,7 +598,7 @@ export function PackageDialog({
               />
             </Field>
           )}
-          {draft.is_advance && (
+          {advanceFields && (
             <Field
               className="mt-2"
               label={t('procurement_concept.ui.package.advance_release', { defaultValue: 'What releases it' })}
@@ -625,7 +641,7 @@ export function PackageDialog({
               </select>
             </Field>
           )}
-          {draft.is_advance && commitmentsOff && (
+          {advanceFields && commitmentsOff && (
             <p className="mt-1 text-xs text-content-tertiary" role="note" data-testid="commitments-unavailable">
               {errorText(labels.t, commitmentsOff)}
             </p>
