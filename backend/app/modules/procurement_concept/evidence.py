@@ -73,7 +73,8 @@ async def concept_ready(session: Any, project_id: uuid.UUID, attempt: GateAttemp
     if area.code != anchor:
         return []
     gate = await svc.release_gate(project_id, concept)
-    if gate is None:
+    from_start = gate is None and await svc.released_from_start(project_id, concept)
+    if gate is None and not from_start:
         return [
             EvidenceItem(
                 code="procurement_concept_ready:release_gate_unresolved",
@@ -83,9 +84,10 @@ async def concept_ready(session: Any, project_id: uuid.UUID, attempt: GateAttemp
                 detail="release_gate_unresolved",
             )
         ]
-    if attempt.gate_id != gate.id:
+    if gate is not None and attempt.gate_id != gate.id:
         return []
-    if await svc._frame_document(project_id, concept) is None:
+    doc = await svc._frame_document(project_id, concept)
+    if doc is None:
         # The model hosts procurement nowhere, or the project has no document row for the host yet (it was
         # pinned before the model gained it), and no document is named on the concept. Nothing could approve
         # the concept, so the answer is not "met".
@@ -98,6 +100,10 @@ async def concept_ready(session: Any, project_id: uuid.UUID, attempt: GateAttemp
                 detail="frame_document_unresolved",
             )
         ]
+    if gate is None and attempt.gate_code not in doc.required_at_gates:
+        # Procurement is open from project start, so no gate releases it. The concept is then asked for where
+        # the model asks for the document that carries it, and at no other gate.
+        return []
     ready = await svc.readiness(project_id)
     return [
         EvidenceItem(

@@ -257,13 +257,23 @@ class ProcurementConceptService:
 
         ``None`` when the project has no such gate. Callers treat that as
         "release not known" (a finding, an ``unknown`` evidence item), never as
-        "nothing to wait for".
+        "nothing to wait for", unless :meth:`released_from_start` says the
+        model holds procurement behind no gate at all.
         """
         gates = await self._project_gates(project_id)
         if concept.release_gate_code:
             return next((g for g in gates if g.code == concept.release_gate_code), None)
         tagged = (await self.hosting(project_id)).release_gate_codes
         return next((g for g in gates if g.code in tagged), None)
+
+    async def released_from_start(self, project_id: uuid.UUID, concept: ProcurementConcept) -> bool:
+        """Whether procurement is open from project start, so there is no release gate to resolve.
+
+        True when the model's first phase enables procurement and the concept
+        names no gate. A gate named on the concept is a decision to wait for
+        it, and one that is not a gate of the project stays "not known".
+        """
+        return not concept.release_gate_code and (await self.hosting(project_id)).released_from_start
 
     async def _release_date(self, project_id: uuid.UUID, gate: Any) -> date | None:
         """Date procurement is released: the go decision of the release gate, else its target date."""
@@ -604,8 +614,9 @@ class ProcurementConceptService:
         cps, rows, pkgs = await self._package_facts(project_id)
         out = ev.plan_findings([{"id": str(c.id), "code": c.code, "kind": c.kind} for c in cps], set(rows))
         gate = await self.release_gate(project_id, concept)
-        if gate is None:
+        if gate is None and not await self.released_from_start(project_id, concept):
             # Without a release gate rule 11 cannot test "before the releasing gate"; say so, never skip it silently.
+            # A model that opens procurement in its first phase has no such gate and rule 11 nothing to test.
             out.append(ev.finding("release_gate_unresolved", ev.WARNING, "project"))
         release = await self._release_date(project_id, gate)
         for p in pkgs:
@@ -2241,6 +2252,7 @@ class ProcurementConceptService:
             "items": items,
             "release_gate_code": concept.release_gate_code,
             "resolved_release_gate_code": resolved.code if resolved is not None else None,
+            "released_from_start": await self.released_from_start(project_id, concept),
         }
 
     async def advance_release_options(self, project_id: uuid.UUID) -> dict[str, Any]:

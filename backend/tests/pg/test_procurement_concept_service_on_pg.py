@@ -23,10 +23,15 @@ from app.modules.procurement_concept import commitments
 from app.modules.procurement_concept import plan_source as plan
 from app.modules.procurement_concept.errors import ProcurementError
 from app.modules.procurement_concept.events import handle_frame_document, handle_read_back
+from app.modules.procurement_concept.evidence import concept_ready
 from app.modules.procurement_concept.models import AwardPackage, ProcurementConcept
 from app.modules.procurement_concept.service import ProcurementConceptService
+from app.modules.project_governance.evidence import GateAttempt
+from app.modules.project_governance.public import project_areas
 from tests._pg import isolated_engine
 from tests.pg.procurement_concept_fixtures import (
+    AREA,
+    HOST_GATE,
     OTHER_AREA,
     OTHER_DOC,
     OTHER_GATE,
@@ -291,6 +296,67 @@ async def _untagged_model_says_release_unknown(world: World) -> None:
     ]
     await _set(world, {"release_gate_code": RELEASE_GATE})
     assert "release_gate_unresolved" not in {f["code"] for f in await svc_call(world, "findings", world.project_id)}
+
+
+async def _evidence(w: World, gate_code: str, area_code: str = AREA) -> list:
+    async with w.factory() as s:
+        area = next(a for a in await project_areas(s, w.project_id) if a.code == area_code)
+        return await concept_ready(s, w.project_id, GateAttempt(w.gates[gate_code], gate_code, 1), area)
+
+
+async def _from_start_world(engine) -> World:
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    world = await build_world(factory, from_start=True)
+    # Same areas, documents and gates as the shipped model, same codes; only the first phase enables procurement.
+    assert set(world.gates) >= {RELEASE_GATE, HOST_GATE} and world.document_id is not None
+    return world
+
+
+async def test_a_model_that_opens_procurement_in_its_first_phase_has_no_release_gate_to_miss() -> None:
+    """No gate leads into the first phase: nothing is waited for and nothing is reported unknown."""
+    async with isolated_engine() as engine:
+        world = await _from_start_world(engine)
+        gates = await svc_call(world, "gate_options", world.project_id)
+        assert gates["released_from_start"] is True
+        assert gates["resolved_release_gate_code"] is None
+        assert not any(g["tagged_release_gate"] or g["selected"] for g in gates["items"])
+        await add_contract_package(world, "W1", "construction")
+        await put(world, "W1", OPEN_WORKS)
+        found = await svc_call(world, "findings", world.project_id)
+        assert [f["code"] for f in found if f["ref"] == "project"] == []
+        # The concept is asked for where the model asks for its document, on its area, and nowhere else.
+        (item,) = await _evidence(world, HOST_GATE)
+        assert (item.state, item.code) == ("not_met", f"procurement_concept_ready:{HOST_GATE}")
+        assert await _evidence(world, RELEASE_GATE) == []
+        assert await _evidence(world, HOST_GATE, OTHER_AREA) == []
+        # A manager who names a gate decides to wait for it: the ordinary rules are back.
+        await _set(world, {"release_gate_code": RELEASE_GATE})
+        gates = await svc_call(world, "gate_options", world.project_id)
+        assert (gates["released_from_start"], gates["resolved_release_gate_code"]) == (False, RELEASE_GATE)
+        assert await _evidence(world, HOST_GATE) == []
+        (item,) = await _evidence(world, RELEASE_GATE)
+        assert item.state == "not_met"
+        # A named gate the project does not have is "not known", never "open from the start".
+        async with world.factory() as s:
+            concept = await ProcurementConceptService(s).get_concept(world.project_id)
+            concept.release_gate_code = "gate_of_a_model_the_project_left"
+            await s.commit()
+        (item,) = await _evidence(world, HOST_GATE)
+        assert (item.state, item.detail) == ("unknown", "release_gate_unresolved")
+        found = await svc_call(world, "findings", world.project_id)
+        assert [(f["code"], f["severity"]) for f in found if f["ref"] == "project"] == [
+            ("release_gate_unresolved", "warning")
+        ]
+
+
+async def test_open_from_the_start_without_a_host_document_is_unknown_at_whichever_gate_asks() -> None:
+    """Without the document there is no gate to report at, and silence would read as "met"."""
+    async with isolated_engine() as engine:
+        world = await _from_start_world(engine)
+        await drop_frame_document(world)
+        for code in (HOST_GATE, RELEASE_GATE):
+            (item,) = await _evidence(world, code)
+            assert (item.state, item.detail) == ("unknown", "frame_document_unresolved")
 
 
 # ── Plan and steering ───────────────────────────────────────────────────

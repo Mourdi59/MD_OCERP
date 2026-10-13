@@ -158,6 +158,8 @@ async def _concept_out(
         "release_gate_code": c.release_gate_code,
         # The gate actually used: the named one, else the one the governance catalogue tags; null = unresolved.
         "resolved_release_gate_code": gate.code if gate is not None else None,
+        # True when the model opens procurement in its first phase and no gate is named: null above is then final.
+        "released_from_start": await svc.released_from_start(project_id, c),
         "governance_area_code": hosting.area_code,
         "default_profile_id": str(c.default_profile_id) if c.default_profile_id else None,
         "submitted_by": str(c.submitted_by) if c.submitted_by else None,
@@ -304,6 +306,7 @@ async def list_gates(project_id: uuid.UUID, session: SessionDep, user_id: Curren
         data["items"],
         release_gate_code=data["release_gate_code"],
         resolved_release_gate_code=data["resolved_release_gate_code"],
+        released_from_start=data["released_from_start"],
     )
 
 

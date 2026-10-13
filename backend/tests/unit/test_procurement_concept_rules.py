@@ -564,6 +564,35 @@ def _phase_models() -> list:
     return list(list_catalogues())
 
 
+def _reshaped(cat, *, first_phase_enables: bool, later_phases_enable: bool):
+    """The model with the procurement capability moved; every code kept."""
+    body = cat.model_dump(mode="json")
+    first = min(body["phases"], key=lambda p: p["order"])
+    for phase in body["phases"]:
+        enables = [c for c in phase["enables"] if c != "procurement"]
+        keeps = first_phase_enables if phase is first else later_phases_enable and "procurement" in phase["enables"]
+        if keeps:
+            enables.append("procurement")
+        phase["enables"] = enables
+    return type(cat).model_validate(body)
+
+
+def test_a_first_phase_that_enables_procurement_releases_it_from_project_start() -> None:
+    """No gate leads into the first phase: that is "nothing holds it", not "the gate is unknown"."""
+    cat = next(c for c in _phase_models() if c.id == "neutral")
+    doc = cat.host_of("procurement")
+    tagged = hosting_of(cat)
+    assert tagged.release_gate_codes and tagged.released_from_start is False
+    opened = hosting_of(_reshaped(cat, first_phase_enables=True, later_phases_enable=False))
+    assert opened == ProcurementHosting(doc.area, (doc.code,), (), True)
+    # A later phase that enables it again adds no release gate: nothing was held for that gate to release.
+    both = hosting_of(_reshaped(cat, first_phase_enables=True, later_phases_enable=True))
+    assert both == opened
+    # No phase enables it at all: not known, which is a different answer.
+    nowhere = hosting_of(_reshaped(cat, first_phase_enables=False, later_phases_enable=False))
+    assert (nowhere.release_gate_codes, nowhere.released_from_start) == ((), False)
+
+
 def test_every_shipped_phase_model_resolves_a_host_and_a_release_gate() -> None:
     models = _phase_models()
     assert models
@@ -575,6 +604,12 @@ def test_every_shipped_phase_model_resolves_a_host_and_a_release_gate() -> None:
         assert hosting.area_code in {a.code for a in cat.areas}, cat.id
         assert hosting.document_types == (doc.code,), cat.id
         enabling = {p.code for p in cat.phases_enabling("procurement")}
+        if hosting.released_from_start:
+            # Open from project start: the first phase enables it and no gate leads there.
+            first = min(cat.phases, key=lambda p: p.order).code
+            assert first in enabling and first not in {g.to_phase for g in cat.gates}, cat.id
+            assert hosting.release_gate_codes == (), cat.id
+            continue
         assert hosting.release_gate_codes, cat.id
         assert {g.to_phase for g in cat.gates if g.code in hosting.release_gate_codes} <= enabling, cat.id
 
