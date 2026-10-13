@@ -228,12 +228,19 @@ async def test_second_run_is_a_no_op(factory) -> None:
     assert await _counts(factory, pid) == first
 
 
-async def test_without_a_distinct_decider_the_project_is_skipped(factory) -> None:
-    """With the owners deciding their own areas four-eyes would refuse; seed nothing rather than half."""
+async def test_without_a_decider_the_project_gets_what_needs_no_second_person(factory) -> None:
+    """Four-eyes would refuse an owner deciding their own areas, so nothing is decided; the rest is written."""
     pid, _ = await _world(factory, with_manager=False)
-    counts = await _seed(factory, pid)
-    assert counts["projects"] == 0
-    assert (await _counts(factory, pid))["models"] == 0
+    result = await _seed(factory, pid)
+    assert (result["projects"], result["ok"]) == (1, True)
+    assert [(r["planned"], r["reached"], r["fallback_reason"], r["loud"]) for r in result["placements"]] == [
+        ("first_gate", "owner_only", "no_decider", False)
+    ]
+    counts = await _counts(factory, pid)
+    assert (counts["models"], counts["decisions"], counts["routes"], counts["conditions"]) == (1, 0, 0, 0)
+    assert counts["documents"] > 0 and counts["containers"] >= 3 and counts["revisions"] >= 3
+    # The estimator login of this world joined as the cost owner; nobody was created for the missing part.
+    assert (counts["teams"], counts["memberships"]) == (1, 1)
 
 
 async def test_the_enrichment_step_seeds_commits_and_hands_the_result_back(factory) -> None:

@@ -281,6 +281,7 @@ def test_the_migration_declares_the_same_indexes_as_the_models() -> None:
     import importlib.util
 
     import app.modules.project_governance.models as models
+    from app.core.pg_optimizations import _index_name
 
     path = Path(__file__).resolve().parents[2] / "alembic" / "versions" / "v68_project_governance.py"
     spec = importlib.util.spec_from_file_location("v68_project_governance", path)
@@ -288,17 +289,25 @@ def test_the_migration_declares_the_same_indexes_as_the_models() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     declared = {(table, name, tuple(cols)) for table, _c, indexes in module._TABLES for name, cols in indexes}
-    in_models = {
+    every = {
         (t.name, ix.name, tuple(c.name for c in ix.columns))
         for t in models.Base.metadata.tables.values()
         if t.name.startswith("oe_governance_")
         for ix in t.indexes
-        # ``app.core.pg_optimizations`` hangs ``ix_oe_governance_<table>_...`` on the
-        # metadata whenever a test before this one built a schema; no revision
-        # reproduces those, the module's own are ``ix_oe_gov_*``.
-        if not str(ix.name).startswith("ix_oe_governance_")
     }
-    assert declared == in_models
+
+    def named_by_the_hook(row: tuple[str, str | None, tuple[str, ...]]) -> bool:
+        table, name, cols = row
+        return name in (_index_name(table, list(cols)), _index_name(table, list(cols), gin=True))
+
+    # ``app.core.pg_optimizations`` hangs its own indexes on the metadata whenever a
+    # test before this one built a schema; no revision reproduces those. Only the
+    # exact name the hook gives these columns is let through, on either side: the
+    # module declares one index under the hook's name so the table gets no twin.
+    assert {r for r in declared if not named_by_the_hook(r)} == {r for r in every if not named_by_the_hook(r)}
+    # And whatever its name, an index the revision creates is an index of the models.
+    assert declared <= every
+    assert sum(1 for r in declared if named_by_the_hook(r)) == 1
 
 
 # ── document capabilities: the flag and the write share one refusal ──

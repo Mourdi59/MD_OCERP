@@ -216,9 +216,16 @@ def default_catalogue_pin(kind: str = PHASE_MODEL_KIND, country_code: str | None
 
     The active pack is asked first (:func:`catalogue_packs.pack_default_pin`);
     a default whose file does not load is passed over, so a broken pack never
-    becomes what new projects pin. Without a pack opinion the phase model
-    falls back to the shipped catalogue of the project's country. For another
-    kind ``None`` says the owning module's own default applies.
+    becomes what new projects pin.
+
+    Without a pack opinion the rule is the same for every registered kind: the
+    one shipped catalogue of the kind whose ``jurisdiction_countries`` names
+    the project's country. ``None`` when no shipped catalogue claims the
+    country, when more than one does (a choice the module or the user has to
+    make) and when the country is empty; ``None`` says the owning module pins
+    its neutral file. So a module needs no country rule of its own. The phase
+    model alone has a last resort here, its neutral catalogue: governance is
+    the owning module of that kind.
     """
     for pin in catalogue_packs.pack_default_candidates(kind, country_code):
         ref = catalogue_packs.find_pack_catalogue(kind, pin.catalogue_id, pin.version, active_only=True)
@@ -229,9 +236,32 @@ def default_catalogue_pin(kind: str = PHASE_MODEL_KIND, country_code: str | None
         except InvalidCatalogueError as exc:
             logger.warning("the active pack names a default %s catalogue that does not load: %s", kind, exc)
     if kind != PHASE_MODEL_KIND:
-        return None
+        return _shipped_pin_of_country(kind, country_code)
     cid = default_catalogue_id_for_country(country_code)
     return CataloguePin("shipped", cid, _kind(kind).get_shipped(cid).version)
+
+
+def _shipped_pin_of_country(kind: str, country_code: str | None) -> CataloguePin | None:
+    """The one shipped catalogue of ``kind`` that claims the country, at its newest version."""
+    country = (country_code or "").strip().upper()
+    if not country:
+        return None
+    try:
+        shipped = get_catalogue_kind(kind).shipped()
+    except UnknownCatalogueError:
+        return None
+    except InvalidCatalogueError as exc:
+        logger.warning("the shipped %s catalogues do not load, so none is a default: %s", kind, exc)
+        return None
+    versions: dict[str, int] = {}
+    for item in shipped:
+        claimed = {str(c).strip().upper() for c in getattr(item, "jurisdiction_countries", None) or ()}
+        if country in claimed:
+            versions[item.id] = max(versions.get(item.id, 0), getattr(item, "version", 0) or 0)
+    if len(versions) != 1:
+        return None
+    ((catalogue_id, version),) = versions.items()
+    return CataloguePin("shipped", catalogue_id, version)
 
 
 def _phase_items(phases: Any) -> list[dict[str, Any]]:

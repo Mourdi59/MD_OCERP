@@ -15,7 +15,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.util import identity_key
 from sqlalchemy.sql.elements import ClauseElement
 
-from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, DEMO_CAST_EMAILS
+from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS
 from app.modules.users.models import APIKey, User
 
 # E-mail of the bootstrap workspace owner created by the desktop first-run
@@ -31,10 +31,7 @@ LOCAL_DESKTOP_OWNER_EMAIL = "owner@openestimate.local"
 # bootstrap: on a fresh install each such registrant found no real admin and no
 # real user and was handed admin, the second as much as the first. Only the
 # seeded accounts are not real; the domain says nothing about who registered.
-# The stand-ins of the demo cast are demo data too: counted as real people they would
-# make an installation that only installed a pack look taken, and the first person to
-# register would not be handed admin.
-_NOT_SEEDED_DEMO = func.lower(User.email).notin_(sorted(DEMO_ACCOUNT_EMAILS | DEMO_CAST_EMAILS))
+_NOT_SEEDED_DEMO = func.lower(User.email).notin_(sorted(DEMO_ACCOUNT_EMAILS))
 
 
 class UserRepository:
