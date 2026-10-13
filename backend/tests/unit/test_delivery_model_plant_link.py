@@ -98,10 +98,11 @@ def test_the_link_is_a_soft_column_on_the_item_that_carries_the_own_lead_time() 
         assert "plant_item_id" in schema.model_fields
 
 
-def test_only_one_file_of_the_module_reads_the_plant_register() -> None:
+def test_only_the_two_plant_files_of_the_module_name_the_plant_register() -> None:
+    """plant.py reads the register, plant_port.py answers the register's package plan port."""
     root = Path(plant.__file__).parent
     readers = sorted(p.name for p in root.glob("*.py") if "modules.plant_register" in p.read_text(encoding="utf-8"))
-    assert readers == ["plant.py"]
+    assert readers == ["plant.py", "plant_port.py"]
 
 
 def test_every_refusal_of_the_link_has_a_sentence_in_both_languages() -> None:

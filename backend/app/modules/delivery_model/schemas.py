@@ -210,6 +210,12 @@ class PackageStatusIn(_In):
     status: Literal["planned", "closed", "cancelled"]
 
 
+class ReopenIn(_In):
+    """Why a binding decision is opened again. Needed on a project without gates, where no change request says it."""
+
+    reason: str | None = Field(default=None, max_length=2000)
+
+
 class OfiIn(_In):
     code: str = Field(pattern=_PKG_CODE, max_length=64)
     description: str = Field(min_length=1, max_length=5000)

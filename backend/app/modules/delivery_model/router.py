@@ -54,6 +54,7 @@ from app.modules.delivery_model.schemas import (
     PackageStatusIn,
     Page,
     ProposeIn,
+    ReopenIn,
     ScoresPut,
     SeedRisksIn,
     WeightsPatch,
@@ -138,6 +139,7 @@ async def _model_out(svc: DeliveryModelService, project_id: uuid.UUID, payload: 
             can_edit=denied is None,
             can_manage=_has(payload, _MANAGE),
             edit_denied=denied or "permission_missing",
+            actor_id=_uid(str(payload.get("sub"))) if payload.get("sub") else None,
         )
     )
 
@@ -253,11 +255,19 @@ async def close_reopening(
 
 @router.post(_P + "/model/reopen", dependencies=[MANAGE])
 async def reopen(
-    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+    project_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    body: ReopenIn | None = None,
 ) -> dict[str, Any]:
-    """Binding -> reopened while a governance change request on the frame document is open."""
+    """Binding -> reopened.
+
+    With gates: while a governance change request on the frame document is
+    open. Without gates: with a ``reason`` in the body, which is recorded.
+    """
     svc = await _delivery_svc(project_id, user_id, session)
-    await _run(svc.reopen(project_id, _uid(user_id)))
+    await _run(svc.reopen(project_id, _uid(user_id), body.reason if body else None))
     return await _model_out(svc, project_id, payload)
 
 
@@ -358,6 +368,20 @@ async def propose(
         )
     )
     return next(d for d in await svc.decision_views(project_id) if d["id"] == str(row.id))
+
+
+@router.post(_P + "/decision/approve", dependencies=[MANAGE])
+async def approve(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """Approve the proposed decision by hand, on a project without gates only.
+
+    Where the project has gates the gate decision approves: this answers 409
+    ``approved_by_gate_decision`` and the model's ``can.approve`` says it does not apply.
+    """
+    svc = await _delivery_svc(project_id, user_id, session)
+    await _run(svc.approve_by_hand(project_id, _uid(user_id)))
+    return await _model_out(svc, project_id, payload)
 
 
 @router.post(_P + "/decision/withdraw", dependencies=[MANAGE])

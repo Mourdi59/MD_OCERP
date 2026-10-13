@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.delivery_model.errors import DeliveryModelError
 from app.modules.delivery_model.events import handle_frame_document
-from app.modules.delivery_model.evidence import decision_ready
+from app.modules.delivery_model.evidence import decision_ready, register_gate_evidence
 from app.modules.delivery_model.service import DeliveryModelService
 from app.modules.project_governance.evidence import GateAttempt
 from app.modules.project_governance.service import GovernanceService
@@ -32,20 +32,19 @@ from tests.pg.delivery_fixtures import (
     change_request,
     compare,
     decisions,
-    only_delivery_evidence,
     propose,
     settle_change_request,
     state,
     view,
 )
-from tests.pg.governance_fixtures import areas, decide, documents, gate, prepare_gate
+from tests.pg.governance_fixtures import areas, decide, documents, gate, only_evidence, prepare_gate
 
 pytestmark = pytest.mark.asyncio
 
 
 @pytest_asyncio.fixture
 async def factory():
-    with only_delivery_evidence():
+    with only_evidence(register=register_gate_evidence):
         async with isolated_engine() as engine:
             yield async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -167,7 +166,8 @@ async def test_evidence_is_reported_in_the_area_of_the_carrier_document_only(wor
         }
     assert {code for code, items in by_area.items() if items} == {"m02_contract_management"}
     assert ("delivery_decision_proposed", "not_met") in by_area["m02_contract_management"]
-    # This model enables procurement in its first phase, so no gate guards it: rule 10 is checked here too.
+    # The gate that carries the decision is also the one into the phase that enables procurement:
+    # rule 10 is checked here too.
     assert ("delivery_ofi_routes", "met") in by_area["m02_contract_management"]
 
 

@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.delivery_model.errors import DeliveryModelError
 from app.modules.delivery_model.events import handle_frame_document, handle_risk_deleted
+from app.modules.delivery_model.evidence import register_gate_evidence
 from app.modules.delivery_model.service import DeliveryModelService
 from app.modules.project_governance.errors import GovernanceError
 from tests._pg import isolated_engine
@@ -34,19 +35,18 @@ from tests.pg.delivery_fixtures import (
     change_request,
     compare,
     decisions,
-    only_delivery_evidence,
     propose,
     settle_change_request,
     state,
 )
-from tests.pg.governance_fixtures import decide, documents, prepare_gate
+from tests.pg.governance_fixtures import decide, documents, only_evidence, prepare_gate
 
 pytestmark = pytest.mark.asyncio
 
 
 @pytest_asyncio.fixture
 async def world():
-    with only_delivery_evidence():
+    with only_evidence(register=register_gate_evidence):
         async with isolated_engine() as engine:
             factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
             yield await build_world(factory)
@@ -244,8 +244,9 @@ async def test_rules10_11_owner_furnished_items(world) -> None:
     assert exc.value.code == "ofi_without_route"
     report = await call(w, "consistency")
     sev = {(i["code"], i["severity"]) for i in report["items"] if i["ref"] == "OFI-1"}
-    # The eleven-area model enables procurement in its first phase: a missing route is an error from day one.
-    assert sev == {("ofi_without_route", "error"), ("ofi_late_for_installer", "warning")}
+    # The eleven-area model enables procurement in its second phase: before the gate into it a missing
+    # route is a warning. (That it is an error once procurement is released is in the unit rules test.)
+    assert sev == {("ofi_without_route", "warning"), ("ofi_late_for_installer", "warning")}
     await call(w, "set_ofi_route", ofi.id, route="framework", link_kind=None, link_id=None, actor_id=w.manager)
     report = await call(w, "consistency")
     assert "ofi_without_route" not in {i["code"] for i in report["items"]}

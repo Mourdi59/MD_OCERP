@@ -41,11 +41,11 @@ from app.core.events import publish_after_commit
 from app.core.fsm import FSMError
 from app.modules.delivery_model import hosting, plant, rules
 from app.modules.delivery_model.catalogue import (
+    DEFAULT_CATALOGUE_ID,
     DELIVERY_FORMS_KIND,
     SHARED_PARTY,
     DeliveryForm,
     DeliveryFormsCatalogue,
-    default_catalogue_id_for_country,
     effective_form,
     override_errors,
     register_kinds,
@@ -139,6 +139,22 @@ def record_matches_bound_revision(record_hash: str | None, bound_hash: str | Non
     if not record_hash or not bound_hash:
         return None
     return record_hash == bound_hash
+
+
+def default_pin(country: str | None) -> tuple[str, str, int | None]:
+    """The catalogue a new model pins when none was asked for: ``(source, id, version)``.
+
+    Which catalogue a country gets is governance's answer for every catalogue
+    kind (active pack, national packs, the one shipped catalogue claiming the
+    country). This module has no country rule of its own: when governance names
+    none, the neutral catalogue is pinned.
+    """
+    from app.modules.project_governance.public import default_catalogue_pin
+
+    pin = default_catalogue_pin(DELIVERY_FORMS_KIND, country)
+    if pin is None:
+        return "shipped", DEFAULT_CATALOGUE_ID, None
+    return pin.source, pin.catalogue_id, pin.version
 
 
 def _model_cls(spec: tuple[str, str]) -> Any:
@@ -251,15 +267,7 @@ class DeliveryModelService:
             raise conflict("model_exists")
         cid = catalogue_id
         if cid is None:
-            # No catalogue asked for: the active pack's default for the country, else this module's own.
-            from app.modules.project_governance.public import default_catalogue_pin
-
-            country = getattr(project, "country_code", None)
-            pin = default_catalogue_pin(DELIVERY_FORMS_KIND, country)
-            if pin is not None:
-                catalogue_source, cid, catalogue_version = pin.source, pin.catalogue_id, pin.version
-            else:
-                catalogue_source, cid = "shipped", default_catalogue_id_for_country(country)
+            catalogue_source, cid, catalogue_version = default_pin(getattr(project, "country_code", None))
         version = await self._pin(tenant_id, catalogue_source, cid, catalogue_version)
         try:
             # A second request that passed the check above loses on the unique constraint: 409, not 500.
@@ -383,21 +391,25 @@ class DeliveryModelService:
         can_edit: bool = False,
         can_manage: bool = False,
         edit_denied: str = "permission_missing",
+        actor_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
         """The model with its carrier document and what the caller may do now (``can``).
 
         ``edit_denied`` is why the caller may not edit when ``can_edit`` is false,
-        as the router's enforcing check words it.
+        as the router's enforcing check words it. ``actor_id`` is the caller:
+        whether they may approve by hand depends on who proposed.
         """
         await self.sync_with_governance(project_id)
         model = await self.require_model(project_id)
         catalogue = await self.catalogue_for(model)
         form = await self._form_of(project_id, catalogue, model.selected_form_code)
         doc, why = await hosting.carrier_document(self.session, project_id)
+        gates = await hosting.gates_in_use(self.session, project_id)
         blocks = await self._action_blocks(model)
+        blocks["approve"] = await self.hand_approval_refusal(model, actor_id)
         current = await self.repo.decision(project_id, model.current_decision_id) if model.current_decision_id else None
 
-        applies = self._action_applies(model.status, await self._approved_decision(project_id) is not None)
+        applies = self._action_applies(model.status, await self._approved_decision(project_id) is not None, gates)
 
         def can(action: str, permitted: bool, denied: str = "permission_missing") -> dict[str, Any]:
             # ``applies`` false: the action does not exist in this state (hide it). True with a reason: the
@@ -420,8 +432,10 @@ class DeliveryModelService:
                 "document_id": _s(doc.id) if doc is not None else None,
                 "document_type": doc.code if doc is not None else None,
                 "document_status": doc.status if doc is not None else None,
-                "missing_reason": why,
+                # A project that does not use gates is not missing a frame document.
+                "missing_reason": why if gates else None,
             },
+            "gates_in_use": gates,
             "change_request_id": _s(model.change_request_id),
             "current_decision_id": _s(model.current_decision_id),
             "approval_blocked_reason": (current.approval_blocked_reason or None) if current is not None else None,
@@ -429,6 +443,7 @@ class DeliveryModelService:
                 "edit": can("edit", can_edit, edit_denied),
                 "propose": can("propose", can_manage),
                 "withdraw": can("withdraw", can_manage),
+                "approve": can("approve", can_manage),
                 "reopen": can("reopen", can_manage),
                 "close_reopening": can("close_reopening", can_manage),
             },
@@ -436,12 +451,17 @@ class DeliveryModelService:
         }
 
     @staticmethod
-    def _action_applies(status: str, has_approved: bool) -> dict[str, bool]:
-        """Does the action exist in this state at all? False means there is nothing to show, not a refusal."""
+    def _action_applies(status: str, has_approved: bool, gates_in_use: bool = True) -> dict[str, bool]:
+        """Does the action exist in this state at all? False means there is nothing to show, not a refusal.
+
+        Approval by hand exists only on a project without gates: with gates the
+        gate decision approves and nobody does it here.
+        """
         return {
             "edit": status in EDITABLE,
             "propose": status in EDITABLE,
             "withdraw": status == "proposed",
+            "approve": status == "proposed" and not gates_in_use,
             "reopen": status == "binding",
             "close_reopening": status in ("reopened", "under_evaluation") and has_approved,
         }
@@ -449,6 +469,7 @@ class DeliveryModelService:
     async def _action_blocks(self, model: DeliveryModel) -> dict[str, str | None]:
         """Why each state-changing action is refused now (``None`` = allowed). Enforcement reads the same answer."""
         doc, why = await hosting.carrier_document(self.session, model.project_id)
+        gates = await hosting.gates_in_use(self.session, model.project_id)
         approved = await self._approved_decision(model.project_id)
         if model.status == "proposed":
             propose: str | None = "decision_pending"
@@ -458,9 +479,14 @@ class DeliveryModelService:
         elif model.status not in ("under_evaluation", "reopened"):
             propose = "model_not_editable"
         else:
-            propose = why
+            # With gates the decision needs the frame document that carries it to the gate. Without gates it is
+            # approved by hand and needs none.
+            propose = why if gates else None
         if model.status != "binding":
             reopen: str | None = "model_not_binding"
+        elif not gates:
+            # Nothing but a manager's reason reopens it here; the reason is asked for at the write.
+            reopen = None
         elif doc is None:
             reopen = why
         else:
@@ -829,12 +855,24 @@ class DeliveryModelService:
     async def _approved_decision(self, project_id: uuid.UUID) -> DeliveryDecision | None:
         return next((d for d in await self.repo.decisions(project_id) if d.status == "approved"), None)
 
-    async def reopen(self, project_id: uuid.UUID, actor_id: uuid.UUID) -> DeliveryModel:
-        """Binding -> reopened, only while governance has an open change request on the carrier document (rule 9)."""
+    async def reopen(self, project_id: uuid.UUID, actor_id: uuid.UUID, reason: str | None = None) -> DeliveryModel:
+        """Binding -> reopened.
+
+        With gates: only while governance has an open change request on the
+        carrier document (rule 9). Without gates: by a manager with a reason,
+        which is recorded, or an approved decision could never change again.
+        """
         model = await self.require_model(project_id, lock=True)
         blocked = (await self._action_blocks(model))["reopen"]
         if blocked:
             raise conflict(blocked)
+        if not await hosting.gates_in_use(self.session, project_id):
+            why = (reason or "").strip()
+            if not why:
+                raise DeliveryModelError("reopen_reason_required", 422)
+            await self._fsm(MODEL_FSM, model, "reopened", actor_id, reason=why)
+            await self._audit(actor_id, "delivery_model", model.id, "model_reopened", metadata={"reason": why})
+            return model
         doc, _ = await hosting.carrier_document(self.session, project_id)
         open_cr = await hosting.open_change_request(self.session, project_id, doc.id) if doc is not None else None
         if open_cr is None:
@@ -991,6 +1029,52 @@ class DeliveryModelService:
             return await self._blocked(decision, BLOCKED_APPROVER_UNKNOWN)
         if four_eyes and approver == decision.proposed_by:
             return await self._blocked(decision, BLOCKED_FOUR_EYES)
+        await self._approve(model, decision, approver=approver, at=at, source=source, ref=ref, doc=doc)
+        return True
+
+    async def hand_approval_refusal(self, model: DeliveryModel, actor_id: uuid.UUID | None) -> str | None:
+        """Why this person cannot approve the proposed decision by hand now (``None`` = they can).
+
+        The same checks the gate's approval runs: the model has no open error,
+        and under four-eyes whoever proposed does not approve. The view and the
+        write both ask here.
+        """
+        if await hosting.gates_in_use(self.session, model.project_id):
+            return "approved_by_gate_decision"
+        decision = (
+            await self.repo.decision(model.project_id, model.current_decision_id) if model.current_decision_id else None
+        )
+        if model.status != "proposed" or decision is None or decision.status != "proposed":
+            return "decision_not_proposed"
+        if await self._four_eyes(model.project_id) and actor_id is not None and decision.proposed_by == actor_id:
+            return BLOCKED_FOUR_EYES
+        if not (await self.readiness(model.project_id))["met"]:
+            return BLOCKED_NOT_READY
+        return None
+
+    async def approve_by_hand(self, project_id: uuid.UUID, actor_id: uuid.UUID) -> DeliveryModel:
+        """Approve the proposed decision on a project that has no gates to approve it."""
+        model = await self.require_model(project_id, lock=True)
+        refusal = await self.hand_approval_refusal(model, actor_id)
+        if refusal:
+            raise conflict(refusal)
+        decision = await self.repo.decision(project_id, model.current_decision_id)
+        await self._approve(model, decision, approver=actor_id, at=None, source="hand", ref=None, doc=None)
+        return model
+
+    async def _approve(
+        self,
+        model: DeliveryModel,
+        decision: DeliveryDecision,
+        *,
+        approver: Any,
+        at: datetime | None,
+        source: str,
+        ref: Any,
+        doc: Any | None,
+    ) -> None:
+        """Make the proposed decision the one in force. ``doc`` is the bound frame document, ``None`` by hand."""
+        four_eyes = await self._four_eyes(model.project_id)
         for old in await self.repo.decisions(model.project_id):
             if old.status == "approved" and old.id != decision.id:
                 old.status = "superseded"
@@ -1004,10 +1088,11 @@ class DeliveryModelService:
         decision.status = "approved"
         decision.approved_by, decision.approved_at = approver, at or _now()
         decision.approval_source, decision.governance_ref_id = source, ref
-        decision.governance_document_id = doc.id
-        decision.bound_revision_id = doc.bound_revision_id
-        # The hash governance recorded when it bound the revision, not the revision's hash today.
-        decision.bound_content_hash = doc.bound_content_hash
+        if doc is not None:
+            decision.governance_document_id = doc.id
+            decision.bound_revision_id = doc.bound_revision_id
+            # The hash governance recorded when it bound the revision, not the revision's hash today.
+            decision.bound_content_hash = doc.bound_content_hash
         decision.four_eyes, decision.approval_blocked_reason = four_eyes, ""
         model.change_request_id = None
         await self._fsm(MODEL_FSM, model, "approved", approver, decision_id=str(decision.id))
@@ -1018,7 +1103,6 @@ class DeliveryModelService:
             "decision.approved",
             {"project_id": str(model.project_id), "decision_id": str(decision.id), "form_code": decision.form_code},
         )
-        return True
 
     async def decision_views(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
         await self.sync_with_governance(project_id)
@@ -1523,11 +1607,78 @@ class DeliveryModelService:
             return
         if not plant.installed():
             raise DeliveryModelError("plant_register_unavailable", 422)
-        if await plant.plant_item_dates(self.session, project_id, plant_item_id) is None:
+        dates = await plant.plant_item_dates(self.session, project_id, plant_item_id)
+        if dates is None:
             # Missing and of another project read the same, here as in the register.
             raise not_found("plant_item_not_found")
+        if not plant.keeps_owner_furnished_item(dates):
+            # The register says a contractor supplies it (or nobody yet): the two lists must not disagree.
+            raise conflict("plant_item_not_owner_furnished")
         if any(o.plant_item_id == plant_item_id and o.id != own_id for o in await self.repo.ofis(project_id)):
             raise conflict("plant_item_already_linked")
+
+    async def _refuse_if_held(self, row: OwnerFurnishedItem) -> None:
+        """An item the register still counts as the owner's supply of a plant item is let go there, not here."""
+        if row.plant_item_id is None:
+            return
+        dates = await plant.plant_item_dates(self.session, row.project_id, row.plant_item_id)
+        if plant.keeps_owner_furnished_item(dates):
+            raise conflict("ofi_held_by_plant_item")
+
+    async def ensure_ofi_for_plant_item(
+        self,
+        project_id: uuid.UUID,
+        plant_item_id: uuid.UUID,
+        *,
+        title: str,
+        installer_package_id: uuid.UUID | None,
+        actor_id: Any,
+    ) -> OwnerFurnishedItem:
+        """The register asks for the owner-furnished item of a plant item: created once, its installer as passed.
+
+        The register asks while it is setting the route, so its route is not
+        read back here; the checks of a link made by hand do not apply.
+        """
+        await self.require_model(project_id, lock=True)
+        await self._check_package(project_id, installer_package_id)
+        items = await self.repo.ofis(project_id)
+        install_by = "package" if installer_package_id is not None else "owner"
+        row = next((o for o in items if o.plant_item_id == plant_item_id), None)
+        if row is not None:
+            row.install_by, row.package_id = install_by, installer_package_id
+            await self.session.flush()
+            return row
+        dates = await plant.plant_item_dates(self.session, project_id, plant_item_id)
+        code = plant.item_code(dates.code if dates is not None else None, plant_item_id, {o.code for o in items})
+        row = await self.repo.add(
+            OwnerFurnishedItem(
+                project_id=project_id,
+                status="identified",
+                code=code,
+                description=title,
+                item_kind="equipment",
+                install_by=install_by,
+                package_id=installer_package_id,
+                plant_item_id=plant_item_id,
+            )
+        )
+        await self._audit(
+            actor_id, "delivery_ofi", row.id, "ofi_created", metadata={"code": code, "source": "plant_register"}
+        )
+        self._publish("ofi.created", {"project_id": str(project_id), "ofi_id": str(row.id)})
+        return row
+
+    async def release_ofi_of_plant_item(
+        self, project_id: uuid.UUID, plant_item_id: uuid.UUID, *, actor_id: Any
+    ) -> bool:
+        """The register says the plant item is no longer the owner's supply: detach its item; it stays, unlinked."""
+        row = next((o for o in await self.repo.ofis(project_id) if o.plant_item_id == plant_item_id), None)
+        if row is None:
+            return False
+        row.plant_item_id = None
+        await self.session.flush()
+        await self._audit(actor_id, "delivery_ofi", row.id, "ofi_released", metadata={"source": "plant_register"})
+        return True
 
     async def create_ofi(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> OwnerFurnishedItem:
         await self.require_model(project_id, lock=True)
@@ -1548,7 +1699,9 @@ class DeliveryModelService:
         if row is None:
             raise not_found("ofi_not_found")
         await self._check_package(project_id, changes.get("package_id"))
-        await self._check_plant_item(project_id, changes.get("plant_item_id"), own_id=row.id)
+        if "plant_item_id" in changes and changes["plant_item_id"] != row.plant_item_id:
+            await self._refuse_if_held(row)
+            await self._check_plant_item(project_id, changes["plant_item_id"], own_id=row.id)
         for key, value in changes.items():
             if value is None and key not in OFI_NULLABLE:
                 raise DeliveryModelError("field_not_nullable", 422, detail=key)
@@ -1561,6 +1714,7 @@ class DeliveryModelService:
         row = await self.repo.ofi(project_id, ofi_id, lock=True)
         if row is None:
             raise not_found("ofi_not_found")
+        await self._refuse_if_held(row)
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "delivery_ofi", ofi_id, "ofi_deleted")

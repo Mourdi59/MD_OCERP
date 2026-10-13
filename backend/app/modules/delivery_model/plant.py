@@ -26,6 +26,66 @@ OWN = "own"
 REGISTER = "plant_register"
 
 
+# Routes of the register under which a plant item has an owner-furnished item here (its ``needs_ofi``),
+# and the item states in which the register still lets a route change. Both are the register's words; a
+# test compares them with the register when it is installed.
+OFI_ROUTES = ("owner_furnished_contractor_installed", "owner_furnished_owner_installed", "owner_procured_novated")
+ROUTE_OPEN_STATES = ("identified", "specified", "enquired", "route_set")
+CONTRACTOR_INSTALLS = "owner_furnished_contractor_installed"
+OWNER_INSTALLS = "owner_furnished_owner_installed"
+
+
+def keeps_owner_furnished_item(dates: Any | None) -> bool:
+    """Does the register say this plant item is supplied by the owner?"""
+    return dates is not None and dates.procurement_route in OFI_ROUTES
+
+
+def route_open(dates: Any | None) -> bool:
+    """May the route of this plant item still be changed in the register?"""
+    return dates is not None and dates.status in ROUTE_OPEN_STATES
+
+
+def item_code(register_code: str | None, plant_item_id: uuid.UUID, taken: set[str]) -> str:
+    """The code of the owner-furnished item the register asks for: its own code, made unique here."""
+    stem = "".join(c if c.isalnum() or c in "_.-" else "-" for c in (register_code or plant_item_id.hex[:8]))
+    base = f"OFI-{stem}"[:56]
+    code, n = base, 1
+    while code in taken:
+        n += 1
+        code = f"{base}-{n}"
+    return code
+
+
+async def set_owner_furnished_route(
+    session: Any,
+    project_id: uuid.UUID,
+    plant_item_id: uuid.UUID,
+    *,
+    installer_package_id: uuid.UUID | None,
+    actor_id: uuid.UUID,
+) -> str | None:
+    """Have the register record that the owner supplies this plant item; ``None`` when done, else its refusal code.
+
+    The register's own write: it asks this module's package plan provider for
+    the owner-furnished item, checks the route against the plan and stores the
+    link on its side. Nothing is written here when it refuses.
+    """
+    try:
+        service = importlib.import_module("app.modules.plant_register.service")
+        errors = importlib.import_module("app.modules.plant_register.errors")
+    except ImportError:
+        return "plant_register_unavailable"
+    route = CONTRACTOR_INSTALLS if installer_package_id is not None else OWNER_INSTALLS
+    try:
+        async with session.begin_nested():
+            await service.PlantService(session).set_route(
+                project_id, plant_item_id, route=route, contract_package_id=installer_package_id, actor_id=actor_id
+            )
+    except errors.PlantError as exc:
+        return exc.code
+    return None
+
+
 def _reads() -> Any | None:
     """The register's read port, or ``None`` when the module is not installed."""
     # By its full name, so a register that is not installed is an ImportError and nothing else is touched.

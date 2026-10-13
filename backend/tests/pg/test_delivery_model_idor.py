@@ -21,6 +21,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.modules.delivery_model.evidence import register_gate_evidence
 from app.modules.delivery_model.permissions import register_delivery_model_permissions
 from app.modules.delivery_model.router import router
 from tests._pg import isolated_engine
@@ -30,10 +31,9 @@ from tests.pg.delivery_fixtures import (
     build_world,
     call,
     compare,
-    only_delivery_evidence,
     state,
 )
-from tests.pg.governance_fixtures import World, decide, documents, prepare_gate
+from tests.pg.governance_fixtures import World, decide, documents, only_evidence, prepare_gate
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
 
@@ -52,7 +52,7 @@ async def world():
 async def governed():
     """A project with a governance model whose contract frame document hosts the delivery model."""
     register_delivery_model_permissions()
-    with only_delivery_evidence():
+    with only_evidence(register=register_gate_evidence):
         async with isolated_engine() as engine:
             factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
             yield await build_world(factory)
