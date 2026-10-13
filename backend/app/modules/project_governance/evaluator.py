@@ -85,6 +85,30 @@ ALL_CODES: tuple[str, ...] = (
     "null_not_allowed",
     "activity_not_in_project",
     "target_date_owned_by_schedule",
+    # Refusals of the service and the catalogue store that no rule of this module computes.
+    "area_not_found",
+    "catalogue_code_taken",
+    "catalogue_invalid",
+    "catalogue_retired",
+    "change_request_not_open",
+    "concurrent_decision",
+    "condition_not_found",
+    "container_not_in_project",
+    "document_exists",
+    "document_not_binding",
+    "document_not_found",
+    "gate_not_found",
+    "invalid_status",
+    "model_exists",
+    "model_missing",
+    "no_decision_route",
+    "no_pending_revision",
+    "not_area_owner",
+    "owner_not_project_member",
+    "route_not_at_final_step",
+    "route_not_pending",
+    "unknown_catalogue",
+    "unknown_document_type",
 )
 
 
@@ -154,7 +178,7 @@ class EvidenceState:
 
     area_code: str
     code: str
-    state: str  # met | not_met | unknown
+    state: str  # met | not_met | unknown | warning
     blocking: bool = False
     provider: str = ""
 
@@ -580,9 +604,16 @@ def evidence_to_acknowledge(ctx: GateContext) -> list[EvidenceState]:
     area it is registered for, has not said the area is unready. It is not a
     yes either, so the decider names each item and the record keeps the list.
     An item is one code in one area; the same code in two areas is two items.
+
+    A ``warning`` is named the same way, whoever reports it: the provider says
+    the gate may pass by its rule and that something is still outstanding.
     """
     applicable = {a.code for a in ctx.areas if a.applicable}
-    return [e for e in ctx.evidence if e.blocking and e.state == "unknown" and e.area_code in applicable]
+    return [
+        e
+        for e in ctx.evidence
+        if e.area_code in applicable and (e.state == "warning" or (e.blocking and e.state == "unknown"))
+    ]
 
 
 # ── Decisions ───────────────────────────────────────────────────────────────
@@ -749,7 +780,7 @@ def build_snapshot(ctx: GateContext, req: DecisionRequest) -> dict[str, Any]:
         # Only what was unknown when the decision was taken: a name the request carried for an
         # item that had been answered meanwhile is not part of the record.
         "acknowledged_evidence": [
-            {"area_code": e.area_code, "code": e.code, "provider": e.provider}
+            {"area_code": e.area_code, "code": e.code, "provider": e.provider, "state": e.state}
             for e in evidence_to_acknowledge(ctx)
             if (e.area_code, e.code) in {(area, code) for area, code in req.acknowledged_evidence}
         ],

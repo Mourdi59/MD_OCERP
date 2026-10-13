@@ -281,6 +281,7 @@ def test_the_migration_declares_the_same_indexes_as_the_models() -> None:
     import importlib.util
 
     import app.modules.project_governance.models as models
+    from app.core.pg_optimizations import _index_name
 
     path = Path(__file__).resolve().parents[2] / "alembic" / "versions" / "v68_project_governance.py"
     spec = importlib.util.spec_from_file_location("v68_project_governance", path)
@@ -288,13 +289,25 @@ def test_the_migration_declares_the_same_indexes_as_the_models() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     declared = {(table, name, tuple(cols)) for table, _c, indexes in module._TABLES for name, cols in indexes}
-    in_models = {
+    every = {
         (t.name, ix.name, tuple(c.name for c in ix.columns))
         for t in models.Base.metadata.tables.values()
         if t.name.startswith("oe_governance_")
         for ix in t.indexes
     }
-    assert declared == in_models
+
+    def named_by_the_hook(row: tuple[str, str | None, tuple[str, ...]]) -> bool:
+        table, name, cols = row
+        return name in (_index_name(table, list(cols)), _index_name(table, list(cols), gin=True))
+
+    # ``app.core.pg_optimizations`` hangs its own indexes on the metadata whenever a
+    # test before this one built a schema; no revision reproduces those. Only the
+    # exact name the hook gives these columns is let through, on either side: the
+    # module declares one index under the hook's name so the table gets no twin.
+    assert {r for r in declared if not named_by_the_hook(r)} == {r for r in every if not named_by_the_hook(r)}
+    # And whatever its name, an index the revision creates is an index of the models.
+    assert declared <= every
+    assert sum(1 for r in declared if named_by_the_hook(r)) == 1
 
 
 # ── document capabilities: the flag and the write share one refusal ──
@@ -339,13 +352,34 @@ def test_document_refusal(status: str, action: str, kwargs: dict, expected) -> N
     assert _doc_refusal(status, action, **kwargs) == expected
 
 
-def test_document_writes_and_flags_share_the_refusal() -> None:
-    import inspect
+def _calls(method) -> set[str]:
+    """Names of the methods a function calls on ``self``. A comment or a string does not count."""
+    import textwrap
 
+    tree = ast.parse(textwrap.dedent(inspect.getsource(method)))
+    return {
+        node.func.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "self"
+    }
+
+
+def test_a_mention_in_a_comment_is_not_a_call() -> None:
+    def method(self):
+        # self._document_refusal( is only mentioned here
+        return "self._document_refusal("
+
+    assert _calls(method) == set()
+
+
+def test_document_writes_and_flags_share_the_refusal() -> None:
     from app.modules.project_governance.service import GovernanceService
 
-    assert "_document_refusal(" in inspect.getsource(GovernanceService._document_for_edit)
-    assert "_document_refusal(" in inspect.getsource(GovernanceService.document_capabilities)
+    assert "_document_refusal" in _calls(GovernanceService._document_for_edit)
+    assert "_document_refusal" in _calls(GovernanceService.document_capabilities)
 
 
 # ── add document and change request: flags from the enforcing functions ──
@@ -421,10 +455,10 @@ def test_change_request_refusal(kwargs: dict, expected) -> None:
 def test_add_document_and_change_request_flags_share_the_refusal_with_the_write() -> None:
     from app.modules.project_governance.service import GovernanceService as S
 
-    assert "_add_document_refusal(" in inspect.getsource(S.create_document)
-    assert "_add_document_refusal(" in inspect.getsource(S.area_capabilities)
-    assert "_change_request_refusal(" in inspect.getsource(S.create_change_request)
-    assert "_change_request_refusal(" in inspect.getsource(S.document_capabilities)
+    assert "_add_document_refusal" in _calls(S.create_document)
+    assert "_add_document_refusal" in _calls(S.area_capabilities)
+    assert "_change_request_refusal" in _calls(S.create_change_request)
+    assert "_change_request_refusal" in _calls(S.document_capabilities)
 
 
 def test_area_flags_without_the_edit_permission() -> None:

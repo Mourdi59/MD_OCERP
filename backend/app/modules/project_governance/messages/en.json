@@ -12,7 +12,7 @@
       "area_without_owner": "This management area has no owner, so nobody can attest its readiness",
       "area_not_ready": "This management area is not ready for the gate",
       "evidence_not_met": "Required readiness evidence for this area is not met",
-      "unknown_evidence_not_acknowledged": "A module could not say whether this area is ready. Confirm that you have seen this before you let the gate pass",
+      "unknown_evidence_not_acknowledged": "Readiness evidence of this area is unconfirmed or carries a warning. Confirm that you have seen it before you let the gate pass",
       "unknown_criterion": "This readiness criterion is not part of the project's model for this area and gate",
       "check_stale": "A document changed after readiness was confirmed, so the area must be confirmed again",
       "condition_overdue": "A condition from an earlier gate is overdue and must be cleared or waived first",

@@ -49,3 +49,21 @@ def test_locale_keeps_placeholders_and_translates(locale: str) -> None:
     for key, text in en.items():
         assert sorted(_PLACEHOLDER.findall(other[key])) == sorted(_PLACEHOLDER.findall(text)), key
         assert other[key].strip(), key
+
+
+_RAISED = re.compile(r'(?:GovernanceError|conflict|forbidden|not_found)\(\s*"([a-z_0-9]+)"')
+
+
+def test_every_code_the_module_raises_is_registered_and_worded_in_every_locale() -> None:
+    from app.modules.project_governance import evaluator
+
+    raised: set[str] = set()
+    for path in _DIR.parent.glob("*.py"):
+        raised |= set(_RAISED.findall(path.read_text(encoding="utf-8")))
+    assert len(raised) > 40, "the scan no longer finds the refusals of the service"
+    assert sorted(raised - set(evaluator.ALL_CODES)) == []
+    for locale in ["en", *_LOCALES]:
+        worded = {
+            key.removeprefix("governance.errors.") for key in _load(locale) if key.startswith("governance.errors.")
+        }
+        assert sorted(set(evaluator.ALL_CODES) - worded) == [], locale

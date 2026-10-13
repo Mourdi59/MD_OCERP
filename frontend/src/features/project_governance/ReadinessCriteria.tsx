@@ -3,7 +3,8 @@
 //
 // The readiness criteria of one area on one gate, as a checklist the area
 // owner ticks. It helps the owner get to an answer and does not give it: the
-// readiness the gate reads stays the status the owner confirms.
+// readiness the gate reads stays the status the owner confirms. Who may tick
+// is the server's answer (`can_tick`), not a rule worked out here.
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,14 +14,12 @@ import { fmtDate } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { setCriterion, type GateArea, type GateCriterion } from './api';
-import type { Verdict } from './access';
 import { catalogueName, refusalText, type LabelContext } from './labels';
 
 export function ReadinessCriteria({
   projectId,
   gateId,
   area,
-  verdict,
   labels,
   catalogueId,
   personName,
@@ -29,8 +28,6 @@ export function ReadinessCriteria({
   projectId: string;
   gateId: string;
   area: GateArea;
-  /** Why the caller may not answer for this area, or null. The same rule as confirming readiness. */
-  verdict: Verdict;
   labels: LabelContext;
   catalogueId: string;
   personName: (id: string | null | undefined) => string | null;
@@ -72,7 +69,7 @@ export function ReadinessCriteria({
                 type="checkbox"
                 className="mt-0.5"
                 checked={c.met}
-                disabled={!!verdict || tick.isPending}
+                disabled={!area.can_tick || tick.isPending}
                 aria-busy={saving === c.code}
                 onChange={() => tick.mutate(c)}
               />

@@ -12,7 +12,7 @@
       "area_without_owner": "Dieser Managementbereich hat keinen Verantwortlichen, daher kann niemand seine Bereitschaft bestätigen",
       "area_not_ready": "Dieser Managementbereich ist für das Gate nicht bereit",
       "evidence_not_met": "Ein erforderlicher Bereitschaftsnachweis für diesen Bereich ist nicht erfüllt",
-      "unknown_evidence_not_acknowledged": "Ein Modul konnte nicht sagen, ob dieser Bereich bereit ist. Bestätigen Sie, dass Sie das gesehen haben, bevor Sie das Gate freigeben",
+      "unknown_evidence_not_acknowledged": "Ein Bereitschaftsnachweis dieses Bereichs ist unbestätigt oder trägt einen Hinweis. Bestätigen Sie, dass Sie ihn gesehen haben, bevor Sie das Gate freigeben",
       "unknown_criterion": "Dieses Bereitschaftskriterium gehört für diesen Bereich und dieses Gate nicht zum Modell des Projekts",
       "check_stale": "Ein Dokument wurde nach der Bereitschaftsbestätigung geändert, der Bereich muss erneut bestätigt werden",
       "condition_overdue": "Eine Auflage aus einem früheren Gate ist überfällig und muss zuerst erfüllt oder erlassen werden",
