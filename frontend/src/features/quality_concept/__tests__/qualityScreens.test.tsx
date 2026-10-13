@@ -815,3 +815,73 @@ describe('after a refused write', () => {
     await waitFor(() => expect(mocked.getConcept.mock.calls.length).toBeGreaterThan(1));
   });
 });
+
+describe('a project without gates', () => {
+  const HERE = { approve_applies: true, approve: true, approve_reason: null, reopen_applies: true, reopen: true, reopen_reason: null };
+
+  it('approves a submitted concept on its own page and says the project uses no gates', async () => {
+    mocked.getConcept.mockResolvedValue(concept({ state: 'in_review', gates_in_use: false, can: { ...PLAN_CLOSED, ...HERE } }));
+    mocked.approveConcept.mockResolvedValue(concept({ state: 'binding', gates_in_use: false }));
+    renderPage();
+    expect((await screen.findByTestId('concept-next-step')).textContent).toContain('does not use gates');
+    expect(screen.queryByTestId('concept-reopen')).toBeNull();
+    fireEvent.click(screen.getByTestId('concept-approve'));
+    await waitFor(() => expect(mocked.approveConcept).toHaveBeenCalledWith('p1'));
+  });
+
+  it('closes the approval for the person who submitted, with the reason written out', async () => {
+    mocked.getConcept.mockResolvedValue(
+      concept({
+        state: 'in_review',
+        gates_in_use: false,
+        can: { ...PLAN_CLOSED, ...HERE, approve: false, approve_reason: 'approver_is_submitter' },
+      }),
+    );
+    renderPage();
+    expect(await screen.findByTestId('concept-approve')).toBeDisabled();
+    expect(screen.getByTestId('concept-closed-reason').textContent).toBe(
+      'Whoever submitted the quality concept cannot approve it. Ask a second person.',
+    );
+  });
+
+  it('reopens a binding concept only with a reason', async () => {
+    mocked.getConcept.mockResolvedValue(concept({ state: 'binding', gates_in_use: false, can: { ...PLAN_CLOSED, ...HERE } }));
+    mocked.reopenConcept.mockResolvedValue(concept({ state: 'revising', gates_in_use: false }));
+    renderPage();
+    fireEvent.click(await screen.findByTestId('concept-reopen'));
+    expect(screen.getByTestId('form-submit')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('reopen-reason'), { target: { value: 'Facade system changed' } });
+    fireEvent.click(screen.getByTestId('form-submit'));
+    await waitFor(() => expect(mocked.reopenConcept).toHaveBeenCalledWith('p1', { rationale: 'Facade system changed' }));
+  });
+
+  it('offers neither action where a gate decides', async () => {
+    mocked.getConcept.mockResolvedValue(
+      concept({ state: 'in_review', gates_in_use: true, can: { ...PLAN_CLOSED, approve_applies: false, reopen_applies: false } }),
+    );
+    renderPage();
+    expect((await screen.findByTestId('concept-next-step')).textContent).toContain('governance gate');
+    expect(screen.queryByTestId('concept-approve')).toBeNull();
+    expect(screen.queryByTestId('concept-reopen')).toBeNull();
+  });
+
+  it('says who reopened a revision and why', async () => {
+    mocked.listRevisions.mockResolvedValue(
+      page([
+        {
+          id: 'r2',
+          revision_no: 2,
+          reason: 'reopened',
+          created_by: 'u9',
+          created_by_name: 'Project lead one',
+          snapshot: { reopen_reason: 'Facade system changed' },
+        },
+      ]),
+    );
+    renderPage();
+    const list = await screen.findByTestId('revision-list');
+    expect(list.textContent).toContain('Reopened');
+    expect(list.textContent).toContain('Project lead one');
+    expect(list.textContent).toContain('Facade system changed');
+  });
+});

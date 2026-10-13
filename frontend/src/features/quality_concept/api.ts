@@ -120,6 +120,14 @@ export interface ConceptCan {
   edit_plan: boolean;
   submit: boolean;
   submit_reason: 'manage_required' | 'invalid_transition' | 'concept_incomplete' | string | null;
+  /** Approving on this page exists only on a project without gates; with gates the gate decision approves. */
+  approve_applies?: boolean;
+  approve?: boolean;
+  approve_reason?: string | null;
+  /** Reopening on this page exists only on a project without gates; with gates a change request reopens. */
+  reopen_applies?: boolean;
+  reopen?: boolean;
+  reopen_reason?: string | null;
 }
 
 export interface Concept {
@@ -129,6 +137,8 @@ export interface Concept {
   catalogue_id: string;
   catalogue_version: number;
   state: ConceptState;
+  /** False on a project that never adopted a phase model: no gate will ever approve the concept. */
+  gates_in_use?: boolean;
   governance_doc_id: string | null;
   /** The frame document the concept is bound to, as the governance module names it. */
   governance_document?: { id: string; code: string; label: QcLabel; status: string } | null;
@@ -151,7 +161,9 @@ export interface ConceptRevision {
   revision_no: number;
   reason: string;
   created_by: string | null;
+  created_by_name?: string | null;
   created_at?: string;
+  snapshot?: { reopen_reason?: string | null } | null;
 }
 
 /* ── Catalogue ─────────────────────────────────────────────────────────── */
@@ -889,6 +901,13 @@ export const submitConcept = (projectId: string) => apiPost<Concept>(`/v1/qualit
 /** `return` is the only step a reader takes here; a binding concept reopens through a change request. */
 export const conceptAction = (projectId: string, action: 'return') =>
   apiPost<Concept>(`/v1/quality-concept/projects/${projectId}/concept/${action}`, {});
+
+/** Approves a submitted concept on a project without gates; it becomes binding in one step. */
+export const approveConcept = (projectId: string) => apiPost<Concept>(`/v1/quality-concept/projects/${projectId}/concept/approve`, {});
+
+/** Reopens a binding concept on a project without gates; the reason is kept with the revision. */
+export const reopenConcept = (projectId: string, body: { rationale: string }) =>
+  apiPost<Concept>(`/v1/quality-concept/projects/${projectId}/concept/reopen`, body);
 
 export const listRevisions = (projectId: string) => apiGet<Page<ConceptRevision>>(`/v1/quality-concept/projects/${projectId}/concept/revisions`);
 

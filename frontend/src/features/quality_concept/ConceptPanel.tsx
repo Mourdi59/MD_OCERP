@@ -15,9 +15,11 @@ import { fmtDate, fmtList } from '@/shared/lib/formatters';
 
 import {
   applyDocumentationSet,
+  approveConcept,
   conceptAction,
   patchConcept,
   pinCatalogue,
+  reopenConcept,
   submitConcept,
   type CatalogueChoice,
   type Finding,
@@ -28,6 +30,7 @@ import {
   CATALOGUE_SOURCE,
   CONCEPT_STATE,
   PACKAGE_PROBLEM,
+  REVISION_REASON,
   SUBMIT_REASON,
   catalogueName,
   nameIn,
@@ -58,13 +61,22 @@ function newRow(from?: PackageDraft): PackageRow {
 }
 
 export function ConceptPanel(props: PanelProps) {
-  const { projectId, concept, catalogue, labels, editable, openTab } = props;
+  const { projectId, concept, catalogue, labels, personName, editable, openTab } = props;
   const { t } = useTranslation();
   const write = useQcWrite(projectId);
   const revisions = useRevisions(projectId);
   const catalogues = useCatalogues(projectId);
   const [scopeOpen, setScopeOpen] = useState(false);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
+  // A project without gates has nobody else to approve or reopen the concept, so both happen on this page.
+  const noGates = concept.gates_in_use === false;
+  const mayApproveHere = !!concept.can.approve_applies && concept.state === 'in_review';
+  const mayReopenHere = !!concept.can.reopen_applies && concept.state === 'binding';
+  const closedHere = [
+    ...(mayApproveHere && !concept.can.approve && concept.can.approve_reason ? [concept.can.approve_reason] : []),
+    ...(mayReopenHere && !concept.can.reopen && concept.can.reopen_reason ? [concept.can.reopen_reason] : []),
+  ];
   const [setApplied, setSetApplied] = useState<number | null>(null);
 
   const actions = CONCEPT_ACTIONS[concept.state] ?? [];
@@ -83,10 +95,17 @@ export function ConceptPanel(props: PanelProps) {
       <Section
         testId="concept-status"
         title={t('qualityConcept.concept.status_title', { defaultValue: 'Where the concept stands' })}
-        description={t('qualityConcept.concept.status_body', {
-          defaultValue:
-            'A draft is yours to edit. Once it is complete you submit it, and it is approved at the project governance gate.',
-        })}
+        description={
+          noGates
+            ? t('qualityConcept.concept.status_body_no_gates', {
+                defaultValue:
+                  'A draft is yours to edit. Once it is complete you submit it. This project does not use gates, so a second person approves it on this page.',
+              })
+            : t('qualityConcept.concept.status_body', {
+                defaultValue:
+                  'A draft is yours to edit. Once it is complete you submit it, and it is approved at the project governance gate.',
+              })
+        }
         action={
           <div className="flex flex-wrap items-start gap-2">
             {actions.includes('submit') && (
@@ -110,6 +129,22 @@ export function ConceptPanel(props: PanelProps) {
                 {t('qualityConcept.concept.return', { defaultValue: 'Take back to draft' })}
               </Button>
             )}
+            {mayApproveHere && (
+              <Button
+                disabled={!concept.can.approve}
+                loading={write.pending}
+                onClick={() => write.send(() => approveConcept(projectId))}
+                data-testid="concept-approve"
+              >
+                {t('qualityConcept.concept.approve', { defaultValue: 'Approve the concept' })}
+              </Button>
+            )}
+            {mayReopenHere && (
+              <Button variant="secondary" disabled={!concept.can.reopen} onClick={() => setReopenOpen(true)} data-testid="concept-reopen">
+                {t('qualityConcept.concept.reopen', { defaultValue: 'Reopen the concept' })}
+              </Button>
+            )}
+            <ReasonLines codes={closedHere} testId="concept-closed-reason" />
           </div>
         }
       >
@@ -151,7 +186,17 @@ export function ConceptPanel(props: PanelProps) {
           )}
         </div>
         <p className="mt-2 text-sm text-content-secondary" data-testid="concept-next-step">
-          {concept.state === 'in_review'
+          {noGates && concept.state === 'in_review'
+            ? t('qualityConcept.concept.next_in_review_no_gates', {
+                defaultValue:
+                  'The concept is with the approver. This project does not use gates, so it is approved on this page, by someone other than the person who submitted it.',
+              })
+            : noGates && concept.state === 'binding'
+              ? t('qualityConcept.concept.next_binding_no_gates', {
+                  defaultValue:
+                    'The concept is binding. This project does not use gates. To change the concept, reopen it on this page and give the reason.',
+                })
+              : concept.state === 'in_review'
             ? t('qualityConcept.concept.next_in_review', {
                 defaultValue:
                   'The concept is with the approver. It is approved as a frame document at the governance gate, not on this page.',
@@ -312,7 +357,12 @@ export function ConceptPanel(props: PanelProps) {
                 <span className="font-medium text-content-primary">
                   {t('qualityConcept.concept.revision', { defaultValue: 'Revision {{no}}', no: r.revision_no })}
                 </span>
+                {REVISION_REASON[r.reason] && <span className="text-content-primary">{vocab(t as TFn, REVISION_REASON, r.reason)}</span>}
+                {(r.created_by_name ?? personName(r.created_by)) && (
+                  <span className="text-content-secondary">{r.created_by_name ?? personName(r.created_by)}</span>
+                )}
                 {r.created_at && <span className="text-content-tertiary">{fmtDate(r.created_at)}</span>}
+                {r.snapshot?.reopen_reason && <span className="basis-full text-content-secondary">{r.snapshot.reopen_reason}</span>}
               </li>
             ))}
           </ul>
@@ -325,6 +375,7 @@ export function ConceptPanel(props: PanelProps) {
           onClose={() => setScopeOpen(false)}
         />
       )}
+      {reopenOpen && <ReopenDialog {...props} onClose={() => setReopenOpen(false)} />}
       {catalogueOpen && (
         <CatalogueDialog {...props} choices={catalogues.data?.items ?? []} onClose={() => setCatalogueOpen(false)} />
       )}
@@ -410,6 +461,34 @@ function CatalogueDialog({
           </li>
         ))}
       </ul>
+    </FormDialog>
+  );
+}
+
+function ReopenDialog({ projectId, onClose }: PanelProps & { onClose: () => void }) {
+  const { t } = useTranslation();
+  const write = useQcWrite(projectId);
+  const [reason, setReason] = useState('');
+
+  return (
+    <FormDialog
+      open
+      testId="reopen-dialog"
+      title={t('qualityConcept.concept.reopen', { defaultValue: 'Reopen the concept' })}
+      subtitle={t('qualityConcept.concept.reopen_body', {
+        defaultValue:
+          'The concept goes back to revision and its plan can be edited again. It is binding again once it is submitted and approved.',
+      })}
+      onClose={onClose}
+      busy={write.pending}
+      refusal={write.refusal}
+      problem={reason.trim() ? null : t('qualityConcept.concept.reopen_problem', { defaultValue: 'Say why the concept is reopened' })}
+      submitLabel={t('qualityConcept.concept.reopen', { defaultValue: 'Reopen the concept' })}
+      onSubmit={() => write.send(() => reopenConcept(projectId, { rationale: reason.trim() }), onClose)}
+    >
+      <Field required label={t('qualityConcept.concept.reopen_reason', { defaultValue: 'Reason' })}>
+        <textarea rows={3} className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)} data-testid="reopen-reason" />
+      </Field>
     </FormDialog>
   );
 }

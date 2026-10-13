@@ -548,6 +548,14 @@ export const GATE_DETAIL: Record<string, KeyText> = {
   ],
 };
 
+/** Why a revision of the concept was kept. */
+export const REVISION_REASON: Record<string, KeyText> = {
+  submitted: ['qualityConcept.revisions.reason_submitted', 'Submitted for approval'],
+  approved: ['qualityConcept.revisions.reason_approved', 'Approved'],
+  reopened: ['qualityConcept.revisions.reason_reopened', 'Reopened'],
+  change_request: ['qualityConcept.revisions.reason_change_request', 'Reopened by a change request'],
+};
+
 export const CATALOGUE_SOURCE: Record<string, KeyText> = {
   shipped: ['qualityConcept.catalogues.source_shipped', 'Shipped with the product'],
   tenant: ['qualityConcept.catalogues.source_tenant', 'Kept by your organisation'],
