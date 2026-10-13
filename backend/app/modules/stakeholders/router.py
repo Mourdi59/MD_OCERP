@@ -259,7 +259,7 @@ def _can(payload: dict[str, Any]) -> dict[str, bool]:
     }
 
 
-def _settings_out(s: Any, fw: Any, payload: dict[str, Any]) -> dict[str, Any]:
+def _settings_out(s: Any, fw: Any, payload: dict[str, Any], can_file: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(s.id),
         "project_id": str(s.project_id),
@@ -272,7 +272,13 @@ def _settings_out(s: Any, fw: Any, payload: dict[str, Any]) -> dict[str, Any]:
         "commitment_route_id": str(s.commitment_route_id) if s.commitment_route_id else None,
         "framework": fw.model_dump(mode="json"),
         "can": _can(payload),
+        # Filing an export as a frame document, per export: absent on a project run without gates.
+        "can_file": can_file,
     }
+
+
+async def _can_file(svc: StakeholderService, project_id: uuid.UUID, payload: dict[str, Any]) -> dict[str, Any]:
+    return await _run(svc.filing_can(project_id, can_manage=_has(payload, "organisation.manage")))
 
 
 @router.get("/projects/{project_id}/settings", dependencies=[READ])
@@ -291,7 +297,7 @@ async def get_settings(
         if exc.status_code == 404 and isinstance(exc.detail, dict) and exc.detail.get("code") == "settings_missing":
             raise HTTPException(status_code=404, detail={**exc.detail, "can": _can(payload)}) from exc
         raise
-    return _settings_out(settings, fw, payload)
+    return _settings_out(settings, fw, payload, await _can_file(svc, project_id, payload))
 
 
 @router.put("/projects/{project_id}/settings", dependencies=[ORG])
@@ -303,7 +309,7 @@ async def put_settings(
     svc = StakeholderService(session)
     await _run(svc.put_settings(project_id, _data(body), actor_id=_uid(user_id), tenant_id=resolve_tenant_id(payload)))
     settings, fw = await _run(svc.context(project_id))
-    return _settings_out(settings, fw, payload)
+    return _settings_out(settings, fw, payload, await _can_file(svc, project_id, payload))
 
 
 # ── stakeholders and assessments ───────────────────────────────────────────
@@ -778,9 +784,21 @@ async def _render(
 
 @router.get("/projects/{project_id}/gates", dependencies=[READ])
 async def list_gates(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
-    """The project's gates for the plan trigger picker; empty when the project has no phase model."""
+    """The project's gates for the plan trigger picker.
+
+    ``gates_in_use`` is false on a project run without gates: there is nothing
+    to pick then, and a plan item takes neither the gate trigger nor one of
+    ``gate_bound_event_triggers``, the listened events only a gate can cause.
+    """
+    from app.modules.stakeholders.service import GATE_BOUND_EVENT_TRIGGERS
+
     await verify_project_access(project_id, user_id, session)
-    return {"items": await _run(StakeholderService(session).gates(project_id))}
+    items = await _run(StakeholderService(session).gates(project_id))
+    return {
+        "items": items,
+        "gates_in_use": bool(items),
+        "gate_bound_event_triggers": list(GATE_BOUND_EVENT_TRIGGERS),
+    }
 
 
 @router.get("/projects/{project_id}/requirements", dependencies=[READ])

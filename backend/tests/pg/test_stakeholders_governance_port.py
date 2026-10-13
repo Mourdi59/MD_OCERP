@@ -165,6 +165,19 @@ async def test_an_export_is_filed_into_the_document_its_subject_is_hosted_by(wor
     assert filed["container_id"] == str(container)
     assert filed["change_request_id"] is None
     assert exc.value.code == "frame_document_missing"
+    # What the screen is told before anybody presses the button is what the write answers.
+    async with world.factory() as s:
+        svc = StakeholderService(s)
+        as_manager = await svc.filing_can(world.project_id, can_manage=True)
+        as_reader = await svc.filing_can(world.project_id, can_manage=False)
+    assert as_manager == {
+        "register": {"applies": True, "allowed": False, "reason": "frame_document_missing"},
+        "organisation": {"applies": True, "allowed": True, "reason": None},
+    }
+    assert {k: (v["applies"], v["reason"]) for k, v in as_reader.items()} == {
+        "register": (True, "no_permission"),
+        "organisation": (True, "no_permission"),
+    }
 
 
 async def test_a_read_only_frame_document_takes_no_revision(world: gov.World) -> None:
@@ -223,6 +236,8 @@ async def test_a_plan_trigger_must_name_a_gate_of_the_project(world: gov.World) 
         await s.commit()
     assert (exc.value.code, exc.value.status_code) == ("unknown_gate", 422)
     assert (item.trigger_ref, any_gate.trigger_ref) == (real, "")
+    # Where gates are in use an item may wait for any of them: that is not the refusal of a gateless project.
+    assert any_gate.trigger_kind == "gate"
 
 
 async def test_a_binding_frame_document_changes_only_through_a_reasoned_change_request(world: gov.World) -> None:

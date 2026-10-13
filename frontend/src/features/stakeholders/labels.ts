@@ -131,6 +131,19 @@ export const COMMITMENT_SOURCE: Record<string, KeyText> = {
   permit_condition: ['stakeholders.ui.source.permit_condition', 'As a condition of a permit'],
 };
 
+/** Why a document cannot be filed for the gate right now. */
+export const FILE_BLOCK: Record<string, KeyText> = {
+  no_permission: ['stakeholders.ui.file_block.no_permission', 'Your role can download this document but not file it for the gate.'],
+  frame_document_missing: [
+    'stakeholders.ui.file_block.frame_document_missing',
+    'The gate has no place to file this document yet. Attach a document container to its frame document on the project governance screen first.',
+  ],
+  frame_document_read_only: [
+    'stakeholders.ui.file_block.frame_document_read_only',
+    'The project is stopped, so its frame documents take no new revision until it resumes.',
+  ],
+};
+
 /** Why the server will not let the reader make a move on a commitment. */
 export const COMMITMENT_BLOCK: Record<string, KeyText> = {
   no_permission: ['stakeholders.ui.block.no_permission', 'Your role can view commitments but not change them.'],
@@ -182,6 +195,7 @@ export const ALL_KEY_MAPS: Record<string, Record<string, KeyText>> = {
   DECIDER_FLAG,
   COMMITMENT_SOURCE,
   COMMITMENT_BLOCK,
+  FILE_BLOCK,
   WRITE_NOTE,
 };
 

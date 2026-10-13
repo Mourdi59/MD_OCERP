@@ -134,6 +134,10 @@ export function settings(over: Partial<StakeholderSettings> = {}): StakeholderSe
     commitment_route_id: null,
     framework: framework(),
     can: { edit: true, read_personal: true, manage_organisation: true },
+    can_file: {
+      register: { applies: true, allowed: true, reason: null },
+      organisation: { applies: true, allowed: true, reason: null },
+    },
     ...over,
   };
 }

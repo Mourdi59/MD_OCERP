@@ -250,13 +250,18 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     briefing = await svc.create_plan_item(
         project_id,
         {
-            "title": "Steering committee briefing before the gate",
-            "purpose": "Brief the client board on stakeholder status before each gate review",
+            "title": "Steering committee briefing",
+            "purpose": "Brief the client board on stakeholder status before each decision",
             "audience_stakeholder_ids": [str(ids["S-012"])],
             "participation_level": "inform",
             "channel": "meeting",
             "format_code": "steering_committee_briefing",
-            "trigger_kind": "gate",
+            # Before each gate where the project has gates, every quarter where it is run without them.
+            **(
+                {"trigger_kind": "gate"}
+                if await svc.gates(project_id)
+                else {"frequency": "FREQ=MONTHLY;INTERVAL=3", "starts_on": today + timedelta(days=21)}
+            ),
             "owner_user_id": pm,
             "status": "active",
         },

@@ -94,6 +94,17 @@ EVENT_TRIGGERS: tuple[str, ...] = (
     "project_governance.phase.changed",
     "stakeholders.commitment.fulfilled",
 )
+# The listened events the governance module publishes. A project run without gates has no gate to decide
+# and no phase to change, so none of them can ever fire there. Derived, so a new governance event joins by
+# being listed above.
+GATE_BOUND_EVENT_TRIGGERS: tuple[str, ...] = tuple(n for n in EVENT_TRIGGERS if n.startswith("project_governance."))
+
+
+def trigger_needs_gates(kind: str | None, ref: str | None) -> bool:
+    """Whether a plan trigger can only fire on a project that uses gates."""
+    return kind == "gate" or (kind == "event" and ref in GATE_BOUND_EVENT_TRIGGERS)
+
+
 QUORUM_KINDS: tuple[str, ...] = ("min_members", "majority", "unanimous")
 LIVE_PLAN: tuple[str, ...] = ("planned", "active")
 _OVERDUE_OPEN: tuple[str, ...] = ("proposed", "agreed", "in_progress")
@@ -1117,9 +1128,15 @@ class StakeholderService:
             raise StakeholderError("schedule_or_trigger")
         if merged["trigger_kind"] == "event" and merged["trigger_ref"] not in EVENT_TRIGGERS:
             raise StakeholderError("schedule_or_trigger")
-        if merged["trigger_kind"] == "gate" and merged["trigger_ref"] and {"trigger_kind", "trigger_ref"} & set(out):
-            # Empty means every gate. A named gate must be one of this project's.
-            if merged["trigger_ref"] not in {g["code"] for g in await self.gates(project_id)}:
+        if trigger_needs_gates(merged["trigger_kind"], merged["trigger_ref"]) and (
+            {"trigger_kind", "trigger_ref"} & set(out)
+        ):
+            codes = {g["code"] for g in await self.gates(project_id)}
+            if not codes:
+                # Nothing would ever make such an item due: the project is run without gates.
+                raise StakeholderError("gates_not_in_use")
+            # For a gate trigger empty means every gate. A named gate must be one of this project's.
+            if merged["trigger_kind"] == "gate" and merged["trigger_ref"] and merged["trigger_ref"] not in codes:
                 raise StakeholderError("unknown_gate")
         if merged["starts_on"] and merged["ends_on"] and merged["ends_on"] < merged["starts_on"]:
             raise StakeholderError("invalid_validity")
@@ -2543,6 +2560,34 @@ class StakeholderService:
             for d in await project_documents(self.session, project_id)
             if d.code == found.doc_type and d.area_code == found.area_code
         ]
+
+    async def filing_can(self, project_id: uuid.UUID, *, can_manage: bool) -> dict[str, dict[str, Any]]:
+        """Whether each export can be filed as a frame document: ``{applies, allowed, reason}`` per export.
+
+        A project run without gates has no frame documents, so the action does
+        not exist there. Where it exists and is refused, the reason is the code
+        the write would answer.
+        """
+        from app.modules.stakeholders import hosting
+
+        in_use = await hosting.project_catalogue(self.session, project_id) is not None
+        out: dict[str, dict[str, Any]] = {}
+        for which in hosting.EXPORT_TAGS:
+            if not in_use:
+                out[which] = {"applies": False, "allowed": False, "reason": "gates_not_in_use"}
+                continue
+            docs = [d for d in await self.frame_documents(project_id, which) if d.container_id is not None]
+            reason = (
+                "no_permission"
+                if not can_manage
+                else "frame_document_missing"
+                if not docs
+                else "frame_document_read_only"
+                if any(d.read_only for d in docs)
+                else None
+            )
+            out[which] = {"applies": True, "allowed": reason is None, "reason": reason}
+        return out
 
     async def file_frame_document(
         self,
