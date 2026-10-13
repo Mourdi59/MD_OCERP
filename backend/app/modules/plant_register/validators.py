@@ -32,6 +32,7 @@ from app.core.validation.engine import (
     rule_registry,
 )
 from app.modules.plant_register.calc import at_least, is_ordered
+from app.modules.plant_register.errors import finding_keys
 from app.modules.plant_register.messages import translate
 
 PLANT_RULE_SET = "plant_register"
@@ -49,6 +50,15 @@ def _data(context: ValidationContext) -> dict[str, Any]:
 def _rows(context: ValidationContext, key: str) -> list[dict[str, Any]]:
     raw = _data(context).get(key) or []
     return [r for r in raw if isinstance(r, dict)] if isinstance(raw, list) else []
+
+
+def _reasons(findings: list[str], locale: str) -> str:
+    """The findings as a sentence part in ``locale``: the sub-reason where a finding has one, else the finding."""
+    texts = []
+    for finding in findings:
+        _, key, reason_key = finding_keys(finding)
+        texts.append(translate(reason_key or key, locale=locale))
+    return "; ".join(texts)
 
 
 class _PlantRule(ValidationRule):
@@ -205,7 +215,7 @@ class RouteConsistentWithPackagePlan(_PlantRule):
         if item["procurement_route"] is None:
             return None
         findings = (_data(context).get("route_findings") or {}).get(item["code"]) or []
-        return self._result(loc, not findings, item["code"], item=item["code"], reason=", ".join(findings))
+        return self._result(loc, not findings, item["code"], item=item["code"], reason=_reasons(findings, loc))
 
 
 class SlotTermsComplete(_PlantRule):

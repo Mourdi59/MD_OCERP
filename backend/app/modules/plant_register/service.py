@@ -101,7 +101,37 @@ ITEM_FIELDS = (
 # Item states that may still change the specification freely.
 _OPEN_SPEC = ("identified", "specified", "enquired")
 _CLOSED = ("handed_over", "cancelled")
+# Refusals that mean the action does not exist for the item in its state: nothing the caller can do about them.
+GONE_CODES = (
+    "item_closed",
+    "specification_frozen",
+    "classification_frozen",
+    "route_frozen",
+    "invalid_transition",
+    "state_read_from_source",
+    "handover_needs_commissioned",
+)
+MANUAL_TARGETS_ORDERED = ("specified", "enquired", "route_set", "manufactured", "cancelled")
+
+
+def item_verdict(refusal: PlantError | None, right: dict[str, Any]) -> dict[str, Any]:
+    """One ``can`` entry of an item, from the write's own refusal and the caller's right to edit.
+
+    The action is gone (``applies`` false) when the refusal lies in the state of
+    the item. Otherwise a caller without the right reads the code of the right,
+    which is what the write answers first, and a caller with it reads the rule.
+    """
+    if refusal is not None and refusal.code in GONE_CODES:
+        return {"applies": False, "allowed": False, "reason": refusal.code, "violations": []}
+    if not right["allowed"]:
+        return {"applies": True, "allowed": False, "reason": right["reason"], "violations": []}
+    if refusal is not None:
+        return {"applies": True, "allowed": False, "reason": refusal.code, "violations": refusal.violations}
+    return {"applies": True, "allowed": True, "reason": None, "violations": []}
+
+
 # Overrides of what the catalogue derives; they decide which rules a gate applies.
+_SPECIFICATION_FIELDS = ("component_class_code", "performance", "redundancy_scheme", "vendor_policy", "vendor_id")
 _CLASSIFICATION_FIELDS = ("critical_override", "critical_reason", "long_lead_override", "long_lead_override_reason")
 # Item classes whose delivery limits must be complete before the route is set (rule 14).
 _LIMITED_CLASSES = ("main_component", "user_equipment")
@@ -524,18 +554,15 @@ class PlantService:
         can_manage: bool = False,
     ) -> PlantItem:
         item = await self.get_item(project_id, item_id, lock=True)
-        if item.status in _CLOSED:
-            raise conflict("item_closed")
+        if refusal := self.edit_refusal(item):
+            raise refusal
         changed = {k: v for k, v in data.items() if k in ITEM_FIELDS and getattr(item, k) != v}
-        spec_keys = {"component_class_code", "performance", "redundancy_scheme", "vendor_policy", "vendor_id"}
-        if spec_keys & set(changed) and item.status not in _OPEN_SPEC:
-            # After the route is set, the specification is what the package was let on.
-            raise conflict("specification_frozen")
-        if set(changed) & set(_CLASSIFICATION_FIELDS):
-            self._check_classification_change(changed, can_manage=can_manage)
-            if item.status not in _OPEN_SPEC:
-                # The route was released on this classification (rules 6 and 9 read it).
-                raise conflict("classification_frozen")
+        if set(changed) & set(_SPECIFICATION_FIELDS) and (refusal := self.specification_refusal(item)):
+            raise refusal
+        if set(changed) & set(_CLASSIFICATION_FIELDS) and (
+            refusal := self.classification_refusal(item, can_manage=can_manage)
+        ):
+            raise refusal
         await self._check_links(project_id, changed)
         for key, value in changed.items():
             setattr(item, key, value)
@@ -555,13 +582,11 @@ class PlantService:
         if target not in MANUAL_TARGETS:
             raise conflict("state_read_from_source")
         item = await self.get_item(project_id, item_id, lock=True)
-        if not ITEM_FSM.has_transition(item.status, target):
-            raise conflict("invalid_transition")
-        if target in ("enquired", "route_set") and calc.state_rank(target) > calc.state_rank(item.status):
-            views = await self.item_views(project_id, today=today, only=[item.id])
-            blockers = await self.transition_blockers(project_id, item, views[0], target)
-            if blockers:
-                raise blocked(blockers)
+        view = None
+        if self._transition_reads_rules(item.status, target):
+            view = (await self.item_views(project_id, today=today, only=[item.id]))[0]
+        if refusal := await self.transition_refusal(project_id, item, view, target):
+            raise refusal
         before = item.status
         await self._fsm(ITEM_FSM, item, target, actor_id)
         self._publish(
@@ -569,6 +594,118 @@ class PlantService:
             {"project_id": str(project_id), "item_id": str(item.id), "from": before, "to": target},
         )
         return item
+
+    # ── refusals: one function per action, raised by the write and read by ``can`` ──
+    #
+    # Each answers the error the write would raise for a reason that lies in the
+    # item, or ``None``. The writes raise exactly this, and ``item_capabilities``
+    # reads the same functions, so what a caller is told and what a write does
+    # cannot drift apart.
+
+    @staticmethod
+    def edit_refusal(item: PlantItem) -> PlantError | None:
+        return conflict("item_closed") if item.status in _CLOSED else None
+
+    @classmethod
+    def specification_refusal(cls, item: PlantItem) -> PlantError | None:
+        if refusal := cls.edit_refusal(item):
+            return refusal
+        # After the route is set, the specification is what the package was let on.
+        return None if item.status in _OPEN_SPEC else conflict("specification_frozen")
+
+    @classmethod
+    def classification_refusal(cls, item: PlantItem, *, can_manage: bool) -> PlantError | None:
+        if refusal := cls.edit_refusal(item):
+            return refusal
+        if not can_manage:
+            # Overriding critical or long-lead changes what the gates read.
+            return forbidden("manage_required")
+        # The route was released on this classification (rules 6 and 9 read it).
+        return None if item.status in _OPEN_SPEC else conflict("classification_frozen")
+
+    @staticmethod
+    def route_refusal(item: PlantItem) -> PlantError | None:
+        return conflict("route_frozen") if calc.is_ordered(item.status) or item.status == "cancelled" else None
+
+    @staticmethod
+    def _transition_reads_rules(status: str, target: str) -> bool:
+        """Whether ``status -> target`` is a step forward that rules 4, 6, 9, 10 and 14 guard."""
+        return (
+            ITEM_FSM.has_transition(status, target)
+            and target in ("enquired", "route_set")
+            and calc.state_rank(target) > calc.state_rank(status)
+        )
+
+    async def transition_refusal(
+        self, project_id: uuid.UUID, item: PlantItem, view: dict[str, Any] | None, target: str
+    ) -> PlantError | None:
+        """Why ``target`` cannot be set by hand now. ``view`` is read only for a guarded step forward."""
+        if target not in MANUAL_TARGETS:
+            return conflict("state_read_from_source")
+        if not ITEM_FSM.has_transition(item.status, target):
+            return conflict("invalid_transition")
+        if self._transition_reads_rules(item.status, target):
+            if view is None:
+                raise ValueError("a guarded transition needs the item view")
+            blockers = await self.transition_blockers(project_id, item, view, target)
+            if blockers:
+                return blocked(blockers)
+        return None
+
+    @staticmethod
+    def handover_blockers(item: PlantItem, spares: list[SparePartRequirement], *, critical: bool) -> list[str]:
+        """Rules 15 and 16 as far as they lie in the item: open spares, a critical item without a strategic spare."""
+        out: list[str] = []
+        if any(s.status not in ("handed_over", "waived") for s in spares):
+            out.append("spares_not_handed_over")
+        if not calc.strategic_spares_ok(critical, (s.category for s in spares), item.no_strategic_spare_reason):
+            out.append("critical_without_strategic_spares")
+        return out
+
+    @classmethod
+    def handover_refusal(
+        cls, item: PlantItem, spares: list[SparePartRequirement], *, critical: bool
+    ) -> PlantError | None:
+        if item.status != "commissioned":
+            return conflict("handover_needs_commissioned")
+        blockers = cls.handover_blockers(item, spares, critical=critical)
+        return blocked(blockers) if blockers else None
+
+    async def item_capabilities(
+        self,
+        project_id: uuid.UUID,
+        views: list[dict[str, Any]],
+        user_id: uuid.UUID,
+        *,
+        can_edit: bool,
+        can_manage: bool,
+    ) -> list[dict[str, Any]]:
+        """Put ``can`` on every item view: what this caller may do with that item, and why not.
+
+        ``applies`` is false when the action does not exist for the item in its
+        state (closed, frozen, no such step); the reason is still given. With
+        ``applies`` true, ``allowed`` false carries the code the write would
+        answer: a missing right first, then a rule the user can still satisfy,
+        with every blocking rule in ``violations``.
+        """
+        if not views:
+            return views
+        right = (await self.capabilities(project_id, user_id, can_edit=can_edit, can_manage=can_manage))["edit"]
+        spares = await self.repo.spares(project_id)
+        for view in views:
+            item: PlantItem = view["item"]
+            mine = [s for s in spares if s.plant_item_id == item.id]
+            refusals: dict[str, PlantError | None] = {
+                "edit": self.edit_refusal(item),
+                "edit_specification": self.specification_refusal(item),
+                "edit_classification": self.classification_refusal(item, can_manage=can_manage),
+                "set_route": self.route_refusal(item),
+                "handover": self.handover_refusal(item, mine, critical=view["critical"]),
+            }
+            for target in MANUAL_TARGETS_ORDERED:
+                refusals[f"transition_{target}"] = await self.transition_refusal(project_id, item, view, target)
+            view["can"] = {action: item_verdict(refusal, right) for action, refusal in refusals.items()}
+        return views
 
     async def transition_blockers(
         self, project_id: uuid.UUID, item: PlantItem, view: dict[str, Any], target: str
@@ -652,8 +789,8 @@ class PlantService:
     ) -> PlantItem:
         """Record the procurement route; an owner-furnished route creates or attaches the OFI (rule 11)."""
         item = await self.get_item(project_id, item_id, lock=True)
-        if calc.is_ordered(item.status) or item.status == "cancelled":
-            raise conflict("route_frozen")
+        if refusal := self.route_refusal(item):
+            raise refusal
         cat = await self.catalogue(project_id)
         if cat.route(route) is None:
             raise PlantError("unknown_route")
@@ -1529,15 +1666,11 @@ class PlantService:
         if item.status != "commissioned":
             raise conflict("handover_needs_commissioned")
         spares = await self.repo.spares(project_id, item.id)
-        blockers: list[str] = []
-        if any(s.status not in ("handed_over", "waived") for s in spares):
-            blockers.append("spares_not_handed_over")
         cls = (await self.catalogue(project_id)).component_class(item.component_class_code)
         critical = (
             item.critical_override if item.critical_override is not None else bool(cls and cls.critical_by_default)
         )
-        if not calc.strategic_spares_ok(critical, (s.category for s in spares), item.no_strategic_spare_reason):
-            blockers.append("critical_without_strategic_spares")
+        blockers = self.handover_blockers(item, spares, critical=critical)
         if service_contract_id is None and not (no_asset_reason or "").strip():
             blockers.append("handover_needs_service_asset")
         if blockers:

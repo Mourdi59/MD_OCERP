@@ -226,9 +226,12 @@
     "evidence": {
       "critical_route_set": "Jede kritische Position hat einen Beschaffungsweg und eine genehmigte Entscheidungsvorlage",
       "frame_document_attached": "Ausrüstungs-Rahmendokument im CDE abgelegt",
+      "frame_document_missing": "Das Projekt hat noch kein Ausrüstungs-Rahmendokument, daher kann die Ablage nicht geprüft werden",
       "host_unresolved": "Das Governance-Modell legt nicht fest, an welchen Bereich und welches Gate das Anlagenregister berichtet",
       "long_lead_secured": "Jeder Langläufer hat eine aktuelle Lieferzeit und ist bestellt oder im Bestelltermin",
-      "no_error_findings": "Keine Fehler im Anlagenregister"
+      "no_area_hosts_plant": "Das Phasenmodell benennt keinen Bereich für die Anlagentechnik, daher kann das Anlagenregister an kein Gate berichten",
+      "no_error_findings": "Keine Fehler im Anlagenregister",
+      "no_phase_enables_construction_start": "Das Phasenmodell benennt keine Phase, die den Baubeginn freigibt, daher hat das Anlagenregister kein Gate, an das es berichtet"
     },
     "export": {
       "catalogue": "Katalog",
@@ -279,6 +282,16 @@
       "draft": "Entwurf",
       "rejected": "Abgelehnt",
       "submitted": "Eingereicht"
+    },
+    "reasons": {
+      "currency": "die Reservierungsgebühr hat keine Währung",
+      "installer_mismatch": "die Beistellposition nennt ein anderes einbauendes Paket",
+      "owner_furnished_item_required": "ein Beistellungsweg braucht seine Beistellposition",
+      "owner_installs": "der Bauherr baut selbst ein, daher darf kein Vergabepaket als Einbauer genannt sein",
+      "package_does_not_supply": "das Vergabepaket liefert keine Anlagentechnik",
+      "package_not_in_plan": "das Vergabepaket steht nicht in der Paketplanung",
+      "package_required": "dieser Beschaffungsweg braucht ein Vergabepaket",
+      "single_package_form": "die Abwicklungsform hat ein einziges Vergabepaket und die Position liegt in einem anderen"
     },
     "rules": {
       "critical_has_decision_paper": {

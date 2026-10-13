@@ -21,19 +21,31 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from app.modules.project_governance.evidence import ANY_AREA, EvidenceItem, GateAttempt, register_evidence_provider
+from app.modules.project_governance.evidence import (
+    ANY_AREA,
+    EvidenceItem,
+    GateAttempt,
+    register_evidence_link,
+    register_evidence_provider,
+)
 
 PROVIDER_NAME = "plant_register.readiness"
+# The kind of every link this provider hands out, and the page of the web app it opens.
+LINK_KIND = "plant_register"
+LINK_ROUTE = "/projects/{project_id}/plant-register"
 
 
 def _unresolved(project_id: uuid.UUID, reason: str) -> list[EvidenceItem]:
+    """The register cannot report: ``reason`` names why, and the label says it in the reader's language.
+
+    ``detail`` is shown as it stands, so it carries data only (item codes), never a code that stands for a sentence.
+    """
     return [
         EvidenceItem(
             code="plant:host_unresolved",
             state="unknown",
-            label_key="plant.evidence.host_unresolved",
-            link=("plant_register", str(project_id)),
-            detail=reason,
+            label_key=f"plant.evidence.{reason}",
+            link=(LINK_KIND, str(project_id)),
         )
     ]
 
@@ -60,13 +72,13 @@ async def plant_readiness(session: Any, project_id: uuid.UUID, attempt: GateAtte
     if not host.gate_codes:
         return _unresolved(project_id, "no_phase_enables_construction_start")
     r = await PlantService(session).readiness(project_id, today=datetime.now(UTC).date())
-    link = ("plant_register", str(project_id))
+    link = (LINK_KIND, str(project_id))
 
-    def item(code: str, ok: bool | None, detail: str) -> EvidenceItem:
+    def item(code: str, ok: bool | None, detail: str = "", label: str | None = None) -> EvidenceItem:
         return EvidenceItem(
             code=f"plant:{code}",
             state="unknown" if ok is None else "met" if ok else "not_met",
-            label_key=f"plant.evidence.{code}",
+            label_key=f"plant.evidence.{label or code}",
             link=link,
             detail=detail,
         )
@@ -84,10 +96,12 @@ async def plant_readiness(session: Any, project_id: uuid.UUID, attempt: GateAtte
         item(
             "frame_document_attached",
             r["frame_document_attached"] if frame_known else None,
-            "" if frame_known else "frame_document_missing",
+            label=None if frame_known else "frame_document_missing",
         ),
     ]
 
 
 def register_gate_evidence() -> None:
     register_evidence_provider(ANY_AREA, plant_readiness, name=PROVIDER_NAME, blocking=True)
+    # Without this the governance screen shows the evidence but cannot open the register from it.
+    register_evidence_link(LINK_KIND, LINK_ROUTE)

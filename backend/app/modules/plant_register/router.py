@@ -36,7 +36,7 @@ from app.core.i18n import get_locale
 from app.core.tenant_scope import resolve_tenant_id
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
 from app.modules.plant_register import calc
-from app.modules.plant_register.errors import PlantError, forbidden
+from app.modules.plant_register.errors import PlantError, forbidden, worded
 from app.modules.plant_register.messages import translate, written_locale
 from app.modules.plant_register.schemas import (
     FindingOut,
@@ -87,8 +87,12 @@ async def _run[T](awaitable: Awaitable[T]) -> T:
     try:
         return await awaitable
     except PlantError as exc:
-        message = translate(f"plant.errors.{exc.code}", locale=get_locale() or "en")
-        raise HTTPException(status_code=exc.status_code, detail=exc.as_detail(message)) from exc
+        locale = get_locale() or "en"
+        message = translate(f"plant.errors.{exc.code}", locale=locale)
+        detail = exc.as_detail(message)
+        if exc.violations:
+            detail["violations"] = worded(exc.violations, locale)
+        raise HTTPException(status_code=exc.status_code, detail=detail) from exc
 
 
 def _uid(user_id: str) -> uuid.UUID:
@@ -145,11 +149,26 @@ async def _refuse(error: PlantError) -> None:
     raise error
 
 
-async def _item_out(svc: PlantService, project_id: uuid.UUID, item_id: uuid.UUID, today: date) -> ItemOut:
+async def _with_can(
+    svc: PlantService, project_id: uuid.UUID, views: list[dict[str, Any]], user_id: str, payload: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Put on each item view what this caller may do with it, answered by the functions the writes raise from."""
+    return await svc.item_capabilities(
+        project_id,
+        views,
+        _uid(user_id),
+        can_edit=await _holds(_EDIT_CHECK, payload),
+        can_manage=await _can_manage(payload),
+    )
+
+
+async def _item_out(
+    svc: PlantService, project_id: uuid.UUID, item_id: uuid.UUID, today: date, user_id: str, payload: dict[str, Any]
+) -> ItemOut:
     views = await _run(svc.item_views(project_id, today=today, only=[item_id]))
     if not views:
         await _run(_refuse(PlantError("item_not_found", 404)))
-    return ItemOut.from_view(views[0])
+    return ItemOut.from_view((await _with_can(svc, project_id, views, user_id, payload))[0])
 
 
 # ── catalogue and settings ────────────────────────────────────────────────
@@ -241,6 +260,7 @@ async def list_items(
     project_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
     long_lead: bool | None = None,
     critical: bool | None = None,
     overdue: bool | None = None,
@@ -267,7 +287,8 @@ async def list_items(
     if status:
         views = [v for v in views if v["item"].status == status]
     total = len(views)
-    return _page([ItemOut.from_view(v) for v in views[offset : offset + limit]], total, offset, limit)
+    shown = await _with_can(svc, project_id, views[offset : offset + limit], user_id, payload)
+    return _page([ItemOut.from_view(v) for v in shown], total, offset, limit)
 
 
 @router.post(P + "/items", response_model=ItemOut, status_code=201, dependencies=[EDIT])
@@ -278,16 +299,21 @@ async def create_item(
     item = await _run(
         svc.create_item(project_id, body.changes(), actor_id=_uid(user_id), can_manage=await _can_manage(payload))
     )
-    return await _item_out(svc, project_id, item.id, _today(None))
+    return await _item_out(svc, project_id, item.id, _today(None), user_id, payload)
 
 
 @router.get(P + "/items/{item_id}", response_model=ItemOut, dependencies=[READ])
 async def get_item(
-    project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    today: date | None = None,
 ) -> ItemOut:
     svc = await _plant_read(project_id, user_id, session)
     await _run(svc.get_item(project_id, item_id))
-    return await _item_out(svc, project_id, item_id, _today(today))
+    return await _item_out(svc, project_id, item_id, _today(today), user_id, payload)
 
 
 @router.patch(P + "/items/{item_id}", response_model=ItemOut, dependencies=[EDIT])
@@ -305,7 +331,7 @@ async def update_item(
             project_id, item_id, body.changes(), actor_id=_uid(user_id), can_manage=await _can_manage(payload)
         )
     )
-    return await _item_out(svc, project_id, item_id, _today(None))
+    return await _item_out(svc, project_id, item_id, _today(None), user_id, payload)
 
 
 @router.post(P + "/items/{item_id}/transition", response_model=ItemOut, dependencies=[EDIT])
@@ -320,7 +346,7 @@ async def transition_item(
     """Move by hand to specified, enquired, route_set, manufactured or cancelled; blockers in ``violations``."""
     svc = await _plant_edit(project_id, user_id, payload, session)
     await _run(svc.transition_item(project_id, item_id, body.target, actor_id=_uid(user_id), today=_today(None)))
-    return await _item_out(svc, project_id, item_id, _today(None))
+    return await _item_out(svc, project_id, item_id, _today(None), user_id, payload)
 
 
 @router.post(P + "/items/{item_id}/sync", response_model=ItemOut, dependencies=[EDIT])
@@ -330,7 +356,7 @@ async def sync_item(
     """Read ordered / delivered / installed / commissioned from the PO, OFI and Cx system (rule 11)."""
     svc = await _plant_edit(project_id, user_id, payload, session)
     await _run(svc.sync_item_state(project_id, item_id, actor_id=_uid(user_id)))
-    return await _item_out(svc, project_id, item_id, _today(None))
+    return await _item_out(svc, project_id, item_id, _today(None), user_id, payload)
 
 
 @router.put(P + "/items/{item_id}/route", response_model=ItemOut, dependencies=[EDIT])
@@ -353,7 +379,7 @@ async def set_route(
             actor_id=_uid(user_id),
         )
     )
-    return await _item_out(svc, project_id, item_id, _today(None))
+    return await _item_out(svc, project_id, item_id, _today(None), user_id, payload)
 
 
 @router.post(P + "/items/{item_id}/handover", response_model=ItemOut, dependencies=[EDIT])
@@ -377,7 +403,7 @@ async def handover_item(
             actor_id=_uid(user_id),
         )
     )
-    return await _item_out(svc, project_id, item_id, _today(None))
+    return await _item_out(svc, project_id, item_id, _today(None), user_id, payload)
 
 
 # ── quotes ────────────────────────────────────────────────────────────────
@@ -759,11 +785,16 @@ async def delete_it_service(
 
 @router.get(P + "/long-lead", response_model=Page[ItemOut], dependencies=[READ])
 async def long_lead(
-    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
+    project_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    today: date | None = None,
 ) -> dict[str, Any]:
     """Long-lead items with computed dates, least float first."""
     svc = await _plant_read(project_id, user_id, session)
-    return _page([ItemOut.from_view(v) for v in await _run(svc.long_lead(project_id, today=_today(today)))])
+    views = await _run(svc.long_lead(project_id, today=_today(today)))
+    return _page([ItemOut.from_view(v) for v in await _with_can(svc, project_id, views, user_id, payload)])
 
 
 @router.get(P + "/frame-summary", response_model=dict[str, Any], dependencies=[READ])

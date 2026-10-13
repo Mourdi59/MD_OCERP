@@ -461,7 +461,7 @@ async def test_readiness_counts_a_long_lead_item_with_no_need_date_as_open_until
 
 
 async def _evidence(
-    w: World, area_code: str, gate_code: str = "development_to_execution"
+    w: World, area_code: str, gate_code: str = "development_to_execution", *, label: bool = False
 ) -> list[tuple[str, str, str]]:
     from types import SimpleNamespace
 
@@ -472,7 +472,10 @@ async def _evidence(
         found = await plant_readiness(
             s, w.project_id, GateAttempt(uuid.uuid4(), gate_code, 1), SimpleNamespace(code=area_code, applicable=True)
         )
-    return [(e.code, e.state, e.detail) for e in found]
+    # A reason the reader must understand travels as the label key; ``detail`` carries data only.
+    return [
+        (e.code, e.state, (e.label_key or "").removeprefix("plant.evidence.") if label else e.detail) for e in found
+    ]
 
 
 async def test_evidence_is_given_for_the_tagged_area_at_the_tagged_gate_and_says_what_is_missing(world: World) -> None:
@@ -557,7 +560,7 @@ async def test_evidence_is_unknown_with_a_reason_when_the_model_does_not_say_whe
 
     await item(world)
     with _host_read_as(PlantHost(first_area_code="m01_project_management")):
-        first = await _evidence(world, "m01_project_management")
+        first = await _evidence(world, "m01_project_management", label=True)
         elsewhere = await _evidence(world, "m04_equipment")
         # Nobody owns the register then: only a holder of the manage permission edits it.
         code, _, _ = await _refused(
@@ -567,7 +570,7 @@ async def test_evidence_is_unknown_with_a_reason_when_the_model_does_not_say_whe
     assert code == "not_equipment_owner"
 
     with _host_read_as(PlantHost("m04_equipment", ("m04_equipment_frame",), (), "m01_project_management")):
-        no_gate = await _evidence(world, "m04_equipment")
+        no_gate = await _evidence(world, "m04_equipment", label=True)
     assert no_gate == [("plant:host_unresolved", "unknown", "no_phase_enables_construction_start")]
 
     # The model names the document type, but this project has no such document row.
@@ -579,8 +582,10 @@ async def test_evidence_is_unknown_with_a_reason_when_the_model_does_not_say_whe
             if doc.doc_type == "m04_equipment_frame":
                 await s.delete(doc)
         await s.commit()
-    no_row = {code: (state, detail) for code, state, detail in await _evidence(world, "m04_equipment")}
+    no_row = {code: (state, label) for code, state, label in await _evidence(world, "m04_equipment", label=True)}
     assert no_row["plant:frame_document_attached"] == ("unknown", "frame_document_missing")
+    raw = {code: detail for code, _, detail in await _evidence(world, "m04_equipment")}
+    assert raw["plant:frame_document_attached"] == ""  # no code that stands for a sentence in the shown detail
 
 
 # ── the catalogue a project pins ──────────────────────────────────────────

@@ -139,12 +139,44 @@ def test_rule_1_no_new_module_adds_a_long_lead_column() -> None:
     ]
 
 
+# A lead time that is NOT the lead time of a plant item: a different thing under a similar name.
+_OTHER_LEAD_TIMES = {
+    "procurement.lead_time_days": "requisition call-off at execution time",
+    "supplier_catalogs.lead_time_days": "catalogue entry, a quote source of rank supplier_catalogue",
+    "submittals.lead_time_weeks": "contractor submittals, read-only when linked to a plant item",
+    "property_dev.lead_time_days": "sales lead-to-contract time, not procurement",
+    "procurement_concept.lead_time_days": "time a whole contract package needs from award to start, not one item",
+    "procurement_concept.lead_time_signal_days": "what a market sounding said about a package, an observation",
+}
+
+
+def _reads_the_plant_item(module: str) -> bool:
+    """Whether ``module`` can link its row to a plant item and reads that item's dates from the register."""
+    root = MODULES / module
+    models = (root / "models.py").read_text(encoding="utf-8")
+    source = "\n".join(path.read_text(encoding="utf-8") for path in root.glob("*.py"))
+    return bool(re.search(r"^\s+plant_item_id\s*:\s*Mapped", models, re.MULTILINE)) and "plant_item_dates" in source
+
+
 def test_rule_12_no_module_keeps_its_own_lead_time_copy() -> None:
-    """``commitment_lead_time_duplicated``: lead time lives on the quote; others read it through ``reads``."""
-    allowed = {
-        "procurement.lead_time_days",  # requisition call-off at execution time
-        "supplier_catalogs.lead_time_days",  # catalogue entry, a quote source of rank supplier_catalogue
-        "submittals.lead_time_weeks",  # contractor submittals, read-only when linked to a plant item
-        "property_dev.lead_time_days",  # sales lead-to-contract time, not procurement
-    }
-    assert set(_model_columns(r"lead_time\w*|enquiry_date")) - allowed == {"plant_register.enquiry_date"}
+    """``commitment_lead_time_duplicated``: the lead time of a plant item lives on its quote.
+
+    A module may carry a lead time or an enquiry date of its own in two cases
+    only. It is a different thing (``_OTHER_LEAD_TIMES``, each with the reason).
+    Or its row may also stand for something that is not in the register, and
+    then the model links to the plant item (``plant_item_id``) and the module
+    reads ``plant_register.reads.plant_item_dates`` for a linked row, so the
+    two figures cannot disagree for one item.
+    """
+    columns = set(_model_columns(r"lead_time\w*|enquiry_date")) - {"plant_register.enquiry_date"}
+    copies = sorted(
+        column for column in columns - set(_OTHER_LEAD_TIMES) if not _reads_the_plant_item(column.split(".")[0])
+    )
+    assert not copies, (
+        f"{copies}: a second lead time for something the plant register may also hold. Link the row to the plant "
+        "item (plant_item_id) and read plant_register.reads.plant_item_dates when it is linked, or, if this is a "
+        "different thing, add it to _OTHER_LEAD_TIMES with the reason."
+    )
+    # An entry for a column that is gone would keep excusing the next column of that name.
+    stale = sorted(c for c in _OTHER_LEAD_TIMES if c not in columns and (MODULES / c.split(".")[0]).is_dir())
+    assert not stale, stale

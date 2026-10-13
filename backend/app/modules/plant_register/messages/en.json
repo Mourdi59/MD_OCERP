@@ -226,9 +226,12 @@
     "evidence": {
       "critical_route_set": "Every critical item has its route set with an approved decision paper",
       "frame_document_attached": "Equipment frame document attached to the CDE",
+      "frame_document_missing": "The project has no equipment frame document yet, so its attachment cannot be checked",
       "host_unresolved": "The governance model does not say which area and gate the plant register reports to",
       "long_lead_secured": "Every long-lead item has a fresh basis quote and is ordered or within its order date",
-      "no_error_findings": "No error-level findings in the plant register"
+      "no_area_hosts_plant": "The phase model names no area that hosts plant, so the plant register cannot report to a gate",
+      "no_error_findings": "No error-level findings in the plant register",
+      "no_phase_enables_construction_start": "The phase model names no phase that enables the start of construction, so the plant register has no gate to report to"
     },
     "export": {
       "catalogue": "Catalogue",
@@ -279,6 +282,16 @@
       "draft": "Draft",
       "rejected": "Rejected",
       "submitted": "Submitted"
+    },
+    "reasons": {
+      "currency": "the reservation fee has no currency",
+      "installer_mismatch": "the owner-furnished item names another installing package",
+      "owner_furnished_item_required": "an owner-furnished route needs its owner-furnished item",
+      "owner_installs": "the owner installs, so no contract package may be named as installer",
+      "package_does_not_supply": "the contract package does not supply plant",
+      "package_not_in_plan": "the contract package is not in the package plan",
+      "package_required": "this route needs a contract package",
+      "single_package_form": "the delivery form has one contract package and the item is in another"
     },
     "rules": {
       "critical_has_decision_paper": {
