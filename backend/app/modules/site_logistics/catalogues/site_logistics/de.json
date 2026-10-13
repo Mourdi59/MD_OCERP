@@ -3,6 +3,7 @@
   "version": 1,
   "name_key": "site_logistics.catalogue.de",
   "jurisdiction": "DE",
+  "jurisdiction_countries": ["DE"],
   "extends": "neutral",
   "review_status": "unconfirmed",
   "load_classes": [

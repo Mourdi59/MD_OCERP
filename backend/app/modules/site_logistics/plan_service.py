@@ -40,9 +40,9 @@ from app.modules.site_logistics import events as ev
 from app.modules.site_logistics import hosting, links
 from app.modules.site_logistics import planning as pl
 from app.modules.site_logistics.catalogue import (
+    DEFAULT_CATALOGUE_ID,
     SITE_LOGISTICS_KIND,
     SiteLogisticsCatalogue,
-    default_catalogue_id,
     merged,
     register_kind,
     shipped_catalogues,
@@ -667,12 +667,12 @@ class LogisticsPlanService:
 
         project = await self._project(project_id)
         country = getattr(project, "country_code", None)
-        # The active pack may name the catalogue new projects plan with; ours is the fallback.
+        # The governance port is the only country rule: the active pack, the regional packs,
+        # then the one shipped catalogue that names the country. No answer means the neutral file.
         pin = default_catalogue_pin(SITE_LOGISTICS_KIND, country)
         if pin is not None:
             return pin.source, pin.catalogue_id, pin.version
-        cid = default_catalogue_id(country)
-        return "shipped", cid, shipped_catalogues()[cid].version
+        return "shipped", DEFAULT_CATALOGUE_ID, shipped_catalogues()[DEFAULT_CATALOGUE_ID].version
 
     async def _ensure_concept(self, project_id: uuid.UUID) -> LogisticsConcept:
         """The concept row for a WRITE, created with the country's default pin when missing.

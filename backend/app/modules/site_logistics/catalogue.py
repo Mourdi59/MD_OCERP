@@ -183,7 +183,11 @@ class SiteLogisticsCatalogue(_Frozen):
     version: int = Field(default=1, ge=1)
     name_key: str = ""
     labels: dict[str, str] | None = None
+    # The label of the legal area the figures come from (a country or "EU"); shown, never matched.
     jurisdiction: str = ""
+    # The countries whose new projects plan with this catalogue. The governance port
+    # (``public.default_catalogue_pin``) reads this list and is the only country rule.
+    jurisdiction_countries: tuple[str, ...] = ()
     extends: str | None = None
     review_status: ReviewStatus = ReviewStatus.unconfirmed
     incoterm_version: str = "2020"
@@ -278,9 +282,12 @@ def validate_site_logistics_catalogue(obj: SiteLogisticsCatalogue, source: str) 
             if not e.source_url or e.review_status is None:
                 errors.append(f"statutory_figure_without_source: {group}:{e.code}")
             # A reviewer has to read a national figure on its source before it is "verified".
-            national = bool(e.jurisdiction or obj.jurisdiction)
+            national = bool(e.jurisdiction or obj.jurisdiction or obj.jurisdiction_countries)
             if source == "shipped" and national and e.review_status == ReviewStatus.verified and not e.as_of:
                 errors.append(f"verified_without_as_of: {group}:{e.code}")
+    for country in obj.jurisdiction_countries:
+        if not re.fullmatch(r"[A-Z]{2}", country):
+            errors.append(f"bad_country_code: {country}")
     for n in obj.noise_limits:
         for pair in (n.day_hours, n.quiet_hours):
             if pair is not None and not all(re.match(_HHMM, v) for v in pair):
@@ -375,12 +382,3 @@ def resolved_shipped(catalogue_id: str) -> SiteLogisticsCatalogue:
     """A shipped catalogue with its parent chain merged in."""
     shipped = shipped_catalogues()
     return merged(shipped[catalogue_id], shipped.__getitem__)
-
-
-def default_catalogue_id(country_code: str | None) -> str:
-    """The shipped catalogue for a project's country, else ``neutral``."""
-    country = (country_code or "").strip().upper()
-    if not country:
-        return DEFAULT_CATALOGUE_ID
-    claims = [c.id for c in shipped_catalogues().values() if c.jurisdiction.upper() == country]
-    return claims[0] if len(claims) == 1 else DEFAULT_CATALOGUE_ID
