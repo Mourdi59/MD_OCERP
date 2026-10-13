@@ -83,6 +83,9 @@ export function FrameSummary({ projectId, summary, readiness, findings, catalogu
       }),
   });
 
+  // A project without a phase model has no gate and no frame document, so
+  // neither is named and the document is not listed as missing.
+  const gates = readiness?.gates_in_use !== false;
   const open: Array<[string, string]> = [];
   if (readiness) {
     if (readiness.error_findings.length > 0) {
@@ -112,7 +115,7 @@ export function FrameSummary({ projectId, summary, readiness, findings, catalogu
         }),
       ]);
     }
-    if (!readiness.frame_document_attached) {
+    if (gates && !readiness.frame_document_attached) {
       open.push([
         'frame',
         t('plant.frame.open_frame', { defaultValue: 'The equipment frame document is not attached in the document area yet.' }),
@@ -131,16 +134,28 @@ export function FrameSummary({ projectId, summary, readiness, findings, catalogu
 
       {readiness && (
         <Section
-          title={t('plant.frame.readiness', { defaultValue: 'Ready for the gate to execution' })}
-          hint={t('plant.frame.readiness_hint', {
-            defaultValue: 'What the project gate checks on equipment before construction starts.',
-          })}
+          title={
+            gates
+              ? t('plant.frame.readiness', { defaultValue: 'Ready for the gate to execution' })
+              : t('plant.frame.readiness_no_gates', { defaultValue: 'Ready to build' })
+          }
+          hint={
+            gates
+              ? t('plant.frame.readiness_hint', {
+                  defaultValue: 'What the project gate checks on equipment before construction starts.',
+                })
+              : t('plant.frame.no_gates', {
+                  defaultValue: 'This project does not use gates. The list shows what the plant register itself still needs.',
+                })
+          }
           testId="frame-readiness"
         >
           {readiness.ready ? (
             <p className="flex items-center gap-2 text-sm text-content-primary" data-testid="readiness-ready">
               <CheckCircle2 size={16} className="text-semantic-success" aria-hidden />
-              {t('plant.frame.ready', { defaultValue: 'Everything the gate asks of the plant register is in place.' })}
+              {gates
+                ? t('plant.frame.ready', { defaultValue: 'Everything the gate asks of the plant register is in place.' })
+                : t('plant.frame.ready_no_gates', { defaultValue: 'Nothing is open in the plant register.' })}
             </p>
           ) : (
             <ul className="space-y-1.5" data-testid="readiness-open">
