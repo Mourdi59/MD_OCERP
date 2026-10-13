@@ -516,6 +516,20 @@ async def test_a_framework_supplier_link_can_be_changed_and_cleared(world: World
     assert (cleared.status_code, cleared.json()["subcontractor_id"]) == (200, None)
 
 
+async def _reopen_reasons(w: World) -> list[str | None]:
+    from sqlalchemy import select
+
+    from app.core.audit_log import ActivityLog
+
+    async with w.factory() as s:
+        rows = await s.execute(
+            select(ActivityLog.reason).where(
+                ActivityLog.entity_type == "procurement_concept", ActivityLog.action == "reopened"
+            )
+        )
+        return list(rows.scalars().all())
+
+
 async def test_a_project_without_gates_approves_and_reopens_its_concept_by_hand() -> None:
     """No gate decision exists to approve it, so a second person with the manage right does."""
     from app.modules.procurement_concept.permissions import register_procurement_concept_permissions
@@ -525,8 +539,10 @@ async def test_a_project_without_gates_approves_and_reopens_its_concept_by_hand(
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         w = await build_world(factory, model=False)
         await add_contract_package(w, "W1", "construction")
+        await add_contract_package(w, "W2", "construction")
         async with client_as(w, w.manager, "manager") as c:
             assert (await c.put(_pkg(w), json=OPEN_WORKS)).status_code == 200
+            assert (await c.put(_pkg(w, "W2"), json=OPEN_WORKS)).status_code == 200
             can = (await c.get(_p(w, "/concept"))).json()["can"]
             assert can["approve"] == _no("concept_not_submitted")
             assert can["reopen"] == _na("invalid_transition")
@@ -551,18 +567,24 @@ async def test_a_project_without_gates_approves_and_reopens_its_concept_by_hand(
             assert (body["approved_by"], body["submitted_by"]) == (str(w.editor), str(w.manager))
             assert body["approved_at"] and body["four_eyes_violated"] is False
             assert (await c.get(_p(w, "/readiness"))).json()["approved"] is True
-            # An approved concept lets a package go to tendering like on any other project.
-            assert (await _row(c, w))["can"]["create_execution"]["reason"] != "concept_not_approved"
+            # The first thing approval unlocks: a package goes to tendering like on any other project.
+            assert (await _row(c, w, "W2"))["can"]["create_execution"] == YES
+            assert (await c.post(_pkg(w, "W2", tail="/execution"), json={})).status_code == 201
             # Approved, the plan is locked; reopening is what lets it change again.
             locked = await c.put(_pkg(w), json={"procedure_code": "restricted"})
             assert (locked.status_code, locked.json()["detail"]["code"]) == (409, "concept_locked")
         async with client_as(w, w.manager, "editor") as c:
-            denied = await c.post(_p(w, "/concept/reopen"))
+            denied = await c.post(_p(w, "/concept/reopen"), json={"reason": "Scope of the works package changed"})
             assert (denied.status_code, denied.json()["detail"]["code"]) == (403, "approval_needs_manager")
         async with client_as(w, w.manager, "manager") as c:
             assert (await c.get(_p(w, "/concept"))).json()["can"]["reopen"] == YES
-            reopened = await c.post(_p(w, "/concept/reopen"))
+            # Reopening an approved plan is an act with a reason, and the reason is kept.
+            for body in (None, {}, {"reason": "   "}):
+                bare = await c.post(_p(w, "/concept/reopen"), json=body)
+                assert (bare.status_code, bare.json()["detail"]["code"]) == (422, "reopen_reason_required"), body
+            reopened = await c.post(_p(w, "/concept/reopen"), json={"reason": "Scope of the works package changed"})
             assert (reopened.status_code, reopened.json()["state"]) == (200, "reopened")
+            assert await _reopen_reasons(w) == ["Scope of the works package changed"]
             assert (await c.put(_pkg(w), json={"procedure_code": "restricted"})).status_code == 200
             assert (await c.post(_p(w, "/concept/submit"))).json()["state"] == "in_review"
 

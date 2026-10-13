@@ -42,6 +42,7 @@ from app.modules.procurement_concept.messages import translate
 from app.modules.procurement_concept.schemas import (
     CandidateIn,
     CandidatePatch,
+    ConceptActionIn,
     ConceptSet,
     ExecutionIn,
     ExecutionLinkIn,
@@ -253,11 +254,13 @@ async def concept_action(
     session: SessionDep,
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
+    body: ConceptActionIn | None = None,
 ) -> dict[str, Any]:
     """Submit the concept, or take it back; approve or reopen it by hand on a project without gates.
 
     Where the project has gates the gate decision approves and a change request reopens: ``approve``
     and ``reopen`` are then refused with 409 and the concept's ``can`` says they do not apply.
+    ``reopen`` takes ``{"reason": "..."}``, which is recorded; the other actions take no body.
     """
     await verify_project_access(project_id, user_id, session)
     svc = ProcurementConceptService(session)
@@ -265,7 +268,8 @@ async def concept_action(
     if action == "approve":
         await _run(svc.approve_by_hand(project_id, actor_id=_uid(user_id), can_manage=can_manage))
     elif action == "reopen":
-        await _run(svc.reopen_by_hand(project_id, actor_id=_uid(user_id), can_manage=can_manage))
+        reason = (body.reason if body is not None else None) or ""
+        await _run(svc.reopen_by_hand(project_id, reason, actor_id=_uid(user_id), can_manage=can_manage))
     else:
         await _run(svc.transition(project_id, _ACTIONS[action], actor_id=_uid(user_id), can_manage=can_manage))
     return await _run(_concept_out(svc, project_id, user_id, can_manage))

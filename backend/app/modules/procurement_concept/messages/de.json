@@ -97,6 +97,7 @@
       "public_client_needs_client_type": "Ein öffentlicher Auftraggeber braucht eine öffentliche Auftraggeberart der Rechtsordnung. Ohne sie würde kein Schwellenwert geprüft.",
       "reference_not_found": "Referenz nicht gefunden.",
       "release_gate_unknown": "Das Projekt hat kein Gate mit diesem Kürzel.",
+      "reopen_reason_required": "Geben Sie den Grund für das Wiederöffnen des Konzepts an.",
       "reopened_by_change_request": "In diesem Projekt werden Gates verwendet: Ein Änderungsantrag zum Rahmendokument öffnet das Konzept wieder.",
       "schedule_needs_need_date_and_procedure": "Das Paket braucht einen Bedarfstermin und ein Verfahren.",
       "scope_line_quantity_invalid": "Eine LV-Position hat eine Menge, die keine Zahl ist.",

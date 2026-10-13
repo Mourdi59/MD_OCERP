@@ -97,6 +97,7 @@
       "public_client_needs_client_type": "A public client needs a public client type of the jurisdiction. Without it no threshold would be checked.",
       "reference_not_found": "Reference not found.",
       "release_gate_unknown": "The project has no gate with this code.",
+      "reopen_reason_required": "Give the reason for reopening the concept.",
       "reopened_by_change_request": "Gates are in use on this project: a change request on the frame document reopens the concept.",
       "schedule_needs_need_date_and_procedure": "The package needs a need date and a procedure.",
       "scope_line_quantity_invalid": "A bill of quantities position has a quantity that is not a number.",

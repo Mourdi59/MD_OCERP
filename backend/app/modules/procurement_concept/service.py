@@ -576,17 +576,30 @@ class ProcurementConceptService:
         return None, True
 
     async def reopen_by_hand(
-        self, project_id: uuid.UUID, *, actor_id: uuid.UUID, can_manage: bool
+        self, project_id: uuid.UUID, reason: str, *, actor_id: uuid.UUID, can_manage: bool
     ) -> ProcurementConcept:
-        """Open the approved concept for changes on a project without gates; it is submitted and approved again."""
+        """Open the approved concept for changes on a project without gates; it is submitted and approved again.
+
+        The reason is required and goes into the audit trail with the reopening.
+        """
         concept = await self.get_concept(project_id, lock=True)
         refusal, _ = await self.hand_reopen_refusal(project_id, concept, can_manage)
         if refusal is not None:
             raise refusal
+        reason = (reason or "").strip()
+        if not reason:
+            raise ProcurementError("reopen_reason_required", 422)
         concept.state = "reopened"
         await self.session.flush()
         await self._audit(
-            actor_id, "procurement_concept", concept.id, "reopened", from_status="approved", to_status="reopened"
+            actor_id,
+            "procurement_concept",
+            concept.id,
+            "reopened",
+            from_status="approved",
+            to_status="reopened",
+            reason=reason,
+            metadata={"source": "hand"},
         )
         self._publish(
             "procurement_concept.concept.state_changed",
