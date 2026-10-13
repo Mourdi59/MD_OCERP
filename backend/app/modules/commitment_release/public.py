@@ -61,6 +61,26 @@ async def item_options(session: Any, project_id: uuid.UUID) -> list[ItemOption]:
             day = r.decided_at.date()
             if r.item_id not in released_on or day > released_on[r.item_id]:
                 released_on[r.item_id] = day
+    from datetime import UTC, datetime
+
+    from app.modules.commitment_release import evaluator as ev
+    from app.modules.commitment_release import figures
+
+    today = datetime.now(UTC).date()
+    lead: dict[uuid.UUID, int | None] = {}
+    plants = await figures.plant_items_dates_of(
+        session, project_id, [i.plant_item_id for i in items if i.plant_item_id is not None], today=today
+    )
+    for i in items:
+        # The same lead time the matrix shows: a linked plant item's comes from the plant register.
+        plant = plants.get(i.plant_item_id) if i.plant_item_id is not None else None
+        lead[i.id], _source = ev.lead_time_in_force(
+            plant_item_days=plant.lead_time_days if plant is not None else None,
+            own_days=i.lead_time_days,
+            requisition_days=await figures.requisition_lead_time(session, project_id, i.requisition_id)
+            if i.lead_time_days is None
+            else None,
+        )
     return [
         ItemOption(
             id=i.id,
@@ -69,7 +89,7 @@ async def item_options(session: Any, project_id: uuid.UUID) -> list[ItemOption]:
             status=i.status,
             released=i.status in RELEASED_STATES,
             released_on=released_on.get(i.id) if i.status in RELEASED_STATES else None,
-            lead_time_days=i.lead_time_days,
+            lead_time_days=lead[i.id],
         )
         for i in sorted(items, key=lambda i: i.code)
     ]

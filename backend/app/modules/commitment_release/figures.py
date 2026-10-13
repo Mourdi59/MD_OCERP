@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -468,6 +469,81 @@ async def requisition_lead_time(session: AsyncSession, project_id: uuid.UUID, re
     if row is None or row.project_id != project_id:
         return None
     return int(row.lead_time_days or 0)
+
+
+def plant_register_reads() -> Any:
+    """The read port of the plant register, or ``None`` when that module is not installed.
+
+    The plant register is optional. Everything this module asks of it goes through this one port
+    (``plant_item_dates``, ``plant_items_dates``, ``plant_item_options``, ``plant_item_id_by_code``),
+    never through its tables.
+    """
+    import importlib
+
+    try:
+        return importlib.import_module("app.modules.plant_register.reads")
+    except ImportError:
+        return None
+
+
+async def plant_item_dates_of(
+    session: AsyncSession, project_id: uuid.UUID, plant_item_id: uuid.UUID | None, *, today: date
+) -> Any:
+    """What the plant register says about a linked plant item, or ``None``.
+
+    ``None`` when the row names no plant item, when the register does not know the id in this
+    project, and when the plant register is not installed: the module is optional, and without it
+    an item keeps its own lead time. Read through the register's port, never its tables.
+    """
+    if plant_item_id is None:
+        return None
+    reads = plant_register_reads()
+    if reads is None:
+        return None
+    return await reads.plant_item_dates(session, project_id, plant_item_id, today=today)
+
+
+async def plant_items_dates_of(
+    session: AsyncSession, project_id: uuid.UUID, plant_item_ids: list[uuid.UUID], *, today: date
+) -> dict[uuid.UUID, Any]:
+    """:func:`plant_item_dates_of` for every linked item of a matrix read, in one read of the register.
+
+    An id the register does not answer for is absent from the result. Empty without the plant
+    register. A register that has only the single read is asked once per id.
+    """
+    ids = list(dict.fromkeys(plant_item_ids))
+    if not ids:
+        return {}
+    reads = plant_register_reads()
+    if reads is None:
+        return {}
+    batch = getattr(reads, "plant_items_dates", None)
+    if batch is not None:
+        return dict(await batch(session, project_id, ids, today=today))
+    out: dict[uuid.UUID, Any] = {}
+    for plant_item_id in ids:
+        found = await reads.plant_item_dates(session, project_id, plant_item_id, today=today)
+        if found is not None:
+            out[plant_item_id] = found
+    return out
+
+
+async def plant_item_options(session: AsyncSession, project_id: uuid.UUID) -> tuple[bool, list[dict[str, Any]]]:
+    """``(the register can be asked, the project's plant items)`` for the picker of an item form.
+
+    ``False`` with an empty list when the plant register is not installed or has no list read.
+    Each row is ``{id, code, name, status}``, by code; the register's own list read decides what
+    belongs to the project, so an item of another project is never in it.
+    """
+    reads = plant_register_reads()
+    lister = getattr(reads, "plant_item_options", None)
+    if lister is None:
+        return False, []
+    rows = [
+        {"id": str(o.id), "code": o.code, "name": o.title, "status": o.status}
+        for o in await lister(session, project_id)
+    ]
+    return True, sorted(rows, key=lambda r: r["code"])
 
 
 SUNK_PARTS: tuple[str, ...] = ("paid", "invoiced_unpaid", "certified_not_invoiced", "received_not_invoiced")

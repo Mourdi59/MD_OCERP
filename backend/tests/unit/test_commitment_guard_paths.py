@@ -309,5 +309,10 @@ def test_a_drawdown_above_what_is_left_is_refused() -> None:
 
 
 def test_the_drawdown_source_is_one_per_item() -> None:
-    i = uuid.uuid4()
-    assert drawdown.source_of(i) == drawdown.source_of(i) == f"commitment:{i}"
+    from types import SimpleNamespace
+
+    own = SimpleNamespace(id=uuid.uuid4(), risk_id=None)
+    assert drawdown.source_of(own) == drawdown.source_of(own) == f"commitment:{own.id}"
+    # An item that draws for a risk shares the risk's record, so the two modules count one drawdown.
+    risk = uuid.uuid4()
+    assert drawdown.source_of(SimpleNamespace(id=uuid.uuid4(), risk_id=risk)) == f"risk:{risk}"

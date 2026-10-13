@@ -3,8 +3,9 @@
 """Demo commitment matrix for the demo estate, run by ``app.core.demo_enrichment``.
 
 Each demo project gets the authority schedule its catalogue data resolves to,
-the project owner as holder of every tier and a second person (a team member,
-else another demo login) who plans and requests, so that four eyes holds. The
+the project owner as holder of every tier and a second person (a member of the
+project's team) who plans and requests, so that four eyes holds. Without such a
+member the items are seeded and nothing is requested. The
 four items are the ones an owner would plan:
 
 * a works package, released in full and then linked to the first subcontractor
@@ -24,9 +25,12 @@ A project that stands before construction tells another story. It is known by
 its own state, read through the governance port: the gate that opens the phase
 enabling the construction start exists and is not decided. Nothing of the main
 works is released there. Its works package is planned and due at the award;
-the design appointment (first tranche decided, second pending) and one
-long-lead supply reservation are released before the gate, each with what
-stopping would cost; one planned item is past its decision date; the
+the design appointment (first tranche decided, second pending) and the supply
+order of the main power transformers are released before the gate, each with
+what stopping would cost. That order is not placed yet: the manufacturer holds a
+slot free of charge, and the release is the authority to sign before the slot
+lapses. It is the one item that is a piece of equipment of the plant register,
+so it is the one item :func:`link_demo_plant_items` links; one planned item is past its decision date; the
 contingency drawdown is planned. All days are offsets from the seed day.
 
 Only projects carrying the demo marker are touched; a project that already
@@ -47,6 +51,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
+# The one demo item that is a piece of equipment of the plant register, in the story of a project
+# before construction. The same code names another thing in the construction story (facade units),
+# so the link is made by code AND title, never by code alone.
+DEMO_SLOT_ITEM_CODE = "CR-002"
+DEMO_SLOT_ITEM_TITLE = "Main power transformers: supply order on the held manufacturing slot"
+DEMO_SLOT_RELEASE_NOTE = (
+    "Authority to sign the supply order before the gate. The manufacturing slot is held free of charge "
+    "and lapses if the order is not signed by its conversion date."
+)
+
 
 async def seed_commitment_release_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
     """Seed the matrix of every demo project in ``project_ids`` that has none. The caller commits."""
@@ -54,7 +68,7 @@ async def seed_commitment_release_demo(session: AsyncSession, project_ids: Itera
     from app.modules.commitment_release.models import CommitmentMatrix
     from app.modules.projects.models import Project
 
-    totals = {"projects": 0, "items": 0, "links": 0, "releases": 0}
+    totals = {"projects": 0, "items": 0, "links": 0, "releases": 0, "scenarios": 0, "releases_skipped_no_rate": 0}
     ids = list(project_ids)
     if not ids:
         return totals
@@ -74,7 +88,8 @@ async def seed_commitment_release_demo(session: AsyncSession, project_ids: Itera
             continue
         totals["projects"] += 1
         for k, v in counts.items():
-            totals[k] += v
+            # A count the story adds later must not undo a project that was seeded.
+            totals[k] = totals.get(k, 0) + v
     return totals
 
 
@@ -93,20 +108,42 @@ async def _team_member(session: AsyncSession, project_id: uuid.UUID, exclude: uu
     return None
 
 
-async def _second_person(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID) -> uuid.UUID | None:
-    """Who plans and requests while the owner approves: a team member, else another demo login."""
-    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS
-    from app.modules.users.models import User
+async def _cast_cost_person(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID) -> uuid.UUID | None:
+    """The demo cast's cost person, when the install has a cast and that person is on this project's team.
 
-    member = await _team_member(session, project_id, owner)
-    if member is not None:
-        return member
+    Asked by role so that the requester of the story does not depend on which of two memberships
+    written in one transaction happens to sort first. ``None`` on an install without a demo cast.
+    """
+    import importlib
+
+    from app.modules.teams.models import Team, TeamMembership
+
+    try:
+        demo_cast = importlib.import_module("app.core.demo_cast")
+    except ImportError:
+        return None
+    cost = (await demo_cast.find_cast(session) or {}).get("cost")
+    if cost is None or cost == owner:
+        return None
     stmt = (
-        select(User.id)
-        .where(User.email.in_(sorted(DEMO_ACCOUNT_EMAILS)), User.is_active.is_(True), User.id != owner)
-        .order_by(User.email)
+        select(TeamMembership.id)
+        .join(Team, Team.id == TeamMembership.team_id)
+        .where(Team.project_id == project_id, TeamMembership.user_id == cost)
+        .limit(1)
     )
-    return (await session.execute(stmt)).scalars().first()
+    return cost if (await session.execute(stmt)).scalar_one_or_none() is not None else None
+
+
+async def _second_person(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID) -> uuid.UUID | None:
+    """Who plans and requests while the owner approves: a member of this project's team, or nobody.
+
+    Never an account that is not on the project: a project whose only person is its owner is a
+    legal state (a pack install without the demo logins), and it is seeded without a release.
+    """
+    cost = await _cast_cost_person(session, project_id, owner)
+    if cost is not None:
+        return cost
+    return await _team_member(session, project_id, owner)
 
 
 async def _release(
@@ -254,15 +291,17 @@ async def _seed_before_construction(
         latest_decision_date_fixed=(today + timedelta(days=165)).isoformat(),
     )
 
-    # The reservation that lets the long-lead supply start before the gate. It carries the lead
-    # time; the design appointment below carries none.
+    # The supply order that has to be signed before the gate, because the equipment takes longer
+    # to make than the wait for it. Not ordered yet: the manufacturer holds a slot free of charge,
+    # so the 420,000 is the order itself and no fee exists beside it. The 120 days are this row's
+    # own figure for an install without the plant register; linked to its plant item, the
+    # register's lead time and latest order date govern, and no need date is copied here.
     reservation = await add(
-        "CR-002",
-        "Long-lead supply reservation",
+        DEMO_SLOT_ITEM_CODE,
+        DEMO_SLOT_ITEM_TITLE,
         "supplies",
         "420000",
         lead_time_days=120,
-        decision_buffer_days=14,
         **before_gate,
     )
     await svc.put_abort_terms(
@@ -271,16 +310,21 @@ async def _seed_before_construction(
         {
             "basis_code": "supply_cancellation_schedule",
             "cancellation_schedule": [
-                {"milestone": "order", "from_date": (today - timedelta(days=30)).isoformat(), "charge_pct": "0.10"},
+                # Stages of an order that is still to be signed: nothing is charged before it exists.
                 {
-                    "milestone": "fabrication",
-                    "from_date": (today + timedelta(days=60)).isoformat(),
+                    "milestone": "order_signed",
+                    "from_date": (today + timedelta(days=DEMO_ORDER_SIGNED_DAYS)).isoformat(),
+                    "charge_pct": "0.10",
+                },
+                {
+                    "milestone": "manufacturing_started",
+                    "from_date": (today + timedelta(days=DEMO_MANUFACTURING_STARTED_DAYS)).isoformat(),
                     "charge_pct": "0.50",
                 },
             ],
             "transferable": "resale",
             "salvage_value_estimate": "60000",
-            "source_note": "Supplier quotation, cancellation terms",
+            "source_note": "Budget quotation: cancellation terms that apply once the order is signed",
         },
         actor_id=owner,
         manage=True,
@@ -293,7 +337,7 @@ async def _seed_before_construction(
         ccy,
         requester=planner,
         approver=owner,
-        note="Reservation of the production slot",
+        note=DEMO_SLOT_RELEASE_NOTE,
         days_ago=33,
     ):
         counts["releases"] += 1
@@ -354,22 +398,25 @@ async def _seed_before_construction(
 
 
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
+    from app.modules.commitment_release.catalogue import DEFAULT_SCHEDULE_ID
+    from app.modules.commitment_release.fx import FxRateMissing
     from app.modules.commitment_release.service import CommitmentService
     from app.modules.contracts.models import Contract
     from app.modules.projects.models import Project
 
-    counts = {"items": 0, "links": 0, "releases": 0, "scenarios": 0}
+    counts = {"items": 0, "links": 0, "releases": 0, "scenarios": 0, "releases_skipped_no_rate": 0}
     project = await session.get(Project, project_id)
     owner = project.owner_id
     ccy = (project.currency or "").strip().upper()
     if owner is None or not ccy:
         # No owner to hold the tiers, or no currency to plan in: nothing honest can be seeded.
-        logger.warning("commitment_release demo: project %s has no owner or no currency, skipped", project_id)
+        logger.info("commitment_release demo: project %s has no owner or no currency, skipped", project_id)
         return counts
     planner = await _second_person(session, project_id, owner)
     if planner is None:
-        # Four eyes: the owner holds the tiers and cannot approve a request of their own.
-        logger.warning(
+        # Four eyes: the owner holds the tiers and cannot approve a request of their own. A
+        # one-person project is an ordinary install, so this is said quietly and nothing fails.
+        logger.info(
             "commitment_release demo: project %s has nobody but its owner, items are seeded without a release",
             project_id,
         )
@@ -379,6 +426,14 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     svc = CommitmentService(session)
     matrix = await svc.set_matrix(project_id, actor_id=owner, tenant_id=None)
     schedule = await svc.schedule_for(matrix)
+    if schedule.currency and schedule.currency.strip().upper() != ccy:
+        # A national schedule counts in its own currency. On a project in another one every figure
+        # would need an exchange rate the demo does not have, so the neutral schedule (which counts
+        # in the project's currency) is pinned instead. Nothing is released yet, so the pin is free.
+        matrix = await svc.set_matrix(
+            project_id, actor_id=owner, tenant_id=None, schedule_source="shipped", schedule_id=DEFAULT_SCHEDULE_ID
+        )
+        schedule = await svc.schedule_for(matrix)
     roles = [t.approver.ref for t in schedule.tiers if t.approver.kind == "project_role"]
     await svc.put_assignments(
         project_id,
@@ -428,16 +483,34 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         actor_id=owner,
         manage=True,
     )
-    if planner is not None and await _release(
-        svc,
-        project_id,
-        works.id,
-        works_amount,
-        works_ccy,
-        requester=planner,
-        approver=owner,
-        note="Full package",
-        days_ago=21,
+    # A seeder never sends a request it can know will be refused, and never invents a rate: a
+    # subcontract in a currency the schedule cannot convert is left planned, and the result says so.
+    convertible = True
+    try:
+        await svc.quote(matrix, project, works_ccy, svc.schedule_currency(schedule, project), today)
+    except FxRateMissing:
+        convertible = False
+        if planner is not None:
+            counts["releases_skipped_no_rate"] += 1
+            logger.info(
+                "commitment_release demo: project %s has no exchange rate for %s, the works release is not requested",
+                project_id,
+                works_ccy,
+            )
+    if (
+        planner is not None
+        and convertible
+        and await _release(
+            svc,
+            project_id,
+            works.id,
+            works_amount,
+            works_ccy,
+            requester=planner,
+            approver=owner,
+            note="Full package",
+            days_ago=21,
+        )
     ):
         counts["releases"] += 1
         if contract is not None:
@@ -547,3 +620,75 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     await svc.save_scenario(project_id, as_of=today, label="Stop today", actor_id=owner)
     counts["scenarios"] += 1
     return counts
+
+
+# When the stages of that order's cancellation terms begin, in days from the seed day. These are
+# this seed's own numbers and they are meant to agree with the plant register's demo seed
+# (app/modules/plant_register/seed.py, ``_seed_slot``): ``DEMO_ORDER_SIGNED_DAYS`` is the slot's
+# ``convert_by_date`` (the day the free slot lapses without an order) and
+# ``DEMO_MANUFACTURING_STARTED_DAYS`` is its ``slot_from``. The register's read port serves no slot,
+# so nothing checks the pair: whoever moves one of the two seeds moves the other.
+DEMO_ORDER_SIGNED_DAYS = 45
+DEMO_MANUFACTURING_STARTED_DAYS = 300
+
+# Which demo item of this module is which demo item of the plant register (by their codes).
+DEMO_PLANT_LINKS: dict[str, str] = {DEMO_SLOT_ITEM_CODE: "PL-001"}
+# The title a commitment item must carry to be that equipment; a code missing here links on the code alone.
+DEMO_PLANT_LINK_TITLES: dict[str, str] = {DEMO_SLOT_ITEM_CODE: DEMO_SLOT_ITEM_TITLE}
+
+
+async def link_demo_plant_items(
+    session: AsyncSession, project_id: uuid.UUID, *, links: dict[str, str] | None = None
+) -> dict[str, str]:
+    """Point demo commitment items at their demo plant items. The caller commits.
+
+    Called by the integration seed after both seeders ran: neither seeder knows the other's ids.
+    The plant item is looked up by its code through the plant register's read port. Answers, per
+    commitment item code, ``linked``, ``already_linked``, ``no_commitment_item``, ``not_this_story``
+    (the item of that code is another thing in this project's story, so there is nothing to link),
+    ``no_plant_item`` or ``plant_register_unavailable``. Nothing is created and no link is overwritten.
+    """
+    from app.core.demo_marker import demo_id_of
+    from app.modules.commitment_release.models import CommitmentItem
+    from app.modules.projects.models import Project
+
+    wanted = dict(DEMO_PLANT_LINKS if links is None else links)
+    project = await session.get(Project, project_id)
+    if project is None or not demo_id_of(project.metadata_):
+        return {}
+    from app.modules.commitment_release.figures import plant_register_reads
+
+    by_code = getattr(plant_register_reads(), "plant_item_id_by_code", None)
+    if by_code is None:
+        return dict.fromkeys(wanted, "plant_register_unavailable")
+    items = {
+        i.code: i
+        for i in (await session.execute(select(CommitmentItem).where(CommitmentItem.project_id == project_id)))
+        .scalars()
+        .all()
+    }
+    result: dict[str, str] = {}
+    for item_code, plant_code in wanted.items():
+        item = items.get(item_code)
+        if item is None:
+            result[item_code] = "no_commitment_item"
+            continue
+        expected = DEMO_PLANT_LINK_TITLES.get(item_code)
+        if expected is not None and item.title != expected:
+            # A link says the commitment IS that equipment. Here it is not.
+            logger.info(
+                "commitment_release demo: %s of %s is not the plant item's order, not linked", item_code, project_id
+            )
+            result[item_code] = "not_this_story"
+            continue
+        if item.plant_item_id is not None:
+            result[item_code] = "already_linked"
+            continue
+        plant_id = await by_code(session, project_id, plant_code)
+        if plant_id is None:
+            result[item_code] = "no_plant_item"
+            continue
+        item.plant_item_id = plant_id
+        result[item_code] = "linked"
+    await session.flush()
+    return result

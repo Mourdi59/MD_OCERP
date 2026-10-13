@@ -44,6 +44,48 @@ export function fundingOptions(refs: References | undefined, ctx: LabelContext):
   }));
 }
 
+/** The plant item an item already names, as its view carries it. */
+export interface StoredPlantItem {
+  id: string;
+  code: string | null;
+}
+
+/**
+ * The plant items a commitment item can name. A cancelled one is not offered
+ * for a new link, but stays in the list, marked, while it is the one stored.
+ * A stored one the register no longer lists stays selectable under its code
+ * with a note, so opening and saving the form does not quietly remove it.
+ */
+export function plantItemOptions(refs: References | undefined, ctx: LabelContext, stored: StoredPlantItem | null): RefOption[] {
+  const options: RefOption[] = [];
+  for (const p of refs?.plant_items?.items ?? []) {
+    const cancelled = p.status === 'cancelled';
+    if (cancelled && p.id !== stored?.id) continue;
+    options.push({
+      value: p.id,
+      label: cancelled
+        ? ctx.t('commitment.refs.plant_item_cancelled', {
+            defaultValue: '{{code}} {{name}} (cancelled)',
+            code: p.code,
+            name: p.name,
+          })
+        : ctx.t('commitment.refs.plant_item', { defaultValue: '{{code}} {{name}}', code: p.code, name: p.name }).trim(),
+    });
+  }
+  if (stored && !options.some((o) => o.value === stored.id)) {
+    options.push({
+      value: stored.id,
+      label: stored.code
+        ? ctx.t('commitment.refs.plant_item_gone', {
+            defaultValue: '{{code}} (no longer in the register)',
+            code: stored.code,
+          })
+        : ctx.t('commitment.refs.plant_item_gone_unnamed', { defaultValue: 'No longer in the register' }),
+    });
+  }
+  return options;
+}
+
 /** What a precondition of this kind can point at in this project; empty for kinds that point at nothing. */
 export function refOptions(kind: PreconditionKind, refs: References | undefined, ctx: LabelContext): RefOption[] {
   if (kind === 'gate_decided') return gateOptions(refs, ctx);

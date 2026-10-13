@@ -54,6 +54,7 @@ import {
   ITEM_STATUS,
   RELEASE_OUTCOME,
   RELEASE_PURPOSE,
+  LEAD_TIME_SOURCE,
   TRANSFERABLE,
   catalogueName,
   codeName,
@@ -498,6 +499,34 @@ export function ItemPanel({
           </span>
         </div>
       )}
+      {item.plant_item_missing && (
+        <div role="status" className="flex items-start gap-2 rounded-lg border border-semantic-warning/40 bg-semantic-warning-bg px-4 py-2 text-sm" data-testid="item-plant-missing">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0 text-semantic-warning" aria-hidden />
+          <span className="text-content-primary">
+            {t('commitment.item.plant_item_missing_notice', {
+              defaultValue:
+                'This item names a plant item that the plant register no longer knows. Its lead time and latest order date are not used: the dates here come from the figures entered on this item. Link it to a current plant item or remove the link.',
+            })}
+          </span>
+        </div>
+      )}
+      {item.plant_item_cancelled && !item.plant_item_missing && (
+        <div role="status" className="flex items-start gap-2 rounded-lg border border-semantic-warning/40 bg-semantic-warning-bg px-4 py-2 text-sm" data-testid="item-plant-cancelled">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0 text-semantic-warning" aria-hidden />
+          <span className="text-content-primary">
+            {item.plant_item_code
+              ? t('commitment.item.plant_item_cancelled_notice', {
+                  defaultValue:
+                    'The linked plant item {{code}} is cancelled in the plant register. Its dates are still the ones used here.',
+                  code: item.plant_item_code,
+                })
+              : t('commitment.item.plant_item_cancelled_notice_unnamed', {
+                  defaultValue:
+                    'The linked plant item is cancelled in the plant register. Its dates are still the ones used here.',
+                })}
+          </span>
+        </div>
+      )}
       {item.release_expired && (
         <div role="status" className="flex items-start gap-2 rounded-lg border border-semantic-warning/40 bg-semantic-warning-bg px-4 py-2 text-sm" data-testid="item-release-expired">
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-semantic-warning" aria-hidden />
@@ -576,6 +605,23 @@ export function ItemPanel({
               : t('commitment.item.no_date', { defaultValue: 'Not set' })}
           </span>
         </Figure>
+        {item.lead_time_in_force_days != null && (
+          <Figure
+            label={t('commitment.item_form.lead_time', { defaultValue: 'Lead time, days' })}
+            hint={
+              item.lead_time_source === 'plant_item' && item.plant_item_code
+                ? t('commitment.lead_time_source.plant_item_named', {
+                    defaultValue: 'From plant item {{code}}',
+                    code: item.plant_item_code,
+                  })
+                : item.lead_time_source
+                  ? vocab(t, LEAD_TIME_SOURCE, item.lead_time_source)
+                  : undefined
+            }
+          >
+            <span data-testid="item-lead-time">{item.lead_time_in_force_days}</span>
+          </Figure>
+        )}
       </dl>
 
       <div className="flex flex-wrap items-start gap-3">

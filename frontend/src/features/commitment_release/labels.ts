@@ -11,6 +11,7 @@
 import type {
   CommitmentLabel,
   DateBasis,
+  LeadTimeSource,
   Enforcement,
   FxPolicy,
   ItemStatus,
@@ -140,7 +141,15 @@ export const DATE_BASIS: Record<DateBasis, KeyText> = {
   fixed: ['commitment.date_basis.fixed', 'Fixed date'],
   late_start: ['commitment.date_basis.late_start', 'From the late start of the activity'],
   start_date: ['commitment.date_basis.start_date', 'From the planned start (no critical path run yet)'],
+  plant_item: ['commitment.date_basis.plant_item', 'From the latest order date of the plant item'],
   none: ['commitment.date_basis.none', 'No date to compute from'],
+};
+
+/** Whose lead time is in force on an item. A linked plant item is named by its code where one is known. */
+export const LEAD_TIME_SOURCE: Record<LeadTimeSource, KeyText> = {
+  plant_item: ['commitment.lead_time_source.plant_item', 'From the linked plant item'],
+  item: ['commitment.lead_time_source.item', 'Entered on this item'],
+  requisition: ['commitment.lead_time_source.requisition', 'From the linked requisition'],
 };
 
 export const TRANSFERABLE: Record<Transferable, KeyText> = {
@@ -248,6 +257,7 @@ export const ALL_KEY_MAPS: Record<string, Record<string, KeyText>> = {
   ABORT_FOLLOW_UP,
   CODED_RATIONALE,
   DATE_BASIS,
+  LEAD_TIME_SOURCE,
   TRANSFERABLE,
   FX_SOURCE,
   PLANNED_SOURCE,
@@ -420,6 +430,7 @@ export const ERROR_TEXT: Record<string, string> = {
     'This drawdown is a released commitment item. Abort that item to take the money back.',
   release_expired:
     'The release of this item is past its validity date: request a renewed release before binding more',
+  plant_item_not_found: 'The plant item was not found in this project',
 };
 
 /** The sentence for a refusal code, translated when the locale has it. */

@@ -151,6 +151,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _str("currency", 3),
             _guid("need_activity_id"),
             _guid("requisition_id"),
+            _guid("plant_item_id"),
             _int("lead_time_days", nullable=True),
             _int("decision_buffer_days", nullable=True),
             _str("latest_decision_date_fixed", 40, None, nullable=True),

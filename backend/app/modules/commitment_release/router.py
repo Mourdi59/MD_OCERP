@@ -386,14 +386,16 @@ async def project_references(project_id: uuid.UUID, session: SessionDep, user_id
 @router.get("/projects/{project_id}/items/{item_id}/transfer-targets", dependencies=[MANAGE])
 async def transfer_targets(
     project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     """Projects (this one first) and their open items the item may be transferred to."""
     from app.dependencies import accessible_project_ids
 
     await verify_project_access(project_id, user_id, session)
-    return await _run(
-        CommitmentService(session).transfer_targets(
-            project_id, item_id, accessible=await accessible_project_ids(session, user_id), manage=True
+    return _page(
+        await _run(
+            CommitmentService(session).transfer_targets(
+                project_id, item_id, accessible=await accessible_project_ids(session, user_id), manage=True
+            )
         )
     )
 
@@ -1033,10 +1035,11 @@ async def export_matrix(
     day = _today(as_of)
     data = await _run(CommitmentService(session).item_views(project_id, today=day, with_exposure=True))
     project = await session.get(Project, project_id)
+    locale = get_locale() or "en"
     content = render(
         data["items"],
         project_name=getattr(project, "name", "") or "",
-        locale=get_locale() or "en",
+        locale=locale,
         as_of=day.isoformat(),
         fmt=fmt,
     )
@@ -1044,5 +1047,9 @@ async def export_matrix(
     return Response(
         content=content,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="commitment_matrix.{fmt}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="commitment_matrix.{fmt}"',
+            # The language the document was rendered in, not merely the one asked for.
+            "Content-Language": locale,
+        },
     )

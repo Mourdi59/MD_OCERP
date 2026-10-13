@@ -45,7 +45,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
@@ -96,6 +97,24 @@ def unregister_commitment_guard() -> None:
     _MODE.pop("default", None)
 
 
+@asynccontextmanager
+async def _savepoint(session: Any) -> AsyncIterator[None]:
+    """A savepoint around a question to the matrix, where the session has savepoints.
+
+    The savepoint keeps a failed question from poisoning the caller's transaction. A session
+    without them (the in-memory doubles other modules' unit tests bind money on) has no
+    transaction to protect, so the question is simply asked: a project without a matrix then
+    answers ``ok`` exactly as it did before the guard existed, where failing to open a savepoint
+    used to read as a broken check and refuse.
+    """
+    begin = getattr(session, "begin_nested", None)
+    if begin is None:
+        yield
+        return
+    async with begin():
+        yield
+
+
 async def _when_the_checker_failed(session: Any, project_id: uuid.UUID) -> GuardVerdict:
     """The verdict for a check that could not be made, by what the project enforces."""
     reasons = ({"code": UNAVAILABLE},)
@@ -103,7 +122,7 @@ async def _when_the_checker_failed(session: Any, project_id: uuid.UUID) -> Guard
     if provider is None:
         return GuardVerdict(result="block", reasons=reasons)
     try:
-        async with session.begin_nested():
+        async with _savepoint(session):
             mode = await provider(session, project_id=project_id)
     except Exception:
         logger.exception("commitment guard: enforcement of project %s could not be read; refusing", project_id)
@@ -130,7 +149,7 @@ async def change_threshold(session: Any, *, project_id: uuid.UUID, currency: str
     if provider is None:
         return None
     try:
-        async with session.begin_nested():
+        async with _savepoint(session):
             return await provider(session, project_id=project_id, currency=currency)
     except Exception:
         logger.exception("change threshold failed for project %s; the module constant applies", project_id)
@@ -156,7 +175,7 @@ async def check(
     if checker is None:
         return GuardVerdict()
     try:
-        async with session.begin_nested():
+        async with _savepoint(session):
             return await checker(
                 session,
                 project_id=project_id,

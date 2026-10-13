@@ -630,7 +630,7 @@ async def test_the_demo_seed_shows_a_released_item_a_decided_tranche_and_a_pendi
         await s.flush()
         counts = await seed._seed_project(s, pid)
         await s.commit()
-    assert counts == {"items": 4, "links": 1, "releases": 3, "scenarios": 1}
+    assert counts == {"items": 4, "links": 1, "releases": 3, "scenarios": 1, "releases_skipped_no_rate": 0}
     async with world.factory() as s:
         items = {
             i.code: i
@@ -1162,7 +1162,7 @@ async def test_the_demo_of_a_project_before_construction_releases_nothing_of_the
         await s.flush()
         counts = await seed._seed_project(s, pid)
         await s.commit()
-    assert counts == {"items": 5, "links": 0, "releases": 3, "scenarios": 1}
+    assert counts == {"items": 5, "links": 0, "releases": 3, "scenarios": 1, "releases_skipped_no_rate": 0}
     today = datetime.now(UTC).date()
     async with world.factory() as s:
         phases = set(await phases_enabling(s, pid, "construction_start"))
@@ -1202,6 +1202,24 @@ async def test_the_demo_of_a_project_before_construction_releases_nothing_of_the
         assert "nothing_committed" in [line["code"] for line in exposure[code]["lines"]]
     # What procurement reads: the reservation is the released item with a lead time, the design has none.
     assert (options["CR-002"].released, options["CR-002"].lead_time_days) == (True, 120)
+    # CR-002 is the transformer order that is not placed yet. Its release note says the slot is held
+    # free of charge, no stage of its cancellation terms has begun, and without the plant register
+    # it reads its own 120 days and no date it could be overdue against.
+    slot = views["CR-002"]
+    assert slot["title"] == seed.DEMO_SLOT_ITEM_TITLE
+    assert (slot["lead_time_in_force_days"], slot["lead_time_source"], slot["plant_item_id"]) == (120, "item", None)
+    assert (slot["latest_decision_date"], slot["date_basis"], slot["decision_overdue"]) == (None, "none", False)
+    note = next(r.tranche_note for r in releases if str(r.item_id) == slot["id"])
+    assert "held free of charge" in note and "not signed" in note
+    async with world.factory() as s:
+        terms = (await CommitmentService(s).repo.list_abort_terms(pid, [uuid.UUID(slot["id"])]))[0]
+    stages = [(e["milestone"], e["from_date"]) for e in terms.cancellation_schedule]
+    assert [m for m, _d in stages] == ["order_signed", "manufacturing_started"]
+    assert [d for _m, d in stages] == [
+        (today + timedelta(days=seed.DEMO_ORDER_SIGNED_DAYS)).isoformat(),
+        (today + timedelta(days=seed.DEMO_MANUFACTURING_STARTED_DAYS)).isoformat(),
+    ]
+    assert all(d > today.isoformat() for _m, d in stages)
     assert options["CR-002"].released_on == today - timedelta(days=30)
     assert options["CR-003"].lead_time_days is None
     with_lead = [o.code for o in options.values() if o.released and o.lead_time_days]
@@ -1426,3 +1444,387 @@ async def test_an_item_past_its_decision_date_is_its_own_warning_evidence_item(w
     assert evidence_link_href("commitment_matrix", str(world.project_id), world.project_id) == (
         f"/projects/{world.project_id}/commitments"
     )
+
+
+# ── the plant item link (plant register rule 12: one lead time per plant item) ─────────────
+
+
+def _plant_register(monkeypatch, known: dict) -> None:
+    """Stand in for ``plant_register.reads`` with the contract of its ``plant_item_dates``."""
+    import sys
+    import types
+
+    async def plant_item_dates(session, project_id, plant_item_id, *, today=None):
+        owner, dates = known.get(plant_item_id, (None, None))
+        return dates if owner == project_id else None
+
+    reads = types.ModuleType("app.modules.plant_register.reads")
+    reads.plant_item_dates = plant_item_dates
+    monkeypatch.setitem(sys.modules, "app.modules.plant_register.reads", reads)
+
+
+async def _item_view(world: World, iid: uuid.UUID) -> dict:
+    async with world.factory() as s:
+        return (await CommitmentService(s).item_views(world.project_id, today=TODAY, item_ids=[iid]))["items"][0]
+
+
+async def test_a_linked_plant_item_gives_the_lead_time_and_the_order_date(world: World, monkeypatch) -> None:
+    from datetime import date as day
+
+    from app.modules.commitment_release.public import item_options
+
+    plant_id = uuid.uuid4()
+    dates = SimpleNamespace(
+        plant_item_id=plant_id,
+        code="PL-07",
+        need_date=day(2027, 8, 1),
+        latest_order_date=day(2027, 2, 1),
+        lead_time_days=84,
+        long_lead=True,
+    )
+    _plant_register(monkeypatch, {plant_id: (world.project_id, dates)})
+    iid = await item(
+        world,
+        code="CR-P",
+        amount="10000",
+        ctype="supplies",
+        plant_item_id=plant_id,
+        lead_time_days=30,
+        decision_buffer_days=10,
+        latest_decision_date_fixed="2027-06-30",
+    )
+    v = await _item_view(world, iid)
+    assert (v["plant_item_id"], v["plant_item_code"]) == (str(plant_id), "PL-07")
+    # The register's figures, not the 30 days and the fixed date typed on the row.
+    assert (v["lead_time_in_force_days"], v["lead_time_source"]) == (84, "plant_item")
+    assert (v["latest_decision_date"], v["date_basis"]) == ("2027-01-22", "plant_item")
+    assert v["lead_time_days"] == 30
+    async with world.factory() as s:
+        assert [o.lead_time_days for o in await item_options(s, world.project_id) if o.id == iid] == [84]
+
+    # The register no longer knows the item: the row falls back to its own figures and says so.
+    _plant_register(monkeypatch, {})
+    v = await _item_view(world, iid)
+    assert (v["plant_item_code"], v["lead_time_in_force_days"], v["lead_time_source"]) == (None, 30, "item")
+    assert (v["latest_decision_date"], v["date_basis"]) == ("2027-06-30", "fixed")
+
+
+async def test_a_plant_item_of_another_project_or_an_unknown_one_is_refused(world: World, monkeypatch) -> None:
+    foreign, unknown = uuid.uuid4(), uuid.uuid4()
+    _plant_register(monkeypatch, {foreign: (uuid.uuid4(), SimpleNamespace(code="PL-X"))})
+    for plant_id in (foreign, unknown):
+        with pytest.raises(CommitmentError) as exc:
+            await item(world, code=f"CR-{plant_id.hex[:4]}", amount="10000", plant_item_id=plant_id)
+        assert (exc.value.code, exc.value.status_code) == ("plant_item_not_found", 404)
+    iid = await item(world, code="CR-Q", amount="10000")
+    async with world.factory() as s:
+        with pytest.raises(CommitmentError) as exc:
+            await CommitmentService(s).update_item(
+                world.project_id, iid, {"plant_item_id": foreign}, actor_id=world.requester
+            )
+    assert exc.value.code == "plant_item_not_found"
+
+
+async def test_without_the_plant_register_an_item_keeps_its_own_lead_time(world: World, monkeypatch) -> None:
+    import sys
+
+    # ``None`` in sys.modules makes the import fail, as on an install without the module.
+    monkeypatch.setitem(sys.modules, "app.modules.plant_register.reads", None)
+    iid = await item(world, code="CR-N", amount="10000", lead_time_days=30, latest_decision_date_fixed="2027-06-30")
+    v = await _item_view(world, iid)
+    assert (v["lead_time_in_force_days"], v["lead_time_source"], v["plant_item_id"]) == (30, "item", None)
+    assert (v["latest_decision_date"], v["date_basis"]) == ("2027-06-30", "fixed")
+    # A link cannot be stored when nothing can answer for it.
+    with pytest.raises(CommitmentError) as exc:
+        await item(world, code="CR-O", amount="10000", plant_item_id=uuid.uuid4())
+    assert exc.value.code == "plant_item_not_found"
+
+
+# ── the demo seed and currencies: nothing is requested that is known to be refused ─────────
+
+
+async def _seeded(world: World, caplog, *, currency: str, contract_currency: str) -> tuple[uuid.UUID, dict, list]:
+    """A German demo project in ``currency`` with one subcontract, seeded; its counts and loud log records."""
+    import logging
+
+    from app.modules.commitment_release import seed
+    from app.modules.contracts.models import Contract
+    from app.modules.projects.models import Project
+
+    async with world.factory() as s:
+        pid = await add_project(s, world.manager, [world.requester])
+        project = await s.get(Project, pid)
+        project.country_code, project.currency = "DE", currency
+        s.add(
+            Contract(
+                project_id=pid,
+                code="SC-DEMO",
+                title="Structure",
+                counterparty_type="subcontractor",
+                total_value=D("1200000"),
+                currency=contract_currency,
+                status="active",
+                metadata_={},
+            )
+        )
+        await s.flush()
+        with caplog.at_level(logging.INFO):
+            counts = await seed._seed_project(s, pid)
+        await s.commit()
+    loud = [
+        (r.name, r.getMessage())
+        for r in caplog.records
+        if r.levelno > logging.INFO and r.name.startswith(("app.modules.commitment_release", "app.modules.approval"))
+    ]
+    return pid, counts, loud
+
+
+async def _pinned(world: World, pid: uuid.UUID) -> str:
+    async with world.factory() as s:
+        return (
+            (await s.execute(select(CommitmentMatrix).where(CommitmentMatrix.project_id == pid)))
+            .scalar_one()
+            .schedule_id
+        )
+
+
+async def test_the_demo_seed_keeps_the_national_schedule_on_a_project_in_its_currency(world: World, caplog) -> None:
+    pid, counts, loud = await _seeded(world, caplog, currency="EUR", contract_currency="EUR")
+    assert await _pinned(world, pid) == "de_public_owner"
+    assert (counts["releases"], counts["releases_skipped_no_rate"]) == (3, 0)
+    assert loud == []
+
+
+async def test_the_demo_seed_pins_the_neutral_schedule_on_a_project_in_another_currency(world: World, caplog) -> None:
+    pid, counts, loud = await _seeded(world, caplog, currency="CHF", contract_currency="CHF")
+    assert await _pinned(world, pid) == "neutral"
+    assert (counts["releases"], counts["releases_skipped_no_rate"]) == (3, 0)
+    assert loud == []
+
+
+async def test_the_demo_seed_does_not_request_a_release_it_has_no_rate_for(world: World, caplog) -> None:
+    # The fixture project knows a rate for GBP only: a subcontract in USD cannot be converted.
+    pid, counts, loud = await _seeded(world, caplog, currency="EUR", contract_currency="USD")
+    assert await _pinned(world, pid) == "de_public_owner"
+    assert (counts["releases"], counts["releases_skipped_no_rate"], counts["links"]) == (2, 1, 0)
+    async with world.factory() as s:
+        works = (
+            await s.execute(
+                select(CommitmentItem).where(CommitmentItem.project_id == pid, CommitmentItem.code == "CR-001")
+            )
+        ).scalar_one()
+        asked = (await s.execute(select(ReleaseDecision).where(ReleaseDecision.item_id == works.id))).scalars().all()
+    assert (works.status, asked) == ("planned", [])
+    assert loud == []
+
+
+# ── a plant item link that dangles, and the demo link ──────────────────────────────────────
+
+
+async def test_a_link_to_a_plant_item_the_register_lost_is_a_warning_finding(world: World, monkeypatch) -> None:
+    from app.core.validation.engine import ValidationContext
+    from app.modules.commitment_release.validators import PlantItemInRegister
+
+    plant_id = uuid.uuid4()
+    dates = SimpleNamespace(code="PL-07", need_date=None, latest_order_date=None, lead_time_days=84, status="cancelled")
+    _plant_register(monkeypatch, {plant_id: (world.project_id, dates)})
+    iid = await item(world, code="CR-P", amount="10000", plant_item_id=plant_id, lead_time_days=30)
+    await item(world, code="CR-U", amount="10000")
+
+    async def findings() -> list[tuple[bool, str, str]]:
+        async with world.factory() as s:
+            payload = await CommitmentService(s).validation_payload(world.project_id, today=TODAY)
+        results = await PlantItemInRegister().validate(ValidationContext(data=payload, metadata={"locale": "en"}))
+        return [(r.passed, r.element_ref, str(r.severity.value)) for r in results]
+
+    v = await _item_view(world, iid)
+    # A cancelled plant item is shown as cancelled and still gives its dates.
+    assert (v["plant_item_missing"], v["plant_item_status"], v["plant_item_cancelled"]) == (False, "cancelled", True)
+    assert (v["lead_time_in_force_days"], v["lead_time_source"]) == (84, "plant_item")
+    # Only the linked item is judged; the unlinked one is not a finding at all.
+    assert await findings() == [(True, "CR-P", "warning")]
+
+    _plant_register(monkeypatch, {})
+    v = await _item_view(world, iid)
+    assert (v["plant_item_missing"], v["plant_item_cancelled"], v["lead_time_source"]) == (True, False, "item")
+    assert await findings() == [(False, "CR-P", "warning")]
+
+
+async def test_the_demo_link_points_a_commitment_item_at_its_plant_item_once(world: World, monkeypatch) -> None:
+    import sys
+
+    from app.modules.commitment_release import seed
+    from app.modules.projects.models import Project
+
+    plant_id = uuid.uuid4()
+    _plant_register(monkeypatch, {})
+    reads = sys.modules["app.modules.plant_register.reads"]
+    iid = await item(world, code="CR-002", amount="10000", title=seed.DEMO_SLOT_ITEM_TITLE)
+
+    async def link_now() -> dict[str, str]:
+        async with world.factory() as s:
+            out = await seed.link_demo_plant_items(s, world.project_id, links={"CR-002": "PL-001", "CR-404": "PL-001"})
+            await s.commit()
+            return out
+
+    # Not a demo project: nothing is touched.
+    assert await link_now() == {}
+    async with world.factory() as s:
+        project = await s.get(Project, world.project_id)
+        project.metadata_ = {**(project.metadata_ or {}), "demo_id": "demo-test"}
+        await s.commit()
+    # A plant register without the lookup by code answers as unavailable.
+    assert await link_now() == {"CR-002": "plant_register_unavailable", "CR-404": "plant_register_unavailable"}
+
+    async def plant_item_id_by_code(session, project_id, code):
+        return plant_id if (project_id, code) == (world.project_id, "PL-001") else None
+
+    reads.plant_item_id_by_code = plant_item_id_by_code
+    assert await link_now() == {"CR-002": "linked", "CR-404": "no_commitment_item"}
+    assert (await state(world, iid)).plant_item_id == plant_id
+    assert (await link_now())["CR-002"] == "already_linked"
+
+
+# ── the plant items a form may pick from ───────────────────────────────────────────────────
+
+
+async def test_references_list_the_plant_items_of_this_project_only(world: World, monkeypatch) -> None:
+    import sys
+
+    async def refs() -> dict:
+        async with world.factory() as s:
+            return (await CommitmentService(s).references(world.project_id))["plant_items"]
+
+    # No plant register installed: nothing to link to, and the answer says so.
+    monkeypatch.setitem(sys.modules, "app.modules.plant_register.reads", None)
+    assert await refs() == {"available": False, "items": []}
+
+    mine, theirs = uuid.uuid4(), uuid.uuid4()
+    other_project = uuid.uuid4()
+    register = {
+        world.project_id: [
+            SimpleNamespace(id=mine, code="PL-002", title="Switchgear", status="identified"),
+            SimpleNamespace(id=uuid.uuid4(), code="PL-001", title="Transformer", status="cancelled"),
+        ],
+        other_project: [SimpleNamespace(id=theirs, code="PL-900", title="Foreign", status="identified")],
+    }
+    asked: list[uuid.UUID] = []
+
+    async def plant_item_options(session, project_id):
+        asked.append(project_id)
+        return register.get(project_id, [])
+
+    _plant_register(monkeypatch, {})
+    sys.modules["app.modules.plant_register.reads"].plant_item_options = plant_item_options
+    got = await refs()
+    assert got["available"] is True
+    # By code, every status served as the register names it, and only this project was asked for.
+    assert [(r["code"], r["name"], r["status"]) for r in got["items"]] == [
+        ("PL-001", "Transformer", "cancelled"),
+        ("PL-002", "Switchgear", "identified"),
+    ]
+    assert got["items"][1]["id"] == str(mine)
+    assert asked == [world.project_id]
+    assert str(theirs) not in {r["id"] for r in got["items"]}
+
+
+async def test_a_matrix_read_asks_the_plant_register_once_for_all_linked_items(world: World, monkeypatch) -> None:
+    import sys
+
+    a, b = uuid.uuid4(), uuid.uuid4()
+    dates = {
+        a: SimpleNamespace(code="PL-A", need_date=None, latest_order_date=None, lead_time_days=70, status="ordered"),
+        b: SimpleNamespace(code="PL-B", need_date=None, latest_order_date=None, lead_time_days=21, status="ordered"),
+    }
+    _plant_register(monkeypatch, {k: (world.project_id, v) for k, v in dates.items()})
+    for code, plant_id in (("CR-A", a), ("CR-B", b)):
+        await item(world, code=code, amount="10000", plant_item_id=plant_id)
+    await item(world, code="CR-C", amount="10000", lead_time_days=5)
+    calls: list[list[uuid.UUID]] = []
+
+    async def plant_items_dates(session, project_id, plant_item_ids, *, today=None):
+        calls.append(list(plant_item_ids))
+        return {i: dates[i] for i in plant_item_ids if i in dates and project_id == world.project_id}
+
+    sys.modules["app.modules.plant_register.reads"].plant_items_dates = plant_items_dates
+    async with world.factory() as s:
+        views = (await CommitmentService(s).item_views(world.project_id, today=TODAY))["items"]
+    assert {v["code"]: (v["lead_time_in_force_days"], v["lead_time_source"]) for v in views} == {
+        "CR-A": (70, "plant_item"),
+        "CR-B": (21, "plant_item"),
+        "CR-C": (5, "item"),
+    }
+    assert len(calls) == 1 and sorted(calls[0], key=str) == sorted([a, b], key=str)
+
+
+async def test_the_demo_link_is_not_made_where_the_item_is_another_thing(world: World, monkeypatch) -> None:
+    import sys
+
+    from app.modules.commitment_release import seed
+    from app.modules.projects.models import Project
+
+    _plant_register(monkeypatch, {})
+    plant_id = uuid.uuid4()
+
+    async def plant_item_id_by_code(session, project_id, code):
+        return plant_id
+
+    sys.modules["app.modules.plant_register.reads"].plant_item_id_by_code = plant_item_id_by_code
+    # The construction story: the same code is the facade units, which no plant item is.
+    iid = await item(world, code="CR-002", amount="10000", title="Long-lead facade units")
+    async with world.factory() as s:
+        project = await s.get(Project, world.project_id)
+        project.metadata_ = {**(project.metadata_ or {}), "demo_id": "demo-test"}
+        await s.commit()
+    async with world.factory() as s:
+        out = await seed.link_demo_plant_items(s, world.project_id)
+        await s.commit()
+    assert out == {"CR-002": "not_this_story"}
+    assert (await state(world, iid)).plant_item_id is None
+
+
+async def test_after_the_plant_seed_the_transformer_order_reads_the_registers_dates(world: World) -> None:
+    """Both demo seeders on one project before construction, the plant register's first, then the link."""
+    plant_seed = pytest.importorskip("app.modules.plant_register.seed")
+    from app.modules.commitment_release import seed
+    from app.modules.plant_register.reads import plant_item_dates, plant_item_id_by_code
+    from app.modules.project_governance.service import GovernanceService
+    from app.modules.projects.models import Project
+
+    today = datetime.now(UTC).date()
+    async with world.factory() as s:
+        pid = await add_project(s, world.manager, [world.requester])
+        project = await s.get(Project, pid)
+        project.metadata_ = {"demo_id": "demo-test"}
+        await GovernanceService(s).set_model(
+            pid,
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            actor_id=world.manager,
+            tenant_id=str(world.manager),
+        )
+        await s.flush()
+        await plant_seed.seed_plant_register_demo(s, [pid])
+        await seed._seed_project(s, pid)
+        linked = await seed.link_demo_plant_items(s, pid)
+        await s.commit()
+    assert linked == {"CR-002": "linked"}
+    async with world.factory() as s:
+        plant_id = await plant_item_id_by_code(s, pid, "PL-001")
+        register = await plant_item_dates(s, pid, plant_id, today=today)
+        view = next(
+            v for v in (await CommitmentService(s).item_views(pid, today=today))["items"] if v["code"] == "CR-002"
+        )
+    # One story on both screens: not ordered in the register, released and unbound in the matrix.
+    assert register.status not in ("ordered", "manufactured", "delivered", "commissioned", "handed_over", "cancelled")
+    assert (view["status"], view["links"], view["plant_item_code"]) == ("released", [], "PL-001")
+    # The register's lead time governs, whatever it is; the row's own 120 days are no longer in force.
+    assert (view["lead_time_in_force_days"], view["lead_time_source"]) == (register.lead_time_days, "plant_item")
+    assert register.lead_time_days != 120 and view["lead_time_days"] == 120
+    # The date is the register's latest order date, not a copy: ahead of today, and not a year out or overdue.
+    assert view["date_basis"] == "plant_item"
+    assert view["latest_decision_date"] == register.latest_order_date.isoformat()
+    assert today <= register.latest_order_date <= today + timedelta(days=60)
+    assert view["decision_overdue"] is False

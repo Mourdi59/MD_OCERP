@@ -65,7 +65,10 @@ export type PreconditionKind =
 export type ReleaseOutcome = 'pending' | 'released' | 'rejected' | 'withdrawn' | 'aborted';
 /** What a request asks for: money to commit, or stopping the item. */
 export type ReleasePurpose = 'release' | 'abort';
-export type DateBasis = 'fixed' | 'late_start' | 'start_date' | 'none';
+export type DateBasis = 'fixed' | 'late_start' | 'start_date' | 'plant_item' | 'none';
+
+/** Whose lead time is in force on an item. */
+export type LeadTimeSource = 'plant_item' | 'item' | 'requisition';
 export type Transferable = 'no' | 'to_project' | 'resale';
 
 export type RouteState = 'generated' | 'pinned' | 'changed' | 'none';
@@ -292,7 +295,20 @@ export interface CommitmentItem {
   split_group: string | null;
   owner_user_id: string | null;
   planned_source: PlannedSource;
+  /** The figure typed on the item. It is the one in force only when `lead_time_source` is `item`. */
   lead_time_days: number | null;
+  /** The lead time the dates are computed with, and whose it is. */
+  lead_time_in_force_days?: number | null;
+  lead_time_source?: LeadTimeSource | null;
+  /** An item of the plant register this commitment pays for; its code is null once the register no longer knows it. */
+  plant_item_id?: string | null;
+  plant_item_code?: string | null;
+  /** The register no longer answers for the linked plant item, so the item's own lead time is in force. */
+  plant_item_missing?: boolean;
+  /** The register's own status of the linked plant item, when it serves one. */
+  plant_item_status?: string | null;
+  /** The linked plant item is cancelled in the register. Its dates are still the ones used. */
+  plant_item_cancelled?: boolean;
   decision_buffer_days: number | null;
   latest_decision_date_fixed: string | null;
   planned: { amount: string | null; currency: string; note: string | null };
@@ -363,6 +379,8 @@ export interface ItemInput {
   split_group?: string | null;
   governance_area_code?: string | null;
   gate_code?: string | null;
+  /** An item of the plant register; null removes the link. */
+  plant_item_id?: string | null;
   deferred?: boolean;
   deferred_reason?: string | null;
 }
@@ -412,12 +430,22 @@ export interface ReferenceFunding {
 }
 
 /** What the item and precondition forms let a person pick. Every list is empty without a governance model. */
+/** An item of the plant register. The name is the register's own title, the status its own code. */
+export interface ReferencePlantItem {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+}
+
 export interface References {
   has_model: boolean;
   gates: ReferenceGate[];
   areas: ReferenceArea[];
   frame_documents: ReferenceFrameDocument[];
   funding_applications: ReferenceFunding[];
+  /** `available` is false when the project has no plant register to choose from. */
+  plant_items?: { available: boolean; items: ReferencePlantItem[] };
 }
 
 /**
@@ -854,7 +882,9 @@ export function transferItem(projectId: string, itemId: string, body: TransferIn
 
 /** Where the item may go: this project first, then the caller's other projects, each with the server's verdict. */
 export function listTransferTargets(projectId: string, itemId: string): Promise<TransferTarget[]> {
-  return apiGet<TransferTarget[]>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/transfer-targets`);
+  // The route answers the list envelope; the form needs the rows only.
+  const answer = apiGet<Page<TransferTarget>>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/transfer-targets`);
+  return answer.then((page) => page.items);
 }
 
 export function getReferences(projectId: string): Promise<References> {

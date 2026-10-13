@@ -162,6 +162,7 @@ class _ItemFields(BaseModel):
     currency: str | None = Field(default=None, pattern=r"^[A-Za-z]{3}$")
     need_activity_id: UUID | None = None
     requisition_id: UUID | None = None
+    plant_item_id: UUID | None = None
     lead_time_days: int | None = Field(default=None, ge=0, le=3650)
     decision_buffer_days: int | None = Field(default=None, ge=0, le=3650)
     latest_decision_date_fixed: date | None = None

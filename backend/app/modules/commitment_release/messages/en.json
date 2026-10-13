@@ -121,6 +121,7 @@
       "not_requester": "Only the requester or a manager can withdraw this request",
       "planned_source_invalid": "Unknown source for the planned amount",
       "planned_source_not_found": "The budget line, cost line or position was not found in this project",
+      "plant_item_not_found": "The plant item was not found in this project",
       "precondition_is_computed": "This precondition is read from its module and cannot be ticked",
       "precondition_kind_invalid": "Unknown precondition kind",
       "precondition_needs_evidence": "Attach the evidence reference",
@@ -212,6 +213,10 @@
       "item_has_planned_amount_source": {
         "fail": "The planned amount of item {item} cannot be read",
         "suggestion": "Point the item at a budget line, cost line or position, or enter a manual estimate"
+      },
+      "plant_item_in_register": {
+        "fail": "Item {item} names a plant item that is no longer in the plant register, so its own lead time applies",
+        "suggestion": "Link the item to the plant item that replaced it, or remove the link"
       },
       "release_in_date": {
         "fail": "A release of item {item} was valid until {date}: nothing new can be bound under it",
