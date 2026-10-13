@@ -24,16 +24,17 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import app.modules.project_governance.events as gov_events
 from app.core import demo_cast, demo_enrichment
-from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, is_reserved_mail_domain
 from app.core.partner_pack import discovery
 from app.modules.project_governance import catalogue as cat
 from app.modules.project_governance import catalogue_packs, public, seed
 from app.modules.project_governance import evidence as evd
 from app.modules.project_governance.models import (
+    GovernanceArea,
     GovernanceCheck,
     GovernanceCondition,
     GovernanceDecision,
     GovernanceDocument,
+    GovernanceGate,
     GovernanceModel,
 )
 from app.modules.project_governance.seed import seed_project_governance_demo
@@ -425,21 +426,22 @@ async def test_a_demo_file_nobody_can_read_fails_the_result_although_every_proje
     assert (result["pack_demo_file"], result["ok"]) == ("unreadable", False)
 
 
-async def test_a_seed_that_writes_nothing_names_every_project_and_why(factory, monkeypatch: pytest.MonkeyPatch) -> None:
-    estate = await _estate(factory, "office-london", "medical-us", owner_only=True)
+async def test_a_project_the_seed_could_not_find_is_named_and_fails_the_result(factory) -> None:
+    estate = await _estate(factory, "office-london")
     asked = estate | {"gone": uuid.uuid4()}
     result = await _seed(factory, asked)
-    assert result["projects"] == 0
+    assert result["projects"] == 1
     assert _told(result, asked) == {
-        "office-london": ("first_gate", None, "no_decider"),
-        "medical-us": ("near_handover", None, "no_decider"),
+        "office-london": ("first_gate", "first_gate", None),
         "gone": ("first_gate", None, "project_not_found"),
     }
-    assert len(result["fallbacks"]) == 3
+    assert [r["loud"] for r in result["fallbacks"]] == [True]
     assert result["ok"] is False
 
 
 # ── a project with nobody but its owner ──
+
+FOREIGN = "site.manager@contractor.example"
 
 
 async def _users(factory) -> dict[str, Any]:
@@ -449,109 +451,223 @@ async def _users(factory) -> dict[str, Any]:
         return {u.email: u for u in (await s.execute(select(User))).scalars()}
 
 
-async def test_an_installation_without_the_demo_logins_gets_a_cast_and_every_project_its_moment(
-    factory, caplog: pytest.LogCaptureFixture
-) -> None:
-    """What a pack install leaves: demo projects, their owner, nobody else."""
-    estate = await _estate(factory, "office-london", "residential-berlin", "medical-us", owner_only=True)
-    pids = [v for k, v in estate.items() if k != "manager"]
-    with caplog.at_level(logging.INFO):
-        cast = await demo_enrichment._demo_cast(factory)
-        seeded = await demo_enrichment._seed_governance(factory, pids)
-    assert cast == {"present": [], "created": ["decider", "cost"], "blocked": [], "ok": True}
-    assert seeded["fallbacks"] == []
-    assert seeded["ok"] is True
-    assert _told(seeded, estate) == {
-        "office-london": ("first_gate", "first_gate", None),
-        "residential-berlin": ("execution", "execution", None),
-        "medical-us": ("near_handover", "near_handover", None),
-    }
-    loud = [
-        f"{r.name}: {r.getMessage()}"
-        for r in caplog.records
-        if r.levelno >= logging.WARNING and r.name.startswith(("app.modules.project_governance", "app.core.demo"))
-    ]
-    assert loud == []
-
-    users = await _users(factory)
-    stand_ins = {u.email: u for u in users.values() if (u.metadata_ or {}).get(demo_cast.CAST_TAG)}
-    assert set(stand_ins) == {"demo-decider@example.com", "demo-cost-owner@example.com"}
-    # No stand-in is a login of the passwordless demo sign-in, and none can receive mail.
-    assert not set(stand_ins) & DEMO_ACCOUNT_EMAILS
-    assert all(is_reserved_mail_domain(email) for email in stand_ins)
-    decisions = await _decisions(factory, estate["residential-berlin"])
-    assert decisions and {d.decided_by for d in decisions} == {stand_ins["demo-decider@example.com"].id}
-    assert estate["manager"] not in {d.decided_by for d in decisions}  # the owner decided nothing
-
-
-async def test_the_cast_is_the_demo_logins_where_the_installation_has_them(factory) -> None:
-    estate = await _estate(factory, "medical-us")
-    cast = await demo_enrichment._demo_cast(factory)
-    assert cast == {"present": ["decider", "cost"], "created": [], "blocked": [], "ok": True}
-    assert set(await _users(factory)) == {DEMO, ESTIMATOR, MANAGER}
-    async with factory() as s:
-        assert (await demo_cast.find_cast(s))["decider"] == estate["manager"]
-
-
-async def test_filling_the_cast_twice_creates_nobody_twice(factory) -> None:
-    await _estate(factory, "office-london", owner_only=True)
-    first = await demo_enrichment._demo_cast(factory)
-    before = set(await _users(factory))
-    second = await demo_enrichment._demo_cast(factory)
-    assert first["created"] == ["decider", "cost"]
-    assert second == {"present": ["decider", "cost"], "created": [], "blocked": [], "ok": True}
-    assert set(await _users(factory)) == before
-
-
-async def test_an_address_that_belongs_to_somebody_is_not_taken_over(factory) -> None:
+async def _add_user(factory, email: str, role: str) -> uuid.UUID:
     from app.modules.users.models import User
 
-    estate = await _estate(factory, "medical-us", owner_only=True)
-    real = uuid.uuid4()
+    user_id = uuid.uuid4()
     async with factory() as s:
         s.add(
             User(
-                id=real,
-                email="demo-decider@example.com",
+                id=user_id,
+                email=email,
                 hashed_password="x",
-                full_name="Somebody",
-                role="viewer",
+                full_name=email.split("@")[0].title(),
+                role=role,
                 locale="en",
                 is_active=True,
                 metadata_={},
             )
         )
         await s.commit()
-    cast = await demo_enrichment._demo_cast(factory)
-    assert (cast["blocked"], cast["created"], cast["ok"]) == (["decider"], ["cost"], False)
+    return user_id
+
+
+async def _team_rows(factory, pid: uuid.UUID) -> list[uuid.UUID]:
+    """The members of the project's teams, in the order they joined."""
+    from app.modules.teams.models import Team, TeamMembership
+
+    async with factory() as s:
+        return list(
+            (
+                await s.execute(
+                    select(TeamMembership.user_id)
+                    .join(Team, Team.id == TeamMembership.team_id)
+                    .where(Team.project_id == pid)
+                    .order_by(TeamMembership.created_at)
+                )
+            ).scalars()
+        )
+
+
+async def _written(factory, pid: uuid.UUID) -> dict[str, Any]:
+    """What governance holds for a project, read from its tables."""
+    from app.modules.approval_routes.models import Route
+
+    async with factory() as s:
+
+        async def rows(model: Any) -> list[Any]:
+            return list((await s.execute(select(model).where(model.project_id == pid))).scalars())
+
+        models = await rows(GovernanceModel)
+        return {
+            "model": models[0] if models else None,
+            "areas": await rows(GovernanceArea),
+            "gates": await rows(GovernanceGate),
+            "documents": await rows(GovernanceDocument),
+            "checks": await rows(GovernanceCheck),
+            "decisions": await rows(GovernanceDecision),
+            "routes": await rows(Route),
+        }
+
+
+def _above_info(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [
+        f"{r.name}: {r.getMessage()}"
+        for r in caplog.records
+        if r.levelno >= logging.WARNING and r.name.startswith(("app.modules.project_governance", "app.core.demo"))
+    ]
+
+
+async def test_an_installation_without_the_demo_logins_tells_the_one_person_story_and_creates_nobody(
+    factory, caplog: pytest.LogCaptureFixture
+) -> None:
+    """What a pack install on a workspace of real people leaves: demo projects, their owner, nobody else."""
+    estate = await _estate(factory, "office-london", "residential-berlin", "medical-us", owner_only=True)
+    owner = estate["manager"]  # on an owner-only estate this is the one login, the owner
+    # A real person of the installation with a role that could decide. Not on any demo project.
+    foreign = await _add_user(factory, FOREIGN, "manager")
+    pids = [v for k, v in estate.items() if k != "manager"]
+    with caplog.at_level(logging.INFO):
+        cast = await demo_enrichment._demo_cast(factory, pids)
+        seeded = await demo_enrichment._seed_governance(factory, pids)
+    assert cast == {"present": [], "absent": ["decider", "cost"], "memberships": 0, "not_joined": [], "ok": True}
+    assert set(await _users(factory)) == {DEMO, FOREIGN}
+    async with factory() as s:
+        assert await demo_cast.find_cast(s) == {}
+
+    assert _told(seeded, estate) == {
+        "office-london": ("first_gate", "owner_only", "no_decider"),
+        "residential-berlin": ("execution", "owner_only", "no_decider"),
+        "medical-us": ("near_handover", "owner_only", "no_decider"),
+    }
+    # A legal state: reported row by row, at info, and the run is fine.
+    assert (seeded["projects"], len(seeded["fallbacks"]), seeded["ok"]) == (3, 3, True)
+    assert [r["loud"] for r in seeded["fallbacks"]] == [False, False, False]
+    assert _above_info(caplog) == []
+    told = [r for r in caplog.records if "was planned at" in r.getMessage()]
+    assert len(told) == 3 and {r.levelno for r in told} == {logging.INFO}
+
+    for demo_id in ("office-london", "residential-berlin", "medical-us"):
+        pid = estate[demo_id]
+        has = await _written(factory, pid)
+        model = has["model"]
+        assert (model.catalogue_source, model.catalogue_id, model.four_eyes) == ("shipped", "neutral", True)
+        # The one-person story is not an empty one.
+        assert len(has["areas"]) == len(seed.AREA_OWNERS)
+        assert {a.owner_user_id for a in has["areas"]} == {owner}
+        issued = {d.doc_type for d in has["documents"] if d.container_id}
+        assert set(seed._DOCS) <= issued
+        gates = sorted(has["gates"], key=lambda g: g.sort_order)
+        assert [g.status for g in gates] == ["in_preparation"] + ["not_started"] * (len(gates) - 1)
+        assert model.current_phase == gates[0].from_phase
+        first = [c for c in has["checks"] if c.gate_id == gates[0].id]
+        assert len(first) == len(has["areas"]) and {c.status for c in first} == {"ready"}
+        # Nothing that takes a second person: no route, no review, no decision.
+        assert has["decisions"] == [] and has["routes"] == []
+        assert (model.decision_route_id, gates[0].approval_instance_id) == (None, None)
+        assert await _team_rows(factory, pid) == []
+        # A module seeder reads a project in preparation.
+        assert (await _asked_through_the_port(factory, pid))["gate"].status == "not_started"
+        people = {a.owner_user_id for a in has["areas"]} | {c.confirmed_by for c in first} | {model.created_by}
+        assert foreign not in people and people == {owner}
+
+
+async def test_the_filmed_project_without_the_demo_logins_is_left_untouched_and_fails_the_result(
+    factory, active_pack, caplog: pytest.LogCaptureFixture
+) -> None:
+    estate = await _estate(factory, "office-frankfurt", "office-london", owner_only=True)
+    with caplog.at_level(logging.INFO):
+        result = await _seed(factory, estate)
+    assert _told(result, estate) == {
+        "office-frankfurt": ("pack", None, "no_decider"),
+        "office-london": ("first_gate", "owner_only", "no_decider"),
+    }
+    assert sorted((r["demo_id"], r["loud"]) for r in result["fallbacks"]) == [
+        ("office-frankfurt", True),
+        ("office-london", False),
+    ]
+    assert (result["projects"], result["ok"]) == (1, False)
+    # The pack's story is told on the pack's model or not at all.
+    assert (await _written(factory, estate["office-frankfurt"]))["model"] is None
+    errors = [m for m in (r.getMessage() for r in caplog.records if r.levelno >= logging.ERROR) if "planned at" in m]
+    assert len(errors) == 1 and "office-frankfurt" in errors[0]
+
+
+async def test_the_cast_is_the_demo_logins_where_the_installation_has_them(factory) -> None:
+    estate = await _estate(factory, "medical-us")
+    pid = estate["medical-us"]
+    first = await demo_enrichment._demo_cast(factory, [pid])
+    assert first == {"present": ["decider", "cost"], "absent": [], "memberships": 2, "not_joined": [], "ok": True}
+    second = await demo_enrichment._demo_cast(factory, [pid])
+    assert (second["memberships"], second["ok"]) == (0, True)
     users = await _users(factory)
-    assert (users["demo-decider@example.com"].role, users["demo-decider@example.com"].full_name) == (
-        "viewer",
-        "Somebody",
-    )
+    assert set(users) == {DEMO, ESTIMATOR, MANAGER}
+    async with factory() as s:
+        players = await demo_cast.find_cast(s)
+    assert players == {"decider": users[MANAGER].id, "cost": users[ESTIMATOR].id}
+    # Seeders look for "the first member who is not the owner": that is never the decider.
+    assert await _team_rows(factory, pid) == [players["cost"], players["decider"]]
+    # The seed after it adds nobody and keeps the order.
+    assert (await _seed(factory, estate))["ok"] is True
+    assert await _team_rows(factory, pid) == [players["cost"], players["decider"]]
+
+
+async def test_a_login_that_is_switched_off_plays_no_part(factory) -> None:
+    from app.modules.users.models import User
+
+    estate = await _estate(factory, "office-london")
+    async with factory() as s:
+        manager = await s.get(User, estate["manager"])
+        manager.is_active = False
+        await s.commit()
+    cast = await demo_enrichment._demo_cast(factory, [estate["office-london"]])
+    assert (cast["present"], cast["absent"], cast["memberships"]) == (["cost"], ["decider"], 1)
     result = await _seed(factory, estate)
-    assert _told(result, estate) == {"medical-us": ("near_handover", None, "no_decider")}
+    assert _told(result, estate) == {"office-london": ("first_gate", "owner_only", "no_decider")}
+    assert result["ok"] is True
+    has = await _written(factory, estate["office-london"])
+    users = await _users(factory)
+    # The cost login is there, so it owns its areas; nobody decides.
+    by_code = {a.code: a.owner_user_id for a in has["areas"]}
+    assert by_code["cost_finance"] == users[ESTIMATOR].id and by_code["scope"] == users[DEMO].id
+    assert has["decisions"] == [] and has["routes"] == []
 
 
-async def test_the_stand_ins_leave_with_the_last_demo_project_and_not_before(factory) -> None:
+async def test_a_project_owned_by_the_decider_login_is_told_by_its_owner_alone(factory) -> None:
+    from app.modules.projects.models import Project
+
+    estate = await _estate(factory, "office-london")
+    async with factory() as s:
+        project = await s.get(Project, estate["office-london"])
+        project.owner_id = estate["manager"]
+        await s.commit()
+    result = await _seed(factory, estate)
+    assert _told(result, estate) == {"office-london": ("first_gate", "owner_only", "owner_is_decider")}
+    assert result["ok"] is True
+    assert (await _written(factory, estate["office-london"]))["decisions"] == []
+
+
+async def test_the_memberships_of_the_cast_leave_with_the_demo_project_and_the_logins_stay(factory) -> None:
+    """Nothing of the cast has to be cleaned up: the team rows go by the cascade of the project."""
     from app.config import get_settings
     from app.modules.projects.models import Project
     from app.modules.projects.service import ProjectService
+    from app.modules.teams.models import Team, TeamMembership
 
-    estate = await _estate(factory, "office-london", owner_only=True)
-    await demo_enrichment._demo_cast(factory)
-    await demo_enrichment._seed_governance(factory, [estate["office-london"]])
-    async with factory() as s:
-        assert await demo_cast.remove_demo_cast(s) == 0  # a demo project still names them
-        await s.commit()
-    assert len(await _users(factory)) == 3
+    estate = await _estate(factory, "office-london")
+    pid = estate["office-london"]
+    await demo_enrichment._demo_cast(factory, [pid])
+    assert (await demo_enrichment._seed_governance(factory, [pid]))["ok"] is True
+    assert len(await _team_rows(factory, pid)) == 2
 
     async with factory() as s:
         assert await ProjectService(s, get_settings()).purge_demo_projects() == 1
         await s.commit()
     async with factory() as s:
         assert (await s.execute(select(Project))).scalars().all() == []
-    assert set(await _users(factory)) == {DEMO}
+        assert (await s.execute(select(Team))).scalars().all() == []
+        assert (await s.execute(select(TeamMembership))).scalars().all() == []
+    assert set(await _users(factory)) == {DEMO, ESTIMATOR, MANAGER}
 
 
 async def test_a_second_run_skips_what_the_first_one_seeded_and_reports_no_fallback(factory) -> None:

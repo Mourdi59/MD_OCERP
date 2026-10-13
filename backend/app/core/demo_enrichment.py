@@ -66,7 +66,7 @@ _FOCUS_DEMO_IDS: tuple[str, ...] = (
 )
 
 
-async def _demo_cast(session_factory: Any) -> dict[str, Any]:
+async def _demo_cast(session_factory: Any, demo_pids: list[uuid.UUID]) -> dict[str, Any]:
     """Give the demo the people its stories need besides the owner, and hand the result back.
 
     A demo project is installed with its owner on it and nobody else, and a
@@ -78,7 +78,7 @@ async def _demo_cast(session_factory: Any) -> dict[str, Any]:
         from app.core.demo_cast import ensure_demo_cast
 
         async with session_factory() as _cs:
-            _cast = await ensure_demo_cast(_cs)
+            _cast = await ensure_demo_cast(_cs, demo_pids)
             await _cs.commit()
         return _cast
     except Exception as exc:
@@ -503,7 +503,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         # owners, gates and decisions. The same skip makes a re-run a no-op.
         # Before it, the cast: the decider and the second member every story
         # below may count on, on any installation.
-        report["demo_cast"] = await _demo_cast(async_session_factory)
+        report["demo_cast"] = await _demo_cast(async_session_factory, _demo_pids)
         report["project_governance"] = {"seed": await _seed_governance(async_session_factory, _demo_pids)}
 
         for _name, _marker, _build in _module_seeders:

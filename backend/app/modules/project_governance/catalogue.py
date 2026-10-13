@@ -522,18 +522,38 @@ def get_catalogue(catalogue_id: str, version: int | None = None) -> Catalogue:
     raise UnknownCatalogueVersionError(catalogue_id, version, tuple(sorted(c.version for c in matches)))
 
 
-def _pack_declared_catalogue(country: str) -> str | None:
-    """The catalogue the national packs declare for exactly ``country``, if they agree."""
+def regional_pack_entry(key: str, country_code: str | None) -> str | None:
+    """The catalogue id the national regional packs name for a country under ``key``, if they agree.
+
+    A regional pack says ``key: {CC: catalogue id}`` in its configuration. For
+    the phase model the key is ``governance_catalogue``; for every other kind
+    it is the kind's own name. A pack with a ``parent_pack`` (a state under a
+    nation) does not vote. Packs that name different ids have no say, and
+    whether the id is a catalogue anybody ships is the caller's question.
+
+    Args:
+        key: The configuration key.
+        country_code: ISO 3166-1 alpha-2 code; case and space are ignored.
+
+    Returns:
+        The one id every national pack of the country names, else ``None``.
+    """
+    country = (country_code or "").strip().upper()
+    if not country:
+        return None
     declared: set[str] = set()
     for config in regional_packs.packs_for_country(country):
         if config.get("parent_pack"):
             continue
-        block = config.get("governance_catalogue")
+        block = config.get(key)
         if isinstance(block, dict) and isinstance(block.get(country), str):
             declared.add(block[country].strip())
-    if len(declared) != 1:
-        return None
-    value = declared.pop()
+    return declared.pop() if len(declared) == 1 else None
+
+
+def _pack_declared_catalogue(country: str) -> str | None:
+    """The catalogue the national packs declare for exactly ``country``, if they agree."""
+    value = regional_pack_entry("governance_catalogue", country)
     return value if value in CATALOGUE_IDS else None
 
 
