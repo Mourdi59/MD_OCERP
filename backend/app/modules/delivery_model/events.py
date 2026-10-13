@@ -27,8 +27,6 @@ from app.database import async_session_factory
 
 logger = logging.getLogger(__name__)
 
-_SUBSCRIBED_FLAG = "_delivery_model_subscribers_registered"
-
 
 async def _can_open_isolated_session() -> bool:
     try:
@@ -98,9 +96,11 @@ async def _on_risk_deleted(event: Event) -> None:
 
 
 def register_delivery_model_subscribers() -> None:
-    """Idempotently wire the governance and risk subscribers of this module."""
-    if getattr(event_bus, _SUBSCRIBED_FLAG, False):
-        return
+    """Wire the governance and risk subscribers of this module; safe to call again.
+
+    ``subscribe_once`` is what makes a second call harmless. A flag kept beside
+    the bus would outlive the handlers whenever the bus is emptied (an app
+    restarted in one process), and the module would then never hear an event.
+    """
     event_bus.subscribe_once("project_governance.frame_document.state_changed", _on_frame_document)
     event_bus.subscribe_once("risk.risk.deleted", _on_risk_deleted)
-    setattr(event_bus, _SUBSCRIBED_FLAG, True)

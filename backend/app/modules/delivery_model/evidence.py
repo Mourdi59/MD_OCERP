@@ -96,9 +96,9 @@ async def decision_ready(session: Any, project_id: uuid.UUID, attempt: GateAttem
         if rows and out:
             out.append(
                 EvidenceItem(
-                    code="delivery_ofi_routes",
+                    code="delivery_procurement_phase_unknown",
                     state="unknown",
-                    label_key="delivery_model.evidence.ofi_routes",
+                    label_key="delivery_model.evidence.procurement_phase_unknown",
                     link=ofi_link,
                     detail="procurement_phase_untagged",
                 )
@@ -120,5 +120,13 @@ async def decision_ready(session: Any, project_id: uuid.UUID, attempt: GateAttem
     return out
 
 
+# Where the gate screen opens an evidence item of this module: the project's delivery page.
+EVIDENCE_ROUTE = "/projects/{project_id}/delivery"
+
+
 def register_gate_evidence() -> None:
+    from app.modules.project_governance.evidence import register_evidence_link
+
+    for kind in ("delivery_model", "delivery_ofi"):
+        register_evidence_link(kind, EVIDENCE_ROUTE)
     register_evidence_provider("*", decision_ready, name=PROVIDER_NAME, blocking=True)

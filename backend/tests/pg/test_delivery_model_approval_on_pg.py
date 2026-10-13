@@ -19,9 +19,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.delivery_model.errors import DeliveryModelError
 from app.modules.delivery_model.events import handle_frame_document
-from app.modules.delivery_model.evidence import PROVIDER_NAME, decision_ready, register_gate_evidence
+from app.modules.delivery_model.evidence import decision_ready
 from app.modules.delivery_model.service import DeliveryModelService
-from app.modules.project_governance.evidence import GateAttempt, unregister_evidence_provider
+from app.modules.project_governance.evidence import GateAttempt
 from app.modules.project_governance.service import GovernanceService
 from tests._pg import isolated_engine
 from tests.pg.delivery_fixtures import (
@@ -32,6 +32,7 @@ from tests.pg.delivery_fixtures import (
     change_request,
     compare,
     decisions,
+    only_delivery_evidence,
     propose,
     settle_change_request,
     state,
@@ -44,10 +45,9 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def factory():
-    register_gate_evidence()
-    async with isolated_engine() as engine:
-        yield async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    unregister_evidence_provider(PROVIDER_NAME)
+    with only_delivery_evidence():
+        async with isolated_engine() as engine:
+            yield async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
 @pytest_asyncio.fixture
@@ -103,7 +103,7 @@ async def test_every_shipped_phase_model_carries_the_decision_and_takes_a_propos
         "missing_reason": None,
     }
     assert by_id[doc.area_id] == CARRIERS[catalogue_id][0]
-    assert model["can"]["propose"] == {"allowed": True, "reason": None}
+    assert model["can"]["propose"] == {"applies": True, "allowed": True, "reason": None}
     await propose(w, ids["design_build"])
     assert (await state(w)).status == "proposed"
     async with w.factory() as s:
@@ -126,7 +126,7 @@ async def test_a_phase_model_without_a_carrier_refuses_the_proposal(factory, cat
         "document_status": None,
         "missing_reason": "carrier_missing",
     }
-    assert model["can"]["propose"] == {"allowed": False, "reason": "carrier_missing"}
+    assert model["can"]["propose"] == {"applies": True, "allowed": False, "reason": "carrier_missing"}
     async with w.factory() as s:
         assert await DeliveryModelService(s).procurement_released(w.project_id) is None
 
@@ -373,11 +373,11 @@ async def test_a_reopening_can_be_given_up(world) -> None:
     await change_request(w)
     await call(w, "reopen", w.manager)
     model = await view(w, can_manage=True)
-    assert model["can"]["close_reopening"] == {"allowed": True, "reason": None}
+    assert model["can"]["close_reopening"] == {"applies": True, "allowed": True, "reason": None}
     await call(w, "close_reopening", w.manager)
     after = await view(w, can_manage=True)
     assert (after["status"], after["change_request_id"]) == ("binding", None)
-    assert after["can"]["close_reopening"] == {"allowed": False, "reason": "reopening_not_open"}
+    assert after["can"]["close_reopening"] == {"applies": False, "allowed": False, "reason": "reopening_not_open"}
 
 
 async def test_a_change_request_approved_before_the_new_proposal_approves_it_when_it_comes(world) -> None:
@@ -455,25 +455,25 @@ async def test_can_flags_say_what_the_enforcement_says(world) -> None:
     w = world
     await compare(w)
     reader = await view(w)
-    assert reader["can"]["propose"] == {"allowed": False, "reason": "permission_missing"}
+    assert reader["can"]["propose"] == {"applies": True, "allowed": False, "reason": "permission_missing"}
     manager = await view(w, can_edit=True, can_manage=True)
-    assert manager["can"]["propose"] == {"allowed": True, "reason": None}
-    assert manager["can"]["withdraw"] == {"allowed": False, "reason": "decision_not_pending"}
-    assert manager["can"]["reopen"] == {"allowed": False, "reason": "model_not_binding"}
-    assert manager["can"]["edit"] == {"allowed": True, "reason": None}
+    assert manager["can"]["propose"] == {"applies": True, "allowed": True, "reason": None}
+    assert manager["can"]["withdraw"] == {"applies": False, "allowed": False, "reason": "decision_not_pending"}
+    assert manager["can"]["reopen"] == {"applies": False, "allowed": False, "reason": "model_not_binding"}
+    assert manager["can"]["edit"] == {"applies": True, "allowed": True, "reason": None}
     await call(w, "confirm_allocations", None, w.manager)
     await call(w, "derive_packages", w.manager)
     ids = {o["form_code"]: uuid.UUID(o["id"]) for o in (await call(w, "comparison"))["options"]}
     await propose(w, ids["design_build"])
     proposed = await view(w, can_edit=True, can_manage=True)
-    assert proposed["can"]["propose"] == {"allowed": False, "reason": "decision_pending"}
-    assert proposed["can"]["edit"] == {"allowed": False, "reason": "model_not_editable"}
+    assert proposed["can"]["propose"] == {"applies": False, "allowed": False, "reason": "decision_pending"}
+    assert proposed["can"]["edit"] == {"applies": False, "allowed": False, "reason": "model_not_editable"}
     with pytest.raises(DeliveryModelError) as exc:
         await propose(w, ids["design_build"])
     assert exc.value.code == "decision_pending"
     await _decide_gate(w)
     bound = await view(w, can_edit=True, can_manage=True)
-    assert bound["can"]["reopen"] == {"allowed": False, "reason": "change_request_required"}
+    assert bound["can"]["reopen"] == {"applies": True, "allowed": False, "reason": "change_request_required"}
     with pytest.raises(DeliveryModelError) as exc:
         await call(w, "reopen", w.manager)
     assert exc.value.code == "change_request_required"

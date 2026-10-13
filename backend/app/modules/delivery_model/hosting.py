@@ -17,17 +17,14 @@ stored. A project whose governance model hosts the delivery model nowhere has
 no way to approve a delivery decision: callers refuse with a coded error
 instead of falling back to another document of the area.
 
-This is the only file of the module that reads governance. Two facts are not
-on the port yet and are read narrowly here: the four-eyes setting of the
-project's governance model and the content hash of the bound revision.
+This is the only file of the module that reads governance, and it reads
+nothing but the port.
 """
 
 from __future__ import annotations
 
 import uuid
 from typing import Any
-
-from sqlalchemy import select
 
 CARRIER_TAG = "delivery_model"
 PROCUREMENT_TAG = "procurement"
@@ -126,20 +123,21 @@ async def first_applicable_area_id(session: Any, project_id: uuid.UUID) -> uuid.
 
 async def four_eyes(session: Any, project_id: uuid.UUID) -> bool:
     """The four-eyes setting of the project's governance model; on when the project has no model."""
-    from app.modules.project_governance.models import GovernanceModel
+    from app.modules.project_governance import public
 
-    setting = (
-        await session.execute(select(GovernanceModel.four_eyes).where(GovernanceModel.project_id == project_id))
-    ).scalar_one_or_none()
-    return True if setting is None else bool(setting)
+    return (await public.project_controls(session, project_id)).four_eyes
 
 
-async def revision_content_hash(session: Any, revision_id: uuid.UUID | None) -> str | None:
-    """Content hash of a document revision, as the document store recorded it."""
-    from app.modules.cde.models import DocumentRevision
+async def construction_not_released(session: Any, project_id: uuid.UUID) -> bool:
+    """Is the project still before the gate that starts construction?
 
-    if revision_id is None:
-        return None
-    return (
-        await session.execute(select(DocumentRevision.content_hash).where(DocumentRevision.id == revision_id))
-    ).scalar_one_or_none()
+    True when a gate into a phase enabling ``construction_start`` exists and is
+    not decided. False without a phase model, without such a gate, or past it.
+    """
+    from app.modules.project_governance import public
+
+    phases = set(await public.phases_enabling(session, project_id, "construction_start"))
+    if not phases:
+        return False
+    gates = [g for g in await public.project_gates(session, project_id) if g.to_phase in phases]
+    return bool(gates) and all(g.status != "decided" for g in gates)

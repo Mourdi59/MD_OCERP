@@ -46,14 +46,30 @@ export function capabilities(status: ModelStatus, role: Role = 'manager'): Deliv
   const editable = status === 'draft' || status === 'under_evaluation' || status === 'reopened';
   const blocks: Record<ModelAction, string | null> = {
     edit: editable ? null : 'model_not_editable',
-    propose: status === 'proposed' ? 'decision_pending' : status === 'under_evaluation' || status === 'reopened' ? null : 'model_not_editable',
+    propose:
+      status === 'proposed'
+        ? 'decision_pending'
+        : status === 'draft'
+          ? 'single_option_decision'
+          : editable
+            ? null
+            : 'model_not_editable',
     withdraw: status === 'proposed' ? null : 'decision_not_pending',
     reopen: status === 'binding' ? null : 'model_not_binding',
     close_reopening: status === 'reopened' ? null : 'reopening_not_open',
   };
+  // Whether the action exists in this state at all. The fixture has no decision history, so a
+  // reopening counts as one that can be given up.
+  const applies: Record<ModelAction, boolean> = {
+    edit: editable,
+    propose: editable,
+    withdraw: status === 'proposed',
+    reopen: status === 'binding',
+    close_reopening: status === 'reopened',
+  };
   const flag = (action: ModelAction, permitted: boolean) => {
     const reason = permitted ? blocks[action] : 'permission_missing';
-    return { allowed: reason === null, reason };
+    return { applies: applies[action], allowed: applies[action] && reason === null, reason };
   };
   return {
     edit: flag('edit', role !== 'viewer'),
