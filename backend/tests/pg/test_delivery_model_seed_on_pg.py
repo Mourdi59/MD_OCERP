@@ -9,6 +9,7 @@ on what the project has, and reports what it could not do.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, date, datetime
 
@@ -129,11 +130,14 @@ async def test_before_the_construction_gate_every_seeded_date_lies_after_the_sta
     assert (await view(w))["status"] == "proposed"
 
 
-async def test_a_project_without_a_phase_model_keeps_the_running_story_and_is_reported(factory) -> None:
+async def test_a_project_without_a_phase_model_keeps_the_running_story_and_is_reported(factory, caplog) -> None:
     w = await build_world(factory, governance=False)
     await _mark_demo(w)
-    out = await _seed(w)
-    assert out["ok"] is False and out["failed"] == []
+    with caplog.at_level(logging.INFO, logger="app.modules.delivery_model.seed"):
+        out = await _seed(w)
+    # A project without a governance model is a legal state: listed, quiet, and not this seed's failure.
+    assert out["ok"] is True and out["failed"] == []
+    assert [r.levelno for r in caplog.records if r.name == "app.modules.delivery_model.seed"] == [logging.INFO]
     assert out["no_decision"] == [{"project_id": str(w.project_id), "reason": "governance_model_missing"}]
     assert (out["projects"], out["decisions"]) == (1, 0)
     today = datetime.now(UTC).date()
@@ -142,12 +146,14 @@ async def test_a_project_without_a_phase_model_keeps_the_running_story_and_is_re
     assert (await view(w))["status"] == "under_evaluation"
 
 
-async def test_a_catalogue_with_one_form_is_seeded_without_a_decision(factory) -> None:
+async def test_a_catalogue_with_one_form_is_seeded_without_a_decision(factory, caplog) -> None:
     w = await build_world(factory)
     await _mark_demo(w)
     await _pin_forms(w, ("design_build",))
-    out = await _seed(w)
-    assert out["failed"] == []
+    with caplog.at_level(logging.INFO, logger="app.modules.delivery_model.seed"):
+        out = await _seed(w)
+    assert out["failed"] == [] and out["ok"] is False
+    assert [r.levelno for r in caplog.records if r.name == "app.modules.delivery_model.seed"] == [logging.ERROR]
     assert out["no_decision"] == [{"project_id": str(w.project_id), "reason": "too_few_forms"}]
     assert [o["form_code"] for o in (await call(w, "comparison"))["options"]] == ["design_build"]
 

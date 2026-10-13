@@ -21,7 +21,9 @@ seeder. A project that cannot take a proposal (its governance model names no
 frame document for the decision, or its catalogue has fewer than two forms)
 gets everything but the proposal, and the result says so: ``ok`` is false and
 ``no_decision`` lists the project with the reason, so an integration seed can
-fail on it.
+fail on it. A project without a governance model is listed too, but it is a
+legal state of the product and not this module's failure: it is logged at info
+and leaves ``ok`` alone. The governance seed owns that verdict.
 
 Dates. A project still before the gate that starts construction (read through
 the governance port, never from a catalogue id or a name) is told as a
@@ -57,6 +59,9 @@ SEEDED_RISKS = ("design_errors", "ground_conditions", "price_escalation")
 # Milestones of the pre-construction story, in days from the seed day (the shared demo timeline).
 AWARD = 165
 START = 190
+
+# Reasons a project has no proposal that are a legal state of the product, not a failure of this seed.
+NOT_OURS = frozenset({"governance_model_missing"})
 
 RATIONALE_CHOSEN = (
     "Design and build scores highest: the owner has no in-house design team, wants one point of "
@@ -97,7 +102,8 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
     """Seed the delivery model of every demo project in ``project_ids`` that has none. The caller commits.
 
     Returns counts plus ``no_decision`` (projects seeded without a proposal, with the reason), ``failed``
-    (projects whose seed raised and was rolled back) and ``ok`` (both lists empty).
+    (projects whose seed raised and was rolled back) and ``ok``: nothing failed, and every project that
+    has a governance model got its proposal.
     """
     from app.core.demo_marker import demo_id_of
     from app.modules.delivery_model.models import DeliveryOption
@@ -136,7 +142,7 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
             totals["no_decision"].append({"project_id": str(pid), "reason": reason})
         for k, v in counts.items():
             totals[k] += v
-    totals["ok"] = not totals["failed"] and not totals["no_decision"]
+    totals["ok"] = not totals["failed"] and all(r["reason"] in NOT_OURS for r in totals["no_decision"])
     return totals
 
 
@@ -251,8 +257,11 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             if exc.code not in (hosting.NO_CARRIER, hosting.NO_GOVERNANCE_MODEL):
                 raise
             reason = exc.code
-    if reason:
-        # Loud on purpose: a demo project without a proposed decision shows an empty decision screen.
+    if reason in NOT_OURS:
+        logger.info("delivery_model demo: no decision proposed for project %s (%s)", project_id, reason)
+    elif reason:
+        # Loud on purpose: a demo project that has a governance model and still no proposed decision
+        # shows an empty decision screen.
         logger.error("delivery_model demo: no decision proposed for project %s (%s)", project_id, reason)
     return {
         "packages": len(packages),

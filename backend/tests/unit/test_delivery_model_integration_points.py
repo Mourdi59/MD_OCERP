@@ -129,6 +129,10 @@ def test_the_seed_compares_only_forms_the_pinned_catalogue_has() -> None:
     assert seed.forms_to_compare(shipped) == list(seed.DEMO_FORMS)
 
 
+def test_only_a_missing_governance_model_is_not_this_seeds_failure() -> None:
+    assert {"governance_model_missing"} == seed.NOT_OURS
+
+
 def test_a_five_form_catalogue_like_a_packs_is_a_valid_catalogue() -> None:
     """The fixture the database test pins: if it did not validate, that test would prove nothing."""
     body = catalogue_body_with_forms(PACK_FORMS)
