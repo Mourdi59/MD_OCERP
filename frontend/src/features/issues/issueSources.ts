@@ -305,8 +305,7 @@ export function mapClashIssue(c: ClashIssue): UnifiedIssue | null {
 export function mapNeighbourIssue(n: NeighbourIssue): UnifiedIssue | null {
   const bucket = NEIGHBOUR_BUCKET[n.state];
   if (!bucket) return null;
-  const firstLine = strOrNull(str(n.description).split('
-')[0]);
+  const firstLine = strOrNull(str(n.description).split('\n')[0]);
   return {
     id: `neighbour:${n.id}`,
     rawId: n.id,
