@@ -444,9 +444,59 @@ async def _pin_default_model(s: AsyncSession, pid: uuid.UUID, owner: uuid.UUID) 
     )
 
 
+def _cost_login() -> str:
+    from app.core.demo_cast import CAST
+
+    return next(part.demo_login for part in CAST if part.word == "cost")
+
+
+async def test_the_demo_seed_puts_no_account_from_outside_the_cast_on_a_row(world: DesignWorld, caplog) -> None:
+    """An installation of real people: a demo login outside the cast is on no seeded row, and nothing is louder than info."""
+    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, SHOWCASE_OWNER_EMAIL
+    from app.core.demo_cast import CAST
+    from app.modules.design_management import seed
+    from app.modules.design_management.models import ALL_MODELS, DesignSetup
+    from app.modules.projects.models import Project
+    from app.modules.users.models import User
+    from tests.pg.governance_fixtures import add_project, add_user
+
+    async with world.factory() as s:
+        owner, stranger, real = await add_user(s, "admin"), await add_user(s, "manager"), await add_user(s, "manager")
+        (await s.get(User, owner)).email = SHOWCASE_OWNER_EMAIL
+        # The account the old lookup picked: any demo login that is not the owner. No cast part plays here.
+        outside = sorted(DEMO_ACCOUNT_EMAILS - {SHOWCASE_OWNER_EMAIL} - {p.demo_login for p in CAST})
+        if outside:
+            (await s.get(User, stranger)).email = outside[0]
+        pid = await add_project(s, owner, [])
+        project = await s.get(Project, pid)
+        project.country_code = "DE"
+        project.metadata_ = {**(project.metadata_ or {}), "demo_id": "design-seed-alone"}
+        await _pin_default_model(s, pid, owner)
+        await s.commit()
+    with caplog.at_level("DEBUG", logger="app.modules.design_management"):
+        async with world.factory() as s:
+            totals = await seed.seed_design_management_demo(s, [pid])
+            await s.commit()
+    assert (totals["projects"], totals["one_person_stories"]) == (1, 1)
+    loud = [r for r in caplog.records if r.name.startswith("app.modules.design_management") and r.levelno > 20]
+    assert not loud, [(r.name, r.levelname, r.getMessage()) for r in loud]
+    foreign = {stranger, real}
+    async with world.factory() as s:
+        svc = DesignService(s)
+        for model in ALL_MODELS:
+            rows = await svc._list(model, pid)
+            assert rows, f"{model.__tablename__} is empty in the one-person demo"
+            for row in rows:
+                for column in model.__table__.columns:
+                    value = getattr(row, column.key, None)
+                    assert value not in foreign, (model.__tablename__, column.name)
+        setup = (await svc._list(DesignSetup, pid))[0]
+        assert setup.four_eyes_release is False
+
+
 async def test_the_demo_seed_lets_the_demo_user_approve_issue_and_submit(world: DesignWorld) -> None:
     """Every list is filled, the release waits for the demo user and an approval point can be submitted."""
-    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, SHOWCASE_OWNER_EMAIL
+    from app.core.demo_accounts import SHOWCASE_OWNER_EMAIL
     from app.modules.design_management import seed
     from app.modules.design_management.models import ALL_MODELS, DesignRelease
     from app.modules.projects.models import Project
@@ -456,7 +506,8 @@ async def test_the_demo_seed_lets_the_demo_user_approve_issue_and_submit(world: 
     async with world.factory() as s:
         owner, second = await add_user(s, "admin"), await add_user(s, "manager")
         (await s.get(User, owner)).email = SHOWCASE_OWNER_EMAIL
-        (await s.get(User, second)).email = sorted(DEMO_ACCOUNT_EMAILS - {SHOWCASE_OWNER_EMAIL})[0]
+        # The cast's second person of every four-eyes step, under the demo login that plays the part.
+        (await s.get(User, second)).email = _cost_login()
         pid = await add_project(s, owner, [second])
         project = await s.get(Project, pid)
         project.country_code = "DE"
@@ -553,7 +604,7 @@ async def test_a_frame_document_follows_the_governance_write_rule(world: DesignW
 
 
 async def _demo_project(world: DesignWorld) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
-    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, SHOWCASE_OWNER_EMAIL
+    from app.core.demo_accounts import SHOWCASE_OWNER_EMAIL
     from app.modules.projects.models import Project
     from app.modules.users.models import User
     from tests.pg.governance_fixtures import add_project, add_user
@@ -561,7 +612,8 @@ async def _demo_project(world: DesignWorld) -> tuple[uuid.UUID, uuid.UUID, uuid.
     async with world.factory() as s:
         owner, second = await add_user(s, "admin"), await add_user(s, "manager")
         (await s.get(User, owner)).email = SHOWCASE_OWNER_EMAIL
-        (await s.get(User, second)).email = sorted(DEMO_ACCOUNT_EMAILS - {SHOWCASE_OWNER_EMAIL})[0]
+        # The cast's second person of every four-eyes step, under the demo login that plays the part.
+        (await s.get(User, second)).email = _cost_login()
         pid = await add_project(s, owner, [second])
         project = await s.get(Project, pid)
         project.country_code = "DE"

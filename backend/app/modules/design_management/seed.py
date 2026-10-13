@@ -44,7 +44,7 @@ async def seed_design_management_demo(session: AsyncSession, project_ids: Iterab
     from app.modules.project_governance.public import project_catalogue
     from app.modules.projects.models import Project
 
-    totals = {"projects": 0, "drawings": 0, "deliverables": 0, "reports": 0}
+    totals = {"projects": 0, "drawings": 0, "deliverables": 0, "reports": 0, "one_person_stories": 0}
     ids = list(project_ids)
     if not ids:
         return totals
@@ -115,16 +115,15 @@ def _phase_value(scheme: Any, phase_code: str) -> str | None:
 
 
 async def _second_person(session: AsyncSession, owner_id: uuid.UUID) -> uuid.UUID | None:
-    """Another demo login, so four-eyes has a second pair of eyes. Never a real account."""
-    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS
-    from app.modules.users.models import User
+    """The demo cast's second person of a four-eyes step, when the installation has one.
 
-    stmt = (
-        select(User.id)
-        .where(User.email.in_(DEMO_ACCOUNT_EMAILS), User.id != owner_id, User.is_active.is_(True))
-        .order_by(User.email.desc())
-    )
-    return (await session.execute(stmt)).scalars().first()
+    Only the cast: any other account of the installation is somebody's real one, possibly another
+    tenant's, and has no business on a seeded row.
+    """
+    from app.core.demo_cast import find_cast
+
+    cost = (await find_cast(session)).get("cost")
+    return cost if cost is not None and cost != owner_id else None
 
 
 async def _routes(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID, second: uuid.UUID) -> None:
@@ -329,7 +328,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         )
         await svc.release_transition(project_id, concept.id, "ready", actor_id=second)
     else:
-        # A single-user install has nobody to approve: four-eyes off, so the release can still be issued.
+        # Nobody plays the second part here: four-eyes off, so the release can still be issued.
+        logger.info("design_management demo seed: project %s has no second person, one-person story", project_id)
         setup.four_eyes_release = False
         concept = await svc.create_release(
             project_id, {"code": "REL-001", "title": "Concept issue", "revision_ids": shared[:3]}, actor_id=actor
@@ -434,4 +434,9 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         )
     await svc.add_permit_item(project_id, permit.id, {"kind": "form", "title": "Application form"}, actor_id=actor)
     await session.flush()
-    return {"drawings": len(drawing_rows), "deliverables": len(deliverables), "reports": count_reports}
+    return {
+        "drawings": len(drawing_rows),
+        "deliverables": len(deliverables),
+        "reports": count_reports,
+        "one_person_stories": 0 if second is not None else 1,
+    }

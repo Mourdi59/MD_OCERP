@@ -260,7 +260,9 @@ def test_migration_chains_onto_governance_and_names_every_model_table() -> None:
 
     mig = _migration()
     assert mig.revision == "v74_design_management"
-    assert mig.down_revision == "v68_project_governance"
+    # The parent is the integration branch's to order; what must hold here is that it is a real revision.
+    assert isinstance(mig.down_revision, str)
+    assert (_VERSIONS / f"{mig.down_revision}.py").is_file(), mig.down_revision
     assert [t for t, _c, _i in mig._TABLES] == [m.__tablename__ for m in ALL_MODELS]
 
 
@@ -292,6 +294,57 @@ def test_the_hook_index_names_are_the_hooks_own() -> None:
         assert built <= _hook_index_names(table), (table.name, sorted(built - _hook_index_names(table)))
 
 
+def _undeclared_indexes(table, declared: set[str]) -> set[str]:
+    """Indexes on the model that no revision declares and that the platform's hook does not explain."""
+    from sqlalchemy import Index
+
+    on_model = {i.name for i in table.indexes if isinstance(i, Index)}
+    return on_model - declared - _hook_index_names(table)
+
+
+def test_no_own_index_repeats_a_hook_index_under_another_name() -> None:
+    """The hook would then build the same index twice on every install."""
+    from sqlalchemy import Index
+
+    from app.core.pg_optimizations import _desired_indexes
+    from app.modules.design_management.models import ALL_MODELS
+
+    for model in ALL_MODELS:
+        table = model.__table__
+        before = set(table.indexes)
+        own = {tuple(c.name for c in i.columns): i.name for i in before if isinstance(i, Index) and not i.unique}
+        try:
+            built = {tuple(c.name for c in ix.columns): ix.name for ix in _desired_indexes(table)}
+        finally:
+            table.indexes.difference_update(set(table.indexes) - before)
+        repeated = {cols: (own[cols], name) for cols, name in built.items() if cols in own and own[cols] != name}
+        assert not repeated, (table.name, repeated)
+
+
+def test_a_stray_index_is_not_excused_by_the_hook() -> None:
+    """With the hook's indexes attached, only they are set aside: one more index is still a difference."""
+    from sqlalchemy import Column, ForeignKey, Index, MetaData, String, Table
+
+    from app.core.pg_optimizations import _desired_indexes
+
+    meta = MetaData()
+    Table("oe_probe_parent", meta, Column("id", String(36), primary_key=True))
+    table = Table(
+        "oe_probe_child",
+        meta,
+        Column("id", String(36), primary_key=True),
+        Column("project_id", String(36), ForeignKey("oe_probe_parent.id")),
+        Column("status", String(20)),
+        Column("code", String(20)),
+    )
+    declared = {Index("ix_probe_child_code", table.c.code).name}
+    hook = {ix.name for ix in _desired_indexes(table)}
+    assert hook, "the probe table must be one the hook indexes"
+    assert _undeclared_indexes(table, declared) == set()
+    Index("ix_probe_child_status_stray", table.c.status)
+    assert _undeclared_indexes(table, declared) == {"ix_probe_child_status_stray"}
+
+
 def test_migration_columns_and_names_match_the_models() -> None:
     """Same columns, nullability, constraint and index names as ``create_all`` (no drift between installs)."""
     from sqlalchemy import Index, UniqueConstraint
@@ -320,7 +373,8 @@ def test_migration_columns_and_names_match_the_models() -> None:
         # ``create_all`` runs the platform's index hook, which attaches its own indexes to the shared
         # metadata; whether it ran before this test depends on the order of the run. No revision creates
         # those, so they are set aside by the hook's own naming rule, not by a list of names.
-        assert declared == on_model - (_hook_index_names(table) - declared), table.name
+        assert declared <= on_model, (table.name, sorted(declared - on_model))
+        assert _undeclared_indexes(table, declared) == set(), table.name
         for index in table.indexes:
             if index.name in partial:
                 cols, where = partial[index.name]
