@@ -396,9 +396,13 @@ class DeliveryModelService:
         blocks = await self._action_blocks(model)
         current = await self.repo.decision(project_id, model.current_decision_id) if model.current_decision_id else None
 
+        applies = self._action_applies(model.status, await self._approved_decision(project_id) is not None)
+
         def can(action: str, permitted: bool, denied: str = "permission_missing") -> dict[str, Any]:
+            # ``applies`` false: the action does not exist in this state (hide it). True with a reason: the
+            # caller lacks a right or a precondition can be fixed (show it disabled with the reason).
             reason = blocks[action] if permitted else denied
-            return {"allowed": reason is None, "reason": reason}
+            return {"applies": applies[action], "allowed": applies[action] and reason is None, "reason": reason}
 
         return {
             "id": str(model.id),
@@ -430,12 +434,26 @@ class DeliveryModelService:
             "version": model.version,
         }
 
+    @staticmethod
+    def _action_applies(status: str, has_approved: bool) -> dict[str, bool]:
+        """Does the action exist in this state at all? False means there is nothing to show, not a refusal."""
+        return {
+            "edit": status in EDITABLE,
+            "propose": status in EDITABLE,
+            "withdraw": status == "proposed",
+            "reopen": status == "binding",
+            "close_reopening": status in ("reopened", "under_evaluation") and has_approved,
+        }
+
     async def _action_blocks(self, model: DeliveryModel) -> dict[str, str | None]:
         """Why each state-changing action is refused now (``None`` = allowed). Enforcement reads the same answer."""
         doc, why = await hosting.carrier_document(self.session, model.project_id)
         approved = await self._approved_decision(model.project_id)
         if model.status == "proposed":
             propose: str | None = "decision_pending"
+        elif model.status == "draft":
+            # No option yet: the first one moves the model to under_evaluation.
+            propose = "single_option_decision"
         elif model.status not in ("under_evaluation", "reopened"):
             propose = "model_not_editable"
         else:
@@ -987,7 +1005,8 @@ class DeliveryModelService:
         decision.approval_source, decision.governance_ref_id = source, ref
         decision.governance_document_id = doc.id
         decision.bound_revision_id = doc.bound_revision_id
-        decision.bound_content_hash = await hosting.revision_content_hash(self.session, doc.bound_revision_id)
+        # The hash governance recorded when it bound the revision, not the revision's hash today.
+        decision.bound_content_hash = doc.bound_content_hash
         decision.four_eyes, decision.approval_blocked_reason = four_eyes, ""
         model.change_request_id = None
         await self._fsm(MODEL_FSM, model, "approved", approver, decision_id=str(decision.id))

@@ -24,7 +24,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.delivery_model.permissions import register_delivery_model_permissions
 from app.modules.delivery_model.router import router
 from tests._pg import isolated_engine
-from tests.pg.delivery_fixtures import CONTRACT_DOC, GATE, build_world, call, compare, state
+from tests.pg.delivery_fixtures import (
+    CONTRACT_DOC,
+    GATE,
+    build_world,
+    call,
+    compare,
+    only_delivery_evidence,
+    state,
+)
 from tests.pg.governance_fixtures import World, decide, documents, prepare_gate
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
@@ -44,9 +52,10 @@ async def world():
 async def governed():
     """A project with a governance model whose contract frame document hosts the delivery model."""
     register_delivery_model_permissions()
-    async with isolated_engine() as engine:
-        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-        yield await build_world(factory)
+    with only_delivery_evidence():
+        async with isolated_engine() as engine:
+            factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+            yield await build_world(factory)
 
 
 @asynccontextmanager
@@ -181,14 +190,14 @@ async def test_only_a_manager_or_the_owner_of_the_hosting_area_edits_the_model(g
     assert [r.status_code for r in refused] == [403] * 4
     assert {r.json()["detail"]["code"] for r in refused} == {"not_area_owner"}
     assert refused[0].json()["detail"]["message_key"] == "delivery_model.errors.not_area_owner"
-    assert seen.json()["can"]["edit"] == {"allowed": False, "reason": "not_area_owner"}
+    assert seen.json()["can"]["edit"] == {"applies": True, "allowed": False, "reason": "not_area_owner"}
     assert await call(w, "package_views") == []
     async with client_as(w, w.owner, "editor") as c:
         allowed = await c.put(f"{p}/allocations/insurance", json=put)
         owner_view = await c.get(f"{p}/model")
     assert allowed.status_code == 200
-    assert owner_view.json()["can"]["edit"] == {"allowed": True, "reason": None}
-    assert owner_view.json()["can"]["propose"] == {"allowed": False, "reason": "permission_missing"}
+    assert owner_view.json()["can"]["edit"] == {"applies": True, "allowed": True, "reason": None}
+    assert owner_view.json()["can"]["propose"] == {"applies": True, "allowed": False, "reason": "permission_missing"}
     async with client_as(w, w.manager, "manager") as c:
         assert (await c.put(f"{p}/allocations/insurance", json=put)).status_code == 200
 

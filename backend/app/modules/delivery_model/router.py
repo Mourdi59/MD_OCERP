@@ -34,7 +34,7 @@ from app.core.tenant_scope import resolve_tenant_id
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
 from app.modules.delivery_model.catalogue import DELIVERY_FORMS_KIND
 from app.modules.delivery_model.errors import DeliveryModelError
-from app.modules.delivery_model.messages import translate
+from app.modules.delivery_model.messages import available_locales, translate
 from app.modules.delivery_model.schemas import (
     AllocationPut,
     CatalogueChange,
@@ -633,6 +633,8 @@ async def export(
     project = await session.get(Project, project_id)
     name = getattr(project, "name", "") or ""
     locale = get_locale() or "en"
+    base = locale.split("-")[0].lower()
+    written = locale if locale in available_locales() else base if base in available_locales() else "en"
     if what == "matrix":
         doc = ex.matrix_document(await _run(svc.allocation_matrix(project_id)), project_name=name, locale=locale)
     elif what == "packages":
@@ -645,5 +647,9 @@ async def export(
     return Response(
         content=ex.render(doc, fmt),
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="delivery_{what}.{fmt}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="delivery_{what}.{fmt}"',
+            # The language the document was written in, which is not always the one asked for.
+            "Content-Language": written,
+        },
     )

@@ -22,10 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.delivery_model.errors import DeliveryModelError
 from app.modules.delivery_model.events import handle_frame_document, handle_risk_deleted
-from app.modules.delivery_model.evidence import PROVIDER_NAME, register_gate_evidence
 from app.modules.delivery_model.service import DeliveryModelService
 from app.modules.project_governance.errors import GovernanceError
-from app.modules.project_governance.evidence import unregister_evidence_provider
 from tests._pg import isolated_engine
 from tests.pg.delivery_fixtures import (
     CONTRACT_DOC,
@@ -36,6 +34,7 @@ from tests.pg.delivery_fixtures import (
     change_request,
     compare,
     decisions,
+    only_delivery_evidence,
     propose,
     settle_change_request,
     state,
@@ -47,11 +46,10 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def world():
-    register_gate_evidence()
-    async with isolated_engine() as engine:
-        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-        yield await build_world(factory)
-    unregister_evidence_provider(PROVIDER_NAME)
+    with only_delivery_evidence():
+        async with isolated_engine() as engine:
+            factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+            yield await build_world(factory)
 
 
 async def _ready(w) -> dict[str, uuid.UUID]:
