@@ -537,24 +537,124 @@ async def test_a_showcase_template_no_pack_installs_still_installs(demo_id: str,
 _GOVERNANCE_LOGGERS = ("app.modules.project_governance", "app.core.demo_cast")
 
 
+_DEMO_LOGINS = ("estimator@openconstructionerp.com", "manager@openconstructionerp.com")
+
+
+async def _governance_of(factory, project_id: uuid.UUID) -> dict[str, Any]:
+    from app.modules.project_governance import public
+    from app.modules.project_governance.models import (
+        GovernanceArea,
+        GovernanceDecision,
+        GovernanceDocument,
+        GovernanceModel,
+    )
+
+    async with factory() as s:
+
+        async def rows(model: Any) -> list[Any]:
+            return list((await s.execute(select(model).where(model.project_id == project_id))).scalars())
+
+        return {
+            "models": await rows(GovernanceModel),
+            "areas": await rows(GovernanceArea),
+            "documents": await rows(GovernanceDocument),
+            "decisions": await rows(GovernanceDecision),
+            "enabling": await public.phases_enabling(s, project_id, "construction_start"),
+            "gates": await public.project_gates(s, project_id) if await rows(GovernanceModel) else [],
+        }
+
+
+def _governance_records(caplog: pytest.LogCaptureFixture) -> tuple[list[str], list[logging.LogRecord]]:
+    """What the governance seed logged above info, and its one line per project that missed its plan."""
+    loud = [
+        f"{r.name}: {r.getMessage()}"
+        for r in caplog.records
+        if r.levelno >= logging.WARNING and r.name.startswith(_GOVERNANCE_LOGGERS)
+    ]
+    return loud, [r for r in caplog.records if "was planned at" in r.getMessage()]
+
+
 # One pack, in one shard: the question is asked of the installer, not of each pack.
 @pytest.mark.timeout(1500)
 @pytest.mark.parametrize("pack_dir", _shard(["germany-de"]))
-async def test_a_fresh_pack_install_leaves_every_demo_project_at_its_planned_gate(
+async def test_a_fresh_pack_install_tells_every_demo_project_by_its_owner_alone(
     pack_dir: str, fresh_db, caplog
 ) -> None:
     """A pack install creates the demo projects and their owner, and nobody else.
 
-    Under four-eyes the owner of an area cannot decide its gate, so without a
-    second person the governance seed wrote nothing on any pack and every gate
-    screen opened empty. The demo cast gives the stories their decider; this
-    asks the result of a real install, through the port the module seeders use.
+    Under four-eyes the owner of an area cannot decide its gate, and the seed
+    creates no user. So every demo project gets what one person can do: a
+    model, owned areas, issued documents, no decision. That is a legal state
+    and nothing is logged above info for it. The project a pack's demo file
+    names is the exception: it is filmed with the demo logins or not at all.
     """
-    from app.modules.project_governance import catalogue_packs, public, seed_story
-    from app.modules.project_governance.models import GovernanceDecision, GovernanceModel
+    from app.modules.project_governance import catalogue_packs, seed_story
+    from app.modules.users.models import User
 
     caplog.set_level(logging.INFO)
     factory = fresh_db
+    slug = _load_manifest(pack_dir).slug
+    done = await _stream_install(slug)
+    assert done["ok"], f"{slug}: install reported ok=False: {done['steps']}"
+    expected = _expected_demos(slug)
+    assert expected, f"{slug} installs no demos, so this test asks nothing"
+    async with factory() as s:
+        logins = (await s.execute(select(User.email).where(func.lower(User.email).in_(_DEMO_LOGINS)))).scalars().all()
+    assert logins == [], f"{slug}: this world is the one without the demo logins, found {logins}"
+
+    projects = await _demo_projects(factory)
+    pack_project = seed_story.pack_demo_id(catalogue_packs.active_pack_demo())
+    for demo_id in expected:
+        has = await _governance_of(factory, projects[demo_id].id)
+        if demo_id == pack_project:
+            assert has["models"] == [], f"{slug}: the filmed project {demo_id} was told without its cast"
+            continue
+        assert len(has["models"]) == 1, f"{slug}: demo {demo_id} has no governance model"
+        assert has["areas"] and all(a.owner_user_id == projects[demo_id].owner_id for a in has["areas"]), demo_id
+        assert [d for d in has["documents"] if d.container_id], f"{slug}: demo {demo_id} has no issued document"
+        assert has["decisions"] == [], f"{slug}: demo {demo_id} carries a decision nobody could have taken"
+        assert "decided" not in {g.status for g in has["gates"]}, demo_id
+
+    loud, told = _governance_records(caplog)
+    filmed = [m for m in loud if "was planned at" in m] if pack_project in expected else []
+    assert len(filmed) == (1 if pack_project in expected else 0), loud
+    assert sorted(loud) == sorted(filmed), f"{slug}: the governance seed logged:\n" + "\n".join(loud[:40])
+    quiet = [r for r in told if r.levelno == logging.INFO]
+    assert len(quiet) == len([d for d in expected if d != pack_project]), [r.getMessage() for r in told]
+    assert all("no_decider" in r.getMessage() for r in told), [r.getMessage() for r in told]
+
+
+@pytest.mark.timeout(1500)
+@pytest.mark.parametrize("pack_dir", _shard(["germany-de"]))
+async def test_a_pack_install_beside_the_demo_logins_leaves_every_demo_project_at_its_planned_gate(
+    pack_dir: str, fresh_db, caplog
+) -> None:
+    """The same install on a database that has the two demo logins: every story is told in full.
+
+    The logins are put there by this test, the way the boot seeder does when
+    the demo is enabled. Nothing in the product creates them for a pack.
+    """
+    from app.modules.project_governance import catalogue_packs, seed_story
+    from app.modules.users.models import User
+
+    caplog.set_level(logging.INFO)
+    factory = fresh_db
+    async with factory() as s:
+        for email in _DEMO_LOGINS:
+            name = email.split("@")[0]
+            s.add(
+                User(
+                    id=uuid.uuid4(),
+                    email=email,
+                    hashed_password="x",
+                    full_name=name.title(),
+                    role=name,
+                    locale="en",
+                    is_active=True,
+                    metadata_={},
+                )
+            )
+        await s.commit()
     slug = _load_manifest(pack_dir).slug
     done = await _stream_install(slug)
     assert done["ok"], f"{slug}: install reported ok=False: {done['steps']}"
@@ -565,33 +665,18 @@ async def test_a_fresh_pack_install_leaves_every_demo_project_at_its_planned_gat
     pack_project = seed_story.pack_demo_id(catalogue_packs.active_pack_demo())
     placed = 0
     for demo_id in expected:
-        pid = projects[demo_id].id
         planned = seed_story.planned_moment(demo_id, pack_project)
-        async with factory() as s:
-            model = (
-                await s.execute(select(GovernanceModel).where(GovernanceModel.project_id == pid))
-            ).scalar_one_or_none()
-            assert model is not None, f"{slug}: demo {demo_id} has no governance model (planned {planned})"
-            decided = (
-                await s.execute(
-                    select(func.count()).select_from(GovernanceDecision).where(GovernanceDecision.project_id == pid)
-                )
-            ).scalar_one()
-            enabling = await public.phases_enabling(s, pid, "construction_start")
-            gates = await public.project_gates(s, pid)
+        has = await _governance_of(factory, projects[demo_id].id)
+        assert len(has["models"]) == 1, f"{slug}: demo {demo_id} has no governance model (planned {planned})"
         if planned in ("execution", "near_handover"):
             placed += 1
-            into = [g.status for g in gates if g.to_phase in enabling]
+            into = [g.status for g in has["gates"] if g.to_phase in has["enabling"]]
             assert into == ["decided"], f"{slug}: {demo_id} was planned at {planned}, its construction gate is {into}"
         elif planned == "first_gate":
+            decided = len(has["decisions"])
             assert decided == 1, f"{slug}: {demo_id} has {decided} gate decisions, the first-gate story takes one"
     assert placed or pack_project in expected, f"{slug}: none of {expected} is a placed project, pick another pack"
 
-    loud = [
-        f"{r.name}: {r.getMessage()}"
-        for r in caplog.records
-        if r.levelno >= logging.WARNING and r.name.startswith(_GOVERNANCE_LOGGERS)
-    ]
+    loud, told = _governance_records(caplog)
     assert not loud, f"{slug}: the governance seed logged:\n" + "\n".join(loud[:40])
-    fallbacks = [r.getMessage() for r in caplog.records if "was planned at" in r.getMessage()]
-    assert not fallbacks, f"{slug}: placement fallbacks: {fallbacks}"
+    assert not told, f"{slug}: placement fallbacks: {[r.getMessage() for r in told]}"

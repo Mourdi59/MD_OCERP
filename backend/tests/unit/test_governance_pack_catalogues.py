@@ -300,8 +300,8 @@ def test_the_default_pin_falls_back_to_the_shipped_country_default(installed: Pa
     assert public.default_catalogue_pin("phase_model", "DE") == packs.CataloguePin("pack", "acme_model", 2)
 
 
-def test_another_kind_without_a_pack_opinion_has_no_default_here(installed: Packs) -> None:
-    assert public.default_catalogue_pin("delivery_forms", "DE") is None
+def test_a_kind_nobody_registered_has_no_default(installed: Packs) -> None:
+    assert public.default_catalogue_pin("kind_of_no_module", "DE") is None
 
 
 def test_a_default_whose_file_is_broken_is_not_the_default(installed: Packs) -> None:
@@ -437,3 +437,103 @@ def test_a_broken_country_default_falls_through_to_the_general_default(installed
         packs.CataloguePin("pack", "acme_german", 1),
         packs.CataloguePin("pack", "acme_general", 1),
     )
+
+
+# ── the default of any kind, by the project's country ──
+
+PROBE_KIND = "probe_schedule"
+
+
+def _probe_body() -> Any:
+    from pydantic import create_model
+
+    return create_model("ProbeBody", id=(str, ...), version=(int, ...))
+
+
+@pytest.fixture
+def probe_kind():
+    """A kind of another module with shipped files that claim countries, one of them twice."""
+    from app.modules.project_governance.catalogue_kinds import (
+        CatalogueKind,
+        register_catalogue_kind,
+        unregister_catalogue_kind,
+    )
+
+    def shipped(catalogue_id: str, version: int, *countries: str) -> SimpleNamespace:
+        return SimpleNamespace(id=catalogue_id, version=version, jurisdiction_countries=countries)
+
+    files = [
+        shipped("neutral", 1),
+        shipped("german", 1, "DE"),
+        shipped("german", 2, "DE"),
+        shipped("alpine_a", 1, "AT", "CH"),
+        shipped("alpine_b", 1, "AT"),
+        SimpleNamespace(id="bare", version=1),
+    ]
+    register_catalogue_kind(
+        CatalogueKind(
+            kind=PROBE_KIND, model=_probe_body(), validator=lambda obj, source: [], list_shipped=lambda: tuple(files)
+        )
+    )
+    yield files
+    unregister_catalogue_kind(PROBE_KIND)
+
+
+def test_a_kind_without_a_pack_opinion_defaults_to_the_one_shipped_catalogue_of_the_country(
+    installed: Packs, probe_kind
+) -> None:
+    # The newest version of the one catalogue that claims the country.
+    assert public.default_catalogue_pin(PROBE_KIND, "DE") == packs.CataloguePin("shipped", "german", 2)
+    assert public.default_catalogue_pin(PROBE_KIND, " de ") == packs.CataloguePin("shipped", "german", 2)
+    assert public.default_catalogue_pin(PROBE_KIND, "CH") == packs.CataloguePin("shipped", "alpine_a", 1)
+
+
+def test_a_country_nobody_claims_or_two_claim_or_no_country_has_no_default(installed: Packs, probe_kind) -> None:
+    """``None`` keeps its meaning: the owning module pins its neutral file."""
+    assert public.default_catalogue_pin(PROBE_KIND, "FR") is None
+    assert public.default_catalogue_pin(PROBE_KIND, "AT") is None
+    assert public.default_catalogue_pin(PROBE_KIND, None) is None
+    assert public.default_catalogue_pin(PROBE_KIND, "  ") is None
+
+
+def test_the_pack_is_asked_before_the_shipped_catalogue_of_the_country(installed: Packs, probe_kind) -> None:
+    entry = _entry("acme_schedule", default_for_new_projects=True) | {"kind": PROBE_KIND}
+    installed.install(_pack("acme", entry), active=True, with_files=False)
+    installed.files[("acme", entry["path"])] = json.dumps({"id": "acme_schedule", "version": 1}).encode("utf-8")
+    assert public.default_catalogue_pin(PROBE_KIND, "DE") == packs.CataloguePin("pack", "acme_schedule", 1)
+    assert public.default_catalogue_pin(PROBE_KIND, "FR") == packs.CataloguePin("pack", "acme_schedule", 1)
+
+
+def test_a_kind_whose_shipped_files_do_not_load_has_no_default(installed: Packs, probe_kind) -> None:
+    from app.modules.project_governance.catalogue import InvalidCatalogueError
+    from app.modules.project_governance.catalogue_kinds import CatalogueKind, register_catalogue_kind
+
+    def broken() -> tuple[Any, ...]:
+        raise InvalidCatalogueError("probe.json", ["unreadable"])
+
+    register_catalogue_kind(
+        CatalogueKind(kind=PROBE_KIND, model=_probe_body(), validator=lambda obj, source: [], list_shipped=broken)
+    )
+    assert public.default_catalogue_pin(PROBE_KIND, "DE") is None
+
+
+def test_the_phase_model_keeps_its_own_last_resort(installed: Packs) -> None:
+    for country in ("FR", None, ""):
+        pin = public.default_catalogue_pin("phase_model", country)
+        assert pin == packs.CataloguePin("shipped", "neutral", cat.get_catalogue("neutral").version)
+
+
+def test_the_staffing_files_resolve_by_country_through_the_port(installed: Packs) -> None:
+    """The real files of a module that used to carry this rule itself."""
+    staffing = pytest.importorskip("app.modules.staffing.catalogue")
+    from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
+
+    staffing.register_kinds()
+    shipped = get_catalogue_kind(staffing.STAFFING_MODEL_KIND).shipped()
+    german = [c for c in shipped if "DE" in c.jurisdiction_countries]
+    assert len(german) == 1
+    assert public.default_catalogue_pin(staffing.STAFFING_MODEL_KIND, "DE") == packs.CataloguePin(
+        "shipped", german[0].id, german[0].version
+    )
+    unclaimed = next(code for code in ("FR", "JP", "BR") if not any(code in c.jurisdiction_countries for c in shipped))
+    assert public.default_catalogue_pin(staffing.STAFFING_MODEL_KIND, unclaimed) is None
