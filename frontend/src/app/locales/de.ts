@@ -53318,6 +53318,7 @@ const resource = {
     "permits.ui.roadmap.estimate": "geschätzt",
     "permits.ui.roadmap.late_by_one": "Entscheidung {{count}} Tag verspätet",
     "permits.ui.roadmap.late_by_other": "Entscheidung {{count}} Tage verspätet",
+    "permits.ui.roadmap.no_gates": "Dieses Projekt arbeitet ohne Gates. Der Fahrplan ist eine Arbeitsliste: Er wird an keinem Gate vereinbart, und Genehmigungen lassen sich ohne Änderungsantrag ergänzen oder entfernen.",
     "permits.ui.roadmap.propose": "Aus dem Verfahrensweg übernehmen",
     "permits.ui.roadmap.settings": "Einstellungen",
     "permits.ui.roadmap.summary": "Benötigte Genehmigungen: {{total}}. Erteilt: {{granted}}. Bei der Behörde oder in Vorbereitung: {{inProgress}}.",

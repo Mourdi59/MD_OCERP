@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -52,6 +53,18 @@ async def world():
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         yield await build_world(factory)
+
+
+@pytest.fixture
+def blob_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Point the file store at a temp root through the product's own setting, never the checkout."""
+    from app.core.storage import reset_storage_backend_cache, resolve_data_dir
+
+    checkout_root = resolve_data_dir() / "permits"
+    monkeypatch.setenv("OE_DATA_DIR", str(tmp_path))
+    reset_storage_backend_cache()
+    yield tmp_path, checkout_root
+    reset_storage_backend_cache()
 
 
 async def _code(coro) -> tuple[int, str]:
@@ -128,7 +141,9 @@ async def test_an_approved_change_request_is_spent_by_the_change_it_licenses(wor
 # ── finding 10, rule 18: the register export becomes a CDE revision of the frame document ──
 
 
-async def test_the_register_export_is_stored_as_a_revision_of_its_frame_document(world: World) -> None:
+async def test_the_register_export_is_stored_as_a_revision_of_its_frame_document(
+    world: World, blob_root: tuple[Path, Path]
+) -> None:
     from app.modules.cde.models import DocumentRevision
     from app.modules.project_governance.models import GovernanceDocument
 
@@ -157,6 +172,11 @@ async def test_the_register_export_is_stored_as_a_revision_of_its_frame_document
         revision = await s.get(DocumentRevision, uuid.UUID(out["revision_id"]))
     assert revision.container_id == container and revision.content_hash == out["content_hash"]
     assert out["register"] == "roadmap" and len(out["content_hash"]) == 64
+    tmp_root, checkout_root = blob_root
+    stored = list((tmp_root / "permits" / str(p) / "frame").glob(f"*/{out['content_hash']}.pdf"))
+    assert len(stored) == 1 and stored[0].read_bytes().startswith(b"%PDF")
+    # Nothing is written outside the temp root: the checkout's data dir gets no folder for this project.
+    assert not (checkout_root / str(p)).exists()
 
 
 # ── finding 10: decision correction, interruption, jurisdiction ───────────

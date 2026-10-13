@@ -94,6 +94,17 @@ describe('RoadmapTable', () => {
     expect(screen.getByTestId('roadmap-binding')).toBeInTheDocument();
   });
 
+  it('says that a project without gates keeps the roadmap as a working list', () => {
+    const rows = buildRoadmapRows([requirement()], [timelineRow()], []);
+    const view = renderIn(<RoadmapTable rows={rows} binding={false} gatesInUse={false} labels={labels} {...handlers} />);
+    expect(screen.getByTestId('roadmap-no-gates')).toHaveTextContent('This project does not use gates.');
+    expect(screen.queryByTestId('roadmap-binding')).toBeNull();
+    view.unmount();
+    // An answer that does not say stays silent: only a clear no puts the line there.
+    renderIn(<RoadmapTable rows={rows} binding={false} labels={labels} {...handlers} />);
+    expect(screen.queryByTestId('roadmap-no-gates')).toBeNull();
+  });
+
   it('writes one day late in the singular', () => {
     const rows = buildRoadmapRows([requirement()], [timelineRow({ schedule_conflict: true, conflict_days: 1 })], []);
     renderIn(<RoadmapTable rows={rows} binding={false} labels={labels} {...handlers} />);

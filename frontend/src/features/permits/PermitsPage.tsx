@@ -319,6 +319,7 @@ export function PermitsPage() {
         rows={rows}
         binding={isBinding(roadmap)}
         can={roadmap?.can}
+        gatesInUse={roadmap?.gates_in_use}
         labels={labels}
         onOpen={(id) => go({ requirement: id })}
         onAdd={() => setDialog('add')}
@@ -388,7 +389,9 @@ export function PermitsPage() {
                 >
                   {t('permits.ui.export_xlsx', { defaultValue: 'Spreadsheet (.xlsx)' })}
                 </Button>
-                <GatedButton gate={gate(roadmap?.can?.publish_frame_document, true)}
+                <GatedButton
+                  // Without gates there is no frame document to store into, so the action is left out, not refused.
+                  gate={{ ...gate(roadmap?.can?.publish_frame_document, true), ...(roadmap?.gates_in_use === false ? { show: false } : {}) }}
                   size="sm"
                   variant="ghost"
                   icon={<FileUp size={14} />}
@@ -406,7 +409,8 @@ export function PermitsPage() {
           <RefusedActions
             testId="file-refused"
             items={[
-              !!exportTarget && [
+              !!exportTarget &&
+                roadmap?.gates_in_use !== false && [
                 t('permits.ui.file.open', { defaultValue: 'Store in project documents' }),
                 gate(roadmap?.can?.publish_frame_document, true),
               ],
