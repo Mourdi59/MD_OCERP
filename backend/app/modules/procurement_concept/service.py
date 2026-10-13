@@ -275,6 +275,15 @@ class ProcurementConceptService:
         """
         return not concept.release_gate_code and (await self.hosting(project_id)).released_from_start
 
+    async def gates_in_use(self, project_id: uuid.UUID) -> bool:
+        """Whether the project has gates at all. A project that never adopted a phase model has none.
+
+        Asked of the gates and not of the model: a pinned model that cannot be
+        read leaves its gates on the project, and there the release is "not
+        known", which is a different answer from "no gates here".
+        """
+        return bool(await self._project_gates(project_id))
+
     async def advance_applies(self, project_id: uuid.UUID, concept: ProcurementConcept) -> bool:
         """Whether a package of this project can be an advance package at all.
 
@@ -633,9 +642,10 @@ class ProcurementConceptService:
                 # No release gate and no gate that asks for the document: no decision would ever look at the
                 # concept. That is a property of the phase model, so it is said here and not as gate evidence.
                 out.append(ev.finding("concept_required_at_no_gate", ev.WARNING, "project"))
-        if gate is None and not from_start:
+        if gate is None and not from_start and await self.gates_in_use(project_id):
             # Without a release gate rule 11 cannot test "before the releasing gate"; say so, never skip it silently.
             # A model that opens procurement in its first phase has no such gate and rule 11 nothing to test.
+            # Neither has a project without gates: it waits for none, and that is how it is run, not a gap.
             out.append(ev.finding("release_gate_unresolved", ev.WARNING, "project"))
         release = await self._release_date(project_id, gate)
         for p in pkgs:
@@ -2290,6 +2300,7 @@ class ProcurementConceptService:
             "release_gate_code": concept.release_gate_code,
             "resolved_release_gate_code": resolved.code if resolved is not None else None,
             "released_from_start": await self.released_from_start(project_id, concept),
+            "gates_in_use": bool(items),
         }
 
     async def advance_release_options(self, project_id: uuid.UUID) -> dict[str, Any]:

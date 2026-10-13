@@ -289,6 +289,8 @@ async def _untagged_model_says_release_unknown(world: World) -> None:
     gates = await svc_call(world, "gate_options", world.project_id)
     assert [g["tagged_release_gate"] for g in gates["items"]] == [False] * len(gates["items"])
     assert gates["resolved_release_gate_code"] is None
+    # The project has gates and none of them is the release gate: that is the gap worth a warning.
+    assert gates["gates_in_use"] is True
     await add_contract_package(world, "W1", "construction")
     await put(world, "W1", OPEN_WORKS)
     found = await svc_call(world, "findings", world.project_id)

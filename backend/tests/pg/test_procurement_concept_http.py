@@ -548,8 +548,10 @@ async def test_a_project_without_a_phase_model_answers_unknown_and_empty_pickers
             gates = reads["/gates"].json()
             assert (gates["items"], gates["resolved_release_gate_code"]) == ([], None)
             assert reads["/advance-releases"].json()["items"] == []
-            # The release is not known, and the findings say so instead of treating it as nothing to wait for.
-            assert "release_gate_unresolved" in {f["code"] for f in reads["/findings"].json()["items"]}
+            # The project never adopted gates. That is how it is run, so both reads say so and no finding
+            # reports a release gate as missing: there is none to miss.
+            assert (gates["gates_in_use"], reads["/concept"].json()["gates_in_use"]) == (False, False)
+            assert "release_gate_unresolved" not in {f["code"] for f in reads["/findings"].json()["items"]}
             # A gate cannot be named either: the project has none.
             named = await c.put(_p(w, "/concept"), json={"release_gate_code": "any_gate"})
             assert (named.status_code, named.json()["detail"]["code"]) == (422, "release_gate_unknown")
