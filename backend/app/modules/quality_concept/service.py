@@ -612,6 +612,58 @@ class QualityConceptService:
             await self._approve_and_bind(concept)
         return concept
 
+    async def gates_in_use(self, project_id: uuid.UUID) -> bool:
+        """Whether the project has governance gates at all.
+
+        Asked of the gates, not of the model: a pinned model that cannot be read leaves its
+        gates on the project, and there the answer to approval is still the gate.
+        """
+        from app.modules.project_governance import public
+
+        return bool(await public.project_gates(self.session, project_id))
+
+    async def approve_by_hand(self, project_id: uuid.UUID, actor: uuid.UUID) -> QualityConcept:
+        """A project without gates: a manager approves the concept in review and it is in force.
+
+        The frozen revision records who approved and when. Under four eyes whoever submitted
+        does not approve.
+        """
+        concept = await self.require_concept(project_id, lock=True)
+        _refuse(
+            caps.hand_approval_refusal(
+                gates_in_use=await self.gates_in_use(project_id),
+                state=concept.state,
+                submitted_by=concept.submitted_by,
+                actor=actor,
+                four_eyes=await self._four_eyes(project_id),
+            )
+        )
+        before = concept.state
+        concept.state = _transition("concept", concept.state, "approve", mirror=True)
+        await self._freeze(concept, "approved", actor)
+        concept.state = _transition("concept", concept.state, "bind", mirror=True)
+        await self.session.flush()
+        await self._audit(project_id, actor, "concept", concept.id, "approved", from_status=before)
+        self._publish("concept.binding", {"project_id": str(project_id), "concept_id": str(concept.id)})
+        return concept
+
+    async def reopen_by_hand(self, project_id: uuid.UUID, rationale: str, actor: uuid.UUID) -> QualityConcept:
+        """A project without gates: a manager reopens the plan in force, with a reason.
+
+        The plan as it stood is frozen as a revision that carries the reason and who gave it;
+        the next submit and approval put the changed plan in force.
+        """
+        concept = await self.require_concept(project_id, lock=True)
+        _refuse(caps.hand_reopen_refusal(gates_in_use=await self.gates_in_use(project_id), state=concept.state))
+        before = concept.state
+        revision = await self._freeze(concept, "reopened", actor)
+        revision.snapshot = {**revision.snapshot, "reopen_reason": rationale}
+        concept.state = _transition("concept", concept.state, "reopen", mirror=True)
+        await self.session.flush()
+        await self._audit(project_id, actor, "concept", concept.id, "reopened", from_status=before)
+        self._publish("concept.reopened", {"project_id": str(project_id), "concept_id": str(concept.id)})
+        return concept
+
     async def act_on_concept(self, project_id: uuid.UUID, action: str, actor: uuid.UUID) -> QualityConcept:
         """User action ``return`` (in_review -> draft)."""
         await self.reconcile_governance(project_id)

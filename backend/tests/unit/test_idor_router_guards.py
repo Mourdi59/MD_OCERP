@@ -455,6 +455,8 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "list_options",
         "get_catalogue",
         "submit_concept",
+        "approve_concept",
+        "reopen_concept",
         "concept_action",
         "revisions",
         "list_standards",

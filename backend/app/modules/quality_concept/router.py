@@ -273,10 +273,20 @@ async def _concept_out(
     errors = [f for f in findings if f.severity == ev.ERROR]
     manage = await _may_manage(project_id, user_id, payload, svc.session)
     submit_reason = "manage_required" if not manage else svc.submit_refusal(concept, errors)
+    gates_in_use = await svc.gates_in_use(project_id)
+    approval = caps.concept_approval(
+        caps.Caller(user_id=_uid(user_id), manage=manage),
+        gates_in_use=gates_in_use,
+        state=concept.state,
+        submitted_by=concept.submitted_by,
+        four_eyes=svc.ctx.four_eyes,
+    )
     (named,) = await _with_people(svc, [_row(concept)])
     return {
         **named,
         "governance_document": await _governance_document(svc, project_id, concept.governance_doc_id),
+        # False on a project that never adopted a phase model: the concept is then approved by hand.
+        "gates_in_use": gates_in_use,
         "catalogue_label": {"key": cat.name_key, "text": cat.labels},
         "catalogue_review_status": cat.review_status.value,
         "applicable_packages": await svc.applicable_packages(concept),
@@ -286,6 +296,7 @@ async def _concept_out(
             "edit_plan": manage and concept.state in ("draft", "revising"),
             "submit": submit_reason is None,
             "submit_reason": submit_reason,
+            **approval,
         },
     }
 
@@ -428,6 +439,36 @@ async def submit_concept(
 ) -> dict[str, Any]:
     svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc.submit(project_id, _uid(user_id)))
+    out = await _concept_out(svc, project_id, user_id, payload)
+    await session.commit()
+    return out
+
+
+@router.post(P + "/concept/approve", dependencies=[MANAGE])
+async def approve_concept(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """Approval by a person, on a project that has no gates; with gates the gate decision approves."""
+    svc = await _project_service(project_id, user_id, session, payload)
+    await _run(svc.approve_by_hand(project_id, _uid(user_id)))
+    svc.ctx.concept_state = await svc.concept_state(project_id)
+    out = await _concept_out(svc, project_id, user_id, payload)
+    await session.commit()
+    return out
+
+
+@router.post(P + "/concept/reopen", dependencies=[MANAGE])
+async def reopen_concept(
+    project_id: uuid.UUID,
+    body: s.RationaleIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> dict[str, Any]:
+    """A manager reopens the plan in force with a reason, on a project that has no gates."""
+    svc = await _project_service(project_id, user_id, session, payload)
+    await _run(svc.reopen_by_hand(project_id, body.rationale, _uid(user_id)))
+    svc.ctx.concept_state = await svc.concept_state(project_id)
     out = await _concept_out(svc, project_id, user_id, payload)
     await session.commit()
     return out

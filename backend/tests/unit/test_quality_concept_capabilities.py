@@ -262,3 +262,37 @@ def test_the_catalogue_cites_publishers_or_names_the_standard() -> None:
             continue
         if fact.get("source_url") is None:
             assert fact.get("review_status") != "verified", fact
+
+
+def test_without_gates_the_concept_is_approved_by_a_second_manager_and_with_gates_never_by_hand() -> None:
+    someone = uuid.uuid4()
+    ask = {"state": "in_review", "submitted_by": someone, "four_eyes": True}
+    # With gates the gate decides: the actions do not exist on the screen.
+    gated = caps.concept_approval(MANAGER, gates_in_use=True, **ask)
+    assert (gated["approve"], gated["approve_reason"], gated["approve_applies"]) == (False, "approved_by_gate", False)
+    assert (gated["reopen_reason"], gated["reopen_applies"]) == ("reopened_by_change_request", False)
+    # Without gates a manager other than the submitter approves; one code per reason it is refused.
+    free = caps.concept_approval(MANAGER, gates_in_use=False, **ask)
+    assert (free["approve"], free["approve_reason"], free["approve_applies"]) == (True, None, True)
+    own = caps.concept_approval(MANAGER, gates_in_use=False, **{**ask, "submitted_by": MANAGER.user_id})
+    assert own["approve_reason"] == "approver_is_submitter"
+    assert caps.concept_approval(
+        MANAGER, gates_in_use=False, **{**ask, "submitted_by": MANAGER.user_id, "four_eyes": False}
+    )["approve"]
+    assert caps.concept_approval(MANAGER, gates_in_use=False, **{**ask, "state": "draft"})["approve_reason"] == (
+        "invalid_transition"
+    )
+    assert caps.concept_approval(EDITOR, gates_in_use=False, **ask)["approve_reason"] == "manage_required"
+    # A plan in force can change again: a manager reopens it.
+    bound = caps.concept_approval(MANAGER, gates_in_use=False, **{**ask, "state": "binding"})
+    assert (bound["reopen"], bound["approve_reason"]) == (True, "invalid_transition")
+    assert free["reopen_reason"] == "invalid_transition"
+    for code, status in (
+        ("approved_by_gate", 409),
+        ("reopened_by_change_request", 409),
+        ("approver_is_submitter", 403),
+    ):
+        assert caps.status_of(code) == status
+        for locale in ("en", "de"):
+            messages = json.loads((MODULE / "messages" / f"{locale}.json").read_text(encoding="utf-8"))
+            assert f"quality_concept.errors.{code}" in messages, (locale, code)

@@ -466,3 +466,73 @@ async def test_a_retest_names_an_earlier_link_of_the_same_record(world: World) -
         owner = {"owner_kind": "expert_report", "owner_id": report["id"]}
         (stored,) = (await c.get(_p(world, "evidence-links"), params=owner)).json()["items"]
         assert (stored["label"], stored["exists"]) == ("business_case business_case", True)
+
+
+async def test_a_project_with_gates_never_approves_its_concept_by_hand(world: World) -> None:
+    async with client_as(world, world.manager, "manager") as c:
+        assert (await c.post(_p(world, "concept"))).status_code == 201
+        concept = (await c.get(_p(world, "concept"))).json()
+        assert concept["gates_in_use"] is True
+        can = concept["can"]
+        assert (can["approve"], can["approve_reason"], can["approve_applies"]) == (False, "approved_by_gate", False)
+        assert (can["reopen"], can["reopen_reason"], can["reopen_applies"]) == (
+            False,
+            "reopened_by_change_request",
+            False,
+        )
+        assert _code(await c.post(_p(world, "concept/approve"))) == (409, "approved_by_gate")
+        reason = {"rationale": "Scope changed"}
+        assert _code(await c.post(_p(world, "concept/reopen"), json=reason)) == (409, "reopened_by_change_request")
+    async with client_as(world, world.outsider, "manager") as c:
+        assert (await c.post(_p(world, "concept/approve"))).status_code == 404
+
+
+async def test_a_project_without_gates_approves_and_reopens_its_concept_over_http(world: World) -> None:
+    """Rule 26, the same walk as the service test, through the routes and the flags the screen reads."""
+    from app.modules.quality_concept import schemas as s
+    from app.modules.teams.models import Team, TeamMembership
+    from tests.pg.governance_fixtures import add_user
+    from tests.pg.test_quality_concept_flow_on_pg import _plan, _units
+
+    async with world.factory() as session:
+        p = await _plan(session)
+        await _units(p)
+        await p.svc.generate_proofs(p.pid, s.ProofGenerateIn(package_ref="P-01", confirm=["om_manual"]))
+        second = await add_user(session, "manager")
+        team = (await session.execute(select(Team).where(Team.project_id == p.pid))).scalars().first()
+        session.add(TeamMembership(team_id=team.id, user_id=second))
+        await session.commit()
+    base = f"{BASE}/projects/{p.pid}/"
+
+    async with client_as(world, p.manager, "manager") as c:
+        concept = (await c.get(base + "concept")).json()
+        assert concept["gates_in_use"] is False
+        assert (concept["can"]["approve_applies"], concept["can"]["approve_reason"]) == (True, "invalid_transition")
+        assert (await c.get(base + "readiness")).json()["gate_detail"] is None
+        submitted = await c.post(base + "concept/submit")
+        assert submitted.status_code == 200, submitted.text
+        assert submitted.json()["can"]["approve_reason"] == "approver_is_submitter"
+        assert _code(await c.post(base + "concept/approve")) == (403, "approver_is_submitter")
+    async with client_as(world, world.outsider, "manager") as c:
+        assert (await c.post(base + "concept/approve")).status_code == 404
+
+    async with client_as(world, second, "manager") as c:
+        assert (await c.get(base + "concept")).json()["can"]["approve"] is True
+        approved = await c.post(base + "concept/approve")
+        assert approved.status_code == 200, approved.text
+        body = approved.json()
+        assert (body["state"], body["can"]["approve"], body["can"]["reopen"]) == ("binding", False, True)
+        last = (await c.get(base + "concept/revisions")).json()["items"][-1]
+        assert (last["reason"], last["created_by"]) == ("approved", str(second))
+        assert last["created_at"]
+        # In force: the plan is closed until it is reopened, and reopening needs a reason.
+        assert (
+            await c.post(base + "proofs", json=_proof("warranty_certificate", package_ref="P-02"))
+        ).status_code == 409
+        assert (await c.post(base + "concept/reopen", json={})).status_code == 422
+        reopened = await c.post(base + "concept/reopen", json={"rationale": "The services package was split in two"})
+        assert reopened.status_code == 200, reopened.text
+        assert reopened.json()["state"] == "revising"
+        made = await c.post(base + "proofs", json=_proof("warranty_certificate", package_ref="P-02"))
+        assert made.status_code == 201, made.text
+        assert _code(await c.post(base + "concept/approve")) == (409, "invalid_transition")

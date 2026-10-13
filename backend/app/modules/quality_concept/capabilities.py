@@ -42,6 +42,9 @@ _STATUS = {
     "concept_not_editable": 409,
     "binding_requires_change_request": 409,
     "concept_missing": 404,
+    "approved_by_gate": 409,
+    "reopened_by_change_request": 409,
+    "approver_is_submitter": 403,
     "edit_required": 403,
     "manage_required": 403,
     "waive_required": 403,
@@ -94,6 +97,55 @@ def plan_refusal(concept_state: str | None) -> str | None:
     if concept_state == "binding":
         return "binding_requires_change_request"
     return None if concept_state in PLAN_OPEN_STATES else "concept_not_editable"
+
+
+def hand_approval_refusal(
+    *, gates_in_use: bool, state: str | None, submitted_by: uuid.UUID | None, actor: uuid.UUID, four_eyes: bool
+) -> str | None:
+    """Approval by a person. Only where the project has no gates: with gates the gate decision approves."""
+    if gates_in_use:
+        return "approved_by_gate"
+    if state != "in_review":
+        return "invalid_transition"
+    if four_eyes and submitted_by == actor:
+        return "approver_is_submitter"
+    return None
+
+
+def hand_reopen_refusal(*, gates_in_use: bool, state: str | None) -> str | None:
+    """Reopening a plan in force by a person. With gates an approved change request reopens it."""
+    if gates_in_use:
+        return "reopened_by_change_request"
+    return None if state == "binding" else "invalid_transition"
+
+
+def concept_approval(
+    caller: Caller, *, gates_in_use: bool, state: str | None, submitted_by: uuid.UUID | None, four_eyes: bool
+) -> dict[str, Any]:
+    """What the concept screen shows of approval: the two actions, why not, and whether they exist here.
+
+    ``applies`` is false on a project with gates: the screen then points to the gate instead of
+    showing a button that can never be pressed.
+    """
+    approve = first(
+        caller.needs("manage"),
+        hand_approval_refusal(
+            gates_in_use=gates_in_use,
+            state=state,
+            submitted_by=submitted_by,
+            actor=caller.user_id,
+            four_eyes=four_eyes,
+        ),
+    )
+    reopen = first(caller.needs("manage"), hand_reopen_refusal(gates_in_use=gates_in_use, state=state))
+    return {
+        "approve": approve is None,
+        "approve_reason": approve,
+        "approve_applies": not gates_in_use,
+        "reopen": reopen is None,
+        "reopen_reason": reopen,
+        "reopen_applies": not gates_in_use,
+    }
 
 
 def plan_row(caller: Caller, concept_state: str | None) -> dict[str, Any]:
