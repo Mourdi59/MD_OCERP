@@ -182,10 +182,14 @@ def _row(row: Any, *skip: str) -> dict[str, Any]:
 class _Ctx:
     """What the flags of one request are built from, read once."""
 
-    def __init__(self, caller: caps.Caller, concept_state: str | None, four_eyes: bool) -> None:
+    def __init__(
+        self, caller: caps.Caller, concept_state: str | None, four_eyes: bool, gates_in_use: bool = True
+    ) -> None:
         self.caller = caller
         self.concept_state = concept_state
         self.four_eyes = four_eyes
+        # Read only for a plan in force, the one state whose refusal depends on it.
+        self.gates_in_use = gates_in_use
 
 
 async def _project_service(
@@ -201,6 +205,8 @@ async def _project_service(
             await svc.concept_state(project_id),
             await svc._four_eyes(project_id),
         )
+        if svc.ctx.concept_state == "binding":
+            svc.ctx.gates_in_use = await svc.gates_in_use(project_id)
     return svc
 
 
@@ -273,10 +279,20 @@ async def _concept_out(
     errors = [f for f in findings if f.severity == ev.ERROR]
     manage = await _may_manage(project_id, user_id, payload, svc.session)
     submit_reason = "manage_required" if not manage else svc.submit_refusal(concept, errors)
+    gates_in_use = await svc.gates_in_use(project_id)
+    approval = caps.concept_approval(
+        caps.Caller(user_id=_uid(user_id), manage=manage),
+        gates_in_use=gates_in_use,
+        state=concept.state,
+        submitted_by=concept.submitted_by,
+        four_eyes=svc.ctx.four_eyes,
+    )
     (named,) = await _with_people(svc, [_row(concept)])
     return {
         **named,
         "governance_document": await _governance_document(svc, project_id, concept.governance_doc_id),
+        # False on a project that never adopted a phase model: the concept is then approved by hand.
+        "gates_in_use": gates_in_use,
         "catalogue_label": {"key": cat.name_key, "text": cat.labels},
         "catalogue_review_status": cat.review_status.value,
         "applicable_packages": await svc.applicable_packages(concept),
@@ -286,6 +302,7 @@ async def _concept_out(
             "edit_plan": manage and concept.state in ("draft", "revising"),
             "submit": submit_reason is None,
             "submit_reason": submit_reason,
+            **approval,
         },
     }
 
@@ -372,7 +389,9 @@ async def list_catalogues(
         )
     return {
         **_page(items),
-        "can": {"pin": svc.ctx.caller.manage and caps.plan_refusal(svc.ctx.concept_state) is None},
+        "can": {
+            "pin": svc.ctx.caller.manage and caps.plan_refusal(svc.ctx.concept_state, svc.ctx.gates_in_use) is None
+        },
     }
 
 
@@ -433,6 +452,36 @@ async def submit_concept(
     return out
 
 
+@router.post(P + "/concept/approve", dependencies=[MANAGE])
+async def approve_concept(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """Approval by a person, on a project that has no gates; with gates the gate decision approves."""
+    svc = await _project_service(project_id, user_id, session, payload)
+    await _run(svc.approve_by_hand(project_id, _uid(user_id)))
+    svc.ctx.concept_state = await svc.concept_state(project_id)
+    out = await _concept_out(svc, project_id, user_id, payload)
+    await session.commit()
+    return out
+
+
+@router.post(P + "/concept/reopen", dependencies=[MANAGE])
+async def reopen_concept(
+    project_id: uuid.UUID,
+    body: s.RationaleIn,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> dict[str, Any]:
+    """A manager reopens the plan in force with a reason, on a project that has no gates."""
+    svc = await _project_service(project_id, user_id, session, payload)
+    await _run(svc.reopen_by_hand(project_id, body.rationale, _uid(user_id)))
+    svc.ctx.concept_state = await svc.concept_state(project_id)
+    out = await _concept_out(svc, project_id, user_id, payload)
+    await session.commit()
+    return out
+
+
 @router.post(P + "/concept/{action}", dependencies=[MANAGE])
 async def concept_action(
     project_id: uuid.UUID,
@@ -464,7 +513,7 @@ async def list_standards(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     svc = await _project_service(project_id, user_id, session, payload)
-    plan = caps.plan_row(svc.ctx.caller, svc.ctx.concept_state)
+    plan = caps.plan_row(svc.ctx.caller, svc.ctx.concept_state, svc.ctx.gates_in_use)
     return _page([{**_row(r), **plan} for r in await svc.repo.list(AppliedStandard, project_id)])
 
 
@@ -474,7 +523,7 @@ async def create_standard(
 ) -> dict[str, Any]:
     svc = await _project_service(project_id, user_id, session, payload)
     row = await _run(svc.create_standard(project_id, body))
-    out = {**_row(row), **caps.plan_row(svc.ctx.caller, svc.ctx.concept_state)}
+    out = {**_row(row), **caps.plan_row(svc.ctx.caller, svc.ctx.concept_state, svc.ctx.gates_in_use)}
     await session.commit()
     return out
 
@@ -491,7 +540,7 @@ async def patch_standard(
     svc = await _project_service(project_id, user_id, session, payload)
     await _run(svc._plan_concept(project_id))
     row = await _run(svc.patch_row(AppliedStandard, project_id, row_id, body.model_dump(exclude_unset=True)))
-    out = {**_row(row), **caps.plan_row(svc.ctx.caller, svc.ctx.concept_state)}
+    out = {**_row(row), **caps.plan_row(svc.ctx.caller, svc.ctx.concept_state, svc.ctx.gates_in_use)}
     await session.commit()
     return out
 
@@ -704,6 +753,7 @@ def _proof_out(
         **caps.proof(
             ctx.caller,
             concept_state=ctx.concept_state,
+            gates_in_use=ctx.gates_in_use,
             decision=p.decision,
             requested_by=p.requested_by,
             rationale=p.decision_rationale,
@@ -940,7 +990,7 @@ async def list_stages(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     svc = await _project_service(project_id, user_id, session, payload)
-    plan = caps.plan_row(svc.ctx.caller, svc.ctx.concept_state)
+    plan = caps.plan_row(svc.ctx.caller, svc.ctx.concept_state, svc.ctx.gates_in_use)
     rows = await svc.repo.list(CommissioningStageDef, project_id, CommissioningStageDef.order)
     return _page(await _with_people(svc, [{**_row(r), **plan} for r in rows]))
 
@@ -1223,6 +1273,7 @@ async def _unit_dict(
         **caps.acceptance_unit(
             svc.ctx.caller,
             concept_state=svc.ctx.concept_state,
+            gates_in_use=svc.ctx.gates_in_use,
             state=u.state,
             has_regime=regime is not None,
             blocked=bool(blocking),

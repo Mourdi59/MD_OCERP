@@ -697,7 +697,7 @@ async def test_the_unit_list_reads_names_and_acts_once_for_all_units(monkeypatch
         deemed_dates=nothing,
         proposed_effects=proposed,
         repo=SimpleNamespace(effects_of=effects_of),
-        ctx=SimpleNamespace(caller=caller, concept_state="draft"),
+        ctx=SimpleNamespace(caller=caller, concept_state="draft", gates_in_use=True),
     )
     units = [
         AcceptanceUnit(

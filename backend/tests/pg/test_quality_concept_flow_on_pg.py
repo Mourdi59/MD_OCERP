@@ -605,6 +605,62 @@ async def test_a_frame_document_whose_event_never_arrived_is_followed_by_the_nex
     assert concept.state == "binding"
 
 
+async def test_a_project_without_gates_takes_its_concept_from_draft_to_in_force_and_back(pg_session) -> None:
+    """Rule 26: no phase model, no gates. A second manager approves; a manager reopens with a reason."""
+    p = await _plan(pg_session)
+    svc, pid = p.svc, p.pid
+    await _units(p)
+    await svc.generate_proofs(pid, s.ProofGenerateIn(package_ref="P-01", confirm=["om_manual"]))
+    second = await add_user(pg_session, "manager")
+    assert await svc.gates_in_use(pid) is False
+
+    err = await _refused(svc.approve_by_hand(pid, second))
+    assert (err.code, err.status_code) == ("invalid_transition", 409)
+    await svc.submit(pid, p.manager)
+    concept = await svc.require_concept(pid)
+    assert concept.state == "in_review"
+    # Four eyes is on where no model says otherwise: the submitter does not approve.
+    err = await _refused(svc.approve_by_hand(pid, p.manager))
+    assert (err.code, err.status_code) == ("approver_is_submitter", 403)
+
+    await svc.approve_by_hand(pid, second)
+    assert concept.state == "binding"
+    approved = (await svc.revisions(pid))[-1]
+    assert (approved.reason, approved.created_by) == ("approved", second)
+    assert approved.created_at is not None
+
+    # What approval gives: the plan is in force and closed, until a manager reopens it with a reason.
+    extra = s.ProofIn(
+        package_ref="P-02",
+        evidence_type="warranty_certificate",
+        deliverer_role="contractor",
+        required_by_kind="date",
+        required_by_ref="2027-03-01",
+    )
+    err = await _refused(svc.create_proof(pid, extra, p.manager))
+    assert (err.code, err.status_code) == ("binding_requires_reopen", 409)
+    await svc.reopen_by_hand(pid, "The services package was split in two", p.manager)
+    assert concept.state == "revising"
+    reopened = (await svc.revisions(pid))[-1]
+    assert (reopened.reason, reopened.created_by) == ("reopened", p.manager)
+    assert reopened.snapshot["reopen_reason"] == "The services package was split in two"
+    await svc.create_proof(pid, extra, p.manager)
+    err = await _refused(svc.reopen_by_hand(pid, "Again", p.manager))
+    assert (err.code, err.status_code) == ("invalid_transition", 409)
+
+    # The changed plan goes the same way again.
+    await svc.submit(pid, second)
+    await svc.approve_by_hand(pid, p.manager)
+    assert concept.state == "binding"
+    assert [r.reason for r in await svc.revisions(pid)] == [
+        "submitted",
+        "approved",
+        "reopened",
+        "submitted",
+        "approved",
+    ]
+
+
 # ── the documentation set becomes closeout slots and FM data deliverables ───
 
 
