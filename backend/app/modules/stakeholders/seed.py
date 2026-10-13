@@ -57,7 +57,7 @@ async def seed_stakeholders_demo(session: AsyncSession, project_ids: Iterable[uu
     from app.modules.projects.models import Project
     from app.modules.stakeholders.models import StakeholderSettings
 
-    totals = {"projects": 0, "stakeholders": 0, "commitments": 0}
+    totals = {"projects": 0, "stakeholders": 0, "commitments": 0, "unfilled_roles": 0}
     ids = list(project_ids)
     if not ids:
         return totals
@@ -434,4 +434,11 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             communicated_back_at=datetime.now(UTC) - timedelta(days=1),
             today=today,
         )
-    return {"stakeholders": len(ids), "commitments": commitments}
+    # A demo project may have its owner and nobody else: the roles a second and a third person would
+    # hold stay vacant, which the organisation screen shows as it is. Legal, so said at info.
+    unfilled = [role for role, user in (("project_manager", pm), ("communications_lead", comms)) if user == owner]
+    if pm != owner and comms == pm:
+        unfilled.append("communications_lead")
+    if unfilled:
+        logger.info("stakeholders demo seed for %s: nobody on the team for %s", project_id, ", ".join(unfilled))
+    return {"stakeholders": len(ids), "commitments": commitments, "unfilled_roles": len(unfilled)}
