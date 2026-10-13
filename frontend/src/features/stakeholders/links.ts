@@ -103,7 +103,11 @@ export function useTaskOptions(projectId: string, t: TFn, enabled = true): LinkO
 export interface GateChoices extends LinkOptions {
   /** False once the server says the project is run without gates. Until it answers, gates count as in use. */
   inUse: boolean;
+  /** The project events only a gate can cause, as the server lists them. */
+  gateBound: string[];
 }
+
+const NO_EVENTS: string[] = [];
 
 /** The gates of the project's phase model, in their order. The id of a choice is the gate code. */
 export function useGateOptions(projectId: string, enabled = true): GateChoices {
@@ -115,7 +119,12 @@ export function useGateOptions(projectId: string, enabled = true): GateChoices {
     staleTime: 60_000,
   });
   const options = useMemo(() => (query.data?.items ?? []).map((g) => ({ id: g.code, label: g.name || g.code })), [query.data]);
-  return { options, loading: query.isLoading, inUse: query.data?.gates_in_use ?? true };
+  return {
+    options,
+    loading: query.isLoading,
+    inUse: query.data?.gates_in_use ?? true,
+    gateBound: query.data?.gate_bound_event_triggers ?? NO_EVENTS,
+  };
 }
 
 /** The requirements of the project's requirement sets, each named by what it is about and its set. */

@@ -141,6 +141,15 @@ export interface StakeholderSettings {
   framework: Framework;
   /** What the caller may do on this project, decided by the server. */
   can: { edit: boolean; read_personal: boolean; manage_organisation: boolean };
+  /** Whether each document can be filed for the gate: not at all on a project without gates, or not now, with the reason. */
+  can_file: Record<ExportDocument, FilePermission>;
+}
+
+export interface FilePermission {
+  /** False when the project has no frame documents; the filing action is then not shown. */
+  applies: boolean;
+  allowed: boolean;
+  reason: string | null;
 }
 
 export interface SettingsInput {
@@ -698,6 +707,8 @@ export interface ProjectGateList {
   items: ProjectGate[];
   /** False for a project run without gates: nothing would ever set off a line that waits for one. */
   gates_in_use: boolean;
+  /** The listened project events only a gate can cause; refused like the gate trigger on a project without gates. */
+  gate_bound_event_triggers?: string[];
 }
 
 /** Empty when the project has no phase model. */

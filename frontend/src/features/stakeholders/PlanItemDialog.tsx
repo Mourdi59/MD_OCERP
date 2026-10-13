@@ -51,6 +51,8 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
   // A project run without gates: the server refuses a line that waits for one, so it is not offered.
   // A line that already waits for a gate keeps showing it, with the reason it will never start.
   const gatesOff = !gateChoices.inUse;
+  // Which starts need a gate is the server's list: the gate itself and the events only a gate causes.
+  const needsGates = (start: string) => start === 'gate' || gateChoices.gateBound.includes(start);
   const [draft, setDraft] = useState({
     title: item?.title ?? '',
     purpose: item?.purpose ?? '',
@@ -236,8 +238,15 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
           </WideModalField>
           <WideModalField
             label={t('stakeholders.ui.plan.start', { defaultValue: 'What sets it off' })}
+            error={
+              gatesOff && draft.start !== 'gate' && needsGates(draft.start)
+                ? t('stakeholders.ui.plan.gates_off_stored', {
+                    defaultValue: 'This project does not use gates, so nothing sets this line off. Give it fixed dates instead.',
+                  })
+                : undefined
+            }
             hint={
-              gatesOff && draft.start !== 'gate'
+              gatesOff && !needsGates(draft.start)
                 ? t('stakeholders.ui.plan.gates_off', {
                     defaultValue: 'This project does not use gates, so a gate cannot set a line off.',
                   })
@@ -259,7 +268,7 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
                 <option value="kept">{t('stakeholders.ui.start.kept', { defaultValue: 'Another project event (kept as it is)' })}</option>
               )}
               {(Object.keys(PLAN_START) as PlanStart[])
-                .filter((s) => s !== 'gate' || !gatesOff || draft.start === 'gate' || storedStart === 'gate')
+                .filter((s) => !gatesOff || !needsGates(s) || draft.start === s || storedStart === s)
                 .map((s) => (
                 <option key={s} value={s}>
                   {vocab(t, PLAN_START, s)}

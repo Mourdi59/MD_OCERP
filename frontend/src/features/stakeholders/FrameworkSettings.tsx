@@ -30,7 +30,7 @@ import {
 } from './api';
 import { FIELD_CLASS, GatedButton, RefusalBox, useWrite } from './StakeholderBits';
 import { useFrameworks } from './hooks';
-import { itemName, type LabelContext } from './labels';
+import { FILE_BLOCK, itemName, vocab, type LabelContext } from './labels';
 
 /** The name of a framework in the catalogue list. */
 export function frameworkName(labels: LabelContext, fw: Pick<FrameworkSummary, 'id' | 'name'>): string {
@@ -217,6 +217,9 @@ export function ExportBar({ projectId, settings, document }: { projectId: string
   // A binding frame document changes only through a change request, so the
   // server asks for a reason. The fields appear once it has said so.
   const asksReason = file.refusal?.code === 'change_reason_required';
+  // Whether filing exists here and whether it works now is the server's answer. A project run
+  // without gates has no frame documents, so only the downloads are shown there.
+  const filing = settings.can_file[document];
 
   const download = async (format: ExportFormat) => {
     setBusy(format);
@@ -248,20 +251,25 @@ export function ExportBar({ projectId, settings, document }: { projectId: string
             {format.toUpperCase()}
           </Button>
         ))}
-        <GatedButton
-          allowed={settings.can.manage_organisation}
-          capability="organisation"
-          size="sm"
-          variant="secondary"
-          icon={<FileCheck2 size={13} />}
-          loading={file.busy}
-          disabled={asksReason && !reason.trim()}
-          onClick={() => file.run(undefined)}
-          data-testid={`export-${document}-file`}
-        >
-          {t('stakeholders.ui.export.file', { defaultValue: 'File for the gate' })}
-        </GatedButton>
+        {filing.applies && (
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={<FileCheck2 size={13} />}
+            loading={file.busy}
+            disabled={!filing.allowed || (asksReason && !reason.trim())}
+            onClick={() => file.run(undefined)}
+            data-testid={`export-${document}-file`}
+          >
+            {t('stakeholders.ui.export.file', { defaultValue: 'File for the gate' })}
+          </Button>
+        )}
       </div>
+      {filing.applies && !filing.allowed && (
+        <p className="text-xs text-content-tertiary" data-testid={`export-${document}-blocked`} data-reason={filing.reason ?? undefined}>
+          {vocab(t, FILE_BLOCK, filing.reason ?? 'no_permission')}
+        </p>
+      )}
       {asksReason ? (
         <div className="space-y-2" data-testid={`export-${document}-reason`}>
           <p className="text-sm text-content-secondary">

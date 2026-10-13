@@ -275,11 +275,40 @@ describe('the documents for the gate', () => {
     expect(page.queryByTestId('export-register-reason')).toBeNull();
   });
 
-  it('lets a viewer download but not file, and says who can', () => {
-    show(viewer());
+  const blockedBy = (reason: string) => {
+    const off = { applies: true, allowed: false, reason };
+    return settings({ can_file: { register: off, organisation: off } });
+  };
+
+  it('lets a viewer download but not file, and says so in words', () => {
+    show(blockedBy('no_permission'));
     expect(file().disabled).toBe(true);
-    expect(page.getByTestId('disabled-reason').getAttribute('data-reason')).toBe('organisation');
+    const note = page.getByTestId('export-register-blocked');
+    expect(note.getAttribute('data-reason')).toBe('no_permission');
+    expect(note.textContent).toBe('Your role can download this document but not file it for the gate.');
     expect((page.getByTestId('export-register-pdf') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('says what is missing when the gate has no place for the document yet', () => {
+    show(blockedBy('frame_document_missing'));
+    expect(file().disabled).toBe(true);
+    expect(page.getByTestId('export-register-blocked').textContent).toContain('Create its frame document');
+    fireEvent.click(file());
+    expect(mocked.fileFrameDocument).not.toHaveBeenCalled();
+  });
+
+  it('offers only the downloads on a project run without gates', () => {
+    const none = { applies: false, allowed: false, reason: 'gates_not_in_use' };
+    show(settings({ can_file: { register: none, organisation: none } }));
+    expect(page.queryByTestId('export-register-file')).toBeNull();
+    expect(page.queryByTestId('export-register-blocked')).toBeNull();
+    expect(page.getByTestId('export-register-pdf')).toBeTruthy();
+    expect(page.getByTestId('export-register-xlsx')).toBeTruthy();
+  });
+
+  it('reads a reason it does not know as words, never as a code', () => {
+    show(blockedBy('brand_new_reason'));
+    expect(page.getByTestId('export-register-blocked').textContent).toBe('Brand new reason');
   });
 
   it('files the organisation document under its own name', async () => {

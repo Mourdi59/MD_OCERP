@@ -287,6 +287,30 @@ describe('planning a communication', () => {
     expect(field('#plan-starts')).toBeTruthy();
   });
 
+  const withoutGates = {
+    items: [],
+    gates_in_use: false,
+    gate_bound_event_triggers: ['project_governance.gate.decided', 'project_governance.phase.changed'],
+  };
+
+  it('offers no project event only a gate can cause on a project run without gates', async () => {
+    mocked.listGates.mockResolvedValueOnce(withoutGates);
+    dialog();
+    const starts = () => [...field('#plan-start').querySelectorAll('option')].map((o) => (o as HTMLOptionElement).value);
+    await waitFor(() => expect(starts()).not.toContain('gate'));
+    expect(starts()).toEqual(['schedule', 'stakeholders.commitment.fulfilled']);
+  });
+
+  it('keeps a stored line that waits for a decided gate on such a project, and says it never starts', async () => {
+    mocked.listGates.mockResolvedValueOnce(withoutGates);
+    dialog(planItem({ trigger_kind: 'event', trigger_ref: 'project_governance.gate.decided', frequency: '', starts_on: null }));
+    expect(
+      await page.findByText('This project does not use gates, so nothing sets this line off. Give it fixed dates instead.'),
+    ).toBeTruthy();
+    expect(field('#plan-start').value).toBe('project_governance.gate.decided');
+    expect(page.queryByText('This project does not use gates, so a gate cannot set a line off.')).toBeNull();
+  });
+
   it('names the project event a line waits for', async () => {
     mocked.createPlanItem.mockResolvedValue(planItem());
     const onSaved = dialog();
