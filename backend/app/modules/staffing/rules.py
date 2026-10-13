@@ -477,6 +477,10 @@ def compliance_summary(
     rest. A kind that fewer than ``min_group`` of them have to hold is left out,
     because a count of one or two is a statement about a person. A kind of a
     special category (health) is left out whatever the size.
+
+    When every one of them stands in the same state, the split would say that
+    state of each of them by name: the row then carries the total only and
+    ``uniform`` is true.
     """
     hidden = set(special)
     rows = list(people)
@@ -490,8 +494,12 @@ def compliance_summary(
             if state in counts:
                 counts[state] += 1
         required = sum(counts.values())
-        if required >= min_group:
-            out.append({"document_kind": kind, "required": required, **counts})
+        if required < min_group:
+            continue
+        if required in counts.values():
+            out.append({"document_kind": kind, "required": required, "uniform": True})
+        else:
+            out.append({"document_kind": kind, "required": required, "uniform": False, **counts})
     return out
 
 

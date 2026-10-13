@@ -561,9 +561,12 @@ async def test_before_the_gate_into_construction_the_seed_puts_nobody_on_site(fa
     assert ready["key_roles_required"] is True
     # Key roles this gate does not ask for are still vacant, and named as such.
     assert {"commissioning_manager", "operator_plant_manager"} <= set(ready["open_key_roles"])
-    states = {i.code: i.state for i in await _evidence(w, PERSONNEL_AREA)}
+    found = await _evidence(w, PERSONNEL_AREA)
+    states = {i.code: i.state for i in found}
     assert "not_met" not in states.values() and "unknown" not in states.values()
     assert states["staffing_key_roles_filled"] == "met"
+    # One warning for the decider, naming the vacant key roles this gate does not ask for.
+    assert [i.detail for i in found if i.state == "warning"] == ["commissioning_manager, operator_plant_manager"]
     matrix = await call(w, "compliance_matrix", owner)
     cells = {c["state"] for row in matrix["items"] for c in row["cells"].values()}
     assert {"valid", "expiring", "missing", "waived"} <= cells
