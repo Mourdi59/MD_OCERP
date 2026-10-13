@@ -171,14 +171,16 @@ class _Authority:
 class GovernanceService:
     """Orchestrates models, gates, documents, checks, decisions and change requests."""
 
+    # A caller that works inside a savepoint it may roll back sets a list here and
+    # publishes it after the release: a deferred event survives a rolled-back
+    # savepoint and would otherwise fire for rows that do not exist. Declared on
+    # the class so that publishing never depends on ``__init__`` having run.
+    outbox: list[tuple[str, dict[str, Any]]] | None = None
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.repo = GovernanceRepository(session)
         self.last_evidence: list[CollectedEvidence] = []
-        # A caller that works inside a savepoint it may roll back sets a list here and
-        # publishes it after the release: a deferred event survives a rolled-back
-        # savepoint and would otherwise fire for rows that do not exist.
-        self.outbox: list[tuple[str, dict[str, Any]]] | None = None
 
     # ── helpers ────────────────────────────────────────────────────────────
 

@@ -23,6 +23,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import app.modules.project_governance.events as gov_events
+from app.core import demo_cast, demo_enrichment
+from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, is_reserved_mail_domain
 from app.core.partner_pack import discovery
 from app.modules.project_governance import catalogue as cat
 from app.modules.project_governance import catalogue_packs, public, seed
@@ -60,13 +62,15 @@ async def factory(monkeypatch: pytest.MonkeyPatch):
     evd._REGISTRY.update(providers)
 
 
-async def _estate(factory, *demo_ids: str, locale: str = "en") -> dict[str, uuid.UUID]:
+async def _estate(factory, *demo_ids: str, locale: str = "en", owner_only: bool = False) -> dict[str, uuid.UUID]:
+    """Demo projects with the three demo logins, or (``owner_only``) as a pack install leaves them."""
     from app.modules.projects.models import Project
     from app.modules.users.models import User
 
     async with factory() as s:
         users: dict[str, uuid.UUID] = {}
-        for email, role in ((DEMO, "admin"), (ESTIMATOR, "estimator"), (MANAGER, "manager")):
+        logins = ((DEMO, "admin"), (ESTIMATOR, "estimator"), (MANAGER, "manager"))
+        for email, role in logins[:1] if owner_only else logins:
             users[email] = uuid.uuid4()
             s.add(
                 User(
@@ -96,7 +100,7 @@ async def _estate(factory, *demo_ids: str, locale: str = "en") -> dict[str, uuid
                 )
             )
         await s.commit()
-    return projects | {"manager": users[MANAGER]}
+    return projects | {"manager": users.get(MANAGER, users[DEMO])}
 
 
 async def _seed(factory, estate: dict[str, uuid.UUID]) -> dict[str, Any]:
@@ -422,8 +426,7 @@ async def test_a_demo_file_nobody_can_read_fails_the_result_although_every_proje
 
 
 async def test_a_seed_that_writes_nothing_names_every_project_and_why(factory, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(seed, "_DECIDER_EMAIL", "nobody@openconstructionerp.com")
-    estate = await _estate(factory, "office-london", "medical-us")
+    estate = await _estate(factory, "office-london", "medical-us", owner_only=True)
     asked = estate | {"gone": uuid.uuid4()}
     result = await _seed(factory, asked)
     assert result["projects"] == 0
@@ -434,6 +437,129 @@ async def test_a_seed_that_writes_nothing_names_every_project_and_why(factory, m
     }
     assert len(result["fallbacks"]) == 3
     assert result["ok"] is False
+
+
+# ── a project with nobody but its owner ──
+
+
+async def _users(factory) -> dict[str, Any]:
+    from app.modules.users.models import User
+
+    async with factory() as s:
+        return {u.email: u for u in (await s.execute(select(User))).scalars()}
+
+
+async def test_an_installation_without_the_demo_logins_gets_a_cast_and_every_project_its_moment(
+    factory, caplog: pytest.LogCaptureFixture
+) -> None:
+    """What a pack install leaves: demo projects, their owner, nobody else."""
+    estate = await _estate(factory, "office-london", "residential-berlin", "medical-us", owner_only=True)
+    pids = [v for k, v in estate.items() if k != "manager"]
+    with caplog.at_level(logging.INFO):
+        cast = await demo_enrichment._demo_cast(factory)
+        seeded = await demo_enrichment._seed_governance(factory, pids)
+    assert cast == {"present": [], "created": ["decider", "cost"], "blocked": [], "ok": True}
+    assert seeded["fallbacks"] == []
+    assert seeded["ok"] is True
+    assert _told(seeded, estate) == {
+        "office-london": ("first_gate", "first_gate", None),
+        "residential-berlin": ("execution", "execution", None),
+        "medical-us": ("near_handover", "near_handover", None),
+    }
+    loud = [
+        f"{r.name}: {r.getMessage()}"
+        for r in caplog.records
+        if r.levelno >= logging.WARNING and r.name.startswith(("app.modules.project_governance", "app.core.demo"))
+    ]
+    assert loud == []
+
+    users = await _users(factory)
+    stand_ins = {u.email: u for u in users.values() if (u.metadata_ or {}).get(demo_cast.CAST_TAG)}
+    assert set(stand_ins) == {"demo-decider@example.com", "demo-cost-owner@example.com"}
+    # No stand-in is a login of the passwordless demo sign-in, and none can receive mail.
+    assert not set(stand_ins) & DEMO_ACCOUNT_EMAILS
+    assert all(is_reserved_mail_domain(email) for email in stand_ins)
+    # The installation still reads as one nobody has taken over: the next person to
+    # register is the first real one, and is handed admin.
+    from app.modules.users.repository import UserRepository
+
+    async with factory() as s:
+        users_repo = UserRepository(s)
+        assert await users_repo.has_real_user() is False
+        assert await users_repo.has_real_active_user() is False
+    decisions = await _decisions(factory, estate["residential-berlin"])
+    assert decisions and {d.decided_by for d in decisions} == {stand_ins["demo-decider@example.com"].id}
+    assert estate["manager"] not in {d.decided_by for d in decisions}  # the owner decided nothing
+
+
+async def test_the_cast_is_the_demo_logins_where_the_installation_has_them(factory) -> None:
+    estate = await _estate(factory, "medical-us")
+    cast = await demo_enrichment._demo_cast(factory)
+    assert cast == {"present": ["decider", "cost"], "created": [], "blocked": [], "ok": True}
+    assert set(await _users(factory)) == {DEMO, ESTIMATOR, MANAGER}
+    async with factory() as s:
+        assert (await demo_cast.find_cast(s))["decider"] == estate["manager"]
+
+
+async def test_filling_the_cast_twice_creates_nobody_twice(factory) -> None:
+    await _estate(factory, "office-london", owner_only=True)
+    first = await demo_enrichment._demo_cast(factory)
+    before = set(await _users(factory))
+    second = await demo_enrichment._demo_cast(factory)
+    assert first["created"] == ["decider", "cost"]
+    assert second == {"present": ["decider", "cost"], "created": [], "blocked": [], "ok": True}
+    assert set(await _users(factory)) == before
+
+
+async def test_an_address_that_belongs_to_somebody_is_not_taken_over(factory) -> None:
+    from app.modules.users.models import User
+
+    estate = await _estate(factory, "medical-us", owner_only=True)
+    real = uuid.uuid4()
+    async with factory() as s:
+        s.add(
+            User(
+                id=real,
+                email="demo-decider@example.com",
+                hashed_password="x",
+                full_name="Somebody",
+                role="viewer",
+                locale="en",
+                is_active=True,
+                metadata_={},
+            )
+        )
+        await s.commit()
+    cast = await demo_enrichment._demo_cast(factory)
+    assert (cast["blocked"], cast["created"], cast["ok"]) == (["decider"], ["cost"], False)
+    users = await _users(factory)
+    assert (users["demo-decider@example.com"].role, users["demo-decider@example.com"].full_name) == (
+        "viewer",
+        "Somebody",
+    )
+    result = await _seed(factory, estate)
+    assert _told(result, estate) == {"medical-us": ("near_handover", None, "no_decider")}
+
+
+async def test_the_stand_ins_leave_with_the_last_demo_project_and_not_before(factory) -> None:
+    from app.config import get_settings
+    from app.modules.projects.models import Project
+    from app.modules.projects.service import ProjectService
+
+    estate = await _estate(factory, "office-london", owner_only=True)
+    await demo_enrichment._demo_cast(factory)
+    await demo_enrichment._seed_governance(factory, [estate["office-london"]])
+    async with factory() as s:
+        assert await demo_cast.remove_demo_cast(s) == 0  # a demo project still names them
+        await s.commit()
+    assert len(await _users(factory)) == 3
+
+    async with factory() as s:
+        assert await ProjectService(s, get_settings()).purge_demo_projects() == 1
+        await s.commit()
+    async with factory() as s:
+        assert (await s.execute(select(Project))).scalars().all() == []
+    assert set(await _users(factory)) == {DEMO}
 
 
 async def test_a_second_run_skips_what_the_first_one_seeded_and_reports_no_fallback(factory) -> None:

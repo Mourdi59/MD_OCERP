@@ -63,3 +63,17 @@ def test_the_enrichment_hands_back_what_both_governance_steps_reported() -> None
     assert '{"seed": await _seed_governance(async_session_factory, _demo_pids)}' in source
     returns = [node for node in ast.walk(tree) if isinstance(node, ast.Return)]
     assert returns and all(isinstance(r.value, ast.Name) and r.value.id == "report" for r in returns)
+
+
+def test_the_cast_is_filled_before_governance_is_seeded() -> None:
+    """Without a decider who owns no area the governance seed writes nothing at all."""
+    tree = ast.parse(inspect.getsource(demo_enrichment))
+    cast = _line_of(
+        tree,
+        lambda n: isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "_demo_cast",
+    )
+    governance = _line_of(
+        tree,
+        lambda n: isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "_seed_governance",
+    )
+    assert cast < governance

@@ -370,7 +370,10 @@ def test_a_project_that_got_nothing_is_reported_and_one_seeded_earlier_is_not() 
     assert (nothing["fallback_reason"], nothing["named"]) == ("no_decider", False)
     assert (earlier["fallback_reason"], earlier["skipped"]) == (None, True)
     result = story.seed_result([nothing, earlier])
-    assert (result["projects"], result["fallbacks"], result["ok"]) == (0, [nothing], False)
+    # Reported, and not a failure of the run: nobody placed this project.
+    assert (result["projects"], result["fallbacks"], result["ok"]) == (0, [nothing], True)
+    placed = story.placement(PID, "medical-us", "near_handover", None, "no_decider")
+    assert story.seed_result([nothing, placed])["ok"] is False
 
 
 def test_a_miss_without_a_known_reason_still_carries_one() -> None:

@@ -74,7 +74,14 @@ def _shape(table: sa.Table) -> dict[str, Any]:
     return {
         "columns": {c.name: (c.type.compile(dialect=_PG), bool(c.nullable), _default(c)) for c in table.columns},
         "primary_key": [c.name for c in table.primary_key.columns],
-        "indexes": {i.name: ([c.name for c in i.columns], bool(i.unique)) for i in table.indexes},
+        # ``app.core.pg_optimizations`` hangs ``ix_oe_governance_<table>_...`` on the
+        # metadata of the models whenever a test before this one built a schema.
+        # No revision reproduces those; the indexes the module declares are ``ix_oe_gov_*``.
+        "indexes": {
+            i.name: ([c.name for c in i.columns], bool(i.unique))
+            for i in table.indexes
+            if not str(i.name).startswith("ix_oe_governance_")
+        },
         "unique": {
             u.name: [c.name for c in u.columns] for u in table.constraints if isinstance(u, sa.UniqueConstraint)
         },
