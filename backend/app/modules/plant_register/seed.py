@@ -563,7 +563,8 @@ async def _seed_project(
             )
             counts["quotes"] += 1
         if before_gate and spec["quotes"]:
-            # Between a few days from now and just before the gate, a different day per item.
+            # Between a few days from now and just before the gate, a different day per item. The first
+            # item, the transformer, is the most urgent: the commitment that releases its order reads this date.
             slack = 4 + (index * 5) % (GATE_TARGET_DAYS - 6)
             await _order_before_the_gate(svc, project_id, item.id, today, slack, owner)
         for category, text, qty, unit in spec["spares"]:
@@ -647,7 +648,13 @@ async def _seed_project(
 async def _seed_slot(
     svc: Any, project_id: uuid.UUID, item_id: uuid.UUID, state: str, today: date, money: str, owner: uuid.UUID
 ) -> None:
-    """A slot held free of charge, or one still on request with the fee the manufacturer asks."""
+    """A slot held free of charge, or one still on request with the fee the manufacturer asks.
+
+    The held slot costs nothing and states no amount: the value of the order
+    that converts it is the commitment module's to plan and release, and this
+    seed runs before that module's, so it names no commitment and repeats no
+    figure of it.
+    """
     held = state == "held"
     data: dict[str, Any] = {
         "vendor_name": "Transformer manufacturer A" if held else "Generator packager",
@@ -657,7 +664,9 @@ async def _seed_slot(
         "fee_credited_to_order": not held,
         "convert_by_date": today + timedelta(days=45),
         "terms": (
-            "Slot held without a fee until the conversion date; it lapses if the order is not signed by then."
+            "The manufacturer holds the slot without a fee until the conversion date; the slot itself binds no "
+            "money. Authority to sign the supply order is released as a commitment of the project, and the slot "
+            "lapses if the order is not signed by that date."
             if held
             else "Fee non-refundable, credited in full to the order if signed by the conversion date."
         ),

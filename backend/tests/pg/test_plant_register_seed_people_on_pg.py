@@ -156,3 +156,56 @@ async def test_a_route_that_names_somebody_outside_the_project_is_left_alone(
     assert await _papers(world, pid) == ["draft"] and out["papers_left_draft"] == 1
     assert await _rows_naming(world, world.outsider) == before
     assert _above_info(caplog) == []
+
+
+async def _seeded(w: World) -> uuid.UUID:
+    pid = await _demo_project(w, [w.editor])
+    async with w.factory() as s:
+        out = await seed.seed_plant_register_demo(s, [pid])
+        await s.commit()
+    assert out["projects"] == 1
+    return pid
+
+
+async def test_the_held_slot_of_the_transformer_binds_no_money_and_says_where_money_is_bound(world: World) -> None:
+    import re
+
+    from app.modules.plant_register.models import SlotReservation
+
+    pid = await _seeded(world)
+    async with world.factory() as s:
+        item = (
+            await s.execute(select(PlantItem).where(PlantItem.project_id == pid, PlantItem.code == "PL-001"))
+        ).scalar_one()
+        slot = (await s.execute(select(SlotReservation).where(SlotReservation.plant_item_id == item.id))).scalar_one()
+    # One slot story: the slot is held free of charge, and the amount of a reservation lives only in the
+    # commitment the project plans for it. The seed repeats no figure and invents no link.
+    assert (item.status, slot.status, slot.reservation_fee, slot.commitment_item_id) == ("enquired", "held", 0, None)
+    assert "commitment" in slot.terms and "without a fee" in slot.terms
+    assert "costs" not in slot.terms
+    assert re.search(r"\d", slot.terms) is None
+
+
+async def test_the_seeded_switchgear_can_still_be_given_an_owner_furnished_route(world: World) -> None:
+    from app.modules.plant_register.service import PlantService
+
+    pid = await _seeded(world)
+    async with world.factory() as s:
+        svc = PlantService(s)
+        item = (
+            await s.execute(select(PlantItem).where(PlantItem.project_id == pid, PlantItem.code == "PL-002"))
+        ).scalar_one()
+        assert (item.status, item.procurement_route) == ("route_set", seed.ROUTE)
+        assert svc.route_refusal(item) is None
+        calls = world.provider.ensure_calls
+        # The delivery model takes the item over: the owner buys it, the installation package fits it.
+        changed = await svc.set_route(
+            pid,
+            item.id,
+            route="owner_furnished_contractor_installed",
+            contract_package_id=world.installer_pkg,
+            actor_id=world.manager,
+        )
+        await s.commit()
+    assert (changed.status, changed.procurement_route) == ("route_set", "owner_furnished_contractor_installed")
+    assert changed.owner_furnished_item_id is not None and world.provider.ensure_calls == calls + 1
