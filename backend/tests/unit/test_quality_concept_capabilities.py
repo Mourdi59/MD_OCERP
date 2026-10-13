@@ -322,4 +322,3 @@ def test_the_four_eyes_refusal_says_who_can_approve_instead() -> None:
     for locale, words in (("en", ("second person", "manage")), ("de", ("zweite Person", "verwalten"))):
         sentence = json.loads((MODULE / "messages" / f"{locale}.json").read_text(encoding="utf-8"))[key]
         assert all(word in sentence for word in words), sentence
-
