@@ -1604,7 +1604,14 @@ async def test_the_demo_seed_pins_the_neutral_schedule_on_a_project_in_another_c
     assert loud == []
 
 
-async def test_the_demo_seed_does_not_request_a_release_it_has_no_rate_for(world: World, caplog) -> None:
+async def test_the_demo_seed_does_not_request_a_release_it_has_no_rate_for(world: World, caplog, monkeypatch) -> None:
+    from app.modules.commitment_release import fx
+
+    async def no_rate_set(*_args, **_kwargs):
+        return None
+
+    # A dated rate set left in the shared database by another test would convert USD; this one is about the project.
+    monkeypatch.setattr(fx, "_rate_set_quote", no_rate_set)
     # The fixture project knows a rate for GBP only: a subcontract in USD cannot be converted.
     pid, counts, loud = await _seeded(world, caplog, currency="EUR", contract_currency="USD")
     assert await _pinned(world, pid) == "de_public_owner"

@@ -133,9 +133,17 @@ async def seed_transmittals_demo(session: AsyncSession, project_ids: Iterable[uu
         entries = parse_transmittals_story(demo_module_story(demo_id, "transmittals"), locale or "en")
         if not entries:
             continue
-        has = (await session.execute(select(Transmittal.id).where(Transmittal.project_id == pid).limit(1))).first()
-        if has is not None:
+        existing = (await session.execute(select(Transmittal).where(Transmittal.project_id == pid))).scalars().all()
+        if any((t.metadata_ or {}).get("is_demo") for t in existing):
             continue
+        # A pack applied in the app installs its projects before it is active, so the generic seeder has
+        # already written its English transmittals. The story tells this project's instead; the ones a
+        # design release issued are not demo filler and stay.
+        for generic in existing:
+            meta = generic.metadata_ or {}
+            if "demo_id" in meta and "design_release_id" not in meta:
+                await session.delete(generic)
+        await session.flush()
         try:
             async with session.begin_nested():
                 written = await _seed_project(session, pid, entries)

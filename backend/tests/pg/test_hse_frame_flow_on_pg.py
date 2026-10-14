@@ -144,7 +144,7 @@ async def test_register_roles_review_and_the_closed_frame(pg_session) -> None:
     for item in await svc.repo.list(HseItem, pid):
         if item.obligation == "mandatory" and item.status not in ("met", "waived", "not_applicable"):
             await svc.meet_item(pid, item.id, s.ItemMeet(met_on=today, evidence_note="Filed"))
-    for code in ("safety_coordinator_design", "safety_coordinator_execution"):
+    for code in ("safety_coordinator_design", "safety_coordinator_execution", "owner_hse_representative"):
         await svc.create_role(
             pid,
             s.RoleCreate(
@@ -212,6 +212,17 @@ async def test_a_single_user_installation_can_approve_when_four_eyes_is_off(pg_s
     for item in await svc.repo.list(HseItem, pid):
         if item.obligation == "mandatory":
             await svc.meet_item(pid, item.id, s.ItemMeet(met_on=today))
+    # The owner's representative is required on every project, one-person site or not.
+    await svc.create_role(
+        pid,
+        s.RoleCreate(
+            role_code="owner_hse_representative",
+            person_name="Test Owner",
+            status="appointed",
+            appointed_on=today - timedelta(days=5),
+        ),
+        manager,
+    )
     await svc.submit(pid, manager, today)
     assert (await svc.approve(pid, manager)).state == "binding"
 

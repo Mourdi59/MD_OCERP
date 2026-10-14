@@ -136,7 +136,8 @@ async def test_the_register_wins_also_where_it_has_no_figure(world, monkeypatch)
 
 async def test_unlinking_brings_the_own_figures_back(world, monkeypatch) -> None:
     w = world
-    d = _dates()
+    # The register has let the item go (no owner-furnished route any more); only then is the link ours to remove.
+    d = _dates(procurement_route="none_yet")
     _register(monkeypatch, {(w.project_id, d.plant_item_id): d})
     row = await call(w, "create_ofi", _item(plant_item_id=d.plant_item_id), w.manager)
     await call(w, "update_ofi", row.id, {"plant_item_id": None}, w.manager)
@@ -213,7 +214,7 @@ async def test_the_demo_links_the_switchboard_once_the_register_has_seeded(world
             "linked": 0,
             "skipped": [{"project_id": str(w.project_id), "reason": "plant_register_unavailable"}],
         }
-    d = _dates(seed.DEMO_PLANT_LINKS["OFI-01"])
+    d = _dates(seed.DEMO_PLANT_ITEM)
     _register(monkeypatch, {(w.project_id, d.plant_item_id): d})
     for expected in (1, 0):  # the second run finds it linked
         async with w.factory() as s:

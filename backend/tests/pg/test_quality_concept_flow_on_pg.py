@@ -537,7 +537,7 @@ async def test_the_concept_follows_its_frame_document(pg_session, monkeypatch) -
         required_by_ref="2027-03-01",
     )
     err = await _refused(svc.create_proof(pid, extra, p.manager))
-    assert (err.code, err.status_code) == ("binding_requires_change_request", 409)
+    assert (err.code, err.status_code) == ("binding_requires_reopen", 409)
     err = await _refused(svc.act_on_concept(pid, "return", p.manager))
     assert (err.code, err.status_code) == ("invalid_transition", 409)
 
@@ -586,7 +586,7 @@ async def test_a_frame_document_whose_event_never_arrived_is_followed_by_the_nex
         required_by_ref="2027-03-01",
     )
     err = await _refused(svc.create_proof(pid, extra, p.manager))
-    assert (err.code, concept.state) == ("binding_requires_change_request", "binding")
+    assert (err.code, concept.state) == ("binding_requires_reopen", "binding")
     assert [r.reason for r in await svc.revisions(pid)] == ["submitted", "approved"]
 
     # A change request puts another revision in force and that event is lost: the plan write reopens it.
