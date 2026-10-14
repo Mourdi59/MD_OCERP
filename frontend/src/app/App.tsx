@@ -81,6 +81,9 @@ const FundingPage = lazy(() =>
 const CommitmentReleasePage = lazy(() =>
   import('@/features/commitment_release').then((m) => ({ default: m.CommitmentReleasePage }))
 );
+const EconomicsPage = lazy(() =>
+  import('@/features/economics').then((m) => ({ default: m.EconomicsPage }))
+);
 const DeliveryModelPage = lazy(() =>
   import('@/features/delivery_model/DeliveryModelPage').then((m) => ({ default: m.DeliveryModelPage }))
 );
@@ -1477,6 +1480,7 @@ export default function App() {
         <Route path="/projects/:projectId/site-supervision" element={<P title="Site Supervision"><SiteSupervisionPage /></P>} />
         <Route path="/site-supervision" element={<P title="Site Supervision"><SiteSupervisionPage /></P>} />
         <Route path="/projects/:projectId/commitments" element={<P title="Commitments and releases"><CommitmentReleasePage /></P>} />
+        <Route path="/projects/:projectId/economics" element={<P title="Economics"><EconomicsPage /></P>} />
         <Route path="/projects/:projectId/delivery" element={<P title="Delivery model"><DeliveryModelPage /></P>} />
         <Route path="/projects/:projectId/plant-register" element={<P title="Plant register"><PlantRegisterPage /></P>} />
         <Route path="/projects/:projectId/procurement-concept" element={<P title="Procurement concept"><ProcurementConceptPage /></P>} />

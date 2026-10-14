@@ -4,7 +4,7 @@
   "partner_url": null,
   "pack_version": "0.1.0",
   "pack_type": "industry",
-  "description": "Owner-side project management in eleven management areas over two phases, project development and construction execution, with one gate between them and one approved frame document per area. Selects the eleven platform modules that fill those areas and ships the framework's phase model, stakeholder and mandate framework, delivery forms, German permit roadmap additions and a German site logistics catalogue as catalogue data in German and English.",
+  "description": "Owner-side project management in eleven management areas over two phases, project development and construction execution, with one gate between them and one approved frame document per area. Selects the platform modules that fill those areas and ships the framework's phase model, stakeholder and mandate framework, delivery forms, German permit roadmap additions and a German site logistics catalogue as catalogue data in German and English.",
   "default_locale": "de",
   "additional_locales": {
     "de": "locales/de.json",
@@ -18,6 +18,7 @@
   "validation_rule_sets": [
     "project_governance",
     "commitment_release",
+    "economics",
     "delivery_model",
     "permits",
     "plant_register",
@@ -41,6 +42,7 @@
     "oe_design_management",
     "oe_procurement_concept",
     "oe_commitment_release",
+    "oe_economics",
     "oe_quality_concept"
   ],
   "hidden_modules": [],

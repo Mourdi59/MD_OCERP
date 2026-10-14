@@ -2236,7 +2236,8 @@
         "de": "Business Case, Kostenrahmen, Finanzierungs- und Controlling-Struktur, Verpflichtungs- und Freigabematrix"
       },
       "hosts": [
-        "commitment_release"
+        "commitment_release",
+        "economics"
       ]
     },
     {

@@ -1142,6 +1142,7 @@ jobs:
           tests/pg/test_quality_concept_idor.py
           tests/pg/test_commitment_idor.py
           tests/pg/test_delivery_model_idor.py
+          tests/pg/test_economics_idor.py
           tests/pg/test_permits_idor.py
           tests/pg/test_plant_register_idor.py
           tests/pg/test_procurement_concept_idor.py

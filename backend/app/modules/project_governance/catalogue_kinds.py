@@ -61,6 +61,7 @@ _HOST_SUBJECTS: set[str] = {
     "engineering_brief",
     "site_logistics",
     "commitment_release",
+    "economics",
 }
 _PHASE_CAPABILITIES: set[str] = {"construction_start", "handover", "operation", "procurement"}
 

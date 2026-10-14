@@ -45,6 +45,7 @@ import {
   Flag,
   Receipt,
   Stamp,
+  Banknote,
   ChevronDown,
   MessagesSquare,
   MapPin,
@@ -1821,6 +1822,15 @@ export function ProjectDetailPage() {
           data-testid="project-commitments-link"
         >
           {t('commitment.page.title', { defaultValue: 'Commitments and releases' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Banknote size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/economics`)}
+          data-testid="project-economics-link"
+        >
+          {t('economics.ui.title', { defaultValue: 'Economics' })}
         </Button>
         <Button
           variant="ghost"

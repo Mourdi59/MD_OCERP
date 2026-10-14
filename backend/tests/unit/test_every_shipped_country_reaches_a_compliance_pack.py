@@ -131,6 +131,7 @@ NON_JURISDICTION_RULE_SETS: dict[str, str] = {
     ),
     "project_governance": _MODULE_RECORD_CHECKS,
     "commitment_release": _MODULE_RECORD_CHECKS,
+    "economics": _MODULE_RECORD_CHECKS,
     "delivery_model": _MODULE_RECORD_CHECKS,
     "permits": _MODULE_RECORD_CHECKS,
     "plant_register": _MODULE_RECORD_CHECKS,

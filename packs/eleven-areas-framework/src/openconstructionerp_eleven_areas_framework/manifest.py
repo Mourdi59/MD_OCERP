@@ -1,6 +1,6 @@
 """Manifest of the eleven module project framework pack.
 
-The pack is data only: it selects eleven platform modules and ships catalogues
+The pack is data only: it selects the platform modules and ships catalogues
 for them. The fields are written here as literals because a pack in the source
 tree is found and checked through its ``manifest.py``, several checks read this
 file as text, and a field written any other way reads to them as not declared.
@@ -24,7 +24,7 @@ MANIFEST = PartnerPackManifest(
     description=(
         "Owner-side project management in eleven management areas over two phases, project development "
         "and construction execution, with one gate between them and one approved frame document per area. "
-        "Selects the eleven platform modules that fill those areas and ships the framework's phase model, "
+        "Selects the platform modules that fill those areas and ships the framework's phase model, "
         "stakeholder and mandate framework, delivery forms, German permit roadmap additions and a German "
         "site logistics catalogue as catalogue data in German and English."
     ),
@@ -38,6 +38,7 @@ MANIFEST = PartnerPackManifest(
     validation_rule_sets=[
         "project_governance",
         "commitment_release",
+        "economics",
         "delivery_model",
         "permits",
         "plant_register",
@@ -61,6 +62,7 @@ MANIFEST = PartnerPackManifest(
         "oe_design_management",
         "oe_procurement_concept",
         "oe_commitment_release",
+        "oe_economics",
         "oe_quality_concept",
     ],
     hidden_modules=[],
