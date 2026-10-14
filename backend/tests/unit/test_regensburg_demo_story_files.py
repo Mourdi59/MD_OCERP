@@ -423,3 +423,47 @@ def test_transmittals() -> None:
     assert any(e["issued"] is None for e in out)
     assert any(r["resp"] is not None for e in out for r in e["recipients"])
     assert transmittal_seed.parse_transmittals_story(story, "de")[0]["subject"] != out[0]["subject"]
+
+
+def _story(demo: str, module: str) -> dict[str, Any]:
+    return json.loads((_DEMO / f"{demo}-{module}.json").read_text(encoding="utf-8"))
+
+
+def test_regensburg_running_site_is_told_in_german() -> None:
+    """The branch taken once the construction gate is decided carries its own German text and positions."""
+    story = _story("residential-regensburg", "commitment_release")
+    plan = commitment_seed.resolve_story(story, "de")
+    for section in ("running_works", "running_facade", "running_design", "running_contingency"):
+        assert plan[section]["title"], section
+    assert plan["labels"]["scenario"] == "Stopp heute"
+    assert "Los 1 und 2" in plan["running_works"]["title"]
+    assert "Leistungsphasen 5 bis 8" in plan["running_design"]["title"]
+
+    staffing = _story("residential-regensburg", "staffing")
+    running = staffing_seed.story_positions(staffing, staffing_seed.POSITIONS, "running_positions")
+    assert running != staffing_seed.POSITIONS
+    assert {r[0] for r in running} >= {"scheduler", "operator_technician"}
+    # Once the site runs, its team is already in place: no entry of the execution team lies ahead of the seed day.
+    assert all(r[2] <= 0 for r in running if r[0] in staffing_seed.MOBILISED)
+
+
+@pytest.mark.parametrize("demo", ["residential-regensburg", "school-ludwigsburg"])
+def test_design_management_routes_and_first_issue_are_german(demo: str) -> None:
+    plan = design_seed.resolve_story(_story(demo, "design_management"), "de", report_kinds=set())
+    assert plan["route_names"]["design_release"] == "Freigabe der Planstände"
+    assert plan["first_issue"] == "Erstausgabe"
+
+
+def test_ludwigsburg_design_story_has_no_english_only_text() -> None:
+    """Every user-visible text of the Ludwigsburg design story is a language map, so a German user never reads English."""
+
+    def plain(node: Any, path: str = "") -> list[str]:
+        if isinstance(node, dict):
+            if set(node) == {"en", "de"}:
+                return []
+            return [p for k, v in node.items() if k != "$note" for p in plain(v, f"{path}.{k}")]
+        if isinstance(node, list):
+            return [p for i, v in enumerate(node) for p in plain(v, f"{path}[{i}]")]
+        return [path] if isinstance(node, str) and len(node.split()) >= 3 else []
+
+    assert plain(_story("school-ludwigsburg", "design_management")) == []

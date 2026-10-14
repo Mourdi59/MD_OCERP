@@ -101,6 +101,27 @@ _SECTIONS: dict[str, dict[str, str]] = {
     },
     "enabling": {"title": "text", "amount": "money"},
     "contingency": {"title": "text", "amount": "money"},
+    # The story of a project whose site is running: the same four items, told after the gate.
+    "running_works": {"title": "text", "source_note": "text", "release_note": "text"},
+    "running_facade": {
+        "title": "text",
+        "amount": "money",
+        "source_note": "text",
+        "salvage_value": "money",
+    },
+    "running_design": {
+        "title": "text",
+        "amount": "money",
+        "brief_text": "text",
+        "evidence": "text",
+        "first_amount": "money",
+        "first_note": "text",
+        "first_condition": "text",
+        "second_amount": "money",
+        "second_note": "text",
+    },
+    "running_contingency": {"title": "text", "amount": "money"},
+    "labels": {"scenario": "text"},
 }
 
 
@@ -349,6 +370,7 @@ async def _seed_before_construction(
 
     story = story or {}
     works_s, slot_s, design_s = (story.get(k, {}) for k in ("works", "slot", "design"))
+    labels = story.get("labels", {})
     enabling_s, contingency_s = story.get("enabling", {}), story.get("contingency", {})
     author = planner or owner
     host = await host_for(svc.session, project_id, "commitment_release")
@@ -515,7 +537,7 @@ async def _seed_before_construction(
         "contingency_drawdown",
         contingency_s.get("amount", "75000"),
     )
-    await svc.save_scenario(project_id, as_of=today, label="Stop today", actor_id=owner)
+    await svc.save_scenario(project_id, as_of=today, label=labels.get("scenario", "Stop today"), actor_id=owner)
     counts["scenarios"] += 1
     return counts
 
@@ -587,6 +609,10 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             .limit(1)
         )
     ).scalar_one_or_none()
+    story = await _story_of(session, project_id)
+    labels = story.get("labels", {})
+    works_s, facade_s = story.get("running_works", {}), story.get("running_facade", {})
+    design_s, contingency_s = story.get("running_design", {}), story.get("running_contingency", {})
     works_amount = str(contract.total_value) if contract is not None and contract.total_value else "1850000"
     works_ccy = (contract.currency if contract is not None and contract.currency else ccy).strip().upper()
 
@@ -594,7 +620,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         project_id,
         {
             "code": "CR-001",
-            "title": "Structural works package",
+            "title": works_s.get("title", "Structural works package"),
             "commitment_type": "works",
             "planned_source": "manual",
             "planned_manual_amount": works_amount,
@@ -610,7 +636,11 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     await svc.put_abort_terms(
         project_id,
         works.id,
-        {"basis_code": "custom", "other_charge_estimate": "40000", "source_note": "Demo estimate, not from a contract"},
+        {
+            "basis_code": "custom",
+            "other_charge_estimate": "40000",
+            "source_note": works_s.get("source_note", "Demo estimate, not from a contract"),
+        },
         actor_id=owner,
         manage=True,
     )
@@ -639,7 +669,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             works_ccy,
             requester=planner,
             approver=owner,
-            note="Full package",
+            note=works_s.get("release_note", "Full package"),
             days_ago=21,
         )
     ):
@@ -653,10 +683,10 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         project_id,
         {
             "code": "CR-002",
-            "title": "Long-lead facade units",
+            "title": facade_s.get("title", "Long-lead facade units"),
             "commitment_type": "supplies",
             "planned_source": "manual",
-            "planned_manual_amount": "420000",
+            "planned_manual_amount": facade_s.get("amount", "420000"),
             "currency": ccy,
             "lead_time_days": 120,
             "decision_buffer_days": 14,
@@ -681,8 +711,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                 {"milestone": "shipped", "progress_pct": "0.9", "charge_pct": "0.95"},
             ],
             "transferable": "resale",
-            "salvage_value_estimate": "60000",
-            "source_note": "Supplier quotation, cancellation terms",
+            "salvage_value_estimate": facade_s.get("salvage_value", "60000"),
+            "source_note": facade_s.get("source_note", "Supplier quotation, cancellation terms"),
         },
         actor_id=owner,
         manage=True,
@@ -692,10 +722,10 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         project_id,
         {
             "code": "CR-003",
-            "title": "Design appointment to stage 3",
+            "title": design_s.get("title", "Design appointment to stage 3"),
             "commitment_type": "design",
             "planned_source": "manual",
-            "planned_manual_amount": "260000",
+            "planned_manual_amount": design_s.get("amount", "260000"),
             "currency": ccy,
             "latest_decision_date_fixed": (today + timedelta(days=45)).isoformat(),
         },
@@ -703,34 +733,44 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     )
     counts["items"] += 1
     brief = await svc.add_precondition(
-        project_id, design.id, kind="manual", ref_id=None, text="Client brief signed off", actor_id=author
+        project_id,
+        design.id,
+        kind="manual",
+        ref_id=None,
+        text=design_s.get("brief_text", "Client brief signed off"),
+        actor_id=author,
     )
     await svc.confirm_precondition(
-        project_id, design.id, brief.id, met=True, evidence_ref="Brief rev. C, signed", actor_id=author
+        project_id,
+        design.id,
+        brief.id,
+        met=True,
+        evidence_ref=design_s.get("evidence", "Brief rev. C, signed"),
+        actor_id=author,
     )
     if planner is not None:
         if await _release(
             svc,
             project_id,
             design.id,
-            "40000",
+            design_s.get("first_amount", "40000"),
             ccy,
             requester=planner,
             approver=owner,
-            note="First tranche: concept design",
+            note=design_s.get("first_note", "First tranche: concept design"),
             days_ago=12,
-            conditions="Stage 2 report before the next tranche",
+            conditions=design_s.get("first_condition", "Stage 2 report before the next tranche"),
         ):
             counts["releases"] += 1
             if await _release(
                 svc,
                 project_id,
                 design.id,
-                "60000",
+                design_s.get("second_amount", "60000"),
                 ccy,
                 requester=planner,
                 approver=None,
-                note="Second tranche: developed design",
+                note=design_s.get("second_note", "Second tranche: developed design"),
                 days_ago=2,
             ):
                 counts["releases"] += 1
@@ -739,16 +779,16 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         project_id,
         {
             "code": "CR-004",
-            "title": "Contingency drawdown for ground conditions",
+            "title": contingency_s.get("title", "Contingency drawdown for ground conditions"),
             "commitment_type": "contingency_drawdown",
             "planned_source": "manual",
-            "planned_manual_amount": "75000",
+            "planned_manual_amount": contingency_s.get("amount", "75000"),
             "currency": ccy,
         },
         actor_id=author,
     )
     counts["items"] += 1
-    await svc.save_scenario(project_id, as_of=today, label="Stop today", actor_id=owner)
+    await svc.save_scenario(project_id, as_of=today, label=labels.get("scenario", "Stop today"), actor_id=owner)
     counts["scenarios"] += 1
     return counts
 
