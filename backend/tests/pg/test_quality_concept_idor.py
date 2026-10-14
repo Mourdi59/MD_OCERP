@@ -152,6 +152,12 @@ async def test_reading_never_writes_and_the_plan_needs_the_manage_permission(wor
             "edit_plan": False,
             "submit": False,
             "submit_reason": "manage_required",
+            "approve": False,
+            "approve_reason": "manage_required",
+            "approve_applies": False,
+            "reopen": False,
+            "reopen_reason": "manage_required",
+            "reopen_applies": False,
         }
         assert _code(await c.post(_p(world, "standards"), json={"code": "EN 1090-2"})) == (403, "manage_required")
         assert _code(await c.post(_p(world, "proofs"), json=_proof("warranty_certificate"))) == (
