@@ -861,7 +861,18 @@ async def test_every_screen_of_the_eleven_areas_has_rows_for_both_filmed_project
             )
             assert 8 <= len(interfaces) <= 15, f"{demo_id}: {len(interfaces)} interfaces"
             transmittals = (await s.execute(select(Transmittal).where(Transmittal.project_id == pid))).scalars().all()
-            assert len(transmittals) == 5, f"{demo_id}: {len(transmittals)} transmittals, the story tells five"
+            listing = "; ".join(
+                f"{r.transmittal_number} {r.status} {r.subject!r} {(r.metadata_ or {}).get('recipient_key', '-')}"
+                for r in sorted(transmittals, key=lambda r: r.transmittal_number)
+            )
+            told = [r for r in transmittals if "design_release_id" not in (r.metadata_ or {})]
+            issued = [r for r in transmittals if "design_release_id" in (r.metadata_ or {})]
+            assert len(told) == 5, f"{demo_id}: {len(told)} story transmittals, the story tells five: {listing}"
+            # The design releases add one transmittal per recipient and release, never two for the same pair.
+            pairs = [
+                ((r.metadata_ or {})["design_release_id"], (r.metadata_ or {}).get("recipient_key")) for r in issued
+            ]
+            assert len(pairs) == len(set(pairs)), f"{demo_id}: a recipient got a release twice: {listing}"
             texts = [r.title for r in interfaces] + [r.owner_party or "" for r in interfaces]
             texts += [r.subject for r in transmittals]
             for text in texts:
