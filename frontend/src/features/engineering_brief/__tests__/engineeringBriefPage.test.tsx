@@ -24,18 +24,25 @@ vi.mock('../api', async (importOriginal) => {
     listConcepts: vi.fn(),
     listProgramme: vi.fn(),
     listMilestones: vi.fn(),
+    listStudies: vi.fn(),
+    getSpecification: vi.fn(),
+    issueSpecification: vi.fn(),
     submitBrief: vi.fn(),
     createRequirement: vi.fn(),
     backplan: vi.fn(),
   };
 });
 
+vi.mock('@/features/documents/api', () => ({ fetchDocuments: vi.fn() }));
+
+import { fetchDocuments } from '@/features/documents/api';
 import { ApiError } from '@/shared/lib/api';
 import * as api from '../api';
 import { EngineeringBriefPage } from '../EngineeringBriefPage';
 import { normaliseQuantity } from '../ProgrammeTab';
 import { sortByDate, syncState } from '../ScheduleTab';
-import { brief, catalogue, concept, milestone, no, programmeLine, requirement } from './fixtures';
+import { studyGate } from '../StudiesTab';
+import { brief, catalogue, concept, milestone, no, programmeLine, requirement, specification, study } from './fixtures';
 
 const mocked = vi.mocked(api);
 const page = <T,>(items: T[]) => ({ items, total: items.length, offset: 0, limit: items.length });
@@ -62,6 +69,9 @@ beforeEach(() => {
   mocked.listProgramme.mockResolvedValue(page([programmeLine()]));
   mocked.listMilestones.mockResolvedValue(page([]));
   mocked.listCatalogues.mockResolvedValue(page([]));
+  mocked.listStudies.mockResolvedValue(page([]));
+  mocked.getSpecification.mockResolvedValue(specification());
+  vi.mocked(fetchDocuments).mockResolvedValue(page([{ id: 'd1', name: 'Soil report.pdf' }]) as never);
 });
 afterEach(() => {
   cleanup();
@@ -238,5 +248,85 @@ describe('pure helpers', () => {
     expect(normaliseQuantity(' 3 ')).toBe('3');
     expect(normaliseQuantity('1e3')).toBeNull();
     expect(normaliseQuantity('')).toBeNull();
+  });
+});
+
+describe('studies tab', () => {
+  it('applies the gate rule of the server: studies exist, concluded with a result, documented', () => {
+    expect(studyGate('site_analysis', [])).toEqual({ met: false, reason: 'no_study', codes: [] });
+    expect(studyGate('site_analysis', [study({ code: 'S-2', conclusion: 'open' }), study({ code: 'S-1', result: ' ' })])).toEqual({
+      met: false,
+      reason: 'study_open',
+      codes: ['S-1', 'S-2'],
+    });
+    expect(studyGate('site_analysis', [study({ document_id: null })])).toMatchObject({ met: false, reason: 'study_without_document' });
+    expect(studyGate('site_analysis', [study()])).toEqual({ met: true });
+    // Another kind does not count for this group.
+    expect(studyGate('suitability', [study()])).toMatchObject({ met: false, reason: 'no_study' });
+  });
+
+  it('shows both groups with an indicator each, an empty state where there is no study', async () => {
+    mocked.listStudies.mockResolvedValue(page([study()]));
+    renderPage('/projects/p1/engineering-brief?tab=studies');
+    const site = await screen.findByTestId('brief-studies-group-site_analysis');
+    expect(within(site).getByText('Soil survey')).toBeTruthy();
+    expect(within(site).getByTestId('brief-studies-gate-site_analysis').getAttribute('data-met')).toBe('true');
+    expect(within(site).getByTestId('brief-study-document-link').getAttribute('href')).toBe('/files?file=d1');
+    const other = screen.getByTestId('brief-studies-group-suitability');
+    expect(within(other).getByText('No studies yet')).toBeTruthy();
+    expect(within(other).getByTestId('brief-studies-gate-suitability').getAttribute('data-met')).toBe('false');
+  });
+
+  it('says why a group misses the criterion', async () => {
+    mocked.listStudies.mockResolvedValue(page([study({ conclusion: 'open', result: '' })]));
+    renderPage('/projects/p1/engineering-brief?tab=studies');
+    const gate = await screen.findByTestId('brief-studies-gate-site_analysis');
+    expect(gate.getAttribute('data-met')).toBe('false');
+    expect(gate.textContent).toContain('S-1');
+  });
+
+  it('stays editable while the brief is locked for review', async () => {
+    mocked.getBrief.mockResolvedValue(brief({ status: 'in_review' }, { edit: no('brief_in_review', true) }));
+    mocked.listStudies.mockResolvedValue(page([study()]));
+    renderPage('/projects/p1/engineering-brief?tab=studies');
+    await screen.findByTestId('brief-studies');
+    expect(screen.getByTestId('brief-study-add-site_analysis')).toBeTruthy();
+    expect(screen.getAllByLabelText('Edit').length).toBeGreaterThan(0);
+  });
+});
+
+describe('requirements specification', () => {
+  it('shows the current version and no stale badge while the requirements match', async () => {
+    renderPage();
+    expect((await screen.findByTestId('brief-spec-current')).textContent).toContain('Version 2');
+    expect(screen.queryByTestId('brief-spec-stale')).toBeNull();
+    expect(screen.getAllByTestId('brief-spec-version')).toHaveLength(2);
+  });
+
+  it('flags the issue as stale when the requirements changed since', async () => {
+    mocked.getSpecification.mockResolvedValue(specification({ current: false, stale: true }));
+    mocked.getBrief.mockResolvedValue(brief({ status: 'in_review' }, { edit: no('brief_in_review', true) }));
+    renderPage();
+    expect(await screen.findByTestId('brief-spec-stale')).toBeTruthy();
+    expect((screen.getByTestId('brief-spec-issue') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('cannot be issued from a draft and says why', async () => {
+    mocked.getSpecification.mockResolvedValue(specification({ current: false, stale: true }));
+    renderPage();
+    const button = (await screen.findByTestId('brief-spec-issue')) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(screen.getByTestId('brief-spec-reason').textContent).toContain('submitted');
+  });
+
+  it('issues with the note', async () => {
+    mocked.getSpecification.mockResolvedValue(specification({ current: false, stale: true }));
+    mocked.getBrief.mockResolvedValue(brief({ status: 'in_review' }));
+    mocked.issueSpecification.mockResolvedValue(specification().items[0]!);
+    renderPage();
+    fireEvent.click(await screen.findByTestId('brief-spec-issue'));
+    fireEvent.change(await screen.findByTestId('brief-spec-note'), { target: { value: 'After review' } });
+    fireEvent.click(screen.getByTestId('brief-spec-confirm'));
+    await waitFor(() => expect(mocked.issueSpecification).toHaveBeenCalledWith('p1', 'After review'));
   });
 });

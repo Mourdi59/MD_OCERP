@@ -191,3 +191,35 @@ class BackplanIn(_In):
 
 class MilestonesFromCatalogue(_In):
     codes: list[str] | None = Field(default=None, max_length=100)
+
+
+# ── studies and the specification issue ────────────────────────────────────
+
+STUDY_KIND = Literal["site_analysis", "suitability"]
+STUDY_CONCLUSION = Literal["open", "suitable", "conditional", "unsuitable"]
+
+
+class StudyIn(_In):
+    kind: STUDY_KIND
+    title: str = Field(min_length=1, max_length=255)
+    scope: str = Field(default="", max_length=20000)
+    author: str = Field(default="", max_length=255)
+    study_date: date | None = None
+    result: str = Field(default="", max_length=20000)
+    conclusion: STUDY_CONCLUSION = "open"
+    document_id: uuid.UUID | None = None
+
+
+class StudyPatch(_In):
+    kind: STUDY_KIND | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    scope: str | None = Field(default=None, max_length=20000)
+    author: str | None = Field(default=None, max_length=255)
+    study_date: date | None = None
+    result: str | None = Field(default=None, max_length=20000)
+    conclusion: STUDY_CONCLUSION | None = None
+    document_id: uuid.UUID | None = None
+
+
+class IssueIn(_In):
+    note: str = Field(default="", max_length=5000)

@@ -11,7 +11,7 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { CalendarClock, ClipboardList, FileText, LayoutGrid, Ruler } from 'lucide-react';
+import { CalendarClock, ClipboardList, FileText, FlaskConical, LayoutGrid, Ruler } from 'lucide-react';
 
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
 import { EmptyState } from '@/shared/ui/EmptyState';
@@ -29,15 +29,20 @@ import {
   useMilestones,
   usePinnedCatalogue,
   useProgramme,
+  useProjectDocuments,
   useRequirements,
+  useSpecification,
+  useStudies,
 } from './hooks';
 import { itemLabel, refusalText, type LabelContext, type TFn } from './labels';
 import { ProgrammeTab } from './ProgrammeTab';
 import { RequirementsTab } from './RequirementsTab';
 import { ScheduleTab } from './ScheduleTab';
+import { SpecificationPanel } from './SpecificationPanel';
+import { StudiesTab } from './StudiesTab';
 
-type Tab = 'requirements' | 'concept' | 'programme' | 'schedule';
-const TABS: Tab[] = ['requirements', 'concept', 'programme', 'schedule'];
+type Tab = 'requirements' | 'concept' | 'programme' | 'schedule' | 'studies';
+const TABS: Tab[] = ['requirements', 'concept', 'programme', 'schedule', 'studies'];
 
 export function EngineeringBriefPage() {
   const { t, i18n } = useTranslation();
@@ -59,6 +64,9 @@ export function EngineeringBriefPage() {
   const conceptQ = useConcepts(projectId, on('concept'));
   const programmeQ = useProgramme(projectId, on('programme'));
   const milestonesQ = useMilestones(projectId, on('schedule'));
+  const studiesQ = useStudies(projectId, on('studies'));
+  const documentsQ = useProjectDocuments(projectId, on('studies'));
+  const specificationQ = useSpecification(projectId, on('requirements'));
 
   const header = (
     <>
@@ -143,9 +151,18 @@ export function EngineeringBriefPage() {
     body = milestonesQ.isLoading ? loading : milestonesQ.isError ? failed(milestonesQ.error, () => milestonesQ.refetch()) : (
       <ScheduleTab projectId={projectId} milestones={milestonesQ.data ?? []} catalogue={catalogue} labels={labels} edit={edit} publish={brief.can.publish} onChanged={invalidate} />
     );
+  } else if (tab === 'studies') {
+    body = studiesQ.isLoading ? loading : studiesQ.isError ? failed(studiesQ.error, () => studiesQ.refetch()) : (
+      <StudiesTab projectId={projectId} studies={studiesQ.data ?? []} documents={documentsQ.data ?? []} onChanged={invalidate} />
+    );
   } else {
     body = requirementsQ.isLoading ? loading : requirementsQ.isError ? failed(requirementsQ.error, () => requirementsQ.refetch()) : (
-      <RequirementsTab projectId={projectId} requirements={requirementsQ.data ?? []} catalogue={catalogue} labels={labels} edit={edit} onChanged={invalidate} />
+      <div className="space-y-4">
+        {specificationQ.data ? (
+          <SpecificationPanel projectId={projectId} status={brief.status} spec={specificationQ.data} onChanged={invalidate} />
+        ) : null}
+        <RequirementsTab projectId={projectId} requirements={requirementsQ.data ?? []} catalogue={catalogue} labels={labels} edit={edit} onChanged={invalidate} />
+      </div>
     );
   }
 
@@ -174,6 +191,7 @@ export function EngineeringBriefPage() {
           { id: 'concept', label: t('engineeringBrief.tabs.concept', { defaultValue: 'Concept' }), icon: <LayoutGrid size={14} /> },
           { id: 'programme', label: t('engineeringBrief.tabs.programme', { defaultValue: 'Programme' }), icon: <Ruler size={14} /> },
           { id: 'schedule', label: t('engineeringBrief.tabs.schedule', { defaultValue: 'Framework schedule' }), icon: <CalendarClock size={14} /> },
+          { id: 'studies', label: t('engineeringBrief.tabs.studies', { defaultValue: 'Studies' }), icon: <FlaskConical size={14} /> },
         ]}
       />
       {body}

@@ -7,6 +7,8 @@ Tables (all prefixed ``oe_engbrief_``):
     concept    -- a topic of the technical concept with its decision and the requirements it answers
     programme  -- a line of the area and quantity programme
     milestone  -- a milestone of the framework schedule, bound to a governance gate or to a lead time
+    study      -- a site analysis or suitability study with its report in the documents module
+    issue      -- an issued version of the requirements specification (the Lastenheft document)
 
 What is deliberately NOT here: the requirements. They are rows of ``oe_requirements_item`` in the
 requirement set the brief points at, so there is one requirements register and no copy of it. The
@@ -182,3 +184,51 @@ class FrameMilestone(Base):
     activity_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class Study(Base):
+    """A tracked study that backs a gate criterion: a site analysis or a suitability study."""
+
+    __tablename__ = "oe_engbrief_study"
+    __table_args__ = (
+        UniqueConstraint("brief_id", "code", name="uq_oe_eb_study_code"),
+        Index("ix_oe_eb_study_project", "project_id"),
+    )
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_eb_study_project")
+    brief_id: Mapped[uuid.UUID] = _brief_fk("fk_oe_eb_study_brief")
+    code: Mapped[str] = mapped_column(String(40), nullable=False)
+    # site_analysis | suitability
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    scope: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    author: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    study_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    result: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # open | suitable | conditional | unsuitable
+    conclusion: Mapped[str] = mapped_column(String(20), nullable=False, default="open")
+    # The report in the documents module. No foreign key: a deleted document leaves the study unlinked.
+    document_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class SpecificationIssue(Base):
+    """One issue of the requirements specification: a numbered version of the brief as a document."""
+
+    __tablename__ = "oe_engbrief_issue"
+    __table_args__ = (
+        UniqueConstraint("brief_id", "version_no", name="uq_oe_eb_issue_version"),
+        Index("ix_oe_eb_issue_project", "project_id"),
+    )
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_eb_issue_project")
+    brief_id: Mapped[uuid.UUID] = _brief_fk("fk_oe_eb_issue_brief")
+    version_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    issued_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    document_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # SHA-256 of the requirements as issued; a later edit makes the issue stale.
+    requirements_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    requirement_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")

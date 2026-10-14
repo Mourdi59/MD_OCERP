@@ -188,5 +188,16 @@
   "engineering_brief.verification.document_review": "Dokumentenprüfung",
   "engineering_brief.verification.inspection": "Besichtigung",
   "engineering_brief.verification.model_check": "Modellprüfung",
-  "engineering_brief.verification.test": "Prüfung"
+  "engineering_brief.verification.test": "Prüfung",
+  "engineering_brief.errors.document_not_found": "Das Dokument existiert in diesem Projekt nicht.",
+  "engineering_brief.errors.study_not_found": "Die Untersuchung existiert nicht.",
+  "engineering_brief.errors.study_code_taken": "Eine andere Anfrage hat diese Nummer zuerst vergeben. Bitte erneut versuchen.",
+  "engineering_brief.errors.brief_not_submitted": "Das Lastenheft muss zuerst zur Prüfung eingereicht werden: nur ein eingereichtes Lastenheft kann herausgegeben werden.",
+  "engineering_brief.errors.specification_unchanged": "Die Anforderungen haben sich seit der letzten Herausgabe nicht geändert, es gibt nichts Neues herauszugeben.",
+  "engineering_brief.errors.specification_version_taken": "Eine andere Anfrage hat diese Version zuerst herausgegeben. Bitte erneut versuchen.",
+  "engineering_brief.evidence.site_analysis": "Standortanalyse: jede Untersuchung abgeschlossen und als Dokument abgelegt",
+  "engineering_brief.evidence.suitability": "Eignungsuntersuchungen: jede Untersuchung abgeschlossen und als Dokument abgelegt",
+  "engineering_brief.evidence.specification": "Lastenheft in der aktuellen Fassung herausgegeben",
+  "engineering_brief.export.version": "Fassung",
+  "engineering_brief.specification_filename": "Lastenheft"
 }
