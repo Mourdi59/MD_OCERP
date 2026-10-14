@@ -43,6 +43,12 @@
           "source": "pack",
           "id": "eleven_areas_framework_de_by",
           "version": 1
+        },
+        {
+          "kind": "handbook_model",
+          "source": "pack",
+          "id": "eleven_areas_framework",
+          "version": 1
         }
       ],
       "governance": {
@@ -379,6 +385,12 @@
           "kind": "hse_frame",
           "source": "pack",
           "id": "eleven_areas_framework_de_by",
+          "version": 1
+        },
+        {
+          "kind": "handbook_model",
+          "source": "pack",
+          "id": "eleven_areas_framework",
           "version": 1
         }
       ],

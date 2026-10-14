@@ -319,6 +319,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Credentials': 'nav.credentials',
   'Staffing': 'staffing.title',
   'Engineering brief': 'engineeringBrief.title',
+  'Project handbook': 'projectHandbook.title',
   'Teams and Visibility': 'teams.title',
   'Permits': 'permits.ui.title',
 };

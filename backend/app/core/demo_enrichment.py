@@ -213,6 +213,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         from app.modules.portal.seed import seed_portal_demo
         from app.modules.portfolio.seed import seed_portfolio_demo
         from app.modules.procurement_concept.seed import seed_procurement_concept_demo
+        from app.modules.project_handbook.seed import seed_project_handbook_demo
         from app.modules.qms.models import ITPPlan
         from app.modules.qms.seed import seed_qms
         from app.modules.quality_concept.seed import seed_quality_concept_demo
@@ -538,6 +539,9 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             ("reconciliation", None, lambda s: seed_reconciliation_demo(s, _demo_pids)),
             # Reads the package plan the delivery-model seeder wrote; skips projects without one.
             ("procurement_concept", None, lambda s: seed_procurement_concept_demo(s, _demo_pids)),
+            # The handbook reads the stakeholders, positions and milestones seeded above and files the
+            # documents seeded earlier into the data room; it has to come after all of them.
+            ("project_handbook", None, lambda s: seed_project_handbook_demo(s, _demo_pids)),
         ]
         # Project governance runs first and is the only seeder that pins a phase
         # model: phase model, area owners, a decided first gate, frame documents

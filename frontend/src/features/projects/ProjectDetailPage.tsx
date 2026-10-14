@@ -1898,6 +1898,15 @@ export function ProjectDetailPage() {
         <Button
           variant="ghost"
           size="sm"
+          icon={<FileText size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/handbook`)}
+          data-testid="project-handbook-link"
+        >
+          {t('projectHandbook.title', { defaultValue: 'Project handbook' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           icon={<Flag size={14} />}
           onClick={() => navigate(`/projects/${project.id}/governance`)}
           data-testid="project-governance-link"

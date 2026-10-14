@@ -1,0 +1,160 @@
+{
+  "id": "neutral",
+  "version": 1,
+  "name_key": "project_handbook.catalogue.neutral.name",
+  "review_status": "unconfirmed",
+  "source_url": "",
+  "source_title": "",
+  "jurisdiction_countries": [],
+  "chapters": [
+    {
+      "code": "principles",
+      "area": "m01_project_management",
+      "order": 1,
+      "required": true,
+      "sources": [],
+      "folder": "dev_project_handbook",
+      "name_key": "project_handbook.chapter.principles"
+    },
+    {
+      "code": "organisation",
+      "area": "m01_project_management",
+      "order": 2,
+      "required": true,
+      "sources": [
+        "stakeholders",
+        "staffing"
+      ],
+      "folder": "dev_project_organisation",
+      "name_key": "project_handbook.chapter.organisation"
+    },
+    {
+      "code": "communication",
+      "area": "m01_project_management",
+      "order": 3,
+      "required": true,
+      "sources": [
+        "stakeholders"
+      ],
+      "folder": "exec_correspondence",
+      "name_key": "project_handbook.chapter.communication"
+    },
+    {
+      "code": "phase_model",
+      "area": "m01_project_management",
+      "order": 4,
+      "required": true,
+      "sources": [
+        "governance_gates",
+        "governance_areas"
+      ],
+      "folder": "dev_phase_model",
+      "name_key": "project_handbook.chapter.phase_model"
+    },
+    {
+      "code": "data_room",
+      "area": "m01_project_management",
+      "order": 5,
+      "required": true,
+      "sources": [
+        "data_room"
+      ],
+      "folder": "dev_data_room",
+      "name_key": "project_handbook.chapter.data_room"
+    },
+    {
+      "code": "contracts",
+      "area": "m02_contract_management",
+      "order": 6,
+      "required": false,
+      "sources": [],
+      "folder": "dev_contract_requirements",
+      "name_key": "project_handbook.chapter.contracts"
+    },
+    {
+      "code": "engineering",
+      "area": "m03_engineering_scheduling",
+      "order": 7,
+      "required": false,
+      "sources": [
+        "engineering_brief"
+      ],
+      "folder": "dev_frame_schedule",
+      "name_key": "project_handbook.chapter.engineering"
+    },
+    {
+      "code": "equipment",
+      "area": "m04_equipment",
+      "order": 8,
+      "required": false,
+      "sources": [],
+      "folder": "dev_plant_requirements",
+      "name_key": "project_handbook.chapter.equipment"
+    },
+    {
+      "code": "personnel",
+      "area": "m05_personnel",
+      "order": 9,
+      "required": false,
+      "sources": [
+        "staffing"
+      ],
+      "folder": "dev_staffing_needs",
+      "name_key": "project_handbook.chapter.personnel"
+    },
+    {
+      "code": "logistics",
+      "area": "m06_logistics",
+      "order": 10,
+      "required": false,
+      "sources": [],
+      "folder": "dev_logistics_concept",
+      "name_key": "project_handbook.chapter.logistics"
+    },
+    {
+      "code": "design",
+      "area": "m07_design_management",
+      "order": 11,
+      "required": false,
+      "sources": [],
+      "folder": "dev_design_concept",
+      "name_key": "project_handbook.chapter.design"
+    },
+    {
+      "code": "procurement",
+      "area": "m08_procurement",
+      "order": 12,
+      "required": false,
+      "sources": [],
+      "folder": "dev_award_concept",
+      "name_key": "project_handbook.chapter.procurement"
+    },
+    {
+      "code": "commercial",
+      "area": "m09_commercial",
+      "order": 13,
+      "required": false,
+      "sources": [],
+      "folder": "dev_budget",
+      "name_key": "project_handbook.chapter.commercial"
+    },
+    {
+      "code": "quality",
+      "area": "m10_quality",
+      "order": 14,
+      "required": false,
+      "sources": [],
+      "folder": "dev_quality_requirements",
+      "name_key": "project_handbook.chapter.quality"
+    },
+    {
+      "code": "hse",
+      "area": "m11_hse",
+      "order": 15,
+      "required": false,
+      "sources": [],
+      "folder": "dev_hse_requirements",
+      "name_key": "project_handbook.chapter.hse"
+    }
+  ]
+}

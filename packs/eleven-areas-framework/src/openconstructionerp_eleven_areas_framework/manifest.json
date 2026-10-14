@@ -29,7 +29,8 @@
     "staffing",
     "site_logistics",
     "engineering_brief",
-    "hse_frame"
+    "hse_frame",
+    "project_handbook"
   ],
   "default_modules": [
     "oe_project_governance",
@@ -45,7 +46,8 @@
     "oe_commitment_release",
     "oe_economics",
     "oe_quality_concept",
-    "oe_hse_frame"
+    "oe_hse_frame",
+    "oe_project_handbook"
   ],
   "hidden_modules": [],
   "default_company_profile": "owner_client",
@@ -90,6 +92,13 @@
         "id": "eleven_areas_framework",
         "version": 1,
         "path": "catalogues/delivery_forms/eleven_areas_framework.json",
+        "default_for_new_projects": true
+      },
+      {
+        "kind": "handbook_model",
+        "id": "eleven_areas_framework",
+        "version": 1,
+        "path": "catalogues/handbook_model/eleven_areas_framework.json",
         "default_for_new_projects": true
       },
       {

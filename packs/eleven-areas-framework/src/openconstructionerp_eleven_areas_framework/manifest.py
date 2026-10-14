@@ -51,6 +51,7 @@ MANIFEST = PartnerPackManifest(
         "site_logistics",
         "engineering_brief",
         "hse_frame",
+        "project_handbook",
     ],
     default_modules=[
         "oe_project_governance",
@@ -67,6 +68,7 @@ MANIFEST = PartnerPackManifest(
         "oe_economics",
         "oe_quality_concept",
         "oe_hse_frame",
+        "oe_project_handbook",
     ],
     hidden_modules=[],
     default_company_profile="owner_client",
@@ -103,6 +105,13 @@ MANIFEST = PartnerPackManifest(
                 "id": "eleven_areas_framework",
                 "version": 1,
                 "path": "catalogues/delivery_forms/eleven_areas_framework.json",
+                "default_for_new_projects": True,
+            },
+            {
+                "kind": "handbook_model",
+                "id": "eleven_areas_framework",
+                "version": 1,
+                "path": "catalogues/handbook_model/eleven_areas_framework.json",
                 "default_for_new_projects": True,
             },
             {
