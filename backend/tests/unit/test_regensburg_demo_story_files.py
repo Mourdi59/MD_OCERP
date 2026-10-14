@@ -468,3 +468,16 @@ def test_ludwigsburg_design_story_has_no_english_only_text() -> None:
         return [path] if isinstance(node, str) and len(node.split()) >= 3 else []
 
     assert plain(_story("school-ludwigsburg", "design_management")) == []
+
+
+def test_regensburg_contracts_and_guarantees_tell_one_story() -> None:
+    """The shell contract is still open, the pit works are signed, and the guarantees belong to the signed one."""
+    items = {i["code"]: i for i in _story("residential-regensburg", "delivery_model")["contract_items"]}
+    assert items["CF-01"]["status"] == "negotiating" and items["CF-01"]["days"] > 0
+    assert items["CF-02"]["status"] == "signed" and items["CF-02"]["days"] < 0
+    securities = {s["kind"]: s for s in _story("residential-regensburg", "economics")["securities"]}
+    for kind in ("advance_payment", "performance"):
+        assert securities[kind]["status"] == "in_place"
+        assert securities[kind]["valid_from_days"] >= items["CF-02"]["days"]
+        assert "civil works" in securities[kind]["description"]["en"]
+    assert "pending" in items["CF-01"]["counterparty"]["en"]
