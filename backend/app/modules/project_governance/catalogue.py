@@ -22,7 +22,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from app.core import regional_packs
 from app.modules.requirements.lifecycle import PHASE_SPINE
@@ -136,6 +136,24 @@ class ReadinessCriterion(_Frozen):
     name_key: str
     # Plain text per locale, used by tenant catalogues instead of an i18n key.
     labels: dict[str, str] | None = None
+    # How the criterion is judged. Governance itself never evaluates a criterion: the area owner ticks it
+    # (``tick_criterion``) and a tick blocks nothing. A criterion a module can read from its own data names
+    # that module's gate evidence provider; one that is a human call says so. At most one of the three is
+    # set; a shipped catalogue sets exactly one (``tests/unit/test_governance_criteria_coverage.py``).
+    # Tenant catalogues may leave all three unset.
+    evidence_provider: str | None = None
+    manual_only: bool = False
+    # Allowance for a provider that is not merged yet: the module that will provide this criterion. The
+    # coverage test fails once that module exists, so the allowance turns into ``evidence_provider``.
+    pending_provider: str | None = None
+
+    @model_validator(mode="after")
+    def _single_judgement(self) -> ReadinessCriterion:
+        if int(bool(self.evidence_provider)) + int(self.manual_only) + int(bool(self.pending_provider)) > 1:
+            raise ValueError(
+                f"criterion {self.code!r}: evidence_provider, manual_only and pending_provider are exclusive"
+            )
+        return self
 
 
 class Catalogue(_Frozen):
