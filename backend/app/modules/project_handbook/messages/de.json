@@ -36,6 +36,7 @@
   "project_handbook.errors.permission_required": "Das Bearbeiten des Projekthandbuchs braucht das Bearbeitungsrecht.",
   "project_handbook.errors.project_not_found": "Das Projekt gibt es nicht.",
   "project_handbook.errors.submission_refused": "Das Kapitel kann noch nicht eingereicht werden.",
+  "project_handbook.errors.unknown_action": "Diese Aktion gibt es für ein Kapitel nicht.",
   "project_handbook.export.approved": "Freigegeben durch",
   "project_handbook.export.approved_chapters": "Freigegebene Kapitel",
   "project_handbook.export.chapters": "Kapitel",
