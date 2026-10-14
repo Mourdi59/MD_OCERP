@@ -1,0 +1,522 @@
+{
+  "$note": "Quality concept of the Regensburg residential quarter as data, applied on top of the module seeder defaults key by key. Day offsets count from the seed day. Package index 0 is the shell and envelope package, 1 the fit-out and services package. No real firms or persons.",
+  "start_days": 190,
+  "regime": "de_vob_b",
+  "regime_before_construction": "de_vob_b",
+  "packages": [
+    {
+      "ref": "PKG-STR",
+      "title": {
+        "en": "Underground car park, shell and thermal insulation facade",
+        "de": "Tiefgarage, Rohbau und Wärmedämmverbundsystem"
+      }
+    },
+    {
+      "ref": "PKG-FIT",
+      "title": {
+        "en": "Fit-out, building services, district heating and ventilation",
+        "de": "Ausbau, Haustechnik, Fernwärme und Lüftung"
+      }
+    }
+  ],
+  "standards": [
+    {
+      "code": "EN 206",
+      "title": {
+        "en": "Concrete: specification, performance, production and conformity",
+        "de": "Beton: Festlegung, Eigenschaften, Herstellung und Konformität"
+      },
+      "family": "concrete",
+      "discipline": "structure",
+      "package": 0
+    },
+    {
+      "code": "DAfStb WU-Richtlinie",
+      "title": {
+        "en": "Watertight structures of concrete (white tank of the car park)",
+        "de": "Wasserundurchlässige Bauwerke aus Beton (weiße Wanne der Tiefgarage)"
+      },
+      "family": "concrete",
+      "discipline": "structure",
+      "package": 0
+    },
+    {
+      "code": "DIN EN 13501",
+      "title": {
+        "en": "Fire classification of construction products and building elements",
+        "de": "Brandklassifizierung von Bauprodukten und Bauarten"
+      },
+      "family": "fire",
+      "discipline": "fire",
+      "package": 0,
+      "mandate": "statute"
+    },
+    {
+      "code": "DIN 4109",
+      "title": {
+        "en": "Sound insulation in buildings",
+        "de": "Schallschutz im Hochbau"
+      },
+      "family": "acoustics",
+      "discipline": "building_physics",
+      "package": 0,
+      "mandate": "statute"
+    },
+    {
+      "code": "DIN 18040-2",
+      "title": {
+        "en": "Accessible building design: dwellings",
+        "de": "Barrierefreies Bauen: Wohnungen"
+      },
+      "discipline": "accessibility",
+      "package": 0,
+      "mandate": "statute"
+    },
+    {
+      "code": "DIN EN ISO 9972",
+      "title": {
+        "en": "Airtightness of buildings: fan pressurization method (blower door test)",
+        "de": "Luftdichtheit von Gebäuden: Differenzdruckverfahren (Blower-Door-Test)"
+      },
+      "family": "energy",
+      "discipline": "building_physics",
+      "package": 0
+    },
+    {
+      "code": "DIN V 18599",
+      "title": {
+        "en": "Energy efficiency of buildings: proof under the GEG",
+        "de": "Energetische Bewertung von Gebäuden: Nachweis nach GEG"
+      },
+      "family": "energy",
+      "discipline": "building_physics",
+      "package": 1,
+      "mandate": "statute"
+    },
+    {
+      "code": "DIN 1946-6",
+      "title": {
+        "en": "Ventilation of dwellings: ventilation concept and acceptance",
+        "de": "Lüftung von Wohnungen: Lüftungskonzept und Abnahme"
+      },
+      "family": "building_services",
+      "discipline": "mep",
+      "package": 1
+    },
+    {
+      "code": "VDI 2035",
+      "title": {
+        "en": "Prevention of damage in water heating installations",
+        "de": "Vermeidung von Schäden in Warmwasser-Heizanlagen"
+      },
+      "family": "building_services",
+      "discipline": "mep",
+      "package": 1
+    }
+  ],
+  "requirements": [
+    {
+      "category": "quality.acoustics",
+      "entity": {
+        "en": "Apartment separating walls and ceilings",
+        "de": "Wohnungstrennwände und -decken"
+      },
+      "attribute": {
+        "en": "airborne sound insulation R'w (DIN 4109 increased level)",
+        "de": "Luftschalldämmung R'w (DIN 4109, erhöhter Schallschutz)"
+      },
+      "value": ">= 56",
+      "unit": "dB",
+      "source": {
+        "en": "Sound insulation proof 2.1",
+        "de": "Schallschutznachweis 2.1"
+      }
+    },
+    {
+      "category": "quality.acoustics",
+      "entity": {
+        "en": "Apartment ceilings",
+        "de": "Wohnungsdecken"
+      },
+      "attribute": {
+        "en": "impact sound level L'n,w",
+        "de": "Trittschallpegel L'n,w"
+      },
+      "value": "<= 46",
+      "unit": "dB",
+      "source": {
+        "en": "Sound insulation proof 2.4",
+        "de": "Schallschutznachweis 2.4"
+      }
+    },
+    {
+      "category": "quality.user",
+      "entity": {
+        "en": "Apartments",
+        "de": "Wohnungen"
+      },
+      "attribute": {
+        "en": "ventilation: ventilation concept to DIN 1946-6, humidity protection",
+        "de": "Lüftung: Lüftungskonzept nach DIN 1946-6, Feuchteschutz"
+      },
+      "value": {
+        "en": "fulfilled",
+        "de": "erfüllt"
+      },
+      "unit": "",
+      "source": {
+        "en": "Ventilation concept 4.2",
+        "de": "Lüftungskonzept 4.2"
+      }
+    },
+    {
+      "category": "quality.user",
+      "entity": {
+        "en": "Entrances, lifts and 12 barrier-free apartments",
+        "de": "Eingänge, Aufzüge und 12 barrierefreie Wohnungen"
+      },
+      "attribute": {
+        "en": "accessibility (DIN 18040-2)",
+        "de": "Barrierefreiheit (DIN 18040-2)"
+      },
+      "value": {
+        "en": "fulfilled, checked by the accessibility officer",
+        "de": "erfüllt, geprüft durch den Behindertenbeauftragten"
+      },
+      "unit": "",
+      "source": {
+        "en": "Building permit, condition 9",
+        "de": "Baugenehmigung, Nebenbestimmung 9"
+      }
+    },
+    {
+      "category": "quality.energy",
+      "entity": {
+        "en": "Building envelope with thermal insulation facade",
+        "de": "Gebäudehülle mit Wärmedämmverbundsystem"
+      },
+      "attribute": {
+        "en": "air permeability n50",
+        "de": "Luftdurchlässigkeit n50"
+      },
+      "value": "<= 0.6",
+      "unit": "1/h",
+      "source": {
+        "en": "GEG energy proof, efficiency house 40, 2.3",
+        "de": "GEG-Energienachweis, Effizienzhaus 40, 2.3"
+      }
+    },
+    {
+      "category": "quality.material",
+      "entity": {
+        "en": "Underground car park slab and walls",
+        "de": "Bodenplatte und Wände der Tiefgarage"
+      },
+      "attribute": {
+        "en": "crack width, watertight concrete",
+        "de": "Rissbreite, wasserundurchlässiger Beton"
+      },
+      "value": "<= 0.20",
+      "unit": "mm",
+      "source": {
+        "en": "Concrete specification, white tank 1.5",
+        "de": "Betonspezifikation, weiße Wanne 1.5"
+      }
+    },
+    {
+      "category": "quality.fire",
+      "entity": {
+        "en": "Escape routes, stairwells and car park",
+        "de": "Rettungswege, Treppenhäuser und Tiefgarage"
+      },
+      "attribute": {
+        "en": "fire protection as in the approved concept",
+        "de": "Brandschutz wie im genehmigten Konzept"
+      },
+      "value": {
+        "en": "acceptance by the approved fire protection inspector",
+        "de": "Abnahme durch den Prüfsachverständigen für Brandschutz"
+      },
+      "unit": "",
+      "source": {
+        "en": "Fire protection concept 5",
+        "de": "Brandschutzkonzept 5"
+      }
+    },
+    {
+      "category": "quality.standards_basis",
+      "entity": {
+        "en": "District heating substations",
+        "de": "Fernwärme-Hausstationen"
+      },
+      "attribute": {
+        "en": "hydraulic balancing and flushing",
+        "de": "Hydraulischer Abgleich und Spülung"
+      },
+      "value": {
+        "en": "documented before first heating period",
+        "de": "dokumentiert vor der ersten Heizperiode"
+      },
+      "unit": "",
+      "source": {
+        "en": "Heating design, hydraulic balancing",
+        "de": "Heizungsplanung, hydraulischer Abgleich"
+      }
+    },
+    {
+      "category": "quality.fm_data",
+      "entity": {
+        "en": "Technical equipment and lifts",
+        "de": "Technische Anlagen und Aufzüge"
+      },
+      "attribute": {
+        "en": "asset data set",
+        "de": "Anlagendatensatz"
+      },
+      "value": {
+        "en": "complete at handover",
+        "de": "vollständig zur Übergabe"
+      },
+      "unit": "",
+      "source": {
+        "en": "Information needs 2.3",
+        "de": "Informationsbedarf 2.3"
+      }
+    }
+  ],
+  "expert_reports": [
+    {
+      "subject": {
+        "en": "Independent check of the structural analysis by the approved inspector",
+        "de": "Unabhängige Prüfung der Statik durch den Prüfsachverständigen"
+      },
+      "trigger": "before_concreting",
+      "frequency": "once",
+      "offsets": [
+        -200
+      ],
+      "state": "completed",
+      "planned_offsets": [
+        215
+      ]
+    },
+    {
+      "subject": {
+        "en": "Fire protection inspection of the services penetrations",
+        "de": "Brandschutzprüfung der Leitungsdurchführungen"
+      },
+      "trigger": "before_concealment",
+      "frequency": "per_floor",
+      "offsets": [
+        -20,
+        25
+      ],
+      "state": "reporting",
+      "planned_offsets": [
+        400,
+        450
+      ]
+    },
+    {
+      "subject": {
+        "en": "Blower door test of the buildings",
+        "de": "Blower-Door-Test der Gebäude"
+      },
+      "trigger": "after_installation",
+      "frequency": "per_section",
+      "offsets": [
+        60,
+        120
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        330,
+        380
+      ]
+    },
+    {
+      "subject": {
+        "en": "Commissioning and hygiene check of the apartment ventilation to DIN 1946-6",
+        "de": "Inbetriebnahme und Hygieneprüfung der Wohnungslüftung nach DIN 1946-6"
+      },
+      "trigger": "before_commissioning",
+      "frequency": "per_section",
+      "offsets": [
+        130
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        470
+      ]
+    },
+    {
+      "subject": {
+        "en": "Sound insulation measurement to DIN 4109 in sample apartments",
+        "de": "Schallschutzmessung nach DIN 4109 in Musterwohnungen"
+      },
+      "trigger": "after_installation",
+      "frequency": "per_section",
+      "offsets": [
+        140,
+        150
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        500,
+        520
+      ]
+    },
+    {
+      "subject": {
+        "en": "Watertightness inspection of the car park white tank",
+        "de": "Dichtheitsprüfung der weißen Wanne der Tiefgarage"
+      },
+      "trigger": "before_acceptance",
+      "frequency": "once",
+      "offsets": [
+        155
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        540
+      ]
+    },
+    {
+      "subject": {
+        "en": "Hydraulic balancing and acceptance of the heating system",
+        "de": "Hydraulischer Abgleich und Abnahme der Heizungsanlage"
+      },
+      "trigger": "before_acceptance",
+      "frequency": "once",
+      "offsets": [
+        160
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        545
+      ]
+    },
+    {
+      "subject": {
+        "en": "Accessibility check to DIN 18040-2",
+        "de": "Prüfung der Barrierefreiheit nach DIN 18040-2"
+      },
+      "trigger": "before_acceptance",
+      "frequency": "once",
+      "offsets": [
+        165
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        550
+      ]
+    },
+    {
+      "subject": {
+        "en": "Fire protection acceptance by the approved fire protection inspector",
+        "de": "Brandschutzabnahme durch den Prüfsachverständigen für Brandschutz"
+      },
+      "trigger": "before_acceptance",
+      "frequency": "once",
+      "offsets": [
+        170
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        560
+      ]
+    }
+  ],
+  "units": [
+    {
+      "code": "AU-01",
+      "title": {
+        "en": "Underground car park and shell",
+        "de": "Tiefgarage und Rohbau"
+      },
+      "kind": "partial_package",
+      "days": 60,
+      "packages": [
+        0
+      ]
+    },
+    {
+      "code": "AU-02",
+      "title": {
+        "en": "Building services and fit-out",
+        "de": "Haustechnik und Ausbau"
+      },
+      "kind": "partial_package",
+      "days": 130,
+      "packages": [
+        1
+      ]
+    },
+    {
+      "code": "AU-03",
+      "title": {
+        "en": "Building A, before the first tenants move in",
+        "de": "Haus A, vor Einzug der ersten Mieter"
+      },
+      "kind": "partial_section",
+      "days": 150,
+      "packages": [
+        1
+      ],
+      "section": {
+        "en": "Building A",
+        "de": "Haus A"
+      }
+    },
+    {
+      "code": "AU-04",
+      "title": {
+        "en": "Whole works",
+        "de": "Gesamte Leistung"
+      },
+      "kind": "total",
+      "days": 170
+    },
+    {
+      "code": "AU-05",
+      "title": {
+        "en": "Handover to the property management",
+        "de": "Übergabe an die Hausverwaltung"
+      },
+      "kind": "handover_to_operation",
+      "days": 185
+    }
+  ],
+  "survey_neighbour": {
+    "ref": "NB-01",
+    "address": {
+      "en": "Adjacent commercial building, west boundary",
+      "de": "Angrenzendes Gewerbegebäude, Westgrenze"
+    },
+    "triggers": [
+      "excavation",
+      "vibration"
+    ],
+    "methods": [
+      "photo",
+      "crack_mapping"
+    ]
+  },
+  "survey_road": {
+    "ref": "RD-01",
+    "address": {
+      "en": "Access road Am Donauknie, east side",
+      "de": "Zufahrtsstraße Am Donauknie, Ostseite"
+    },
+    "triggers": [
+      "excavation"
+    ],
+    "methods": [
+      "photo"
+    ]
+  },
+  "waiver_reason": {
+    "en": "Covered by the manufacturer's system warranty; a separate certificate is not issued for this package.",
+    "de": "Durch die Systemgarantie des Herstellers abgedeckt; für dieses Paket wird kein gesondertes Zertifikat ausgestellt."
+  }
+}

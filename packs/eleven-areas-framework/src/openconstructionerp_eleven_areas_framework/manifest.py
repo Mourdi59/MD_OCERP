@@ -1,6 +1,6 @@
 """Manifest of the eleven module project framework pack.
 
-The pack is data only: it selects eleven platform modules and ships catalogues
+The pack is data only: it selects the platform modules and ships catalogues
 for them. The fields are written here as literals because a pack in the source
 tree is found and checked through its ``manifest.py``, several checks read this
 file as text, and a field written any other way reads to them as not declared.
@@ -24,7 +24,7 @@ MANIFEST = PartnerPackManifest(
     description=(
         "Owner-side project management in eleven management areas over two phases, project development "
         "and construction execution, with one gate between them and one approved frame document per area. "
-        "Selects the eleven platform modules that fill those areas and ships the framework's phase model, "
+        "Selects the platform modules that fill those areas and ships the framework's phase model, "
         "stakeholder and mandate framework, delivery forms, German permit roadmap additions, a German "
         "site logistics catalogue and German health, safety and environment frame catalogues for the country "
         "and two Laender as catalogue data in German and English."
@@ -39,6 +39,7 @@ MANIFEST = PartnerPackManifest(
     validation_rule_sets=[
         "project_governance",
         "commitment_release",
+        "economics",
         "delivery_model",
         "permits",
         "plant_register",
@@ -48,6 +49,7 @@ MANIFEST = PartnerPackManifest(
         "quality_concept",
         "staffing",
         "site_logistics",
+        "engineering_brief",
         "hse_frame",
     ],
     default_modules=[
@@ -57,10 +59,12 @@ MANIFEST = PartnerPackManifest(
         "oe_permits",
         "oe_plant_register",
         "oe_staffing",
+        "oe_engineering_brief",
         "oe_site_logistics",
         "oe_design_management",
         "oe_procurement_concept",
         "oe_commitment_release",
+        "oe_economics",
         "oe_quality_concept",
         "oe_hse_frame",
     ],
@@ -160,6 +164,7 @@ MANIFEST = PartnerPackManifest(
             "design_reports",
             "quality_concept",
             "staffing_model",
+            "engineering_brief_model",
         ],
         "demo": {"path": "demo/demo_project.json"},
     },

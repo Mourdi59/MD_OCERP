@@ -37,6 +37,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from app.core.i18n import get_locale
 from app.core.tenant_scope import resolve_tenant_id
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
+from app.modules.procurement_concept import permit_conditions
 from app.modules.procurement_concept.errors import ProcurementError
 from app.modules.procurement_concept.messages import translate
 from app.modules.procurement_concept.schemas import (
@@ -310,6 +311,13 @@ async def list_packages(
     svc = ProcurementConceptService(session)
     access = await _run(_access(svc, project_id, user_id, payload))
     return _page(await _run(svc.package_views(project_id, today=_today(today), access=access)))
+
+
+@router.get("/projects/{project_id}/permit-conditions", dependencies=[READ])
+async def list_permit_conditions(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """Permit conditions of module 2 as requirements every open lot inherits (read only)."""
+    await verify_project_access(project_id, user_id, session)
+    return await permit_conditions.load(session, project_id)
 
 
 @router.get("/projects/{project_id}/gates", dependencies=[READ])

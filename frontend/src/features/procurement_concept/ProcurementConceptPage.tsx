@@ -44,6 +44,7 @@ import {
 import { CONCEPT_STATE, vocab } from './labels';
 import { MarketSoundings } from './MarketSoundings';
 import { PackageBoard } from './PackageBoard';
+import { PermitLotRequirementsSection } from './PermitLotRequirementsSection';
 import { PackageDialog } from './PackageDialog';
 import { PrequalPanel } from './PrequalPanel';
 import { CONCEPT_TONE, ToneBadge } from './ProcurementBits';
@@ -250,15 +251,18 @@ export function ProcurementConceptPage() {
     );
   } else {
     body = loading(packagesQ) ?? failed(packagesQ, packagesFailed) ?? (
-      <PackageBoard
-        projectId={projectId}
-        concept={concept}
-        packages={packages}
-        labels={labels}
-        onPlan={setPlanning}
-        onCandidates={(id) => go({ tab: 'prequalification', package: id })}
-        onChanged={invalidate}
-      />
+      <div className="space-y-4">
+        <PackageBoard
+          projectId={projectId}
+          concept={concept}
+          packages={packages}
+          labels={labels}
+          onPlan={setPlanning}
+          onCandidates={(id) => go({ tab: 'prequalification', package: id })}
+          onChanged={invalidate}
+        />
+        <PermitLotRequirementsSection projectId={projectId} />
+      </div>
     );
   }
 

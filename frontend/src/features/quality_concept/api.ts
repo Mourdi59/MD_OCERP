@@ -862,6 +862,7 @@ export const qcKeys = {
   matrix: (projectId: string) => ['quality-concept', projectId, 'stage-progress'] as const,
   units: (projectId: string) => ['quality-concept', projectId, 'acceptance-units'] as const,
   surveys: (projectId: string) => ['quality-concept', projectId, 'preservation'] as const,
+  permitConditions: (projectId: string) => ['quality-concept', projectId, 'permit-conditions'] as const,
   expertReports: (projectId: string) => ['quality-concept', projectId, 'expert-reports'] as const,
   readiness: (projectId: string) => ['quality-concept', projectId, 'readiness'] as const,
   validation: (projectId: string) => ['quality-concept', projectId, 'validation'] as const,
@@ -1091,6 +1092,34 @@ export const pairSurvey = (projectId: string, id: string, beforeId: string) =>
   apiPost<Survey>(`/v1/quality-concept/projects/${projectId}/preservation/${id}/pair`, { before_id: beforeId });
 
 export const deleteSurvey = (projectId: string, id: string) => apiDelete(`/v1/quality-concept/projects/${projectId}/preservation/${id}`);
+
+export interface PermitConditionCheck {
+  condition_id: string;
+  permit_id: string;
+  permit_reference: string;
+  permit_type_code: string;
+  number: string;
+  requirement: string;
+  evidence_required: string;
+  trigger: string;
+  due_date: string | null;
+  topic: string;
+  responsible_party: string;
+  owner_user_id: string | null;
+  condition_state: string;
+  check_state: 'to_prove' | 'in_verification' | 'failed' | 'proven' | 'not_required';
+  blocks_start: boolean;
+}
+
+export interface PermitConditionChecks {
+  available: boolean;
+  reason: string;
+  items: PermitConditionCheck[];
+  summary: { total: number; proven: number; unproven: number; failed: number; blocks_start: number };
+}
+
+export const getPermitConditionChecks = (projectId: string) =>
+  apiGet<PermitConditionChecks>(`/v1/quality-concept/projects/${projectId}/permit-conditions`);
 
 export const listExpertReports = (projectId: string) =>
   apiGet<Page<ExpertReport>>(`/v1/quality-concept/projects/${projectId}/expert-reports`);

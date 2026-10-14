@@ -79,6 +79,184 @@ _AREAS: tuple[tuple[str, str, dict[str, Any] | None, str | None, tuple[str, str]
 )
 
 
+_STRATEGY_MODES = ("stock", "kanban", "direct_install")
+_STORAGE_AREAS = ("A-LAY", "A-LAY2")
+
+# What a story may replace in the plan, key by key. A key a story leaves out, or gets wrong, keeps this.
+_PLAN_TEXT_DEFAULTS: dict[str, str] = {
+    "stage_1_title": "Earthworks",
+    "stage_2_title": "Structure",
+    "power_connection_point": "Transformer kiosk at the north gate",
+    "water_connection_point": "Hydrant south road",
+    "water_consumer": "Concrete curing and wheel wash",
+    "sewage_connection_point": "Manhole in the south road",
+    "rules_text": "Book every delivery 48 hours ahead. No waiting on the public road. Wheel wash on exit.",
+    "municipality_contact": "Municipal building department",
+    "parking_note": "Site staff park on the leased lot east of the site.",
+    "heavy_title": "Main transformer 62 t",
+    "heavy_route_notes": "Ring road, then the industrial road.",
+    "heavy_destination": "Site, north gate",
+    "oversize_authority": "Road traffic authority",
+    "night_authority": "Environmental authority",
+    "spoil_title": "Excavated soil to the licensed tip",
+    "rebar_title": "Reinforcement, first floor slab",
+    "rebar_destination": "Laydown A",
+    "dust_description": "Dust on parked cars on the east side after excavation.",
+    "dust_response": "Water spraying twice a day; wheel wash moved to the exit.",
+    "noise_description": "Reversing alarms before 07:00 at the north gate.",
+    "power_provider": "Local grid operator",
+    "water_provider": "Municipal water utility",
+    "sewage_provider": "Municipal drainage utility",
+    "crane_1_consumer": "Tower crane 1",
+    "crane_2_consumer": "Tower crane 2",
+    "welfare_consumer": "Site offices and welfare",
+    "telecom_point": "Duct at the north gate",
+    "telecom_consumer": "Site offices data link",
+    "heavy_carrier": "Heavy haulage carrier",
+    "heavy_origin": "Manufacturer works",
+    "oversize_conditions": "Route survey ordered; application to follow with the survey.",
+    "spoil_carrier": "Earthworks haulier",
+    "spoil_origin": "Site",
+    "spoil_destination": "Licensed soil tip",
+    "rebar_carrier": "Steel supplier transport",
+    "rebar_origin": "Rebar yard",
+    "customs_title": "Medium voltage switchgear",
+    "customs_place": "Manufacturer works, loading dock",
+    "customs_broker": "Customs broker",
+    "customs_line_1": "Switchgear panels, 24 kV",
+    "customs_line_2": "Control cabinets",
+    "customs_unit": "pcs",
+}
+_DEFAULT_STRATEGY: tuple[tuple[str, str, str, str | None, int], ...] = (
+    ("rebar", "Reinforcement, cut and bent", "stock", "A-LAY", 5),
+    ("drywall", "Drywall boards by floor", "kanban", "A-LAY2", 2),
+    ("precast", "Precast stair cores, set from the truck", "direct_install", None, 0),
+)
+_DEFAULT_COORDINATION: tuple[tuple[str, str, str, int, int | None], ...] = (
+    ("municipality", "Road occupancy for the crane base", "Agreed in principle; written application to follow.", 9, 5),
+    ("utility", "Water connection date", "Utility confirmed the connection in four weeks.", 2, None),
+)
+
+
+def _is_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _strategy_rows(flows: list, locale: str) -> tuple | None:
+    from app.modules.project_governance.public import story_text
+
+    rows = []
+    for f in flows:
+        if not isinstance(f, dict):
+            return None
+        storage = f.get("storage_area")
+        desc = story_text(f.get("description"), locale)
+        ok = (
+            isinstance(f.get("flow_code"), str)
+            and f["flow_code"]
+            and desc
+            and f.get("mode") in _STRATEGY_MODES
+            and (storage is None or storage in _STORAGE_AREAS)
+            and _is_int(f.get("buffer_days"))
+            and f["buffer_days"] >= 0
+        )
+        if not ok:
+            return None
+        rows.append((f["flow_code"], desc, f["mode"], storage, f["buffer_days"]))
+    return tuple(rows)
+
+
+def _coordination_rows(entries: list, locale: str) -> tuple | None:
+    from app.modules.project_governance.public import story_text
+
+    rows = []
+    for e in entries:
+        if not isinstance(e, dict):
+            return None
+        topic, outcome = story_text(e.get("topic"), locale), story_text(e.get("outcome"), locale)
+        nxt = e.get("next_action_in")
+        ok = (
+            e.get("body") in ("municipality", "utility", "police", "neighbours", "authority", "other")
+            and topic
+            and outcome
+            and _is_int(e.get("days_ago"))
+            and (nxt is None or _is_int(nxt))
+        )
+        if not ok:
+            return None
+        rows.append((e["body"], topic, outcome, e["days_ago"], nxt))
+    return tuple(rows)
+
+
+def resolve_plan_content(story: dict | None, locale: str) -> dict[str, Any]:
+    """The content of the logistics plan for one project: today's defaults with the story applied on top.
+
+    Text keys are those of ``_PLAN_TEXT_DEFAULTS``. Structured keys: ``area_names`` (area code to
+    name), ``strategy`` (flow_code, description, mode, storage_area code, buffer_days),
+    ``delivery_open`` / ``delivery_close`` (``HH:MM``), ``noise_zone_type``, ``day_dba`` /
+    ``night_dba`` (numbers used when the catalogue has no limit for the zone) and ``coordination``
+    (body, topic, outcome, days_ago, optional next_action_in). An unusable value keeps the default
+    for that key and is logged at info level only.
+    """
+    from app.modules.project_governance.public import story_text
+    from app.modules.site_logistics.demo import _hhmm
+
+    out: dict[str, Any] = dict(_PLAN_TEXT_DEFAULTS)
+    out.update(
+        area_names={},
+        strategy=_DEFAULT_STRATEGY,
+        delivery_open="07:00",
+        delivery_close="17:00",
+        noise_zone_type="mixed",
+        day_dba=Decimal("60"),
+        night_dba=Decimal("45"),
+        coordination=_DEFAULT_COORDINATION,
+    )
+    if not isinstance(story, dict) or not story:
+        return out
+
+    for key in _PLAN_TEXT_DEFAULTS:
+        if key in story:
+            text = story_text(story[key], locale)
+            if text:
+                out[key] = text
+            else:
+                logger.info("site_logistics demo story: %s not usable, keeping the default", key)
+
+    names = story.get("area_names")
+    if isinstance(names, dict):
+        known = {a[0] for a in _AREAS}
+        out["area_names"] = {k: story_text(v, locale) for k, v in names.items() if k in known and story_text(v, locale)}
+
+    flows = story.get("strategy")
+    if isinstance(flows, list) and flows:
+        rows = _strategy_rows(flows, locale)
+        if rows:
+            out["strategy"] = rows
+        else:
+            logger.info("site_logistics demo story: strategy not usable, keeping the default flows")
+
+    open_t, close_t = story.get("delivery_open"), story.get("delivery_close")
+    if _hhmm(open_t) and _hhmm(close_t) and open_t < close_t:
+        out["delivery_open"], out["delivery_close"] = open_t, close_t
+
+    if story.get("noise_zone_type") in ("residential", "mixed", "industrial"):
+        out["noise_zone_type"] = story["noise_zone_type"]
+    for key in ("day_dba", "night_dba"):
+        value = story.get(key)
+        if isinstance(value, int | float) and not isinstance(value, bool) and 0 < value < 120:
+            out[key] = Decimal(str(value))
+
+    entries = story.get("coordination")
+    if isinstance(entries, list) and entries:
+        rows = _coordination_rows(entries, locale)
+        if rows:
+            out["coordination"] = rows
+        else:
+            logger.info("site_logistics demo story: coordination not usable, keeping the default entries")
+    return out
+
+
 async def seed_logistics_plan_demo(session: AsyncSession, project_ids: list[uuid.UUID]) -> dict[str, int]:
     """Seed the logistics plan of every project in ``project_ids`` that has no stage yet. The caller commits."""
     from app.modules.site_logistics.models import ExpansionStage
@@ -97,10 +275,18 @@ async def seed_logistics_plan_demo(session: AsyncSession, project_ids: list[uuid
 
 
 async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
+    from app.core.demo_marker import demo_id_of
+    from app.modules.project_governance.public import demo_module_story
+    from app.modules.projects.models import Project
     from app.modules.site_logistics import hosting
     from app.modules.site_logistics.models import Gate, LaydownZone
     from app.modules.site_logistics.plan_service import LogisticsPlanService
 
+    project = await session.get(Project, pid)
+    content = resolve_plan_content(
+        demo_module_story(demo_id_of(getattr(project, "metadata_", None)), "site_logistics"),
+        getattr(project, "locale", None) or "en",
+    )
     svc = LogisticsPlanService(session)
     cat = await svc.catalogue(pid)
     today = datetime.now(UTC).date()
@@ -119,7 +305,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         stage1.id,
         {
             "code": "stage_1",
-            "title": "Earthworks",
+            "title": content["stage_1_title"],
             "ordinal": 1,
             "from_date": today + timedelta(days=start),
             "to_date": today + timedelta(days=start + 56),
@@ -132,7 +318,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         pid,
         {
             "code": "stage_2",
-            "title": "Structure",
+            "title": content["stage_2_title"],
             "ordinal": 2,
             "from_date": today + timedelta(days=start + 57),
             "to_date": today + timedelta(days=start + 314),
@@ -143,7 +329,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
     # Areas and their allocation per stage: both balances close at 12 000 m2.
     areas = {}
     for code, kind, geometry, declared, s1, s2 in _AREAS:
-        data: dict[str, Any] = {"code": code, "name": code, "area_kind": kind}
+        data: dict[str, Any] = {"code": code, "name": content["area_names"].get(code, code), "area_kind": kind}
         if geometry is not None:
             data["geometry"] = geometry
         else:
@@ -181,8 +367,8 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         {
             "media_kind": "power",
             "phase": "construction",
-            "provider_name": "Local grid operator",
-            "connection_point": "Transformer kiosk at the north gate",
+            "provider_name": content["power_provider"],
+            "connection_point": content["power_connection_point"],
             "available_capacity": Decimal("250"),
             "contracted_capacity": Decimal("160"),
             "application_ref": "PWR-001",
@@ -194,7 +380,11 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
     # Applied for before construction; contracted and connected once the site runs.
     for target in ("requested",) if planned else ("requested", "offered", "contracted", "connected"):
         await svc.transition_media(pid, power.id, target, actor)
-    for consumer, kva in (("Tower crane 1", "60"), ("Tower crane 2", "60"), ("Site offices and welfare", "40")):
+    for consumer, kva in (
+        (content["crane_1_consumer"], "60"),
+        (content["crane_2_consumer"], "60"),
+        (content["welfare_consumer"], "40"),
+    ):
         await svc.create_demand(
             pid,
             power.id,
@@ -211,7 +401,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         power.id,
         {
             "stage_id": stage1.id,
-            "consumer": "Site offices and welfare",
+            "consumer": content["welfare_consumer"],
             "peak_demand": Decimal("40"),
             "simultaneity_factor": Decimal("0.8"),
         },
@@ -221,8 +411,8 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         pid,
         {
             "media_kind": "water",
-            "provider_name": "Municipal water utility",
-            "connection_point": "Hydrant south road",
+            "provider_name": content["water_provider"],
+            "connection_point": content["water_connection_point"],
             "application_ref": "WAT-014",
             "applied_on": today - timedelta(days=10),
             "promised_on": today + timedelta(days=30),
@@ -233,7 +423,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
     await svc.create_demand(
         pid,
         water.id,
-        {"stage_id": stage2.id, "consumer": "Concrete curing and wheel wash", "peak_demand": Decimal("6")},
+        {"stage_id": stage2.id, "consumer": content["water_consumer"], "peak_demand": Decimal("6")},
         actor,
     )
 
@@ -242,8 +432,8 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             pid,
             {
                 "media_kind": "sewage",
-                "provider_name": "Municipal drainage utility",
-                "connection_point": "Manhole in the south road",
+                "provider_name": content["sewage_provider"],
+                "connection_point": content["sewage_connection_point"],
                 "available_capacity": Decimal("12"),
                 "application_ref": "SEW-007",
                 "applied_on": today - timedelta(days=10),
@@ -255,17 +445,17 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         await svc.create_demand(
             pid,
             sewage.id,
-            {"stage_id": stage2.id, "consumer": "Site offices and welfare", "peak_demand": Decimal("4")},
+            {"stage_id": stage2.id, "consumer": content["welfare_consumer"], "peak_demand": Decimal("4")},
             actor,
         )
         # Telecom is known to be needed and not applied for yet.
         telecom = await svc.create_media(
-            pid, {"media_kind": "telecom", "connection_point": "Duct at the north gate"}, actor
+            pid, {"media_kind": "telecom", "connection_point": content["telecom_point"]}, actor
         )
         await svc.create_demand(
             pid,
             telecom.id,
-            {"stage_id": stage1.id, "consumer": "Site offices data link", "peak_demand": Decimal("100")},
+            {"stage_id": stage1.id, "consumer": content["telecom_consumer"], "peak_demand": Decimal("100")},
             actor,
         )
 
@@ -275,40 +465,31 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         {
             "strategy": [
                 {
-                    "flow_code": "rebar",
-                    "description": "Reinforcement, cut and bent",
-                    "mode": "stock",
-                    "storage_area_id": areas["A-LAY"].id,
-                    "buffer_days": 5,
-                },
-                {
-                    "flow_code": "drywall",
-                    "description": "Drywall boards by floor",
-                    "mode": "kanban",
-                    "storage_area_id": areas["A-LAY2"].id,
-                    "buffer_days": 2,
-                },
-                {
-                    "flow_code": "precast",
-                    "description": "Precast stair cores, set from the truck",
-                    "mode": "direct_install",
-                    "buffer_days": 0,
-                },
+                    "flow_code": code,
+                    "description": desc,
+                    "mode": mode,
+                    **({"storage_area_id": areas[storage].id} if storage else {}),
+                    "buffer_days": buf,
+                }
+                for code, desc, mode, storage, buf in content["strategy"]
             ],
-            "delivery_open": "07:00",
-            "delivery_close": "17:00",
+            "delivery_open": content["delivery_open"],
+            "delivery_close": content["delivery_close"],
             "max_deliveries_per_hour": 4,
-            "rules_text": "Book every delivery 48 hours ahead. No waiting on the public road. Wheel wash on exit.",
+            "rules_text": content["rules_text"],
         },
         actor,
     )
 
     # Neighbourhood: the catalogue's mixed-zone limit where the country has one, else a project value.
-    limit = next((n for n in cat.noise_limits if n.zone_type == "mixed" and not n.project_value_required), None)
+    limit = next(
+        (n for n in cat.noise_limits if n.zone_type == content["noise_zone_type"] and not n.project_value_required),
+        None,
+    )
     hood: dict[str, Any] = {
-        "zone_type": "mixed",
-        "municipality_contact": "Municipal building department",
-        "parking_note": "Site staff park on the leased lot east of the site.",
+        "zone_type": content["noise_zone_type"],
+        "municipality_contact": content["municipality_contact"],
+        "parking_note": content["parking_note"],
     }
     if limit is not None:
         hood["noise_limit_source"] = limit.code
@@ -316,8 +497,8 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         hood.update(
             {
                 "noise_limit_source": "project",
-                "day_dba": Decimal("60"),
-                "night_dba": Decimal("45"),
+                "day_dba": content["day_dba"],
+                "night_dba": content["night_dba"],
                 "quiet_hours": ["20:00", "07:00"],
             }
         )
@@ -331,10 +512,10 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         {
             "direction": "inbound",
             "transport_kind": "heavy_oversize",
-            "title": "Main transformer 62 t",
-            "carrier_name": "Heavy haulage carrier",
-            "origin": "Manufacturer works",
-            "destination": "Site, north gate",
+            "title": content["heavy_title"],
+            "carrier_name": content["heavy_carrier"],
+            "origin": content["heavy_origin"],
+            "destination": content["heavy_destination"],
             "gate_id": gate.id if gate else None,
             "planned_window_start": datetime.combine(day, time(22, 0), tzinfo=UTC),
             "planned_window_end": datetime.combine(day + timedelta(days=1), time(4, 0), tzinfo=UTC),
@@ -343,7 +524,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             "height_m": Decimal("4.30"),
             "length_m": Decimal("22.00"),
             "escort_required": True,
-            "route_notes": "Ring road, then the industrial road.",
+            "route_notes": content["heavy_route_notes"],
         },
         actor,
     )
@@ -355,18 +536,18 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             {
                 "transport_id": heavy.id,
                 "permit_kind": "oversize_permit",
-                "authority": "Road traffic authority",
-                "conditions": "Route survey ordered; application to follow with the survey.",
+                "authority": content["oversize_authority"],
+                "conditions": content["oversize_conditions"],
             },
             actor,
         )
-        return await _seed_rest(session, svc, pid, today, gate, planned=True)
+        return await _seed_rest(session, svc, pid, today, gate, content, planned=True)
     oversize = await svc.create_permit(
         pid,
         {
             "transport_id": heavy.id,
             "permit_kind": "oversize_permit",
-            "authority": "Road traffic authority",
+            "authority": content["oversize_authority"],
             "reference": "OS-2026-118",
             "valid_from": day - timedelta(days=3),
             "valid_to": day + timedelta(days=10),
@@ -379,7 +560,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         {
             "transport_id": heavy.id,
             "permit_kind": "night_work",
-            "authority": "Environmental authority",
+            "authority": content["night_authority"],
             "reference": "NW-2026-031",
             "valid_from": day,
             "valid_to": day + timedelta(days=1),
@@ -392,10 +573,12 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
     # 62 t through a 44 t gate: the granted oversize permit covers this transport and
     # this window, so the gate limit is lifted for it and it can hold its slot.
     await svc.transition_transport(pid, heavy.id, "scheduled", actor)
-    return await _seed_rest(session, svc, pid, today, gate, planned=False)
+    return await _seed_rest(session, svc, pid, today, gate, content, planned=False)
 
 
-async def _seed_rest(session: AsyncSession, svc: Any, pid: uuid.UUID, today: Any, gate: Any, *, planned: bool) -> int:
+async def _seed_rest(
+    session: AsyncSession, svc: Any, pid: uuid.UUID, today: Any, gate: Any, content: dict[str, Any], *, planned: bool
+) -> int:
     """The everyday transports, the customs case, complaints and coordination."""
     actor = None
     # On a site that does not run yet the first runs are planned for its first week.
@@ -405,10 +588,10 @@ async def _seed_rest(session: AsyncSession, svc: Any, pid: uuid.UUID, today: Any
         {
             "direction": "outbound",
             "transport_kind": "outbound_spoil",
-            "title": "Excavated soil to the licensed tip",
-            "carrier_name": "Earthworks haulier",
-            "origin": "Site",
-            "destination": "Licensed soil tip",
+            "title": content["spoil_title"],
+            "carrier_name": content["spoil_carrier"],
+            "origin": content["spoil_origin"],
+            "destination": content["spoil_destination"],
             "gate_id": gate.id if gate else None,
             "planned_window_start": datetime.combine(today + timedelta(days=first + 2), time(8, 0), tzinfo=UTC),
             "planned_window_end": datetime.combine(today + timedelta(days=first + 2), time(15, 0), tzinfo=UTC),
@@ -421,10 +604,10 @@ async def _seed_rest(session: AsyncSession, svc: Any, pid: uuid.UUID, today: Any
         {
             "direction": "inbound",
             "transport_kind": "inbound_delivery",
-            "title": "Reinforcement, first floor slab",
-            "carrier_name": "Steel supplier transport",
-            "origin": "Rebar yard",
-            "destination": "Laydown A",
+            "title": content["rebar_title"],
+            "carrier_name": content["rebar_carrier"],
+            "origin": content["rebar_origin"],
+            "destination": content["rebar_destination"],
             "gate_id": gate.id if gate else None,
             "planned_window_start": datetime.combine(today + timedelta(days=first + 4), time(9, 0), tzinfo=UTC),
             "planned_window_end": datetime.combine(today + timedelta(days=first + 4), time(10, 0), tzinfo=UTC),
@@ -437,37 +620,28 @@ async def _seed_rest(session: AsyncSession, svc: Any, pid: uuid.UUID, today: Any
 
     # Nothing is ordered before the gate, so there is no shipment to clear yet.
     if not planned:
-        await _seed_customs(session, svc, pid)
+        await _seed_customs(session, svc, pid, content)
 
     # Complaints come with a running site; coordination with the authorities starts before it.
     if not planned:
-        await _seed_complaints(svc, pid, today)
-    await svc.create_coordination(
-        pid,
-        {
-            "entry_date": today - timedelta(days=9),
-            "body": "municipality",
-            "topic": "Road occupancy for the crane base",
-            "outcome": "Agreed in principle; written application to follow.",
-            "next_action_due": today + timedelta(days=5),
-        },
-        actor,
-    )
-    await svc.create_coordination(
-        pid,
-        {
-            "entry_date": today - timedelta(days=2),
-            "body": "utility",
-            "topic": "Water connection date",
-            "outcome": "Utility confirmed the connection in four weeks.",
-        },
-        actor,
-    )
+        await _seed_complaints(svc, pid, today, content)
+    for body, topic, outcome, days_ago, next_in in content["coordination"]:
+        await svc.create_coordination(
+            pid,
+            {
+                "entry_date": today - timedelta(days=days_ago),
+                "body": body,
+                "topic": topic,
+                "outcome": outcome,
+                **({"next_action_due": today + timedelta(days=next_in)} if next_in is not None else {}),
+            },
+            actor,
+        )
     await session.flush()
     return 3
 
 
-async def _seed_complaints(svc: Any, pid: uuid.UUID, today: Any) -> None:
+async def _seed_complaints(svc: Any, pid: uuid.UUID, today: Any, content: dict[str, Any]) -> None:
     actor = None
     dust = await svc.create_complaint(
         pid,
@@ -475,27 +649,25 @@ async def _seed_complaints(svc: Any, pid: uuid.UUID, today: Any) -> None:
             "kind": "dust",
             "reported_on": today - timedelta(days=6),
             "reporter": "Neighbour, anonymous",
-            "description": "Dust on parked cars on the east side after excavation.",
+            "description": content["dust_description"],
         },
         actor,
     )
     await svc.transition_complaint(pid, dust.id, "acknowledged", actor)
-    await svc.update_complaint(
-        pid, dust.id, {"response": "Water spraying twice a day; wheel wash moved to the exit."}, actor
-    )
+    await svc.update_complaint(pid, dust.id, {"response": content["dust_response"]}, actor)
     await svc.transition_complaint(pid, dust.id, "action_taken", actor)
     await svc.create_complaint(
         pid,
         {
             "kind": "noise",
             "reported_on": today - timedelta(days=1),
-            "description": "Reversing alarms before 07:00 at the north gate.",
+            "description": content["noise_description"],
         },
         actor,
     )
 
 
-async def _seed_customs(session: AsyncSession, svc: Any, pid: uuid.UUID) -> None:
+async def _seed_customs(session: AsyncSession, svc: Any, pid: uuid.UUID, content: dict[str, Any]) -> None:
     actor = None
     # Customs: imported switchgear under FCA, the buyer (us) clears import. Values are
     # in the project's currency; a project without one gets the case without values.
@@ -506,21 +678,21 @@ async def _seed_customs(session: AsyncSession, svc: Any, pid: uuid.UUID) -> None
         pid,
         {
             "direction": "import",
-            "title": "Medium voltage switchgear",
+            "title": content["customs_title"],
             "incoterm": "FCA",
-            "named_place": "Manufacturer works, loading dock",
+            "named_place": content["customs_place"],
             "transport_mode": "road",
             "country_of_origin": "CH",
             "declarant_party": "buyer",
-            "broker_name": "Customs broker",
+            "broker_name": content["customs_broker"],
             **({"customs_value": Decimal("184500.00"), "currency": currency} if currency else {}),
         },
         actor,
         can_see_values=True,
     )
     for desc, hs, qty, value in (
-        ("Switchgear panels, 24 kV", "853720", "6", "171000.00"),
-        ("Control cabinets", "853710", "2", "13500.00"),
+        (content["customs_line_1"], "853720", "6", "171000.00"),
+        (content["customs_line_2"], "853710", "2", "13500.00"),
     ):
         await svc.create_line(
             pid,
@@ -529,7 +701,7 @@ async def _seed_customs(session: AsyncSession, svc: Any, pid: uuid.UUID) -> None
                 "description": desc,
                 "hs_code": hs,
                 "quantity": Decimal(qty),
-                "unit": "pcs",
+                "unit": content["customs_unit"],
                 **({"value": Decimal(value), "currency": currency} if currency else {}),
                 "origin_country": "CH",
             },

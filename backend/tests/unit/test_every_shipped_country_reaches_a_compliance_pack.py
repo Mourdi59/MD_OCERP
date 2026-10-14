@@ -131,6 +131,7 @@ NON_JURISDICTION_RULE_SETS: dict[str, str] = {
     ),
     "project_governance": _MODULE_RECORD_CHECKS,
     "commitment_release": _MODULE_RECORD_CHECKS,
+    "economics": _MODULE_RECORD_CHECKS,
     "delivery_model": _MODULE_RECORD_CHECKS,
     "permits": _MODULE_RECORD_CHECKS,
     "plant_register": _MODULE_RECORD_CHECKS,
@@ -140,6 +141,7 @@ NON_JURISDICTION_RULE_SETS: dict[str, str] = {
     "quality_concept": _MODULE_RECORD_CHECKS,
     "staffing": _MODULE_RECORD_CHECKS,
     "site_logistics": _MODULE_RECORD_CHECKS,
+    "engineering_brief": _MODULE_RECORD_CHECKS,
 }
 
 

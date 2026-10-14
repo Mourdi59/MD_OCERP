@@ -93,9 +93,31 @@ def test_the_locale_overlays_and_the_demo_file_are_shipped() -> None:
         assert overlay.get("$locale") == locale, f"{relative} says it is {overlay.get('$locale')!r}"
     demo = json.loads((_PACKAGE / manifest["metadata"]["demo"]["path"]).read_text(encoding="utf-8"))
     declared = {(e["kind"], e["id"], e["version"]) for e in _catalogues()}
-    pinned = {(p["kind"], p["id"], p["version"]) for p in demo["pins"] if p["source"] == "pack"}
-    assert pinned <= declared, f"the demo file pins catalogues the pack does not declare: {sorted(pinned - declared)}"
-    assert demo["project"]["demo_template_id"] in manifest["demo_template_ids"]
+    entries = demo["projects"]
+    assert [e["project"]["demo_template_id"] for e in entries] == manifest["demo_template_ids"]
+    for entry in entries:
+        pinned = {(p["kind"], p["id"], p["version"]) for p in entry["pins"] if p["source"] == "pack"}
+        assert pinned <= declared, (
+            f"the demo file pins catalogues the pack does not declare: {sorted(pinned - declared)}"
+        )
+
+
+def test_every_module_story_a_demo_project_names_is_a_shipped_json_object() -> None:
+    """A project lists ``module_files``; each path is a file of the pack holding one JSON object."""
+    demo = json.loads((_PACKAGE / _json_manifest()["metadata"]["demo"]["path"]).read_text(encoding="utf-8"))
+    named = 0
+    for entry in demo["projects"]:
+        for module, relative in (entry.get("module_files") or {}).items():
+            body = json.loads((_PACKAGE / relative).read_text(encoding="utf-8"))
+            assert isinstance(body, dict) and body, f"{relative} is the {module} story of a project and is empty"
+            named += 1
+    assert named, "no project names a module story"
+
+
+def test_the_stories_of_the_demo_files_carry_no_dash_punctuation() -> None:
+    for path in sorted((_PACKAGE / "demo").glob("*.json")):
+        text = path.read_text(encoding="utf-8")
+        assert not {chr(0x2014), chr(0x2013)} & set(text), path.name
 
 
 def test_the_copy_in_the_site_logistics_test_is_the_shipped_catalogue() -> None:

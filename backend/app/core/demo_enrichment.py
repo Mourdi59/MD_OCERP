@@ -194,7 +194,9 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         from app.modules.documents.documents_seed import seed_documents_demo
         from app.modules.documents.photos_seed import seed_photos
         from app.modules.dwg_takeoff.seed import seed_dwg_takeoff_demo
+        from app.modules.economics.seed import seed_economics_demo
         from app.modules.einvoice_clearance.seed import seed_einvoice_clearance_demo
+        from app.modules.engineering_brief.seed import seed_engineering_brief_demo
         from app.modules.estimate_basis.seed import seed_estimate_basis_demo
         from app.modules.field_time.seed import seed_field_time_demo
         from app.modules.finance.einvoice_settings_seed import seed_einvoice_settings_demo
@@ -225,6 +227,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         from app.modules.supplier_catalogs.seed import seed_supplier_catalogs
         from app.modules.takeoff.seed import seed_takeoff_demo
         from app.modules.temporary_works.seed import seed_temporary_works_demo
+        from app.modules.transmittals.seed import seed_transmittals_demo
         from app.modules.validation.seed import seed_validation_demo
         from app.modules.value.seed import seed_value_demo
         from app.modules.variations.models import Notice
@@ -409,11 +412,18 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             # The owner's delivery form decision links the contract the
             # contracts seeder wrote above. Guards itself per project.
             ("delivery_model", None, lambda s: seed_delivery_model_demo(s, _demo_pids)),
+            # The business case, cost frame and financing plan are cut from the bill
+            # the estimate seeders wrote, so they run after them. Guards itself per project.
+            ("economics", None, lambda s: seed_economics_demo(s, _demo_pids)),
             # The authority permit roadmap and its condition register: the
             # permits a project of its country needs, two decided with
             # conditions, one under review. Links the schedule activities the
             # seeders above wrote. Guards itself per project on a roadmap.
             ("permits", None, lambda s: seed_permits_demo(s, _demo_pids)),
+            # Formal transmittals with their acknowledgements. Story-driven only: a
+            # project whose pack story names none gets none. Guards itself per
+            # project on an existing transmittal.
+            ("transmittals", None, lambda s: seed_transmittals_demo(s, _demo_pids)),
             # The design team, numbered drawings on CDE, the design schedule,
             # reviews, reports and the permit package along the phases of the
             # project's governance model. Guards itself on an existing setup.
@@ -463,6 +473,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             # or item.
             ("site_prep", None, lambda s: seed_site_prep_demo(s, _demo_pids)),
             ("staffing", None, lambda s: seed_staffing_demo(s, _demo_pids)),
+            ("engineering_brief", None, lambda s: seed_engineering_brief_demo(s, _demo_pids)),
             # Gates, laydown zones and a working week of deliveries, each one
             # booked against a real position of the project's own bill - which is
             # what gives the delivery board its estimate coverage table something
