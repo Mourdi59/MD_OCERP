@@ -13,6 +13,7 @@ import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { WideModal, WideModalField } from '@/shared/ui/WideModal';
+import { fmtList } from '@/shared/lib/formatters';
 
 import {
   CONSTRAINT_TYPES,
@@ -338,7 +339,7 @@ export function RequirementsTab({
                           </Badge>
                         </td>
                         <td className="px-3 py-2 text-content-secondary">{vocabularyLabel(t as TFn, 'verification', r.verification_method) || '-'}</td>
-                        <td className="px-3 py-2 font-mono text-xs text-content-secondary">{r.answered_by.join(', ') || '-'}</td>
+                        <td className="px-3 py-2 font-mono text-xs text-content-secondary">{fmtList(r.answered_by) || '-'}</td>
                         <td className="px-3 py-2">
                           {edit.allowed ? (
                             <div className="flex justify-end gap-1">

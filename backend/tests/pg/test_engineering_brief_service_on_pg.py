@@ -67,10 +67,10 @@ async def test_a_complete_brief_is_submitted_and_approved_by_hand_by_someone_els
     approved = await call(w, "approve_by_hand", w.decider)
     assert approved.status == "binding"
     assert approved.bound_requirements_hash
-    # Frozen: content is refused until a revision is opened.
+    # Editing a bound brief opens a revision; the bound hash stays as approved.
     line = {"kind_code": "gross_floor_area", "label": "x", "unit": "m2", "quantity": "1"}
-    with pytest.raises(EngineeringBriefError):
-        await call(w, "create_programme", line, w.manager)
+    await call(w, "create_programme", line, w.manager)
+    assert (await call(w, "require_brief")).status == "revising"
 
 
 async def test_publishing_writes_milestones_into_the_schedule_once(factory) -> None:

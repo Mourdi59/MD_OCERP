@@ -69,7 +69,7 @@ async def test_a_stranger_from_another_tenant_sees_404_everywhere(world: World) 
             await c.get(f"{p}/concept"),
             await c.get(f"{p}/programme"),
             await c.get(f"{p}/milestones"),
-            await c.get(f"{p}/readiness"),
+            await c.get(f"{p}/readiness?gate_code=none"),
             await c.post(f"{p}/brief/submit"),
             await c.post(f"{p}/milestones/publish"),
         ]
