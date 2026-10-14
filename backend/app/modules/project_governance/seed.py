@@ -317,6 +317,8 @@ class _Stage:
                     severity="essential",
                 )
                 for code in at_risk
+                # An area the story already names a condition for keeps that one: two for the same gap would repeat it.
+                if code not in {c.area_code for c in conditions}
             )
         request = ev.DecisionRequest(
             outcome=outcome,
