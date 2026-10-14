@@ -222,7 +222,7 @@ function AreaReadiness({
     : null;
 
   return (
-    <div className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="gate-area">
+    <div className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="gate-area">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -762,7 +762,7 @@ export function GatePanel({
             {[...detail.decisions]
               .sort((a, b) => b.attempt_no - a.attempt_no)
               .map((d) => (
-                <li key={d.id} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="decision-entry">
+                <li key={d.id} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="decision-entry">
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="text-xs text-content-tertiary">
                       {t('governance.project.gate.attempt', { defaultValue: 'Attempt {{n}}', n: d.attempt_no })}

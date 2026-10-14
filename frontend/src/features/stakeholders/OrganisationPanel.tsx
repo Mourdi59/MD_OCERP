@@ -136,7 +136,7 @@ export function OrganisationPanel({ screen, onOpenSettings }: OrganisationPanelP
             />
           </div>
         ) : (
-          <ul className="divide-y divide-border-light rounded-lg border border-border bg-surface-elevated shadow-xs" data-testid="role-list">
+          <ul className="divide-y divide-border-light rounded-lg border border-border bg-surface-elevated shadow-sm" data-testid="role-list">
             {roles.roles.map((role) => {
               const holders = holdersOf(role.code);
               const vacant = roles.vacant.includes(role.code);
@@ -208,7 +208,7 @@ export function OrganisationPanel({ screen, onOpenSettings }: OrganisationPanelP
         ) : (
           <ul className="grid gap-2 md:grid-cols-2" data-testid="body-list">
             {bodies.map((b) => (
-              <li key={b.id} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="body-entry">
+              <li key={b.id} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="body-entry">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-content-primary">{b.name}</span>
                   <span className="text-xs text-content-tertiary">{nameOf(labels, settings.framework.body_types, b.body_type)}</span>

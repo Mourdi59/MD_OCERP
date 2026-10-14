@@ -122,7 +122,7 @@ export function CommitmentGrid({ items, totals, matrix, labels, onOpenItem }: Co
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
         <table className="w-full min-w-[60rem] text-sm">
           <thead>
             <tr className="border-b border-border-light bg-surface-secondary text-left text-xs text-content-tertiary">

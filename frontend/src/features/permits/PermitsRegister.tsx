@@ -235,7 +235,7 @@ export function PermitsRegister({
           const warn = p.lapse_warning;
           const step = workStep(p);
           return (
-            <li key={p.id} className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="permit-entry">
+            <li key={p.id} className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="permit-entry">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">

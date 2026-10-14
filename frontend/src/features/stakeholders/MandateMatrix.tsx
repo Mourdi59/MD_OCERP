@@ -150,7 +150,7 @@ export function MandateMatrix({ screen, matrix, roles, bodies, onSaved }: Mandat
         ))}
       </ul>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
         <table className="w-full text-sm" data-testid="mandate-table">
           <thead className="bg-surface-secondary text-xs text-content-tertiary">
             <tr>
@@ -298,7 +298,7 @@ export function WhoDecidesLookup({ screen, matrix, roles, bodies }: WhoDecidesLo
     t('stakeholders.ui.who.unnamed_party', { defaultValue: 'A member without an account' });
 
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="who-decides">
+    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="who-decides">
       <SectionHead
         title={t('stakeholders.ui.who.title', { defaultValue: 'Look up who decides' })}
         hint={t('stakeholders.ui.who.hint', { defaultValue: 'Pick a kind of decision and read who holds it today.' })}

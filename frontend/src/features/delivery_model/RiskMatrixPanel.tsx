@@ -174,7 +174,7 @@ export function RiskMatrixPanel({ projectId, model, matrix, catalogue, labels, o
         )}
       </p>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-surface-elevated shadow-xs">
+      <div className="overflow-x-auto rounded-xl border border-border bg-surface-elevated shadow-sm">
         <table className="w-full min-w-[720px] text-sm" data-testid="risk-matrix-table">
           <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
             <tr>
@@ -552,7 +552,7 @@ export function SeedRisksDialog({ projectId, matrix, labels, onClose, onDone }: 
             {t('delivery_model.ui.seed.nothing', { defaultValue: 'Every confirmed risk is already in the risk register.' })}
           </p>
         ) : (
-          <ul className="divide-y divide-border-light rounded-lg border border-border bg-surface-elevated shadow-xs text-sm" data-testid="seed-preview">
+          <ul className="divide-y divide-border-light rounded-lg border border-border bg-surface-elevated shadow-sm text-sm" data-testid="seed-preview">
             {rows.map((r) => (
               <li key={r.category_code} className="flex items-center justify-between gap-3 px-3 py-2">
                 <span className="font-medium text-content-primary">{r.title}</span>

@@ -74,7 +74,7 @@ export function SetupStart({ projectId, labels, onDone }: { projectId: string; l
     <div className="space-y-4" data-testid="design-setup-start">
       <EmptyState icon={<Settings2 size={28} />} title={ui(t, 'design.ui.start.title')} description={ui(t, 'design.ui.start.body')} />
       <InlineQueryState query={schemes} />
-      <div className="mx-auto max-w-2xl space-y-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-4">
+      <div className="mx-auto max-w-2xl space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-4">
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-content-primary">{ui(t, 'design.ui.start.scheme')}</legend>
           <label className="flex items-start gap-2 text-sm text-content-primary">
@@ -191,7 +191,7 @@ export function SetupPanel({ ctx }: { ctx: DesignContext }) {
         }
       />
 
-      <section className="space-y-2 rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="setup-scheme">
+      <section className="space-y-2 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="setup-scheme">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="text-xs text-content-secondary">{ui(t, 'design.ui.setup.scheme')}</p>
@@ -227,7 +227,7 @@ export function SetupPanel({ ctx }: { ctx: DesignContext }) {
         )}
       </section>
 
-      <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-4 text-sm sm:grid-cols-2" data-testid="setup-settings">
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-4 text-sm sm:grid-cols-2" data-testid="setup-settings">
         <div>
           <dt className="text-xs text-content-secondary">{ui(t, 'design.ui.setup.four_eyes')}</dt>
           <dd className="text-content-primary">{setup.four_eyes_release ? ui(t, 'design.ui.yes') : ui(t, 'design.ui.no')}</dd>

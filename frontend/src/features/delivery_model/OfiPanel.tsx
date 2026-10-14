@@ -145,7 +145,7 @@ export function OfiPanel({ projectId, model, items, packages, labels, onChanged 
   return (
     <div className="space-y-4" data-testid="ofi-panel">
       <div className="flex flex-wrap items-start gap-3">{addButton}</div>
-      <div className="overflow-x-auto rounded-xl border border-border bg-surface-elevated shadow-xs">
+      <div className="overflow-x-auto rounded-xl border border-border bg-surface-elevated shadow-sm">
         <table className="w-full min-w-[820px] text-sm" data-testid="ofi-table">
           <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
             <tr>
@@ -453,7 +453,7 @@ export function OfiDialog({ projectId, item, packages, labels, onClose, onDone }
           </Field>
         </div>
         {item?.plant_item && (
-          <div className="space-y-1 rounded-lg border border-border bg-surface-elevated shadow-xs p-3 text-sm" data-testid="ofi-plant-link">
+          <div className="space-y-1 rounded-lg border border-border bg-surface-elevated shadow-sm p-3 text-sm" data-testid="ofi-plant-link">
             <p className="text-content-primary">
               {item.plant_item.missing
                 ? t('delivery_model.ui.ofi.plant_missing', {

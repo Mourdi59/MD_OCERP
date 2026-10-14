@@ -96,7 +96,7 @@ export function MatrixSettings({ projectId, matrix, can, labels, onSaved }: Matr
   });
 
   return (
-    <section className="space-y-4 rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="matrix-settings">
+    <section className="space-y-4 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="matrix-settings">
       <div>
         <h3 className="text-sm font-semibold text-content-primary">
           {t('commitment.schedule.title', { defaultValue: 'Authority schedule' })}
@@ -341,7 +341,7 @@ export function ApproverSetup({ projectId, matrix, can, labels, personName, onSa
   const anyEdited = !!report && Object.values(report).includes('edited');
 
   return (
-    <section className="space-y-4 rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="approver-setup">
+    <section className="space-y-4 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="approver-setup">
       <div>
         <h3 className="text-sm font-semibold text-content-primary">
           {t('commitment.setup.approvers_title', { defaultValue: 'Who approves at each tier' })}
@@ -377,7 +377,7 @@ export function ApproverSetup({ projectId, matrix, can, labels, personName, onSa
             const byPerson = tier.approver.kind === 'project_role';
             const routes = routesQ.data ?? [];
             return (
-              <li key={tier.code} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="tier-row">
+              <li key={tier.code} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="tier-row">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-content-primary">{codeName(labels, 'tier', tier.code, tier.name)}</span>
                   {tier.four_eyes && (
@@ -590,7 +590,7 @@ export function TierCalculator({ matrix, labels }: { matrix: CommitmentMatrix; l
   });
 
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="tier-calculator">
+    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="tier-calculator">
       <div>
         <h3 className="text-sm font-semibold text-content-primary">
           {t('commitment.schedule.calculator', { defaultValue: 'Who approves?' })}

@@ -122,7 +122,7 @@ export function StartModel({ projectId, viewer, labels, onDone }: StartModelProp
   }
 
   return (
-    <section className="space-y-3 rounded-xl border border-border bg-surface-elevated shadow-xs p-4" data-testid="start-model">
+    <section className="space-y-3 rounded-xl border border-border bg-surface-elevated shadow-sm p-4" data-testid="start-model">
       <div>
         <h2 className="text-sm font-semibold text-content-primary">
           {t('delivery_model.ui.start.heading', { defaultValue: 'Catalogue of delivery forms' })}

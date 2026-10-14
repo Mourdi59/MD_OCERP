@@ -123,7 +123,7 @@ export function DecisionRecordPanel({
         </p>
       )}
       {current && (
-        <section className="space-y-3 rounded-xl border border-border bg-surface-elevated shadow-xs p-4" data-testid="current-decision">
+        <section className="space-y-3 rounded-xl border border-border bg-surface-elevated shadow-sm p-4" data-testid="current-decision">
           <div className="flex flex-wrap items-start gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-xs text-content-tertiary">{t('delivery_model.ui.decision.form', { defaultValue: 'Delivery form' })}</p>
@@ -170,7 +170,7 @@ export function DecisionRecordPanel({
               <p className="mb-1 text-xs text-content-tertiary">
                 {t('delivery_model.ui.decision.compared', { defaultValue: 'Compared forms and their weighted totals' })}
               </p>
-              <ul className="divide-y divide-border-light rounded-lg border border-border bg-surface-elevated shadow-xs text-sm" data-testid="decision-alternatives">
+              <ul className="divide-y divide-border-light rounded-lg border border-border bg-surface-elevated shadow-sm text-sm" data-testid="decision-alternatives">
                 {(current.snapshot.options ?? []).map((o) => (
                   <li key={o.id} className="flex items-center justify-between gap-3 px-3 py-1.5">
                     <span className={o.form_code === current.form_code ? 'font-medium text-content-primary' : 'text-content-secondary'}>
@@ -243,7 +243,7 @@ export function DecisionRecordPanel({
       )}
 
       {actionApplies(model, 'close_reopening') && (
-        <section className="space-y-2 rounded-xl border border-border bg-surface-elevated shadow-xs p-4" data-testid="reopening">
+        <section className="space-y-2 rounded-xl border border-border bg-surface-elevated shadow-sm p-4" data-testid="reopening">
           <p className="text-sm text-content-secondary">
             {t('delivery_model.ui.decision.reopened_body', {
               defaultValue: 'The approved decision is reopened. Propose a form again, or give the reopening up to return to the approved decision.',
@@ -291,7 +291,7 @@ export function DecisionRecordPanel({
           </h2>
           <ul className="space-y-2">
             {earlier.map((d) => (
-              <li key={d.id} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3 text-sm" data-testid="earlier-decision">
+              <li key={d.id} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3 text-sm" data-testid="earlier-decision">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-content-primary">{nameOf(d)}</span>
                   <ToneBadge tone={DECISION_TONE[d.status]}>{vocab(labels.t, DECISION_STATUS, d.status)}</ToneBadge>

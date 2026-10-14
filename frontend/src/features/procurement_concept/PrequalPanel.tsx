@@ -200,7 +200,7 @@ export function PrequalPanel({
         />
       ) : (
         <>
-          <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="profile-summary">
+          <section className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="profile-summary">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="text-sm font-semibold text-content-primary">
@@ -298,7 +298,7 @@ export function PrequalPanel({
               })}
             />
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
+            <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
               <table className="w-full text-left text-sm" data-testid="candidate-matrix">
                 <thead className="bg-surface-secondary text-xs text-content-tertiary">
                   <tr>
@@ -472,7 +472,7 @@ export function PrequalPanel({
           )}
 
           {matrix.items.length > 0 && (
-            <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="shortlist-check">
+            <section className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="shortlist-check">
               <h3 className="mb-1 text-sm font-semibold text-content-primary">
                 {t('procurement_concept.ui.prequal.check_title', { defaultValue: 'Is the short list ready?' })}
               </h3>

@@ -162,7 +162,7 @@ export function PermitsPanel({ ctx }: { ctx: DesignContext }) {
           const assembling = permit.state === 'assembling';
           const approved = permit.state === 'approved' || permit.state === 'partially_approved';
           return (
-            <section key={permit.id} className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="permit-card">
+            <section key={permit.id} className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="permit-card">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs text-content-tertiary">{permit.code}</span>
                 <h3 className="font-medium text-content-primary">{permit.title}</h3>

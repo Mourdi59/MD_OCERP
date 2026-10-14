@@ -237,7 +237,7 @@ export function ConceptTab({
               {items
                 .filter((i) => i.topic_code === code)
                 .map((i) => (
-                  <li key={i.id} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="brief-concept-row">
+                  <li key={i.id} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="brief-concept-row">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-content-primary">

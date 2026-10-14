@@ -277,7 +277,7 @@ export function PanelHeader({ title, hint, action }: { title: string; hint?: str
 
 export function Table({ head, children, testId }: { head: string[]; children: ReactNode; testId?: string }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
+    <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
       <table className="w-full text-sm" data-testid={testId}>
         <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
           <tr>

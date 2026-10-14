@@ -265,7 +265,7 @@ export function StagesPanel(props: PanelProps) {
             })}
           </Hint>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
+          <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
             <table className="w-full min-w-[640px] text-sm" data-testid="matrix-table">
               <thead>
                 <tr className="text-left text-xs text-content-tertiary">
