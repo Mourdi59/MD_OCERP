@@ -59,6 +59,10 @@ export default {
             opacityValue === undefined
               ? 'var(--oe-bg-elevated)'
               : `rgb(var(--oe-bg-elevated-ch) / ${opacityValue})`,
+          page: ({ opacityValue }) =>
+            opacityValue === undefined
+              ? 'var(--oe-bg-page)'
+              : `rgb(var(--oe-bg-page-ch) / ${opacityValue})`,
         },
         border: {
           DEFAULT: 'var(--oe-border)',

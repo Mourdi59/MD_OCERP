@@ -122,7 +122,7 @@ export function PlantRegisterPage() {
   const failed = catalogueQ.error ?? itemsQ.error;
   if (failed) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <ErrorState
           title={t('plant.page.load_failed', { defaultValue: 'The plant register could not be loaded' })}
@@ -139,7 +139,7 @@ export function PlantRegisterPage() {
   const page = itemsQ.data;
   if (!catalogue || !page) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <SkeletonTable rows={6} columns={7} />
       </div>
@@ -235,7 +235,7 @@ export function PlantRegisterPage() {
 
   return (
     <PlantCanContext.Provider value={can}>
-    <div className="space-y-5 animate-fade-in" data-testid="plant-register-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="plant-register-page">
       {header}
       {readOnly && (
         <div role="status" data-testid="plant-read-only" className="rounded-md border border-border bg-surface-secondary p-3 text-sm">

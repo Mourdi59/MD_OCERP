@@ -167,7 +167,7 @@ export function PermitsPage() {
 
   if (roadmapQ.isLoading) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <SkeletonTable rows={6} columns={6} />
       </div>
@@ -175,7 +175,7 @@ export function PermitsPage() {
   }
   if (roadmapQ.isError) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <ErrorState
           title={t('permits.ui.load_failed', { defaultValue: 'The permits could not be loaded' })}
@@ -189,7 +189,7 @@ export function PermitsPage() {
   const roadmap = roadmapQ.data;
   if (!roadmap) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="permits-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="permits-page">
         {header}
         <EmptyState
           icon={<MapIcon size={28} />}
@@ -332,7 +332,7 @@ export function PermitsPage() {
   const exportTarget = inRecord ? null : EXPORT_OF_TAB[tab];
 
   return (
-    <div className="space-y-5 animate-fade-in" data-testid="permits-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="permits-page">
       {header}
       {!inRecord && (
         <>

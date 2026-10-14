@@ -128,7 +128,7 @@ export function ProcurementConceptPage() {
 
   if (conceptQ.isLoading) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <SkeletonTable rows={6} columns={6} />
       </div>
@@ -136,7 +136,7 @@ export function ProcurementConceptPage() {
   }
   if (conceptQ.isError) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <ErrorState
           title={t('procurement_concept.ui.page.load_failed', { defaultValue: 'The procurement concept could not be loaded' })}
@@ -163,7 +163,7 @@ export function ProcurementConceptPage() {
 
   if (!concept) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="procurement-concept-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="procurement-concept-page">
         {header}
         <EmptyState
           icon={<ClipboardList size={28} />}
@@ -269,7 +269,7 @@ export function ProcurementConceptPage() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in" data-testid="procurement-concept-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="procurement-concept-page">
       {header}
       <div className="flex flex-wrap items-center gap-3 text-sm" data-testid="concept-summary">
         <ToneBadge tone={CONCEPT_TONE[concept.state]} testId="concept-state-badge">

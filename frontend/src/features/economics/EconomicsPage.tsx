@@ -182,7 +182,7 @@ export function EconomicsPage() {
 
   if (planQ.isLoading) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <SkeletonTable rows={6} columns={5} />
       </div>
@@ -190,7 +190,7 @@ export function EconomicsPage() {
   }
   if (planQ.isError || !planQ.data) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <ErrorState
           title={t('economics.ui.load_failed', { defaultValue: 'The economics could not be loaded' })}
@@ -203,7 +203,7 @@ export function EconomicsPage() {
   const plan = planQ.data;
   if (!plan.exists) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="economics-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="economics-page">
         {header}
         <EmptyState
           icon={<Banknote size={28} />}
@@ -255,7 +255,7 @@ export function EconomicsPage() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in" data-testid="economics-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="economics-page">
       {header}
       <div className="flex flex-wrap items-center gap-3">
         <Badge variant={STATUS_VARIANT[status]}>{t(PLAN_STATUS[status][0], { defaultValue: PLAN_STATUS[status][1] })}</Badge>

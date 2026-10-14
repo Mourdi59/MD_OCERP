@@ -132,7 +132,7 @@ export function ProjectGovernancePage() {
 
   if (modelQ.isLoading) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <SkeletonTable rows={6} columns={6} />
       </div>
@@ -140,7 +140,7 @@ export function ProjectGovernancePage() {
   }
   if (modelQ.isError) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <ErrorState
           title={t('governance.project.load_failed', { defaultValue: 'Project governance could not be loaded' })}
@@ -154,7 +154,7 @@ export function ProjectGovernancePage() {
   const model = modelQ.data;
   if (!model) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <EmptyState
           icon={<Layers size={28} />}
@@ -303,7 +303,7 @@ export function ProjectGovernancePage() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in" data-testid="project-governance-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="project-governance-page">
       {header}
       {model.stopped && (
         <div role="status" className="rounded-lg border border-semantic-error/30 bg-semantic-error-bg px-4 py-2 text-sm text-content-primary">

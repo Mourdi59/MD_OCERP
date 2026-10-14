@@ -196,7 +196,7 @@ export function ProjectHandbookPage() {
 
   if (handbookQ.isLoading) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="project-handbook-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="project-handbook-page">
         {header}
         <SkeletonTable rows={6} columns={4} />
       </div>
@@ -204,7 +204,7 @@ export function ProjectHandbookPage() {
   }
   if (handbookQ.isError) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="project-handbook-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="project-handbook-page">
         {header}
         <ErrorState
           title={t('projectHandbook.load_failed', { defaultValue: 'The project handbook could not be loaded' })}
@@ -216,7 +216,7 @@ export function ProjectHandbookPage() {
   }
   if (!handbook) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="project-handbook-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="project-handbook-page">
         {header}
         <EmptyState
           icon={<BookOpen size={28} />}
@@ -241,7 +241,7 @@ export function ProjectHandbookPage() {
   };
 
   return (
-    <div className="space-y-5 animate-fade-in" data-testid="project-handbook-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="project-handbook-page">
       {header}
       <Head handbook={handbook} findings={findingsQ.data ?? []} />
       <TabBar<Tab>

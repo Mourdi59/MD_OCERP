@@ -140,7 +140,7 @@ export function CommitmentReleasePage() {
 
   if (matrixQ.isLoading) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <SkeletonTable rows={5} columns={7} />
       </div>
@@ -148,7 +148,7 @@ export function CommitmentReleasePage() {
   }
   if (matrixQ.isError) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <ErrorState
           title={t('commitment.page.load_failed', { defaultValue: 'The commitments could not be loaded' })}
@@ -162,7 +162,7 @@ export function CommitmentReleasePage() {
   const matrix = matrixQ.data;
   if (!matrix) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="commitment-release-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="commitment-release-page">
         {header}
         <EmptyState
           icon={<Stamp size={28} />}
@@ -288,7 +288,7 @@ export function CommitmentReleasePage() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in" data-testid="commitment-release-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="commitment-release-page">
       {header}
       {!itemId && (
         <div className="flex flex-wrap items-end justify-between gap-3">

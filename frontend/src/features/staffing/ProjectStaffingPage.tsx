@@ -123,7 +123,7 @@ export function ProjectStaffingPage() {
 
   if (planQ.isLoading) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <SkeletonTable rows={6} columns={5} />
       </div>
@@ -131,7 +131,7 @@ export function ProjectStaffingPage() {
   }
   if (planQ.isError) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         {failed(planQ.error, () => planQ.refetch())}
       </div>
@@ -141,7 +141,7 @@ export function ProjectStaffingPage() {
   const plan = planQ.data;
   if (!plan) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="project-staffing-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="project-staffing-page">
         {header}
         <EmptyState
           icon={<Users size={28} />}
@@ -222,7 +222,7 @@ export function ProjectStaffingPage() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in" data-testid="project-staffing-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="project-staffing-page">
       {header}
       {!fileId && (
         <TabBar<Tab>

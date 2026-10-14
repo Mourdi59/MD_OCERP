@@ -1330,7 +1330,7 @@ export function InterfaceManagementPage() {
   const actionPending = createActionMut.isPending || updateActionMut.isPending;
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
       <PageHeader
         srTitle={t('interface_management.title', { defaultValue: 'Interface management' })}
         subtitle={t('interface_management.subtitle', {

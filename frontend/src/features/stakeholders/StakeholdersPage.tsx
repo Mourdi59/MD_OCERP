@@ -130,7 +130,7 @@ export function StakeholdersPage() {
   );
 
   const frame = (body: ReactNode) => (
-    <div className="space-y-5 animate-fade-in" data-testid="stakeholders-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="stakeholders-page">
       {header}
       {body}
     </div>
