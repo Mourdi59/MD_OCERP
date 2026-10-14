@@ -274,6 +274,54 @@ export interface PublishResult {
   gates_decided?: string[];
 }
 
+export type StudyKind = 'site_analysis' | 'suitability';
+export type StudyConclusion = 'open' | 'suitable' | 'conditional' | 'unsuitable';
+export const STUDY_KINDS: StudyKind[] = ['site_analysis', 'suitability'];
+export const STUDY_CONCLUSIONS: StudyConclusion[] = ['open', 'suitable', 'conditional', 'unsuitable'];
+
+export interface Study {
+  id: string;
+  code: string;
+  kind: StudyKind;
+  title: string;
+  scope: string;
+  author: string;
+  study_date: string | null;
+  result: string;
+  conclusion: StudyConclusion;
+  document_id: string | null;
+  document_name?: string | null;
+}
+export interface StudyInput {
+  kind: StudyKind;
+  title: string;
+  scope: string;
+  author: string;
+  study_date: string | null;
+  result: string;
+  conclusion: StudyConclusion;
+  document_id: string | null;
+}
+
+export interface SpecificationIssue {
+  id: string;
+  version_no: number;
+  title: string;
+  issued_at: string;
+  issued_by: string | null;
+  document_id: string | null;
+  requirements_hash: string;
+  requirement_count: number;
+  note: string;
+}
+export interface SpecificationState {
+  items: SpecificationIssue[];
+  current: boolean;
+  stale: boolean;
+  requirement_count: number;
+  detail: string;
+}
+
 export interface BriefSetInput {
   catalogue_source: 'shipped' | 'tenant';
   catalogue_id: string;
@@ -301,6 +349,8 @@ export const briefKeys = {
   concept: (projectId: string) => ['engineering-brief', projectId, 'concept'] as const,
   programme: (projectId: string) => ['engineering-brief', projectId, 'programme'] as const,
   milestones: (projectId: string) => ['engineering-brief', projectId, 'milestones'] as const,
+  studies: (projectId: string) => ['engineering-brief', projectId, 'studies'] as const,
+  specification: (projectId: string) => ['engineering-brief', projectId, 'specification'] as const,
 };
 
 /* ── Errors ───────────────────────────────────────────────────────────── */
@@ -490,6 +540,37 @@ export function updateMilestone(projectId: string, id: string, body: Partial<Mil
 
 export function deleteMilestone(projectId: string, id: string): Promise<void> {
   return apiDelete(`/v1/engineering_brief/projects/${projectId}/milestones/${id}`);
+}
+
+/* ── Studies ──────────────────────────────────────────────────────────── */
+
+export function listStudies(projectId: string): Promise<Page<Study>> {
+  return apiGet<Page<Study>>(`/v1/engineering_brief/projects/${projectId}/studies`);
+}
+
+export function createStudy(projectId: string, body: StudyInput): Promise<Study> {
+  return apiPost<Study, StudyInput>(`/v1/engineering_brief/projects/${projectId}/studies`, body);
+}
+
+export function updateStudy(projectId: string, id: string, body: Partial<StudyInput>): Promise<Study> {
+  return apiPatch<Study, Partial<StudyInput>>(`/v1/engineering_brief/projects/${projectId}/studies/${id}`, body);
+}
+
+export function deleteStudy(projectId: string, id: string): Promise<void> {
+  return apiDelete(`/v1/engineering_brief/projects/${projectId}/studies/${id}`);
+}
+
+/* ── Requirements specification ───────────────────────────────────────── */
+
+export function getSpecification(projectId: string): Promise<SpecificationState> {
+  return apiGet<SpecificationState>(`/v1/engineering_brief/projects/${projectId}/specification`);
+}
+
+export function issueSpecification(projectId: string, note: string): Promise<SpecificationIssue> {
+  return apiPost<SpecificationIssue, { note: string }>(
+    `/v1/engineering_brief/projects/${projectId}/specification/issue`,
+    { note },
+  );
 }
 
 /* ── Export ───────────────────────────────────────────────────────────── */
