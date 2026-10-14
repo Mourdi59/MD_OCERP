@@ -95,13 +95,28 @@ async def test_a_package_near_a_milestone_is_bound_to_it_and_the_others_stay_put
         assert loose.need_activity_id is None and loose.need_date == str(day + timedelta(days=400))
 
 
-@pytest.mark.parametrize("demo_id", ["residential-regensburg", "school-ludwigsburg"])
-async def test_the_pack_apply_entry_point_leaves_each_demo_project_with_a_brief(factory, demo_id: str) -> None:
+# The demo ids of the pack's two projects and the story file each one names under module_files.
+_DEMO_STORIES = {"eleven-areas-residential": "residential-regensburg", "eleven-areas-school": "school-ludwigsburg"}
+
+
+def test_the_pack_names_a_brief_story_for_each_demo_project() -> None:
+    demo = json.loads((_DEMO / "demo_project.json").read_text(encoding="utf-8"))
+    named = {p["demo_id"]: p.get("module_files", {}).get("engineering_brief") for p in demo["projects"]}
+    for demo_id, slug in _DEMO_STORIES.items():
+        assert named.get(demo_id) == f"demo/{slug}-engineering_brief.json"
+
+
+@pytest.mark.parametrize("demo_id", sorted(_DEMO_STORIES))
+async def test_the_pack_apply_entry_point_leaves_each_demo_project_with_a_brief(
+    factory, monkeypatch, demo_id: str
+) -> None:
     from sqlalchemy import select
 
     from app.modules.engineering_brief.models import EngineeringBrief
     from app.modules.projects.models import Project
 
+    # The story is read from the files of the pack; which pack is active is not what this test is about.
+    monkeypatch.setattr(brief_seed, "_story_of", lambda did: _story(_DEMO_STORIES[did]))
     w = await build_world(factory, governance=True, brief=False)
     async with w.factory() as s:
         project = await s.get(Project, w.project_id)
