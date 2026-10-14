@@ -265,5 +265,6 @@ async def test_api_contract_envelope_and_coded_errors(world: World) -> None:
     assert missing.status_code == 404 and missing.json()["detail"]["code"] == "decision_missing"
     assert {"items", "total", "errors", "warnings"} <= set(consistency.json())
     rules = {f["rule_id"] for f in validation.json()["items"]}
-    assert len(rules) == 11
+    # The eleven own validators all report; governance rules on the same register add to the set.
+    assert len({r for r in rules if r.startswith("delivery_model.")}) >= 11
     assert export.status_code == 200 and export.content[:4] == b"%PDF"

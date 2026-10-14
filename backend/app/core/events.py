@@ -19,6 +19,7 @@ Usage:
 import asyncio
 import inspect
 import logging
+import weakref
 from collections import defaultdict
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
@@ -129,6 +130,10 @@ class DrainResult:
     cancelled: int
 
 
+#: Detached publishes allowed to run subscribers at once; see ``_publish_within_slot``.
+DETACHED_PUBLISH_LIMIT = 8
+
+
 class EventBus:
     """Central event bus for the application.
 
@@ -145,6 +150,9 @@ class EventBus:
         # mid-await, which surfaces as "coroutine ignored GeneratorExit" /
         # "Task was destroyed but it is pending" (and intermittently reddens CI).
         self._background_tasks: set[asyncio.Task[EventResult]] = set()
+        self._detached_slots: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = (
+            weakref.WeakKeyDictionary()
+        )
         # Further task sets :meth:`drain` waits on besides this bus's own
         # publishes. The application singleton adds ``_DETACHED_TASKS`` below,
         # so shutdown also waits for side effects launched via ``_log_failures``.
@@ -226,7 +234,7 @@ class EventBus:
         logged by :meth:`publish` itself.
         """
         task = asyncio.create_task(
-            self.publish(event_name, data, source_module=source_module),
+            self._publish_within_slot(event_name, data, source_module),
             name=f"event:{event_name}",
         )
         # Keep a strong reference until the task finishes so it is never
@@ -234,6 +242,26 @@ class EventBus:
         self._background_tasks.add(task)
         task.add_done_callback(self._background_tasks.discard)
         return task
+
+    async def _publish_within_slot(
+        self,
+        event_name: str,
+        data: dict[str, Any] | None,
+        source_module: str | None,
+    ) -> EventResult:
+        """Run one detached publish, at most ``DETACHED_PUBLISH_LIMIT`` at a time.
+
+        Subscribers open their own database session, so a burst of detached
+        events (a seeder moving thirteen projects through their governance
+        gates) would otherwise hold one connection per pending event and run
+        the server out of them. Excess publishes wait here instead.
+        """
+        loop = asyncio.get_running_loop()
+        slots = self._detached_slots.get(loop)
+        if slots is None:
+            slots = self._detached_slots[loop] = asyncio.Semaphore(DETACHED_PUBLISH_LIMIT)
+        async with slots:
+            return await self.publish(event_name, data, source_module=source_module)
 
     async def publish(
         self,
