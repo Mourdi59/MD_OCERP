@@ -181,7 +181,9 @@ class MessageBundle:
                             DEFAULT_LOCALE,
                         )
                     else:
-                        logger.warning(
+                        # A module bundle ships the languages its authors wrote (en and de for most);
+                        # English for the rest is the designed fallback, not a fault of a healthy install.
+                        logger.info(
                             "Validation locale '%s' not loaded - falling back to '%s' for key '%s'",
                             locale,
                             DEFAULT_LOCALE,
@@ -213,6 +215,22 @@ class MessageBundle:
                 exc,
             )
             return template
+
+    def label_texts(
+        self, key: str | None, labels: dict[str, str] | None, locale: str = DEFAULT_LOCALE
+    ) -> dict[str, str] | None:
+        """The ``text`` half of a ``{key, text}`` catalogue label, resolved for ``locale``.
+
+        A tenant catalogue carries its own ``labels`` and they win. A shipped one carries only an
+        i18n ``key``: when this bundle knows it, the text for the locale (English as the fallback)
+        is returned, so the reader gets a name even when the screen's own locale file lacks the key.
+        ``None`` when neither source names the item; the caller keeps the key.
+        """
+        if labels:
+            return dict(labels)
+        if not key or not self.is_key_present(key, DEFAULT_LOCALE):
+            return None
+        return {locale: self.translate(key, locale=locale)}
 
     def is_key_present(self, key: str, locale: str = DEFAULT_LOCALE) -> bool:
         """Return ``True`` if ``key`` exists in ``locale`` without any fallback."""

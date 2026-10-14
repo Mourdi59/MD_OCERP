@@ -11,6 +11,7 @@ finally to English.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from app.core.validation.messages import MessageBundle
 
@@ -22,6 +23,11 @@ _bundle = MessageBundle(messages_dir=_MESSAGES_DIR)
 def translate(key: str, locale: str = DEFAULT_LOCALE, **params: object) -> str:
     """Resolve a delivery model message key for ``locale`` with ``str.format`` params."""
     return _bundle.translate(key, locale=locale, **params)
+
+
+def label_texts(key: str | None, labels: dict[str, str] | None, locale: str = DEFAULT_LOCALE) -> dict[str, str] | None:
+    """The ``text`` of a ``{key, text}`` catalogue label for ``locale``; see ``MessageBundle.label_texts``."""
+    return _bundle.label_texts(key, labels, locale=locale)
 
 
 def is_key_present(key: str, locale: str = DEFAULT_LOCALE) -> bool:
@@ -40,3 +46,20 @@ def reload_bundle() -> None:
 
 
 __all__ = ["available_locales", "is_key_present", "reload_bundle", "translate"]
+
+
+def with_label_texts(node: Any, locale: str = DEFAULT_LOCALE) -> Any:
+    """A catalogue body with every shipped ``name_key`` item given the ``labels`` text for ``locale``.
+
+    Items that already carry ``labels`` (tenant catalogues) are left as they are, and so is an item
+    whose key this bundle does not know: the screen then resolves the key itself.
+    """
+    if isinstance(node, list):
+        return [with_label_texts(v, locale) for v in node]
+    if not isinstance(node, dict):
+        return node
+    out = {k: with_label_texts(v, locale) for k, v in node.items()}
+    key = out.get("name_key")
+    if isinstance(key, str) and key and "labels" in out and not out["labels"]:
+        out["labels"] = label_texts(key, None, locale)
+    return out
