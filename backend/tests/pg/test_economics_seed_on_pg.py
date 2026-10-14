@@ -105,7 +105,7 @@ async def test_the_registers_of_the_story_are_filled_and_dated_from_the_install_
     regs = await call(world, "registers")
     kinds = {s["kind"]: s for s in regs["securities"]}
     assert set(kinds) == {"bid", "advance_payment", "performance", "warranty"}
-    assert kinds["performance"]["description"] == "Vertragserfüllungsbürgschaft des Generalunternehmers"
+    assert kinds["performance"]["description"] == "Vertragserfüllungsbürgschaft des Tiefbauunternehmens (Los 1 und 2)"
     assert Decimal(kinds["performance"]["amount"]) % 1000 == 0 and Decimal(kinds["performance"]["amount"]) > 0
     assert kinds["performance"]["lapsed"] is False
     assert regs["tax"]["confirmed"] is True and regs["tax"]["confirmed_by_name"]
@@ -176,6 +176,7 @@ async def test_grant_sources_are_linked_to_real_funding_applications(world: Worl
 
 async def test_with_gates_the_decided_gate_approves_the_demo_plan_by_someone_else() -> None:
     from app.modules.economics.events import handle_frame_document
+    from app.modules.project_governance.evaluator import ProposedCondition
     from tests.pg.economics_fixtures import COMMERCIAL_DOC, GATE
     from tests.pg.governance_fixtures import decide, documents, prepare_gate
 
@@ -184,7 +185,22 @@ async def test_with_gates_the_decided_gate_approves_the_demo_plan_by_someone_els
         w = await build_world(factory)
         await _mark(w, "residential-regensburg")
         gate = await prepare_gate(w, GATE)
-        await decide(w, gate.id, "go")
+        # The demo is installed with the plan, so no plan exists yet when the decision is taken: the decider
+        # goes at risk on the commercial area, with the plan as the condition, and the seed then finds a decided gate.
+        condition = ProposedCondition(
+            area_code="m09_commercial",
+            document_type=None,
+            text="Cost plan proposed and financed",
+            owner_user_id=str(w.owner),
+        )
+        await decide(
+            w,
+            gate.id,
+            "go_with_conditions",
+            conditions=(condition,),
+            proceed_at_risk_areas=("m09_commercial",),
+            rationale="The commercial frame follows with the demo plan.",
+        )
         doc = (await documents(w))[COMMERCIAL_DOC]
         await handle_frame_document(
             {"project_id": str(w.project_id), "document_id": str(doc.id), "status": "binding"},

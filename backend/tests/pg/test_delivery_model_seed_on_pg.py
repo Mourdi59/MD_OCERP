@@ -130,20 +130,23 @@ async def test_before_the_construction_gate_every_seeded_date_lies_after_the_sta
     assert (await view(w))["status"] == "proposed"
 
 
-async def test_a_project_without_a_phase_model_keeps_the_running_story_and_is_reported(factory, caplog) -> None:
+async def test_a_project_without_a_phase_model_keeps_the_running_story_and_proposes_for_hand_approval(
+    factory, caplog
+) -> None:
     w = await build_world(factory, governance=False)
     await _mark_demo(w)
     with caplog.at_level(logging.INFO, logger="app.modules.delivery_model.seed"):
         out = await _seed(w)
-    # A project without a governance model is a legal state: listed, quiet, and not this seed's failure.
-    assert out["ok"] is True and out["failed"] == []
-    assert [r.levelno for r in caplog.records if r.name == "app.modules.delivery_model.seed"] == [logging.INFO]
-    assert out["no_decision"] == [{"project_id": str(w.project_id), "reason": "governance_model_missing"}]
-    assert (out["projects"], out["decisions"]) == (1, 0)
+    # A project without gates approves by hand, so it needs no frame document and the decision is proposed.
+    assert out["ok"] is True and out["failed"] == [] and out["no_decision"] == []
+    assert [
+        r for r in caplog.records if r.name == "app.modules.delivery_model.seed" and r.levelno >= logging.WARNING
+    ] == []
+    assert (out["projects"], out["decisions"]) == (1, 1)
     today = datetime.now(UTC).date()
     items = {i["code"]: i for i in await call(w, "ofi_views")}
     assert date.fromisoformat(items["OFI-01"]["expected_delivery_date"]).toordinal() == today.toordinal() + 100
-    assert (await view(w))["status"] == "under_evaluation"
+    assert (await view(w))["status"] == "proposed"
 
 
 async def test_a_catalogue_with_one_form_cannot_be_published_so_no_project_is_pinned_to_one(factory) -> None:

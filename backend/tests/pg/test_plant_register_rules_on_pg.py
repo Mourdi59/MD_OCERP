@@ -390,10 +390,12 @@ async def test_the_periodic_job_expires_slots_notifies_once_a_day_and_reads_sour
         world, lambda svc: svc.transition_slot(world.project_id, slot_item, slot.id, "held", actor_id=world.manager)
     )
 
-    # Overdue: needed tomorrow, 44 weeks of lead. Due soon: the order date is three weeks out.
+    # Overdue: needed tomorrow, 44 weeks of lead. Due soon: the order date is three weeks out, after the
+    # 44 weeks and the catalogue's order buffers (transport 14, installation 21, approval 14 days), so it is
+    # still ahead on the days the sweeps below run.
     late = await item(world, "PL-LATE", "lift", need_date_fixed=TODAY + timedelta(days=1))
     await quote(world, late)
-    soon = await item(world, "PL-SOON", "lift", need_date_fixed=TODAY + timedelta(days=44 * 7 + 35 + 21))
+    soon = await item(world, "PL-SOON", "lift", need_date_fixed=TODAY + timedelta(days=44 * 7 + 49 + 21))
     await quote(world, soon)
     gone = await item(world, "PL-GONE", "lift", need_date_fixed=TODAY + timedelta(days=1))
     await quote(world, gone)

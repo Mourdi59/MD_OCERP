@@ -130,13 +130,16 @@ async def test_a_phase_model_without_a_carrier_refuses_the_proposal(factory, cat
         assert await DeliveryModelService(s).procurement_released(w.project_id) is None
 
 
-async def test_without_a_governance_model_the_proposal_is_refused_with_its_own_reason(factory) -> None:
+async def test_without_a_governance_model_the_project_uses_no_gates_and_needs_no_carrier(factory) -> None:
+    """No gates means approval by hand: the missing frame document is not a reason to refuse the proposal."""
     w = await build_world(factory, governance=False)
     ids = await compare(w)
-    with pytest.raises(DeliveryModelError) as exc:
-        await propose(w, ids["design_build"])
-    assert exc.value.code == "governance_model_missing"
-    assert (await view(w, can_manage=True))["can"]["propose"]["reason"] == "governance_model_missing"
+    model = await view(w, can_manage=True)
+    assert model["gates_in_use"] is False
+    assert model["carrier"]["missing_reason"] is None
+    assert model["can"]["propose"] == {"applies": True, "allowed": True, "reason": None}
+    await propose(w, ids["design_build"])
+    assert (await state(w)).status == "proposed"
 
 
 async def test_a_blocking_provider_says_unknown_once_when_there_is_no_carrier(factory) -> None:

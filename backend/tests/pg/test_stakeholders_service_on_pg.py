@@ -689,7 +689,8 @@ async def test_the_demo_seed_uses_only_the_projects_people_and_logs_nothing_abov
     # Owner only: both roles a colleague would hold stay vacant, said at info and counted in the result.
     assert counts["unfilled_roles"] == (2 if team_size == 0 else 0)
     told = [r for r in caplog.records if r.name == "app.modules.stakeholders.seed" and r.levelno == logging.INFO]
-    assert len(told) == (1 if team_size == 0 else 0)
+    # Said once for the vacant roles and once for the commitments nobody but the owner could approve.
+    assert len(told) == (2 if team_size == 0 else 0)
 
     people = {owner, *members}
     async with factory() as s:

@@ -13,7 +13,7 @@ from __future__ import annotations
 import sys
 import types
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 
 import pytest
@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.delivery_model import plant, seed
 from app.modules.delivery_model.errors import DeliveryModelError
+from app.modules.delivery_model.service import DeliveryModelService
 from tests._pg import isolated_engine
 from tests.pg.delivery_fixtures import build_world, call
 from tests.pg.test_delivery_model_seed_on_pg import _mark_demo, _seed
@@ -136,10 +137,12 @@ async def test_the_register_wins_also_where_it_has_no_figure(world, monkeypatch)
 
 async def test_unlinking_brings_the_own_figures_back(world, monkeypatch) -> None:
     w = world
-    # The register has let the item go (no owner-furnished route any more); only then is the link ours to remove.
-    d = _dates(procurement_route="none_yet")
+    d = _dates()
     _register(monkeypatch, {(w.project_id, d.plant_item_id): d})
     row = await call(w, "create_ofi", _item(plant_item_id=d.plant_item_id), w.manager)
+    # The register has let the item go (no owner-furnished route any more); only then is the link ours to remove.
+    let_go = replace(d, procurement_route="none_yet")
+    _register(monkeypatch, {(w.project_id, d.plant_item_id): let_go})
     await call(w, "update_ofi", row.id, {"plant_item_id": None}, w.manager)
     view = (await _views(w))["OFI-A"]
     assert (view["enquiry_date"], view["lead_time_days"], view["dates_source"]) == ("2026-10-01", 90, plant.OWN)
@@ -214,12 +217,28 @@ async def test_the_demo_links_the_switchboard_once_the_register_has_seeded(world
             "linked": 0,
             "skipped": [{"project_id": str(w.project_id), "reason": "plant_register_unavailable"}],
         }
-    d = _dates(seed.DEMO_PLANT_ITEM)
-    _register(monkeypatch, {(w.project_id, d.plant_item_id): d})
-    for expected in (1, 0):  # the second run finds it linked
-        async with w.factory() as s:
-            assert await seed.link_demo_plant_items(s, [w.project_id]) == {"linked": expected}
-            await s.commit()
+    # The register has the item but no owner-furnished route yet; setting it is the register's own write, which
+    # asks this module for the owner-furnished item and then holds the route.
+    d = _dates(seed.DEMO_PLANT_ITEM, procurement_route="none_yet")
+    items = {(w.project_id, d.plant_item_id): d}
+    _register(monkeypatch, items)
+
+    async def set_route(session, project_id, plant_item_id, *, installer_package_id, actor_id):
+        await DeliveryModelService(session).ensure_ofi_for_plant_item(
+            project_id, plant_item_id, title="Switchboard", installer_package_id=installer_package_id, actor_id=actor_id
+        )
+        items[(project_id, plant_item_id)] = replace(d, procurement_route=plant.CONTRACTOR_INSTALLS)
+
+    monkeypatch.setattr(plant, "set_owner_furnished_route", set_route)
+    async with w.factory() as s:
+        assert await seed.link_demo_plant_items(s, [w.project_id]) == {"linked": 1, "skipped": []}
+        await s.commit()
+    async with w.factory() as s:  # the second run finds it linked and asks nothing
+        assert await seed.link_demo_plant_items(s, [w.project_id]) == {
+            "linked": 0,
+            "skipped": [{"project_id": str(w.project_id), "reason": "already_owner_furnished"}],
+        }
     views = await _views(w)
-    assert views["OFI-01"]["plant_item"] == {"code": d.code, "missing": False}
-    assert views["OFI-02"]["plant_item"] is None
+    # The register asked for its own item; the story's other items stay what they were.
+    assert views[f"OFI-{d.code}"]["plant_item"] == {"code": d.code, "missing": False}
+    assert views["OFI-01"]["plant_item"] is None and views["OFI-02"]["plant_item"] is None

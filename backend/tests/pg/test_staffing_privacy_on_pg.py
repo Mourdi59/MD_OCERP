@@ -253,7 +253,7 @@ async def test_the_compliance_matrix_shows_document_states_only_to_who_may_open_
 
     # Who has no file yet, and who may open one for them.
     candidates = {
-        c["roster_member_id"]: c["can"]["create_file"] for c in await call(w, "file_candidates", hr(w.manager))
+        c["roster_member_id"]: _flag(c["can"]["create_file"]) for c in await call(w, "file_candidates", hr(w.manager))
     }
     assert candidates == {str(second.id): {"allowed": False, "reason": "no_relationship_to_person"}}
     assert (await call(w, "file_candidates", hr(w.owner)))[0]["can"]["create_file"]["allowed"] is True
