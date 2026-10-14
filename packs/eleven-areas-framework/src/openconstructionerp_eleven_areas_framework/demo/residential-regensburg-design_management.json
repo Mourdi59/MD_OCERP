@@ -332,5 +332,31 @@
   "first_issue": {
     "en": "first issue",
     "de": "Erstausgabe"
+  },
+  "execution": {
+    "code": "DL-005",
+    "release_code": "REL-003",
+    "title": {
+      "en": "Execution design: formwork, reinforcement and district heating (LP 5)",
+      "de": "Ausführungsplanung: Schalung, Bewehrung und Fernwärme (LP 5)"
+    },
+    "release_title": {
+      "en": "Execution design issue shell works (LP 5)",
+      "de": "Planstand Ausführungsplanung Rohbau (LP 5)"
+    },
+    "drawings": [
+      {
+        "en": "Formwork plan car park, base slab and walls",
+        "de": "Schalplan Tiefgarage, Bodenplatte und Wände"
+      },
+      {
+        "en": "Reinforcement plan car park, base slab",
+        "de": "Bewehrungsplan Tiefgarage, Bodenplatte"
+      },
+      {
+        "en": "Execution layout district heating house connection",
+        "de": "Ausführungsplan Fernwärme-Hausanschluss"
+      }
+    ]
   }
 }

@@ -101,6 +101,7 @@ def default_plan() -> dict[str, Any]:
             "design_release": "Design release sign-off",
         },
         "first_issue": "first issue",
+        "execution": None,
     }
 
 
@@ -137,6 +138,22 @@ def _wbs_rows(value: Any, locale: str) -> tuple[tuple[str, str, str], ...] | Non
         if code and name and kind in _WBS_KINDS:
             rows.append((code, name, kind))
     return tuple(rows) or None
+
+
+def _execution(value: Any, locale: str) -> dict[str, Any] | None:
+    """The execution design (LP 5) of a site that runs: one deliverable, its drawings and the release waiting for approval.
+
+    ``None`` unless the story gives codes, a deliverable title, at least one drawing title and a release title.
+    """
+    if not isinstance(value, dict):
+        return None
+    code, release = value.get("code"), value.get("release_code")
+    title, release_title = _txt(value.get("title"), locale), _txt(value.get("release_title"), locale)
+    raw = value.get("drawings")
+    drawings = [t for t in (_txt(d, locale) for d in raw) if t] if isinstance(raw, list) else []
+    if not (isinstance(code, str) and isinstance(release, str) and title and release_title and drawings):
+        return None
+    return {"code": code, "title": title, "drawings": drawings, "release_code": release, "release_title": release_title}
 
 
 def _report_statuses(value: Any) -> dict[str, dict[str, str]]:
@@ -282,6 +299,7 @@ def resolve_story(story: dict[str, Any], locale: str, *, report_kinds: set[str])
     plan["report_status"] = _report_statuses(story.get("reports"))
     plan["route_names"] = _titles(plan["route_names"], story.get("route_names"), locale)
     plan["first_issue"] = _txt(story.get("first_issue"), locale) or plan["first_issue"]
+    plan["execution"] = _execution(story.get("execution"), locale)
     permit = story.get("permit")
     if isinstance(permit, dict):
         plan["permit"] = {
@@ -335,6 +353,15 @@ async def _pre_construction(session: AsyncSession, project_id: uuid.UUID) -> tup
     if gate is None or gate.status == "decided":
         return None
     return gate.from_phase, gate.to_phase
+
+
+async def _construction_released(session: AsyncSession, project_id: uuid.UUID) -> bool:
+    """Whether the gate into construction exists and is decided: the design phases are closed and the site runs."""
+    from app.modules.project_governance.public import phases_enabling, project_gates
+
+    enabling = set(await phases_enabling(session, project_id, "construction_start"))
+    gate = next((g for g in await project_gates(session, project_id) if g.to_phase in enabling), None)
+    return gate is not None and gate.status == "decided"
 
 
 async def _approve(session: AsyncSession, instance_id: uuid.UUID, approver: uuid.UUID) -> None:
@@ -432,6 +459,9 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     # Before construction is released the story is one moment: everything of the phase the gate
     # closes is done except a single report, and nothing of the phase it opens has happened.
     pre = await _pre_construction(session, project_id)
+    # A decided gate is the other half of the same story: the design of the closing phase is issued and accepted,
+    # and only the execution design is still under way.
+    running = pre is None and await _construction_released(session, project_id)
     if pre is not None:
         p_mid, p_late = pre
         closes = next((p["order"] for p in phases if p["code"] == p_mid), None)
@@ -498,7 +528,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     for code, phase, role, count in (
         ("DL-001", p_early, "arch", 2),
         ("DL-002", p_early, "struct", 1),
-        ("DL-003", p_mid, "arch", 2 if pre else 3),
+        ("DL-003", p_mid, "arch", 2 if (pre or running) else 3),
         ("DL-004", p_late, "mep", 2),
     ):
         title = plan["deliverables"][code]
@@ -516,13 +546,34 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             actor_id=actor,
         )
 
+    execution = plan["execution"] if running else None
+    if execution is not None:
+        deliverables[execution["code"]] = await svc.create_deliverable(
+            project_id,
+            {
+                "code": execution["code"],
+                "title": execution["title"],
+                "phase_code": p_late,
+                "role_id": roles["struct"].id,
+                "discipline_code": disc["struct"],
+                "planned_count": len(execution["drawings"]),
+                "wbs_node_id": wbs_leaf.id if wbs_leaf else None,
+            },
+            actor_id=actor,
+        )
+
     cde = CDEService(session)
     drawing_rows = []
     # Before construction: the drawings of the closing phase are published, so their schedule lines
     # are accepted; the one drawing of the next phase is work in progress and counts for no line yet.
-    done = "A4" if pre else None
+    done = "A4" if (pre or running) else None
+    execution_specs = (
+        tuple(("struct", execution["code"], p_late, "plan", "basement", "plan", "S2") for _ in execution["drawings"])
+        if execution is not None
+        else ()
+    )
     for title, (role, dl, phase, form, spatial, sheet_type, suit) in zip(
-        plan["drawings"],
+        [*plan["drawings"], *(execution["drawings"] if execution is not None else [])],
         (
             ("arch", "DL-001", p_early, "plan", "ground", "plan", done or "S3"),
             ("arch", "DL-001", p_early, "section", "whole", "section", done or "S4"),
@@ -530,6 +581,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             ("arch", "DL-003", p_mid, "site_plan", "whole", "general", "A4"),
             ("arch", "DL-003", p_mid, "elevation", "whole", "elevation", done or "S0"),
             ("mep", None if pre else "DL-004", p_late, "plan", "ground", "plan", "S0"),
+            *execution_specs,
         ),
         strict=True,
     ):
@@ -586,7 +638,9 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         {"recipient_role_id": roles["mep"].id, "discipline_codes": [disc["arch"], disc["struct"]], "format": "native"},
         actor_id=actor,
     )
-    shared = [r.id for _d, c, r in drawing_rows if c.cde_state != "wip"]
+    n_base = len(plan["drawings"])
+    shared = [r.id for _d, c, r in drawing_rows[:n_base] if c.cde_state != "wip"]
+    execution_revisions = [r.id for _d, c, r in drawing_rows[n_base:] if c.cde_state != "wip"]
     second = await _second_person(session, actor)
     if second is not None:
         # Prepared and marked ready by the second person: the demo user approves it and issues it.
@@ -607,19 +661,32 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             actor_id=actor,
         )
         await svc.release_transition(project_id, concept.id, "ready", actor_id=actor)
-    preparer = (second or actor) if pre else actor
+    preparer = (second or actor) if (pre or running) else actor
     permit_set = await svc.create_release(
         project_id,
         {"code": "REL-002", "title": plan["releases"]["REL-002"], "revision_ids": shared[3:]},
         actor_id=preparer,
     )
-    if pre is not None:
+    if pre is not None or running:
         # Released before the gate: prepared by one person, approved on the route and issued by the other.
         ready = await svc.release_transition(project_id, permit_set.id, "ready", actor_id=preparer)
         if ready.approval_instance_id is not None:
             await _approve(session, ready.approval_instance_id, actor)
             await svc.catch_up_approvals(project_id)
         await svc.issue_release(project_id, permit_set.id, actor_id=actor)
+
+    if execution is not None and execution_revisions and second is not None:
+        # The execution design waits for its approval: the release is ready and nobody has signed it yet.
+        waiting = await svc.create_release(
+            project_id,
+            {
+                "code": execution["release_code"],
+                "title": execution["release_title"],
+                "revision_ids": execution_revisions,
+            },
+            actor_id=second,
+        )
+        await svc.release_transition(project_id, waiting.id, "ready", actor_id=second)
 
     review = await svc.create_review(
         project_id,
@@ -639,7 +706,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             {"text": text, "severity": severity, "revision_id": drawing_rows[idx][2].id},
             actor_id=actor,
         )
-        if pre is not None and severity != "minor":
+        if (pre is not None or running) and severity != "minor":
             # An open major comment blocks the phase; before the gate it has been answered and closed.
             await svc.comment_transition(
                 project_id,
