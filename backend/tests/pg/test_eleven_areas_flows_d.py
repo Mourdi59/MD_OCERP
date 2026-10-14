@@ -343,6 +343,8 @@ async def test_site_logistics_stage_and_transport_lifecycle(world: World) -> Non
         f.state(iss, "received", "created complaint", key="state")
         await f.call("POST", f"{base}/neighbour-issues/{issue}/transition", expect=(4,), json={"target": "closed"})
         for step in ("acknowledged", "action_taken", "closed"):
+            if step == "action_taken":
+                await f.call("PATCH", f"{base}/neighbour-issues/{issue}", json={"response": "Hours agreed"})
             t = await f.call("POST", f"{base}/neighbour-issues/{issue}/transition", json={"target": step})
             f.state(t, step, f"complaint after {step}", key="state")
         await f.call("POST", f"{base}/neighbour-issues/{issue}/transition", expect=(4,), json={"target": "received"})
@@ -410,7 +412,12 @@ async def test_staffing_plan_and_position_lifecycle(world: World) -> None:
         "POST",
         f"{base}/positions",
         expect=(201,),
-        json={"role_code": "custom", "custom_label": f"QA position {_tag()}", "phase": "execution"},
+        json={
+            "role_code": "custom",
+            "custom_label": f"QA position {_tag()}",
+            "organisation": "QA GmbH",
+            "phase": "execution",
+        },
     )
     position = f.body(created).get("id")
     if not position:
@@ -583,6 +590,7 @@ async def test_stakeholders_register_assessment_and_plan(world: World) -> None:
     for key in ("participation_level", "channel", "format_code"):
         if seed_plan.get(key):
             plan_body[key] = seed_plan[key]
+    plan_body["audience_stakeholder_ids"] = [sid]
     pi = await f.call("POST", f"{base}/plan-items", expect=(201,), json=plan_body)
     item = f.body(pi).get("id")
     if item:
