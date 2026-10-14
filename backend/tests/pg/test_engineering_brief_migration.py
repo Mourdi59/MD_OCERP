@@ -21,7 +21,14 @@ from tests._pg import isolated_engine
 
 pytestmark = pytest.mark.asyncio
 
-TABLES = ["oe_engbrief_brief", "oe_engbrief_concept", "oe_engbrief_programme", "oe_engbrief_milestone"]
+TABLES = [
+    "oe_engbrief_brief",
+    "oe_engbrief_concept",
+    "oe_engbrief_programme",
+    "oe_engbrief_milestone",
+    "oe_engbrief_study",
+    "oe_engbrief_issue",
+]
 
 
 def _load(name: str):

@@ -39,6 +39,7 @@ from app.modules.engineering_brief.schemas import (
     ConceptPatch,
     ConceptStatusIn,
     FindingOut,
+    IssueIn,
     MilestoneIn,
     MilestonePatch,
     MilestonesFromCatalogue,
@@ -47,6 +48,8 @@ from app.modules.engineering_brief.schemas import (
     ProgrammePatch,
     RequirementIn,
     RequirementPatch,
+    StudyIn,
+    StudyPatch,
 )
 from app.modules.engineering_brief.service import (
     Actor,
@@ -439,6 +442,67 @@ async def delete_milestone(
     await verify_project_access(project_id, user_id, session)
     await _run(EngineeringBriefService(session).delete_milestone(project_id, milestone_id, _uid(user_id)))
     return Response(status_code=204)
+
+
+# ── studies ────────────────────────────────────────────────────────────────
+
+
+@router.get("/projects/{project_id}/studies", dependencies=[READ])
+async def list_studies(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    await verify_project_access(project_id, user_id, session)
+    return _page(await _run(EngineeringBriefService(session).study_views(project_id)))
+
+
+@router.post("/projects/{project_id}/studies", status_code=201, dependencies=[EDIT])
+async def create_study(
+    project_id: uuid.UUID, body: StudyIn, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    await verify_project_access(project_id, user_id, session)
+    svc = EngineeringBriefService(session)
+    row = await _run(svc.create_study(project_id, body.model_dump(), _uid(user_id)))
+    return svc.study_dict(row)
+
+
+@router.patch("/projects/{project_id}/studies/{study_id}", dependencies=[EDIT])
+async def update_study(
+    project_id: uuid.UUID, study_id: uuid.UUID, body: StudyPatch, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    await verify_project_access(project_id, user_id, session)
+    svc = EngineeringBriefService(session)
+    row = await _run(svc.update_study(project_id, study_id, body.model_dump(exclude_unset=True), _uid(user_id)))
+    return svc.study_dict(row)
+
+
+@router.delete("/projects/{project_id}/studies/{study_id}", status_code=204, dependencies=[EDIT])
+async def delete_study(
+    project_id: uuid.UUID, study_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> Response:
+    await verify_project_access(project_id, user_id, session)
+    await _run(EngineeringBriefService(session).delete_study(project_id, study_id, _uid(user_id)))
+    return Response(status_code=204)
+
+
+# ── the issued requirements specification ──────────────────────────────────
+
+
+@router.get("/projects/{project_id}/specification", dependencies=[READ])
+async def list_specification_issues(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    """The issued versions of the requirements specification and whether the latest is still current."""
+    await verify_project_access(project_id, user_id, session)
+    return await _run(EngineeringBriefService(session).issue_views(project_id))
+
+
+@router.post("/projects/{project_id}/specification/issue", status_code=201, dependencies=[EDIT])
+async def issue_specification(
+    project_id: uuid.UUID, body: IssueIn, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    """Render the requirements brief as a PDF into the documents module and record a numbered issue."""
+    await verify_project_access(project_id, user_id, session)
+    svc = EngineeringBriefService(session)
+    row = await _run(svc.issue_specification(project_id, _uid(user_id), body.note, get_locale() or "en"))
+    return svc.issue_dict(row)
 
 
 # ── readiness, validation, export ──────────────────────────────────────────

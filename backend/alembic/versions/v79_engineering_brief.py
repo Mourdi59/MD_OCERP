@@ -2,8 +2,8 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """engineering_brief - requirements brief, technical concept, programme and framework schedule.
 
-Four new tables, all project-scoped and CASCADE with the project: the brief (one per project), the
-concept items, the programme lines and the framework milestones. The requirements are rows of the
+Six new tables, all project-scoped and CASCADE with the project: the brief (one per project), the
+concept items, the programme lines, the framework milestones, the studies and the specification issues. The requirements are rows of the
 existing ``oe_requirements_item`` in the requirement set the brief points at; no table here.
 
 Engineering brief catalogues a company builds itself live in the governance catalogue tables of v68
@@ -185,6 +185,42 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             sa.UniqueConstraint("brief_id", "code", name="uq_oe_eb_milestone_code"),
         ],
         [("ix_oe_eb_milestone_project", ["project_id"])],
+    ),
+    (
+        "oe_engbrief_study",
+        lambda: [
+            _project_fk("fk_oe_eb_study_project"),
+            _brief_fk("fk_oe_eb_study_brief"),
+            _str("code", 40, None),
+            _str("kind", 20, None),
+            _str("title", 255, None),
+            _text("scope"),
+            _str("author", 255),
+            _day("study_date"),
+            _text("result"),
+            _str("conclusion", 20, "open"),
+            _guid("document_id"),
+            _int("sort_order", 0),
+            sa.UniqueConstraint("brief_id", "code", name="uq_oe_eb_study_code"),
+        ],
+        [("ix_oe_eb_study_project", ["project_id"])],
+    ),
+    (
+        "oe_engbrief_issue",
+        lambda: [
+            _project_fk("fk_oe_eb_issue_project"),
+            _brief_fk("fk_oe_eb_issue_brief"),
+            _int("version_no"),
+            _str("title", 255),
+            sa.Column("issued_at", sa.DateTime(timezone=True), nullable=False),
+            _guid("issued_by"),
+            _guid("document_id"),
+            _str("requirements_hash", 64, None),
+            _int("requirement_count", 0),
+            _text("note"),
+            sa.UniqueConstraint("brief_id", "version_no", name="uq_oe_eb_issue_version"),
+        ],
+        [("ix_oe_eb_issue_project", ["project_id"])],
     ),
 ]
 

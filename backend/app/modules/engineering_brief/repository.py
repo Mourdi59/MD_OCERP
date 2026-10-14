@@ -10,7 +10,14 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.engineering_brief.models import ConceptItem, EngineeringBrief, FrameMilestone, ProgrammeLine
+from app.modules.engineering_brief.models import (
+    ConceptItem,
+    EngineeringBrief,
+    FrameMilestone,
+    ProgrammeLine,
+    SpecificationIssue,
+    Study,
+)
 
 
 class EngineeringBriefRepository:
@@ -54,3 +61,9 @@ class EngineeringBriefRepository:
 
     async def milestones(self, project_id: uuid.UUID) -> list[FrameMilestone]:
         return await self._list(FrameMilestone, project_id, FrameMilestone.sort_order, FrameMilestone.code)
+
+    async def studies(self, project_id: uuid.UUID) -> list[Study]:
+        return await self._list(Study, project_id, Study.sort_order, Study.code)
+
+    async def issues(self, project_id: uuid.UUID) -> list[SpecificationIssue]:
+        return await self._list(SpecificationIssue, project_id, SpecificationIssue.version_no.desc())

@@ -385,3 +385,38 @@ def test_manifest_depends_on_what_it_reads() -> None:
 
     assert manifest.name == "oe_engineering_brief"
     assert {"oe_project_governance", "oe_requirements", "oe_schedule"} <= set(manifest.depends)
+
+
+# ── studies and the issued specification ───────────────────────────────────
+
+
+def _study(code="STU-001", kind="site_analysis", conclusion="suitable", result="Done", document_id="d1"):
+    return {"code": code, "kind": kind, "conclusion": conclusion, "result": result, "document_id": document_id}
+
+
+def test_no_study_of_the_kind_is_not_met() -> None:
+    assert rules.study_state("site_analysis", [_study(kind="suitability")]) == ("not_met", "no_study")
+
+
+def test_a_concluded_documented_study_is_met_and_other_kinds_do_not_count() -> None:
+    assert rules.study_state("site_analysis", [_study()]) == ("met", "")
+
+
+@pytest.mark.parametrize(
+    ("study", "detail"),
+    [
+        (_study(conclusion="open"), "study_open:STU-001"),
+        (_study(result="  "), "study_open:STU-001"),
+        (_study(document_id=None), "study_without_document:STU-001"),
+    ],
+)
+def test_an_open_or_undocumented_study_blocks_its_kind(study, detail) -> None:
+    assert rules.study_state("site_analysis", [_study("STU-009"), study]) == ("not_met", detail)
+
+
+def test_specification_state_follows_the_requirements_hash() -> None:
+    issues = [{"version_no": 1, "requirements_hash": "a"}, {"version_no": 2, "requirements_hash": "b"}]
+    assert rules.specification_state([], "b") == ("not_met", "not_issued")
+    assert rules.specification_state(issues, "b") == ("met", "v2")
+    # An edit after the latest issue makes it stale, even though an older issue matches.
+    assert rules.specification_state(issues, "a") == ("not_met", "stale_since_v2")

@@ -127,6 +127,12 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
     # Every project route of the module; the framework routes are tenant scoped, see _NOT_ROUTER_GATED.
     "stakeholders": [
         "list_gates",
+        "list_studies",
+        "create_study",
+        "update_study",
+        "delete_study",
+        "list_specification_issues",
+        "issue_specification",
         "list_requirements",
         "list_release_items",
         "get_settings",

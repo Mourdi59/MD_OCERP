@@ -302,6 +302,121 @@ _PROFILES: dict[str, dict[str, Any]] = {
     },
 }
 
+# (kind, title, scope, author, offset in days from today, result, conclusion)
+_STUDIES: dict[str, tuple[tuple[str, str, str, str, int, str, str], ...]] = {
+    "residential-regensburg": (
+        (
+            "site_analysis",
+            "Standortanalyse Donaupark",
+            "Lage, Erschließung, Nachbarbebauung, Hochwasserlage Donau, Lärmeinwirkung der Bahntrasse.",
+            "Planungsbüro Schmid und Partner, Regensburg",
+            -190,
+            "Das Grundstück ist über die Donaustaufer Straße erschlossen. Hochwassergefahrenfläche HQ100 wird "
+            "nicht berührt, ein Teil liegt im HQ-extrem-Bereich. Lärmpegelbereich III an der Bahnseite.",
+            "suitable",
+        ),
+        (
+            "site_analysis",
+            "Baugrund und Grundwasser",
+            "Baugrunderkundung mit zwölf Rammkernsondierungen und drei Grundwassermessstellen.",
+            "Ingenieurgesellschaft Geotechnik Ostbayern",
+            -170,
+            "Auffüllung über Donaukiesen, Grundwasser bei 3,2 m unter Gelände. Gründung als Bodenplatte mit "
+            "Teilunterkellerung möglich, Baugrubenverbau mit Wasserhaltung erforderlich.",
+            "conditional",
+        ),
+        (
+            "suitability",
+            "Eignung Fernwärmeanschluss",
+            "Anschlussleistung, Vorlauftemperatur und Trassenführung im Quartier.",
+            "Energieplanung Brandl",
+            -150,
+            "Der Versorger sagt eine Anschlussleistung von 1,4 MW bei 75 Grad Vorlauf zu. Der Anteil erneuerbarer "
+            "Energien nach GEG wird mit dem Fernwärmemix und der Photovoltaikanlage erreicht.",
+            "suitable",
+        ),
+        (
+            "suitability",
+            "Eignung Tiefgarage und Stellplatzschlüssel",
+            "Zufahrt, Rampengefälle, Stellplatzzahl nach Satzung, Fahrradabstellplätze.",
+            "Verkehrsplanung Huber",
+            -140,
+            "110 Stellplätze nach Stellplatzsatzung nachweisbar, Rampe mit 15 Prozent Gefälle zulässig. "
+            "Sprinklerpflicht für die Tiefgarage entfällt bei Offenheit von mehr als einem Drittel der Umfassung.",
+            "suitable",
+        ),
+    ),
+    "school-ludwigsburg": (
+        (
+            "site_analysis",
+            "Standortanalyse Neckarweihingen",
+            "Lage im Stadtteil, Schulwege, Erschließung, Nachbarschule, Lärm und Besonnung.",
+            "Stadtplanungsamt Ludwigsburg mit Architekturbüro Kaiser",
+            -200,
+            "Das Grundstück liegt am Ortsrand mit sicherer Schulwegführung über die Neckarstraße. Die Zufahrt "
+            "für Anlieferung und Rettung ist über den Bauhofweg getrennt vom Schulhof möglich.",
+            "suitable",
+        ),
+        (
+            "site_analysis",
+            "Baugrund und Altlastenverdacht",
+            "Baugrunderkundung, orientierende Untersuchung des ehemaligen Gartenbaubetriebs.",
+            "Geotechnisches Büro Neckar",
+            -175,
+            "Tragfähiger Keuperverwitterungsboden ab 2,5 m. Im Nordteil leicht erhöhte Schwermetallwerte, "
+            "Aushub ist nach Deponieklasse DK0 zu entsorgen.",
+            "conditional",
+        ),
+        (
+            "suitability",
+            "Eignung Wärmepumpe und Photovoltaik",
+            "Erdsondenfeld oder Luft-Wasser-Wärmepumpe, Dachflächen für Photovoltaik.",
+            "Ingenieurbüro Haustechnik Stuttgart",
+            -155,
+            "Erdsonden sind im Wasserschutzgebiet Zone III nicht genehmigungsfähig. Luft-Wasser-Wärmepumpen mit "
+            "Schallschutz sind geeignet, 420 kWp Photovoltaik auf Schul- und Mensadach sind belegbar.",
+            "suitable",
+        ),
+        (
+            "suitability",
+            "Eignung Mensa und Produktionsküche",
+            "Anlieferung, Hygienezonen, Abluftführung und Brandschutz der Küche.",
+            "Fachplanung Großküche Weiss",
+            -130,
+            "Die Produktionsküche ist mit getrennter Anlieferung und Fettabscheider betreibbar. Die "
+            "Abluftführung über Dach erfordert eine Abstimmung mit der Brandschutzdienststelle.",
+            "conditional",
+        ),
+    ),
+}
+
+
+async def _study_report(session: AsyncSession, project_id: uuid.UUID, actor: Any, row: tuple[Any, ...]) -> uuid.UUID:
+    """The study report as a PDF in the documents module, written through its own upload path."""
+    from io import BytesIO
+
+    from starlette.datastructures import UploadFile
+
+    from app.core.register_export import RegisterColumn
+    from app.modules.documents.service import DocumentService
+    from app.modules.engineering_brief import export as ex
+
+    kind, title, scope, author, offset, result, conclusion = row
+    labels = {"suitable": "geeignet", "conditional": "bedingt geeignet", "unsuitable": "nicht geeignet"}
+    day = date.today() + timedelta(days=offset)
+    doc = ex._doc(
+        title,
+        [RegisterColumn("Gegenstand", weight=1, wrap=True), RegisterColumn("Inhalt", weight=4, wrap=True)],
+        [["Untersuchungsumfang", scope], ["Ergebnis", result], ["Bewertung", labels.get(conclusion, "")]],
+        [("Verfasser", author), ("Datum", day.strftime("%d.%m.%Y"))],
+        "de",
+    )
+    name = title.replace("/", "-")
+    upload = UploadFile(file=BytesIO(ex.render(doc, "pdf")), filename=f"{name}.pdf")
+    document = await DocumentService(session).upload_document(project_id, upload, "other", str(actor))
+    return document.id
+
+
 _FALLBACK = "residential-regensburg"
 
 
@@ -317,7 +432,16 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, demo_id: s
     project = await session.get(Project, project_id)
     actor = project.owner_id
     svc = EngineeringBriefService(session)
-    counts = {"requirements": 0, "concepts": 0, "programme": 0, "milestones": 0, "submitted": 0, "gates_bound": 0}
+    counts = {
+        "requirements": 0,
+        "concepts": 0,
+        "programme": 0,
+        "milestones": 0,
+        "submitted": 0,
+        "gates_bound": 0,
+        "studies": 0,
+        "issued": 0,
+    }
 
     await svc.set_brief(
         project_id,
@@ -389,6 +513,24 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, demo_id: s
         logger.warning("engineering brief demo: gates not bound for %s: %s", project_id, published["gates_skipped"])
     counts["gates_bound"] = len(published["gates_bound"])
 
+    for kind, title, scope, author, offset, result, conclusion in _STUDIES.get(demo_id, _STUDIES[_FALLBACK]):
+        row = (kind, title, scope, author, offset, result, conclusion)
+        await svc.create_study(
+            project_id,
+            {
+                "kind": kind,
+                "title": title,
+                "scope": scope,
+                "author": author,
+                "study_date": date.today() + timedelta(days=offset),
+                "result": result,
+                "conclusion": conclusion,
+                "document_id": await _study_report(session, project_id, actor, row),
+            },
+            actor,
+        )
+        counts["studies"] += 1
+
     # Submit only what the checks accept; a brief with a blocking finding stays the draft somebody is on.
     blocking = [f for f in await svc.submission_findings(project_id) if f.severity == "error"]
     if not blocking:
@@ -396,6 +538,10 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, demo_id: s
             async with session.begin_nested():
                 await svc.submit(project_id, actor)
             counts["submitted"] = 1
+            await svc.issue_specification(
+                project_id, actor, "Erste Fassung zur Abstimmung mit dem Bauherrn.", locale="de"
+            )
+            counts["issued"] = 1
         except Exception:
             logger.info("engineering brief demo left as draft for %s", project_id, exc_info=True)
     return counts
@@ -415,6 +561,8 @@ async def seed_engineering_brief_demo(session: AsyncSession, project_ids: Iterab
         "milestones": 0,
         "submitted": 0,
         "gates_bound": 0,
+        "studies": 0,
+        "issued": 0,
     }
     ids = list(project_ids)
     if not ids:
