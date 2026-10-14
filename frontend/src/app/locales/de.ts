@@ -28,6 +28,8 @@ const resource = {
     "economics.case.year_from": "Ab Jahr",
     "economics.case.year_to": "Bis Jahr",
     "economics.case.yield": "Rendite auf die Kosten",
+    "economics.export.pdf": "PDF",
+    "economics.export.xlsx": "Tabelle",
     "economics.financing.add_source": "Quelle hinzufügen",
     "economics.financing.add_tranche": "Tranche hinzufügen",
     "economics.financing.award": "Antrag {{code}} ({{status}}): {{amount}}",

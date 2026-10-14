@@ -28,6 +28,8 @@ const resource = {
     "economics.case.year_from": "From year",
     "economics.case.year_to": "To year",
     "economics.case.yield": "Yield on cost",
+    "economics.export.pdf": "PDF",
+    "economics.export.xlsx": "Spreadsheet",
     "economics.financing.add_source": "Add a source",
     "economics.financing.add_tranche": "Add a tranche",
     "economics.financing.award": "Application {{code}} ({{status}}): {{amount}}",

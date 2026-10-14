@@ -25,6 +25,7 @@ import { TabBar } from '@/shared/ui/TabBar';
 import { getErrorMessage } from '@/shared/lib/api';
 
 import { runLifecycle, startPlan, type Lifecycle, type PlanView, type PlanStatus } from './api';
+import { ExportButtons } from './ExportButtons';
 import { BusinessCasePanel } from './BusinessCasePanel';
 import { CostFramePanel } from './CostFramePanel';
 import { FindingList, Field, inputClass } from './EconomicsBits';
@@ -225,6 +226,9 @@ export function EconomicsPage() {
           { id: 'financing', label: t('economics.ui.tab_financing', { defaultValue: 'Financing' }), icon: <Landmark className="h-4 w-4" /> },
         ]}
       />
+      <div className="flex justify-end">
+        <ExportButtons projectId={projectId} what={tab === 'case' ? 'case' : tab === 'financing' ? 'financing' : 'frame'} />
+      </div>
       {body}
     </div>
   );
