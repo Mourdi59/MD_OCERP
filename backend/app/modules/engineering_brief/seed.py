@@ -307,6 +307,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, story: dic
     if published["gates_skipped"]:
         logger.warning("engineering brief demo: gates not bound for %s: %s", project_id, published["gates_skipped"])
     counts["gates_bound"] = len(published["gates_bound"])
+    counts["need_dates_bound"] = await _bind_nearest_package(session, project_id)
 
     for row in story.get("studies", []):
         await svc.create_study(
@@ -337,6 +338,68 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, story: dic
         except Exception:
             logger.info("engineering brief demo left as draft for %s", project_id, exc_info=True)
     return counts
+
+
+# How far a package's typed need date may be from a milestone for the demo to bind it without moving anything visible.
+_BIND_WINDOW_DAYS = 5
+
+
+async def _bind_nearest_package(session: AsyncSession, project_id: uuid.UUID) -> int:
+    """Bind the one package whose need date already sits at a published milestone to that milestone.
+
+    Only a package within a few days of a milestone is bound, and it takes the milestone's date, so
+    every other date of the demo stays where its story put it. Returns 1 when a package was bound.
+    """
+    from app.modules.engineering_brief.models import FrameMilestone
+    from app.modules.procurement_concept.models import AwardPackage
+    from app.modules.schedule.models import Activity
+
+    activity_ids = [
+        m.activity_id
+        for m in (
+            await session.execute(select(FrameMilestone).where(FrameMilestone.project_id == project_id))
+        ).scalars()
+        if m.activity_id is not None
+    ]
+    if not activity_ids:
+        return 0
+    starts = {
+        row.id: str(row.start_date)[:10]
+        for row in (
+            await session.execute(select(Activity.id, Activity.start_date).where(Activity.id.in_(activity_ids)))
+        )
+        if row.start_date
+    }
+    packages = (
+        (
+            await session.execute(
+                select(AwardPackage).where(
+                    AwardPackage.project_id == project_id,
+                    AwardPackage.need_date.is_not(None),
+                    AwardPackage.need_activity_id.is_(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    best: tuple[int, Any, uuid.UUID, str] | None = None
+    for pkg in packages:
+        try:
+            need = date.fromisoformat(str(pkg.need_date)[:10])
+        except ValueError:
+            continue
+        for activity_id, start in starts.items():
+            gap = abs((date.fromisoformat(start) - need).days)
+            if gap <= _BIND_WINDOW_DAYS and (best is None or gap < best[0]):
+                best = (gap, pkg, activity_id, start)
+    if best is None:
+        return 0
+    _, pkg, activity_id, start = best
+    pkg.need_activity_id = activity_id
+    pkg.need_date = start
+    await session.flush()
+    return 1
 
 
 def _story_of(demo_id: str) -> dict[str, Any] | None:

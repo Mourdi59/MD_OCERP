@@ -29,7 +29,6 @@ import {
   useMilestones,
   usePinnedCatalogue,
   useProgramme,
-  useProjectDocuments,
   useRequirements,
   useSpecification,
   useStudies,
@@ -65,7 +64,6 @@ export function EngineeringBriefPage() {
   const programmeQ = useProgramme(projectId, on('programme'));
   const milestonesQ = useMilestones(projectId, on('schedule'));
   const studiesQ = useStudies(projectId, on('studies'));
-  const documentsQ = useProjectDocuments(projectId, on('studies'));
   const specificationQ = useSpecification(projectId, on('requirements'));
 
   const header = (
@@ -155,7 +153,7 @@ export function EngineeringBriefPage() {
     );
   } else if (tab === 'studies') {
     body = studiesQ.isLoading ? loading : studiesQ.isError ? failed(studiesQ.error, () => studiesQ.refetch()) : (
-      <StudiesTab projectId={projectId} studies={studiesQ.data ?? []} documents={documentsQ.data ?? []} canWrite={canWrite} onChanged={invalidate} />
+      <StudiesTab projectId={projectId} studies={studiesQ.data ?? []} canWrite={canWrite} onChanged={invalidate} />
     );
   } else {
     body = requirementsQ.isLoading ? loading : requirementsQ.isError ? failed(requirementsQ.error, () => requirementsQ.refetch()) : (

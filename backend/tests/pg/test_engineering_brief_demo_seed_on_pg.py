@@ -63,3 +63,33 @@ def test_the_two_stories_are_different_projects() -> None:
 
 def test_a_demo_project_without_a_story_gets_no_brief() -> None:
     assert brief_seed._story_of("a-demo-project-the-pack-does-not-know") is None
+
+
+async def test_a_package_near_a_milestone_is_bound_to_it_and_the_others_stay_put(factory) -> None:
+    import uuid
+    from datetime import date, timedelta
+
+    from sqlalchemy import select
+
+    from app.modules.procurement_concept.models import AwardPackage
+    from app.modules.schedule.models import Activity
+
+    w = await build_world(factory, governance=True, brief=False)
+    story = _story("residential-regensburg")
+    async with w.factory() as s:
+        await brief_seed._seed_project(s, w.project_id, story)
+        await s.commit()
+    async with w.factory() as s:
+        start = (await s.execute(select(Activity.start_date).where(Activity.start_date.is_not(None)))).scalars().first()
+        near, far = uuid.uuid4(), uuid.uuid4()
+        day = date.fromisoformat(str(start)[:10])
+        s.add(AwardPackage(id=near, project_id=w.project_id, need_date=str(day + timedelta(days=2))))
+        s.add(AwardPackage(id=far, project_id=w.project_id, need_date=str(day + timedelta(days=400))))
+        await s.flush()
+        assert await brief_seed._bind_nearest_package(s, w.project_id) == 1
+        await s.commit()
+    async with w.factory() as s:
+        bound = await s.get(AwardPackage, near)
+        loose = await s.get(AwardPackage, far)
+        assert bound.need_activity_id is not None and bound.need_date == str(day)
+        assert loose.need_activity_id is None and loose.need_date == str(day + timedelta(days=400))
