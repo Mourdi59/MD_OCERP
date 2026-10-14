@@ -67,7 +67,7 @@ async def _world(session: AsyncSession, step: dict) -> dict:
             project_id=project.id,
             name=f"route-{uuid.uuid4().hex[:6]}",
             target_kind="contract",
-            steps=[StepCreate(ordinal=1, mode="all", **step)],
+            steps=[StepCreate(**{"ordinal": 1, "mode": "all", **step})],
         ),
         created_by=owner,
     )
@@ -128,7 +128,8 @@ async def test_a_manager_hands_off_a_step_that_is_not_theirs(session: AsyncSessi
 
 @pytest.mark.asyncio
 async def test_a_role_step_is_handed_off_only_by_somebody_whose_role_would_decide_it(session: AsyncSession) -> None:
-    w = await _world(session, {"approver_role": "manager"})
+    # One decider is enough, so a hand-off to one stand-in is possible; an "all" step over a role needs every holder.
+    w = await _world(session, {"approver_role": "manager", "mode": "any"})
     for role in ("editor", "viewer", None):
         with pytest.raises(HTTPException) as exc:
             await w["svc"].reassign_current_step(
