@@ -1803,5 +1803,10 @@
     "en_value": "PDF",
     "note": "file format name on an export button, written the same in every locale",
     "reason_category": "product_name"
+  },
+  "hseFrame.export.pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
   }
 }

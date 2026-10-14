@@ -3386,5 +3386,39 @@
     "en_value": "{{fte}} FTE x {{n}}",
     "n": 38,
     "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "projectHandbook.tabs.data_room": {
+    "added_by": "i18n handbook translation (2026-10-14)",
+    "differs_in": [
+      "ar",
+      "bn",
+      "de",
+      "fa",
+      "he",
+      "hi",
+      "ja",
+      "ko",
+      "ru",
+      "th",
+      "uk",
+      "ur",
+      "zh"
+    ],
+    "en_value": "Data room",
+    "n": 29,
+    "reason": "Short term. Locales in differs_in carry their own word or script; the rest write Data room as in English, the common term in several Latin-script locales. Flagged for a native read of fr, es, nl and pl."
+  },
+  "projectHandbook.version_short": {
+    "added_by": "i18n handbook translation (2026-10-14)",
+    "differs_in": [
+      "bg",
+      "ky",
+      "pl",
+      "ru",
+      "uk"
+    ],
+    "en_value": "v{{n}}",
+    "n": 37,
+    "reason": "Version abbreviation template, v plus a number, written the same in Latin-script locales; the differing locales use their own script."
   }
 }
