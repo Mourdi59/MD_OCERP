@@ -29880,6 +29880,7 @@ const resource = {
     "governance.project.matrix.blockers_one": "{{count}} blocker",
     "governance.project.matrix.blockers_other": "{{count}} blockers",
     "governance.project.matrix.current_phase": "Current phase",
+    "governance.project.matrix.no_gate": "No gate in this phase",
     "governance.project.matrix.next_gate": "Next gate",
     "governance.project.matrix.no_blockers": "No blockers",
     "governance.project.matrix.open_gate": "Open gate",

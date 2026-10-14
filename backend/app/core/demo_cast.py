@@ -14,6 +14,10 @@ workspace of real people, the cast is empty and stays empty: **this module
 never creates a user.** A demo is not worth a new account with a role on
 somebody's workspace. A seeder then tells the story one person can tell.
 
+The one exception is not part of the cast: the pack demo file may list invented ``people`` who own the
+areas of its filmed projects. They are rows nobody can sign in as (inactive, a hash of a thrown-away secret),
+made by ``project_governance.seed_people`` for those projects only, and they take no part in any story.
+
 What a seeder may count on, on a demo project, before the first module seeder
 runs:
 

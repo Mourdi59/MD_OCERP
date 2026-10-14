@@ -107,7 +107,9 @@ export function DecisionDialog({
   });
   const problems = decisionProblems(draft, detail, today);
   const areaName = (code: string) => catalogueName(labels, { kind: 'area', code, catalogueId });
-  const documentName = (code: string) => catalogueName(labels, { kind: 'doc', code, catalogueId });
+  const documentLabels = new Map(detail.areas.flatMap((a) => a.documents.map((d) => [d.doc_type, d.name] as const)));
+  const documentName = (code: string) =>
+    catalogueName(labels, { kind: 'doc', code, catalogueId, label: documentLabels.get(code) });
   // A missing document becomes a condition that already names the pair the
   // server matches on, with a sentence the decider can still rewrite.
   const coverDocument = (blocker: Violation) =>

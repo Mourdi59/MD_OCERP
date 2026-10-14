@@ -415,6 +415,10 @@ async def get_matrix(
     m = await _run(svc.matrix(project_id, today=_today(today)))
     cat = m["catalogue"]
     nxt = m["next_gate"]
+    for row in m["areas"]:
+        for cell in row["cells"].values():
+            for doc in cell["documents"]:
+                doc["name"] = _label(cat, "doc", doc["doc_type"])
     return MatrixOut(
         gates=await _gates_out(svc, m["gates"], cat),
         next_gate=(

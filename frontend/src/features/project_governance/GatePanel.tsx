@@ -569,7 +569,10 @@ export function GatePanel({
   const liveRefusal = refusal && refusal.seenAt === query.dataUpdatedAt ? refusal.verdict : null;
   const decideVerdict = liveRefusal ?? canDecide(model, detail);
   const submitVerdict = canSubmitGate(model, detail);
-  const documentName = (code: string) => catalogueName(labels, { kind: 'doc', code, catalogueId });
+  // The server names each frame document in the project's catalogue; a pack catalogue has no locale keys.
+  const documentLabels = new Map(detail.areas.flatMap((a) => a.documents.map((d) => [d.doc_type, d.name] as const)));
+  const documentName = (code: string) =>
+    catalogueName(labels, { kind: 'doc', code, catalogueId, label: documentLabels.get(code) });
   const gateName = catalogueName(labels, { kind: 'gate', code: gate.code, catalogueId, label: gate.name });
   const fromPhase = model.phases.find((ph) => ph.code === gate.from_phase);
   const fromPhaseName = catalogueName(labels, { kind: 'phase', code: gate.from_phase, catalogueId, label: fromPhase?.name });
