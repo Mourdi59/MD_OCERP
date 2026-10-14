@@ -151,7 +151,7 @@ export function PaperDialog({ open, onClose, projectId, item, paper, onSaved }: 
             </Button>
           </div>
           {draft.criteria.map((c, index) => (
-            <div key={c.rowId} className="grid gap-2 sm:grid-cols-[3fr_1fr_auto]" data-testid="criterion-row">
+            <div key={c.rowId} className="grid gap-2 sm:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_auto]" data-testid="criterion-row">
               <input
                 aria-label={t('plant.paper.criterion_n', { defaultValue: 'Criterion {{n}}', n: index + 1 })}
                 placeholder={t('plant.paper.criterion_placeholder', { defaultValue: 'For example lead time, cost, local service' })}
@@ -194,7 +194,7 @@ export function PaperDialog({ open, onClose, projectId, item, paper, onSaved }: 
           </div>
           {draft.options.map((o, index) => (
             <div key={o.rowId} className="space-y-2 rounded-lg border border-border-light p-3" data-testid="option-row">
-              <div className="grid gap-2 sm:grid-cols-[1fr_4fr_1fr_1.5fr_1fr_auto]">
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,4fr)_minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)_auto]">
                 <input
                   aria-label={t('plant.paper.option_code_n', { defaultValue: 'Code of option {{n}}', n: index + 1 })}
                   placeholder={t('plant.field.code', { defaultValue: 'Code' })}

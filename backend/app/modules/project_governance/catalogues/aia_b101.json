@@ -119,7 +119,8 @@
         "procurement_to_construction"
       ],
       "hosts": [
-        "permits"
+        "permits",
+        "hse"
       ]
     },
     {
@@ -130,7 +131,8 @@
         "construction_documents_to_procurement"
       ],
       "hosts": [
-        "design"
+        "design",
+        "engineering_brief"
       ]
     },
     {

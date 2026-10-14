@@ -42,10 +42,11 @@ from app.modules.project_governance.catalogue_kinds import (
     register_host_subject,
     register_phase_capability,
 )
-from app.modules.project_governance.catalogue_packs import CataloguePin
+from app.modules.project_governance.catalogue_packs import CataloguePin, demo_module_story
 from app.modules.project_governance.catalogue_store import default_catalogue_pin, resolve_catalogue
 from app.modules.project_governance.errors import GovernanceError
 from app.modules.project_governance.repository import GovernanceRepository
+from app.modules.project_governance.seed_story import text_of as story_text
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,9 @@ __all__ = [
     "condition_views",
     "control_settings",
     "ControlSettings",
+    "story_text",
     "decision_views",
+    "demo_module_story",
     "document_views",
     "gate_views",
     "ChangeRequestView",
@@ -174,6 +177,8 @@ class GateView:
         last_outcome: Outcome of the latest decision, ``""`` before the first.
         target_date: When the gate is planned: the linked schedule activity's date, else the
             gate's own; ``None`` when neither is set.
+        schedule_activity_id: The schedule activity that owns the gate's date; ``None`` when the gate
+            carries a date of its own or none.
     """
 
     id: uuid.UUID
@@ -185,6 +190,7 @@ class GateView:
     to_phase: str
     last_outcome: str
     target_date: date | None = None
+    schedule_activity_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -407,6 +413,7 @@ def gate_views(catalogue: Any, rows: Any, target_dates: Mapping[uuid.UUID, Any] 
             last_outcome=g.last_outcome or "",
             # The linked activity's day; the gate's own when it is not linked or the activity has none.
             target_date=_day(planned.get(g.id) or getattr(g, "target_date", None)),
+            schedule_activity_id=getattr(g, "schedule_activity_id", None),
         )
         for index, g in enumerate(ordered, start=1)
     )

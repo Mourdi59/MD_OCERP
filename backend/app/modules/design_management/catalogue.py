@@ -86,6 +86,7 @@ REPORT_KINDS_V1: tuple[str, ...] = (
     "daylight",
     "traffic",
     "drainage",
+    "kitchen_planning",
     "survey",
     "contamination",
     "uxo",

@@ -2138,7 +2138,10 @@
       "labels": {
         "en": "Client requirements, technical concept, frame schedule with gates",
         "de": "Lastenheft, technisches Konzept, Rahmenterminplan mit Gates"
-      }
+      },
+      "hosts": [
+        "engineering_brief"
+      ]
     },
     {
       "code": "m04_equipment_frame",
@@ -2233,7 +2236,8 @@
         "de": "Business Case, Kostenrahmen, Finanzierungs- und Controlling-Struktur, Verpflichtungs- und Freigabematrix"
       },
       "hosts": [
-        "commitment_release"
+        "commitment_release",
+        "economics"
       ]
     },
     {
@@ -2263,7 +2267,10 @@
       "labels": {
         "en": "Environmental and safety frame with permit conditions",
         "de": "Umwelt- und Sicherheitsrahmen mit Genehmigungsauflagen"
-      }
+      },
+      "hosts": [
+        "hse"
+      ]
     }
   ],
   "readiness_criteria": [
@@ -2271,6 +2278,7 @@
       "code": "frame_document_approved",
       "area": "m01_project_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
       "labels": {
         "en": "Frame document exists and is approved at the gate",
@@ -2281,6 +2289,7 @@
       "code": "next_phase_tasks_done",
       "area": "m01_project_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
       "labels": {
         "en": "Tasks for the next phase are done",
@@ -2291,6 +2300,7 @@
       "code": "frame_document_approved",
       "area": "m02_contract_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
       "labels": {
         "en": "Frame document exists and is approved at the gate",
@@ -2301,6 +2311,7 @@
       "code": "next_phase_tasks_done",
       "area": "m02_contract_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
       "labels": {
         "en": "Tasks for the next phase are done",
@@ -2311,6 +2322,7 @@
       "code": "frame_document_approved",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
       "labels": {
         "en": "Frame document exists and is approved at the gate",
@@ -2321,6 +2333,7 @@
       "code": "next_phase_tasks_done",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
       "labels": {
         "en": "Tasks for the next phase are done",
@@ -2331,6 +2344,7 @@
       "code": "frame_document_approved",
       "area": "m04_equipment",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
       "labels": {
         "en": "Frame document exists and is approved at the gate",
@@ -2341,6 +2355,7 @@
       "code": "next_phase_tasks_done",
       "area": "m04_equipment",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
       "labels": {
         "en": "Tasks for the next phase are done",
@@ -2351,6 +2366,7 @@
       "code": "frame_document_approved",
       "area": "m05_personnel",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
       "labels": {
         "en": "Frame document exists and is approved at the gate",
@@ -2361,6 +2377,7 @@
       "code": "next_phase_tasks_done",
       "area": "m05_personnel",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
       "labels": {
         "en": "Tasks for the next phase are done",
@@ -2371,6 +2388,7 @@
       "code": "frame_document_approved",
       "area": "m06_logistics",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
       "labels": {
         "en": "Frame document exists and is approved at the gate",
@@ -2381,6 +2399,7 @@
       "code": "next_phase_tasks_done",
       "area": "m06_logistics",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
       "labels": {
         "en": "Tasks for the next phase are done",
@@ -2391,6 +2410,7 @@
       "code": "frame_document_approved",
       "area": "m07_design_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
       "labels": {
         "en": "Frame document exists and is approved at the gate",
@@ -2401,6 +2421,7 @@
       "code": "next_phase_tasks_done",
       "area": "m07_design_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
       "labels": {
         "en": "Tasks for the next phase are done",
@@ -2411,6 +2432,7 @@
       "code": "frame_document_approved",
       "area": "m08_procurement",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
       "labels": {
         "en": "Frame document exists and is approved at the gate",
@@ -2421,6 +2443,7 @@
       "code": "next_phase_tasks_done",
       "area": "m08_procurement",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
       "labels": {
         "en": "Tasks for the next phase are done",
@@ -2431,6 +2454,7 @@
       "code": "frame_document_approved",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
       "labels": {
         "en": "Frame document exists and is approved at the gate",
@@ -2441,6 +2465,7 @@
       "code": "next_phase_tasks_done",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
       "labels": {
         "en": "Tasks for the next phase are done",
@@ -2451,6 +2476,7 @@
       "code": "frame_document_approved",
       "area": "m10_quality",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
       "labels": {
         "en": "Frame document exists and is approved at the gate",
@@ -2461,6 +2487,7 @@
       "code": "next_phase_tasks_done",
       "area": "m10_quality",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
       "labels": {
         "en": "Tasks for the next phase are done",
@@ -2471,6 +2498,7 @@
       "code": "frame_document_approved",
       "area": "m11_hse",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved",
       "labels": {
         "en": "Frame document exists and is approved at the gate",
@@ -2481,6 +2509,7 @@
       "code": "next_phase_tasks_done",
       "area": "m11_hse",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done",
       "labels": {
         "en": "Tasks for the next phase are done",
@@ -2491,6 +2520,7 @@
       "code": "technical_requirements_fixed",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.technical_requirements_fixed",
       "labels": {
         "en": "Technical requirements are fixed and agreed with the user",
@@ -2501,6 +2531,7 @@
       "code": "site_analysis_done",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.site_analysis_done",
       "labels": {
         "en": "Site analysis is complete",
@@ -2511,6 +2542,7 @@
       "code": "technical_concept_approved",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.technical_concept_approved",
       "labels": {
         "en": "Technical concept is approved",
@@ -2521,6 +2553,7 @@
       "code": "procedure_descriptions_fixed",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.procedure_descriptions_fixed",
       "labels": {
         "en": "Procedure descriptions for the construction methods are fixed",
@@ -2531,6 +2564,7 @@
       "code": "lean_approach_agreed",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.lean_approach_agreed",
       "labels": {
         "en": "Lean approach for execution is agreed",
@@ -2541,6 +2575,7 @@
       "code": "area_and_quantity_programme_fixed",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.area_and_quantity_programme_fixed",
       "labels": {
         "en": "Area and quantity programme is fixed",
@@ -2551,6 +2586,7 @@
       "code": "frame_schedule_approved",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.frame_schedule_approved",
       "labels": {
         "en": "Frame schedule is approved",
@@ -2561,6 +2597,7 @@
       "code": "commissioning_sequence_fixed",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.commissioning_sequence_fixed",
       "labels": {
         "en": "Commissioning sequence is fixed",
@@ -2571,6 +2608,7 @@
       "code": "site_frame_conditions_fixed",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.site_frame_conditions_fixed",
       "labels": {
         "en": "Frame conditions of the site are fixed",
@@ -2581,6 +2619,7 @@
       "code": "requirements_specification_issued",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.requirements_specification_issued",
       "labels": {
         "en": "Requirements specification is issued",
@@ -2591,6 +2630,7 @@
       "code": "suitability_studies_done",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.suitability_studies_done",
       "labels": {
         "en": "Suitability studies and tests are complete",
@@ -2601,6 +2641,7 @@
       "code": "business_case_confirmed",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "evidence_provider": "economics.plan_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.business_case_confirmed",
       "labels": {
         "en": "Business case is confirmed",
@@ -2611,6 +2652,7 @@
       "code": "budget_approved",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "evidence_provider": "economics.plan_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.budget_approved",
       "labels": {
         "en": "Budget is approved",
@@ -2621,6 +2663,7 @@
       "code": "controlling_structure_set",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "evidence_provider": "economics.plan_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.controlling_structure_set",
       "labels": {
         "en": "Cost controlling structure is set up",
@@ -2631,6 +2674,7 @@
       "code": "financing_secured",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "evidence_provider": "economics.plan_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.financing_secured",
       "labels": {
         "en": "Financing is secured",
@@ -2641,6 +2685,7 @@
       "code": "cash_flow_plan_available",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "evidence_provider": "economics.plan_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.cash_flow_plan_available",
       "labels": {
         "en": "Cash flow plan is available",
@@ -2651,6 +2696,7 @@
       "code": "receivables_payables_process_set",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.receivables_payables_process_set",
       "labels": {
         "en": "Handling of receivables and payables is set up",
@@ -2661,6 +2707,7 @@
       "code": "securities_and_insurance_in_place",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.securities_and_insurance_in_place",
       "labels": {
         "en": "Securities and insurance are in place",
@@ -2671,6 +2718,7 @@
       "code": "tax_treatment_clarified",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.tax_treatment_clarified",
       "labels": {
         "en": "Tax treatment is clarified",
@@ -2681,6 +2729,7 @@
       "code": "administration_set_up",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.administration_set_up",
       "labels": {
         "en": "Commercial administration is set up",
@@ -2691,6 +2740,7 @@
       "code": "hse_requirements_issued",
       "area": "m11_hse",
       "gate": "development_to_execution",
+      "evidence_provider": "hse_frame.readiness",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.hse_requirements_issued",
       "labels": {
         "en": "Requirements on designers and contractors are issued",
@@ -2701,6 +2751,7 @@
       "code": "environmental_assessment_done",
       "area": "m11_hse",
       "gate": "development_to_execution",
+      "evidence_provider": "hse_frame.readiness",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.environmental_assessment_done",
       "labels": {
         "en": "Environmental assessment is complete",
@@ -2711,6 +2762,7 @@
       "code": "site_clearances_on_file",
       "area": "m11_hse",
       "gate": "development_to_execution",
+      "evidence_provider": "hse_frame.readiness",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.site_clearances_on_file",
       "labels": {
         "en": "Site clearances are on file",
@@ -2721,6 +2773,7 @@
       "code": "energy_and_climate_targets_set",
       "area": "m11_hse",
       "gate": "development_to_execution",
+      "evidence_provider": "hse_frame.readiness",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.energy_and_climate_targets_set",
       "labels": {
         "en": "Energy and climate targets are set",
@@ -2731,6 +2784,7 @@
       "code": "sustainability_targets_set",
       "area": "m11_hse",
       "gate": "development_to_execution",
+      "evidence_provider": "hse_frame.readiness",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.sustainability_targets_set",
       "labels": {
         "en": "Sustainability targets are set",
@@ -2741,6 +2795,7 @@
       "code": "safety_coordination_appointed",
       "area": "m11_hse",
       "gate": "development_to_execution",
+      "evidence_provider": "hse_frame.readiness",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.safety_coordination_appointed",
       "labels": {
         "en": "Health and safety coordination is appointed",
@@ -2751,6 +2806,7 @@
       "code": "security_concept_approved",
       "area": "m11_hse",
       "gate": "development_to_execution",
+      "evidence_provider": "hse_frame.readiness",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m11_hse.security_concept_approved",
       "labels": {
         "en": "Security concept is approved",

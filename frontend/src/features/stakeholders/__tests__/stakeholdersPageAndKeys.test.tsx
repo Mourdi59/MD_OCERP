@@ -15,6 +15,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import de from '@/app/locales/de';
 import en from '@/app/locales/en';
 import { ApiError } from '@/shared/lib/api';
+import { EVENT_TRIGGERS } from '../rules';
 
 vi.mock('react-i18next', async () => (await import('./i18nMock')).i18nMockModule);
 vi.mock('@/shared/ui/ProjectPeopleSelect', () => ({ ProjectPeopleSelect: () => null }));
@@ -233,7 +234,10 @@ const sources = import.meta.glob('../*.{ts,tsx}', { query: '?raw', import: 'defa
 function usedKeys(): string[] {
   const keys = new Set<string>();
   for (const src of Object.values(sources)) {
-    for (const match of src.matchAll(/'(stakeholders(?:\.[a-z0-9_]+){2,})'/g)) keys.add(match[1] as string);
+    for (const match of src.matchAll(/'(stakeholders(?:\.[a-z0-9_]+){2,})'/g)) {
+      // A project event name shares the shape of a message key but is sent to the server, not shown.
+      if (!(EVENT_TRIGGERS as readonly string[]).includes(match[1] as string)) keys.add(match[1] as string);
+    }
   }
   return [...keys].sort();
 }

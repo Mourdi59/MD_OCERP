@@ -203,7 +203,7 @@ export function ReleaseDialog({
           </div>
         </dl>
 
-        <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <Field
             id="release-amount"
             label={t('commitment.release.amount', { defaultValue: 'Amount' })}

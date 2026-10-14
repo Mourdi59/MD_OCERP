@@ -61,6 +61,7 @@ TRADES: tuple[str, ...] = (
     "solar",
     "storage",
     "lifts",
+    "kitchen",
     "external",
 )
 
@@ -153,6 +154,7 @@ _DIN276: dict[str, str] = {
     "45": "electrical",
     "46": "lifts",
     "47": "mechanical",
+    "471": "kitchen",
     "474": "fire",
     "48": "electrical",
     "49": "mechanical",
@@ -628,6 +630,7 @@ _WORDS: dict[str, tuple[str, ...]] = {
         "lift",
         "elevator",
         "aufzug",
+        "aufzüg",
         "ascenseur",
         "elevador",
         "escalator",
@@ -646,6 +649,14 @@ _WORDS: dict[str, tuple[str, ...]] = {
         "ліфт",
         "ascensoare",
         "昇降機",
+    ),
+    "kitchen": (
+        "küchentechnik",
+        "großküche",
+        "grossküche",
+        "kitchen equipment",
+        "commercial kitchen",
+        "catering equipment",
     ),
     "external": (
         "außenanlagen",
@@ -692,6 +703,7 @@ _WORDS: dict[str, tuple[str, ...]] = {
 _DESCRIPTION_ORDER: tuple[str, ...] = (
     "storage",
     "lifts",
+    "kitchen",
     "fire",
     "solar",
     "piling",
@@ -726,7 +738,7 @@ _MEP_WORDS = (
     "机电",
     "設備",
 )
-_MEP_TRADES = ("mechanical", "electrical", "fire", "lifts")
+_MEP_TRADES = ("mechanical", "electrical", "fire", "lifts", "kitchen")
 
 # What a package customarily carries when no package names it: the structure
 # contractor the site set-up, the pit and the blockwork, the facade contractor

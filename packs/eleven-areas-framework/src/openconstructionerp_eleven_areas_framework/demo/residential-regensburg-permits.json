@@ -1,0 +1,111 @@
+{
+  "$note": "Permit story of the Regensburg residential quarter (Bavaria, BayBO). The catalogue codes are those of the DE-BY permit catalogue the project pins, resolved through the federal catalogue it extends. Kind, trigger and owner of every condition stay in the seeder; the story only words them. All references are invented.",
+  "codes": {
+    "preliminary": "bauvoranfrage",
+    "building": "baugenehmigung",
+    "early_start": "vorzeitiger_baubeginn",
+    "road": "sondernutzung_strasse",
+    "occupancy": "nutzungsaufnahme_anzeige"
+  },
+  "preliminary_title": {
+    "en": "Preliminary decision (Vorbescheid) on density and building envelope of the residential quarter",
+    "de": "Vorbescheid zu Dichte und Baukörpern des Wohnquartiers"
+  },
+  "building_title": {
+    "en": "Building permit for four apartment buildings with an underground car park",
+    "de": "Baugenehmigung für vier Mehrfamilienhäuser mit Tiefgarage"
+  },
+  "early_title": {
+    "en": "Early start of the excavation pit and shoring at own risk",
+    "de": "Vorzeitiger Beginn Baugrube und Verbau auf eigenes Risiko"
+  },
+  "road_title": {
+    "en": "Road occupation for the tower crane and the access road Am Donauknie",
+    "de": "Sondernutzung Straße für Kran und Zufahrt Am Donauknie"
+  },
+  "occupancy_title": {
+    "en": "Notice of occupancy before the first tenants move in",
+    "de": "Nutzungsaufnahme vor Einzug der ersten Mieter"
+  },
+  "authority_name": {
+    "en": "City of Regensburg, building control office (Bauordnungsamt)",
+    "de": "Stadt Regensburg, Bauordnungsamt"
+  },
+  "preliminary_reference": "VB-2026-0412",
+  "building_reference": "BA-2026-1187",
+  "early_reference": "VB-2026-0136",
+  "clock_stop_reason": {
+    "en": "Bauordnungsamt asked for the revised groundwater lowering concept and the proof of parking and bicycle spaces",
+    "de": "Das Bauordnungsamt forderte das überarbeitete Grundwasserhaltungskonzept und den Nachweis der Stell- und Fahrradabstellplätze"
+  },
+  "clock_resume_reason": {
+    "en": "Revised concept and space proof delivered, fire protection proof confirmed by the approved fire protection inspector",
+    "de": "Überarbeitetes Konzept und Stellplatznachweis eingereicht, Brandschutznachweis vom Prüfsachverständigen bestätigt"
+  },
+  "evidence_note": {
+    "en": "Reptile protection fence along the southern edge of the site, photographed from the gate and dated, with the log of the ecological site supervision",
+    "de": "Reptilienschutzzaun am Südrand des Baufelds, vom Tor aus fotografiert und datiert, mit dem Protokoll der ökologischen Baubegleitung"
+  },
+  "early_conditions": {
+    "1": {
+      "text": {
+        "en": "If the building permit is refused, the pit is backfilled and the site is restored to its previous condition.",
+        "de": "Wird die Baugenehmigung versagt, wird die Baugrube verfüllt und das Grundstück in den früheren Zustand versetzt."
+      }
+    },
+    "2": {
+      "text": {
+        "en": "Security for the restoration is lodged with the Bauordnungsamt before excavation starts.",
+        "de": "Eine Sicherheit für die Wiederherstellung wird vor Beginn der Aushubarbeiten beim Bauordnungsamt hinterlegt."
+      }
+    }
+  },
+  "conditions": {
+    "1": {
+      "text": {
+        "en": "Before work starts, submit the structural calculations of the underground car park and the building shells, checked by the approved inspector for structural stability.",
+        "de": "Vor Baubeginn sind die Standsicherheitsnachweise für Tiefgarage und Rohbauten vorzulegen, geprüft vom Prüfsachverständigen für Standsicherheit."
+      },
+      "topic": "structural",
+      "evidence_required": {
+        "en": "Checked structural calculations with the report of the inspector",
+        "de": "Geprüfte Standsicherheitsnachweise mit dem Prüfbericht des Prüfsachverständigen"
+      }
+    },
+    "2": {
+      "text": {
+        "en": "Noisy works are permitted on working days between 07:00 and 18:00 only; the residents are told a week ahead of piling and shoring works.",
+        "de": "Lärmintensive Arbeiten sind nur werktags zwischen 07:00 und 18:00 Uhr zulässig; die Anwohner werden eine Woche vor Verbau- und Rammarbeiten informiert."
+      },
+      "topic": "noise",
+      "responsible_party": {
+        "en": "Main contractor",
+        "de": "Generalunternehmer"
+      }
+    },
+    "3": {
+      "text": {
+        "en": "The site is secured with a reptile protection fence before any excavation, the animals are relocated under ecological supervision, and the fence is kept until completion and checked weekly.",
+        "de": "Vor Beginn der Erdarbeiten wird das Baufeld mit einem Reptilienschutzzaun gesichert, die Tiere werden unter ökologischer Baubegleitung umgesiedelt, der Zaun bleibt bis zur Fertigstellung stehen und wird wöchentlich kontrolliert."
+      },
+      "topic": "ecology",
+      "evidence_required": {
+        "en": "Dated photograph of the fence in place, with the weekly check list",
+        "de": "Datiertes Foto des errichteten Zauns mit der wöchentlichen Kontrollliste"
+      }
+    },
+    "4": {
+      "text": {
+        "en": "Before the buildings are occupied, the fire protection measures, the smoke extraction of the stairwells and the fire alarm of the underground car park are accepted by the approved fire protection inspector.",
+        "de": "Vor Nutzungsaufnahme der Gebäude werden Brandschutzmaßnahmen, Rauchabzug der Treppenhäuser und Brandmeldeanlage der Tiefgarage vom Prüfsachverständigen für Brandschutz abgenommen."
+      },
+      "topic": "fire"
+    },
+    "5": {
+      "text": {
+        "en": "The permit does not replace the energy proof under the GEG, the water law permit for the groundwater lowering or the consent for the road occupation.",
+        "de": "Die Genehmigung ersetzt weder den Energienachweis nach GEG noch die wasserrechtliche Erlaubnis für die Grundwasserhaltung oder die Zustimmung zur Straßensondernutzung."
+      }
+    }
+  }
+}

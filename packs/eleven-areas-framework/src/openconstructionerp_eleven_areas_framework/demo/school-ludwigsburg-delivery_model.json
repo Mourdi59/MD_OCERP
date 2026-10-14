@@ -1,0 +1,182 @@
+{
+  "$note": "Delivery model story of the Ludwigsburg school: a public client weighing trade lots against a general contractor and a two-stage partnering form. plant_item names the register item the city supplies itself (PL-002, Mensa kitchen). All names invented.",
+  "forms": [
+    "design_bid_build_split",
+    "design_bid_build_single",
+    "partnering_two_stage"
+  ],
+  "rationales": {
+    "design_bid_build_split": {
+      "en": "Trade lots score highest: the city keeps control of the design, awards by VOB/A in lots that suit local firms, and the Gemeinderat approves each award against the Land funding rules. The price risk and the interfaces between lots stay with the city and are covered in the risk register.",
+      "de": "Die Fachlosvergabe liegt vorn: Die Stadt behält die Hoheit über die Planung, vergibt nach VOB/A in mittelstandsgerechten Losen, und der Gemeinderat entscheidet jede Vergabe nach den Fördervorgaben des Landes. Preisrisiko und Schnittstellen zwischen den Losen bleiben bei der Stadt und sind im Risikoregister erfasst."
+    },
+    "design_bid_build_single": {
+      "en": "The general contractor option scores highest: one point of responsibility and a fixed price at award, at the cost of larger lots that are harder for local firms and a longer standstill-bound award. The Gemeinderat decides one award instead of several.",
+      "de": "Die Variante mit Generalunternehmer liegt vorn: eine zentrale Verantwortung und ein Festpreis bei Zuschlag, dafür größere Lose, die für ortsansässige Firmen schwerer zu stemmen sind, und eine längere Vergabe mit Wartefrist. Der Gemeinderat entscheidet über eine Vergabe statt über mehrere."
+    },
+    "partnering_two_stage": {
+      "en": "Two-stage partnering scores highest: the contractor joins during design and the summer-holiday window is planned together, but the Land funding rules and the VOB/A award need a documented price basis before the second stage.",
+      "de": "Das zweistufige Partnering liegt vorn: Der Auftragnehmer steigt schon in der Planung ein und das Sommerferienfenster wird gemeinsam geplant, doch Fördervorgaben des Landes und VOB/A-Vergabe verlangen vor der zweiten Stufe eine dokumentierte Preisgrundlage."
+    }
+  },
+  "owner_capability": {
+    "owner_has_design_team": false,
+    "owner_has_cm_capacity": false,
+    "public_client": true,
+    "funding_source": {
+      "en": "Municipal budget with Land school construction funding",
+      "de": "Städtischer Haushalt mit Schulbauförderung des Landes"
+    }
+  },
+  "risks": [
+    "ground_conditions",
+    "hse_site",
+    "schedule_delay"
+  ],
+  "ground_rationale": {
+    "en": "Shared on a Baugrund baseline report: the city carries ground worse than the baseline, and the extra cost is reported to the Regierungspraesidium as eligible only up to the approved budget.",
+    "de": "Aufteilung auf Grundlage eines Baugrund-Basisgutachtens: Die Stadt trägt Baugrund schlechter als das Basisgutachten, die Mehrkosten werden dem Regierungspräsidium gemeldet und sind nur bis zum bewilligten Budget förderfähig."
+  },
+  "ofi_first": {
+    "description": {
+      "en": "Mensa production kitchen equipment from the city's framework agreement, installed by the kitchen trade lot",
+      "de": "Ausstattung der Mensa-Produktionsküche aus dem Rahmenvertrag der Stadt, eingebaut durch das Fachlos Küchentechnik"
+    },
+    "item_kind": "equipment",
+    "lead_time_days": 120
+  },
+  "ofi_second": {
+    "description": {
+      "en": "Classroom furniture from the Schulamt framework agreement, installed by the school caretakers",
+      "de": "Klassenzimmermöbel aus dem Rahmenvertrag des Schulamts, aufgebaut durch die Hausmeister der Schulen"
+    },
+    "item_kind": "material"
+  },
+  "plant_item": "PL-002",
+  "contract_items": [
+    {
+      "group": "contract_form",
+      "kinds": [
+        "construction_contract"
+      ],
+      "code": "CF-01",
+      "title": {
+        "en": "Construction contracts under VOB/B per trade lot",
+        "de": "Bauverträge nach VOB/B je Fachlos"
+      },
+      "counterparty": {
+        "en": "Trade lot contractors, awarded under VOB/A",
+        "de": "Fachlosunternehmen, Vergabe nach VOB/A"
+      },
+      "status": "draft",
+      "days": 165
+    },
+    {
+      "group": "contract_form",
+      "kinds": [
+        "consultant_agreement"
+      ],
+      "code": "CF-02",
+      "title": {
+        "en": "Architect and engineer agreements under HOAI",
+        "de": "Architekten- und Ingenieurverträge nach HOAI"
+      },
+      "counterparty": {
+        "en": "Neckar design partnership",
+        "de": "Planungsgemeinschaft Neckar"
+      },
+      "status": "signed",
+      "days": -200
+    },
+    {
+      "group": "land_tenure",
+      "kinds": [
+        "easement",
+        "purchase"
+      ],
+      "code": "LT-01",
+      "title": {
+        "en": "Right of way and utility easement over the neighbouring plot",
+        "de": "Leitungs- und Wegerecht über das Nachbargrundstück"
+      },
+      "counterparty": {
+        "en": "Parish of the Protestant church",
+        "de": "Evangelische Kirchengemeinde"
+      },
+      "status": "agreed",
+      "days": -60
+    },
+    {
+      "group": "utility_contract",
+      "kinds": [
+        "power_connection",
+        "water_sewer_connection"
+      ],
+      "code": "UC-01",
+      "title": {
+        "en": "Power connection of the school with photovoltaic feed-in",
+        "de": "Stromanschluss der Schule mit Photovoltaikeinspeisung"
+      },
+      "counterparty": {
+        "en": "Grid operator Ludwigsburg",
+        "de": "Netzbetreiber Ludwigsburg"
+      },
+      "status": "agreed",
+      "days": 45
+    },
+    {
+      "group": "utility_contract",
+      "kinds": [
+        "district_heating"
+      ],
+      "code": "UC-02",
+      "title": {
+        "en": "District heating supply from the neighbourhood network",
+        "de": "Nahwärmeversorgung aus dem Quartiersnetz"
+      },
+      "counterparty": {
+        "en": "Municipal utility of Ludwigsburg",
+        "de": "Stadtwerke Ludwigsburg"
+      },
+      "status": "negotiating",
+      "days": 75
+    },
+    {
+      "group": "user_agreement",
+      "kinds": [
+        "service_level_agreement",
+        "handover_criteria_agreement"
+      ],
+      "code": "UA-01",
+      "title": {
+        "en": "Usage agreement with the school management, handover criteria for canteen and gym",
+        "de": "Nutzungsvereinbarung mit der Schulleitung, Übergabekriterien Mensa und Sporthalle"
+      },
+      "counterparty": {
+        "en": "School management and school administration office",
+        "de": "Schulleitung und Schulverwaltungsamt"
+      },
+      "status": "draft",
+      "days": 190
+    },
+    {
+      "group": "partner_structure",
+      "kinds": [
+        "project_company",
+        "co_investment"
+      ],
+      "code": "PS-01",
+      "title": {
+        "en": "City share of the school building company",
+        "de": "Gesellschafteranteil der Stadt an der Schulbau GmbH"
+      },
+      "counterparty": {
+        "en": "City of Ludwigsburg",
+        "de": "Stadt Ludwigsburg"
+      },
+      "status": "agreed",
+      "days": -150,
+      "share": "100"
+    }
+  ]
+}

@@ -83,6 +83,82 @@ def planned_deliveries(
     )
 
 
+def _hhmm(value: object) -> bool:
+    """Whether ``value`` is a ``HH:MM`` clock time."""
+    if not isinstance(value, str) or len(value) != 5 or value[2] != ":":
+        return False
+    hh, mm = value[:2], value[3:]
+    return hh.isdigit() and mm.isdigit() and int(hh) < 24 and int(mm) < 60
+
+
+def resolve_site_content(
+    story: dict | None,
+    locale: str,
+    rows: tuple[tuple[int, int, int, int, str, str, str | None], ...] = _DELIVERIES,
+) -> tuple[tuple[tuple[str, str, str, int, str], ...], tuple[tuple[str, str, str], ...], tuple[str, str]]:
+    """Gates, laydown zones and vehicle types of a project, from its story where the story is sound.
+
+    The story keys ``gates`` (name, open, close, capacity, note), ``zones`` (name, capacity, note)
+    and ``vehicles`` (one vehicle type per gate, first gate first) each replace the matching default
+    as a whole. A key that is malformed, or a gate list whose hours do not contain every booked
+    delivery window, keeps the default for that key.
+    """
+    from app.modules.project_governance.public import story_text
+
+    gates, zones, vehicles = _GATES, _ZONES, ("Articulated flatbed", "Rigid 18t")
+    if not isinstance(story, dict) or not story:
+        return gates, zones, vehicles
+
+    raw_gates = story.get("gates")
+    if isinstance(raw_gates, list) and len(raw_gates) >= 2 and all(isinstance(g, dict) for g in raw_gates):
+        cand = tuple(
+            (
+                story_text(g.get("name"), locale),
+                g.get("open"),
+                g.get("close"),
+                g.get("capacity"),
+                story_text(g.get("note"), locale),
+            )
+            for g in raw_gates
+        )
+        sound = all(
+            name and _hhmm(op) and _hhmm(cl) and op < cl and isinstance(cap, int) and not isinstance(cap, bool)
+            for name, op, cl, cap, _note in cand
+        ) and len({c[0] for c in cand}) == len(cand)
+        if sound:
+            for _day, hour, hours, gate_index, *_rest in rows:
+                _name, op, cl, *_tail = cand[gate_index % len(cand)]
+                if f"{hour:02d}:00" < op or f"{hour + hours:02d}:00" > cl:
+                    sound = False
+                    break
+        if sound:
+            gates = cand
+        else:
+            logger.info("site_logistics demo story: gates not usable, keeping the default gates")
+
+    raw_zones = story.get("zones")
+    if isinstance(raw_zones, list) and raw_zones and all(isinstance(z, dict) for z in raw_zones):
+        zcand = tuple(
+            (
+                story_text(z.get("name"), locale),
+                story_text(z.get("capacity"), locale),
+                story_text(z.get("note"), locale),
+            )
+            for z in raw_zones
+        )
+        if all(all(z) for z in zcand):
+            zones = zcand
+        else:
+            logger.info("site_logistics demo story: zones not usable, keeping the default zones")
+
+    raw_vehicles = story.get("vehicles")
+    if isinstance(raw_vehicles, list) and len(raw_vehicles) == 2:
+        named = [story_text(v, locale) for v in raw_vehicles]
+        if all(named):
+            vehicles = (named[0], named[1])
+    return gates, zones, vehicles
+
+
 def _window(base: datetime, day_offset: int, hour: int, hours: int) -> tuple[datetime, datetime]:
     """Return a ``(start, end)`` window on the given day, on the hour."""
     day = (base + timedelta(days=day_offset)).date()
@@ -126,7 +202,19 @@ async def seed_demo_site_logistics(
     # The board tells the story of where the project stands: before its gate into
     # construction nothing has been delivered yet.
     rows = planned_deliveries() if await hosting.before_construction(session, project_id) else _DELIVERIES
-    names = [s for s in (suppliers or []) if s] or ["Main Contractor"]
+    from app.core.demo_marker import demo_id_of
+    from app.modules.project_governance.public import demo_module_story, story_text
+    from app.modules.projects.models import Project
+
+    project = await session.get(Project, project_id)
+    story = demo_module_story(demo_id_of(getattr(project, "metadata_", None)), "site_logistics")
+    locale = getattr(project, "locale", None) or "en"
+    site_gates, site_zones, vehicles = resolve_site_content(story, locale, rows)
+    # Two texts of the board a story may word in its own language: the supplier used when the bill names none
+    # and the cargo of the rejected booking.
+    fallback_supplier = story_text(story.get("fallback_supplier"), locale) or "Main Contractor"
+    rejected_cargo = story_text(story.get("rejected_cargo"), locale)
+    names = [s for s in (suppliers or []) if s] or [fallback_supplier]
 
     # The material lines of this project's own bill: leaves, priced, in bill
     # order. Section rows are excluded the same two ways the coverage query
@@ -155,7 +243,7 @@ async def seed_demo_site_logistics(
         return 0
 
     gates: list[Gate] = []
-    for name, open_time, close_time, capacity, note in _GATES:
+    for name, open_time, close_time, capacity, note in site_gates:
         gate = Gate(
             id=uuid.uuid4(),
             project_id=project_id,
@@ -170,7 +258,7 @@ async def seed_demo_site_logistics(
         session.add(gate)
         gates.append(gate)
 
-    for name, capacity_desc, usage_note in _ZONES:
+    for name, capacity_desc, usage_note in site_zones:
         session.add(
             LaydownZone(
                 id=uuid.uuid4(),
@@ -203,8 +291,8 @@ async def seed_demo_site_logistics(
                 project_id=project_id,
                 gate_id=gates[gate_index % len(gates)].id,
                 supplier_name=names[index % len(names)],
-                vehicle_type="Articulated flatbed" if gate_index == 0 else "Rigid 18t",
-                materials_desc=extra_cargo,
+                vehicle_type=vehicles[0] if gate_index == 0 else vehicles[1],
+                materials_desc=(rejected_cargo or extra_cargo) if extra_cargo else extra_cargo,
                 window_start=window_start,
                 window_end=window_end,
                 status=status,

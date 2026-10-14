@@ -167,6 +167,14 @@ describe('PlanPanel', () => {
         status: 'in_review',
         can: { ...plan().can, edit: no('plan_in_review'), submit: no('plan_not_editable'), return: yes, change_catalogue: no('plan_in_review') },
       }),
+      // The server refuses the confirmation of a proposed assignment while the plan is in review.
+      positions: [
+        position({
+          id: 'pos-1',
+          status: 'filled',
+          fills: [fill({ id: 'fill-2', name: null, status: 'proposed', cleared_to_work: null, can: { confirm: no('plan_in_review'), end: no('fill_not_confirmed'), delete: no('plan_in_review') } })],
+        }),
+      ],
     });
     expect(screen.getByTestId('plan-status')).toHaveTextContent('In review');
     expect(screen.getByTestId('plan-change-catalogue')).toBeDisabled();
@@ -454,12 +462,12 @@ describe('read views', () => {
     // No cell, no column of a document kind, and no way into the file.
     expect(screen.queryAllByTestId('compliance-cell')).toHaveLength(0);
     expect(within(rows[0]!).queryByRole('button')).toBeNull();
-    expect(screen.getAllByRole('columnheader').map((h) => h.textContent).slice(0, 2)).toEqual(['Person', 'Clearance']);
+    expect(within(rows[0]!.closest('table')!).getAllByRole('columnheader').map((h) => h.textContent).slice(0, 2)).toEqual(['Person', 'Clearance']);
     expect(screen.getByTestId('compliance-restricted')).toBeInTheDocument();
     // The counts are per document over the project, exactly as sent: nothing is added up per person here.
     const summary = screen.getAllByTestId('compliance-summary-row');
     expect(summary).toHaveLength(2);
-    expect(within(summary[0]!).getByText('Employment contract')).toBeInTheDocument();
+    expect(within(summary[0]!).getByText('Employment or service contract')).toBeInTheDocument();
     expect([...summary[0]!.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['6', '5', '0', '0', '1', '0']);
     // A row whose people all stand the same carries the number of people and no split per state.
     expect(within(summary[1]!).getByTestId('compliance-summary-people')).toHaveTextContent('5');

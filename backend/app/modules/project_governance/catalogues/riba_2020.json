@@ -172,7 +172,8 @@
         "stage4_to_stage5"
       ],
       "hosts": [
-        "permits"
+        "permits",
+        "hse"
       ]
     },
     {
@@ -183,7 +184,8 @@
         "stage3_to_stage4"
       ],
       "hosts": [
-        "design"
+        "design",
+        "engineering_brief"
       ]
     },
     {

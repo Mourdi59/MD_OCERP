@@ -111,6 +111,7 @@ async def set_delivery_form(w: World, form: str, *, public_client: bool = True) 
             sa.insert(plan.MODEL_TABLE).values(
                 id=uuid.uuid4(),
                 project_id=w.project_id,
+                catalogue_id="neutral",
                 selected_form_code=form,
                 status="approved",
                 owner_capability={"public_client": public_client},

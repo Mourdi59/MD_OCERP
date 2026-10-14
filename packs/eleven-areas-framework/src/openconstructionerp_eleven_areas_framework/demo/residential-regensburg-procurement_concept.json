@@ -1,0 +1,232 @@
+{
+  "$note": "Procurement concept of the Regensburg residential quarter as data. Applied on top of the module seeder defaults, key by key; a missing key keeps the default. Values are in the project currency (EUR). All names are invented trade descriptions, no real firms.",
+  "client_type": "sub_central",
+  "advance_reason": {
+    "en": "Precast balconies and stair cores: the production slot of the precast plant must be reserved before the shell tender closes, so the balconies can follow the shell without a gap.",
+    "de": "Balkon-Fertigteile und Treppenkerne: Der Produktionsplatz im Fertigteilwerk muss vor Ende der Rohbauausschreibung gesichert werden, damit die Balkone dem Rohbau ohne Pause folgen können."
+  },
+  "kinds": {
+    "design": {
+      "value": 3400000,
+      "public_procedure": "open",
+      "notes": {
+        "en": "Design services under VgV, open procedure with EU-wide notice. HOAI fees for buildings, technical equipment, structural design and outdoor facilities; evaluation on price and quality. Awarded after the decision of the supervisory board.",
+        "de": "Planungsleistungen nach VgV im offenen Verfahren mit EU-weiter Bekanntmachung. HOAI-Honorare für Gebäude, Technische Ausrüstung, Tragwerksplanung und Freianlagen; Wertung nach Preis und Qualität. Zuschlag nach Beschluss des Aufsichtsrats."
+      }
+    },
+    "construction": {
+      "value": 22000000,
+      "public_procedure": "open",
+      "start_offset_days": 60,
+      "notes": {
+        "en": "VOB/A lots in the order of the build: 1 excavation pit and shoring, 2 shell of the underground car park and the buildings, 3 roofing and photovoltaic, 4 heating, ventilation and sanitary, 5 electrical, 6 lifts, 7 interior fit-out, 8 external works. GAEB x83 tender documents per lot; award after the supervisory board, then the standstill period.",
+        "de": "VOB/A-Lose in der Reihenfolge des Baus: 1 Baugrube und Verbau, 2 Rohbau Tiefgarage und Gebäude, 3 Dach und Photovoltaik, 4 Heizung, Lüftung und Sanitär, 5 Elektro, 6 Aufzüge, 7 Ausbau, 8 Außenanlagen. Leistungsverzeichnisse als GAEB x83 je Los; Vergabe nach Beschluss des Aufsichtsrats, danach Wartefrist."
+      }
+    },
+    "supply_and_install": {
+      "value": 4600000,
+      "public_procedure": "restricted",
+      "lead_days": 150,
+      "start_offset_days": 150,
+      "notes": {
+        "en": "Specialist lots with a supply part: precast balconies, apartment ventilation units and lifts. Restricted procedure after a public participation round; the lifts and ventilation units are scheduled so the first building can be handed over on time.",
+        "de": "Fachlose mit Lieferanteil: Balkon-Fertigteile, Wohnungslüftungsgeräte und Aufzüge. Nichtoffenes Verfahren nach öffentlichem Teilnahmewettbewerb; Aufzüge und Lüftungsgeräte sind so terminiert, dass das erste Gebäude pünktlich übergeben werden kann."
+      }
+    },
+    "supply": {
+      "value": 1200000,
+      "public_procedure": "open",
+      "start_offset_days": 240,
+      "notes": {
+        "en": "Kitchens, floor coverings and sanitary fittings for the rental apartments, called off from the framework agreement of the housing company.",
+        "de": "Küchen, Bodenbeläge und Sanitärausstattung für die Mietwohnungen, abgerufen aus dem Rahmenvertrag der Wohnungsbaugesellschaft."
+      }
+    },
+    "management_services": {
+      "value": 780000,
+      "public_procedure": "open",
+      "start_offset_days": 30,
+      "notes": {
+        "en": "Construction management and project control for the housing company, with safety coordination (SiGeKo) for the four building sites.",
+        "de": "Baumanagement und Projektsteuerung für die Wohnungsbaugesellschaft, einschließlich SiGeKo für die vier Baufelder."
+      }
+    },
+    "operation": {
+      "value": 220000,
+      "start_offset_days": 330,
+      "notes": {
+        "en": "Facility services for the first two years after handover: caretaker service, winter service and maintenance of the lifts and heating.",
+        "de": "Betriebsleistungen für die ersten zwei Jahre nach Übergabe: Hausmeisterdienst, Winterdienst sowie Wartung von Aufzügen und Heizung."
+      }
+    }
+  },
+  "free_names": [
+    {
+      "en": "Regional shell construction contractor",
+      "de": "Regionaler Rohbauunternehmer"
+    },
+    {
+      "en": "Excavation and shoring specialist",
+      "de": "Spezialtiefbau für Baugrube und Verbau"
+    },
+    {
+      "en": "Roofing and photovoltaic installer",
+      "de": "Dachdecker und Photovoltaik-Installateur"
+    },
+    {
+      "en": "Heating, ventilation and sanitary installer",
+      "de": "Installateur für Heizung, Lüftung und Sanitär"
+    },
+    {
+      "en": "Electrical installer",
+      "de": "Elektroinstallateur"
+    },
+    {
+      "en": "Drywall and interior fit-out contractor",
+      "de": "Trockenbau und Ausbauunternehmer"
+    },
+    {
+      "en": "Landscaping and external works contractor",
+      "de": "Garten- und Landschaftsbauunternehmer"
+    }
+  ],
+  "prequal": {
+    "name": {
+      "en": "Prequalification for residential construction under subsidy conditions",
+      "de": "Eignungsprüfung für Wohnungsbau unter Förderbedingungen"
+    },
+    "pass_mark": 60,
+    "weights": [
+      40,
+      25,
+      35
+    ]
+  },
+  "reference": {
+    "project_name": {
+      "en": "Residential quarter with 90 rental apartments and underground car park",
+      "de": "Wohnquartier mit 90 Mietwohnungen und Tiefgarage"
+    },
+    "client": {
+      "en": "Municipal housing company",
+      "de": "Kommunale Wohnungsbaugesellschaft"
+    },
+    "role": {
+      "en": "Main contractor",
+      "de": "Generalunternehmer"
+    },
+    "value": 18500000,
+    "excluded_rationale": {
+      "en": "Below the pass mark on references for subsidised housing; no proof of a comparable underground car park",
+      "de": "Unter der Mindestpunktzahl bei Referenzen im geförderten Wohnungsbau; kein Nachweis einer vergleichbaren Tiefgarage"
+    }
+  },
+  "framework": {
+    "code": "FW-WOHN-01",
+    "title": {
+      "en": "Kitchens, floor coverings and sanitary fittings framework",
+      "de": "Rahmenvertrag Küchen, Bodenbeläge und Sanitärausstattung"
+    },
+    "supplier_name": {
+      "en": "Interior fit-out supplier",
+      "de": "Lieferant für Wohnungsausstattung"
+    },
+    "scope": {
+      "en": "Kitchens, floor coverings and sanitary fittings for rental apartments, called off per building",
+      "de": "Küchen, Bodenbeläge und Sanitärausstattung für Mietwohnungen, abgerufen je Gebäude"
+    },
+    "package_kinds": [
+      "supply"
+    ],
+    "lots": [
+      {
+        "code": "L1",
+        "title": {
+          "en": "Kitchens",
+          "de": "Küchen"
+        }
+      },
+      {
+        "code": "L2",
+        "title": {
+          "en": "Floor coverings and sanitary fittings",
+          "de": "Bodenbeläge und Sanitärausstattung"
+        }
+      }
+    ],
+    "source_procedure_ref": {
+      "en": "Open procedure under VgV, framework award by the housing company",
+      "de": "Offenes Verfahren nach VgV, Rahmenvertragsvergabe durch die Wohnungsbaugesellschaft"
+    }
+  },
+  "soundings": [
+    {
+      "trade": {
+        "en": "Excavation pit and shoring",
+        "de": "Baugrube und Verbau"
+      },
+      "days_ago": 120,
+      "method": "meeting",
+      "main": true,
+      "findings": {
+        "en": "Four regional contractors interested; two prefer to bid shoring together with the shell. Groundwater lowering near the Danube is the main price driver.",
+        "de": "Vier regionale Unternehmen interessiert; zwei möchten Verbau gemeinsam mit dem Rohbau anbieten. Die Grundwasserhaltung nahe der Donau ist der wichtigste Preistreiber."
+      },
+      "capacity_signal": "adequate",
+      "price_signal": "in_line"
+    },
+    {
+      "trade": {
+        "en": "Precast balconies",
+        "de": "Balkon-Fertigteile"
+      },
+      "days_ago": 75,
+      "method": "rfi",
+      "package_kinds": [
+        "supply_and_install"
+      ],
+      "findings": {
+        "en": "Only a few precast plants can deliver balconies in this number; production slots are booked nine months ahead.",
+        "de": "Nur wenige Fertigteilwerke können Balkone in dieser Stückzahl liefern; die Produktionsplätze sind neun Monate im Voraus gebucht."
+      },
+      "capacity_signal": "tight",
+      "price_signal": "above_estimate",
+      "lead_time_signal_days": 140,
+      "mitigation": {
+        "en": "Advance package to reserve the production slot; the balcony lot is tendered before the interior lots.",
+        "de": "Vorgezogenes Paket zur Sicherung des Produktionsplatzes; das Los Balkone wird vor den Ausbaulosen ausgeschrieben."
+      }
+    },
+    {
+      "trade": {
+        "en": "Building services",
+        "de": "Technische Gebäudeausrüstung"
+      },
+      "days_ago": 40,
+      "method": "survey",
+      "findings": {
+        "en": "Six installers answered, four with capacity from next spring. The apartment ventilation units and the district heating connection are the open points.",
+        "de": "Sechs Installateure antworteten, vier mit Kapazität ab dem nächsten Frühjahr. Offen sind die Wohnungslüftungsgeräte und der Fernwärmeanschluss."
+      },
+      "capacity_signal": "ample",
+      "price_signal": "below_estimate"
+    },
+    {
+      "trade": {
+        "en": "Lifts",
+        "de": "Aufzüge"
+      },
+      "days_ago": 20,
+      "method": "notice",
+      "package_kinds": [
+        "supply_and_install"
+      ],
+      "findings": {
+        "en": "Lift manufacturers need the approved shaft dimensions before they price the eight lifts.",
+        "de": "Aufzughersteller benötigen die freigegebenen Schachtmaße, bevor sie die acht Aufzüge bepreisen."
+      },
+      "capacity_signal": "adequate",
+      "price_signal": "unknown"
+    }
+  ]
+}
