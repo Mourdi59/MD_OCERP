@@ -29,7 +29,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPut } from '@/shared/lib/api';
 import { useAuthStore } from '@/stores/useAuthStore';
 
@@ -84,7 +84,14 @@ export interface UseHiddenModulesResult {
   hiddenModules: string[];
   /** Replace the list — updates state + localStorage immediately, syncs to server in background. */
   setHiddenModules: (list: string[]) => void;
-  /** True until the server fetch has returned for the first time. */
+  /**
+   * True until the server copy has been fetched AND folded into `hiddenModules`
+   * (also while signed out or when the fetch failed). `query.isLoading` alone
+   * is not enough: it is false for a query that has not started yet, and false
+   * in the render where the data lands but the state still holds the empty
+   * local cache. Anything that writes a default over the list (the pack menu)
+   * must wait for this to turn false.
+   */
   isLoading: boolean;
 }
 
@@ -102,7 +109,12 @@ export function useHiddenModules(): UseHiddenModulesResult {
   // half of the fix — the server fetch below is the multi-device half.
   useEffect(() => {
     setHiddenModulesState(readLocal(userEmail));
+    setSyncedAt(null);
   }, [userEmail]);
+
+  const queryClient = useQueryClient();
+  // `dataUpdatedAt` of the server payload already folded into the state.
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
 
   const query = useQuery<SidebarPreferencesPayload>({
     queryKey: ['user-sidebar-preferences', userEmail],
@@ -121,10 +133,11 @@ export function useHiddenModules(): UseHiddenModulesResult {
       setHiddenModulesState(serverList);
       writeLocal(userEmail, serverList);
     }
+    setSyncedAt(query.dataUpdatedAt);
     // hiddenModules intentionally omitted to avoid bouncing on local writes;
     // only react to fresh server data.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query.data, userEmail]);
+  }, [query.data, query.dataUpdatedAt, userEmail]);
 
   const mutation = useMutation({
     mutationFn: (list: string[]) =>
@@ -140,16 +153,21 @@ export function useHiddenModules(): UseHiddenModulesResult {
     (list: string[]) => {
       setHiddenModulesState(list);
       writeLocal(userEmail, list);
+      // Keep the cached server copy in step, or a remount inside staleTime
+      // would reconcile the stale payload back over this choice.
+      queryClient.setQueryData<SidebarPreferencesPayload>(['user-sidebar-preferences', userEmail], {
+        hidden_modules: list,
+      });
       if (isAuthenticated && userEmail) {
         mutation.mutate(list);
       }
     },
-    [userEmail, isAuthenticated, mutation],
+    [userEmail, isAuthenticated, mutation, queryClient],
   );
 
   return {
     hiddenModules,
     setHiddenModules,
-    isLoading: query.isLoading,
+    isLoading: !(query.isSuccess && syncedAt === query.dataUpdatedAt),
   };
 }
