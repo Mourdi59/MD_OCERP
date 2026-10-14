@@ -133,6 +133,8 @@ export function EngineeringBriefPage() {
 
   const catalogue = catalogueQ.data ?? null;
   const edit = brief.can.edit;
+  // The edit permission, apart from the state lock: studies and the specification are not locked by review.
+  const canWrite = edit.allowed || edit.reason !== 'edit_permission_required';
   let body: ReactNode;
   if (catalogueQ.isLoading) {
     body = loading;
@@ -153,13 +155,13 @@ export function EngineeringBriefPage() {
     );
   } else if (tab === 'studies') {
     body = studiesQ.isLoading ? loading : studiesQ.isError ? failed(studiesQ.error, () => studiesQ.refetch()) : (
-      <StudiesTab projectId={projectId} studies={studiesQ.data ?? []} documents={documentsQ.data ?? []} onChanged={invalidate} />
+      <StudiesTab projectId={projectId} studies={studiesQ.data ?? []} documents={documentsQ.data ?? []} canWrite={canWrite} onChanged={invalidate} />
     );
   } else {
     body = requirementsQ.isLoading ? loading : requirementsQ.isError ? failed(requirementsQ.error, () => requirementsQ.refetch()) : (
       <div className="space-y-4">
         {specificationQ.data ? (
-          <SpecificationPanel projectId={projectId} status={brief.status} spec={specificationQ.data} onChanged={invalidate} />
+          <SpecificationPanel projectId={projectId} status={brief.status} spec={specificationQ.data} canWrite={canWrite} onChanged={invalidate} />
         ) : null}
         <RequirementsTab projectId={projectId} requirements={requirementsQ.data ?? []} catalogue={catalogue} labels={labels} edit={edit} onChanged={invalidate} />
       </div>

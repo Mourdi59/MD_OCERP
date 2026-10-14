@@ -49503,7 +49503,7 @@ const resource = {
     "engineeringBrief.status.in_review": "In review",
     "engineeringBrief.status.approved": "Approved",
     "engineeringBrief.status.binding": "Binding",
-    "engineeringBrief.status.revising": "Revising",
+    "engineeringBrief.status.revising": "Reopened",
     "engineeringBrief.priority.must": "Must",
     "engineeringBrief.priority.should": "Should",
     "engineeringBrief.priority.could": "Could",

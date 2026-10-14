@@ -250,11 +250,14 @@ export function StudiesTab({
   projectId,
   studies,
   documents,
+  canWrite,
   onChanged,
 }: {
   projectId: string;
   studies: Study[];
   documents: DocumentItem[];
+  /** False when the caller lacks the edit permission: the tab then only reads. */
+  canWrite: boolean;
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
@@ -276,9 +279,11 @@ export function StudiesTab({
                 <h3 className="text-sm font-semibold text-content-primary">{keyText(t as TFn, STUDY_KIND_LABEL[kind])}</h3>
                 <GateIndicator kind={kind} gate={studyGate(kind, studies)} />
               </div>
-              <Button size="sm" icon={<Plus size={14} />} onClick={() => setDialog({ editing: null, kind })} data-testid={`brief-study-add-${kind}`}>
-                {t('engineeringBrief.studies.add', { defaultValue: 'Add study' })}
-              </Button>
+              {canWrite ? (
+                <Button size="sm" icon={<Plus size={14} />} onClick={() => setDialog({ editing: null, kind })} data-testid={`brief-study-add-${kind}`}>
+                  {t('engineeringBrief.studies.add', { defaultValue: 'Add study' })}
+                </Button>
+              ) : null}
             </div>
             {rows.length === 0 ? (
               <EmptyState
@@ -323,10 +328,12 @@ export function StudiesTab({
                           )}
                         </td>
                         <td className="px-3 py-2">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="sm" aria-label={t('common.edit', { defaultValue: 'Edit' })} icon={<Pencil size={14} />} onClick={() => setDialog({ editing: s, kind: s.kind })} />
-                            <Button variant="ghost" size="sm" aria-label={t('common.delete', { defaultValue: 'Delete' })} icon={<Trash2 size={14} />} onClick={() => setRemoving(s)} />
-                          </div>
+                          {canWrite ? (
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="sm" aria-label={t('common.edit', { defaultValue: 'Edit' })} icon={<Pencil size={14} />} onClick={() => setDialog({ editing: s, kind: s.kind })} />
+                              <Button variant="ghost" size="sm" aria-label={t('common.delete', { defaultValue: 'Delete' })} icon={<Trash2 size={14} />} onClick={() => setRemoving(s)} />
+                            </div>
+                          ) : null}
                         </td>
                       </tr>
                     ))}

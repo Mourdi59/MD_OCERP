@@ -57424,7 +57424,7 @@ const resource = {
     "engineeringBrief.status.in_review": "In Prüfung",
     "engineeringBrief.status.approved": "Freigegeben",
     "engineeringBrief.status.binding": "Verbindlich",
-    "engineeringBrief.status.revising": "In Überarbeitung",
+    "engineeringBrief.status.revising": "Wieder geöffnet",
     "engineeringBrief.priority.must": "Muss",
     "engineeringBrief.priority.should": "Soll",
     "engineeringBrief.priority.could": "Kann",
