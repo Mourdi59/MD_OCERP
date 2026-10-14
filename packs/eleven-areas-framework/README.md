@@ -4,13 +4,19 @@ An owner-side project management framework as a pack: eleven management areas, t
 development and construction execution), one gate between them, and one frame document per area that is
 approved at the gate and binding afterwards.
 
-The pack contains data only. It selects eleven platform modules and gives them the framework's vocabulary.
+The pack contains data only. It selects platform modules and gives them the framework's vocabulary.
 
 ## What it switches on
 
 `oe_project_governance`, `oe_stakeholders`, `oe_delivery_model`, `oe_permits`, `oe_plant_register`,
 `oe_staffing`, `oe_site_logistics`, `oe_design_management`, `oe_procurement_concept`,
-`oe_commitment_release`, `oe_quality_concept`, together with the validation rule set of each.
+`oe_commitment_release` and `oe_quality_concept`, together with the validation rule set of each.
+
+Coverage of the eleven areas is not complete. Governance hosts the frame documents of all eleven, but only some
+areas have a module of their own today: the contracts, permits, plant, staffing, site logistics, design,
+procurement, commitment and quality areas each have one or more. Areas without a dedicated module yet (business
+case and financing, health, safety and environment, engineering frame) keep their frame document and readiness
+criteria, and those criteria report as unknown until a module provides the evidence.
 
 ## What it ships
 
