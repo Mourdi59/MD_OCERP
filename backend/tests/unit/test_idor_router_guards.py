@@ -127,12 +127,6 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
     # Every project route of the module; the framework routes are tenant scoped, see _NOT_ROUTER_GATED.
     "stakeholders": [
         "list_gates",
-        "list_studies",
-        "create_study",
-        "update_study",
-        "delete_study",
-        "list_specification_issues",
-        "issue_specification",
         "list_requirements",
         "list_release_items",
         "get_settings",
@@ -301,6 +295,10 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "readiness",
         "validation",
         "export",
+        "list_contract_items",
+        "create_contract_item",
+        "update_contract_item",
+        "delete_contract_item",
     ],
     # Every project route of the module; the framework agreement routes are tenant scoped, see _NOT_ROUTER_GATED.
     "procurement_concept": [
@@ -342,6 +340,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "confirm_schedule",
         "validation",
         "export",
+        "list_permit_conditions",
     ],
     "site_logistics": [
         # Gates, laydown zones and deliveries (each resolves the row's project first).
@@ -899,6 +898,12 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "validation",
         "export",
         "list_gates",
+        "list_studies",
+        "create_study",
+        "update_study",
+        "delete_study",
+        "list_specification_issues",
+        "issue_specification",
     ],
     # Staffing: every route is project-scoped and awaits verify_project_access
     # itself; personnel-file routes add rule 13 (tier plus relationship) in the
@@ -1121,6 +1126,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "readiness",
         "validation",
         "export",
+        "list_permit_conditions",
     ],
 }
 
