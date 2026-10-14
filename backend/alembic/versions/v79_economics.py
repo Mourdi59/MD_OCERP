@@ -176,7 +176,12 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _ts("approved_at"),
             _str("approval_source", 20, None, nullable=True),
             _guid("governance_ref_id"),
-            _guid("governance_document_id"),
+            sa.Column(
+                "governance_document_id",
+                GUID(),
+                sa.ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_eco_approval_gov_document"),
+                nullable=True,
+            ),
             sa.Column("four_eyes", sa.Boolean(), nullable=False, server_default=sa.text("false")),
             _str("approval_blocked_reason", 64, ""),
             sa.UniqueConstraint("project_id", "number", name="uq_oe_eco_approval_number"),
