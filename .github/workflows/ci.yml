@@ -574,10 +574,16 @@ jobs:
         # Type check and Build deliberately, for reasons on those steps, but it
         # still runs lint and the unit tests to keep the OS-specific path, CRLF
         # and runtime signal. That signal is why this step exists at all.
+        #
+        # Re-measured on run 38629432456: the eleven-area modules added about
+        # 370k locale lines, and two forks at 3072 MB died three times while
+        # every test passed (1130 of 1132 files ran). One fork at 6144 MB keeps
+        # the product inside the same 7 GB and doubles the heap of the fork;
+        # the cost is wall time, not signal.
         if: matrix.os == 'macos-latest'
         env:
-          NODE_OPTIONS: --max-old-space-size=3072
-        run: npm run test -- --exclude "tests/pwa/**" --maxWorkers=2
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npm run test -- --exclude "tests/pwa/**" --maxWorkers=1
 
       - name: Verify every Playwright project still selects tests
         # A project whose grep matches no spec is the one kind of dead test
