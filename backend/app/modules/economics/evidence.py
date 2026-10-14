@@ -10,6 +10,10 @@ At a gate where the carrier document is required the plan must be PROPOSED (or a
 financing must cover the investment, and no error-level finding may be open. "Met" never needs an approved
 plan: the gate decision is the approval, so requiring it before the gate would deadlock the gate.
 
+Five more items come from the registers (``registers.py``): securities and insurance in place and not
+expired, the tax treatment confirmed, receivables and payables set up, and the administration set up. They
+answer the gate criteria that were manual before; the integrator maps each item to its criterion.
+
 Registered blocking, so it must not fail open. A project that has no plan does not use the module: no
 evidence, nothing blocks. A project that has one but whose governance model names no carrier gets one
 ``unknown`` item on its first area, with the reason, instead of silence.
