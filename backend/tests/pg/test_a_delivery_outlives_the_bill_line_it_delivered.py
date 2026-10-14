@@ -411,7 +411,12 @@ async def test_a_project_without_a_priced_bill_gets_no_board(pg_session) -> None
     pg_session.add(project)
     await pg_session.flush()
 
-    assert await seed_site_logistics_demo(pg_session, [project.id]) == {}
+    # The logistics plan is seeded for every demo project; the deliveries need a priced bill.
+    assert await seed_site_logistics_demo(pg_session, [project.id]) == {
+        "projects": 0,
+        "deliveries": 0,
+        "plan_projects": 1,
+    }
 
     for model in (Gate, DeliveryBooking):
         count = (

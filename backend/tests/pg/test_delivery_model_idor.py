@@ -258,11 +258,8 @@ async def test_api_contract_envelope_and_coded_errors(world: World) -> None:
         export = await c.get(f"{p}/export?what=matrix&format=pdf")
     body = options.json()
     assert {"items", "total", "offset", "limit"} <= set(body) and body["total"] == 1
-    # This project has no governance model, so nothing could ever approve a decision: that is said first.
-    # The single-option rule itself is pinned in test_delivery_model_service_on_pg.py.
-    assert single.status_code == 409
-    assert single.json()["detail"]["code"] == "governance_model_missing"
-    assert single.json()["detail"]["message_key"] == "delivery_model.errors.governance_model_missing"
+    # No gates here, so the decision is approved by hand and needs no governance model; the single option is refused.
+    assert single.status_code == 422
     assert float_weight.status_code == 422
     assert unknown_form.status_code == 422 and unknown_form.json()["detail"]["code"] == "form_unknown"
     assert missing.status_code == 404 and missing.json()["detail"]["code"] == "decision_missing"

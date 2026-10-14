@@ -6263,7 +6263,7 @@ const resource = {
     "howto.boq.how.4": "Følg med på den direkte kvalitetsringen som flagger manglende mengder, nullpriser og duplikater mens du arbeider.",
     "howto.boq.how.5": "Eksporter til GAEB, Excel, CSV eller PDF, eller frys en revisjon for å beholde et øyeblikksbilde du kan sammenligne mot senere.",
     "howto.boq.summary": "Bygg en strukturert, prissatt liste over hver arbeidsoppgave - hjertet i et estimat.",
-    "howto.boq.tip.1": "Priser er netto - ingen skatt eller palegg er innbakt i en post. Hold alt palegg i paleggspanelet slik at regnestykket forblir sporbart.",
+    "howto.boq.tip.1": "Priser er netto - ingen skatt eller pålegg er innbakt i en post. Hold alt pålegg i påleggspanelet slik at regnestykket forblir sporbart.",
     "howto.boq.tip.2": "Dobbeltklikk en beskrivelse for å åpne den fullstendige langteksten for detaljerte spesifikasjoner.",
     "howto.boq.title": "Mengdebeskrivelse",
     "howto.boq.what": "En mengdebeskrivelse (BOQ) er en strukturert, prissatt liste over hver arbeidsoppgave i et prosjekt. Du bygger den ovenfra og ned: kapitler som grupperer arbeidet, deretter poster inni dem, og deretter mengdene og prisene som driver kostnaden. Det er det sentrale dokumentet som resten av plattformen mater og leser fra.",

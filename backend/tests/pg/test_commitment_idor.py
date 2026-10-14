@@ -328,6 +328,7 @@ async def test_references_are_empty_lists_without_a_governance_model_and_targets
     assert body.pop("plant_items")["items"] == []
     assert body == {
         "has_model": False,
+        "gates_in_use": False,
         "gates": [],
         "areas": [],
         "frame_documents": [],
