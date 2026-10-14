@@ -316,7 +316,8 @@
       ],
       "source_ref": null,
       "hosts": [
-        "design"
+        "design",
+        "engineering_brief"
       ]
     },
     {

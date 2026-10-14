@@ -183,7 +183,8 @@
         "stage3_to_stage4"
       ],
       "hosts": [
-        "design"
+        "design",
+        "engineering_brief"
       ]
     },
     {

@@ -195,6 +195,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         from app.modules.documents.photos_seed import seed_photos
         from app.modules.dwg_takeoff.seed import seed_dwg_takeoff_demo
         from app.modules.einvoice_clearance.seed import seed_einvoice_clearance_demo
+        from app.modules.engineering_brief.seed import seed_engineering_brief_demo
         from app.modules.estimate_basis.seed import seed_estimate_basis_demo
         from app.modules.field_time.seed import seed_field_time_demo
         from app.modules.finance.einvoice_settings_seed import seed_einvoice_settings_demo
@@ -462,6 +463,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             # or item.
             ("site_prep", None, lambda s: seed_site_prep_demo(s, _demo_pids)),
             ("staffing", None, lambda s: seed_staffing_demo(s, _demo_pids)),
+            ("engineering_brief", None, lambda s: seed_engineering_brief_demo(s, _demo_pids)),
             # Gates, laydown zones and a working week of deliveries, each one
             # booked against a real position of the project's own bill - which is
             # what gives the delivery board its estimate coverage table something

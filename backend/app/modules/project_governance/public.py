@@ -174,6 +174,8 @@ class GateView:
         last_outcome: Outcome of the latest decision, ``""`` before the first.
         target_date: When the gate is planned: the linked schedule activity's date, else the
             gate's own; ``None`` when neither is set.
+        schedule_activity_id: The schedule activity that owns the gate's date; ``None`` when the gate
+            carries a date of its own or none.
     """
 
     id: uuid.UUID
@@ -185,6 +187,7 @@ class GateView:
     to_phase: str
     last_outcome: str
     target_date: date | None = None
+    schedule_activity_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -407,6 +410,7 @@ def gate_views(catalogue: Any, rows: Any, target_dates: Mapping[uuid.UUID, Any] 
             last_outcome=g.last_outcome or "",
             # The linked activity's day; the gate's own when it is not linked or the activity has none.
             target_date=_day(planned.get(g.id) or getattr(g, "target_date", None)),
+            schedule_activity_id=getattr(g, "schedule_activity_id", None),
         )
         for index, g in enumerate(ordered, start=1)
     )

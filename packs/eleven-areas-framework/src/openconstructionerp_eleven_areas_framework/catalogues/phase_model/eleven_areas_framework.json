@@ -2138,7 +2138,10 @@
       "labels": {
         "en": "Client requirements, technical concept, frame schedule with gates",
         "de": "Lastenheft, technisches Konzept, Rahmenterminplan mit Gates"
-      }
+      },
+      "hosts": [
+        "engineering_brief"
+      ]
     },
     {
       "code": "m04_equipment_frame",
