@@ -34,7 +34,7 @@ from app.core.tenant_scope import resolve_tenant_id
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
 from app.modules.delivery_model.catalogue import DELIVERY_FORMS_KIND
 from app.modules.delivery_model.errors import DeliveryModelError
-from app.modules.delivery_model.messages import available_locales, translate
+from app.modules.delivery_model.messages import available_locales, translate, with_label_texts
 from app.modules.delivery_model.schemas import (
     AllocationPut,
     CatalogueChange,
@@ -173,7 +173,8 @@ async def pinned_catalogue(project_id: uuid.UUID, session: SessionDep, user_id: 
     """The full body of the catalogue the project pins (forms, parties, categories, criteria, templates)."""
     svc = await _delivery_svc(project_id, user_id, session)
     model = await _run(svc.require_model(project_id))
-    return (await _run(svc.catalogue_for(model))).model_dump(mode="json")
+    body = (await _run(svc.catalogue_for(model))).model_dump(mode="json")
+    return with_label_texts(body, get_locale() or "en")
 
 
 # ── model ──────────────────────────────────────────────────────────────────

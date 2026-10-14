@@ -552,20 +552,26 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         report["demo_cast"] = await _demo_cast(async_session_factory, _demo_pids)
         report["project_governance"] = {"seed": await _seed_governance(async_session_factory, _demo_pids)}
 
-        for _name, _marker, _build in _module_seeders:
-            try:
-                if _marker is not None:
-                    async with async_session_factory() as _chk:
-                        _n = (await _chk.execute(_msel(_func.count()).select_from(_marker))).scalar_one()
-                    if _n:
-                        continue
-                async with async_session_factory() as _ms:
-                    _counts = await _build(_ms)
-                    await _ms.commit()
-                    if isinstance(_counts, dict) and any(_counts.values()):
-                        logger.info("%s demo seed: %s", _name, _counts)
-            except Exception:
-                logger.warning("%s demo seed skipped (non-fatal)", _name, exc_info=True)
+        # The module seeders write the history the governance story has already bound the frames on.
+        # The permits roadmap and the design frame guards, which send a live change to a binding
+        # frame through a change request, stand aside for exactly this span (see core.demo_history).
+        from app.core.demo_history import recording_demo_history
+
+        with recording_demo_history():
+            for _name, _marker, _build in _module_seeders:
+                try:
+                    if _marker is not None:
+                        async with async_session_factory() as _chk:
+                            _n = (await _chk.execute(_msel(_func.count()).select_from(_marker))).scalar_one()
+                        if _n:
+                            continue
+                    async with async_session_factory() as _ms:
+                        _counts = await _build(_ms)
+                        await _ms.commit()
+                        if isinstance(_counts, dict) and any(_counts.values()):
+                            logger.info("%s demo seed: %s", _name, _counts)
+                except Exception:
+                    logger.warning("%s demo seed skipped (non-fatal)", _name, exc_info=True)
 
         # Governance decided its gates before the modules had rows, so an area
         # whose module answered "not met" passed at risk with an open condition.

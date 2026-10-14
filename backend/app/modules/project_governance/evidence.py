@@ -23,6 +23,7 @@ import logging
 import string
 import uuid
 from collections.abc import Awaitable, Callable
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
 
@@ -146,10 +147,25 @@ def evidence_providers() -> list[RegisteredProvider]:
     return list(_REGISTRY.values())
 
 
+# While one collection runs, the governance port answers a repeated question once: every provider asks
+# for the project's areas, gates or phase model, for every area, and none of them writes meanwhile.
+COLLECTION_MEMO: ContextVar[dict[Any, Any] | None] = ContextVar("governance_collection_memo", default=None)
+
+
 async def collect_evidence(
     session: Any, project_id: uuid.UUID, attempt: GateAttempt, areas: list[Any]
 ) -> list[CollectedEvidence]:
     """Ask every matching provider about every applicable area; failures become ``unknown``."""
+    token = COLLECTION_MEMO.set({})
+    try:
+        return await _collect(session, project_id, attempt, areas)
+    finally:
+        COLLECTION_MEMO.reset(token)
+
+
+async def _collect(
+    session: Any, project_id: uuid.UUID, attempt: GateAttempt, areas: list[Any]
+) -> list[CollectedEvidence]:
     out: list[CollectedEvidence] = []
     for area in areas:
         if not getattr(area, "applicable", True) or getattr(area, "retired", False):
