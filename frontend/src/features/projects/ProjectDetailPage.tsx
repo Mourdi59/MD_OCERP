@@ -41,6 +41,7 @@ import {
   Handshake,
   Factory,
   UsersRound,
+  FileText,
   Flag,
   Receipt,
   Stamp,
@@ -1874,6 +1875,15 @@ export function ProjectDetailPage() {
           data-testid="project-staffing-link"
         >
           {t('staffing.title', { defaultValue: 'Staffing' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<FileText size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/engineering-brief`)}
+          data-testid="project-engineering-brief-link"
+        >
+          {t('engineeringBrief.title', { defaultValue: 'Engineering brief' })}
         </Button>
         <Button
           variant="ghost"
