@@ -167,7 +167,7 @@ export function RolesPanel({ projectId, roles, catalogue, duties, write, canEdit
                             {t('hseFrame.role.end', { defaultValue: 'End' })}
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" disabled={write.pending} onClick={() => setRemoving({ name: [kind.national_name || labelOf(kind, i18n.language), r.person_name].filter(Boolean).join(', '), run: () => deleteRole(projectId, r.id) })}>
+                        <Button size="sm" variant="ghost" disabled={write.pending} onClick={() => setRemoving({ name: fmtList([kind.national_name || labelOf(kind, i18n.language), r.person_name]), run: () => deleteRole(projectId, r.id) })}>
                           {t('common.delete', { defaultValue: 'Delete' })}
                         </Button>
                       </span>
