@@ -1,0 +1,38 @@
+{
+  "id": "eleven_areas_framework_de_bw",
+  "version": 1,
+  "labels": {
+    "en": "Eleven module framework: HSE frame, Baden-Wuerttemberg",
+    "de": "Elf-Module-Rahmen: HSE-Rahmen, Baden-Württemberg"
+  },
+  "jurisdiction": "DE-BW",
+  "extends": "de_bw",
+  "review_status": "unconfirmed",
+  "templates": [
+    {
+      "code": "elf_hse_requirements_gate",
+      "topic": "hse_requirements",
+      "labels": {
+        "en": "HSE requirements on designers and contractors are issued before the gate into execution",
+        "de": "HSE-Anforderungen an Planer und Unternehmer sind vor dem Gate in die Ausführung herausgegeben"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory",
+      "in_tender_documents": true
+    },
+    {
+      "code": "elf_permit_conditions_merged",
+      "topic": "permit_conditions",
+      "labels": {
+        "en": "All conditions of the permits are merged into one register as the brief for execution",
+        "de": "Alle Auflagen aus den Genehmigungen sind zusammengeführt und bilden die Vorgabe für die Abwicklung"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory"
+    }
+  ]
+}

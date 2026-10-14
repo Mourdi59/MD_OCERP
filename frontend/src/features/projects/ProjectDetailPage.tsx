@@ -45,6 +45,7 @@ import {
   Flag,
   Receipt,
   Stamp,
+  Banknote,
   ChevronDown,
   MessagesSquare,
   MapPin,
@@ -1825,6 +1826,15 @@ export function ProjectDetailPage() {
         <Button
           variant="ghost"
           size="sm"
+          icon={<Banknote size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/economics`)}
+          data-testid="project-economics-link"
+        >
+          {t('economics.ui.title', { defaultValue: 'Economics' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           icon={<Handshake size={14} />}
           onClick={() => navigate(`/projects/${project.id}/delivery`)}
           data-testid="project-delivery-model-link"
@@ -1911,6 +1921,15 @@ export function ProjectDetailPage() {
           data-testid="quality-concept-link"
         >
           {t('qualityConcept.title', { defaultValue: 'Quality concept' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<HardHat size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/hse-frame`)}
+          data-testid="hse-frame-link"
+        >
+          {t('hseFrame.title', { defaultValue: 'Health, safety and environment' })}
         </Button>
         <Button
           variant={customizing ? 'primary' : 'ghost'}

@@ -1,0 +1,350 @@
+{
+  "$note": "Site logistics story of the Regensburg residential quarter. The site lies between residential streets and commercial plots near the Danube: one construction gate for heavy vehicles, a second for rigid vehicles, one tower crane, groundwater lowering. All names are invented.",
+  "gates": [
+    {
+      "name": {
+        "en": "Gate 1 - Am Donauknie",
+        "de": "Tor 1 - Am Donauknie"
+      },
+      "open": "07:00",
+      "close": "17:00",
+      "capacity": 2,
+      "note": {
+        "en": "Only construction gate for heavy vehicles. Banksman on duty. The riverside path is fenced and signed, never used by site traffic.",
+        "de": "Einziges Baustellentor für schwere Fahrzeuge. Einweiser im Dienst. Der Uferweg ist abgezäunt und beschildert und wird nie vom Baustellenverkehr genutzt."
+      }
+    },
+    {
+      "name": {
+        "en": "Gate 2 - commercial plots side",
+        "de": "Tor 2 - Gewerbeseite"
+      },
+      "open": "07:30",
+      "close": "16:00",
+      "capacity": 1,
+      "note": {
+        "en": "Rigid vehicles only, used for the car park and the eastern buildings. Closed during the delivery peak of the neighbouring businesses.",
+        "de": "Nur Starrfahrzeuge, genutzt für Tiefgarage und die östlichen Gebäude. In der Anlieferspitze der Nachbarbetriebe geschlossen."
+      }
+    }
+  ],
+  "vehicles": [
+    {
+      "en": "Articulated flatbed",
+      "de": "Sattelzug mit Pritsche"
+    },
+    {
+      "en": "Rigid 18t",
+      "de": "Starrer Lkw 18 t"
+    }
+  ],
+  "zones": [
+    {
+      "name": {
+        "en": "Laydown A - north field",
+        "de": "Lagerplatz A - Nordfeld"
+      },
+      "capacity": "520 m2 / 70 t",
+      "note": {
+        "en": "Reinforcement and formwork. Inside the tower crane radius, behind the hoarding.",
+        "de": "Bewehrung und Schalung. Im Radius des Turmdrehkrans, hinter dem Bauzaun."
+      }
+    },
+    {
+      "name": {
+        "en": "Laydown B - precast balconies",
+        "de": "Lagerplatz B - Balkon-Fertigteile"
+      },
+      "capacity": "300 m2",
+      "note": {
+        "en": "Precast balconies stored upright, no stacking above 3 m, on firm ground outside the groundwater lowering cone.",
+        "de": "Balkon-Fertigteile aufrecht gelagert, keine Stapelung über 3 m, auf tragfähigem Grund außerhalb des Absenktrichters der Grundwasserhaltung."
+      }
+    }
+  ],
+  "area_names": {
+    "SITE": {
+      "en": "Building site with hoarding",
+      "de": "Baustelle mit Bauzaun"
+    },
+    "A-BLD": {
+      "en": "Four apartment buildings and underground car park",
+      "de": "Vier Mehrfamilienhäuser und Tiefgarage"
+    },
+    "A-LAY": {
+      "en": "Laydown A north field",
+      "de": "Lagerplatz A Nordfeld"
+    },
+    "A-LAY2": {
+      "en": "Precast balcony store",
+      "de": "Lager Balkon-Fertigteile"
+    },
+    "A-SET": {
+      "en": "Site offices and welfare",
+      "de": "Baubüro und Sozialräume"
+    },
+    "A-TRF": {
+      "en": "Construction road and turning area",
+      "de": "Baustraße und Wendeplatz"
+    },
+    "A-RES": {
+      "en": "Reserve and groundwater treatment",
+      "de": "Reserve und Wasseraufbereitung"
+    }
+  },
+  "stage_1_title": {
+    "en": "Excavation pit, shoring and groundwater lowering",
+    "de": "Baugrube, Verbau und Grundwasserhaltung"
+  },
+  "stage_2_title": {
+    "en": "Car park and shell of the buildings",
+    "de": "Tiefgarage und Rohbau der Gebäude"
+  },
+  "power_connection_point": {
+    "en": "Transformer kiosk at Gate 1, outside the residents' area",
+    "de": "Trafokiosk an Tor 1, außerhalb des Anwohnerbereichs"
+  },
+  "water_connection_point": {
+    "en": "Hydrant in the street Am Donauknie",
+    "de": "Hydrant in der Straße Am Donauknie"
+  },
+  "water_consumer": {
+    "en": "Concrete curing, dust suppression and wheel wash",
+    "de": "Betonnachbehandlung, Staubbindung und Reifenwäsche"
+  },
+  "sewage_connection_point": {
+    "en": "Manhole in the street Am Donauknie, with discharge permit for the pumped groundwater",
+    "de": "Kanalschacht in der Straße Am Donauknie, mit Einleiterlaubnis für das geförderte Grundwasser"
+  },
+  "strategy": [
+    {
+      "flow_code": "rebar",
+      "description": {
+        "en": "Reinforcement, cut and bent, delivered by slab",
+        "de": "Bewehrung, geschnitten und gebogen, geliefert je Decke"
+      },
+      "mode": "stock",
+      "storage_area": "A-LAY",
+      "buffer_days": 4
+    },
+    {
+      "flow_code": "balcony",
+      "description": {
+        "en": "Precast balconies, called off per floor and stored upright",
+        "de": "Balkon-Fertigteile, geschossweise abgerufen und aufrecht gelagert"
+      },
+      "mode": "kanban",
+      "storage_area": "A-LAY2",
+      "buffer_days": 3
+    },
+    {
+      "flow_code": "precast",
+      "description": {
+        "en": "Precast stair cores, set from the truck outside the neighbours' peak hours",
+        "de": "Fertigteil-Treppenkerne, vom Lkw außerhalb der Spitzenzeiten der Nachbarn versetzt"
+      },
+      "mode": "direct_install",
+      "storage_area": null,
+      "buffer_days": 0
+    }
+  ],
+  "delivery_open": "07:00",
+  "delivery_close": "16:00",
+  "rules_text": {
+    "en": "Book every delivery 48 hours ahead with the site manager. No vehicle movements before 07:00 and none on Saturdays. No waiting on the public road or on the riverside path. Wheel wash on exit, street sweeping every Friday.",
+    "de": "Jede Anlieferung 48 Stunden vorher bei der Bauleitung anmelden. Keine Fahrbewegungen vor 07:00 Uhr und keine am Samstag. Kein Warten auf öffentlicher Straße oder auf dem Uferweg. Reifenwäsche bei der Ausfahrt, Straßenkehrung jeden Freitag."
+  },
+  "noise_zone_type": "residential",
+  "day_dba": 60,
+  "night_dba": 45,
+  "municipality_contact": {
+    "en": "City of Regensburg, building control office (Bauordnungsamt)",
+    "de": "Stadt Regensburg, Bauordnungsamt"
+  },
+  "parking_note": {
+    "en": "No site parking in the residential streets. Site staff use the leased lot at the commercial estate, with a shuttle at 06:45 and 16:45.",
+    "de": "Kein Baustellenparken in den Wohnstraßen. Das Baustellenpersonal nutzt den angemieteten Parkplatz im Gewerbegebiet mit Pendelbus um 06:45 und 16:45 Uhr."
+  },
+  "heavy_title": {
+    "en": "Transformer for the quarter supply 18 t",
+    "de": "Transformator für die Quartiersversorgung 18 t"
+  },
+  "heavy_destination": {
+    "en": "Site, Gate 1",
+    "de": "Baustelle, Tor 1"
+  },
+  "heavy_route_notes": {
+    "en": "Ring road, then Am Donauknie from the south. Police escort at the level crossing; night move only, no passage during the school run.",
+    "de": "Ringstraße, dann Am Donauknie von Süden. Begleitung an der Bahnquerung; nur Nachtfahrt, keine Durchfahrt zum Schulbeginn."
+  },
+  "oversize_authority": {
+    "en": "Road traffic authority of the City of Regensburg",
+    "de": "Straßenverkehrsbehörde der Stadt Regensburg"
+  },
+  "night_authority": {
+    "en": "Environmental authority of the city",
+    "de": "Umweltamt der Stadt"
+  },
+  "spoil_title": {
+    "en": "Excavated soil Z0 and Z1.1 to the licensed tip",
+    "de": "Aushubboden Z0 und Z1.1 zur zugelassenen Deponie"
+  },
+  "rebar_title": {
+    "en": "Reinforcement, base slab of the underground car park",
+    "de": "Bewehrung, Bodenplatte der Tiefgarage"
+  },
+  "rebar_destination": {
+    "en": "Laydown A north field",
+    "de": "Lagerplatz A Nordfeld"
+  },
+  "dust_description": {
+    "en": "Dust on parked cars and balconies of the northern houses after excavation.",
+    "de": "Staub auf parkenden Autos und Balkonen der nördlichen Häuser nach dem Aushub."
+  },
+  "dust_response": {
+    "en": "Water spraying twice a day, wheel wash at the gate, street sweeping after each heavy load.",
+    "de": "Zweimal täglich Wasserberieselung, Reifenwäsche am Tor, Straßenkehrung nach jeder Schwerlast."
+  },
+  "noise_description": {
+    "en": "Reversing alarms before 07:00 at the gate, reported by a resident.",
+    "de": "Rückfahrwarner vor 07:00 Uhr am Tor, von einem Anwohner gemeldet."
+  },
+  "coordination": [
+    {
+      "body": "municipality",
+      "topic": {
+        "en": "Crane position and road occupation at Am Donauknie",
+        "de": "Kranstandort und Straßensondernutzung Am Donauknie"
+      },
+      "outcome": {
+        "en": "Agreed in principle with the building control office; written application for the road occupation to follow.",
+        "de": "Mit dem Bauordnungsamt grundsätzlich abgestimmt; schriftlicher Antrag auf Sondernutzung folgt."
+      },
+      "days_ago": 9,
+      "next_action_in": 5
+    },
+    {
+      "body": "neighbours",
+      "topic": {
+        "en": "Diversion of the riverside cycle path and the delivery hours",
+        "de": "Umleitung des Radwegs am Donauufer und Anlieferzeiten"
+      },
+      "outcome": {
+        "en": "Residents informed at the evening in the parish hall; diversion signed and fenced before the first delivery.",
+        "de": "Anwohner beim Abend im Pfarrsaal informiert; Umleitung vor der ersten Anlieferung beschildert und abgezäunt."
+      },
+      "days_ago": 6,
+      "next_action_in": 12
+    },
+    {
+      "body": "utility",
+      "topic": {
+        "en": "District heating, water and power connection dates",
+        "de": "Anschlusstermine Fernwärme, Wasser und Strom"
+      },
+      "outcome": {
+        "en": "Municipal utility confirmed the connection in four weeks.",
+        "de": "Die Stadtwerke bestätigten den Anschluss in vier Wochen."
+      },
+      "days_ago": 2
+    }
+  ],
+  "power_provider": {
+    "en": "Regional grid operator",
+    "de": "Netzbetreiber Strom der Region"
+  },
+  "water_provider": {
+    "en": "Municipal utility company",
+    "de": "Stadtwerke"
+  },
+  "sewage_provider": {
+    "en": "Municipal drainage company",
+    "de": "Stadtentwässerung"
+  },
+  "crane_1_consumer": {
+    "en": "Tower crane",
+    "de": "Turmdrehkran"
+  },
+  "crane_2_consumer": {
+    "en": "Mobile crane pad lighting",
+    "de": "Beleuchtung Kranstellfläche"
+  },
+  "welfare_consumer": {
+    "en": "Site offices and welfare containers",
+    "de": "Baubüro und Sozialräume"
+  },
+  "telecom_point": {
+    "en": "Duct at Gate 1",
+    "de": "Leerrohr an Tor 1"
+  },
+  "telecom_consumer": {
+    "en": "Site offices data link",
+    "de": "Datenanbindung Baubüro"
+  },
+  "heavy_carrier": {
+    "en": "Heavy haulage carrier",
+    "de": "Schwertransportunternehmen"
+  },
+  "heavy_origin": {
+    "en": "Manufacturer works",
+    "de": "Herstellerwerk"
+  },
+  "oversize_conditions": {
+    "en": "Route survey ordered; application to the road traffic authority to follow with the survey.",
+    "de": "Streckenerkundung beauftragt; Antrag bei der Straßenverkehrsbehörde folgt mit der Erkundung."
+  },
+  "spoil_carrier": {
+    "en": "Earthworks haulier",
+    "de": "Erdbauunternehmen"
+  },
+  "spoil_origin": {
+    "en": "Site",
+    "de": "Baustelle"
+  },
+  "spoil_destination": {
+    "en": "Licensed soil tip",
+    "de": "Zugelassene Bodendeponie"
+  },
+  "rebar_carrier": {
+    "en": "Steel supplier transport",
+    "de": "Transport des Stahllieferanten"
+  },
+  "rebar_origin": {
+    "en": "Rebar yard",
+    "de": "Biegebetrieb"
+  },
+  "customs_title": {
+    "en": "Medium voltage switchgear",
+    "de": "Mittelspannungs-Schaltanlage"
+  },
+  "customs_place": {
+    "en": "Manufacturer works, loading dock",
+    "de": "Herstellerwerk, Verladerampe"
+  },
+  "customs_broker": {
+    "en": "Customs broker",
+    "de": "Zollagent"
+  },
+  "customs_line_1": {
+    "en": "Switchgear panels, 20 kV",
+    "de": "Schaltfelder, 20 kV"
+  },
+  "customs_line_2": {
+    "en": "Control cabinets",
+    "de": "Steuerschränke"
+  },
+  "customs_unit": {
+    "en": "pcs",
+    "de": "Stk"
+  },
+  "fallback_supplier": {
+    "en": "Main contractor",
+    "de": "Generalunternehmer"
+  },
+  "rejected_cargo": {
+    "en": "Site welfare unit exchange",
+    "de": "Austausch Sozialcontainer"
+  },
+  "customs_before_gate": true,
+  "complaints_before_gate": true
+}

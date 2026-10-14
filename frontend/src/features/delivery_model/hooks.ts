@@ -25,6 +25,7 @@ import {
   getReadiness,
   listCatalogues,
   listDecisions,
+  listContractItems,
   listOfi,
   listPackages,
 } from './api';
@@ -112,6 +113,14 @@ export function useOfi(projectId: string, enabled = true) {
   return useQuery({
     queryKey: deliveryKeys.ofi(projectId),
     queryFn: () => listOfi(projectId).then((page) => page.items),
+    enabled: !!projectId && enabled,
+  });
+}
+
+export function useContractItems(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: deliveryKeys.contractItems(projectId),
+    queryFn: () => listContractItems(projectId).then((page) => page.items),
     enabled: !!projectId && enabled,
   });
 }

@@ -1,0 +1,825 @@
+{
+  "$note": "Plant register story of the Ludwigsburg school: building services and equipment of a four-form-entry all-day primary school with sports hall and Mensa production kitchen. Applied on top of the module seeder by key; all names invented. Item PL-001 (heat pump) is the order the commitment release slot item links to, and PL-002 (Mensa kitchen) is the item the delivery model records as owner-furnished.",
+  "items": [
+    {
+      "code": "PL-001",
+      "title": {
+        "en": "Ground source heat pump 400 kW with probe field connection",
+        "de": "Sole-Wasser-Wärmepumpe 400 kW mit Anschluss an das Erdsondenfeld"
+      },
+      "class": "heat_pump",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 640,
+      "reach": "enquired",
+      "route": true,
+      "performance": [
+        {
+          "key": "heating_capacity",
+          "value": "400",
+          "unit": "kW"
+        },
+        {
+          "key": "flow_temperature",
+          "value": "40",
+          "unit": "C"
+        },
+        {
+          "key": "scop",
+          "value": "4.6",
+          "unit": ""
+        }
+      ],
+      "quotes": [
+        [
+          "market_sounding",
+          {
+            "en": "Market sounding, three heat pump manufacturers",
+            "de": "Marktsondierung bei drei Wärmepumpenherstellern"
+          },
+          -110,
+          -96,
+          22,
+          30,
+          "from_order"
+        ],
+        [
+          "supplier_quote",
+          {
+            "en": "Heat pump manufacturer A (budget quote)",
+            "de": "Wärmepumpenhersteller A (Budgetangebot)"
+          },
+          -38,
+          -24,
+          26,
+          32,
+          "from_order"
+        ]
+      ],
+      "slot": "held",
+      "spares": [
+        [
+          "strategic_spares",
+          {
+            "en": "Compressor service kit and sensor set",
+            "de": "Wartungssatz Verdichter und Fühlersatz"
+          },
+          "1",
+          {
+            "en": "set",
+            "de": "Satz"
+          }
+        ]
+      ]
+    },
+    {
+      "code": "PL-002",
+      "title": {
+        "en": "Mensa production kitchen equipment, 600 meals per day",
+        "de": "Ausstattung der Mensa-Produktionsküche, 600 Essen pro Tag"
+      },
+      "class": "kitchen_equipment",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 900,
+      "reach": "route_set",
+      "performance": [
+        {
+          "key": "covers_per_day",
+          "value": "600",
+          "unit": ""
+        },
+        {
+          "key": "hygiene_concept",
+          "value": {
+            "en": "HACCP clean and unclean line",
+            "de": "HACCP mit reiner und unreiner Seite"
+          },
+          "unit": ""
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Kitchen equipment manufacturer A",
+            "de": "Küchentechnikhersteller A"
+          },
+          -60,
+          -46,
+          20,
+          26,
+          "from_order"
+        ],
+        [
+          "supplier_quote",
+          {
+            "en": "Kitchen equipment manufacturer B",
+            "de": "Küchentechnikhersteller B"
+          },
+          -55,
+          -38,
+          14,
+          18,
+          "from_approved_drawings"
+        ]
+      ],
+      "paper": true,
+      "spares": [
+        [
+          "special_tools",
+          {
+            "en": "Cleaning and descaling kit for combi steamers",
+            "de": "Reinigungs- und Entkalkungsset für Kombidämpfer"
+          },
+          "1",
+          {
+            "en": "set",
+            "de": "Satz"
+          }
+        ],
+        [
+          "operating_consumables",
+          {
+            "en": "Filter and gasket set for the first year",
+            "de": "Filter- und Dichtungssatz für das erste Betriebsjahr"
+          },
+          "2",
+          {
+            "en": "set",
+            "de": "Satz"
+          }
+        ]
+      ]
+    },
+    {
+      "code": "PL-003",
+      "title": {
+        "en": "PV inverters and battery storage 120 kWh for self-consumption",
+        "de": "PV-Wechselrichter und Batteriespeicher 120 kWh zur Eigenverbrauchsoptimierung"
+      },
+      "class": "battery_storage",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 700,
+      "reach": "enquired",
+      "route": true,
+      "performance": [
+        {
+          "key": "storage_capacity",
+          "value": "120",
+          "unit": "kWh"
+        },
+        {
+          "key": "pv_peak_power",
+          "value": "280",
+          "unit": "kWp"
+        }
+      ],
+      "quotes": [
+        [
+          "expert_estimate",
+          {
+            "en": "Owner's engineer estimate",
+            "de": "Kostenschätzung des Bauherrenvertreters"
+          },
+          -15,
+          null,
+          16,
+          22,
+          "from_order"
+        ]
+      ],
+      "slot": "requested",
+      "spares": [
+        [
+          "commissioning_spares",
+          {
+            "en": "Fuse and connector set for the inverters",
+            "de": "Sicherungs- und Steckersatz für die Wechselrichter"
+          },
+          "1",
+          {
+            "en": "set",
+            "de": "Satz"
+          }
+        ]
+      ]
+    },
+    {
+      "code": "PL-004",
+      "title": {
+        "en": "Ventilation units with heat recovery, classroom wings, CO2 controlled",
+        "de": "Lüftungsgeräte mit Wärmerückgewinnung, Klassentrakte, CO2-geregelt"
+      },
+      "class": "ahu",
+      "quantity": "4",
+      "redundancy": "",
+      "need_days": 600,
+      "reach": "enquired",
+      "performance": [
+        {
+          "key": "air_volume",
+          "value": "6500",
+          "unit": "m3/h"
+        },
+        {
+          "key": "heat_recovery",
+          "value": "80",
+          "unit": "%"
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Ventilation unit manufacturer (budget quote)",
+            "de": "Lüftungsgerätehersteller (Budgetangebot)"
+          },
+          -25,
+          -12,
+          18,
+          24,
+          "from_order"
+        ]
+      ],
+      "spares": [
+        [
+          "operating_consumables",
+          {
+            "en": "First filter change set per unit",
+            "de": "Erster Filterwechselsatz je Gerät"
+          },
+          "4",
+          {
+            "en": "set",
+            "de": "Satz"
+          }
+        ]
+      ]
+    },
+    {
+      "code": "PL-005",
+      "title": {
+        "en": "Passenger lifts, 1275 kg, accessible to DIN 18040",
+        "de": "Personenaufzüge 1275 kg, barrierefrei nach DIN 18040"
+      },
+      "class": "lift",
+      "quantity": "2",
+      "redundancy": "",
+      "need_days": 560,
+      "reach": "ordered",
+      "performance": [
+        {
+          "key": "rated_load",
+          "value": "1275",
+          "unit": "kg"
+        },
+        {
+          "key": "stops",
+          "value": "3",
+          "unit": ""
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Lift manufacturer (firm quote)",
+            "de": "Aufzugshersteller (verbindliches Angebot)"
+          },
+          -80,
+          -66,
+          24,
+          30,
+          "from_approved_drawings"
+        ]
+      ],
+      "spares": [
+        [
+          "commissioning_spares",
+          {
+            "en": "Door operator spares",
+            "de": "Ersatzteile Türantrieb"
+          },
+          "1",
+          {
+            "en": "set",
+            "de": "Satz"
+          }
+        ]
+      ]
+    },
+    {
+      "code": "PL-006",
+      "title": {
+        "en": "Building automation with CO2-controlled room ventilation",
+        "de": "Gebäudeautomation mit CO2-geregelter Raumlüftung"
+      },
+      "class": "bms_controls",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 700,
+      "reach": "specified",
+      "performance": [
+        {
+          "key": "controlled_rooms",
+          "value": "62",
+          "unit": ""
+        }
+      ],
+      "quotes": [],
+      "spares": [
+        [
+          "strategic_spares",
+          {
+            "en": "Spare controller and room sensors",
+            "de": "Ersatzregler und Raumfühler"
+          },
+          "1",
+          {
+            "en": "set",
+            "de": "Satz"
+          }
+        ]
+      ]
+    },
+    {
+      "code": "PL-007",
+      "title": {
+        "en": "Sports hall ventilation unit with heat recovery",
+        "de": "Sporthallen-Lüftungsgerät mit Wärmerückgewinnung"
+      },
+      "class": "ahu",
+      "quantity": "2",
+      "redundancy": "",
+      "need_days": 880,
+      "reach": "identified",
+      "performance": [
+        {
+          "key": "air_volume",
+          "value": "9000",
+          "unit": "m3/h"
+        }
+      ],
+      "quotes": [],
+      "spares": []
+    },
+    {
+      "code": "PL-008",
+      "title": {
+        "en": "IT core network, WLAN and media technology backbone",
+        "de": "IT-Kernnetz, WLAN und Backbone der Medientechnik"
+      },
+      "class": "it_core_network",
+      "quantity": "2",
+      "redundancy": "N+1",
+      "need_days": 30,
+      "reach": "delivered",
+      "performance": [
+        {
+          "key": "uplink",
+          "value": "10",
+          "unit": "Gbit/s"
+        },
+        {
+          "key": "wlan_access_points",
+          "value": "140",
+          "unit": ""
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Network distributor (firm quote)",
+            "de": "Netzwerkdistributor (verbindliches Angebot)"
+          },
+          -150,
+          -143,
+          10,
+          14,
+          "from_order"
+        ]
+      ],
+      "spares": [
+        [
+          "strategic_spares",
+          {
+            "en": "Spare switch and optics",
+            "de": "Ersatz-Switch und Optikmodule"
+          },
+          "1",
+          {
+            "en": "set",
+            "de": "Satz"
+          }
+        ]
+      ]
+    },
+    {
+      "code": "PL-009",
+      "title": {
+        "en": "Fire alarm and voice alarm system",
+        "de": "Brandmelde- und Sprachalarmanlage"
+      },
+      "class": "bms_controls",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 120,
+      "reach": "manufactured",
+      "performance": [
+        {
+          "key": "detection_zones",
+          "value": "48",
+          "unit": ""
+        },
+        {
+          "key": "voice_alarm_zones",
+          "value": "18",
+          "unit": ""
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Fire alarm system manufacturer",
+            "de": "Hersteller der Brandmeldeanlage"
+          },
+          -190,
+          -176,
+          14,
+          18,
+          "from_order"
+        ]
+      ],
+      "spares": [
+        [
+          "commissioning_spares",
+          {
+            "en": "Detector heads and sounder set",
+            "de": "Melderköpfe und Signalgebersatz"
+          },
+          "1",
+          {
+            "en": "set",
+            "de": "Satz"
+          }
+        ]
+      ]
+    },
+    {
+      "code": "PL-010",
+      "title": {
+        "en": "Ventilation units, interim classroom pavilion",
+        "de": "Lüftungsgeräte, Klassenpavillon als Interimsbau"
+      },
+      "class": "ahu",
+      "quantity": "2",
+      "redundancy": "",
+      "need_days": -20,
+      "reach": "commissioned",
+      "performance": [
+        {
+          "key": "air_volume",
+          "value": "2500",
+          "unit": "m3/h"
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Ventilation unit manufacturer",
+            "de": "Lüftungsgerätehersteller"
+          },
+          -300,
+          -288,
+          12,
+          16,
+          "from_approved_drawings"
+        ]
+      ],
+      "spares": []
+    },
+    {
+      "code": "PL-011",
+      "title": {
+        "en": "Temporary heating units, interim classroom pavilion",
+        "de": "Heizgeräte (temporär), Klassenpavillon als Interimsbau"
+      },
+      "class": "boiler",
+      "quantity": "2",
+      "redundancy": "N+1",
+      "need_days": -75,
+      "reach": "handed_over",
+      "performance": [
+        {
+          "key": "heating_capacity",
+          "value": "60",
+          "unit": "kW"
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Heating unit supplier",
+            "de": "Lieferant für Heizgeräte"
+          },
+          -360,
+          -349,
+          8,
+          10,
+          "from_order"
+        ]
+      ],
+      "spares": []
+    },
+    {
+      "code": "PL-012",
+      "title": {
+        "en": "Air source heat pump (dropped, ground source chosen)",
+        "de": "Luft-Wasser-Wärmepumpe (entfallen, Erdwärme gewählt)"
+      },
+      "class": "heat_pump",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 640,
+      "reach": "cancelled",
+      "performance": [
+        {
+          "key": "heating_capacity",
+          "value": "400",
+          "unit": "kW"
+        }
+      ],
+      "quotes": [],
+      "spares": []
+    },
+    {
+      "code": "PL-013",
+      "title": {
+        "en": "Prefabricated timber facade elements, school wings",
+        "de": "Vorgefertigte Holzfassadenelemente, Schultrakte"
+      },
+      "class": "facade_unit",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 450,
+      "reach": "route_set",
+      "performance": [
+        {
+          "key": "facade_area",
+          "value": "3800",
+          "unit": "m2"
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Timber construction manufacturer (budget quote)",
+            "de": "Holzbauhersteller (Budgetangebot)"
+          },
+          -35,
+          -24,
+          20,
+          26,
+          "from_approved_drawings"
+        ]
+      ],
+      "spares": []
+    },
+    {
+      "code": "PL-014",
+      "title": {
+        "en": "Kitchen extraction with grease separation, Mensa",
+        "de": "Küchenabluft mit Fettabscheidung, Mensa"
+      },
+      "class": "ahu",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 880,
+      "reach": "specified",
+      "performance": [
+        {
+          "key": "air_volume",
+          "value": "8000",
+          "unit": "m3/h"
+        }
+      ],
+      "quotes": [],
+      "spares": []
+    }
+  ],
+  "limits": {
+    "supply": "supplier",
+    "deliver_to_site": "supplier",
+    "offload": "supplier",
+    "set_in_place": "installer",
+    "connect": "installer",
+    "test": "supplier",
+    "commission": "supplier",
+    "accept": "owner",
+    "train": "supplier",
+    "document": "supplier"
+  },
+  "paper": {
+    "question": {
+      "en": "Which kitchen equipment offer fits the installation and commissioning window of the summer holidays at acceptable risk?",
+      "de": "Welches Angebot für die Küchenausstattung passt mit vertretbarem Risiko in das Montage- und Inbetriebnahmefenster der Sommerferien?"
+    },
+    "criteria": [
+      {
+        "code": "lead_time",
+        "title": {
+          "en": "Lead time",
+          "de": "Lieferzeit"
+        },
+        "weight": "4"
+      },
+      {
+        "code": "cost",
+        "title": {
+          "en": "Cost",
+          "de": "Kosten"
+        },
+        "weight": "3"
+      },
+      {
+        "code": "hygiene_service",
+        "title": {
+          "en": "Hygiene proof and local service",
+          "de": "Hygienenachweis und Kundendienst vor Ort"
+        },
+        "weight": "3"
+      }
+    ],
+    "options": [
+      {
+        "code": "a",
+        "title": {
+          "en": "Manufacturer A, from order",
+          "de": "Hersteller A, ab Bestellung"
+        },
+        "lead_weeks": 26,
+        "scores": {
+          "lead_time": "2",
+          "cost": "4",
+          "hygiene_service": "4"
+        }
+      },
+      {
+        "code": "b",
+        "title": {
+          "en": "Manufacturer B, from approved drawings",
+          "de": "Hersteller B, ab freigegebenen Plänen"
+        },
+        "lead_weeks": 18,
+        "scores": {
+          "lead_time": "4",
+          "cost": "3",
+          "hygiene_service": "4"
+        }
+      }
+    ],
+    "recommendation": "b",
+    "rationale": {
+      "en": "Option B keeps installation and the hygiene acceptance by the food inspection inside the summer holidays; the drawing review with the kitchen planner is scheduled.",
+      "de": "Variante B hält Montage und Hygieneabnahme durch die Lebensmittelüberwachung innerhalb der Sommerferien; die Planprüfung mit dem Küchenplaner ist terminiert."
+    }
+  },
+  "slots": {
+    "held": {
+      "vendor_name": {
+        "en": "Heat pump manufacturer A",
+        "de": "Wärmepumpenhersteller A"
+      },
+      "terms": {
+        "en": "The manufacturer holds the slot without a fee until the conversion date; the slot itself binds no money. Authority to sign the supply order is released as a commitment of the project after the Technischer Ausschuss has recommended the award, and the slot lapses if the order is not signed by that date.",
+        "de": "Der Hersteller hält den Produktionsplatz bis zum Umwandlungstermin gebührenfrei; der Platz selbst bindet keine Mittel. Die Befugnis zur Unterzeichnung der Lieferbestellung wird als Verpflichtung des Projekts freigegeben, nachdem der Technische Ausschuss die Vergabe empfohlen hat; der Platz verfällt, wenn die Bestellung bis zu diesem Termin nicht unterschrieben ist."
+      },
+      "slot_from_days": 300,
+      "slot_to_days": 360,
+      "convert_by_days": 45
+    },
+    "requested": {
+      "vendor_name": {
+        "en": "Inverter and storage packager",
+        "de": "Anbieter für Wechselrichter und Speicher"
+      },
+      "terms": {
+        "en": "Fee non-refundable, credited in full to the order if signed by the conversion date.",
+        "de": "Gebühr nicht erstattungsfähig, wird bei Bestellung bis zum Umwandlungstermin vollständig auf den Auftrag angerechnet."
+      },
+      "reservation_fee": "12000.00",
+      "slot_from_days": 330,
+      "slot_to_days": 390,
+      "convert_by_days": 45
+    }
+  },
+  "it_services": [
+    {
+      "kind": "cde_access",
+      "description": {
+        "en": "Common data environment access for the city, the design teams and the trade lots",
+        "de": "Zugang zur gemeinsamen Datenumgebung für die Stadt, die Planungsteams und die Fachlose"
+      },
+      "start_days": -30
+    },
+    {
+      "kind": "site_network",
+      "description": {
+        "en": "Site office network and wireless coverage",
+        "de": "Netzwerk und WLAN-Abdeckung der Baustelleneinrichtung"
+      },
+      "start_days": 60
+    },
+    {
+      "kind": "access_control",
+      "description": {
+        "en": "Gate access control of the site, separated from the school entrance",
+        "de": "Zugangskontrolle am Baustellentor, getrennt vom Schuleingang"
+      },
+      "start_days": 60
+    },
+    {
+      "kind": "cctv",
+      "description": {
+        "en": "Camera watch of the site fence towards the running school grounds",
+        "de": "Kameraüberwachung des Bauzauns zum laufenden Schulgelände"
+      },
+      "start_days": 90
+    }
+  ],
+  "site_plant": [
+    {
+      "kind": "tower_crane",
+      "name": {
+        "en": "Tower crane, swing area clear of pupil routes",
+        "de": "Turmdrehkran, Schwenkbereich frei von Schulwegen"
+      },
+      "x": "38.0",
+      "y": "30.0",
+      "reach_m": "55.00",
+      "max_load_t": "6.00"
+    },
+    {
+      "kind": "mobile_crane_pad",
+      "name": {
+        "en": "Crane pad for timber facade elements and sports hall beams",
+        "de": "Kranstellfläche für Holzfassadenelemente und Sporthallenbinder"
+      },
+      "x": "14.0",
+      "y": "70.0",
+      "reach_m": "40.00",
+      "max_load_t": "80.00"
+    },
+    {
+      "kind": "site_office",
+      "name": {
+        "en": "Site office and meeting containers",
+        "de": "Bürocontainer und Besprechungscontainer"
+      },
+      "x": "5.0",
+      "y": "5.0"
+    },
+    {
+      "kind": "welfare",
+      "name": {
+        "en": "Welfare containers for the trade lots",
+        "de": "Sozialcontainer für die Fachlose"
+      },
+      "x": "9.0",
+      "y": "5.0"
+    },
+    {
+      "kind": "storage",
+      "name": {
+        "en": "Timber element storage under cover",
+        "de": "Überdachtes Lager für Holzelemente"
+      },
+      "x": "30.0",
+      "y": "8.0"
+    },
+    {
+      "kind": "temporary_power",
+      "name": {
+        "en": "Temporary power distribution (Baustrom)",
+        "de": "Baustromverteilung"
+      },
+      "x": "8.0",
+      "y": "12.0"
+    }
+  ],
+  "paper_route_name": {
+    "en": "Plant decision paper sign-off",
+    "de": "Freigabe Entscheidungsvorlage Anlagentechnik"
+  },
+  "no_asset_reason": {
+    "en": "Maintained by the operator's own staff; no service contract is let for it.",
+    "de": "Wird vom eigenen Personal der Stadt gewartet; hierfür wird kein Wartungsvertrag vergeben."
+  }
+}

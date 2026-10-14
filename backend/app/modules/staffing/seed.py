@@ -113,6 +113,104 @@ HANDOVERS = (
 )
 
 
+_ROLE = "role"  # story key of a role code
+_PHASES = ("development", "execution", "operation")
+_Position = tuple[str, str, int, int | None, str]
+
+
+def _int(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def story_positions(story: dict[str, Any], default: tuple[_Position, ...]) -> tuple[_Position, ...]:
+    """The pre-construction positions table of the story; rows of a bad shape are dropped, none left keeps ``default``.
+
+    A row is ``{"role", "phase", "entry", "exit", "status"}`` with day offsets from the seed day. Role codes the
+    catalogue does not know are skipped later, where the catalogue is at hand.
+    """
+    rows = story.get("positions")
+    out: list[_Position] = []
+    for r in rows if isinstance(rows, list) else []:
+        entry = _int(r.get("entry")) if isinstance(r, dict) else None
+        leaving = r.get("exit") if isinstance(r, dict) else None
+        if (
+            entry is None
+            or not isinstance(r.get(_ROLE), str)
+            or r.get("phase") not in _PHASES
+            or r.get("status", "open") not in ("open", "recruiting")
+            or (leaving is not None and _int(leaving) is None)
+        ):
+            logger.info("staffing demo story: position row %r is not usable, dropped", r)
+            continue
+        out.append((r[_ROLE], r["phase"], entry, leaving, r.get("status", "open")))
+    return tuple(out) or default
+
+
+def story_pairs(story: dict[str, Any], key: str) -> list[tuple[str, str, dict[str, Any]]]:
+    """Rows ``{"role", "kind", ...}`` of a document list as ``(role, kind, row)``; malformed rows are dropped."""
+    rows = story.get(key)
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        if isinstance(r, dict) and isinstance(r.get(_ROLE), str) and isinstance(r.get("kind"), str):
+            out.append((r[_ROLE], r["kind"], r))
+        else:
+            logger.info("staffing demo story: %s row %r is not usable, dropped", key, r)
+    return out
+
+
+def story_roster(story: dict[str, Any], locale: str) -> list[dict[str, Any]]:
+    """The invented people the story puts on the project roster, in the order they fill the roles.
+
+    A row needs a ``name``; ``company`` and ``site_role`` are optional texts and ``allocation`` a
+    percentage from 1 to 100. A row that is not usable is dropped with an info line.
+    """
+    from app.modules.project_governance.public import story_text
+
+    rows = story.get("roster")
+    out: list[dict[str, Any]] = []
+    for row in rows if isinstance(rows, list) else []:
+        name = story_text(row.get("name"), locale) if isinstance(row, dict) else ""
+        if not name:
+            logger.info("staffing demo story: roster row %r is not usable, dropped", row)
+            continue
+        allocation = _int(row.get("allocation"))
+        out.append(
+            {
+                "name": name,
+                "company": story_text(row.get("company"), locale),
+                "site_role": story_text(row.get("site_role"), locale),
+                "allocation": allocation if allocation is not None and 0 < allocation <= 100 else 100,
+            }
+        )
+    return out
+
+
+def story_handovers(story: dict[str, Any], locale: str, default: tuple[tuple[str, str, int, str], ...]) -> tuple:
+    """The handovers of the story as ``(giver, receiver, overlap days, scope)``, or ``default`` when none is usable."""
+    from app.modules.project_governance.public import story_text
+
+    rows = story.get("handovers")
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        overlap = _int(r.get("overlap_days")) if isinstance(r, dict) else None
+        scope = (
+            story_text(r.get("scope"), locale)
+            if isinstance(r, dict) and isinstance(r.get("scope"), (str, dict))
+            else None
+        )
+        if (
+            overlap is None
+            or overlap <= 0
+            or not scope
+            or not isinstance(r.get("from"), str)
+            or not isinstance(r.get("to"), str)
+        ):
+            logger.info("staffing demo story: handover row %r is not usable, dropped", r)
+            continue
+        out.append((r["from"], r["to"], overlap, scope))
+    return tuple(out) or default
+
+
 async def seed_staffing_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
     """Seed the staffing plan of every demo project in ``project_ids`` that has none. The caller commits."""
     from app.core.demo_marker import demo_id_of
@@ -158,13 +256,37 @@ def _day(today: date, offset: int | None) -> date | None:
 
 
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
+    from app.core.demo_marker import demo_id_of
+    from app.modules.project_governance.public import demo_module_story, story_text
     from app.modules.projects.models import Project
     from app.modules.staffing import rules
     from app.modules.staffing.service import Actor, StaffingService
     from app.modules.teams.models import RosterMember
     from app.modules.teams.seed import seed_teams_roster
 
-    await seed_teams_roster(session, project_id=project_id)
+    project = await session.get(Project, project_id)
+    story = demo_module_story(demo_id_of(project.metadata_), "staffing")
+    locale = getattr(project, "locale", None) or "en"
+    cast = story_roster(story, locale)
+    if cast:
+        # The story names its own people. They are written before the generic demo roster, which then
+        # finds a roster and adds nobody, so the files are about people that belong to this project.
+        today_ = datetime.now(UTC).date()
+        for person in cast:
+            session.add(
+                RosterMember(
+                    project_id=project_id,
+                    display_name=person["name"],
+                    company_name=person["company"],
+                    site_role=person["site_role"],
+                    allocation_percent=person["allocation"],
+                    starts_on=today_ - timedelta(days=60),
+                    certifications=[],
+                )
+            )
+        await session.flush()
+    else:
+        await seed_teams_roster(session, project_id=project_id)
     members = list(
         (
             await session.execute(
@@ -175,12 +297,14 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                     RosterMember.project_id == project_id,
                     RosterMember.user_id.is_(None),
                     RosterMember.contact_id.is_(None),
+                    # With a story cast only those people: other roster rows (the client organisation)
+                    # are not staff of the project.
+                    *([RosterMember.display_name.in_([p["name"] for p in cast])] if cast else []),
                 )
                 .order_by(RosterMember.created_at, RosterMember.id)
             )
         ).scalars()
     )
-    project = await session.get(Project, project_id)
     owner = project.owner_id
     # The project owner plans the demo and is the line manager of every position, which is what lets
     # them open the files. The erase permission is not needed and not taken.
@@ -190,8 +314,27 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     svc = StaffingService(session)
     today = datetime.now(UTC).date()
     early = await before_construction(session, project_id)
-    planned = POSITIONS_BEFORE_CONSTRUCTION if early else POSITIONS
+    planned = story_positions(story, POSITIONS_BEFORE_CONSTRUCTION) if early else POSITIONS
     commissioning = COMMISSIONING_BEFORE_CONSTRUCTION_IN_DAYS if early else COMMISSIONING_IN_DAYS
+    if early and _int(story.get("commissioning_in_days")) is not None:
+        commissioning = story["commissioning_in_days"]
+    mobilisation = _int(story.get("mobilisation_in_days")) if early else None
+    mobilisation = MOBILISATION_IN_DAYS if mobilisation is None else mobilisation
+    filled = [r for r in story.get("filled", ()) if isinstance(r, str)] if isinstance(story.get("filled"), list) else []
+    filled = filled or list(FILLED)
+    expiring = {
+        **EXPIRING,
+        **{(r, k): d for r, k, row in story_pairs(story, "expiring") if (d := _int(row.get("days")))},
+    }
+    missing = {(r, k) for r, k, _ in story_pairs(story, "missing")} or {MISSING}
+    waived = {(r, k) for r, k, _ in story_pairs(story, "waived")} or {WAIVED}
+    handovers = story_handovers(story, locale, HANDOVERS)
+    # Words a story may give in the project's language: the note of a waived document and the trip endpoints.
+    waiver_note = story_text(story.get("waiver_note"), locale) or (
+        "Renewal filed with the registration body; confirmation of receipt is on file."
+    )
+    home_place = story_text(story.get("home_place"), locale) or "Home city"
+    site_place = story_text(story.get("site_place"), locale) or "Site"
 
     await svc.set_plan(
         project_id,
@@ -227,7 +370,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
 
     fills: dict[str, Any] = {}
     files: dict[str, Any] = {}
-    for role_code, member in zip([r for r in FILLED if r in positions], members, strict=False):
+    for role_code, member in zip([r for r in filled if r in positions], members, strict=False):
         position = positions[role_code]
         fill = await svc.create_fill(
             project_id,
@@ -257,21 +400,21 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         hired = min(position.entry_date, today) - timedelta(days=30)
         for kind_code in rules.required_document_kinds(catalogue, [role_code], "employee", needs_permit):
             kind = catalogue.document_kind(kind_code)
-            if kind is None or (role_code, kind_code) == MISSING:
+            if kind is None or (role_code, kind_code) in missing:
                 continue
-            if (role_code, kind_code) == WAIVED:
+            if (role_code, kind_code) in waived:
                 await svc.waive_document(
                     project_id,
                     pfile.id,
                     kind_code,
-                    "Renewal filed with the registration body; confirmation of receipt is on file.",
+                    waiver_note,
                     actor,
                 )
                 continue
             if kind_code in OPEN_ENDED:
                 valid_until = None
             else:
-                valid_until = today + timedelta(days=EXPIRING.get((role_code, kind_code), 400))
+                valid_until = today + timedelta(days=expiring.get((role_code, kind_code), 400))
             await svc.record_document(
                 project_id,
                 pfile.id,
@@ -290,8 +433,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         priced_part = {"cost": amount, "currency": currency} if priced else {}
         return {
             "kind": kind,
-            "from_place": "Home city",
-            "to_place": "Site",
+            "from_place": home_place,
+            "to_place": site_place,
             "depart_date": today + timedelta(days=depart),
             "return_date": _day(today, back),
             **priced_part,
@@ -304,7 +447,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                 await svc.create_travel(
                     project_id,
                     files[role_code].id,
-                    trip("mobilisation", MOBILISATION_IN_DAYS - 1, None, amount),
+                    trip("mobilisation", mobilisation - 1, None, amount),
                     actor,
                 )
     elif "document_controller" in files:
@@ -345,8 +488,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         )
 
     # A handover needs somebody filling the giving role; a demo project with fewer people than roles has none.
-    short_staffed = any(giver not in fills for giver, _, _, _ in HANDOVERS)
-    for giver, receiver, overlap, scope in HANDOVERS:
+    short_staffed = any(giver not in fills for giver, _, _, _ in handovers)
+    for giver, receiver, overlap, scope in handovers:
         if giver in fills and receiver in positions:
             await svc.create_handover(
                 project_id,

@@ -84432,6 +84432,92 @@
             }
           ],
           "relationships": []
+        },
+        {
+          "class_name": "ContractItem",
+          "tablename": "oe_delivery_model_contract_item",
+          "docstring": "One contract-side agreement of the project, outside the package plan.\n\n``group_code`` says what it is (contract form, land tenure, utility contract, user agreement,\npartner structure); ``kind_code`` is the catalogue kind within the group. A contract form may name\nthe package it governs and its price basis; a partner structure carries the partner's share.",
+          "columns": [
+            {
+              "name": "code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "group_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "kind_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "counterparty",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "package_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "reference",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "start_date",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "end_date",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "price_basis",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "share_percent",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            }
+          ],
+          "relationships": []
         }
       ],
       "routes": [
@@ -84660,6 +84746,28 @@
           "path": "/",
           "handler": "set_ofi_status",
           "request_schema": "OfiStatusIn"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "list_contract_items"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "create_contract_item",
+          "request_schema": "ContractItemIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "update_contract_item",
+          "request_schema": "ContractItemPatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/",
+          "handler": "delete_contract_item"
         },
         {
           "method": "GET",
@@ -85350,6 +85458,126 @@
             {
               "name": "status",
               "type": "Literal['identified', 'route_set', 'ordered', 'delivered', 'handed_to_installer']"
+            }
+          ]
+        },
+        {
+          "class_name": "ContractItemIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "code",
+              "type": "str"
+            },
+            {
+              "name": "group_code",
+              "type": "ContractGroup"
+            },
+            {
+              "name": "kind_code",
+              "type": "str"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            },
+            {
+              "name": "counterparty",
+              "type": "str"
+            },
+            {
+              "name": "package_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "status",
+              "type": "ContractItemStatus",
+              "default": "'draft'"
+            },
+            {
+              "name": "reference",
+              "type": "str"
+            },
+            {
+              "name": "start_date",
+              "type": "str | None"
+            },
+            {
+              "name": "end_date",
+              "type": "str | None"
+            },
+            {
+              "name": "price_basis",
+              "type": "PriceBasis | None",
+              "default": "None"
+            },
+            {
+              "name": "share_percent",
+              "type": "str | None"
+            },
+            {
+              "name": "notes",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "ContractItemPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind_code",
+              "type": "str | None"
+            },
+            {
+              "name": "title",
+              "type": "str | None"
+            },
+            {
+              "name": "counterparty",
+              "type": "str | None"
+            },
+            {
+              "name": "package_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "status",
+              "type": "ContractItemStatus | None",
+              "default": "None"
+            },
+            {
+              "name": "reference",
+              "type": "str | None"
+            },
+            {
+              "name": "start_date",
+              "type": "str | None"
+            },
+            {
+              "name": "end_date",
+              "type": "str | None"
+            },
+            {
+              "name": "price_basis",
+              "type": "PriceBasis | None",
+              "default": "None"
+            },
+            {
+              "name": "share_percent",
+              "type": "str | None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
             }
           ]
         },
@@ -95009,6 +95237,940 @@
       ]
     },
     {
+      "module_id": "economics",
+      "module_label": "Economics",
+      "module_category": "business",
+      "files": [
+        "__init__.py",
+        "calc.py",
+        "classification.py",
+        "errors.py",
+        "events.py",
+        "evidence.py",
+        "hosting.py",
+        "manifest.py",
+        "messages/__init__.py",
+        "models.py",
+        "permissions.py",
+        "public.py",
+        "readings.py",
+        "repository.py",
+        "router.py",
+        "rules.py",
+        "schemas.py",
+        "seed.py",
+        "service.py",
+        "validators.py"
+      ],
+      "manifest": {
+        "name": "oe_economics",
+        "version": "0.1.0",
+        "display_name": "Economics",
+        "description": "Business case with investment, benefits and key figures, a cost frame by classification code of the project's own standard compared with the estimate and the commitments, and a financing plan with sources, tranches and a coverage check, approved together at the governance gate",
+        "author": "OpenConstructionERP Core Team",
+        "category": "business",
+        "depends": [
+          "oe_users",
+          "oe_projects",
+          "oe_project_governance",
+          "oe_boq",
+          "oe_costmodel",
+          "oe_funding"
+        ],
+        "auto_install": true,
+        "enabled": true
+      },
+      "models": [
+        {
+          "class_name": "EconomicsPlan",
+          "tablename": "oe_economics_plan",
+          "docstring": "The project's economics: status, currency, classification standard and the discounting basis.",
+          "columns": [
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "currency",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "classification_standard",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "discount_rate_pct",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "_rate",
+              "nullable": true
+            },
+            {
+              "name": "horizon_years",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "boq_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "markup_allowance",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "_money",
+              "nullable": false
+            },
+            {
+              "name": "current_approval_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "change_request_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "FlowLine",
+          "tablename": "oe_economics_flow_line",
+          "docstring": "One line of the business case.\n\n``mode`` ``total`` spreads ``amount`` over ``year_from..year_to``; ``per_year`` repeats it each\nyear with ``escalation_pct`` compounding. ``source`` ``cost_frame`` means the amount is the cost\nframe total, read when needed, and ``amount`` is ignored.",
+          "columns": [
+            {
+              "name": "kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "label",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "mode",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "source",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "amount",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "_money",
+              "nullable": false
+            },
+            {
+              "name": "year_from",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "year_to",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "escalation_pct",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "_rate",
+              "nullable": false
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "FrameLine",
+          "tablename": "oe_economics_frame_line",
+          "docstring": "A budget for one classification code of the project's standard.",
+          "columns": [
+            {
+              "name": "code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "amount",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "_money",
+              "nullable": false
+            },
+            {
+              "name": "basis",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "FundingSource",
+          "tablename": "oe_economics_funding_source",
+          "docstring": "A source of finance for the investment.",
+          "columns": [
+            {
+              "name": "kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "name",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "amount",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "_money",
+              "nullable": false
+            },
+            {
+              "name": "interest_rate_pct",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "_rate",
+              "nullable": true
+            },
+            {
+              "name": "funding_application_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "Tranche",
+          "tablename": "oe_economics_tranche",
+          "docstring": "A dated drawdown of one source.",
+          "columns": [
+            {
+              "name": "source_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_economics_funding_source.id"
+            },
+            {
+              "name": "due_on",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "amount",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "_money",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "condition",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "drawn_on",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "Approval",
+          "tablename": "oe_economics_approval",
+          "docstring": "A version of the economics put forward for approval, frozen with the figures it was judged on.",
+          "columns": [
+            {
+              "name": "number",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "rationale",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "snapshot",
+              "annotation": "Mapped[dict[str, Any]]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "snapshot_hash",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "proposed_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "proposed_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "approved_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "approved_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "approval_source",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "governance_ref_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "governance_document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "four_eyes",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "approval_blocked_reason",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        }
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "get_plan"
+        },
+        {
+          "method": "PUT",
+          "path": "/",
+          "handler": "start_plan"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "patch_plan",
+          "request_schema": "PlanPatch"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "get_business_case"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "add_flow_line",
+          "request_schema": "FlowLineIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "patch_flow_line",
+          "request_schema": "FlowLinePatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/",
+          "handler": "delete_flow_line"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "get_cost_frame"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "add_frame_line",
+          "request_schema": "FrameLineIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "patch_frame_line",
+          "request_schema": "FrameLinePatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/",
+          "handler": "delete_frame_line"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "generate_frame",
+          "request_schema": "FrameGenerateIn"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "get_financing"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "add_source",
+          "request_schema": "SourceIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "patch_source",
+          "request_schema": "SourcePatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/",
+          "handler": "delete_source"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "add_tranche",
+          "request_schema": "TrancheIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "patch_tranche",
+          "request_schema": "TranchePatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/",
+          "handler": "delete_tranche"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "propose",
+          "request_schema": "ProposeIn"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "withdraw"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "approve"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "reopen",
+          "request_schema": "ReopenIn"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "close_reopening"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "readiness"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "validation"
+        }
+      ],
+      "schemas": [
+        {
+          "class_name": "_In",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": []
+        },
+        {
+          "class_name": "PlanPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "discount_rate_pct",
+              "type": "Rate | None",
+              "default": "None"
+            },
+            {
+              "name": "horizon_years",
+              "type": "int | None"
+            },
+            {
+              "name": "markup_allowance",
+              "type": "Money | None",
+              "default": "None"
+            },
+            {
+              "name": "boq_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "currency",
+              "type": "str | None"
+            },
+            {
+              "name": "classification_standard",
+              "type": "str | None"
+            },
+            {
+              "name": "clear_boq",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "FlowLineIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind",
+              "type": "FlowKind"
+            },
+            {
+              "name": "label",
+              "type": "str"
+            },
+            {
+              "name": "mode",
+              "type": "FlowMode | None",
+              "default": "None"
+            },
+            {
+              "name": "source",
+              "type": "FlowSource",
+              "default": "'manual'"
+            },
+            {
+              "name": "amount",
+              "type": "Money"
+            },
+            {
+              "name": "year_from",
+              "type": "int"
+            },
+            {
+              "name": "year_to",
+              "type": "int | None"
+            },
+            {
+              "name": "escalation_pct",
+              "type": "Rate"
+            },
+            {
+              "name": "notes",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "FlowLinePatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "label",
+              "type": "str | None"
+            },
+            {
+              "name": "mode",
+              "type": "FlowMode | None",
+              "default": "None"
+            },
+            {
+              "name": "source",
+              "type": "FlowSource | None",
+              "default": "None"
+            },
+            {
+              "name": "amount",
+              "type": "Money | None",
+              "default": "None"
+            },
+            {
+              "name": "year_from",
+              "type": "int | None"
+            },
+            {
+              "name": "year_to",
+              "type": "int | None"
+            },
+            {
+              "name": "escalation_pct",
+              "type": "Rate | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "FrameLineIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "code",
+              "type": "str"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            },
+            {
+              "name": "amount",
+              "type": "Money"
+            },
+            {
+              "name": "basis",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "FrameLinePatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "title",
+              "type": "str | None"
+            },
+            {
+              "name": "amount",
+              "type": "Money | None",
+              "default": "None"
+            },
+            {
+              "name": "basis",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "FrameGenerateIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "Derive frame lines from the codes the bill uses, at ``depth`` significant digits or segments.",
+          "fields": [
+            {
+              "name": "depth",
+              "type": "int"
+            },
+            {
+              "name": "amounts",
+              "type": "Literal['zero', 'estimate']",
+              "default": "'estimate'"
+            },
+            {
+              "name": "replace",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "SourceIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind",
+              "type": "SourceKind"
+            },
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "amount",
+              "type": "Money"
+            },
+            {
+              "name": "interest_rate_pct",
+              "type": "Rate | None",
+              "default": "None"
+            },
+            {
+              "name": "funding_application_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "SourcePatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind",
+              "type": "SourceKind | None",
+              "default": "None"
+            },
+            {
+              "name": "name",
+              "type": "str | None"
+            },
+            {
+              "name": "amount",
+              "type": "Money | None",
+              "default": "None"
+            },
+            {
+              "name": "interest_rate_pct",
+              "type": "Rate | None",
+              "default": "None"
+            },
+            {
+              "name": "funding_application_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "clear_funding_application",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "TrancheIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "due_on",
+              "type": "str"
+            },
+            {
+              "name": "amount",
+              "type": "Money"
+            },
+            {
+              "name": "condition",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "TranchePatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "due_on",
+              "type": "str | None"
+            },
+            {
+              "name": "amount",
+              "type": "Money | None",
+              "default": "None"
+            },
+            {
+              "name": "status",
+              "type": "TrancheStatus | None",
+              "default": "None"
+            },
+            {
+              "name": "condition",
+              "type": "str | None"
+            },
+            {
+              "name": "drawn_on",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "ProposeIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "rationale",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "ReopenIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "reason",
+              "type": "str"
+            }
+          ]
+        }
+      ],
+      "import_dependencies": [
+        "boq",
+        "costmodel",
+        "funding",
+        "project_governance",
+        "projects"
+      ]
+    },
+    {
       "module_id": "einvoice",
       "module_label": "E-invoice",
       "module_category": "core",
@@ -96601,6 +97763,1074 @@
         "einvoice",
         "finance",
         "projects"
+      ]
+    },
+    {
+      "module_id": "engineering_brief",
+      "module_label": "Engineering brief",
+      "module_category": "core",
+      "files": [
+        "__init__.py",
+        "catalogue.py",
+        "errors.py",
+        "events.py",
+        "evidence.py",
+        "export.py",
+        "fsm.py",
+        "hosting.py",
+        "manifest.py",
+        "messages/__init__.py",
+        "models.py",
+        "permissions.py",
+        "repository.py",
+        "router.py",
+        "rules.py",
+        "schemas.py",
+        "seed.py",
+        "service.py",
+        "validators.py"
+      ],
+      "manifest": {
+        "name": "oe_engineering_brief",
+        "version": "0.1.0",
+        "display_name": "Engineering brief",
+        "description": "Project definition for engineering and scheduling: the requirements brief with structured requirements, the technical concept, the area and quantity programme and the framework schedule whose milestones are bound to the gates of the project's governance model",
+        "author": "OpenConstructionERP Core Team",
+        "category": "core",
+        "depends": [
+          "oe_users",
+          "oe_projects",
+          "oe_project_governance",
+          "oe_requirements",
+          "oe_schedule"
+        ],
+        "auto_install": true,
+        "enabled": true
+      },
+      "models": [
+        {
+          "class_name": "EngineeringBrief",
+          "tablename": "oe_engbrief_brief",
+          "docstring": "The project's brief: pinned catalogue, lifecycle, requirement set, schedule and the bound snapshot.",
+          "columns": [
+            {
+              "name": "catalogue_source",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "catalogue_id",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "catalogue_version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "summary",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "requirement_set_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true,
+              "is_fk": true,
+              "fk_target": "oe_requirements_set.id"
+            },
+            {
+              "name": "schedule_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true,
+              "is_fk": true,
+              "fk_target": "oe_schedule_schedule.id"
+            },
+            {
+              "name": "operation_proof_date",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "governance_document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true,
+              "is_fk": true,
+              "fk_target": "oe_governance_document.id"
+            },
+            {
+              "name": "submitted_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "submitted_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "approved_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "approved_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "approval_source",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "bound_revision_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "bound_snapshot",
+              "annotation": "Mapped[dict[str, Any]]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "bound_requirements_hash",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "ConceptItem",
+          "tablename": "oe_engbrief_concept",
+          "docstring": "One topic of the technical concept: supply, building structure, modularity, construction method.",
+          "columns": [
+            {
+              "name": "code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "topic_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "description",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "decision",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "requirement_ids",
+              "annotation": "Mapped[list[str]]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "ProgrammeLine",
+          "tablename": "oe_engbrief_programme",
+          "docstring": "One line of the area and quantity programme: the basis for the cost frame and the packages.",
+          "columns": [
+            {
+              "name": "code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "kind_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "label",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "unit",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "quantity",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "basis",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "FrameMilestone",
+          "tablename": "oe_engbrief_milestone",
+          "docstring": "A milestone of the framework schedule.\n\nPlanned backwards from the operating proof: ``successor_id`` names the milestone this one must\nprecede and ``lead_days`` how many calendar days before it. A milestone with a ``gate_code`` is the\nschedule's side of that governance gate.",
+          "columns": [
+            {
+              "name": "code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "kind_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "name",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "planned_date",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "lead_days",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "successor_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true,
+              "is_fk": true,
+              "fk_target": "oe_engbrief_milestone.id"
+            },
+            {
+              "name": "gate_code",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "permit_requirement_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "activity_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        }
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/catalogues",
+          "handler": "list_catalogues",
+          "response_model": "Page[dict[str, Any]]"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/catalogue",
+          "handler": "pinned_catalogue"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/brief",
+          "handler": "get_brief"
+        },
+        {
+          "method": "PUT",
+          "path": "/projects/{project_id}/brief",
+          "handler": "set_brief",
+          "request_schema": "BriefSet"
+        },
+        {
+          "method": "PATCH",
+          "path": "/projects/{project_id}/brief",
+          "handler": "patch_brief",
+          "request_schema": "BriefPatch"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/brief/submit",
+          "handler": "submit_brief"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/brief/approve",
+          "handler": "approve_brief"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/brief/return",
+          "handler": "return_brief"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/brief/findings",
+          "handler": "brief_findings"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/requirements",
+          "handler": "list_requirements"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/requirements",
+          "handler": "create_requirement",
+          "request_schema": "RequirementIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/projects/{project_id}/requirements/{requirement_id}",
+          "handler": "update_requirement",
+          "request_schema": "RequirementPatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/projects/{project_id}/requirements/{requirement_id}",
+          "handler": "delete_requirement"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/concept",
+          "handler": "list_concepts"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/concept",
+          "handler": "create_concept",
+          "request_schema": "ConceptIn"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/concept/from-catalogue",
+          "handler": "concepts_from_catalogue"
+        },
+        {
+          "method": "PATCH",
+          "path": "/projects/{project_id}/concept/{concept_id}",
+          "handler": "update_concept",
+          "request_schema": "ConceptPatch"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/concept/{concept_id}/status",
+          "handler": "set_concept_status",
+          "request_schema": "ConceptStatusIn"
+        },
+        {
+          "method": "DELETE",
+          "path": "/projects/{project_id}/concept/{concept_id}",
+          "handler": "delete_concept"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/programme",
+          "handler": "list_programme"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/programme",
+          "handler": "create_programme",
+          "request_schema": "ProgrammeIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/projects/{project_id}/programme/{line_id}",
+          "handler": "update_programme",
+          "request_schema": "ProgrammePatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/projects/{project_id}/programme/{line_id}",
+          "handler": "delete_programme"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/milestones",
+          "handler": "list_milestones"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/milestones",
+          "handler": "create_milestone",
+          "request_schema": "MilestoneIn"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/milestones/from-catalogue",
+          "handler": "milestones_from_catalogue",
+          "request_schema": "MilestonesFromCatalogue"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/milestones/from-gates",
+          "handler": "milestones_from_gates"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/milestones/backplan",
+          "handler": "backplan",
+          "request_schema": "BackplanIn"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/milestones/publish",
+          "handler": "publish_schedule"
+        },
+        {
+          "method": "PATCH",
+          "path": "/projects/{project_id}/milestones/{milestone_id}",
+          "handler": "update_milestone",
+          "request_schema": "MilestonePatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/projects/{project_id}/milestones/{milestone_id}",
+          "handler": "delete_milestone"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/gates",
+          "handler": "list_gates",
+          "response_model": "Page[dict[str, Any]]"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/readiness",
+          "handler": "readiness"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/validation",
+          "handler": "validation",
+          "response_model": "Page[FindingOut]"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/export",
+          "handler": "export",
+          "request_schema": "Literal['requirements', 'concept', 'programme', 'schedule']"
+        }
+      ],
+      "schemas": [
+        {
+          "class_name": "_In",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": []
+        },
+        {
+          "class_name": "Page",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[T]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "0"
+            }
+          ]
+        },
+        {
+          "class_name": "FindingOut",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "rule_id",
+              "type": "str"
+            },
+            {
+              "name": "passed",
+              "type": "bool"
+            },
+            {
+              "name": "severity",
+              "type": "str"
+            },
+            {
+              "name": "message",
+              "type": "str"
+            },
+            {
+              "name": "element_ref",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "suggestion",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "BriefSet",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "catalogue_source",
+              "type": "CatalogueSource",
+              "default": "'shipped'"
+            },
+            {
+              "name": "catalogue_id",
+              "type": "str | None"
+            },
+            {
+              "name": "catalogue_version",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            },
+            {
+              "name": "summary",
+              "type": "str"
+            },
+            {
+              "name": "operation_proof_date",
+              "type": "date | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "BriefPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "title",
+              "type": "str | None"
+            },
+            {
+              "name": "summary",
+              "type": "str | None"
+            },
+            {
+              "name": "operation_proof_date",
+              "type": "date | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "RequirementIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "entity",
+              "type": "str"
+            },
+            {
+              "name": "attribute",
+              "type": "str"
+            },
+            {
+              "name": "constraint_type",
+              "type": "ConstraintType",
+              "default": "'equals'"
+            },
+            {
+              "name": "constraint_value",
+              "type": "str"
+            },
+            {
+              "name": "unit",
+              "type": "str"
+            },
+            {
+              "name": "category",
+              "type": "str"
+            },
+            {
+              "name": "priority",
+              "type": "Priority",
+              "default": "'must'"
+            },
+            {
+              "name": "verification_method",
+              "type": "Literal[*VERIFICATION_METHODS, '']",
+              "default": "''"
+            },
+            {
+              "name": "originator",
+              "type": "str"
+            },
+            {
+              "name": "originator_role",
+              "type": "Literal[*ORIGINATOR_ROLES, '']",
+              "default": "''"
+            },
+            {
+              "name": "source_ref",
+              "type": "str"
+            },
+            {
+              "name": "rationale",
+              "type": "str"
+            },
+            {
+              "name": "phase",
+              "type": "Literal[*PHASE_SPINE, '']",
+              "default": "''"
+            }
+          ]
+        },
+        {
+          "class_name": "RequirementPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "entity",
+              "type": "str | None"
+            },
+            {
+              "name": "attribute",
+              "type": "str | None"
+            },
+            {
+              "name": "constraint_type",
+              "type": "ConstraintType | None",
+              "default": "None"
+            },
+            {
+              "name": "constraint_value",
+              "type": "str | None"
+            },
+            {
+              "name": "unit",
+              "type": "str | None"
+            },
+            {
+              "name": "category",
+              "type": "str | None"
+            },
+            {
+              "name": "priority",
+              "type": "Priority | None",
+              "default": "None"
+            },
+            {
+              "name": "verification_method",
+              "type": "Literal[*VERIFICATION_METHODS, ''] | None",
+              "default": "None"
+            },
+            {
+              "name": "originator",
+              "type": "str | None"
+            },
+            {
+              "name": "originator_role",
+              "type": "Literal[*ORIGINATOR_ROLES, ''] | None",
+              "default": "None"
+            },
+            {
+              "name": "source_ref",
+              "type": "str | None"
+            },
+            {
+              "name": "rationale",
+              "type": "str | None"
+            },
+            {
+              "name": "phase",
+              "type": "Literal[*PHASE_SPINE, ''] | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "ConceptIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "topic_code",
+              "type": "str"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            },
+            {
+              "name": "description",
+              "type": "str"
+            },
+            {
+              "name": "decision",
+              "type": "str"
+            },
+            {
+              "name": "requirement_ids",
+              "type": "list[uuid.UUID]"
+            }
+          ]
+        },
+        {
+          "class_name": "ConceptPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "topic_code",
+              "type": "str | None"
+            },
+            {
+              "name": "title",
+              "type": "str | None"
+            },
+            {
+              "name": "description",
+              "type": "str | None"
+            },
+            {
+              "name": "decision",
+              "type": "str | None"
+            },
+            {
+              "name": "requirement_ids",
+              "type": "list[uuid.UUID] | None"
+            }
+          ]
+        },
+        {
+          "class_name": "ConceptStatusIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "status",
+              "type": "ConceptStatus"
+            }
+          ]
+        },
+        {
+          "class_name": "ProgrammeIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind_code",
+              "type": "str"
+            },
+            {
+              "name": "label",
+              "type": "str"
+            },
+            {
+              "name": "unit",
+              "type": "str"
+            },
+            {
+              "name": "quantity",
+              "type": "str"
+            },
+            {
+              "name": "basis",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "ProgrammePatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind_code",
+              "type": "str | None"
+            },
+            {
+              "name": "label",
+              "type": "str | None"
+            },
+            {
+              "name": "unit",
+              "type": "str | None"
+            },
+            {
+              "name": "quantity",
+              "type": "str | None"
+            },
+            {
+              "name": "basis",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "MilestoneIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind_code",
+              "type": "str"
+            },
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "planned_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "lead_days",
+              "type": "int"
+            },
+            {
+              "name": "successor_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "gate_code",
+              "type": "str | None"
+            },
+            {
+              "name": "permit_requirement_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "MilestonePatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind_code",
+              "type": "str | None"
+            },
+            {
+              "name": "name",
+              "type": "str | None"
+            },
+            {
+              "name": "planned_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "lead_days",
+              "type": "int | None"
+            },
+            {
+              "name": "successor_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "gate_code",
+              "type": "str | None"
+            },
+            {
+              "name": "permit_requirement_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "BackplanIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "apply",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "MilestonesFromCatalogue",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "codes",
+              "type": "list[str] | None"
+            }
+          ]
+        }
+      ],
+      "import_dependencies": [
+        "permits",
+        "project_governance",
+        "projects",
+        "requirements",
+        "schedule"
       ]
     },
     {
@@ -129585,6 +131815,1398 @@
       "import_dependencies": [
         "projects",
         "safety"
+      ]
+    },
+    {
+      "module_id": "hse_frame",
+      "module_label": "HSE frame",
+      "module_category": "core",
+      "files": [
+        "__init__.py",
+        "catalogue.py",
+        "errors.py",
+        "evidence.py",
+        "hosting.py",
+        "links.py",
+        "manifest.py",
+        "messages/__init__.py",
+        "models.py",
+        "permissions.py",
+        "repository.py",
+        "router.py",
+        "rules.py",
+        "schemas.py",
+        "seed.py",
+        "service.py",
+        "validators.py",
+        "vocab.py"
+      ],
+      "manifest": {
+        "name": "oe_hse_frame",
+        "version": "0.1.0",
+        "display_name": "HSE frame",
+        "description": "The health, safety and environment frame of a project: requirements on designers and contractors, environmental review, site clearances, permit conditions merged from the permits module, energy, climate and sustainability targets, safety coordination with appointed roles, the health and safety plan and the security concept. National duties are catalogue data; incidents, permits to work, audits and inspections stay in their own modules and are linked.",
+        "author": "OpenConstructionERP Core Team",
+        "category": "core",
+        "depends": [
+          "oe_users",
+          "oe_projects",
+          "oe_project_governance"
+        ],
+        "auto_install": true,
+        "enabled": true
+      },
+      "models": [
+        {
+          "class_name": "HseFrame",
+          "tablename": "oe_hsef_frame",
+          "docstring": "The HSE frame of one project. ``version`` is the optimistic lock column.",
+          "columns": [
+            {
+              "name": "catalogue_source",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "catalogue_id",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "catalogue_version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "state",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "governance_doc_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "planned_start",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "duration_working_days",
+              "annotation": "Mapped[int | None]",
+              "sql_type": "Integer",
+              "nullable": true
+            },
+            {
+              "name": "peak_workers",
+              "annotation": "Mapped[int | None]",
+              "sql_type": "Integer",
+              "nullable": true
+            },
+            {
+              "name": "person_days",
+              "annotation": "Mapped[int | None]",
+              "sql_type": "Integer",
+              "nullable": true
+            },
+            {
+              "name": "employers_count",
+              "annotation": "Mapped[int | None]",
+              "sql_type": "Integer",
+              "nullable": true
+            },
+            {
+              "name": "hazardous_work_codes",
+              "annotation": "Mapped[list[str]]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "hazardous_works_assessed",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "advance_notice_sent_on",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "advance_notice_reference",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "plan_status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "plan_issued_on",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "plan_document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "later_works_status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "submitted_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "submitted_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "approved_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "approved_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "HseItem",
+          "tablename": "oe_hsef_item",
+          "docstring": "One entry of the register.",
+          "columns": [
+            {
+              "name": "frame_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_hsef_frame.id"
+            },
+            {
+              "name": "topic",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "template_code",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "description",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "audience",
+              "annotation": "Mapped[list[str]]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "obligation",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "legal_basis",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "responsible_user_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "responsible_party",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "due_date",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "met_on",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "target_text",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "evidence_note",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "waive_reason",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "waived_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "in_tender_documents",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "source",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "HseRole",
+          "tablename": "oe_hsef_role",
+          "docstring": "A responsibility carried by a person or a firm (safety coordinator, safety officer, ...).",
+          "columns": [
+            {
+              "name": "frame_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_hsef_frame.id"
+            },
+            {
+              "name": "role_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "person_user_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "contact_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "person_name",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "organisation",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "appointed_on",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "ends_on",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "qualification",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "qualification_valid_until",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "appointment_document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "note",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "HseLink",
+          "tablename": "oe_hsef_link",
+          "docstring": "A typed pointer from an item to a record another module owns.",
+          "columns": [
+            {
+              "name": "item_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_hsef_item.id"
+            },
+            {
+              "name": "link_kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "link_id",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "note",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            }
+          ],
+          "relationships": []
+        }
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "get_frame"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "create_frame"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "patch_frame",
+          "request_schema": "s.FramePatch"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "get_catalogue"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "list_catalogues"
+        },
+        {
+          "method": "PUT",
+          "path": "/",
+          "handler": "pin_catalogue",
+          "request_schema": "s.PinCatalogue"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "apply_templates"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "consolidate_permit_conditions"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "submit_frame",
+          "request_schema": "date | None"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "approve_frame"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "reopen_frame"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "list_items",
+          "request_schema": "date | None"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "create_item",
+          "request_schema": "s.ItemCreate"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "get_item"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "patch_item",
+          "request_schema": "s.ItemPatch"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "meet_item",
+          "request_schema": "s.ItemMeet"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "waive_item",
+          "request_schema": "s.ItemWaive"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "reopen_item"
+        },
+        {
+          "method": "DELETE",
+          "path": "/",
+          "handler": "delete_item"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "add_link",
+          "request_schema": "s.LinkCreate"
+        },
+        {
+          "method": "DELETE",
+          "path": "/",
+          "handler": "remove_link"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "link_candidates"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "list_roles",
+          "request_schema": "date | None"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "create_role",
+          "request_schema": "s.RoleCreate"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "patch_role",
+          "request_schema": "s.RolePatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/",
+          "handler": "delete_role"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "readiness",
+          "request_schema": "date | None"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "summary",
+          "request_schema": "date | None"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "validation",
+          "request_schema": "date | None"
+        }
+      ],
+      "schemas": [
+        {
+          "class_name": "_In",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": []
+        },
+        {
+          "class_name": "_Out",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": []
+        },
+        {
+          "class_name": "FramePatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "The facts that decide which duties apply, and the plan state. ``None`` leaves a field alone.",
+          "fields": [
+            {
+              "name": "planned_start",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "duration_working_days",
+              "type": "int | None"
+            },
+            {
+              "name": "peak_workers",
+              "type": "int | None"
+            },
+            {
+              "name": "person_days",
+              "type": "int | None"
+            },
+            {
+              "name": "employers_count",
+              "type": "int | None"
+            },
+            {
+              "name": "hazardous_work_codes",
+              "type": "list[str] | None",
+              "default": "None"
+            },
+            {
+              "name": "hazardous_works_assessed",
+              "type": "bool | None",
+              "default": "None"
+            },
+            {
+              "name": "advance_notice_sent_on",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "advance_notice_reference",
+              "type": "str | None"
+            },
+            {
+              "name": "plan_status",
+              "type": "PlanStatus | None",
+              "default": "None"
+            },
+            {
+              "name": "plan_issued_on",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "plan_document_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "later_works_status",
+              "type": "LaterWorksStatus | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "FrameOut",
+          "bases": [
+            "_Out"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "id",
+              "type": "uuid.UUID"
+            },
+            {
+              "name": "project_id",
+              "type": "uuid.UUID"
+            },
+            {
+              "name": "catalogue_source",
+              "type": "str"
+            },
+            {
+              "name": "catalogue_id",
+              "type": "str"
+            },
+            {
+              "name": "catalogue_version",
+              "type": "int"
+            },
+            {
+              "name": "state",
+              "type": "str"
+            },
+            {
+              "name": "governance_doc_id",
+              "type": "uuid.UUID | None"
+            },
+            {
+              "name": "planned_start",
+              "type": "date | None"
+            },
+            {
+              "name": "duration_working_days",
+              "type": "int | None"
+            },
+            {
+              "name": "peak_workers",
+              "type": "int | None"
+            },
+            {
+              "name": "person_days",
+              "type": "int | None"
+            },
+            {
+              "name": "employers_count",
+              "type": "int | None"
+            },
+            {
+              "name": "hazardous_work_codes",
+              "type": "list[str]"
+            },
+            {
+              "name": "hazardous_works_assessed",
+              "type": "bool"
+            },
+            {
+              "name": "advance_notice_sent_on",
+              "type": "date | None"
+            },
+            {
+              "name": "advance_notice_reference",
+              "type": "str"
+            },
+            {
+              "name": "plan_status",
+              "type": "str"
+            },
+            {
+              "name": "plan_issued_on",
+              "type": "date | None"
+            },
+            {
+              "name": "plan_document_id",
+              "type": "uuid.UUID | None"
+            },
+            {
+              "name": "later_works_status",
+              "type": "str"
+            },
+            {
+              "name": "notes",
+              "type": "str"
+            },
+            {
+              "name": "submitted_by",
+              "type": "uuid.UUID | None"
+            },
+            {
+              "name": "submitted_at",
+              "type": "datetime | None"
+            },
+            {
+              "name": "approved_by",
+              "type": "uuid.UUID | None"
+            },
+            {
+              "name": "approved_at",
+              "type": "datetime | None"
+            },
+            {
+              "name": "version",
+              "type": "int"
+            }
+          ]
+        },
+        {
+          "class_name": "PinCatalogue",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "source",
+              "type": "Literal['shipped', 'pack', 'tenant']"
+            },
+            {
+              "name": "catalogue_id",
+              "type": "str"
+            },
+            {
+              "name": "version",
+              "type": "int | None"
+            }
+          ]
+        },
+        {
+          "class_name": "ItemCreate",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "topic",
+              "type": "str"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            },
+            {
+              "name": "description",
+              "type": "str"
+            },
+            {
+              "name": "audience",
+              "type": "list[Audience]"
+            },
+            {
+              "name": "obligation",
+              "type": "Obligation",
+              "default": "'mandatory'"
+            },
+            {
+              "name": "legal_basis",
+              "type": "str"
+            },
+            {
+              "name": "responsible_user_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "responsible_party",
+              "type": "str"
+            },
+            {
+              "name": "due_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "target_text",
+              "type": "str"
+            },
+            {
+              "name": "in_tender_documents",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "ItemPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "title",
+              "type": "str | None"
+            },
+            {
+              "name": "description",
+              "type": "str | None"
+            },
+            {
+              "name": "audience",
+              "type": "list[Audience] | None",
+              "default": "None"
+            },
+            {
+              "name": "obligation",
+              "type": "Obligation | None",
+              "default": "None"
+            },
+            {
+              "name": "legal_basis",
+              "type": "str | None"
+            },
+            {
+              "name": "responsible_user_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "responsible_party",
+              "type": "str | None"
+            },
+            {
+              "name": "due_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "target_text",
+              "type": "str | None"
+            },
+            {
+              "name": "evidence_note",
+              "type": "str | None"
+            },
+            {
+              "name": "in_tender_documents",
+              "type": "bool | None",
+              "default": "None"
+            },
+            {
+              "name": "status",
+              "type": "Literal['open', 'in_progress'] | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "ItemMeet",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "met_on",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "evidence_note",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "ItemWaive",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "reason",
+              "type": "str"
+            },
+            {
+              "name": "not_applicable",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "ItemOut",
+          "bases": [
+            "_Out"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "id",
+              "type": "uuid.UUID"
+            },
+            {
+              "name": "project_id",
+              "type": "uuid.UUID"
+            },
+            {
+              "name": "frame_id",
+              "type": "uuid.UUID"
+            },
+            {
+              "name": "topic",
+              "type": "str"
+            },
+            {
+              "name": "template_code",
+              "type": "str | None"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            },
+            {
+              "name": "description",
+              "type": "str"
+            },
+            {
+              "name": "audience",
+              "type": "list[str]"
+            },
+            {
+              "name": "obligation",
+              "type": "str"
+            },
+            {
+              "name": "legal_basis",
+              "type": "str"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "responsible_user_id",
+              "type": "uuid.UUID | None"
+            },
+            {
+              "name": "responsible_party",
+              "type": "str"
+            },
+            {
+              "name": "due_date",
+              "type": "date | None"
+            },
+            {
+              "name": "met_on",
+              "type": "date | None"
+            },
+            {
+              "name": "target_text",
+              "type": "str"
+            },
+            {
+              "name": "evidence_note",
+              "type": "str"
+            },
+            {
+              "name": "waive_reason",
+              "type": "str"
+            },
+            {
+              "name": "waived_by",
+              "type": "uuid.UUID | None"
+            },
+            {
+              "name": "in_tender_documents",
+              "type": "bool"
+            },
+            {
+              "name": "source",
+              "type": "str"
+            },
+            {
+              "name": "version",
+              "type": "int"
+            },
+            {
+              "name": "overdue",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "links",
+              "type": "list[LinkOut]"
+            }
+          ]
+        },
+        {
+          "class_name": "RoleCreate",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "role_code",
+              "type": "str"
+            },
+            {
+              "name": "person_user_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "contact_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "person_name",
+              "type": "str"
+            },
+            {
+              "name": "organisation",
+              "type": "str"
+            },
+            {
+              "name": "status",
+              "type": "RoleStatus",
+              "default": "'proposed'"
+            },
+            {
+              "name": "appointed_on",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "ends_on",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "qualification",
+              "type": "str"
+            },
+            {
+              "name": "qualification_valid_until",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "appointment_document_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "note",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "RolePatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "person_user_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "contact_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "person_name",
+              "type": "str | None"
+            },
+            {
+              "name": "organisation",
+              "type": "str | None"
+            },
+            {
+              "name": "status",
+              "type": "RoleStatus | None",
+              "default": "None"
+            },
+            {
+              "name": "appointed_on",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "ends_on",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "qualification",
+              "type": "str | None"
+            },
+            {
+              "name": "qualification_valid_until",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "appointment_document_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "note",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "RoleOut",
+          "bases": [
+            "_Out"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "id",
+              "type": "uuid.UUID"
+            },
+            {
+              "name": "project_id",
+              "type": "uuid.UUID"
+            },
+            {
+              "name": "frame_id",
+              "type": "uuid.UUID"
+            },
+            {
+              "name": "role_code",
+              "type": "str"
+            },
+            {
+              "name": "person_user_id",
+              "type": "uuid.UUID | None"
+            },
+            {
+              "name": "contact_id",
+              "type": "uuid.UUID | None"
+            },
+            {
+              "name": "person_name",
+              "type": "str"
+            },
+            {
+              "name": "organisation",
+              "type": "str"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "appointed_on",
+              "type": "date | None"
+            },
+            {
+              "name": "ends_on",
+              "type": "date | None"
+            },
+            {
+              "name": "qualification",
+              "type": "str"
+            },
+            {
+              "name": "qualification_valid_until",
+              "type": "date | None"
+            },
+            {
+              "name": "appointment_document_id",
+              "type": "uuid.UUID | None"
+            },
+            {
+              "name": "note",
+              "type": "str"
+            },
+            {
+              "name": "in_force",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "LinkCreate",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "link_kind",
+              "type": "str"
+            },
+            {
+              "name": "link_id",
+              "type": "str"
+            },
+            {
+              "name": "note",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "LinkOut",
+          "bases": [
+            "_Out"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "id",
+              "type": "uuid.UUID"
+            },
+            {
+              "name": "item_id",
+              "type": "uuid.UUID"
+            },
+            {
+              "name": "link_kind",
+              "type": "str"
+            },
+            {
+              "name": "link_id",
+              "type": "str"
+            },
+            {
+              "name": "note",
+              "type": "str"
+            },
+            {
+              "name": "fact",
+              "type": "dict[str, Any] | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "ReviewDecision",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "note",
+              "type": "str"
+            }
+          ]
+        }
+      ],
+      "import_dependencies": [
+        "permits",
+        "project_governance",
+        "projects",
+        "teams",
+        "users"
       ]
     },
     {
@@ -162830,6 +166452,7 @@
         "messages/__init__.py",
         "models.py",
         "permissions.py",
+        "permit_conditions.py",
         "plan_source.py",
         "router.py",
         "schemas.py",
@@ -163596,6 +167219,11 @@
           "path": "/projects/{project_id}/packages",
           "handler": "list_packages",
           "request_schema": "date | None"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/permit-conditions",
+          "handler": "list_permit_conditions"
         },
         {
           "method": "GET",
@@ -164649,6 +168277,7 @@
       "import_dependencies": [
         "bid_management",
         "boq",
+        "permits",
         "procurement",
         "project_governance",
         "projects",
@@ -190406,6 +194035,7 @@
         "messages/__init__.py",
         "models.py",
         "permissions.py",
+        "permit_conditions.py",
         "references.py",
         "repository.py",
         "router.py",
@@ -191532,6 +195162,11 @@
           "method": "GET",
           "path": "/",
           "handler": "list_requirements"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "list_permit_conditions"
         },
         {
           "method": "POST",
@@ -193051,6 +196686,7 @@
         "defects_liability",
         "inspections",
         "ncr",
+        "permits",
         "project_governance",
         "projects",
         "qms",
@@ -204638,6 +208274,7 @@
         "contingency.py",
         "escalation.py",
         "events.py",
+        "evidence.py",
         "intl.py",
         "manifest.py",
         "models.py",
@@ -205856,6 +209493,7 @@
       "import_dependencies": [
         "commitment_release",
         "finance",
+        "project_governance",
         "projects"
       ]
     },
@@ -251827,6 +255465,7 @@
         "repository.py",
         "router.py",
         "schemas.py",
+        "seed.py",
         "service.py"
       ],
       "manifest": {
@@ -252545,7 +256184,10 @@
           ]
         }
       ],
-      "import_dependencies": []
+      "import_dependencies": [
+        "project_governance",
+        "projects"
+      ]
     },
     {
       "module_id": "uk_pack",
@@ -261693,10 +265335,10 @@
     },
     {
       "name": "delivery_model",
-      "ts_files": 24,
+      "ts_files": 25,
       "css_files": 0,
       "test_files": 3,
-      "total_files": 24
+      "total_files": 25
     },
     {
       "name": "design-options",
@@ -261734,11 +265376,25 @@
       "total_files": 39
     },
     {
+      "name": "economics",
+      "ts_files": 10,
+      "css_files": 0,
+      "test_files": 1,
+      "total_files": 10
+    },
+    {
       "name": "einvoice-clearance",
       "ts_files": 8,
       "css_files": 0,
       "test_files": 1,
       "total_files": 8
+    },
+    {
+      "name": "engineering_brief",
+      "ts_files": 15,
+      "css_files": 0,
+      "test_files": 2,
+      "total_files": 15
     },
     {
       "name": "enterprise-workflows",
@@ -261963,6 +265619,13 @@
       "css_files": 0,
       "test_files": 1,
       "total_files": 6
+    },
+    {
+      "name": "hse_frame",
+      "ts_files": 9,
+      "css_files": 0,
+      "test_files": 1,
+      "total_files": 9
     },
     {
       "name": "inbound",
@@ -262246,10 +265909,10 @@
     },
     {
       "name": "procurement_concept",
-      "ts_files": 23,
+      "ts_files": 24,
       "css_files": 0,
       "test_files": 3,
-      "total_files": 23
+      "total_files": 24
     },
     {
       "name": "progress",
@@ -262316,10 +265979,10 @@
     },
     {
       "name": "quality_concept",
-      "ts_files": 26,
+      "ts_files": 27,
       "css_files": 0,
       "test_files": 3,
-      "total_files": 26
+      "total_files": 27
     },
     {
       "name": "quantities",
@@ -263257,11 +266920,27 @@
       "projects",
       "users"
     ],
+    "economics": [
+      "boq",
+      "costmodel",
+      "funding",
+      "project_governance",
+      "projects",
+      "users"
+    ],
     "einvoice": [],
     "einvoice_clearance": [
       "einvoice",
       "finance",
       "projects"
+    ],
+    "engineering_brief": [
+      "permits",
+      "project_governance",
+      "projects",
+      "requirements",
+      "schedule",
+      "users"
     ],
     "enterprise_workflows": [
       "projects",
@@ -263448,6 +267127,13 @@
     "hse_advanced": [
       "projects",
       "safety",
+      "users"
+    ],
+    "hse_frame": [
+      "permits",
+      "project_governance",
+      "projects",
+      "teams",
       "users"
     ],
     "i18n_foundation": [
@@ -263729,6 +267415,7 @@
     "procurement_concept": [
       "bid_management",
       "boq",
+      "permits",
       "procurement",
       "project_governance",
       "projects",
@@ -263840,6 +267527,7 @@
       "defects_liability",
       "inspections",
       "ncr",
+      "permits",
       "project_governance",
       "projects",
       "qms",
@@ -263937,6 +267625,7 @@
     "risk": [
       "commitment_release",
       "finance",
+      "project_governance",
       "projects"
     ],
     "rom_estimate": [
@@ -264130,6 +267819,7 @@
     ],
     "transmittals": [
       "contacts",
+      "project_governance",
       "projects",
       "users"
     ],
@@ -264183,17 +267873,17 @@
     ]
   },
   "statistics": {
-    "backend_modules": 207,
-    "modules_with_manifests": 205,
-    "total_models": 742,
-    "total_columns": 8655,
+    "backend_modules": 210,
+    "modules_with_manifests": 208,
+    "total_models": 757,
+    "total_columns": 8832,
     "total_relationships": 236,
-    "total_routes": 4398,
-    "total_schemas": 3899,
-    "total_python_files": 2595,
-    "frontend_features": 204,
-    "frontend_ts_files": 3382,
-    "frontend_backend_mapped": 183
+    "total_routes": 4494,
+    "total_schemas": 3946,
+    "total_python_files": 2656,
+    "frontend_features": 207,
+    "frontend_ts_files": 3419,
+    "frontend_backend_mapped": 186
   },
   "frontend_backend_mapping": {
     "about": null,
@@ -264262,7 +267952,9 @@
     "documents": "documents",
     "dwg-takeoff": "dwg_takeoff",
     "eac": "eac",
+    "economics": "economics",
     "einvoice-clearance": "einvoice_clearance",
+    "engineering_brief": "engineering_brief",
     "enterprise-workflows": "enterprise_workflows",
     "equipment": "equipment",
     "erp-chat": "erp_chat",
@@ -264295,6 +267987,7 @@
     "governance": "project_governance",
     "help": null,
     "hse-advanced": "hse_advanced",
+    "hse_frame": "hse_frame",
     "inbound": "inbound_capture",
     "inbound-email": "inbound_email",
     "inbox": null,

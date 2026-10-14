@@ -1,0 +1,356 @@
+{
+  "$note": "Site logistics story of the Ludwigsburg school. The site lies beside a running school: pupils' path and site fence are separate, vehicle movements keep clear of school start, breaks and end, one crane serves the structure. All names are invented.",
+  "gates": [
+    {
+      "name": {
+        "en": "Gate 1 - delivery road west",
+        "de": "Tor 1 - Anlieferstraße West"
+      },
+      "open": "08:00",
+      "close": "15:00",
+      "capacity": 2,
+      "note": {
+        "en": "Only construction gate for heavy vehicles. Banksman on duty. Pupils use the fenced path on the east side, never this road.",
+        "de": "Einziges Baustellentor für Schwerfahrzeuge. Einweiser im Dienst. Die Schüler nutzen den eingezäunten Weg auf der Ostseite, niemals diese Straße."
+      }
+    },
+    {
+      "name": {
+        "en": "Gate 2 - sports hall side",
+        "de": "Tor 2 - Seite Sporthalle"
+      },
+      "open": "08:00",
+      "close": "15:00",
+      "capacity": 1,
+      "note": {
+        "en": "Rigid vehicles only, used for the sports hall and kitchen wing. Closed whenever pupils are in the yard next to it.",
+        "de": "Nur Starrfahrzeuge, genutzt für Sporthalle und Küchentrakt. Geschlossen, solange Schüler im angrenzenden Hof sind."
+      }
+    }
+  ],
+  "vehicles": [
+    {
+      "en": "Articulated flatbed",
+      "de": "Sattelzug mit Pritsche"
+    },
+    {
+      "en": "Rigid 18t",
+      "de": "Lastwagen 18 t"
+    }
+  ],
+  "zones": [
+    {
+      "name": {
+        "en": "Laydown A - west field",
+        "de": "Lagerfläche A - Westwiese"
+      },
+      "capacity": {
+        "en": "520 m2 / 70 t",
+        "de": "520 m2 / 70 t"
+      },
+      "note": {
+        "en": "Reinforcement and formwork. Behind the hoarding, inside the tower crane radius, out of sight of the yard.",
+        "de": "Bewehrung und Schalung. Hinter dem Bauzaun, im Radius des Turmdrehkrans, außer Sichtweite des Schulhofs."
+      }
+    },
+    {
+      "name": {
+        "en": "Laydown B - timber facade store",
+        "de": "Lagerfläche B - Lager Holzfassade"
+      },
+      "capacity": {
+        "en": "260 m2",
+        "de": "260 m2"
+      },
+      "note": {
+        "en": "Covered storage for prefabricated timber facade elements. Dry, no stacking above 3 m.",
+        "de": "Überdachtes Lager für vorgefertigte Holzfassadenelemente. Trocken, keine Stapelung über 3 m."
+      }
+    }
+  ],
+  "area_names": {
+    "SITE": {
+      "en": "Building site with hoarding",
+      "de": "Baustelle mit Bauzaun"
+    },
+    "A-BLD": {
+      "en": "School, sports hall and Mensa footprint",
+      "de": "Grundfläche von Schule, Sporthalle und Mensa"
+    },
+    "A-LAY": {
+      "en": "Laydown A west field",
+      "de": "Lagerfläche A Westwiese"
+    },
+    "A-LAY2": {
+      "en": "Timber facade store",
+      "de": "Lager Holzfassade"
+    },
+    "A-SET": {
+      "en": "Site offices and welfare",
+      "de": "Baustelleneinrichtung und Sozialräume"
+    },
+    "A-TRF": {
+      "en": "Construction road and turning area",
+      "de": "Baustraße und Wendefläche"
+    },
+    "A-RES": {
+      "en": "Reserve and pupils' path buffer",
+      "de": "Reservefläche und Pufferstreifen zum Schulweg"
+    }
+  },
+  "stage_1_title": {
+    "en": "Excavation and tree protection",
+    "de": "Aushub und Baumschutz"
+  },
+  "stage_2_title": {
+    "en": "Concrete frame and timber facade",
+    "de": "Betonskelett und Holzfassade"
+  },
+  "power_connection_point": {
+    "en": "Transformer kiosk at the west gate, outside the pupils' area",
+    "de": "Trafostation am Westtor, außerhalb des Schülerbereichs"
+  },
+  "water_connection_point": {
+    "en": "Hydrant in the delivery road",
+    "de": "Hydrant in der Anlieferstraße"
+  },
+  "water_consumer": {
+    "en": "Concrete curing, dust suppression and wheel wash",
+    "de": "Betonnachbehandlung, Staubbindung und Reifenwäsche"
+  },
+  "sewage_connection_point": {
+    "en": "Manhole in the delivery road",
+    "de": "Schacht in der Anlieferstraße"
+  },
+  "strategy": [
+    {
+      "flow_code": "rebar",
+      "description": {
+        "en": "Reinforcement, cut and bent, delivered by slab",
+        "de": "Bewehrung, geschnitten und gebogen, deckenweise geliefert"
+      },
+      "mode": "stock",
+      "storage_area": "A-LAY",
+      "buffer_days": 4
+    },
+    {
+      "flow_code": "timber",
+      "description": {
+        "en": "Prefabricated timber facade elements, stored dry",
+        "de": "Vorgefertigte Holzfassadenelemente, trocken gelagert"
+      },
+      "mode": "kanban",
+      "storage_area": "A-LAY2",
+      "buffer_days": 3
+    },
+    {
+      "flow_code": "precast",
+      "description": {
+        "en": "Precast stair cores, set from the truck outside pupil arrival and departure",
+        "de": "Fertigteil-Treppenkerne, außerhalb der Ankunfts- und Abfahrtszeiten der Schüler direkt vom Lkw versetzt"
+      },
+      "mode": "direct_install",
+      "storage_area": null,
+      "buffer_days": 0
+    }
+  ],
+  "delivery_open": "08:00",
+  "delivery_close": "15:00",
+  "rules_text": {
+    "en": "Book every delivery 48 hours ahead with the site manager, who clears the slot with the school office. No vehicle movements during pupil arrival (07:30 to 08:00) or departure (15:00 to 16:00), and none on the yard side during breaks. No waiting on the public road. Wheel wash on exit.",
+    "de": "Jede Anlieferung 48 Stunden vorher bei der Bauleitung anmelden, die das Zeitfenster mit dem Schulsekretariat abstimmt. Keine Fahrbewegungen zu Schulbeginn (07:30 bis 08:00 Uhr) und Schulende (15:00 bis 16:00 Uhr), keine auf der Hofseite in den Pausen. Kein Warten auf der öffentlichen Straße. Reifenwäsche bei der Ausfahrt."
+  },
+  "noise_zone_type": "residential",
+  "day_dba": 55,
+  "night_dba": 40,
+  "municipality_contact": {
+    "en": "City of Ludwigsburg, building control office (Baurechtsamt)",
+    "de": "Stadt Ludwigsburg, Baurechtsamt"
+  },
+  "parking_note": {
+    "en": "No site parking on the school grounds or in the residential streets. Site staff use the leased lot at the sports ground, with a shuttle at 07:00 and 16:30.",
+    "de": "Kein Baustellenparken auf dem Schulgelände oder in den Wohnstraßen. Das Baustellenpersonal nutzt den angemieteten Parkplatz am Sportplatz, mit Shuttle um 07:00 und 16:30 Uhr."
+  },
+  "heavy_title": {
+    "en": "Transformer for the campus supply 62 t",
+    "de": "Transformator für die Campusversorgung 62 t"
+  },
+  "heavy_destination": {
+    "en": "Site, delivery gate west",
+    "de": "Baustelle, Anlieftor West"
+  },
+  "heavy_route_notes": {
+    "en": "Ring road, then the delivery road from the west. Escort stops traffic at the school crossing; no passage during pupil arrival and departure, night move only.",
+    "de": "Über den Ring, dann auf der Anlieferstraße von Westen. Die Begleitung hält den Verkehr am Schulübergang an; keine Durchfahrt zu Schulbeginn und Schulende, nur Nachtfahrt."
+  },
+  "oversize_authority": {
+    "en": "Road traffic authority of the city",
+    "de": "Straßenverkehrsbehörde der Stadt"
+  },
+  "night_authority": {
+    "en": "Environmental authority of the district",
+    "de": "Umweltschutzamt des Landkreises"
+  },
+  "spoil_title": {
+    "en": "Excavated soil to the licensed tip, outside school start and end",
+    "de": "Aushub zur zugelassenen Deponie, außerhalb von Schulbeginn und Schulende"
+  },
+  "rebar_title": {
+    "en": "Reinforcement, ground floor slab of the classroom wing",
+    "de": "Bewehrung, Bodenplatte des Klassentrakts"
+  },
+  "rebar_destination": {
+    "en": "Laydown A west field",
+    "de": "Lagerfläche A Westwiese"
+  },
+  "dust_description": {
+    "en": "Dust on the windows of the existing school building and on parked cars after the ordnance survey and the tree felling on the site.",
+    "de": "Staub auf den Fenstern des bestehenden Schulgebäudes und auf geparkten Autos nach der Kampfmittelsondierung und den Baumfällarbeiten auf dem Grundstück."
+  },
+  "dust_response": {
+    "en": "Water spraying twice a day, wheel wash at the gate, school windows on the site side kept shut during earthworks.",
+    "de": "Wasserbedüsung zweimal täglich, Reifenwäsche am Tor, Schulfenster auf der Baustellenseite bleiben während der Erdarbeiten geschlossen."
+  },
+  "noise_description": {
+    "en": "Drilling rig of the ground investigation running before school start, reported by the head teacher.",
+    "de": "Bohrgerät der Baugrunduntersuchung läuft vor Unterrichtsbeginn, gemeldet von der Schulleitung."
+  },
+  "coordination": [
+    {
+      "body": "municipality",
+      "topic": {
+        "en": "Crane position and road occupation at the delivery road",
+        "de": "Kranstandort und Straßensondernutzung an der Anlieferstraße"
+      },
+      "outcome": {
+        "en": "Agreed in principle with the building control office; written application for the road occupation to follow.",
+        "de": "Grundsätzlich mit dem Baurechtsamt abgestimmt; der schriftliche Antrag auf Sondernutzung folgt."
+      },
+      "days_ago": 9,
+      "next_action_in": 5
+    },
+    {
+      "body": "neighbours",
+      "topic": {
+        "en": "Separate pupils' path and site fence, school start and break plan",
+        "de": "Getrennter Schulweg und Bauzaun, Plan für Schulbeginn und Pausen"
+      },
+      "outcome": {
+        "en": "Head teacher and parents' council informed; path along the east side marked and fenced before the first delivery.",
+        "de": "Schulleitung und Elternbeirat informiert; der Weg an der Ostseite wurde vor der ersten Anlieferung markiert und eingezäunt."
+      },
+      "days_ago": 6,
+      "next_action_in": 12
+    },
+    {
+      "body": "utility",
+      "topic": {
+        "en": "Water and power connection dates",
+        "de": "Termine für Wasser- und Stromanschluss"
+      },
+      "outcome": {
+        "en": "Utility confirmed the connection in four weeks.",
+        "de": "Das Versorgungsunternehmen hat den Anschluss in vier Wochen zugesagt."
+      },
+      "days_ago": 2
+    }
+  ],
+  "fallback_supplier": {
+    "en": "Main Contractor",
+    "de": "Hauptauftragnehmer"
+  },
+  "rejected_cargo": {
+    "en": "Site welfare unit exchange",
+    "de": "Austausch der Sozialcontainer"
+  },
+  "power_provider": {
+    "en": "Regional grid operator for the school campus",
+    "de": "Netzbetreiber Strom der Region"
+  },
+  "water_provider": {
+    "en": "Municipal water supply of Ludwigsburg",
+    "de": "Stadtwerke Wasserversorgung"
+  },
+  "sewage_provider": {
+    "en": "Municipal drainage of Ludwigsburg",
+    "de": "Stadtentwässerung"
+  },
+  "crane_1_consumer": {
+    "en": "Tower crane",
+    "de": "Turmdrehkran"
+  },
+  "crane_2_consumer": {
+    "en": "Mobile crane and lifting gear",
+    "de": "Mobilkran und Hebezeuge"
+  },
+  "welfare_consumer": {
+    "en": "Site office and welfare rooms",
+    "de": "Baubüro und Sozialräume"
+  },
+  "telecom_point": {
+    "en": "Duct at the west gate",
+    "de": "Leerrohr am Westtor"
+  },
+  "telecom_consumer": {
+    "en": "Data link of the site office",
+    "de": "Datenanbindung Baubüro"
+  },
+  "heavy_carrier": {
+    "en": "Heavy haulage company",
+    "de": "Schwerlastspedition"
+  },
+  "heavy_origin": {
+    "en": "Transformer works",
+    "de": "Werk des Herstellers"
+  },
+  "oversize_conditions": {
+    "en": "Route survey ordered; application follows with the survey result.",
+    "de": "Streckenerkundung beauftragt; der Antrag folgt mit dem Ergebnis der Erkundung."
+  },
+  "spoil_carrier": {
+    "en": "Earthworks company",
+    "de": "Erdbauunternehmen"
+  },
+  "spoil_origin": {
+    "en": "School site",
+    "de": "Baustelle"
+  },
+  "spoil_destination": {
+    "en": "Licensed soil landfill",
+    "de": "Zugelassene Bodendeponie"
+  },
+  "rebar_carrier": {
+    "en": "Transport of the steel supplier",
+    "de": "Transport des Stahllieferanten"
+  },
+  "rebar_origin": {
+    "en": "Rebar bending yard",
+    "de": "Biegerei"
+  },
+  "customs_title": {
+    "en": "Medium voltage switchgear for the campus supply",
+    "de": "Mittelspannungsschaltanlage"
+  },
+  "customs_place": {
+    "en": "Switchgear works, loading dock",
+    "de": "Werk des Herstellers, Laderampe"
+  },
+  "customs_broker": {
+    "en": "Customs agent",
+    "de": "Zollagent"
+  },
+  "customs_line_1": {
+    "en": "Switchgear panels 24 kV",
+    "de": "Schaltfelder, 24 kV"
+  },
+  "customs_line_2": {
+    "en": "Control cabinets for the switchgear",
+    "de": "Steuerschränke"
+  },
+  "customs_unit": {
+    "en": "pieces",
+    "de": "Stk"
+  },
+  "customs_before_gate": true,
+  "complaints_before_gate": true
+}

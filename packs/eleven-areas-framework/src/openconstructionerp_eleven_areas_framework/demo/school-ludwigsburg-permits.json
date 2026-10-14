@@ -1,0 +1,120 @@
+{
+  "$note": "Permit story of the Ludwigsburg school (Baden-Wuerttemberg). The catalogue codes are those of the DE-BW permit catalogue the project pins, resolved through the federal catalogue it extends. Kind, trigger and owner of every condition stay in the seeder; the story only words them. All references are invented.",
+  "codes": {
+    "preliminary": "bauvoranfrage",
+    "building": "baugenehmigung",
+    "early_start": "vorzeitiger_baubeginn",
+    "road": "sondernutzung_strasse",
+    "occupancy": "nutzungsaufnahme_anzeige"
+  },
+  "preliminary_title": {
+    "en": "Preliminary decision on the school site and building envelope",
+    "de": "Bauvoranfrage zu Schulstandort und Baukörper"
+  },
+  "building_title": {
+    "en": "Building permit for the primary school with sports hall and Mensa",
+    "de": "Baugenehmigung Grundschule mit Sporthalle und Mensa"
+  },
+  "early_title": {
+    "en": "Early start of excavation and tree protection works at own risk",
+    "de": "Vorzeitiger Baubeginn Aushub und Baumschutz auf eigenes Risiko"
+  },
+  "road_title": {
+    "en": "Road occupation for the tower crane and the delivery road",
+    "de": "Sondernutzung Straße für Kran und Anlieferstraße"
+  },
+  "occupancy_title": {
+    "en": "Occupancy approval before the start of the school year",
+    "de": "Nutzungsaufnahme vor Beginn des Schuljahres"
+  },
+  "authority_name": {
+    "en": "Building control office of the City of Ludwigsburg (Baurechtsamt)",
+    "de": "Baurechtsamt der Stadt Ludwigsburg"
+  },
+  "preliminary_reference": {
+    "en": "BV-2026-0187",
+    "de": "BV-2026-0187"
+  },
+  "building_reference": {
+    "en": "BG-2026-0342",
+    "de": "BG-2026-0342"
+  },
+  "early_reference": {
+    "en": "VB-2026-0058",
+    "de": "VB-2026-0058"
+  },
+  "clock_stop_reason": {
+    "en": "Baurechtsamt asked for the revised rainwater retention layout and the parking and bicycle space proof",
+    "de": "Das Baurechtsamt hat die überarbeitete Regenrückhaltung und den Nachweis der Kfz- und Fahrradstellplätze nachgefordert"
+  },
+  "clock_resume_reason": {
+    "en": "Revised retention layout and space proof delivered, fire protection concept confirmed by the Pruefsachverstaendiger",
+    "de": "Überarbeitete Rückhaltung und Stellplatznachweis nachgereicht, Brandschutzkonzept vom Prüfsachverständigen bestätigt"
+  },
+  "evidence_note": {
+    "en": "Tree protection fence (Baumschutz) along the old lime trees on the east side, photographed from the school gate and dated",
+    "de": "Baumschutzzaun entlang der alten Linden auf der Ostseite, vom Schultor aus fotografiert und datiert"
+  },
+  "early_conditions": {
+    "1": {
+      "text": {
+        "en": "If the building permit is refused, the site is restored and the school grounds are handed back as they were.",
+        "de": "Wird die Baugenehmigung versagt, wird das Grundstück wiederhergestellt und das Schulgelände im früheren Zustand zurückgegeben."
+      }
+    },
+    "2": {
+      "text": {
+        "en": "Security for the restoration is lodged with the Baurechtsamt before excavation starts.",
+        "de": "Die Sicherheit für die Wiederherstellung wird vor Beginn des Aushubs beim Baurechtsamt hinterlegt."
+      }
+    }
+  },
+  "conditions": {
+    "1": {
+      "text": {
+        "en": "Before work starts, submit the structural calculations of the concrete frame and the sports hall roof, checked by the Pruefingenieur.",
+        "de": "Vor Baubeginn sind die vom Prüfingenieur geprüften statischen Berechnungen des Betonskeletts und des Sporthallendachs vorzulegen."
+      },
+      "topic": "structural",
+      "evidence_required": {
+        "en": "Checked structural calculations with the report of the Pruefingenieur",
+        "de": "Geprüfte statische Berechnung mit dem Prüfbericht des Prüfingenieurs"
+      }
+    },
+    "2": {
+      "text": {
+        "en": "Noisy works are permitted on working days between 08:00 and 17:00 only, and not during written exams or the break times of the school; the school office is told a week ahead of loud works.",
+        "de": "Lärmintensive Arbeiten sind nur werktags zwischen 08:00 und 17:00 Uhr zulässig, nicht während schriftlicher Prüfungen und nicht in den Pausen der Schule; das Schulsekretariat wird eine Woche vor lauten Arbeiten unterrichtet."
+      },
+      "topic": "noise",
+      "responsible_party": {
+        "en": "Main contractor",
+        "de": "Hauptauftragnehmer"
+      }
+    },
+    "3": {
+      "text": {
+        "en": "The existing trees on the east side are protected by a Baumschutz fence before any excavation, kept until completion and checked weekly.",
+        "de": "Der Baumbestand auf der Ostseite wird vor jedem Aushub durch einen Baumschutzzaun gesichert, bis zur Fertigstellung erhalten und wöchentlich kontrolliert."
+      },
+      "topic": "ecology",
+      "evidence_required": {
+        "en": "Dated photograph of the fence in place, with the weekly check list",
+        "de": "Datiertes Foto des aufgestellten Zauns mit der wöchentlichen Kontrollliste"
+      }
+    },
+    "4": {
+      "text": {
+        "en": "Before the school is occupied, the fire protection measures, the fire alarm system and the escape routes are accepted by the Pruefsachverstaendiger for fire protection.",
+        "de": "Vor der Nutzungsaufnahme der Schule werden die Brandschutzmaßnahmen, die Brandmeldeanlage und die Rettungswege vom Prüfsachverständigen für Brandschutz abgenommen."
+      },
+      "topic": "fire"
+    },
+    "5": {
+      "text": {
+        "en": "The permit does not replace the energy proof under the GEG, the Artenschutz clearance or the consent for the road occupation.",
+        "de": "Die Genehmigung ersetzt nicht den Energienachweis nach GEG, die artenschutzrechtliche Freigabe oder die Erlaubnis zur Straßennutzung."
+      }
+    }
+  }
+}

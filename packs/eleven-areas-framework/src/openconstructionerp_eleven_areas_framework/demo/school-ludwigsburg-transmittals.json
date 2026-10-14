@@ -1,0 +1,294 @@
+{
+  "$note": "Design transmittals of the Ludwigsburg school from the design team to the client (the city's school construction office and the school). Recipients are roles, not persons; every name is invented.",
+  "transmittals": [
+    {
+      "subject": {
+        "en": "Architecture, design development: floor plans, sections and facade, for approval",
+        "de": "Architektur Entwurfsplanung: Grundrisse, Schnitte und Fassade zur Freigabe"
+      },
+      "purpose_code": "for_approval",
+      "cover_note": {
+        "en": "Design development set of the classroom wings, sports hall and Mensa, including the timber facade and the separate pupils' path. Please approve for the Technical Committee.",
+        "de": "Entwurfsplanung der Klassentrakte, der Sporthalle und der Mensa, einschließlich der Holzfassade und des getrennten Schulwegs. Bitte für den Technischen Ausschuss freigeben."
+      },
+      "issued_days_ago": 140,
+      "response_due_in_days": 21,
+      "recipients": [
+        {
+          "name": {
+            "en": "Client representative, school construction office",
+            "de": "Bauherrenvertretung, Hochbauamt Schulbau"
+          },
+          "action_required": {
+            "en": "Approve",
+            "de": "Freigeben"
+          },
+          "acknowledged_after_days": 1,
+          "response": {
+            "en": "Approved with two comments: widen the bicycle parking and move the kitchen delivery away from the yard.",
+            "de": "Freigegeben mit zwei Anmerkungen: Fahrradabstellanlage erweitern und Küchenanlieferung vom Schulhof wegverlegen."
+          },
+          "responded_after_days": 18
+        },
+        {
+          "name": {
+            "en": "Head teacher, primary school",
+            "de": "Schulleitung der Grundschule"
+          },
+          "action_required": {
+            "en": "Review",
+            "de": "Prüfen"
+          },
+          "acknowledged_after_days": 2,
+          "response": {
+            "en": "Learning clusters and break yard confirmed by the teaching staff.",
+            "de": "Lerncluster und Pausenhof vom Kollegium bestätigt."
+          },
+          "responded_after_days": 15
+        }
+      ],
+      "items": [
+        {
+          "description": {
+            "en": "Floor plans ground floor to second floor, 1:100",
+            "de": "Grundrisse Erdgeschoss bis 2. Obergeschoss, 1:100"
+          },
+          "notes": {
+            "en": "Classroom wings, administration, Mensa",
+            "de": "Klassentrakte, Verwaltung, Mensa"
+          }
+        },
+        {
+          "description": {
+            "en": "Sections and elevations, timber facade, 1:100",
+            "de": "Schnitte und Ansichten, Holzfassade, 1:100"
+          },
+          "notes": {
+            "en": "Wood facade on the concrete frame",
+            "de": "Holzfassade auf dem Betonskelett"
+          }
+        },
+        {
+          "description": {
+            "en": "Site plan with pupils' path and construction access, 1:500",
+            "de": "Lageplan mit Schulweg und Baustellenzufahrt, 1:500"
+          }
+        }
+      ]
+    },
+    {
+      "subject": {
+        "en": "Structural design: frame, foundation and sports hall roof, for review",
+        "de": "Tragwerksplanung: Skelett, Gründung und Sporthallendach zur Prüfung"
+      },
+      "purpose_code": "for_review",
+      "cover_note": {
+        "en": "Structural concept and calculation basis for the concrete frame and the long-span sports hall roof. The Pruefingenieur receives the same set.",
+        "de": "Tragwerkskonzept und Berechnungsgrundlagen für das Betonskelett und das weitgespannte Sporthallendach. Der Prüfingenieur erhält denselben Satz."
+      },
+      "issued_days_ago": 95,
+      "response_due_in_days": 14,
+      "recipients": [
+        {
+          "name": {
+            "en": "Client representative, school construction office",
+            "de": "Bauherrenvertretung, Hochbauamt Schulbau"
+          },
+          "action_required": {
+            "en": "Review",
+            "de": "Prüfen"
+          },
+          "acknowledged_after_days": 1,
+          "response": {
+            "en": "Taken note of; the calculation check by the Pruefingenieur is commissioned.",
+            "de": "Zur Kenntnis genommen; die Prüfung der Berechnung durch den Prüfingenieur ist beauftragt."
+          },
+          "responded_after_days": 10
+        },
+        {
+          "name": {
+            "en": "Pruefingenieur for structural design",
+            "de": "Prüfingenieur für Standsicherheit"
+          },
+          "action_required": {
+            "en": "Check",
+            "de": "Prüfen"
+          },
+          "acknowledged_after_days": 2
+        }
+      ],
+      "items": [
+        {
+          "description": {
+            "en": "Structural concept report with load assumptions",
+            "de": "Erläuterungsbericht Tragwerkskonzept mit Lastannahmen"
+          }
+        },
+        {
+          "description": {
+            "en": "Foundation and frame drawings, ground floor to roof, 1:50",
+            "de": "Gründungs- und Skelettpläne, Erdgeschoss bis Dach, 1:50"
+          }
+        },
+        {
+          "description": {
+            "en": "Calculation of the sports hall roof girders",
+            "de": "Berechnung der Sporthallen-Dachbinder"
+          },
+          "notes": {
+            "en": "First part, further parts follow",
+            "de": "Erster Teil, weitere Teile folgen"
+          }
+        }
+      ]
+    },
+    {
+      "subject": {
+        "en": "Building services: ventilation, heating and heat pump, for approval",
+        "de": "Technische Gebäudeausrüstung: Lüftung, Heizung und Wärmepumpe zur Freigabe"
+      },
+      "purpose_code": "for_approval",
+      "cover_note": {
+        "en": "Concept and layout of the CO2-controlled ventilation of the classrooms, the heat pump and the PV system, with the energy proof basis under the GEG.",
+        "de": "Konzept und Anordnung der CO2-geregelten Lüftung der Klassenzimmer, der Wärmepumpe und der PV-Anlage, mit der Grundlage für den Energienachweis nach GEG."
+      },
+      "issued_days_ago": 60,
+      "response_due_in_days": 14,
+      "recipients": [
+        {
+          "name": {
+            "en": "Client representative, school construction office",
+            "de": "Bauherrenvertretung, Hochbauamt Schulbau"
+          },
+          "action_required": {
+            "en": "Approve",
+            "de": "Freigeben"
+          },
+          "acknowledged_after_days": 1
+        },
+        {
+          "name": {
+            "en": "Facility management of the city",
+            "de": "Gebäudemanagement der Stadt"
+          },
+          "action_required": {
+            "en": "Review",
+            "de": "Prüfen"
+          },
+          "acknowledged_after_days": 3,
+          "response": {
+            "en": "Maintenance access to the roof plant and the heat pump room confirmed.",
+            "de": "Wartungszugang zur Dachzentrale und zum Wärmepumpenraum bestätigt."
+          },
+          "responded_after_days": 12
+        }
+      ],
+      "items": [
+        {
+          "description": {
+            "en": "Ventilation concept and schematics for classrooms, sports hall and kitchen",
+            "de": "Lüftungskonzept und Schemata für Klassenzimmer, Sporthalle und Küche"
+          }
+        },
+        {
+          "description": {
+            "en": "Heat pump and PV layout, 1:100",
+            "de": "Anordnung Wärmepumpe und PV, 1:100"
+          }
+        },
+        {
+          "description": {
+            "en": "Energy proof basis (GEG), draft",
+            "de": "Grundlage Energienachweis (GEG), Entwurf"
+          }
+        }
+      ]
+    },
+    {
+      "subject": {
+        "en": "Acoustics and fire protection: room acoustics report and fire protection concept, for information",
+        "de": "Akustik und Brandschutz: Raumakustikgutachten und Brandschutzkonzept zur Information"
+      },
+      "purpose_code": "for_information",
+      "cover_note": {
+        "en": "Room acoustics for the classrooms and the sports hall (reverberation targets per DIN 18041) and the fire protection concept as agreed with the Pruefsachverstaendiger.",
+        "de": "Raumakustik für Klassenzimmer und Sporthalle (Nachhallzeitziele nach DIN 18041) und das mit dem Prüfsachverständigen abgestimmte Brandschutzkonzept."
+      },
+      "issued_days_ago": 30,
+      "recipients": [
+        {
+          "name": {
+            "en": "Client representative, school construction office",
+            "de": "Bauherrenvertretung, Hochbauamt Schulbau"
+          },
+          "action_required": {
+            "en": "Note",
+            "de": "Zur Kenntnis"
+          },
+          "acknowledged_after_days": 2
+        },
+        {
+          "name": {
+            "en": "Head teacher, primary school",
+            "de": "Schulleitung der Grundschule"
+          },
+          "action_required": {
+            "en": "Note",
+            "de": "Zur Kenntnis"
+          }
+        }
+      ],
+      "items": [
+        {
+          "description": {
+            "en": "Room acoustics report, classrooms and sports hall",
+            "de": "Raumakustikgutachten, Klassenzimmer und Sporthalle"
+          }
+        },
+        {
+          "description": {
+            "en": "Fire protection concept with escape route plans",
+            "de": "Brandschutzkonzept mit Rettungswegplänen"
+          }
+        }
+      ]
+    },
+    {
+      "subject": {
+        "en": "Tender documents for the shell lots, in preparation",
+        "de": "Ausschreibungsunterlagen Rohbaulose in Vorbereitung"
+      },
+      "purpose_code": "for_tender",
+      "cover_note": {
+        "en": "Draft bill of quantities (GAEB) and contract conditions for the shell lots; the issue waits for the decision of the Gemeinderat.",
+        "de": "Entwurf des Leistungsverzeichnisses (GAEB) und der Vertragsbedingungen für die Rohbaulose; die Herausgabe wartet auf den Beschluss des Gemeinderats."
+      },
+      "recipients": [
+        {
+          "name": {
+            "en": "Procurement office of the city",
+            "de": "Zentrale Vergabestelle der Stadt"
+          },
+          "action_required": {
+            "en": "Review",
+            "de": "Prüfen"
+          }
+        }
+      ],
+      "items": [
+        {
+          "description": {
+            "en": "Draft bill of quantities, shell lots",
+            "de": "Entwurf Leistungsverzeichnis, Rohbaulose"
+          }
+        },
+        {
+          "description": {
+            "en": "Draft contract conditions and schedule of the lots",
+            "de": "Entwurf Vertragsbedingungen und Terminplan der Lose"
+          }
+        }
+      ]
+    }
+  ]
+}

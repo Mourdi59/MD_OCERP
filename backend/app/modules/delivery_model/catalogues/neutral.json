@@ -2611,5 +2611,133 @@
       "source_url": "https://cms.law/en/srb/legal-updates/introducing-the-fidic-emerald-book",
       "review_status": "unconfirmed"
     }
+  ],
+  "contract_kinds": [
+    {
+      "code": "construction_contract",
+      "group": "contract_form",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.contract_form.construction_contract",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "design_build_contract",
+      "group": "contract_form",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.contract_form.design_build_contract",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "construction_management_contract",
+      "group": "contract_form",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.contract_form.construction_management_contract",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "consultant_agreement",
+      "group": "contract_form",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.contract_form.consultant_agreement",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "purchase",
+      "group": "land_tenure",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.land_tenure.purchase",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "leasehold",
+      "group": "land_tenure",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.land_tenure.leasehold",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "option",
+      "group": "land_tenure",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.land_tenure.option",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "easement",
+      "group": "land_tenure",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.land_tenure.easement",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "development_agreement",
+      "group": "land_tenure",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.land_tenure.development_agreement",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "power_connection",
+      "group": "utility_contract",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.utility_contract.power_connection",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "water_sewer_connection",
+      "group": "utility_contract",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.utility_contract.water_sewer_connection",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "district_heating",
+      "group": "utility_contract",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.utility_contract.district_heating",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "gas_connection",
+      "group": "utility_contract",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.utility_contract.gas_connection",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "telecom_connection",
+      "group": "utility_contract",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.utility_contract.telecom_connection",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "lease_to_user",
+      "group": "user_agreement",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.user_agreement.lease_to_user",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "service_level_agreement",
+      "group": "user_agreement",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.user_agreement.service_level_agreement",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "handover_criteria_agreement",
+      "group": "user_agreement",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.user_agreement.handover_criteria_agreement",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "project_company",
+      "group": "partner_structure",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.partner_structure.project_company",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "joint_venture",
+      "group": "partner_structure",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.partner_structure.joint_venture",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "consortium",
+      "group": "partner_structure",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.partner_structure.consortium",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "co_investment",
+      "group": "partner_structure",
+      "name_key": "delivery_model.catalogue.neutral.contract_kind.partner_structure.co_investment",
+      "review_status": "unconfirmed"
+    }
   ]
 }

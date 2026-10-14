@@ -73,6 +73,12 @@ def _all_findings(context: ValidationContext) -> list[rules.Finding]:
         *rules.ofi_findings(
             data.get("ofis") or [], packages, procurement_released=bool(data.get("procurement_released"))
         ),
+        *rules.contract_item_findings(
+            data.get("contract_items") or [],
+            [k.model_dump(mode="json") for k in catalogue.contract_kinds],
+            form,
+            procurement_released=bool(data.get("procurement_released")),
+        ),
     ]
 
 
@@ -208,6 +214,31 @@ class OfiNeedDateFeasible(_DeliveryRule):
     codes = ("ofi_late_for_installer",)
 
 
+class ContractItemsWellFormed(_DeliveryRule):
+    key = "contract_items_well_formed"
+    rule_id = "delivery_model.contract_items_well_formed"
+    name = "Contract Items Well Formed"
+    description = "A contract item has a catalogue kind, consistent dates and a counterparty once it is agreed."
+    codes = ("contract_item_kind_unknown", "contract_item_dates_invalid", "contract_item_without_counterparty")
+
+
+class PartnerSharesSumTo100(_DeliveryRule):
+    key = "partner_shares_sum_to_100"
+    rule_id = "delivery_model.partner_shares_sum_to_100"
+    name = "Partner Shares Sum To 100"
+    description = "The shares of the partner structure add up to exactly 100 percent."
+    codes = ("partner_shares_not_100",)
+
+
+class ContractFrameComplete(_DeliveryRule):
+    key = "contract_frame_complete"
+    rule_id = "delivery_model.contract_frame_complete"
+    name = "Contract Frame Complete"
+    severity = Severity.WARNING
+    description = "Once procurement is released, land tenure, utility contracts and the partner structure are settled."
+    codes = ("contract_group_missing", "contract_form_price_basis_inconsistent")
+
+
 class DecisionApprovedByEntitledUser(_DeliveryRule):
     key = "decision_approved_by_entitled_user"
     rule_id = "delivery_model.decision_approved_by_entitled_user"
@@ -235,6 +266,9 @@ DELIVERY_RULES: tuple[type[ValidationRule], ...] = (
     ContractTypeConsistentWithForm,
     OfiHasProcurementRoute,
     OfiNeedDateFeasible,
+    ContractItemsWellFormed,
+    PartnerSharesSumTo100,
+    ContractFrameComplete,
     DecisionApprovedByEntitledUser,
 )
 

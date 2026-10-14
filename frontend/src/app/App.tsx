@@ -75,11 +75,17 @@ const NotificationsPage = lazy(() =>
 const QualityConceptPage = lazy(() =>
   import('@/features/quality_concept').then((m) => ({ default: m.QualityConceptPage }))
 );
+const HseFramePage = lazy(() =>
+  import('@/features/hse_frame').then((m) => ({ default: m.HseFramePage }))
+);
 const FundingPage = lazy(() =>
   import('@/features/funding/FundingPage').then((m) => ({ default: m.FundingPage }))
 );
 const CommitmentReleasePage = lazy(() =>
   import('@/features/commitment_release').then((m) => ({ default: m.CommitmentReleasePage }))
+);
+const EconomicsPage = lazy(() =>
+  import('@/features/economics').then((m) => ({ default: m.EconomicsPage }))
 );
 const DeliveryModelPage = lazy(() =>
   import('@/features/delivery_model/DeliveryModelPage').then((m) => ({ default: m.DeliveryModelPage }))
@@ -1310,6 +1316,7 @@ export default function App() {
         <Route path="/projects/new" element={<P title="New Project"><CreateProjectPage /></P>} />
         <Route path="/projects/:projectId" element={<P title="Project"><ProjectDetailPage /></P>} />
         <Route path="/projects/:projectId/quality-concept" element={<P title="Quality concept"><QualityConceptPage /></P>} />
+        <Route path="/projects/:projectId/hse-frame" element={<P title="HSE frame"><HseFramePage /></P>} />
         <Route path="/projects/:projectId/settings" element={<P title="Project Settings"><ProjectSettingsPage /></P>} />
         <Route path="/projects/:projectId/timeline" element={<P title="Project Timeline"><TimelinePage /></P>} />
         <Route path="/projects/:projectId/boq/new" element={<P title="New BOQ"><CreateBOQPage /></P>} />
@@ -1477,6 +1484,7 @@ export default function App() {
         <Route path="/projects/:projectId/site-supervision" element={<P title="Site Supervision"><SiteSupervisionPage /></P>} />
         <Route path="/site-supervision" element={<P title="Site Supervision"><SiteSupervisionPage /></P>} />
         <Route path="/projects/:projectId/commitments" element={<P title="Commitments and releases"><CommitmentReleasePage /></P>} />
+        <Route path="/projects/:projectId/economics" element={<P title="Economics"><EconomicsPage /></P>} />
         <Route path="/projects/:projectId/delivery" element={<P title="Delivery model"><DeliveryModelPage /></P>} />
         <Route path="/projects/:projectId/plant-register" element={<P title="Plant register"><PlantRegisterPage /></P>} />
         <Route path="/projects/:projectId/procurement-concept" element={<P title="Procurement concept"><ProcurementConceptPage /></P>} />

@@ -429,3 +429,105 @@ def test_every_stop_of_the_seed_names_a_reason_the_result_knows() -> None:
     ]
     assert codes, "the seed raises SeedStop nowhere; this test reads nothing"
     assert set(codes) <= story.FALLBACK_REASONS, codes
+
+
+# ── a file that tells more than one project ──
+
+
+def _two_projects() -> dict[str, Any]:
+    first, second = _file(), _file()
+    second["project"] = {"demo_template_id": "school-ludwigsburg"}
+    second["module_files"] = {"permits": "demo/permits.json", "staffing": 3, "empty": ""}
+    return {"schema_version": 1, "projects": [first, second]}
+
+
+def test_a_file_lists_its_projects_and_the_old_single_shape_is_a_list_of_one() -> None:
+    assert story.pack_demo_ids(_two_projects()) == ["office-frankfurt", "school-ludwigsburg"]
+    assert story.pack_demo_ids(_file()) == ["office-frankfurt"]
+    assert story.pack_demo_id(_two_projects()) == "office-frankfurt"
+    assert story.pack_demo_ids(None) == [] and story.pack_demo_ids({"projects": "x"}) == []
+
+
+def test_the_entry_of_a_project_is_found_by_its_demo_id_only() -> None:
+    data = _two_projects()
+    assert story.entry_for(data, "school-ludwigsburg") is data["projects"][1]
+    assert story.entry_for(data, "office-london") is None
+    assert story.entry_for(data, None) is None
+    assert story.entry_for(_file(), "office-frankfurt") is not None
+
+
+def test_every_project_the_file_names_is_planned_as_the_pack_story() -> None:
+    named = story.pack_demo_ids(_two_projects())
+    assert story.planned_moment("school-ludwigsburg", named) == "pack"
+    assert story.planned_moment("office-frankfurt", named) == "pack"
+    assert story.planned_moment("office-frankfurt", "office-frankfurt") == "pack"
+    assert story.planned_moment("office-london", named) == "first_gate"
+
+
+def test_each_entry_is_checked_on_its_own() -> None:
+    data = _two_projects()
+    data["projects"][1]["governance"]["gate"]["stop_at"] = "later"
+    assert story.pack_story(story.entry_for(data, "office-frankfurt"), FRAMEWORK, "en").stop_at == "in_preparation"
+    with pytest.raises(story.DemoFileError):
+        story.pack_story(story.entry_for(data, "school-ludwigsburg"), FRAMEWORK, "en")
+
+
+def test_a_module_story_is_the_json_object_the_project_names(pack: dict[str, Any]) -> None:
+    pack["files"][("p", "demo/d.json")] = json.dumps(_two_projects()).encode()
+    pack["files"][("p", "demo/permits.json")] = json.dumps({"authority_name": "Baurechtsamt"}).encode()
+    assert packs.demo_module_story("school-ludwigsburg", "permits") == {"authority_name": "Baurechtsamt"}
+    # Not named by the project, a project the file does not tell, no id at all: the seeder keeps its default.
+    assert packs.demo_module_story("school-ludwigsburg", "stakeholders") == {}
+    assert packs.demo_module_story("office-frankfurt", "permits") == {}
+    assert packs.demo_module_story("office-london", "permits") == {}
+    assert packs.demo_module_story(None, "permits") == {}
+
+
+def test_a_module_story_that_cannot_be_read_is_an_error_and_the_default(
+    pack: dict[str, Any], caplog: pytest.LogCaptureFixture
+) -> None:
+    pack["files"][("p", "demo/d.json")] = json.dumps(_two_projects()).encode()
+    assert packs.demo_module_story("school-ludwigsburg", "permits") == {}  # named, not carried
+    pack["files"][("p", "demo/permits.json")] = b"[1]"
+    assert packs.demo_module_story("school-ludwigsburg", "permits") == {}
+    assert packs.demo_module_story("school-ludwigsburg", "staffing") == {}  # a path that is no string
+    assert packs.demo_module_story("school-ludwigsburg", "empty") == {}
+    assert len([r for r in caplog.records if r.levelno >= 40]) == 2
+
+
+# ── the shipped file of the eleven areas pack ──
+
+_PACK = Path(__file__).resolve().parents[3] / "packs" / "eleven-areas-framework" / "src"
+_PACK = _PACK / "openconstructionerp_eleven_areas_framework"
+
+
+def test_every_project_of_the_shipped_pack_file_is_a_valid_story_on_the_pack_model() -> None:
+    from app.modules.project_governance.catalogue import catalogue_from_body
+
+    data = json.loads((_PACK / "demo" / "demo_project.json").read_text(encoding="utf-8"))
+    ids = story.pack_demo_ids(data)
+    assert ids == ["residential-regensburg", "school-ludwigsburg"]
+    for demo_id in ids:
+        entry = story.entry_for(data, demo_id)
+        _, version = story.pack_pin(entry)
+        path = _PACK / "catalogues" / "phase_model" / "eleven_areas_framework.json"
+        model = catalogue_from_body(json.loads(path.read_text(encoding="utf-8")), source="pack", origin=str(path))
+        assert version == model.version
+        for locale in ("en", "de"):
+            told = story.pack_story(entry, model, locale)
+            # Regensburg is told after its gate, the school with its gate submitted and in review.
+            assert told.stop_at == {"residential-regensburg": "decided", "school-ludwigsburg": "in_review"}[demo_id]
+            assert (told.decision is not None) == (told.stop_at == "decided")
+            assert all(c.status != "not_assessed" for c in told.checks), demo_id
+            assert all(d.title for d in told.documents), (demo_id, locale)
+            assert all(c.note for c in told.checks if c.status != "not_assessed"), (demo_id, locale)
+
+
+def test_the_two_shipped_projects_tell_different_stories() -> None:
+    data = json.loads((_PACK / "demo" / "demo_project.json").read_text(encoding="utf-8"))
+    first, second = (story.entry_for(data, d) for d in story.pack_demo_ids(data))
+    assert first["governance"]["gate"]["checks"] != second["governance"]["gate"]["checks"]
+    assert {d["container_code"] for d in first["governance"]["frame_documents"]}.isdisjoint(
+        {d["container_code"] for d in second["governance"]["frame_documents"]}
+    )
+    assert second["pins"] != first["pins"], "the school resolves the Baden-Wuerttemberg permit catalogue"

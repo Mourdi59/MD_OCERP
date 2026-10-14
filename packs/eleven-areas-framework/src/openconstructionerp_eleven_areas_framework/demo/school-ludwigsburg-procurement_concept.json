@@ -1,0 +1,232 @@
+{
+  "$note": "Procurement concept of the Ludwigsburg school as data. Applied on top of the module seeder defaults, key by key; a missing key keeps the default. Values are in the project currency (EUR). All names are invented trade descriptions, no real firms.",
+  "client_type": "sub_central",
+  "advance_reason": {
+    "en": "Prefabricated timber facade elements: the production slot must be reserved before the shell tender closes, so the facade can follow the concrete frame without a gap.",
+    "de": "Vorgefertigte Holzfassadenelemente: Der Produktionsplatz muss vor Ende der Rohbauausschreibung gesichert werden, damit die Fassade ohne Pause dem Betonskelett folgen kann."
+  },
+  "kinds": {
+    "design": {
+      "value": 2900000,
+      "public_procedure": "open",
+      "notes": {
+        "en": "Design services under VgV, open procedure with EU-wide notice. HOAI fees for building, technical equipment, structural design and outdoor facilities; evaluation on price and quality. Awarded after the Gemeinderat decision on the competition result.",
+        "de": "Planungsleistungen nach VgV im offenen Verfahren mit EU-weiter Bekanntmachung. HOAI-Honorare für Gebäude, Technische Ausrüstung, Tragwerksplanung und Freianlagen; Wertung nach Preis und Qualität. Zuschlag nach dem Beschluss des Gemeinderats zum Wettbewerbsergebnis."
+      }
+    },
+    "construction": {
+      "value": 15500000,
+      "public_procedure": "open",
+      "start_offset_days": 60,
+      "notes": {
+        "en": "VOB/A trade lots in the order of the build: 1 shell (excavation, concrete frame), 2 timber frame facade, 3 roofing and photovoltaic, 4 heating and ventilation, 5 sanitary, 6 electrical and building automation, 7 interior fit-out, 8 external works. GAEB x83 tender documents per lot; award after the Technischer Ausschuss and the Gemeinderat, then the standstill period. Works beside the running school: noise and delivery windows are part of every lot.",
+        "de": "VOB/A-Fachlose in der Reihenfolge des Baus: 1 Rohbau (Aushub, Betonskelett), 2 Holzrahmenfassade, 3 Dach und Photovoltaik, 4 Heizung und Lüftung, 5 Sanitär, 6 Elektro und Gebäudeautomation, 7 Ausbau, 8 Außenanlagen. Leistungsverzeichnisse als GAEB x83 je Los; Vergabe nach Technischem Ausschuss und Gemeinderat, danach Wartefrist. Arbeiten neben dem laufenden Schulbetrieb: Lärm- und Anlieferfenster sind Bestandteil jedes Loses."
+      }
+    },
+    "supply_and_install": {
+      "value": 3200000,
+      "public_procedure": "restricted",
+      "lead_days": 150,
+      "start_offset_days": 150,
+      "notes": {
+        "en": "Specialist lots with a supply part: timber facade elements (prefabricated), Mensa production kitchen, sports hall floor to DIN 18032. Restricted procedure after a public participation round; the sports hall floor and the kitchen are scheduled for the summer-holiday window.",
+        "de": "Fachlose mit Lieferanteil: Holzfassadenelemente (vorgefertigt), Mensa-Produktionsküche, Sporthallenboden nach DIN 18032. Nichtoffenes Verfahren nach öffentlichem Teilnahmewettbewerb; Sporthallenboden und Küche sind für das Sommerferienfenster eingeplant."
+      }
+    },
+    "supply": {
+      "value": 1100000,
+      "public_procedure": "open",
+      "start_offset_days": 240,
+      "notes": {
+        "en": "Classroom furniture, teaching equipment and IT, called off from the municipal framework agreement for schools.",
+        "de": "Klassenzimmermöbel, Lehrmittel und IT, abgerufen aus der Rahmenvereinbarung der Stadt für Schulen."
+      }
+    },
+    "management_services": {
+      "value": 450000,
+      "public_procedure": "open",
+      "start_offset_days": 30,
+      "notes": {
+        "en": "Construction management and project control services for the school building office, with safety coordination for works beside the running school.",
+        "de": "Baumanagement und Projektsteuerung für das Hochbauamt, einschließlich SiGeKo für Arbeiten neben dem laufenden Schulbetrieb."
+      }
+    },
+    "operation": {
+      "value": 150000,
+      "start_offset_days": 330,
+      "notes": {
+        "en": "Facility services for the first two years after handover: building automation support and kitchen maintenance.",
+        "de": "Betriebsleistungen für die ersten zwei Jahre nach Übergabe: Betreuung der Gebäudeautomation und Küchenwartung."
+      }
+    }
+  },
+  "free_names": [
+    {
+      "en": "Regional shell construction contractor",
+      "de": "Regionales Rohbauunternehmen"
+    },
+    {
+      "en": "Timber frame and facade specialist",
+      "de": "Fachbetrieb für Holzrahmenbau und Fassade"
+    },
+    {
+      "en": "Roofing and photovoltaic installer",
+      "de": "Dachdecker- und Photovoltaikbetrieb"
+    },
+    {
+      "en": "Building services installer for heating, ventilation and sanitary",
+      "de": "TGA-Installationsbetrieb für Heizung, Lüftung und Sanitär"
+    },
+    {
+      "en": "Sports hall flooring specialist",
+      "de": "Fachbetrieb für Sporthallenböden"
+    },
+    {
+      "en": "Commercial kitchen equipment supplier",
+      "de": "Lieferant für Großküchentechnik"
+    },
+    {
+      "en": "Landscaping and external works contractor",
+      "de": "Garten- und Landschaftsbaubetrieb für die Außenanlagen"
+    }
+  ],
+  "prequal": {
+    "name": {
+      "en": "Prequalification for works beside a running school",
+      "de": "Eignungsprüfung für Arbeiten neben dem laufenden Schulbetrieb"
+    },
+    "pass_mark": 60,
+    "weights": [
+      40,
+      25,
+      35
+    ]
+  },
+  "reference": {
+    "project_name": {
+      "en": "All-day primary school with sports hall",
+      "de": "Ganztagsgrundschule mit Sporthalle"
+    },
+    "client": {
+      "en": "Municipal school building office",
+      "de": "Städtisches Hochbauamt, Schulbau"
+    },
+    "role": {
+      "en": "Main contractor",
+      "de": "Hauptauftragnehmer"
+    },
+    "value": 6200000,
+    "excluded_rationale": {
+      "en": "Below the pass mark on school references; no proof of works beside a running school",
+      "de": "Unter der Bestehensgrenze bei den Schulreferenzen; kein Nachweis über Arbeiten neben einem laufenden Schulbetrieb"
+    }
+  },
+  "framework": {
+    "code": "FW-SCHOOL-01",
+    "title": {
+      "en": "Classroom furniture and IT equipment framework",
+      "de": "Rahmenvertrag Klassenzimmermöbel und IT-Ausstattung"
+    },
+    "supplier_name": {
+      "en": "Educational furniture supplier",
+      "de": "Lieferant für Schulmöbel"
+    },
+    "scope": {
+      "en": "Classroom and Mensa furniture, teaching equipment and IT devices for municipal schools, called off per school project",
+      "de": "Klassenzimmer- und Mensamöbel, Lehrmittel und IT-Geräte für städtische Schulen, abgerufen je Schulprojekt"
+    },
+    "package_kinds": [
+      "supply"
+    ],
+    "lots": [
+      {
+        "code": "L1",
+        "title": {
+          "en": "Classroom furniture",
+          "de": "Klassenzimmermöbel"
+        }
+      },
+      {
+        "code": "L2",
+        "title": {
+          "en": "IT equipment",
+          "de": "IT-Ausstattung"
+        }
+      }
+    ],
+    "source_procedure_ref": {
+      "en": "Open procedure under VgV, framework award by the city",
+      "de": "Offenes Verfahren nach VgV, Rahmenvertragsvergabe durch die Stadt"
+    }
+  },
+  "soundings": [
+    {
+      "trade": {
+        "en": "Shell and concrete frame",
+        "de": "Rohbau und Betonskelett"
+      },
+      "days_ago": 120,
+      "method": "meeting",
+      "main": true,
+      "findings": {
+        "en": "Five regional contractors interested; two prefer to bid the shell together with the external works. The school holiday window for noisy works was welcomed.",
+        "de": "Fünf regionale Unternehmen sind interessiert; zwei möchten den Rohbau gemeinsam mit den Außenanlagen anbieten. Das Schulferienfenster für lärmintensive Arbeiten wurde begrüßt."
+      },
+      "capacity_signal": "adequate",
+      "price_signal": "in_line"
+    },
+    {
+      "trade": {
+        "en": "Timber frame facade",
+        "de": "Holzrahmenfassade"
+      },
+      "days_ago": 75,
+      "method": "rfi",
+      "package_kinds": [
+        "supply_and_install"
+      ],
+      "findings": {
+        "en": "Only a few producers can deliver prefabricated facade elements in this size; production slots are booked for nine months ahead.",
+        "de": "Nur wenige Hersteller können vorgefertigte Fassadenelemente in dieser Größe liefern; die Produktionsplätze sind neun Monate im Voraus ausgebucht."
+      },
+      "capacity_signal": "tight",
+      "price_signal": "above_estimate",
+      "lead_time_signal_days": 140,
+      "mitigation": {
+        "en": "Advance package to reserve the production slot; the facade lot is tendered before the interior lots.",
+        "de": "Vorabpaket zur Sicherung des Produktionsplatzes; das Fassadenlos wird vor den Ausbaulosen ausgeschrieben."
+      }
+    },
+    {
+      "trade": {
+        "en": "Building services",
+        "de": "Technische Gebäudeausrüstung"
+      },
+      "days_ago": 40,
+      "method": "survey",
+      "findings": {
+        "en": "Seven installers answered, four with capacity from next spring. The heat pump and ventilation controls are the open points.",
+        "de": "Sieben Installationsbetriebe haben geantwortet, vier davon mit Kapazität ab dem nächsten Frühjahr. Offen sind Wärmepumpe und Lüftungsregelung."
+      },
+      "capacity_signal": "ample",
+      "price_signal": "below_estimate"
+    },
+    {
+      "trade": {
+        "en": "Commercial kitchen",
+        "de": "Großküche"
+      },
+      "days_ago": 20,
+      "method": "notice",
+      "package_kinds": [
+        "supply_and_install"
+      ],
+      "findings": {
+        "en": "Kitchen equipment suppliers need the approved hygiene concept before they price the production line.",
+        "de": "Küchenlieferanten benötigen das genehmigte Hygienekonzept, bevor sie die Produktionslinie kalkulieren."
+      },
+      "capacity_signal": "adequate",
+      "price_signal": "unknown"
+    }
+  ]
+}

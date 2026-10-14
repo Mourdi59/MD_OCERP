@@ -1,0 +1,324 @@
+{
+  "positions": [
+    {
+      "role": "project_director",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "project_manager",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "design_manager",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "cost_manager",
+      "phase": "development",
+      "entry": -210,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "contract_manager",
+      "phase": "development",
+      "entry": -180,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "scheduler",
+      "phase": "development",
+      "entry": -150,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_manager",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "hse_manager",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_supervisor_civil",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "document_controller",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "quality_manager",
+      "phase": "execution",
+      "entry": 190,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_supervisor_mep",
+      "phase": "execution",
+      "entry": 190,
+      "exit": 640,
+      "status": "recruiting"
+    },
+    {
+      "role": "commissioning_manager",
+      "phase": "execution",
+      "entry": 520,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_plant_manager",
+      "phase": "operation",
+      "entry": 560,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_shift_lead",
+      "phase": "operation",
+      "entry": 600,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_technician",
+      "phase": "operation",
+      "entry": 620,
+      "exit": null,
+      "status": "open"
+    }
+  ],
+  "mobilisation_in_days": 175,
+  "commissioning_in_days": 640,
+  "filled": [
+    "project_director",
+    "project_manager",
+    "design_manager",
+    "cost_manager",
+    "contract_manager",
+    "site_manager",
+    "hse_manager",
+    "site_supervisor_civil",
+    "document_controller"
+  ],
+  "expiring": [
+    {
+      "role": "site_supervisor_civil",
+      "kind": "work_permit",
+      "days": 28
+    },
+    {
+      "role": "hse_manager",
+      "kind": "safety_training",
+      "days": 52
+    },
+    {
+      "role": "site_manager",
+      "kind": "occupational_health_certificate",
+      "days": 90
+    }
+  ],
+  "missing": [
+    {
+      "role": "hse_manager",
+      "kind": "qualification"
+    }
+  ],
+  "waived": [
+    {
+      "role": "site_manager",
+      "kind": "professional_licence"
+    }
+  ],
+  "handovers": [
+    {
+      "from": "project_manager",
+      "to": "operator_plant_manager",
+      "overlap_days": 30,
+      "scope": {
+        "en": "Open items, handover of the four buildings in sequence, instruction of the property management and the caretaker service, and the key and tenant move-in plan.",
+        "de": "Offene Punkte, Übergabe der vier Gebäude in der Reihenfolge der Fertigstellung, Einweisung der Hausverwaltung und des Hausmeisterdienstes sowie Schlüssel- und Mietereinzugsplan."
+      }
+    },
+    {
+      "from": "design_manager",
+      "to": "commissioning_manager",
+      "overlap_days": 20,
+      "scope": {
+        "en": "Design intent, test criteria for the district heating substations and the apartment ventilation, sound insulation proof, as-built status.",
+        "de": "Planungsabsicht, Prüfkriterien für Fernwärmestationen und Wohnungslüftung, Schallschutznachweis, Stand der Bestandsunterlagen."
+      }
+    }
+  ],
+  "waiver_note": {
+    "en": "Renewal filed with the Architekten- und Ingenieurkammer; confirmation of receipt is on file.",
+    "de": "Verlängerung bei der Kammer beantragt; die Eingangsbestätigung liegt vor."
+  },
+  "home_place": {
+    "en": "Home city",
+    "de": "Wohnort"
+  },
+  "site_place": {
+    "en": "Site Regensburg",
+    "de": "Baustelle Regensburg"
+  },
+  "roster": [
+    {
+      "name": {
+        "en": "Dr. Katharina Lindner",
+        "de": "Dr. Katharina Lindner"
+      },
+      "company": {
+        "en": "Wohnungsbau Donaupark GmbH",
+        "de": "Wohnungsbau Donaupark GmbH"
+      },
+      "site_role": "project_director",
+      "allocation": 40
+    },
+    {
+      "name": {
+        "en": "Matthias Kreutzer",
+        "de": "Matthias Kreutzer"
+      },
+      "company": {
+        "en": "Wohnungsbau Donaupark GmbH",
+        "de": "Wohnungsbau Donaupark GmbH"
+      },
+      "site_role": "project_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Julia Hartmann",
+        "de": "Julia Hartmann"
+      },
+      "company": {
+        "en": "Architekturbüro Hartmann und Brandl",
+        "de": "Architekturbüro Hartmann und Brandl"
+      },
+      "site_role": "design_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Stefan Obermeier",
+        "de": "Stefan Obermeier"
+      },
+      "company": {
+        "en": "Wohnungsbau Donaupark GmbH",
+        "de": "Wohnungsbau Donaupark GmbH"
+      },
+      "site_role": "cost_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Monika Brunner",
+        "de": "Monika Brunner"
+      },
+      "company": {
+        "en": "Wohnungsbau Donaupark GmbH",
+        "de": "Wohnungsbau Donaupark GmbH"
+      },
+      "site_role": "contract_manager",
+      "allocation": 40
+    },
+    {
+      "name": {
+        "en": "Florian Wagenhuber",
+        "de": "Florian Wagenhuber"
+      },
+      "company": {
+        "en": "Bauleitung Oberpfalz GmbH",
+        "de": "Bauleitung Oberpfalz GmbH"
+      },
+      "site_role": "site_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Sabine Rottenwöhrer",
+        "de": "Sabine Rottenwöhrer"
+      },
+      "company": {
+        "en": "Bauleitung Oberpfalz GmbH",
+        "de": "Bauleitung Oberpfalz GmbH"
+      },
+      "site_role": "hse_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Thomas Kellermann",
+        "de": "Thomas Kellermann"
+      },
+      "company": {
+        "en": "Bauleitung Oberpfalz GmbH",
+        "de": "Bauleitung Oberpfalz GmbH"
+      },
+      "site_role": "site_supervisor_civil",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Anja Kiermeier",
+        "de": "Anja Kiermeier"
+      },
+      "company": {
+        "en": "Wohnungsbau Donaupark GmbH",
+        "de": "Wohnungsbau Donaupark GmbH"
+      },
+      "site_role": "document_controller",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Christoph Eibl",
+        "de": "Christoph Eibl"
+      },
+      "company": {
+        "en": "Bauleitung Oberpfalz GmbH",
+        "de": "Bauleitung Oberpfalz GmbH"
+      },
+      "site_role": "quality_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Verena Pledl",
+        "de": "Verena Pledl"
+      },
+      "company": {
+        "en": "Ingenieurbüro Pledl TGA",
+        "de": "Ingenieurbüro Pledl TGA"
+      },
+      "site_role": "site_supervisor_mep",
+      "allocation": 100
+    }
+  ]
+}

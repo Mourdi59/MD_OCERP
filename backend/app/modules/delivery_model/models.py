@@ -11,6 +11,8 @@ Tables (all prefixed ``oe_delivery_model_``):
     allocation  -- who carries one risk category, on what basis, and why
     package     -- the package plan: the one place that says who designs, builds, supplies
     ofi         -- an owner-furnished item, its procurement route and installing package
+    contract_item -- a contract-side item of the project: contract form, land tenure, utility contract,
+                     user agreement or partner structure
 
 Constraint and index names are written out (``*_oe_dm_*``) and the migration
 uses the same strings. No ``relationship()``: rows reference each other by id
@@ -277,6 +279,40 @@ class OwnerFurnishedItem(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="identified", server_default="identified")
 
 
+class ContractItem(Base):
+    """One contract-side agreement of the project, outside the package plan.
+
+    ``group_code`` says what it is (contract form, land tenure, utility contract, user agreement,
+    partner structure); ``kind_code`` is the catalogue kind within the group. A contract form may name
+    the package it governs and its price basis; a partner structure carries the partner's share.
+    """
+
+    __tablename__ = "oe_delivery_model_contract_item"
+    __table_args__ = (
+        UniqueConstraint("project_id", "code", name="uq_oe_dm_contract_item_code"),
+        Index("ix_oe_dm_contract_item_project", "project_id", "group_code"),
+    )
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_dm_contract_item_project")
+    code: Mapped[str] = mapped_column(String(64), nullable=False)
+    # contract_form | land_tenure | utility_contract | user_agreement | partner_structure
+    group_code: Mapped[str] = mapped_column(String(30), nullable=False)
+    kind_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False, default="", server_default="")
+    counterparty: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
+    package_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # draft | negotiating | agreed | signed | terminated
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft", server_default="draft")
+    reference: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
+    start_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    end_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # A contract form's price basis (one of the delivery model price bases).
+    price_basis: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # A partner structure's share of the project, a decimal string in percent.
+    share_percent: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+
+
 ALL_MODELS = (
     DeliveryModel,
     DeliveryOption,
@@ -286,4 +322,5 @@ ALL_MODELS = (
     RiskAllocation,
     ContractPackage,
     OwnerFurnishedItem,
+    ContractItem,
 )

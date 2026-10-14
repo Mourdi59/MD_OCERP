@@ -514,7 +514,10 @@
       "required_at_gates": [
         "award_to_construction"
       ],
-      "source_ref": null
+      "source_ref": null,
+      "hosts": [
+        "hse"
+      ]
     },
     {
       "code": "health_safety_file",

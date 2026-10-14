@@ -189,6 +189,7 @@ Prove the work meets the standard.
 - **Construction Control** `construction_control` - QA/QC engine: acceptance criteria, inspections, material passports and as-built records.
 - **Safety Management** `safety` - incident and observation tracking with risk scoring and corrective actions.
 - **HSE Advanced** `hse_advanced` - job hazard analysis, permits, toolbox talks, PPE, audits and safety KPIs.
+- **HSE Frame** `hse_frame` - the project's health, safety and environment frame: duties from project facts, requirements register, safety coordinator roles, permit conditions and links to incidents, permits to work and audits.
 - **Commissioning (Cx)** `commissioning` - prefunctional and functional checklists, an issue log and readiness scoring.
 - **Compliance DSL** `compliance` - author validation rules as YAML or JSON without writing Python.
 - **Compliance AI** `compliance_ai` - a natural-language rule builder that compiles into the validation engine.

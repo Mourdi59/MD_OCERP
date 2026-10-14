@@ -1,332 +1,657 @@
 {
-  "$note": "Demo story of the pack as data. It carries only what no module seeder can know. Rows on the module screens come from the module seeders. All names are invented; no real company, person or address.",
+  "$note": "Demo story of the pack as data. It carries what no module seeder can know. A project lists module_files, one story file per module the seeder applies on top of its own default. Rows on the module screens come from the module seeders. All names are invented; no real company, person or address.",
   "schema_version": 1,
-  "demo_id": "eleven-areas-residential",
-  "project": {
-    "demo_template_id": "residential-regensburg",
-    "$template_note": "The project row and its bill come from the existing Python demo template of this id (Bavarian residential quarter); the manifest names it in demo_template_ids. A pack never runs code and this file is no second source of the project row."
-  },
-  "pins": [
+  "projects": [
     {
-      "kind": "phase_model",
-      "source": "pack",
-      "id": "eleven_areas_framework",
-      "version": 1
-    },
-    {
-      "kind": "stakeholder_framework",
-      "source": "pack",
-      "id": "eleven_areas_framework",
-      "version": 1
-    },
-    {
-      "kind": "delivery_forms",
-      "source": "pack",
-      "id": "eleven_areas_framework",
-      "version": 1
-    },
-    {
-      "kind": "permit_type",
-      "source": "pack",
-      "id": "eleven_areas_framework_de_by",
-      "version": 1
-    },
-    {
-      "kind": "site_logistics",
-      "source": "pack",
-      "id": "eleven_areas_framework_de",
-      "version": 1
-    }
-  ],
-  "governance": {
-    "four_eyes": true,
-    "logins": {
-      "owner": "project owner",
-      "cost": "estimator login",
-      "decider": "manager login"
-    },
-    "area_owners": {
-      "m01_project_management": "owner",
-      "m02_contract_management": "owner",
-      "m03_engineering_scheduling": "owner",
-      "m04_equipment": "owner",
-      "m05_personnel": "owner",
-      "m06_logistics": "owner",
-      "m07_design_management": "owner",
-      "m08_procurement": "cost",
-      "m09_commercial": "cost",
-      "m10_quality": "owner",
-      "m11_hse": "owner"
-    },
-    "frame_documents": [
-      {
-        "doc_type": "m01_project_management_frame",
-        "container_code": "GOV-M01-RD",
-        "title": {
-          "en": "Project management frame",
-          "de": "Rahmendokument Projektmanagement"
-        },
-        "file_name": "m01-frame.pdf",
-        "revisions": 2,
-        "state": "in_review"
+      "project": {
+        "demo_template_id": "residential-regensburg",
+        "$template_note": "The project row and its bill come from the existing Python demo template of this id (Bavarian residential quarter); the manifest names it in demo_template_ids. A pack never runs code and this file is no second source of the project row."
       },
-      {
-        "doc_type": "m02_contract_management_frame",
-        "container_code": "GOV-M02-RD",
-        "title": {
-          "en": "Contract management frame",
-          "de": "Rahmendokument Vertragsmanagement"
-        },
-        "file_name": "m02-frame.pdf",
-        "revisions": 3,
-        "state": "in_review"
-      },
-      {
-        "doc_type": "m03_engineering_scheduling_frame",
-        "container_code": "GOV-M03-RD",
-        "title": {
-          "en": "Engineering and scheduling frame",
-          "de": "Rahmendokument Technik und Terminplanung"
-        },
-        "file_name": "m03-frame.pdf",
-        "revisions": 2,
-        "state": "draft"
-      },
-      {
-        "doc_type": "m04_equipment_frame",
-        "container_code": "GOV-M04-RD",
-        "title": {
-          "en": "Equipment frame",
-          "de": "Rahmendokument Anlagen und Geräte"
-        },
-        "file_name": "m04-frame.pdf",
-        "revisions": 2,
-        "state": "in_review"
-      },
-      {
-        "doc_type": "m05_personnel_frame",
-        "container_code": "GOV-M05-RD",
-        "title": {
-          "en": "Personnel frame",
-          "de": "Rahmendokument Personal"
-        },
-        "file_name": "m05-frame.pdf",
-        "revisions": 1,
-        "state": "in_review"
-      },
-      {
-        "doc_type": "m06_logistics_frame",
-        "container_code": "GOV-M06-RD",
-        "title": {
-          "en": "Logistics frame",
-          "de": "Rahmendokument Logistik"
-        },
-        "file_name": "m06-frame.pdf",
-        "revisions": 2,
-        "state": "in_review"
-      },
-      {
-        "doc_type": "m07_design_management_frame",
-        "container_code": "GOV-M07-RD",
-        "title": {
-          "en": "Design management frame",
-          "de": "Rahmendokument Planungsmanagement"
-        },
-        "file_name": "m07-frame.pdf",
-        "revisions": 3,
-        "state": "in_review"
-      },
-      {
-        "doc_type": "m08_procurement_frame",
-        "container_code": "GOV-M08-RD",
-        "title": {
-          "en": "Procurement frame",
-          "de": "Rahmendokument Beschaffung"
-        },
-        "file_name": "m08-frame.pdf",
-        "revisions": 2,
-        "state": "in_review"
-      },
-      {
-        "doc_type": "m09_commercial_frame",
-        "container_code": "GOV-M09-RD",
-        "title": {
-          "en": "Commercial frame",
-          "de": "Rahmendokument Kaufmännisches"
-        },
-        "file_name": "m09-frame.pdf",
-        "revisions": 4,
-        "state": "in_review"
-      },
-      {
-        "doc_type": "m10_quality_frame",
-        "container_code": "GOV-M10-RD",
-        "title": {
-          "en": "Quality frame",
-          "de": "Rahmendokument Qualität"
-        },
-        "file_name": "m10-frame.pdf",
-        "revisions": 2,
-        "state": "in_review"
-      },
-      {
-        "doc_type": "m11_hse_frame",
-        "container_code": "GOV-M11-RD",
-        "title": {
-          "en": "Health, safety and environment frame",
-          "de": "Rahmendokument Arbeitsschutz und Umwelt"
-        },
-        "file_name": "m11-frame.pdf",
-        "revisions": 2,
-        "state": "in_review"
-      }
-    ],
-    "gate": {
-      "code": "development_to_execution",
-      "target_in_days": 21,
-      "stop_at": "in_preparation",
-      "checks": [
+      "pins": [
         {
-          "area": "m01_project_management",
-          "status": "ready_with_risks",
-          "rag": "amber",
-          "note": {
-            "en": "Organisation and decision rules are in force. One commitment made to the public is overdue.",
-            "de": "Organisation und Entscheidungsregeln gelten. Eine Zusage an die Öffentlichkeit ist überfällig."
-          }
+          "kind": "phase_model",
+          "source": "pack",
+          "id": "eleven_areas_framework",
+          "version": 1
         },
         {
-          "area": "m02_contract_management",
-          "status": "not_ready",
-          "rag": "red",
-          "note": {
-            "en": "Building permit granted with conditions. One condition that must be met before the start is still open.",
-            "de": "Baugenehmigung mit Nebenbestimmungen erteilt. Eine vor Baubeginn zu erfüllende Bedingung ist noch offen."
-          }
+          "kind": "stakeholder_framework",
+          "source": "pack",
+          "id": "eleven_areas_framework",
+          "version": 1
         },
         {
-          "area": "m03_engineering_scheduling",
-          "status": "not_assessed",
-          "rag": "",
-          "note": {
-            "en": "",
-            "de": ""
-          }
+          "kind": "delivery_forms",
+          "source": "pack",
+          "id": "eleven_areas_framework",
+          "version": 1
         },
         {
-          "area": "m04_equipment",
-          "status": "ready",
-          "rag": "green",
-          "note": {
-            "en": "Lead times quoted for all critical plant. The transformer slot is held.",
-            "de": "Lieferzeiten für alle kritischen Anlagen angefragt. Der Fertigungsslot für die Transformatoren ist reserviert."
-          }
+          "kind": "permit_type",
+          "source": "pack",
+          "id": "eleven_areas_framework_de_by",
+          "version": 1
         },
         {
-          "area": "m05_personnel",
-          "status": "ready_with_risks",
-          "rag": "amber",
-          "note": {
-            "en": "Site team named. The commissioning manager is not appointed yet.",
-            "de": "Bauleitung benannt. Die Inbetriebnahmeleitung ist noch nicht besetzt."
-          }
+          "kind": "site_logistics",
+          "source": "pack",
+          "id": "eleven_areas_framework_de",
+          "version": 1
         },
         {
-          "area": "m06_logistics",
-          "status": "ready",
-          "rag": "green",
-          "note": {
-            "en": "Site areas, gates and laydown zones are agreed.",
-            "de": "Baustellenflächen, Tore und Lagerflächen sind abgestimmt."
-          }
-        },
-        {
-          "area": "m07_design_management",
-          "status": "not_ready",
-          "rag": "red",
-          "note": {
-            "en": "One release waits for approval. Required expert reports are not accepted yet.",
-            "de": "Eine Planfreigabe wartet auf Genehmigung. Geforderte Gutachten sind noch nicht angenommen."
-          }
-        },
-        {
-          "area": "m08_procurement",
-          "status": "ready",
-          "rag": "green",
-          "note": {
-            "en": "Award packages, procedures and bidder shortlist are fixed.",
-            "de": "Vergabeeinheiten, Verfahren und Bieterliste stehen fest."
-          }
-        },
-        {
-          "area": "m09_commercial",
-          "status": "ready_with_risks",
-          "rag": "amber",
-          "note": {
-            "en": "Budget approved. One long-lead supply is past its decision date and not released.",
-            "de": "Budget freigegeben. Eine Lieferung mit langer Lieferzeit ist über dem Entscheidungstermin und nicht freigegeben."
-          }
-        },
-        {
-          "area": "m10_quality",
-          "status": "ready",
-          "rag": "green",
-          "note": {
-            "en": "Proof plan, commissioning stages and acceptance rules are set.",
-            "de": "Nachweisplan, Inbetriebnahmestufen und Abnahmeregeln sind festgelegt."
-          }
-        },
-        {
-          "area": "m11_hse",
-          "status": "ready",
-          "rag": "green",
-          "note": {
-            "en": "Safety coordination appointed. Permit conditions on noise and traffic are taken over.",
-            "de": "Sicherheitskoordination bestellt. Auflagen zu Lärm und Verkehr sind übernommen."
-          }
+          "kind": "hse_frame",
+          "source": "pack",
+          "id": "eleven_areas_framework_de_by",
+          "version": 1
         }
       ],
-      "decision": null
+      "governance": {
+        "four_eyes": true,
+        "logins": {
+          "owner": "project owner",
+          "cost": "estimator login",
+          "decider": "manager login"
+        },
+        "area_owners": {
+          "m01_project_management": "owner",
+          "m02_contract_management": "owner",
+          "m03_engineering_scheduling": "owner",
+          "m04_equipment": "owner",
+          "m05_personnel": "owner",
+          "m06_logistics": "owner",
+          "m07_design_management": "owner",
+          "m08_procurement": "cost",
+          "m09_commercial": "cost",
+          "m10_quality": "owner",
+          "m11_hse": "owner"
+        },
+        "frame_documents": [
+          {
+            "doc_type": "m01_project_management_frame",
+            "container_code": "GOV-M01-RD",
+            "title": {
+              "en": "Project management frame",
+              "de": "Rahmendokument Projektmanagement"
+            },
+            "file_name": "m01-frame.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m02_contract_management_frame",
+            "container_code": "GOV-M02-RD",
+            "title": {
+              "en": "Contract management frame",
+              "de": "Rahmendokument Vertragsmanagement"
+            },
+            "file_name": "m02-frame.pdf",
+            "revisions": 3,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m03_engineering_scheduling_frame",
+            "container_code": "GOV-M03-RD",
+            "title": {
+              "en": "Engineering and scheduling frame",
+              "de": "Rahmendokument Technik und Terminplanung"
+            },
+            "file_name": "m03-frame.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m04_equipment_frame",
+            "container_code": "GOV-M04-RD",
+            "title": {
+              "en": "Equipment frame",
+              "de": "Rahmendokument Anlagen und Geräte"
+            },
+            "file_name": "m04-frame.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m05_personnel_frame",
+            "container_code": "GOV-M05-RD",
+            "title": {
+              "en": "Personnel frame",
+              "de": "Rahmendokument Personal"
+            },
+            "file_name": "m05-frame.pdf",
+            "revisions": 1,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m06_logistics_frame",
+            "container_code": "GOV-M06-RD",
+            "title": {
+              "en": "Logistics frame",
+              "de": "Rahmendokument Logistik"
+            },
+            "file_name": "m06-frame.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m07_design_management_frame",
+            "container_code": "GOV-M07-RD",
+            "title": {
+              "en": "Design management frame",
+              "de": "Rahmendokument Planungsmanagement"
+            },
+            "file_name": "m07-frame.pdf",
+            "revisions": 3,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m08_procurement_frame",
+            "container_code": "GOV-M08-RD",
+            "title": {
+              "en": "Procurement frame",
+              "de": "Rahmendokument Beschaffung"
+            },
+            "file_name": "m08-frame.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m09_commercial_frame",
+            "container_code": "GOV-M09-RD",
+            "title": {
+              "en": "Commercial frame",
+              "de": "Rahmendokument Kaufmännisches"
+            },
+            "file_name": "m09-frame.pdf",
+            "revisions": 4,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m10_quality_frame",
+            "container_code": "GOV-M10-RD",
+            "title": {
+              "en": "Quality frame",
+              "de": "Rahmendokument Qualität"
+            },
+            "file_name": "m10-frame.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m11_hse_frame",
+            "container_code": "GOV-M11-RD",
+            "title": {
+              "en": "Health, safety and environment frame",
+              "de": "Rahmendokument Arbeitsschutz und Umwelt"
+            },
+            "file_name": "m11-frame.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          }
+        ],
+        "gate": {
+          "code": "development_to_execution",
+          "target_in_days": null,
+          "stop_at": "decided",
+          "checks": [
+            {
+              "area": "m01_project_management",
+              "status": "ready_with_risks",
+              "rag": "amber",
+              "note": {
+                "en": "Organisation and decision rules are in force. One commitment made to the public is overdue.",
+                "de": "Organisation und Entscheidungsregeln gelten. Eine Zusage an die Öffentlichkeit ist überfällig."
+              }
+            },
+            {
+              "area": "m02_contract_management",
+              "status": "not_ready",
+              "rag": "red",
+              "note": {
+                "en": "Building permit granted with conditions. One condition that must be met before the start is still open.",
+                "de": "Baugenehmigung mit Nebenbestimmungen erteilt. Eine vor Baubeginn zu erfüllende Bedingung ist noch offen."
+              }
+            },
+            {
+              "area": "m03_engineering_scheduling",
+              "status": "ready",
+              "rag": "green",
+              "note": {
+                "en": "Frame schedule and site planning are agreed. The brief for the engineering is binding.",
+                "de": "Rahmenterminplan und Baustellenplanung sind abgestimmt. Das technische Pflichtenheft ist verbindlich."
+              }
+            },
+            {
+              "area": "m04_equipment",
+              "status": "ready",
+              "rag": "green",
+              "note": {
+                "en": "Lead times quoted for all critical plant. The transformer slot is held.",
+                "de": "Lieferzeiten für alle kritischen Anlagen angefragt. Der Fertigungsslot für die Transformatoren ist reserviert."
+              }
+            },
+            {
+              "area": "m05_personnel",
+              "status": "ready_with_risks",
+              "rag": "amber",
+              "note": {
+                "en": "Site team named. The commissioning manager is not appointed yet.",
+                "de": "Bauleitung benannt. Die Inbetriebnahmeleitung ist noch nicht besetzt."
+              }
+            },
+            {
+              "area": "m06_logistics",
+              "status": "ready",
+              "rag": "green",
+              "note": {
+                "en": "Site areas, gates and laydown zones are agreed.",
+                "de": "Baustellenflächen, Tore und Lagerflächen sind abgestimmt."
+              }
+            },
+            {
+              "area": "m07_design_management",
+              "status": "not_ready",
+              "rag": "red",
+              "note": {
+                "en": "One release waits for approval. Required expert reports are not accepted yet.",
+                "de": "Eine Planfreigabe wartet auf Genehmigung. Geforderte Gutachten sind noch nicht angenommen."
+              }
+            },
+            {
+              "area": "m08_procurement",
+              "status": "ready",
+              "rag": "green",
+              "note": {
+                "en": "Award packages, procedures and bidder shortlist are fixed.",
+                "de": "Vergabeeinheiten, Verfahren und Bieterliste stehen fest."
+              }
+            },
+            {
+              "area": "m09_commercial",
+              "status": "ready_with_risks",
+              "rag": "amber",
+              "note": {
+                "en": "Budget approved. One long-lead supply is past its decision date and not released.",
+                "de": "Budget freigegeben. Eine Lieferung mit langer Lieferzeit ist über dem Entscheidungstermin und nicht freigegeben."
+              }
+            },
+            {
+              "area": "m10_quality",
+              "status": "ready",
+              "rag": "green",
+              "note": {
+                "en": "Proof plan, commissioning stages and acceptance rules are set.",
+                "de": "Nachweisplan, Inbetriebnahmestufen und Abnahmeregeln sind festgelegt."
+              }
+            },
+            {
+              "area": "m11_hse",
+              "status": "ready",
+              "rag": "green",
+              "note": {
+                "en": "Safety coordination appointed. Permit conditions on noise and traffic are taken over.",
+                "de": "Sicherheitskoordination bestellt. Auflagen zu Lärm und Verkehr sind übernommen."
+              }
+            }
+          ],
+          "decision": {
+            "outcome": "go_with_conditions",
+            "rationale": {
+              "en": "The frame documents are in force and the building permit is granted. Two areas go ahead at risk with a named owner each; the commissioning manager is still to be appointed.",
+              "de": "Die Rahmendokumente gelten und die Baugenehmigung liegt vor. Zwei Bereiche gehen mit benanntem Verantwortlichen unter Vorbehalt in die Ausführung; die Inbetriebnahmeleitung ist noch zu besetzen."
+            },
+            "conditions": [
+              {
+                "area": "m05_personnel",
+                "text": {
+                  "en": "Commissioning manager appointed before the first factory test",
+                  "de": "Inbetriebnahmeleitung vor dem ersten Werksabnahmetest bestellt"
+                },
+                "owner": "owner",
+                "due_in_days": 180,
+                "severity": "essential"
+              }
+            ]
+          }
+        }
+      },
+      "story": {
+        "$note": "Not seeded. Regensburg is told after its gate: the construction site runs.",
+        "on_camera": [
+          "open the gate record and read the decision with its conditions",
+          "show the conditions register: the commissioning manager condition and the at-risk areas with owners",
+          "walk the running site in logistics, permits and the plant register"
+        ]
+      },
+      "demo_id": "eleven-areas-residential",
+      "module_files": {
+        "stakeholders": "demo/residential-regensburg-stakeholders.json",
+        "staffing": "demo/residential-regensburg-staffing.json",
+        "permits": "demo/residential-regensburg-permits.json",
+        "plant_register": "demo/residential-regensburg-plant_register.json",
+        "procurement_concept": "demo/residential-regensburg-procurement_concept.json",
+        "quality_concept": "demo/residential-regensburg-quality_concept.json",
+        "design_management": "demo/residential-regensburg-design_management.json",
+        "delivery_model": "demo/residential-regensburg-delivery_model.json",
+        "commitment_release": "demo/residential-regensburg-commitment_release.json",
+        "site_logistics": "demo/residential-regensburg-site_logistics.json",
+        "transmittals": "demo/residential-regensburg-transmittals.json"
+      }
+    },
+    {
+      "project": {
+        "demo_template_id": "school-ludwigsburg",
+        "$template_note": "The project row and its bill come from the existing Python demo template of this id (all-day primary school of a Baden-Wuerttemberg town); the manifest names it in demo_template_ids."
+      },
+      "pins": [
+        {
+          "kind": "phase_model",
+          "source": "pack",
+          "id": "eleven_areas_framework",
+          "version": 1
+        },
+        {
+          "kind": "stakeholder_framework",
+          "source": "pack",
+          "id": "eleven_areas_framework",
+          "version": 1
+        },
+        {
+          "kind": "delivery_forms",
+          "source": "pack",
+          "id": "eleven_areas_framework",
+          "version": 1
+        },
+        {
+          "kind": "permit_type",
+          "source": "pack",
+          "id": "eleven_areas_framework_de_bw",
+          "version": 1
+        },
+        {
+          "kind": "site_logistics",
+          "source": "pack",
+          "id": "eleven_areas_framework_de",
+          "version": 1
+        },
+        {
+          "kind": "hse_frame",
+          "source": "pack",
+          "id": "eleven_areas_framework_de_by",
+          "version": 1
+        }
+      ],
+      "governance": {
+        "four_eyes": true,
+        "logins": {
+          "owner": "project owner",
+          "cost": "estimator login",
+          "decider": "manager login"
+        },
+        "area_owners": {
+          "m01_project_management": "owner",
+          "m02_contract_management": "owner",
+          "m03_engineering_scheduling": "owner",
+          "m04_equipment": "owner",
+          "m05_personnel": "owner",
+          "m06_logistics": "owner",
+          "m07_design_management": "owner",
+          "m08_procurement": "cost",
+          "m09_commercial": "cost",
+          "m10_quality": "owner",
+          "m11_hse": "owner"
+        },
+        "frame_documents": [
+          {
+            "doc_type": "m01_project_management_frame",
+            "container_code": "GOV-M01-LB",
+            "title": {
+              "en": "Project management frame",
+              "de": "Rahmendokument Projektmanagement"
+            },
+            "file_name": "m01-frame-gs.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m02_contract_management_frame",
+            "container_code": "GOV-M02-LB",
+            "title": {
+              "en": "Contract management frame",
+              "de": "Rahmendokument Vertragsmanagement"
+            },
+            "file_name": "m02-frame-gs.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m03_engineering_scheduling_frame",
+            "container_code": "GOV-M03-LB",
+            "title": {
+              "en": "Engineering and scheduling frame",
+              "de": "Rahmendokument Technik und Terminplanung"
+            },
+            "file_name": "m03-frame-gs.pdf",
+            "revisions": 3,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m04_equipment_frame",
+            "container_code": "GOV-M04-LB",
+            "title": {
+              "en": "Equipment frame",
+              "de": "Rahmendokument Anlagen und Geräte"
+            },
+            "file_name": "m04-frame-gs.pdf",
+            "revisions": 1,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m05_personnel_frame",
+            "container_code": "GOV-M05-LB",
+            "title": {
+              "en": "Personnel frame",
+              "de": "Rahmendokument Personal"
+            },
+            "file_name": "m05-frame-gs.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m06_logistics_frame",
+            "container_code": "GOV-M06-LB",
+            "title": {
+              "en": "Logistics frame",
+              "de": "Rahmendokument Logistik"
+            },
+            "file_name": "m06-frame-gs.pdf",
+            "revisions": 1,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m07_design_management_frame",
+            "container_code": "GOV-M07-LB",
+            "title": {
+              "en": "Design management frame",
+              "de": "Rahmendokument Planungsmanagement"
+            },
+            "file_name": "m07-frame-gs.pdf",
+            "revisions": 4,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m08_procurement_frame",
+            "container_code": "GOV-M08-LB",
+            "title": {
+              "en": "Procurement frame",
+              "de": "Rahmendokument Beschaffung"
+            },
+            "file_name": "m08-frame-gs.pdf",
+            "revisions": 3,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m09_commercial_frame",
+            "container_code": "GOV-M09-LB",
+            "title": {
+              "en": "Commercial frame",
+              "de": "Rahmendokument Kaufmännisches"
+            },
+            "file_name": "m09-frame-gs.pdf",
+            "revisions": 3,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m10_quality_frame",
+            "container_code": "GOV-M10-LB",
+            "title": {
+              "en": "Quality frame",
+              "de": "Rahmendokument Qualität"
+            },
+            "file_name": "m10-frame-gs.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          },
+          {
+            "doc_type": "m11_hse_frame",
+            "container_code": "GOV-M11-LB",
+            "title": {
+              "en": "Health, safety and environment frame",
+              "de": "Rahmendokument Arbeitsschutz und Umwelt"
+            },
+            "file_name": "m11-frame-gs.pdf",
+            "revisions": 2,
+            "state": "in_review"
+          }
+        ],
+        "gate": {
+          "code": "development_to_execution",
+          "target_in_days": 12,
+          "stop_at": "in_review",
+          "checks": [
+            {
+              "area": "m01_project_management",
+              "status": "ready",
+              "rag": "green",
+              "note": {
+                "en": "Mandate of the school building committee is in force. The council has confirmed the project budget.",
+                "de": "Der Auftrag des Schulbauausschusses gilt. Der Gemeinderat hat das Projektbudget bestätigt."
+              }
+            },
+            {
+              "area": "m02_contract_management",
+              "status": "ready_with_risks",
+              "rag": "amber",
+              "note": {
+                "en": "Building permit granted with conditions. The grant notice for school construction funding carries a spending deadline.",
+                "de": "Baugenehmigung mit Nebenbestimmungen erteilt. Der Zuwendungsbescheid zur Schulbauförderung nennt einen Mittelabruftermin."
+              }
+            },
+            {
+              "area": "m03_engineering_scheduling",
+              "status": "ready_with_risks",
+              "rag": "amber",
+              "note": {
+                "en": "Schedule is fixed to the summer holidays for the school relocation. Float to the holiday window is thin.",
+                "de": "Terminplan ist an die Sommerferien für den Umzug gebunden. Der Puffer bis zum Ferienfenster ist knapp."
+              }
+            },
+            {
+              "area": "m04_equipment",
+              "status": "ready",
+              "rag": "green",
+              "note": {
+                "en": "Kitchen, ventilation and heat pump plant are listed with lead times. The kitchen supplier is not yet chosen.",
+                "de": "Küche, Lüftung und Wärmepumpe sind mit Lieferzeiten erfasst. Der Küchenlieferant ist noch nicht gewählt."
+              }
+            },
+            {
+              "area": "m05_personnel",
+              "status": "ready",
+              "rag": "green",
+              "note": {
+                "en": "Client project team and the external site supervision are named.",
+                "de": "Projektteam des Bauherrn und externe Bauüberwachung sind benannt."
+              }
+            },
+            {
+              "area": "m06_logistics",
+              "status": "ready_with_risks",
+              "rag": "amber",
+              "note": {
+                "en": "Site access and pupil routes are drawn. The separation plan for deliveries during school hours still needs the head teacher's sign-off.",
+                "de": "Baustellenzufahrt und Schulwege sind geplant. Der Trennungsplan für Lieferungen während der Schulzeit braucht noch die Freigabe der Schulleitung."
+              }
+            },
+            {
+              "area": "m07_design_management",
+              "status": "ready_with_risks",
+              "rag": "amber",
+              "note": {
+                "en": "Design release for the sports hall waits for the structural check. Acoustic and fire protection reports are in review.",
+                "de": "Die Planfreigabe der Sporthalle wartet auf die Prüfung der Statik. Schall- und Brandschutzgutachten sind in Prüfung."
+              }
+            },
+            {
+              "area": "m08_procurement",
+              "status": "ready",
+              "rag": "green",
+              "note": {
+                "en": "Design services are awarded under the open procedure. Trade lots and the order of tenders are fixed.",
+                "de": "Planungsleistungen sind im offenen Verfahren vergeben. Fachlose und Reihenfolge der Ausschreibungen stehen fest."
+              }
+            },
+            {
+              "area": "m09_commercial",
+              "status": "ready_with_risks",
+              "rag": "amber",
+              "note": {
+                "en": "Budget approved by the council. The cost calculation is not yet reconciled with the grant ceiling.",
+                "de": "Budget vom Gemeinderat beschlossen. Die Kostenberechnung ist mit der Förderobergrenze noch nicht abgeglichen."
+              }
+            },
+            {
+              "area": "m10_quality",
+              "status": "ready",
+              "rag": "green",
+              "note": {
+                "en": "Proof plan, acoustic and ventilation measurements and acceptance rules are set.",
+                "de": "Nachweisplan, Schall- und Lüftungsmessungen und Abnahmeregeln sind festgelegt."
+              }
+            },
+            {
+              "area": "m11_hse",
+              "status": "ready_with_risks",
+              "rag": "amber",
+              "note": {
+                "en": "Safety coordination appointed. Works beside a running school need a separation plan that is still open.",
+                "de": "Sicherheitskoordination bestellt. Für Arbeiten neben dem laufenden Schulbetrieb fehlt noch der Trennungsplan."
+              }
+            }
+          ],
+          "decision": null
+        }
+      },
+      "story": {
+        "$note": "Not seeded. The school gate is submitted and in review.",
+        "on_camera": [
+          "open the gate in review and read the readiness of the eleven areas",
+          "decide go_with_conditions as the manager login: one condition on m11_hse, owner the project owner, due in 120 days, text 'Separation plan for works beside the running school approved by the school management'"
+        ]
+      },
+      "demo_id": "eleven-areas-school",
+      "module_files": {
+        "stakeholders": "demo/school-ludwigsburg-stakeholders.json",
+        "staffing": "demo/school-ludwigsburg-staffing.json",
+        "permits": "demo/school-ludwigsburg-permits.json",
+        "plant_register": "demo/school-ludwigsburg-plant_register.json",
+        "procurement_concept": "demo/school-ludwigsburg-procurement_concept.json",
+        "quality_concept": "demo/school-ludwigsburg-quality_concept.json",
+        "design_management": "demo/school-ludwigsburg-design_management.json",
+        "delivery_model": "demo/school-ludwigsburg-delivery_model.json",
+        "commitment_release": "demo/school-ludwigsburg-commitment_release.json",
+        "site_logistics": "demo/school-ludwigsburg-site_logistics.json",
+        "transmittals": "demo/school-ludwigsburg-transmittals.json"
+      }
     }
-  },
-  "story": {
-    "$note": "Not seeded. What the film does by hand after the seed, and what a test asserts about the seeded state.",
-    "first_check_blockers": [
-      {
-        "area": "m03_engineering_scheduling",
-        "cause": "frame_document_not_submitted"
-      },
-      {
-        "area": "m02_contract_management",
-        "cause": "module_evidence",
-        "module": "oe_permits",
-        "what": "a condition due before the start is open"
-      },
-      {
-        "area": "m07_design_management",
-        "cause": "module_evidence",
-        "module": "oe_design_management",
-        "what": "required expert reports are not accepted (the design seeder leaves three open; which of them block depends on the phase they fall in)"
-      }
-    ],
-    "first_check_warnings": [
-      {
-        "area": "m09_commercial",
-        "module": "oe_commitment_release",
-        "what": "a planned long-lead supply is past its decision date"
-      },
-      {
-        "area": "m01_project_management",
-        "module": "oe_stakeholders",
-        "what": "a commitment due three days ago is agreed but not fulfilled"
-      }
-    ],
-    "on_camera": [
-      "submit the area 3 frame document and confirm area 3 as ready",
-      "discharge the open permit condition with evidence, confirm area 2 as ready",
-      "take the open expert reports to accepted, confirm area 7 as ready",
-      "submit the gate",
-      "decide go_with_conditions as the manager login: one condition on m05_personnel, owner the project owner, due in 180 days, text 'Commissioning manager appointed before the first factory test'"
-    ]
-  }
+  ]
 }

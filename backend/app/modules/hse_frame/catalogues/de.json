@@ -1,0 +1,420 @@
+{
+  "id": "de",
+  "version": 1,
+  "name_key": "hse_frame.catalogue.de",
+  "labels": {
+    "en": "HSE frame, Germany",
+    "de": "HSE-Rahmen, Deutschland"
+  },
+  "jurisdiction": "DE",
+  "jurisdiction_countries": [
+    "DE"
+  ],
+  "extends": "neutral",
+  "review_status": "unconfirmed",
+  "role_kinds": [
+    {
+      "code": "safety_coordinator_design",
+      "labels": {
+        "en": "Safety and health coordinator (design stage)",
+        "de": "SiGe-Koordinator (Planungsphase)"
+      },
+      "party": "coordinator",
+      "phase": "development",
+      "required_when": "multiple_employers",
+      "national_name": "Sicherheits- und Gesundheitsschutzkoordinator (SiGeKo)",
+      "qualification_required": true,
+      "legal_basis": "BaustellV § 3",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/__3.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "safety_coordinator_execution",
+      "labels": {
+        "en": "Safety and health coordinator (execution stage)",
+        "de": "SiGe-Koordinator (Ausführungsphase)"
+      },
+      "party": "coordinator",
+      "phase": "execution",
+      "required_when": "multiple_employers",
+      "national_name": "Sicherheits- und Gesundheitsschutzkoordinator (SiGeKo)",
+      "qualification_required": true,
+      "legal_basis": "BaustellV § 3",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/__3.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "contractor_hse_manager",
+      "labels": {
+        "en": "Contractor's HSE manager",
+        "de": "Verantwortlicher des Arbeitgebers für den Arbeitsschutz"
+      },
+      "party": "contractor",
+      "phase": "execution",
+      "national_name": "Arbeitgeber / Fachkraft für Arbeitssicherheit",
+      "legal_basis": "ArbSchG § 13",
+      "source_url": "https://www.gesetze-im-internet.de/arbschg/__13.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "environmental_manager",
+      "labels": {
+        "en": "Environmental manager",
+        "de": "Umweltbeauftragter"
+      },
+      "party": "contractor",
+      "phase": "execution",
+      "national_name": "Umweltbaubegleitung"
+    }
+  ],
+  "templates": [
+    {
+      "code": "de_planning_principles",
+      "topic": "hse_requirements",
+      "labels": {
+        "en": "Owner applies the general principles of prevention (ArbSchG § 4) when planning the execution",
+        "de": "Bauherr berücksichtigt bei der Planung der Ausführung die allgemeinen Grundsätze nach § 4 ArbSchG"
+      },
+      "audience": [
+        "owner",
+        "designer"
+      ],
+      "obligation": "mandatory",
+      "in_tender_documents": true,
+      "legal_basis": "BaustellV § 2 Abs. 1, ArbSchG § 4",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/__2.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "de_advance_notice",
+      "topic": "hse_requirements",
+      "labels": {
+        "en": "Advance notice (Vorankündigung) is sent to the authority",
+        "de": "Vorankündigung ist an die zuständige Behörde übermittelt"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory",
+      "applies_when": "advance_notice",
+      "legal_basis": "BaustellV § 2 Abs. 2",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/__2.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "de_sige_plan",
+      "topic": "hse_requirements",
+      "labels": {
+        "en": "Safety and health plan (SiGe-Plan) is drawn up",
+        "de": "SiGe-Plan ist erstellt"
+      },
+      "audience": [
+        "coordinator"
+      ],
+      "obligation": "mandatory",
+      "in_tender_documents": true,
+      "applies_when": "plan_required",
+      "legal_basis": "BaustellV § 2 Abs. 3, § 3 Abs. 2",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/__2.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "de_later_works_file",
+      "topic": "hse_requirements",
+      "labels": {
+        "en": "File for later works on the structure (Unterlage für spätere Arbeiten) is compiled",
+        "de": "Unterlage für spätere Arbeiten an der baulichen Anlage ist zusammengestellt"
+      },
+      "audience": [
+        "coordinator"
+      ],
+      "obligation": "mandatory",
+      "applies_when": "multiple_employers",
+      "legal_basis": "BaustellV § 3 Abs. 2 Nr. 3",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/__3.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "de_hazard_assessment",
+      "topic": "risk_assessment",
+      "labels": {
+        "en": "Employers carry out and document a risk assessment (Gefährdungsbeurteilung) for every workplace",
+        "de": "Arbeitgeber führen für jeden Arbeitsplatz eine Gefährdungsbeurteilung durch und dokumentieren sie"
+      },
+      "audience": [
+        "contractor"
+      ],
+      "obligation": "mandatory",
+      "evidence_kind": "hse_jsa",
+      "legal_basis": "ArbSchG §§ 5, 6",
+      "source_url": "https://www.gesetze-im-internet.de/arbschg/__5.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "ordnance_clearance",
+      "topic": "site_clearance",
+      "labels": {
+        "en": "Explosive ordnance clearance is on file (Kampfmittelfreiheit)",
+        "de": "Kampfmittelfreiheit liegt vor (Kampfmittelverdachtsabfrage und Freigabe)"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory"
+    },
+    {
+      "code": "contamination_clearance",
+      "topic": "site_clearance",
+      "labels": {
+        "en": "Contaminated land is investigated and cleared (Altlasten)",
+        "de": "Altlasten sind untersucht und freigegeben"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory",
+      "legal_basis": "BBodSchG §§ 4, 9",
+      "source_url": "https://www.gesetze-im-internet.de/bbodschg/",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "archaeology_clearance",
+      "topic": "site_clearance",
+      "labels": {
+        "en": "Ground heritage (Bodendenkmal) clearance is on file",
+        "de": "Freigabe zu Bodendenkmälern liegt vor"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory"
+    },
+    {
+      "code": "environmental_impact_screening",
+      "topic": "environmental_review",
+      "labels": {
+        "en": "Environmental impact screening (UVP-Vorprüfung) is done and filed",
+        "de": "UVP-Vorprüfung ist erfolgt und abgelegt"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory",
+      "legal_basis": "UVPG §§ 5 ff.",
+      "source_url": "https://www.gesetze-im-internet.de/uvpg/",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "species_protection",
+      "topic": "environmental_review",
+      "labels": {
+        "en": "Species protection assessment (artenschutzrechtliche Prüfung) is done",
+        "de": "Artenschutzrechtliche Prüfung ist erfolgt"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory",
+      "legal_basis": "BNatSchG § 44",
+      "source_url": "https://www.gesetze-im-internet.de/bnatschg_2009/__44.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "noise_assessment",
+      "topic": "environmental_review",
+      "labels": {
+        "en": "Construction noise is assessed against the AVV Baulärm limits",
+        "de": "Baulärm ist gegen die Immissionsrichtwerte der AVV Baulärm geprüft"
+      },
+      "audience": [
+        "owner",
+        "contractor"
+      ],
+      "obligation": "mandatory",
+      "legal_basis": "AVV Baulärm",
+      "source_url": "https://www.verwaltungsvorschriften-im-internet.de/bsvwvbund_19081970_IGII2.htm",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "energy_legal_requirements",
+      "topic": "energy_climate",
+      "labels": {
+        "en": "Building energy requirements (GEG) are fixed as design targets",
+        "de": "Energetische Anforderungen nach GEG sind als Planungsziele festgelegt"
+      },
+      "audience": [
+        "designer"
+      ],
+      "obligation": "mandatory",
+      "legal_basis": "GEG",
+      "source_url": "https://www.gesetze-im-internet.de/geg/",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "hazardous_works": [
+    {
+      "code": "excavation_deep",
+      "labels": {
+        "en": "Deep excavation or work at height",
+        "de": "Tiefe Baugruben oder Arbeiten in der Höhe"
+      },
+      "legal_basis": "BaustellV Anhang II",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/anhang_ii.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "hazardous_substances",
+      "labels": {
+        "en": "Hazardous substances",
+        "de": "Gefahrstoffe"
+      },
+      "legal_basis": "BaustellV Anhang II",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/anhang_ii.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "ionising_radiation",
+      "labels": {
+        "en": "Ionising radiation",
+        "de": "Ionisierende Strahlung"
+      },
+      "legal_basis": "BaustellV Anhang II",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/anhang_ii.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "high_voltage",
+      "labels": {
+        "en": "Work near high-voltage lines",
+        "de": "Arbeiten nahe Hochspannungsleitungen"
+      },
+      "legal_basis": "BaustellV Anhang II",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/anhang_ii.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "drowning",
+      "labels": {
+        "en": "Risk of drowning",
+        "de": "Ertrinkungsgefahr"
+      },
+      "legal_basis": "BaustellV Anhang II",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/anhang_ii.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "tunnelling",
+      "labels": {
+        "en": "Wells, underground earthworks, tunnelling",
+        "de": "Brunnenbau, Erdarbeiten unter Tage, Tunnelbau"
+      },
+      "legal_basis": "BaustellV Anhang II",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/anhang_ii.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "diving",
+      "labels": {
+        "en": "Diving",
+        "de": "Taucharbeiten"
+      },
+      "legal_basis": "BaustellV Anhang II",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/anhang_ii.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "compressed_air",
+      "labels": {
+        "en": "Work in compressed air",
+        "de": "Arbeiten in Druckluft"
+      },
+      "legal_basis": "BaustellV Anhang II",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/anhang_ii.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "explosives",
+      "labels": {
+        "en": "Use of explosives",
+        "de": "Sprengarbeiten"
+      },
+      "legal_basis": "BaustellV Anhang II",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/anhang_ii.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "heavy_precast",
+      "labels": {
+        "en": "Erecting or dismantling heavy precast elements",
+        "de": "Montage schwerer Fertigteile"
+      },
+      "legal_basis": "BaustellV Anhang II",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/anhang_ii.html",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "plan_elements": [
+    {
+      "code": "site_layout",
+      "labels": {
+        "en": "Site set-up and traffic routes",
+        "de": "Baustelleneinrichtung und Verkehrswege"
+      },
+      "legal_basis": "BaustellV § 2 Abs. 3, RAB 31",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/__2.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "work_sequence",
+      "labels": {
+        "en": "Work sequence and trade coordination",
+        "de": "Arbeitsabläufe und Gewerkekoordination"
+      },
+      "legal_basis": "BaustellV § 2 Abs. 3, RAB 31",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/__2.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "hazardous_work_measures",
+      "labels": {
+        "en": "Protective measures for hazardous works",
+        "de": "Schutzmaßnahmen für besonders gefährliche Arbeiten"
+      },
+      "legal_basis": "BaustellV § 2 Abs. 3, RAB 31",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/__2.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "emergency_rescue",
+      "labels": {
+        "en": "Emergency and rescue arrangements",
+        "de": "Notfall- und Rettungsorganisation"
+      },
+      "legal_basis": "BaustellV § 2 Abs. 3, RAB 31",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/__2.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "responsibilities",
+      "labels": {
+        "en": "Responsibilities and communication",
+        "de": "Zuständigkeiten und Kommunikation"
+      },
+      "legal_basis": "BaustellV § 2 Abs. 3, RAB 31",
+      "source_url": "https://www.gesetze-im-internet.de/baustellv/__2.html",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "thresholds": {
+    "advance_notice_min_working_days": 30,
+    "advance_notice_min_workers": 20,
+    "advance_notice_person_days": 500,
+    "advance_notice_lead_days": 14,
+    "coordinator_min_employers": 2,
+    "later_works_file_with_coordinator": true,
+    "item_due_warn_days": 14,
+    "source_url": "https://www.gesetze-im-internet.de/baustellv/__2.html",
+    "review_status": "unconfirmed",
+    "legal_basis": "BaustellV §§ 2, 3"
+  }
+}

@@ -181,6 +181,8 @@ DOCUMENT_REFERENCES: tuple[DocumentReference, ...] = (
     # NOT NULL: a sheet is a page OF the document, and cannot outlive it usefully.
     DocumentReference("documents", "Sheet", "oe_documents_sheet", "document_id", "scalar", "strands"),
     DocumentReference("fieldreports", "FieldReport", "oe_fieldreports_report", "document_ids", "array", "unlinks"),
+    DocumentReference("hse_frame", "HseFrame", "oe_hsef_frame", "plan_document_id", "scalar", "unlinks"),
+    DocumentReference("hse_frame", "HseRole", "oe_hsef_role", "appointment_document_id", "scalar", "unlinks"),
     DocumentReference("markups", "Markup", "oe_markups_markup", "document_id", "scalar", "unlinks"),
     # NOT NULL: a scale calibration is meaningless without the page it calibrates.
     DocumentReference("markups", "ScaleConfig", "oe_markups_scale_config", "document_id", "scalar", "strands"),

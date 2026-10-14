@@ -4,13 +4,13 @@ An owner-side project management framework as a pack: eleven management areas, t
 development and construction execution), one gate between them, and one frame document per area that is
 approved at the gate and binding afterwards.
 
-The pack contains data only. It selects eleven platform modules and gives them the framework's vocabulary.
+The pack contains data only. It selects the platform modules and gives them the framework's vocabulary.
 
 ## What it switches on
 
 `oe_project_governance`, `oe_stakeholders`, `oe_delivery_model`, `oe_permits`, `oe_plant_register`,
 `oe_staffing`, `oe_site_logistics`, `oe_design_management`, `oe_procurement_concept`,
-`oe_commitment_release`, `oe_quality_concept`, `oe_engineering_brief`, together with the validation rule set of each.
+`oe_commitment_release`, `oe_economics`, `oe_quality_concept`, `oe_engineering_brief`, `oe_hse_frame`, together with the validation rule set of each.
 
 ## What it ships
 
@@ -23,6 +23,9 @@ The pack contains data only. It selects eleven platform modules and gives them t
 | `catalogues/permit_type/eleven_areas_framework_de_by.json` | `permit_type` | the same entries on top of the shipped Bavarian catalogue (`de_by`), the default for projects in DE-BY |
 | `catalogues/permit_type/eleven_areas_framework_de_bw.json` | `permit_type` | the same entries on top of the shipped Baden-Wuerttemberg catalogue (`de_bw`), the default for projects in DE-BW |
 | `catalogues/site_logistics/eleven_areas_framework_de.json` | `site_logistics` | German site logistics catalogue that extends the shipped `de` catalogue and adds no figure of its own |
+| `catalogues/hse_frame/eleven_areas_framework_de.json` | `hse_frame` | German HSE frame catalogue on top of the shipped `de` catalogue: topics, safety coordinator roles, requirement templates and the particularly hazardous works, with the legal basis of each |
+| `catalogues/hse_frame/eleven_areas_framework_de_by.json` | `hse_frame` | the same on top of the shipped Bavarian catalogue (`de_by`), the default for projects in DE-BY |
+| `catalogues/hse_frame/eleven_areas_framework_de_bw.json` | `hse_frame` | the same on top of the shipped Baden-Wuerttemberg catalogue (`de_bw`), the default for projects in DE-BW |
 
 Every entry carries its label in German and English. Country facts (permit periods, procurement thresholds,
 retention rules, noise limits, load classes) are not in this pack: they come from the catalogues the platform

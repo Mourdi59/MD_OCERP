@@ -54,6 +54,7 @@ _CLASS = re.compile(r"^class (\w+)\(", re.M)
 UNCONSTRAINED_DOCUMENT_REFERENCES: dict[str, tuple[str, ...]] = {
     "cde": ("DocumentRevision.document_id",),
     "closeout": ("CloseoutBinding.document_id",),
+    "hse_frame": ("HseFrame.plan_document_id", "HseRole.appointment_document_id"),
     "construction_control": ("MaterialRecord.cert_document_id",),
     "contracts": (
         "ContractDocument.document_id",

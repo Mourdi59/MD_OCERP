@@ -87,6 +87,7 @@
   "quality_concept.evidence.approved": "Qualitätskonzept genehmigt",
   "quality_concept.evidence.complete": "Qualitätskonzept vollständig",
   "quality_concept.evidence.preservation_planned": "Beweissicherung für jedes betroffene Objekt geplant",
+  "quality_concept.evidence.permit_conditions_proven": "Jede Auflage, die vor Baubeginn zu erfüllen ist, ist nachgewiesen",
   "quality_concept.export.acceptance.title": "Abnahmeregister",
   "quality_concept.export.certification.title": "Zertifizierungsziele",
   "quality_concept.export.col.accepted_on": "Abgenommen am",
