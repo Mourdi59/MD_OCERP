@@ -13,6 +13,7 @@ the variety of the demo estate is set here, in :data:`PLACEMENT`.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
 
@@ -276,20 +277,64 @@ def first_gate(catalogue: Any) -> str | None:
 # ── what the seed reports ──
 
 
+def project_entries(data: Any) -> list[dict[str, Any]]:
+    """The projects a demo file tells, one entry each.
+
+    A file lists them under ``projects``. The older shape, one project at the
+    top of the file, is read as a list of one so a pack written before the list
+    keeps working.
+    """
+    if not isinstance(data, dict):
+        return []
+    listed = data.get("projects")
+    if isinstance(listed, list):
+        return [item for item in listed if isinstance(item, dict)]
+    return [data]
+
+
+def pack_demo_ids(data: Any) -> list[str]:
+    """The ``metadata.demo_id`` of every project a demo file is about, in file order."""
+    ids: list[str] = []
+    for entry in project_entries(data):
+        project = entry.get("project")
+        demo_id = project.get("demo_template_id") if isinstance(project, dict) else None
+        if isinstance(demo_id, str) and demo_id and demo_id not in ids:
+            ids.append(demo_id)
+    return ids
+
+
 def pack_demo_id(data: Any) -> str | None:
-    """The ``metadata.demo_id`` of the project a demo file is about, or ``None``."""
-    project = data.get("project") if isinstance(data, dict) else None
-    demo_id = project.get("demo_template_id") if isinstance(project, dict) else None
-    return demo_id if isinstance(demo_id, str) and demo_id else None
+    """The ``metadata.demo_id`` of the first project a demo file is about, or ``None``."""
+    ids = pack_demo_ids(data)
+    return ids[0] if ids else None
 
 
-def planned_moment(demo_id: str | None, pack_project: str | None) -> str:
+def entry_for(data: Any, demo_id: str | None) -> dict[str, Any] | None:
+    """The entry of the demo file that tells ``demo_id``, or ``None`` when the file is about other projects."""
+    if not demo_id:
+        return None
+    for entry in project_entries(data):
+        project = entry.get("project")
+        if isinstance(project, dict) and project.get("demo_template_id") == demo_id:
+            return entry
+    return None
+
+
+def text_of(value: Any, locale: str) -> str:
+    """Plain text, or the entry of a ``{locale: text}`` map for the project's language (English when it has none)."""
+    return _text(value, locale)
+
+
+def planned_moment(demo_id: str | None, pack_projects: Collection[str] | str | None) -> str:
     """Where the seed means to leave a project, decided before any story is read.
 
-    The project the pack names is planned as the pack story whether or not its
+    A project the pack names is planned as the pack story whether or not its
     file then passes the rules: a file that fails is a fallback, not a plan.
+    ``pack_projects`` is every demo id the pack's file names (a single id is
+    read as a list of one).
     """
-    if demo_id and demo_id == pack_project:
+    named = {pack_projects} if isinstance(pack_projects, str) else set(pack_projects or ())
+    if demo_id and demo_id in named:
         return PACK
     return PLACEMENT.get(demo_id or "", FIRST_GATE)
 

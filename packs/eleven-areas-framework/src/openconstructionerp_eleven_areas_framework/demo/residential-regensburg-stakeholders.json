@@ -1,0 +1,304 @@
+{
+  "$note": "Stakeholder story of the Regensburg residential quarter (Bavaria). Applied on top of the module seeder by key; the category of every row stays in the seeder. All names are invented or generic.",
+  "stakeholders": [
+    {
+      "code": "S-001",
+      "label": {
+        "en": "City of Regensburg, urban planning office",
+        "de": "Stadt Regensburg, Stadtplanungsamt"
+      },
+      "power": 4,
+      "interest": 4,
+      "attitude": 0,
+      "age_days": 20
+    },
+    {
+      "code": "S-002",
+      "label": {
+        "en": "City of Regensburg, building control office (Bauordnungsamt, permit under BayBO)",
+        "de": "Stadt Regensburg, Bauordnungsamt (Baugenehmigung nach BayBO)"
+      },
+      "power": 5,
+      "interest": 3,
+      "attitude": 0,
+      "age_days": 35
+    },
+    {
+      "code": "S-003",
+      "label": {
+        "en": "Lower nature conservation authority and Water Management Office (species protection, groundwater, flood zone)",
+        "de": "Untere Naturschutzbehörde und Wasserwirtschaftsamt (Artenschutz, Grundwasser, Hochwasserschutz)"
+      },
+      "power": 4,
+      "interest": 3,
+      "attitude": 0,
+      "age_days": 120
+    },
+    {
+      "code": "S-004",
+      "label": {
+        "en": "Regional electricity grid operator (transformer station and house connections)",
+        "de": "Regionaler Stromnetzbetreiber (Trafostation und Hausanschlüsse)"
+      },
+      "power": 4,
+      "interest": 2,
+      "attitude": 0,
+      "age_days": 40
+    },
+    {
+      "code": "S-005",
+      "label": {
+        "en": "Municipal utility company (district heating, water and sewer)",
+        "de": "Stadtwerke (Fernwärme, Wasser und Kanal)"
+      },
+      "power": 3,
+      "interest": 2,
+      "attitude": 0,
+      "age_days": 60
+    },
+    {
+      "code": "S-006",
+      "label": {
+        "en": "Residents of the houses north of the site",
+        "de": "Anwohner der Häuser nördlich des Baugrundstücks"
+      },
+      "power": 3,
+      "interest": 5,
+      "attitude": -1,
+      "age_days": 15
+    },
+    {
+      "code": "S-007",
+      "label": {
+        "en": "Owners and businesses of the adjacent commercial plots",
+        "de": "Eigentümer der angrenzenden Gewerbegrundstücke"
+      },
+      "power": 2,
+      "interest": 4,
+      "attitude": 0,
+      "age_days": 15
+    },
+    {
+      "code": "S-008",
+      "label": {
+        "en": "Public of the Donaupark district",
+        "de": "Öffentlichkeit im Stadtbezirk Donaupark"
+      },
+      "power": 2,
+      "interest": 3,
+      "attitude": 0,
+      "age_days": 150
+    },
+    {
+      "code": "S-009",
+      "label": {
+        "en": "Bezirksausschuss Donaupark (district committee)",
+        "de": "Bezirksausschuss Donaupark"
+      },
+      "power": 4,
+      "interest": 4,
+      "attitude": 1,
+      "age_days": 30
+    },
+    {
+      "code": "S-010",
+      "label": {
+        "en": "Nature conservation association, local group (riverside path, bat roosts, cycle route)",
+        "de": "Naturschutzverband, Kreisgruppe Regensburg (Uferweg, Fledermausquartiere, Radweg)"
+      },
+      "power": 2,
+      "interest": 5,
+      "attitude": -1,
+      "age_days": 45
+    },
+    {
+      "code": "S-011",
+      "label": {
+        "en": "Regional daily newspaper",
+        "de": "Regionale Tageszeitung"
+      },
+      "power": 2,
+      "interest": 3,
+      "attitude": 0,
+      "age_days": 200
+    },
+    {
+      "code": "S-012",
+      "label": {
+        "en": "Management and supervisory board of the housing company (client)",
+        "de": "Geschäftsführung und Aufsichtsrat der Wohnungsbaugesellschaft (Bauherr)"
+      },
+      "power": 5,
+      "interest": 5,
+      "attitude": 2,
+      "age_days": 10
+    },
+    {
+      "code": "S-013",
+      "label": {
+        "en": "Representatives of future tenants and applicants for subsidised flats",
+        "de": "Vertretung der künftigen Mieter und der Bewerber für geförderte Wohnungen"
+      },
+      "power": 3,
+      "interest": 5,
+      "attitude": 1,
+      "age_days": 25
+    },
+    {
+      "code": "S-014",
+      "label": {
+        "en": "Regierung der Oberpfalz, housing subsidy office (Wohnraumförderung)",
+        "de": "Regierung der Oberpfalz, Bewilligungsstelle Wohnraumförderung"
+      },
+      "power": 4,
+      "interest": 2,
+      "attitude": 1,
+      "age_days": 90
+    }
+  ],
+  "assessment": {
+    "rationale": {
+      "en": "Initial stakeholder analysis workshop with the project team of the housing company",
+      "de": "Erster Stakeholder-Workshop mit dem Projektteam der Wohnungsbaugesellschaft"
+    },
+    "drift_rationale": {
+      "en": "After the information evening the tone of the northern residents changed once the delivery routes and working hours were explained",
+      "de": "Nach dem Informationsabend wurde der Ton der nördlichen Anwohner sachlicher, nachdem Anlieferwege und Arbeitszeiten erklärt waren"
+    }
+  },
+  "newsletter": {
+    "title": {
+      "en": "Neighbour newsletter Donaupark",
+      "de": "Nachbarschaftsbrief Donaupark"
+    },
+    "purpose": {
+      "en": "Keep residents and neighbouring businesses informed about works, deliveries and noisy phases",
+      "de": "Anwohner und angrenzende Betriebe über Arbeiten, Anlieferungen und laute Bauphasen informieren"
+    },
+    "key_message": {
+      "en": "What happens next month, which streets are affected, and whom to call",
+      "de": "Was im nächsten Monat passiert, welche Straßen betroffen sind und wer erreichbar ist"
+    }
+  },
+  "evening": {
+    "title": {
+      "en": "Information evening for residents in the parish hall",
+      "de": "Informationsabend für Anwohner im Pfarrsaal"
+    },
+    "purpose": {
+      "en": "Present the construction logistics plan and the pit excavation, and collect concerns",
+      "de": "Baulogistikkonzept und Baugrubenaushub vorstellen und Sorgen der Anwohner aufnehmen"
+    },
+    "location": {
+      "en": "Parish hall next to the site",
+      "de": "Pfarrsaal neben dem Baugrundstück"
+    },
+    "outcome": {
+      "en": "Main concerns: early deliveries, dust and truck traffic on the access road, the closed riverside cycle path",
+      "de": "Hauptsorgen: frühe Anlieferungen, Staub und Lkw-Verkehr auf der Zufahrt, gesperrter Radweg am Donauufer"
+    },
+    "feedback_summary": {
+      "en": "Answers to all concerns sent with the following newsletter and posted at the site hoarding",
+      "de": "Antworten auf alle Fragen mit dem nächsten Nachbarschaftsbrief verschickt und am Bauzaun ausgehängt"
+    }
+  },
+  "authority_meeting": {
+    "title": {
+      "en": "Coordination with the Bauordnungsamt, the nature conservation authority and the Water Management Office",
+      "de": "Abstimmung mit Bauordnungsamt, Naturschutzbehörde und Wasserwirtschaftsamt"
+    },
+    "purpose": {
+      "en": "Coordinate permit conditions, groundwater lowering and species protection before the start of excavation",
+      "de": "Auflagen der Baugenehmigung, Grundwasserhaltung und Artenschutz vor Beginn der Aushubarbeiten abstimmen"
+    }
+  },
+  "briefing": {
+    "title": {
+      "en": "Briefing for the management and supervisory board",
+      "de": "Unterrichtung von Geschäftsführung und Aufsichtsrat"
+    },
+    "purpose": {
+      "en": "Brief the client board on stakeholder status before each decision",
+      "de": "Bauherrn vor jeder Entscheidung über den Stand der Beteiligten informieren"
+    }
+  },
+  "site_tour": {
+    "title": {
+      "en": "Site tour for the Bezirksausschuss",
+      "de": "Baustellenbegehung für den Bezirksausschuss"
+    },
+    "outcome": {
+      "en": "The committee asked for a progress report before the summer break and for a named contact for the neighbourhood",
+      "de": "Der Ausschuss bat um einen Zwischenbericht vor der Sommerpause und um einen festen Ansprechpartner für die Nachbarschaft"
+    },
+    "feedback_summary": {
+      "en": "Report sent with the newsletter and presented at the next committee meeting",
+      "de": "Bericht mit dem Nachbarschaftsbrief verschickt und in der nächsten Ausschusssitzung vorgestellt"
+    }
+  },
+  "commitments": [
+    {
+      "text": {
+        "en": "No deliveries before 07:00 on weekdays and none on Saturdays",
+        "de": "Keine Anlieferungen vor 07:00 Uhr an Werktagen und keine am Samstag"
+      },
+      "verification": {
+        "en": "Gate log of delivery times, checked weekly with the neighbours' contact person",
+        "de": "Torprotokoll der Anlieferzeiten, wöchentlich mit der Ansprechperson der Nachbarn geprüft"
+      }
+    },
+    {
+      "text": {
+        "en": "Wheel washing at the site exit and weekly sweeping of the access road",
+        "de": "Reifenwäsche an der Baustellenausfahrt und wöchentliche Kehrung der Zufahrtsstraße"
+      },
+      "verification": {
+        "en": "Photos in the site diary",
+        "de": "Fotos im Bautagebuch"
+      }
+    },
+    {
+      "text": {
+        "en": "Signed temporary diversion of the riverside cycle path before the access road closes",
+        "de": "Beschilderte Umleitung des Radwegs am Donauufer, bevor die Zufahrt gesperrt wird"
+      },
+      "verification": {
+        "en": "Signage plan approved by the road traffic authority of the city",
+        "de": "Beschilderungsplan von der Straßenverkehrsbehörde der Stadt genehmigt"
+      }
+    },
+    {
+      "text": {
+        "en": "Monthly noise and vibration report to the residents during excavation and shoring",
+        "de": "Monatlicher Lärm- und Erschütterungsbericht an die Anwohner während Aushub und Verbau"
+      },
+      "verification": {
+        "en": "Report attached to the newsletter",
+        "de": "Bericht dem Nachbarschaftsbrief beigelegt"
+      }
+    },
+    {
+      "text": {
+        "en": "Contact person and hotline number on the site hoarding and on the project page",
+        "de": "Ansprechperson und Hotline am Bauzaun und auf der Projektseite"
+      },
+      "verification": {
+        "en": "Photo of the hoarding and link to the project page",
+        "de": "Foto des Bauzauns und Link zur Projektseite"
+      }
+    }
+  ],
+  "client": {
+    "display_name": {
+      "en": "Wohnungsbau Donaupark GmbH, project development",
+      "de": "Wohnungsbau Donaupark GmbH, Projektentwicklung"
+    },
+    "company_name": "Wohnungsbau Donaupark GmbH"
+  },
+  "route": {
+    "name": {
+      "en": "Stakeholder commitment",
+      "de": "Zusage an Beteiligte"
+    }
+  }
+}

@@ -556,10 +556,11 @@ async def _pack_telling(
         is about this one and cannot be used: the built-in story instead, and
         the reason goes into the seed result.
     """
-    if not demo_id or seed_story.pack_demo_id(data) != demo_id:
+    entry = seed_story.entry_for(data, demo_id)
+    if entry is None:
         return None, None
     try:
-        pin = seed_story.pack_pin(data)
+        pin = seed_story.pack_pin(entry)
     except Exception:
         logger.exception("demo file of the active pack is not usable for %s", demo_id)
         return None, "demo_file_invalid"
@@ -569,7 +570,7 @@ async def _pack_telling(
         logger.exception("the phase model the demo file pins did not load for %s", demo_id)
         return None, "pack_catalogue_unavailable"
     try:
-        return (seed_story.pack_story(data, catalogue, locale), pin), None
+        return (seed_story.pack_story(entry, catalogue, locale), pin), None
     except Exception:
         logger.exception("demo file of the active pack is not usable for %s", demo_id)
         return None, "demo_file_invalid"
@@ -676,7 +677,7 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
     svc = GovernanceService(session)
     today = datetime.now(UTC).date()
     pack_file, pack_data = catalogue_packs.active_pack_demo_reading()
-    pack_project = seed_story.pack_demo_id(pack_data)
+    pack_projects = seed_story.pack_demo_ids(pack_data)
     rows: list[dict[str, Any]] = []
     for pid in project_ids:
         project = await session.get(Project, pid)
@@ -684,7 +685,7 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
             rows.append(seed_story.placement(pid, None, seed_story.FIRST_GATE, None, "project_not_found"))
             continue
         demo_id = (project.metadata_ or {}).get("demo_id") if isinstance(project.metadata_, dict) else None
-        planned = seed_story.planned_moment(demo_id, pack_project)
+        planned = seed_story.planned_moment(demo_id, pack_projects)
         if await svc.repo.get_model(pid) is not None:
             rows.append(seed_story.placement(pid, demo_id, planned, None, skipped=True))
             continue

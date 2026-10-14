@@ -1,0 +1,306 @@
+{
+  "stakeholders": [
+    {
+      "code": "S-001",
+      "label": {
+        "en": "Stadtplanungsamt Ludwigsburg",
+        "de": "Stadtplanungsamt Ludwigsburg"
+      },
+      "power": 4,
+      "interest": 4,
+      "attitude": 0,
+      "age_days": 20
+    },
+    {
+      "code": "S-002",
+      "label": {
+        "en": "Baurechtsamt (building permit under LBO BW)",
+        "de": "Baurechtsamt (Baugenehmigung nach LBO BW)"
+      },
+      "power": 5,
+      "interest": 3,
+      "attitude": 0,
+      "age_days": 35
+    },
+    {
+      "code": "S-003",
+      "label": {
+        "en": "Untere Naturschutzbehoerde (species and tree protection)",
+        "de": "Untere Naturschutzbehörde (Artenschutz und Baumschutz)"
+      },
+      "power": 4,
+      "interest": 3,
+      "attitude": 0,
+      "age_days": 120
+    },
+    {
+      "code": "S-004",
+      "label": {
+        "en": "Regional electricity grid operator (heat pump and PV connection)",
+        "de": "Netzbetreiber Strom der Region (Netzanschluss Wärmepumpe und Photovoltaik)"
+      },
+      "power": 4,
+      "interest": 2,
+      "attitude": 0,
+      "age_days": 40
+    },
+    {
+      "code": "S-005",
+      "label": {
+        "en": "Municipal drainage and water utility (rainwater retention)",
+        "de": "Stadtentwässerung und Wasserversorgung (Regenwasserrückhaltung)"
+      },
+      "power": 3,
+      "interest": 2,
+      "attitude": 0,
+      "age_days": 60
+    },
+    {
+      "code": "S-006",
+      "label": {
+        "en": "Residents of the streets next to the school site",
+        "de": "Anwohnerschaft der Straßen rund um das Schulgelände"
+      },
+      "power": 3,
+      "interest": 5,
+      "attitude": -1,
+      "age_days": 15
+    },
+    {
+      "code": "S-007",
+      "label": {
+        "en": "Neighbouring day-care centre and sports club",
+        "de": "Benachbarte Kindertagesstätte und Sportverein"
+      },
+      "power": 2,
+      "interest": 4,
+      "attitude": 0,
+      "age_days": 15
+    },
+    {
+      "code": "S-008",
+      "label": {
+        "en": "Parents and families of Neckarweihingen",
+        "de": "Eltern und Familien aus Neckarweihingen"
+      },
+      "power": 3,
+      "interest": 4,
+      "attitude": 0,
+      "age_days": 150
+    },
+    {
+      "code": "S-009",
+      "label": {
+        "en": "Bezirksbeirat Neckarweihingen (district advisory council)",
+        "de": "Bezirksbeirat Neckarweihingen"
+      },
+      "power": 3,
+      "interest": 4,
+      "attitude": 1,
+      "age_days": 30
+    },
+    {
+      "code": "S-010",
+      "label": {
+        "en": "Local initiative for a safe school route",
+        "de": "Bürgerinitiative für einen sicheren Schulweg"
+      },
+      "power": 2,
+      "interest": 5,
+      "attitude": -1,
+      "age_days": 45
+    },
+    {
+      "code": "S-011",
+      "label": {
+        "en": "Local paper of the Ludwigsburg district",
+        "de": "Lokalzeitung für Ludwigsburg und Umgebung"
+      },
+      "power": 2,
+      "interest": 3,
+      "attitude": 0,
+      "age_days": 200
+    },
+    {
+      "code": "S-012",
+      "label": {
+        "en": "Technischer Ausschuss of the Gemeinderat (client committee)",
+        "de": "Technischer Ausschuss des Gemeinderats (Gremium der Bauherrin)"
+      },
+      "power": 5,
+      "interest": 5,
+      "attitude": 2,
+      "age_days": 10
+    },
+    {
+      "code": "S-013",
+      "label": {
+        "en": "Schulleitung, teachers and Elternbeirat",
+        "de": "Schulleitung, Lehrkräfte und Elternbeirat"
+      },
+      "power": 4,
+      "interest": 5,
+      "attitude": 1,
+      "age_days": 25
+    },
+    {
+      "code": "S-014",
+      "label": {
+        "en": "Regierungspraesidium, school construction grant office",
+        "de": "Regierungspräsidium Stuttgart, Bewilligungsstelle Schulbauförderung"
+      },
+      "power": 4,
+      "interest": 2,
+      "attitude": 1,
+      "age_days": 90
+    }
+  ],
+  "assessment": {
+    "rationale": {
+      "en": "Initial stakeholder analysis workshop with the Hochbauamt and the school",
+      "de": "Erster Workshop zur Stakeholderanalyse mit dem Hochbauamt und der Schule"
+    },
+    "drift_rationale": {
+      "en": "After the Elternabend the neighbours' tone changed once the delivery routes were explained",
+      "de": "Nach dem Elternabend wurde der Ton der Nachbarschaft sachlicher, sobald die Anlieferrouten erläutert waren"
+    }
+  },
+  "newsletter": {
+    "title": {
+      "en": "Neighbour and parent newsletter",
+      "de": "Newsletter für Nachbarschaft und Eltern"
+    },
+    "purpose": {
+      "en": "Keep neighbours and school families informed about works, deliveries and noisy phases next to the running school",
+      "de": "Nachbarschaft und Schulfamilien über Bauarbeiten, Anlieferungen und laute Bauphasen neben dem laufenden Schulbetrieb informieren"
+    },
+    "key_message": {
+      "en": "What happens next month, which routes are closed, and whom to call",
+      "de": "Was im nächsten Monat geschieht, welche Wege gesperrt sind und wen man anrufen kann"
+    }
+  },
+  "evening": {
+    "title": {
+      "en": "Information evening in the school hall",
+      "de": "Informationsabend in der Aula"
+    },
+    "purpose": {
+      "en": "Present the site logistics plan and the safe school route during construction, and collect concerns from neighbours and parents",
+      "de": "Baustellenlogistik und sicheren Schulweg während der Bauzeit vorstellen und Anliegen von Nachbarschaft und Eltern aufnehmen"
+    },
+    "location": {
+      "en": "Aula of the existing school",
+      "de": "Aula der bestehenden Grundschule"
+    },
+    "outcome": {
+      "en": "Main concerns: heavy deliveries at drop-off time, dust and noise during lessons, blocked school route and bicycle racks",
+      "de": "Hauptsorgen: schwere Anlieferungen zur Bringzeit, Staub und Lärm im Unterricht, versperrter Schulweg und Fahrradständer"
+    },
+    "feedback_summary": {
+      "en": "Answers to all concerns sent to parents with the following newsletter and posted on the school notice board",
+      "de": "Antworten auf alle Anliegen wurden mit dem nächsten Newsletter an die Eltern verschickt und am Schwarzen Brett der Schule ausgehängt"
+    }
+  },
+  "authority_meeting": {
+    "title": {
+      "en": "Authority coordination with Baurechtsamt and fire service",
+      "de": "Behördenabstimmung mit Baurechtsamt und Feuerwehr"
+    },
+    "purpose": {
+      "en": "Coordinate building permit conditions, the fire safety concept review and inspections",
+      "de": "Auflagen der Baugenehmigung, Prüfung des Brandschutzkonzepts und Abnahmen abstimmen"
+    }
+  },
+  "briefing": {
+    "title": {
+      "en": "Briefing for the Technischer Ausschuss",
+      "de": "Unterrichtung des Technischen Ausschusses"
+    },
+    "purpose": {
+      "en": "Brief the client committee on stakeholder status before each Gemeinderat decision",
+      "de": "Das Gremium der Bauherrin vor jeder Gemeinderatsentscheidung über den Stand der Beteiligten informieren"
+    }
+  },
+  "site_tour": {
+    "title": {
+      "en": "Site tour for the Bezirksbeirat",
+      "de": "Baustellenbegehung für den Bezirksbeirat"
+    },
+    "outcome": {
+      "en": "The advisory council asked for a progress update before the summer holidays and for a named contact at the school",
+      "de": "Der Beirat bat um einen Sachstandsbericht vor den Sommerferien und um eine namentlich benannte Ansprechperson an der Schule"
+    },
+    "feedback_summary": {
+      "en": "Update sent with the newsletter and presented at the next Bezirksbeirat meeting",
+      "de": "Sachstand wurde mit dem Newsletter versandt und in der nächsten Sitzung des Bezirksbeirats vorgestellt"
+    }
+  },
+  "commitments": [
+    {
+      "text": {
+        "en": "No heavy deliveries during school drop-off and pick-up, delivery window 09:00 to 15:00 on school days",
+        "de": "Keine schweren Anlieferungen zur Bring- und Abholzeit, Anlieferfenster an Schultagen von 09:00 bis 15:00 Uhr"
+      },
+      "verification": {
+        "en": "Gate log of delivery times, checked weekly with the Schulleitung",
+        "de": "Torprotokoll der Anlieferzeiten, wöchentlich mit der Schulleitung durchgesehen"
+      }
+    },
+    {
+      "text": {
+        "en": "Wheel washing at the site exit and weekly sweeping of the school access road",
+        "de": "Reifenwäsche an der Baustellenausfahrt und wöchentliche Kehrung der Schulzufahrt"
+      },
+      "verification": {
+        "en": "Photos in the site diary",
+        "de": "Fotos im Bautagebuch"
+      }
+    },
+    {
+      "text": {
+        "en": "Signed safe school route diversion for pedestrians and bicycles before the access road closes",
+        "de": "Beschilderte Umleitung des Schulwegs für Fußgänger und Radfahrer, bevor die Zufahrtsstraße gesperrt wird"
+      },
+      "verification": {
+        "en": "Signage plan approved by the road authority and agreed with the Elternbeirat",
+        "de": "Beschilderungsplan von der Straßenverkehrsbehörde genehmigt und mit dem Elternbeirat abgestimmt"
+      }
+    },
+    {
+      "text": {
+        "en": "Monthly noise and dust measurement report, with quiet periods during exams",
+        "de": "Monatlicher Lärm- und Staubmessbericht, mit Ruhezeiten während der Klassenarbeiten"
+      },
+      "verification": {
+        "en": "Report attached to the newsletter and sent to the Schulleitung",
+        "de": "Bericht liegt dem Newsletter bei und geht an die Schulleitung"
+      }
+    },
+    {
+      "text": {
+        "en": "Contact person and hotline number on the site hoarding and on the school website",
+        "de": "Ansprechperson und Hotline am Bauzaun und auf der Schulwebsite"
+      },
+      "verification": {
+        "en": "Photo of the hoarding and link to the school page",
+        "de": "Foto des Bauzauns und Link zur Seite der Schule"
+      }
+    }
+  ],
+  "client": {
+    "display_name": {
+      "en": "Stadt Ludwigsburg, Hochbau und Gebaeudewirtschaft",
+      "de": "Stadt Ludwigsburg, Hochbau und Gebäudewirtschaft"
+    },
+    "company_name": {
+      "en": "Stadt Ludwigsburg",
+      "de": "Stadt Ludwigsburg"
+    }
+  },
+  "route": {
+    "name": {
+      "en": "Commitment of the City to stakeholders",
+      "de": "Zusage der Stadt an Beteiligte"
+    }
+  }
+}

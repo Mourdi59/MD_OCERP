@@ -16,6 +16,12 @@ four items are the ones an owner would plan:
   waiting for its approver;
 * a contingency drawdown, planned.
 
+A demo project of the active pack may bring its own story (``demo_module_story``) for the
+pre-construction items: per item (``works``, ``slot``, ``design``, ``enabling``, ``contingency``)
+the title, the planned amount and the item's own figures, and for the slot item the release note,
+the cancellation stages and the plant item it is the order of. A key that is absent or malformed
+keeps its default, said at info.
+
 Money is in the currency of the project; a project without one is skipped. The
 abort terms use the ``custom`` basis with an entered charge: a statutory basis
 is chosen by a person from the catalogue, never by this seeder. Requests and
@@ -44,6 +50,7 @@ import logging
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy import select
@@ -60,6 +67,100 @@ DEMO_SLOT_RELEASE_NOTE = (
     "Authority to sign the supply order before the gate. The manufacturing slot is held free of charge "
     "and lapses if the order is not signed by its conversion date."
 )
+
+
+# What each story section may carry, key by key: "text", "money" (a decimal string above zero),
+# "int" (a day count or a charge in days, zero or more), "pct" (a decimal string from 0 to 1).
+_SECTIONS: dict[str, dict[str, str]] = {
+    "works": {"title": "text", "amount": "money", "lead_time_days": "int", "award_days": "int"},
+    "slot": {
+        "title": "text",
+        "amount": "money",
+        "lead_time_days": "int",
+        "release_note": "text",
+        "salvage_value": "money",
+        "source_note": "text",
+        "order_signed_days": "int",
+        "manufacturing_started_days": "int",
+        "order_signed_pct": "pct",
+        "manufacturing_started_pct": "pct",
+        "release_days_ago": "int",
+        "plant_item": "text",
+    },
+    "design": {
+        "title": "text",
+        "amount": "money",
+        "decision_days": "int",
+        "loss_estimate": "money",
+        "brief_text": "text",
+        "first_amount": "money",
+        "first_note": "text",
+        "first_condition": "text",
+        "second_amount": "money",
+        "second_note": "text",
+    },
+    "enabling": {"title": "text", "amount": "money"},
+    "contingency": {"title": "text", "amount": "money"},
+}
+
+
+def _valid_value(kind: str, value: Any) -> bool:
+    if kind == "text":
+        return isinstance(value, str) and bool(value.strip())
+    if kind == "int":
+        return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    if kind in ("money", "pct"):
+        if not isinstance(value, str):
+            return False
+        try:
+            number = Decimal(value)
+        except InvalidOperation:
+            return False
+        if not number.is_finite():
+            return False
+        return number > 0 if kind == "money" else Decimal(0) <= number <= Decimal(1)
+    return False
+
+
+def resolve_story(story: dict[str, Any] | None, locale: str = "en") -> dict[str, dict[str, Any]]:
+    """The validated overrides of a demo story, per section; a malformed key is left out.
+
+    Texts may be a plain string or a language map. The result holds only the keys that passed, so
+    ``result.get("slot", {}).get("title", DEFAULT)`` is the way to read a figure.
+    """
+    from app.modules.project_governance.public import story_text
+
+    out: dict[str, dict[str, Any]] = {}
+    for section, spec in _SECTIONS.items():
+        raw = (story or {}).get(section)
+        if raw is None:
+            continue
+        if not isinstance(raw, dict):
+            logger.info("commitment_release demo story: section %r is malformed, defaults are kept", section)
+            continue
+        clean: dict[str, Any] = {}
+        for key, value in raw.items():
+            kind = spec.get(key)
+            candidate = story_text(value, locale) if kind == "text" else value
+            if kind is not None and _valid_value(kind, candidate):
+                clean[key] = candidate
+            else:
+                logger.info("commitment_release demo story: %s.%s is unknown or malformed, ignored", section, key)
+        out[section] = clean
+    return out
+
+
+async def _story_of(session: AsyncSession, project_id: uuid.UUID) -> dict[str, dict[str, Any]]:
+    """The validated story of this demo project in its own language, ``{}`` when it has none."""
+    from app.core.demo_marker import demo_id_of
+    from app.modules.project_governance.public import demo_module_story
+    from app.modules.projects.models import Project
+
+    project = await session.get(Project, project_id)
+    if project is None:
+        return {}
+    story = demo_module_story(demo_id_of(project.metadata_), "commitment_release")
+    return resolve_story(story, getattr(project, "locale", None) or "en")
 
 
 async def seed_commitment_release_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
@@ -241,10 +342,14 @@ async def _seed_before_construction(
     ccy: str,
     today: Any,
     counts: dict[str, int],
+    story: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, int]:
     """The matrix of a project that has not started building (see the module docstring)."""
     from app.modules.project_governance.public import host_for, project_areas
 
+    story = story or {}
+    works_s, slot_s, design_s = (story.get(k, {}) for k in ("works", "slot", "design"))
+    enabling_s, contingency_s = story.get("enabling", {}), story.get("contingency", {})
     author = planner or owner
     host = await host_for(svc.session, project_id, "commitment_release")
     areas = {a.code for a in await project_areas(svc.session, project_id)}
@@ -284,11 +389,11 @@ async def _seed_before_construction(
     # Planned, due at the award of the main works, waiting for the gate: nothing released, nothing linked.
     await add(
         "CR-001",
-        "Main works package",
+        works_s.get("title", "Main works package"),
         "works",
-        "1850000",
-        lead_time_days=45,
-        latest_decision_date_fixed=(today + timedelta(days=165)).isoformat(),
+        works_s.get("amount", "1850000"),
+        lead_time_days=works_s.get("lead_time_days", 45),
+        latest_decision_date_fixed=(today + timedelta(days=works_s.get("award_days", 165))).isoformat(),
     )
 
     # The supply order that has to be signed before the gate, because the equipment takes longer
@@ -296,12 +401,13 @@ async def _seed_before_construction(
     # so the 420,000 is the order itself and no fee exists beside it. The 120 days are this row's
     # own figure for an install without the plant register; linked to its plant item, the
     # register's lead time and latest order date govern, and no need date is copied here.
+    slot_amount = slot_s.get("amount", "420000")
     reservation = await add(
         DEMO_SLOT_ITEM_CODE,
-        DEMO_SLOT_ITEM_TITLE,
+        slot_s.get("title", DEMO_SLOT_ITEM_TITLE),
         "supplies",
-        "420000",
-        lead_time_days=120,
+        slot_amount,
+        lead_time_days=slot_s.get("lead_time_days", 120),
         **before_gate,
     )
     await svc.put_abort_terms(
@@ -313,18 +419,25 @@ async def _seed_before_construction(
                 # Stages of an order that is still to be signed: nothing is charged before it exists.
                 {
                     "milestone": "order_signed",
-                    "from_date": (today + timedelta(days=DEMO_ORDER_SIGNED_DAYS)).isoformat(),
-                    "charge_pct": "0.10",
+                    "from_date": (
+                        today + timedelta(days=slot_s.get("order_signed_days", DEMO_ORDER_SIGNED_DAYS))
+                    ).isoformat(),
+                    "charge_pct": slot_s.get("order_signed_pct", "0.10"),
                 },
                 {
                     "milestone": "manufacturing_started",
-                    "from_date": (today + timedelta(days=DEMO_MANUFACTURING_STARTED_DAYS)).isoformat(),
-                    "charge_pct": "0.50",
+                    "from_date": (
+                        today
+                        + timedelta(days=slot_s.get("manufacturing_started_days", DEMO_MANUFACTURING_STARTED_DAYS))
+                    ).isoformat(),
+                    "charge_pct": slot_s.get("manufacturing_started_pct", "0.50"),
                 },
             ],
             "transferable": "resale",
-            "salvage_value_estimate": "60000",
-            "source_note": "Budget quotation: cancellation terms that apply once the order is signed",
+            "salvage_value_estimate": slot_s.get("salvage_value", "60000"),
+            "source_note": slot_s.get(
+                "source_note", "Budget quotation: cancellation terms that apply once the order is signed"
+            ),
         },
         actor_id=owner,
         manage=True,
@@ -333,25 +446,30 @@ async def _seed_before_construction(
         svc,
         project_id,
         reservation.id,
-        "420000",
+        slot_amount,
         ccy,
         requester=planner,
         approver=owner,
-        note=DEMO_SLOT_RELEASE_NOTE,
-        days_ago=33,
+        note=slot_s.get("release_note", DEMO_SLOT_RELEASE_NOTE),
+        days_ago=slot_s.get("release_days_ago", 33),
     ):
         counts["releases"] += 1
 
     design = await add(
         "CR-003",
-        "Design appointment",
+        design_s.get("title", "Design appointment"),
         "design",
-        "260000",
-        latest_decision_date_fixed=(today + timedelta(days=45)).isoformat(),
+        design_s.get("amount", "260000"),
+        latest_decision_date_fixed=(today + timedelta(days=design_s.get("decision_days", 45))).isoformat(),
     )
-    await loss_estimate(design, "25000", "Demo estimate, not from a contract")
+    await loss_estimate(design, design_s.get("loss_estimate", "25000"), "Demo estimate, not from a contract")
     brief = await svc.add_precondition(
-        project_id, design.id, kind="manual", ref_id=None, text="Client brief signed off", actor_id=author
+        project_id,
+        design.id,
+        kind="manual",
+        ref_id=None,
+        text=design_s.get("brief_text", "Client brief signed off"),
+        actor_id=author,
     )
     await svc.confirm_precondition(
         project_id, design.id, brief.id, met=True, evidence_ref="Brief rev. C, signed", actor_id=author
@@ -360,24 +478,24 @@ async def _seed_before_construction(
         svc,
         project_id,
         design.id,
-        "40000",
+        design_s.get("first_amount", "40000"),
         ccy,
         requester=planner,
         approver=owner,
-        note="First tranche: concept design",
+        note=design_s.get("first_note", "First tranche: concept design"),
         days_ago=63,
-        conditions="Design report before the next tranche",
+        conditions=design_s.get("first_condition", "Design report before the next tranche"),
     ):
         counts["releases"] += 1
         if await _release(
             svc,
             project_id,
             design.id,
-            "60000",
+            design_s.get("second_amount", "60000"),
             ccy,
             requester=planner,
             approver=None,
-            note="Second tranche: developed design",
+            note=design_s.get("second_note", "Second tranche: developed design"),
             days_ago=2,
         ):
             counts["releases"] += 1
@@ -385,13 +503,18 @@ async def _seed_before_construction(
     # The one planned item past its decision date: it has to be decided before the gate and is not.
     await add(
         "CR-004",
-        "Enabling works: service diversions",
+        enabling_s.get("title", "Enabling works: service diversions"),
         "works",
-        "95000",
+        enabling_s.get("amount", "95000"),
         latest_decision_date_fixed=(today - timedelta(days=5)).isoformat(),
         **before_gate,
     )
-    await add("CR-005", "Contingency drawdown for ground conditions", "contingency_drawdown", "75000")
+    await add(
+        "CR-005",
+        contingency_s.get("title", "Contingency drawdown for ground conditions"),
+        "contingency_drawdown",
+        contingency_s.get("amount", "75000"),
+    )
     await svc.save_scenario(project_id, as_of=today, label="Stop today", actor_id=owner)
     counts["scenarios"] += 1
     return counts
@@ -445,7 +568,15 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     gate = await _undecided_start_gate(session, project_id)
     if gate is not None:
         return await _seed_before_construction(
-            svc, project_id, gate=gate, owner=owner, planner=planner, ccy=ccy, today=today, counts=counts
+            svc,
+            project_id,
+            gate=gate,
+            owner=owner,
+            planner=planner,
+            ccy=ccy,
+            today=today,
+            counts=counts,
+            story=await _story_of(session, project_id),
         )
 
     contract = (
@@ -652,10 +783,16 @@ async def link_demo_plant_items(
     from app.modules.commitment_release.models import CommitmentItem
     from app.modules.projects.models import Project
 
-    wanted = dict(DEMO_PLANT_LINKS if links is None else links)
     project = await session.get(Project, project_id)
     if project is None or not demo_id_of(project.metadata_):
         return {}
+    slot_s = (await _story_of(session, project_id)).get("slot", {})
+    wanted = dict(DEMO_PLANT_LINKS if links is None else links)
+    if links is None and "plant_item" in slot_s:
+        wanted[DEMO_SLOT_ITEM_CODE] = slot_s["plant_item"]
+    titles = dict(DEMO_PLANT_LINK_TITLES)
+    if "title" in slot_s:
+        titles[DEMO_SLOT_ITEM_CODE] = slot_s["title"]
     from app.modules.commitment_release.figures import plant_register_reads
 
     by_code = getattr(plant_register_reads(), "plant_item_id_by_code", None)
@@ -673,7 +810,7 @@ async def link_demo_plant_items(
         if item is None:
             result[item_code] = "no_commitment_item"
             continue
-        expected = DEMO_PLANT_LINK_TITLES.get(item_code)
+        expected = titles.get(item_code)
         if expected is not None and item.title != expected:
             # A link says the commitment IS that equipment. Here it is not.
             logger.info(

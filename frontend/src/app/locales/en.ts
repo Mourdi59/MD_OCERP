@@ -45854,6 +45854,7 @@ const resource = {
     "design.catalogue.report.sound_insulation": "Sound insulation proof",
     "design.catalogue.report.structural_design": "Structural design and calculations",
     "design.catalogue.report.structural_proof_check": "Independent structural check",
+    "design.catalogue.report.kitchen_planning": "Kitchen planning report",
     "design.catalogue.report.survey": "Site survey",
     "design.catalogue.report.thermal_energy": "Thermal and energy performance proof",
     "design.catalogue.report.traffic": "Traffic report",

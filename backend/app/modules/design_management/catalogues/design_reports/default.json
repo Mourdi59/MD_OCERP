@@ -134,6 +134,14 @@
       "country_rules": []
     },
     {
+      "code": "kitchen_planning",
+      "name_key": "design.catalogue.report.kitchen_planning",
+      "discipline": "BP",
+      "typical_phase": "design",
+      "independent_check": "none",
+      "country_rules": []
+    },
+    {
       "code": "survey",
       "name_key": "design.catalogue.report.survey",
       "discipline": "G",
