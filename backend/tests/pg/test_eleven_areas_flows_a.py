@@ -347,7 +347,7 @@ async def test_hse_frame_is_filled_submitted_returned_and_approved_by_another_pe
     frame = p.json(resp)
     p.expect("new frame state", frame.get("state"), "draft")
     p.refused("approve a draft frame", await p.call("manager2", "POST", f"{base}/frame/approve", ok=None), (409,))
-    p.refused("reopen a draft frame", await p.call("admin", "POST", f"{base}/frame/reopen", ok=None), (409,))
+    p.refused("revise a draft frame", await p.call("admin", "POST", f"{base}/frame/revise", ok=None), (409,))
 
     cat = p.json(await p.call("admin", "GET", f"{base}/catalogue"))
     topics = [t.get("code") for t in cat.get("topics", []) if isinstance(t, dict)] or ["hse_requirements"]
@@ -390,7 +390,8 @@ async def test_hse_frame_is_filled_submitted_returned_and_approved_by_another_pe
             await p.call("admin", "POST", f"{base}/items/{b}/waive", json={"reason": "x"}, ok=None),
             (422,),
         )
-        resp = await p.call("admin", "POST", f"{base}/items/{b}/waive", json={"reason": "Not needed here"})
+        # The author of a duty cannot waive it; the second person does.
+        resp = await p.call("manager2", "POST", f"{base}/items/{b}/waive", json={"reason": "Not needed here"})
         p.expect("waived item", p.json(resp).get("status"), "waived")
         resp = await p.call("admin", "POST", f"{base}/items/{b}/reopen")
         p.expect("reopened item", p.json(resp).get("status"), "open")
@@ -423,8 +424,8 @@ async def test_hse_frame_is_filled_submitted_returned_and_approved_by_another_pe
     p.expect("state after submit", p.json(resp).get("state"), "in_review")
     p.refused("submitter approves own frame", await p.call("admin", "POST", f"{base}/frame/approve", ok=None), (403,))
     p.refused("submit twice", await p.call("admin", "POST", f"{base}/frame/submit", ok=None), (409,))
-    resp = await p.call("admin", "POST", f"{base}/frame/reopen")
-    p.expect("state after reopen", p.json(resp).get("state"), "draft")
+    resp = await p.call("admin", "POST", f"{base}/frame/revise")
+    p.expect("state after revise", p.json(resp).get("state"), "revising")
     await p.call("admin", "POST", f"{base}/frame/submit")
     resp = await p.call("manager2", "POST", f"{base}/frame/approve")
     p.expect("state after approve", p.json(resp).get("state"), "approved")
@@ -476,7 +477,7 @@ async def test_risk_register_row_is_created_scored_moved_and_deleted(world: Worl
         )
 
         resp = await p.call("admin", "PATCH", f"{RISK}/batch/status/", json={"ids": [rid], "status": "open"})
-        listed = p.json(await p.call("admin", "GET", f"{RISK}/?project_id={pid}&limit=200"))
+        listed = p.json(await p.call("admin", "GET", f"{RISK}/?project_id={pid}&limit=100"))
         rows = listed if isinstance(listed, list) else listed.get("items", [])
         mine = next((r for r in rows if r.get("id") == rid), None)
         if mine is None:

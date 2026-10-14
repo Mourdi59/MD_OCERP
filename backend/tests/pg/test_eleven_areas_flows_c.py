@@ -187,7 +187,7 @@ async def test_procurement_concept_plan_and_packages(world: World) -> None:
     r = await f.call("admin", "GET", f"{base}/packages")
     if f.expect(r, (200,), "list packages"):
         row = next((i for i in _items(r) if i.get("contract_package", {}).get("code") == "W1"), None)
-        f.check(row is not None and row.get("state"), "cancelled", "listed package state")
+        f.check(row is not None and (row.get("award") or {}).get("state"), "cancelled", "listed package state")
     f.expect(await f.call("admin", "GET", f"{base}/validation"), (200,), "validation")
     f.done()
 

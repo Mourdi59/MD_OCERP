@@ -234,7 +234,7 @@ async def list_risks(
 @router.post(
     "/projects/{project_id}/simulate",
     response_model=RiskSimulationResult,
-    dependencies=[Depends(RequirePermission("risk.read"))],
+    dependencies=[Depends(RequirePermission("risk.update"))],
 )
 async def simulate_risks(
     project_id: uuid.UUID,
