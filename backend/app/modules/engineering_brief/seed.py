@@ -225,6 +225,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, story: dic
         "milestones": 0,
         "submitted": 0,
         "gates_bound": 0,
+        "need_dates_bound": 0,
         "studies": 0,
         "issued": 0,
     }
@@ -425,6 +426,7 @@ async def seed_engineering_brief_demo(session: AsyncSession, project_ids: Iterab
         "milestones": 0,
         "submitted": 0,
         "gates_bound": 0,
+        "need_dates_bound": 0,
         "studies": 0,
         "issued": 0,
     }
@@ -455,5 +457,5 @@ async def seed_engineering_brief_demo(session: AsyncSession, project_ids: Iterab
             continue
         totals["projects"] += 1
         for k, v in counts.items():
-            totals[k] += v
+            totals[k] = totals.get(k, 0) + v
     return totals
