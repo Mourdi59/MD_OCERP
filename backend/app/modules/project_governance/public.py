@@ -28,10 +28,9 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Iterable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
-from collections.abc import Awaitable, Callable
 from functools import wraps
 from typing import Any
 
