@@ -1,7 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 
-import type { Duty, ItemStatus, Labelled } from './api';
+import type { Catalogue, Duty, Item, ItemStatus, Labelled } from './api';
 
 /** A catalogue entry's label in the reader's language, else English, else its code. */
 export function labelOf(entry: Labelled | undefined | null, language: string, fallback = ''): string {
@@ -32,4 +32,16 @@ export function groupByTopic<T extends { topic: string }>(items: T[], topicCodes
 export function progress(items: { obligation: string; status: ItemStatus }[]): { done: number; total: number } {
   const mandatory = items.filter((i) => i.obligation === 'mandatory');
   return { done: mandatory.filter((i) => !isOpen(i.status)).length, total: mandatory.length };
+}
+
+/**
+ * A register row's title in the reader's language. Rows made from a catalogue template keep the
+ * English label as their stored title; while the title is still that label it is shown translated,
+ * and a title the user has edited is shown as typed.
+ */
+export function itemTitle(item: Pick<Item, 'title' | 'template_code'>, catalogue: Pick<Catalogue, 'templates'>, language: string): string {
+  if (!item.template_code) return item.title;
+  const template = catalogue.templates.find((tpl) => tpl.code === item.template_code);
+  if (!template || template.labels?.en !== item.title) return item.title;
+  return labelOf(template, language, item.title);
 }

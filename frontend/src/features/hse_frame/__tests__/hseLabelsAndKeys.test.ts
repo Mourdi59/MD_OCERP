@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import de from '@/app/locales/de';
 import en from '@/app/locales/en';
 
-import { dutyWord, groupByTopic, isOpen, labelOf, progress } from '../labels';
+import { dutyWord, groupByTopic, isOpen, itemTitle, labelOf, progress } from '../labels';
 
 const EN = (en as { translation: Record<string, string> }).translation;
 const DE = (de as { translation: Record<string, string> }).translation;
@@ -77,6 +77,15 @@ describe('hse_frame labels', () => {
     ).toEqual({ done: 1, total: 2 });
     expect(isOpen('in_progress')).toBe(true);
     expect(isOpen('waived')).toBe(false);
+  });
+});
+
+describe('itemTitle', () => {
+  const catalogue = { templates: [{ code: 'tpl', labels: { en: 'Advance notice', de: 'Vorankündigung' } }] } as never;
+  it('translates a template row and leaves an edited title alone', () => {
+    expect(itemTitle({ title: 'Advance notice', template_code: 'tpl' }, catalogue, 'de')).toBe('Vorankündigung');
+    expect(itemTitle({ title: 'My own wording', template_code: 'tpl' }, catalogue, 'de')).toBe('My own wording');
+    expect(itemTitle({ title: 'Free row', template_code: null }, catalogue, 'de')).toBe('Free row');
   });
 });
 

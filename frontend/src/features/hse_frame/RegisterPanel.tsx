@@ -26,7 +26,7 @@ import {
   type Item,
 } from './api';
 import { useCandidates, type HseWrite } from './hooks';
-import { groupByTopic, isOpen, labelOf, progress } from './labels';
+import { groupByTopic, isOpen, itemTitle, labelOf, progress } from './labels';
 
 interface Props {
   projectId: string;
@@ -89,7 +89,7 @@ function LinkPicker({ projectId, item, catalogue, write }: { projectId: string; 
 }
 
 function ItemRow({ projectId, item, catalogue, write, canEdit, canManage }: Props & { item: Item }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [panel, setPanel] = useState<'none' | 'meet' | 'waive' | 'link'>('none');
   const [note, setNote] = useState('');
   const [day, setDay] = useState(localToday());
@@ -98,7 +98,7 @@ function ItemRow({ projectId, item, catalogue, write, canEdit, canManage }: Prop
     <li className="rounded-lg border border-border-light p-3" data-testid={`item-${item.id}`} data-status={item.status}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-content-primary">{item.title}</p>
+          <p className="text-sm font-medium text-content-primary">{itemTitle(item, catalogue, i18n.language)}</p>
           <p className="text-xs text-content-secondary">
             {[
               item.legal_basis,
