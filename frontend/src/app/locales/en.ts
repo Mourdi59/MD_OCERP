@@ -40223,7 +40223,7 @@ const resource = {
     "price_breakdown.preset.efb": "EFB price sheets (221/222/223)",
     "price_breakdown.preset.nrm": "Detailed rate (NRM / CESMM)",
     "price_breakdown.preset.us_bid": "Bid cost breakdown",
-    "price_breakdown.preset.hu_anyag_dij": "Anyag és díj bontás (material and fee split)",
+    "price_breakdown.preset.hu_anyag_dij": "Anyag és díj bontás",
     "price_breakdown.preset.cost_plus": "Cost-plus breakdown",
     "field_time.working_time.start": "Start",
     "field_time.working_time.end": "End",
