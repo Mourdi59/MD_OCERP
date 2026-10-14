@@ -43,6 +43,12 @@
           "source": "pack",
           "id": "eleven_areas_framework_de_by",
           "version": 1
+        },
+        {
+          "kind": "handbook_model",
+          "source": "pack",
+          "id": "eleven_areas_framework",
+          "version": 1
         }
       ],
       "governance": {
@@ -336,7 +342,8 @@
         "commitment_release": "demo/residential-regensburg-commitment_release.json",
         "site_logistics": "demo/residential-regensburg-site_logistics.json",
         "transmittals": "demo/residential-regensburg-transmittals.json",
-        "economics": "demo/residential-regensburg-economics.json"
+        "economics": "demo/residential-regensburg-economics.json",
+        "hse_frame": "demo/residential-regensburg-hse_frame.json"
       }
     },
     {
@@ -379,6 +386,12 @@
           "kind": "hse_frame",
           "source": "pack",
           "id": "eleven_areas_framework_de_by",
+          "version": 1
+        },
+        {
+          "kind": "handbook_model",
+          "source": "pack",
+          "id": "eleven_areas_framework",
           "version": 1
         }
       ],
@@ -654,7 +667,8 @@
         "commitment_release": "demo/school-ludwigsburg-commitment_release.json",
         "site_logistics": "demo/school-ludwigsburg-site_logistics.json",
         "transmittals": "demo/school-ludwigsburg-transmittals.json",
-        "economics": "demo/school-ludwigsburg-economics.json"
+        "economics": "demo/school-ludwigsburg-economics.json",
+        "hse_frame": "demo/school-ludwigsburg-hse_frame.json"
       }
     }
   ]
