@@ -194,6 +194,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         from app.modules.documents.documents_seed import seed_documents_demo
         from app.modules.documents.photos_seed import seed_photos
         from app.modules.dwg_takeoff.seed import seed_dwg_takeoff_demo
+        from app.modules.economics.seed import seed_economics_demo
         from app.modules.einvoice_clearance.seed import seed_einvoice_clearance_demo
         from app.modules.estimate_basis.seed import seed_estimate_basis_demo
         from app.modules.field_time.seed import seed_field_time_demo
@@ -408,6 +409,9 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             # The owner's delivery form decision links the contract the
             # contracts seeder wrote above. Guards itself per project.
             ("delivery_model", None, lambda s: seed_delivery_model_demo(s, _demo_pids)),
+            # The business case, cost frame and financing plan are cut from the bill
+            # the estimate seeders wrote, so they run after them. Guards itself per project.
+            ("economics", None, lambda s: seed_economics_demo(s, _demo_pids)),
             # The authority permit roadmap and its condition register: the
             # permits a project of its country needs, two decided with
             # conditions, one under review. Links the schedule activities the
