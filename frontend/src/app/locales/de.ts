@@ -21815,6 +21815,7 @@ const resource = {
     "risk.montecarlo.p95_cost": "P95-Kosten",
     "risk.montecarlo.p95_schedule": "P95-Termine",
     "risk.montecarlo.run": "Simulation ausführen",
+    "risk.montecarlo.run_needs_editor": "Für eine Simulation ist die Rolle Bearbeiter nötig.",
     "risk.montecarlo.run_done": "Simulation abgeschlossen",
     "risk.montecarlo.run_done_detail": "{{iterations}} Iterationen über {{risks}} Risiken",
     "risk.montecarlo.running": "Läuft…",

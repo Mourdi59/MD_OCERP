@@ -18470,6 +18470,7 @@ const resource = {
     "risk.montecarlo.p95_cost": "P95 Cost",
     "risk.montecarlo.p95_schedule": "P95 Schedule",
     "risk.montecarlo.run": "Run simulation",
+    "risk.montecarlo.run_needs_editor": "Running a simulation needs the editor role.",
     "risk.montecarlo.run_done": "Simulation complete",
     "risk.montecarlo.run_done_detail": "{{iterations}} iterations across {{risks}} risks",
     "risk.montecarlo.running": "Running…",

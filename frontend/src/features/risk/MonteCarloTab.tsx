@@ -35,6 +35,7 @@ import { Play, Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Button, Card, EmptyState } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { toNum } from '@/shared/lib/money';
+import { useHasPermission } from '@/shared/lib/permissionGates';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 import {
@@ -105,6 +106,8 @@ export function binMidpointLabel(
 
 export function MonteCarloTab({ projectId, currency }: MonteCarloTabProps) {
   const { t } = useTranslation();
+  // The simulate call needs risk.update; a viewer would only collect a 403.
+  const canRun = useHasPermission('risk.update');
   const addToast = useToastStore((s) => s.addToast);
 
   const [iterations, setIterations] = useState<number>(ITERATIONS_DEFAULT);
@@ -220,7 +223,14 @@ export function MonteCarloTab({ projectId, currency }: MonteCarloTabProps) {
           <Button
             variant="primary"
             onClick={() => runMut.mutate()}
-            disabled={runMut.isPending || !projectId}
+            disabled={runMut.isPending || !projectId || !canRun}
+            title={
+              canRun
+                ? undefined
+                : t('risk.montecarlo.run_needs_editor', {
+                    defaultValue: 'Running a simulation needs the editor role.',
+                  })
+            }
             icon={
               runMut.isPending ? (
                 <Loader2 size={16} className="animate-spin" />

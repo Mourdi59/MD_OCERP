@@ -62,6 +62,7 @@ export const PERMISSION_MIN_ROLE = {
   'hse_frame.approve': 'manager',
   'design.edit': 'editor',
   'design.manage': 'manager',
+  'risk.update': 'editor',
 } as const satisfies Record<string, RankedRole>;
 
 export type GatedPermission = keyof typeof PERMISSION_MIN_ROLE;
