@@ -208,7 +208,7 @@ async def _seed_project(
         ),
         owner,
     )
-    await svc.apply_templates(pid, owner)
+    await svc.apply_templates(pid, owner, str(getattr(project, "locale", "") or "en"))
 
     # Register: mandatory rows are met unless the story keeps them open; recommended ones stay open.
     items: Iterable[HseItem] = await svc.repo.list(HseItem, pid, HseItem.topic, HseItem.created_at)

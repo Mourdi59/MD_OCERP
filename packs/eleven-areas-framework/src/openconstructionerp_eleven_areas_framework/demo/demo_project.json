@@ -341,6 +341,7 @@
         "delivery_model": "demo/residential-regensburg-delivery_model.json",
         "commitment_release": "demo/residential-regensburg-commitment_release.json",
         "site_logistics": "demo/residential-regensburg-site_logistics.json",
+        "interface_management": "demo/residential-regensburg-interface_management.json",
         "transmittals": "demo/residential-regensburg-transmittals.json",
         "economics": "demo/residential-regensburg-economics.json",
         "hse_frame": "demo/residential-regensburg-hse_frame.json"
@@ -666,6 +667,7 @@
         "delivery_model": "demo/school-ludwigsburg-delivery_model.json",
         "commitment_release": "demo/school-ludwigsburg-commitment_release.json",
         "site_logistics": "demo/school-ludwigsburg-site_logistics.json",
+        "interface_management": "demo/school-ludwigsburg-interface_management.json",
         "transmittals": "demo/school-ludwigsburg-transmittals.json",
         "economics": "demo/school-ludwigsburg-economics.json",
         "hse_frame": "demo/school-ludwigsburg-hse_frame.json"
