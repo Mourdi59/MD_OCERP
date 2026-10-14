@@ -72,11 +72,14 @@ export function SpecificationPanel({
   projectId,
   status,
   spec,
+  canWrite,
   onChanged,
 }: {
   projectId: string;
   status: BriefStatus;
   spec: SpecificationState;
+  /** False when the caller lacks the edit permission: no issue button. */
+  canWrite: boolean;
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
@@ -96,7 +99,7 @@ export function SpecificationPanel({
         : '';
 
   return (
-    <section className="space-y-3 rounded-lg border border-border-light p-4" data-testid="brief-spec">
+    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="brief-spec">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="space-y-1">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-content-primary">
@@ -121,9 +124,11 @@ export function SpecificationPanel({
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <Button size="sm" disabled={reason !== ''} onClick={() => setIssuing(true)} title={reason || undefined} data-testid="brief-spec-issue">
-            {t('engineeringBrief.spec.issue', { defaultValue: 'Issue specification' })}
-          </Button>
+          {canWrite ? (
+            <Button size="sm" disabled={reason !== ''} onClick={() => setIssuing(true)} title={reason || undefined} data-testid="brief-spec-issue">
+              {t('engineeringBrief.spec.issue', { defaultValue: 'Issue specification' })}
+            </Button>
+          ) : null}
           {reason ? (
             <p className="text-xs text-content-tertiary" data-testid="brief-spec-reason">
               {reason}

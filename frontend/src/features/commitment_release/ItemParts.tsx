@@ -144,7 +144,7 @@ export function PreconditionList({ projectId, item, editVerdict, personName, onC
                 key={pre.id}
                 data-testid="precondition-row"
                 data-state={met ? 'met' : 'open'}
-                className="rounded-lg border border-border-light p-2.5 text-sm"
+                className="rounded-lg border border-border bg-surface-elevated shadow-sm p-2.5 text-sm"
               >
                 <div className="flex flex-wrap items-start gap-2">
                   {met ? (

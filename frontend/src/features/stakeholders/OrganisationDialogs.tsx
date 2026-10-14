@@ -144,7 +144,7 @@ export function RoleHoldersDialog({ screen, role, holders, roster, onClose, onSa
           </p>
         )}
         {rows.map((r) => (
-          <div key={r.rowId} className="rounded-lg border border-border-light p-3" data-testid="role-holder-row">
+          <div key={r.rowId} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="role-holder-row">
             <WideModalSection columns={3}>
               {r.holder_contact_id || (role.holder_kind === 'organisation' && !r.roster_member_id) ? (
                 <WideModalField
@@ -448,7 +448,7 @@ export function BodyDialog({ screen, body, roles, onClose, onSaved }: BodyDialog
             })}
           </p>
           {members.map((m) => (
-            <div key={m.rowId} className="flex flex-wrap items-end gap-2 rounded-lg border border-border-light p-2" data-testid="body-member-row">
+            <div key={m.rowId} className="flex flex-wrap items-end gap-2 rounded-lg border border-border bg-surface-elevated shadow-sm p-2" data-testid="body-member-row">
               {m.contact_id ? (
                 <span className="flex-1 text-sm text-content-secondary">
                   {t('stakeholders.ui.body.member_contact', { defaultValue: 'External contact (kept as it is)' })}

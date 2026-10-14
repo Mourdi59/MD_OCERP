@@ -11,6 +11,7 @@
 
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Compass } from 'lucide-react';
 
@@ -20,9 +21,10 @@ import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { TabBar } from '@/shared/ui/TabBar';
 import { getErrorMessage } from '@/shared/lib/api';
+import { useHasPermission } from '@/shared/lib/permissionGates';
 
 import { listDeliverables, listDrawings, listRoles, listWbs } from './api';
-import type { DesignContext } from './DesignBits';
+import { DesignAccessContext, type DesignContext } from './DesignBits';
 import { DrawingsPanel } from './DrawingsPanel';
 import { useDesignList, useDesignSetup, useInvalidateDesign, useLabelContext, usePeopleNames } from './hooks';
 import { IssuePanel } from './IssuePanel';
@@ -57,11 +59,13 @@ export function DesignManagementPage() {
   const { t: rawT } = useTranslation();
   const t = rawT as TFn;
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const labels = useLabelContext();
   const personName = usePeopleNames(projectId);
   const invalidate = useInvalidateDesign(projectId);
+  const access = { canEdit: useHasPermission('design.edit'), canManage: useHasPermission('design.manage') };
 
   const setupQ = useDesignSetup(projectId);
   const ready = !!setupQ.data;
@@ -84,7 +88,7 @@ export function DesignManagementPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: ui(t, 'design.ui.project'), to: `/projects/${projectId}` },
+          { label: projectName || ui(t, 'design.ui.project'), to: `/projects/${projectId}` },
           { label: ui(t, 'design.ui.title') },
         ]}
       />
@@ -130,7 +134,9 @@ export function DesignManagementPage() {
     return (
       <div className="space-y-5 animate-fade-in" data-testid="design-management-page">
         {header}
-        <SetupStart projectId={projectId} labels={labels} onDone={invalidate} />
+        <DesignAccessContext.Provider value={access}>
+          <SetupStart projectId={projectId} labels={labels} onDone={invalidate} />
+        </DesignAccessContext.Provider>
       </div>
     );
   }
@@ -170,20 +176,22 @@ export function DesignManagementPage() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in" data-testid="design-management-page">
-      {header}
-      <TabBar<Tab>
-        ariaLabel={ui(t, 'design.ui.tabs')}
-        activeId={tab}
-        onChange={setTab}
-        idPrefix="design-management"
-        tabs={TABS.map((id) => ({
-          id,
-          label: ui(t, TAB_LABEL[id]),
-          badge: id === 'drawings' && (drawingsQ.data ?? []).length > 0 ? (drawingsQ.data ?? []).length : undefined,
-        }))}
-      />
-      {body}
-    </div>
+    <DesignAccessContext.Provider value={access}>
+      <div className="space-y-5 animate-fade-in" data-testid="design-management-page">
+        {header}
+        <TabBar<Tab>
+          ariaLabel={ui(t, 'design.ui.tabs')}
+          activeId={tab}
+          onChange={setTab}
+          idPrefix="design-management"
+          tabs={TABS.map((id) => ({
+            id,
+            label: ui(t, TAB_LABEL[id]),
+            badge: id === 'drawings' && (drawingsQ.data ?? []).length > 0 ? (drawingsQ.data ?? []).length : undefined,
+          }))}
+        />
+        {body}
+      </div>
+    </DesignAccessContext.Provider>
   );
 }

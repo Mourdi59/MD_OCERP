@@ -42,7 +42,9 @@ import {
   roleOptions,
   roleTitle,
   type DesignContext,
+  InlineQueryState,
   StepButton,
+  WriteButton,
 } from './DesignBits';
 import { FormDialog, list, str, type FieldSpec } from './FormDialog';
 import { useDesignAction, useDesignList } from './hooks';
@@ -64,7 +66,7 @@ function Comments({ ctx, review, onAnswer }: { ctx: DesignContext; review: Revie
     queryKey: designKeys.comments(ctx.projectId, review.id),
     queryFn: () => listReviewComments(ctx.projectId, review.id),
   });
-  if (comments.isLoading) return <p className="text-sm text-content-tertiary">{ui(t, 'design.ui.loading')}</p>;
+  if (comments.isLoading || comments.isError) return <InlineQueryState query={comments} />;
   const rows = comments.data ?? [];
   if (rows.length === 0) return <p className="text-sm text-content-tertiary">{ui(t, 'design.ui.reviews.no_comments')}</p>;
   const move = (comment: ReviewComment, target: CommentState) =>
@@ -132,9 +134,9 @@ export function ReviewsPanel({ ctx }: { ctx: DesignContext }) {
         title={ui(t, 'design.ui.reviews.title')}
         hint={ui(t, 'design.ui.reviews.hint')}
         action={
-          <Button onClick={create} data-testid="review-add">
+          <WriteButton onClick={create} data-testid="review-add">
             {ui(t, 'design.ui.reviews.add')}
-          </Button>
+          </WriteButton>
         }
       />
       <ListState
@@ -150,7 +152,7 @@ export function ReviewsPanel({ ctx }: { ctx: DesignContext }) {
           {(reviews.data ?? []).map((review) => {
             const expanded = open === review.id;
             return (
-              <li key={review.id} className="rounded-lg border border-border-light p-3" data-testid="review-row">
+              <li key={review.id} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="review-row">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs text-content-tertiary">{review.code}</span>
                   <span className="font-medium text-content-primary">{review.title}</span>
@@ -173,9 +175,9 @@ export function ReviewsPanel({ ctx }: { ctx: DesignContext }) {
                       {expanded ? ui(t, 'design.ui.reviews.hide_comments') : ui(t, 'design.ui.reviews.show_comments')}
                     </Button>
                     {review.state === 'open' && (
-                      <Button size="sm" variant="secondary" onClick={() => setDialog({ kind: 'comment', review })} data-testid="comment-add">
+                      <WriteButton size="sm" variant="secondary" onClick={() => setDialog({ kind: 'comment', review })} data-testid="comment-add">
                         {ui(t, 'design.ui.reviews.comment_add')}
-                      </Button>
+                      </WriteButton>
                     )}
                     {offered(review.can?.transitions, ['concluded']).map(({ target, flag }) => (
                       <StepButton

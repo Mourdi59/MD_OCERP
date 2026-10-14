@@ -110,7 +110,7 @@ export function PackageBoard({ projectId, concept, packages, labels, onPlan, onC
         </p>
       )}
       {move.error ? <RefusalBox error={move.error} /> : null}
-      <div className="overflow-x-auto rounded-lg border border-border-light">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
         <table className="w-full text-left text-sm" data-testid="package-board">
           <thead className="bg-surface-secondary text-xs text-content-tertiary">
             <tr>
@@ -358,7 +358,7 @@ function LinkTenderDialog({
               return (
                 <li key={o.id}>
                   <label
-                    className="flex items-start gap-2 rounded-lg border border-border-light p-2.5 text-sm"
+                    className="flex items-start gap-2 rounded-lg border border-border bg-surface-elevated shadow-sm p-2.5 text-sm"
                     data-testid="link-tender-option"
                     data-allowed={off ? 'no' : 'yes'}
                   >

@@ -111,7 +111,7 @@ export function ApprovalPanel({
   const title = brief.title.trim() || t('engineeringBrief.untitled', { defaultValue: 'Engineering brief' });
 
   return (
-    <section className="space-y-3 rounded-lg border border-border-light bg-surface-primary p-4" data-testid="brief-approval">
+    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="brief-approval">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -308,7 +308,7 @@ export function BriefSetup({ projectId, labels, onDone }: { projectId: string; l
   const chosen = catalogues.find((c) => `${c.source}:${c.id}` === pick) ?? catalogues[0];
 
   return (
-    <section className="space-y-3 rounded-lg border border-border-light bg-surface-primary p-4" data-testid="brief-setup">
+    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="brief-setup">
       <WideModalField label={t('engineeringBrief.catalogue', { defaultValue: 'Catalogue' })}>
         <select
           className={FIELD_CLASS}

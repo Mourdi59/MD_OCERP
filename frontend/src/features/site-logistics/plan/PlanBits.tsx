@@ -471,7 +471,7 @@ export function FormDialog({
     return (
       <div className="space-y-2" data-testid={`plan-rows-${f.name}`}>
         {rows.map((row, i) => (
-          <div key={i} className="flex items-start gap-2 rounded-lg border border-border-light p-2">
+          <div key={i} className="flex items-start gap-2 rounded-lg border border-border bg-surface-elevated shadow-sm p-2">
             <div className="grid flex-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {f.columns.map((c) => {
                 const id = `plan-f-${f.name}-${i}-${c.name}`;

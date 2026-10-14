@@ -91,7 +91,7 @@ export function FrameworkSettings({ projectId, settings, canPin = true, labels, 
   const allowed = settings ? settings.can.manage_organisation : canPin;
 
   return (
-    <section className="space-y-4 rounded-lg border border-border-light p-4" data-testid="framework-settings">
+    <section className="space-y-4 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="framework-settings">
       <div>
         <h2 className="text-sm font-semibold text-content-primary">
           {t('stakeholders.ui.framework.title', { defaultValue: 'Stakeholder framework' })}
@@ -233,7 +233,7 @@ export function ExportBar({ projectId, settings, document }: { projectId: string
   };
 
   return (
-    <section className="space-y-2 rounded-lg border border-border-light p-3" data-testid={`export-${document}`}>
+    <section className="space-y-2 rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid={`export-${document}`}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="mr-auto text-sm text-content-secondary">
           {t(DOCUMENT_TITLE[document][0], { defaultValue: DOCUMENT_TITLE[document][1] })}

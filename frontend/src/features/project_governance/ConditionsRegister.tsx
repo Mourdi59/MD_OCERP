@@ -138,7 +138,7 @@ export function ConditionsRegister({
             const active = action?.id === c.id ? action : null;
             const showWaiverError = active?.kind === 'waive' && tried && !!waiverProblem(text);
             return (
-              <li key={c.id} className="rounded-lg border border-border-light p-3" data-testid="condition-entry">
+              <li key={c.id} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="condition-entry">
                 <div className="flex flex-wrap items-center gap-2">
                   <ToneBadge tone={CONDITION_TONE[c.status]}>{vocab(t, CONDITION_STATUS, c.status)}</ToneBadge>
                   <span className="text-xs text-content-tertiary">{vocab(t, SEVERITY, c.severity)}</span>

@@ -82,6 +82,29 @@ describe('GovernanceMatrix', () => {
     expect(screen.getByText('Current phase')).toBeInTheDocument();
   });
 
+  it('names a phase without a gate once in its header and leaves its cells empty', () => {
+    wrap(
+      <GovernanceMatrix
+        data={data}
+        catalogueId="neutral"
+        next={next}
+        blockerCount={2}
+        labels={labels}
+        personName={names}
+        onOpenGate={() => undefined}
+        onOpenArea={() => undefined}
+      />,
+    );
+    const gateless = data.columns.filter((c) => !c.gate).length;
+    expect(gateless).toBeGreaterThan(0);
+    expect(screen.getAllByTestId('column-no-gate')).toHaveLength(gateless);
+    expect(screen.getAllByTestId('column-no-gate')[0]).toHaveTextContent('No gate in this phase');
+    // a cell under a column without a gate carries no dash
+    const lastRow = screen.getAllByTestId('matrix-row')[1]!;
+    const dashes = within(lastRow).queryAllByText('-');
+    expect(dashes.length).toBeLessThanOrEqual(data.columns.length - gateless);
+  });
+
   it('says so when every gate is decided', () => {
     wrap(
       <GovernanceMatrix

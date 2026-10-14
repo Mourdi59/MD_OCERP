@@ -114,7 +114,17 @@ export function NextGateBanner({
   );
 }
 
-function Cell({ cell, labels, catalogueId }: { cell: MatrixCell; labels: LabelContext; catalogueId: string }) {
+function Cell({
+  cell,
+  labels,
+  catalogueId,
+  gated,
+}: {
+  cell: MatrixCell;
+  labels: LabelContext;
+  catalogueId: string;
+  gated: boolean;
+}) {
   const { t } = useTranslation();
   const r = cell.readiness;
   return (
@@ -142,13 +152,14 @@ function Cell({ cell, labels, catalogueId }: { cell: MatrixCell; labels: LabelCo
             aria-hidden
           />
           <span className="truncate" title={vocab(t, DOCUMENT_STATUS, d.status)}>
-            {catalogueName(labels, { kind: 'doc', code: d.docType, catalogueId })}
+            {catalogueName(labels, { kind: 'doc', code: d.docType, catalogueId, label: d.name })}
           </span>
           <span className="sr-only">{vocab(t, DOCUMENT_STATUS, d.status)}</span>
         </span>
       ))}
-      {/* Every cell that carries neither a badge nor a document shows the same dash. */}
-      {r.kind !== 'check' && !(r.kind === 'decided' && r.outcome) && cell.documents.length === 0 && (
+      {/* A column without a gate says so once in its header; its cells stay empty. Every other cell that
+          carries neither a badge nor a document shows the same dash. */}
+      {gated && r.kind !== 'check' && !(r.kind === 'decided' && r.outcome) && cell.documents.length === 0 && (
         <span className="text-2xs text-content-quaternary">-</span>
       )}
     </div>
@@ -175,7 +186,7 @@ export function GovernanceMatrix({
         labels={labels}
         onOpen={onOpenGate}
       />
-      <div className="overflow-x-auto rounded-lg border border-border-light">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
         <table className="w-full min-w-[720px] border-collapse text-left" data-testid="governance-matrix">
           <thead>
             <tr className="bg-surface-secondary">
@@ -197,6 +208,11 @@ export function GovernanceMatrix({
                   {col.isCurrent && (
                     <span className="text-2xs font-normal">
                       {t('governance.project.matrix.current_phase', { defaultValue: 'Current phase' })}
+                    </span>
+                  )}
+                  {!col.gate && (
+                    <span className="mt-1 block text-2xs font-normal text-content-tertiary" data-testid="column-no-gate">
+                      {t('governance.project.matrix.no_gate', { defaultValue: 'No gate in this phase' })}
                     </span>
                   )}
                   {col.gate && (
@@ -247,7 +263,7 @@ export function GovernanceMatrix({
                       key={data.columns[i]!.phase.code}
                       className={clsx('px-3 py-2', data.columns[i]!.isCurrent && 'bg-oe-blue-subtle/40')}
                     >
-                      <Cell cell={cell} labels={labels} catalogueId={catalogueId} />
+                      <Cell cell={cell} labels={labels} catalogueId={catalogueId} gated={!!data.columns[i]!.gate} />
                     </td>
                   ))}
                 </tr>

@@ -222,7 +222,7 @@ function AreaReadiness({
     : null;
 
   return (
-    <div className="rounded-lg border border-border-light p-3" data-testid="gate-area">
+    <div className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="gate-area">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -569,7 +569,10 @@ export function GatePanel({
   const liveRefusal = refusal && refusal.seenAt === query.dataUpdatedAt ? refusal.verdict : null;
   const decideVerdict = liveRefusal ?? canDecide(model, detail);
   const submitVerdict = canSubmitGate(model, detail);
-  const documentName = (code: string) => catalogueName(labels, { kind: 'doc', code, catalogueId });
+  // The server names each frame document in the project's catalogue; a pack catalogue has no locale keys.
+  const documentLabels = new Map(detail.areas.flatMap((a) => a.documents.map((d) => [d.doc_type, d.name] as const)));
+  const documentName = (code: string) =>
+    catalogueName(labels, { kind: 'doc', code, catalogueId, label: documentLabels.get(code) });
   const gateName = catalogueName(labels, { kind: 'gate', code: gate.code, catalogueId, label: gate.name });
   const fromPhase = model.phases.find((ph) => ph.code === gate.from_phase);
   const fromPhaseName = catalogueName(labels, { kind: 'phase', code: gate.from_phase, catalogueId, label: fromPhase?.name });
@@ -762,7 +765,7 @@ export function GatePanel({
             {[...detail.decisions]
               .sort((a, b) => b.attempt_no - a.attempt_no)
               .map((d) => (
-                <li key={d.id} className="rounded-lg border border-border-light p-3" data-testid="decision-entry">
+                <li key={d.id} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="decision-entry">
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="text-xs text-content-tertiary">
                       {t('governance.project.gate.attempt', { defaultValue: 'Attempt {{n}}', n: d.attempt_no })}

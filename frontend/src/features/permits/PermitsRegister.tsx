@@ -10,7 +10,7 @@ import { AlertTriangle, FileCheck2 } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
-import { fmtCurrency } from '@/shared/lib/formatters';
+import { formatCurrency } from '@/shared/lib/money';
 
 import {
   localToday,
@@ -157,7 +157,7 @@ function PermitTransitionDialog({ open, onClose, projectId, permit }: { open: bo
           const flag = permit.can?.transition?.[x];
           const refused = flag?.allowed === false;
           return (
-            <label key={x} className="flex items-start gap-2 rounded-md border border-border-light p-2.5 text-sm">
+            <label key={x} className="flex items-start gap-2 rounded-md border border-border-light bg-surface-elevated p-2.5 text-sm">
               <input type="radio" name="permit-target" className="mt-1" disabled={refused} checked={target === x} onChange={() => setTarget(x)} />
               <span>
                 <span className={refused ? 'text-content-tertiary' : undefined}>{vocab(t, PERMIT_STEP, x)}</span>
@@ -235,7 +235,7 @@ export function PermitsRegister({
           const warn = p.lapse_warning;
           const step = workStep(p);
           return (
-            <li key={p.id} className="space-y-3 rounded-lg border border-border-light p-4" data-testid="permit-entry">
+            <li key={p.id} className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="permit-entry">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -354,7 +354,7 @@ export function PermitsRegister({
                 )}
                 {p.security_amount && (
                   <Fact label={t('permits.ui.permit.security', { defaultValue: 'Security' })} testId="permit-security">
-                    {fmtCurrency(p.security_amount, p.security_currency)}
+                    {formatCurrency(p.security_amount, p.security_currency)}
                   </Fact>
                 )}
               </dl>

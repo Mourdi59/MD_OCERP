@@ -7,15 +7,16 @@
   },
   "kinds": {
     "design": {
-      "value": 2900000,
+      "value": 3100000,
       "public_procedure": "open",
       "notes": {
         "en": "Design services under VgV, open procedure with EU-wide notice. HOAI fees for building, technical equipment, structural design and outdoor facilities; evaluation on price and quality. Awarded after the Gemeinderat decision on the competition result.",
         "de": "Planungsleistungen nach VgV im offenen Verfahren mit EU-weiter Bekanntmachung. HOAI-Honorare für Gebäude, Technische Ausrüstung, Tragwerksplanung und Freianlagen; Wertung nach Preis und Qualität. Zuschlag nach dem Beschluss des Gemeinderats zum Wettbewerbsergebnis."
-      }
+      },
+      "award_days_ago": 200
     },
     "construction": {
-      "value": 15500000,
+      "value": 16980000,
       "public_procedure": "open",
       "start_offset_days": 60,
       "notes": {

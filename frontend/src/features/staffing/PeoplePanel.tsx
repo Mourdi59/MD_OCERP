@@ -101,7 +101,7 @@ export function PeoplePanel({ projectId, files, candidates, catalogue, labels, o
           {t('staffing.file.create', { defaultValue: 'Open personnel file' })}
         </Button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-border-light">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
             <tr className="border-b border-border-light text-left text-xs text-content-tertiary">

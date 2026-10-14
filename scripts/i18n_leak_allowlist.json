@@ -1788,5 +1788,20 @@
     "en_value": "{{system}}, {{stage}}: {{state}}",
     "note": "accessible label made only of three placeholders and punctuation; the locales that differ (de adds the word for stage, fr, ja, zh, ar, fa and ur use their own punctuation) carry that form, the rest have nothing to translate",
     "reason_category": "template_only"
+  },
+  "engineeringBrief.export.pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "engineeringBrief.export.xlsx": {
+    "en_value": "Excel",
+    "note": "application name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "economics.export.pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
   }
 }

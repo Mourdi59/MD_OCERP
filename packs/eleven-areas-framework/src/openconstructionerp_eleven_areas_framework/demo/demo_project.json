@@ -43,6 +43,12 @@
           "source": "pack",
           "id": "eleven_areas_framework_de_by",
           "version": 1
+        },
+        {
+          "kind": "handbook_model",
+          "source": "pack",
+          "id": "eleven_areas_framework",
+          "version": 1
         }
       ],
       "governance": {
@@ -296,10 +302,20 @@
           "decision": {
             "outcome": "go_with_conditions",
             "rationale": {
-              "en": "The frame documents are in force and the building permit is granted. Two areas go ahead at risk with a named owner each; the commissioning manager is still to be appointed.",
-              "de": "Die Rahmendokumente gelten und die Baugenehmigung liegt vor. Zwei Bereiche gehen mit benanntem Verantwortlichen unter Vorbehalt in die Ausführung; die Inbetriebnahmeleitung ist noch zu besetzen."
+              "en": "The frame documents are in force and the building permit is granted. The early start already runs, so the decision releases the execution formally. Three areas go ahead at risk, each with a named condition and owner; the commissioning manager is still to be appointed.",
+              "de": "Die Rahmendokumente gelten und die Baugenehmigung liegt vor. Der vorzeitige Baubeginn läuft bereits, der Beschluss gibt die Ausführung förmlich frei. Drei Bereiche gehen mit je einer benannten Bedingung und Verantwortlichen unter Vorbehalt in die Ausführung; die Inbetriebnahmeleitung ist noch zu besetzen."
             },
             "conditions": [
+              {
+                "area": "m02_contract_management",
+                "text": {
+                  "en": "Construction contract with the shell contractor signed and the securities lodged",
+                  "de": "Bauvertrag mit dem Rohbauunternehmer unterzeichnet und Sicherheiten hinterlegt"
+                },
+                "owner": "owner",
+                "due_in_days": 60,
+                "severity": "essential"
+              },
               {
                 "area": "m05_personnel",
                 "text": {
@@ -308,6 +324,26 @@
                 },
                 "owner": "owner",
                 "due_in_days": 180,
+                "severity": "essential"
+              },
+              {
+                "area": "m07_design_management",
+                "text": {
+                  "en": "Structural check of the execution design of the underground car park released and the plan release granted",
+                  "de": "Prüfung der Ausführungsplanung der Tiefgarage durch die Prüfstatik abgeschlossen und Planfreigabe erteilt"
+                },
+                "owner": "owner",
+                "due_in_days": 30,
+                "severity": "essential"
+              },
+              {
+                "area": "m09_commercial",
+                "text": {
+                  "en": "Order for the precast balconies placed before the latest decision date",
+                  "de": "Bestellung der Balkon-Fertigteile vor dem spätesten Entscheidungstermin ausgelöst"
+                },
+                "owner": "cost",
+                "due_in_days": 14,
                 "severity": "essential"
               }
             ]
@@ -326,6 +362,7 @@
       "module_files": {
         "stakeholders": "demo/residential-regensburg-stakeholders.json",
         "staffing": "demo/residential-regensburg-staffing.json",
+        "engineering_brief": "demo/residential-regensburg-engineering_brief.json",
         "permits": "demo/residential-regensburg-permits.json",
         "plant_register": "demo/residential-regensburg-plant_register.json",
         "procurement_concept": "demo/residential-regensburg-procurement_concept.json",
@@ -334,9 +371,103 @@
         "delivery_model": "demo/residential-regensburg-delivery_model.json",
         "commitment_release": "demo/residential-regensburg-commitment_release.json",
         "site_logistics": "demo/residential-regensburg-site_logistics.json",
+        "interface_management": "demo/residential-regensburg-interface_management.json",
         "transmittals": "demo/residential-regensburg-transmittals.json",
-        "economics": "demo/residential-regensburg-economics.json"
-      }
+        "economics": "demo/residential-regensburg-economics.json",
+        "hse_frame": "demo/residential-regensburg-hse_frame.json"
+      },
+      "people": [
+        {
+          "key": "monika.brunner",
+          "name": "Monika Brunner",
+          "company": {
+            "en": "Wohnungsbau Donaupark GmbH",
+            "de": "Wohnungsbau Donaupark GmbH"
+          },
+          "area": "m02_contract_management"
+        },
+        {
+          "key": "thomas.kellermann",
+          "name": "Thomas Kellermann",
+          "company": {
+            "en": "Bauleitung Oberpfalz GmbH",
+            "de": "Bauleitung Oberpfalz GmbH"
+          },
+          "area": "m03_engineering_scheduling"
+        },
+        {
+          "key": "verena.pledl",
+          "name": "Verena Pledl",
+          "company": {
+            "en": "Ingenieurbüro Pledl TGA",
+            "de": "Ingenieurbüro Pledl TGA"
+          },
+          "area": "m04_equipment"
+        },
+        {
+          "key": "katharina.lindner",
+          "name": "Dr. Katharina Lindner",
+          "company": {
+            "en": "Wohnungsbau Donaupark GmbH",
+            "de": "Wohnungsbau Donaupark GmbH"
+          },
+          "area": "m05_personnel"
+        },
+        {
+          "key": "florian.wagenhuber",
+          "name": "Florian Wagenhuber",
+          "company": {
+            "en": "Bauleitung Oberpfalz GmbH",
+            "de": "Bauleitung Oberpfalz GmbH"
+          },
+          "area": "m06_logistics"
+        },
+        {
+          "key": "julia.hartmann",
+          "name": "Julia Hartmann",
+          "company": {
+            "en": "Architekturbüro Hartmann und Brandl",
+            "de": "Architekturbüro Hartmann und Brandl"
+          },
+          "area": "m07_design_management"
+        },
+        {
+          "key": "matthias.kreutzer",
+          "name": "Matthias Kreutzer",
+          "company": {
+            "en": "Wohnungsbau Donaupark GmbH",
+            "de": "Wohnungsbau Donaupark GmbH"
+          },
+          "area": "m08_procurement"
+        },
+        {
+          "key": "stefan.obermeier",
+          "name": "Stefan Obermeier",
+          "company": {
+            "en": "Wohnungsbau Donaupark GmbH",
+            "de": "Wohnungsbau Donaupark GmbH"
+          },
+          "area": "m09_commercial"
+        },
+        {
+          "key": "christoph.eibl",
+          "name": "Christoph Eibl",
+          "company": {
+            "en": "Bauleitung Oberpfalz GmbH",
+            "de": "Bauleitung Oberpfalz GmbH"
+          },
+          "area": "m10_quality"
+        },
+        {
+          "key": "sabine.rottenwoehrer",
+          "name": "Sabine Rottenwöhrer",
+          "company": {
+            "en": "Bauleitung Oberpfalz GmbH",
+            "de": "Bauleitung Oberpfalz GmbH"
+          },
+          "area": "m11_hse"
+        }
+      ]
     },
     {
       "project": {
@@ -377,7 +508,13 @@
         {
           "kind": "hse_frame",
           "source": "pack",
-          "id": "eleven_areas_framework_de_by",
+          "id": "eleven_areas_framework_de_bw",
+          "version": 1
+        },
+        {
+          "kind": "handbook_model",
+          "source": "pack",
+          "id": "eleven_areas_framework",
           "version": 1
         }
       ],
@@ -534,8 +671,8 @@
               "status": "ready",
               "rag": "green",
               "note": {
-                "en": "Mandate of the school building committee is in force. The council has confirmed the project budget.",
-                "de": "Der Auftrag des Schulbauausschusses gilt. Der Gemeinderat hat das Projektbudget bestätigt."
+                "en": "Mandate of the Technischer Ausschuss is in force. The council has confirmed the project budget.",
+                "de": "Der Auftrag des Technischen Ausschusses gilt. Der Gemeinderat hat das Projektbudget bestätigt."
               }
             },
             {
@@ -643,6 +780,7 @@
       "module_files": {
         "stakeholders": "demo/school-ludwigsburg-stakeholders.json",
         "staffing": "demo/school-ludwigsburg-staffing.json",
+        "engineering_brief": "demo/school-ludwigsburg-engineering_brief.json",
         "permits": "demo/school-ludwigsburg-permits.json",
         "plant_register": "demo/school-ludwigsburg-plant_register.json",
         "procurement_concept": "demo/school-ludwigsburg-procurement_concept.json",
@@ -651,9 +789,103 @@
         "delivery_model": "demo/school-ludwigsburg-delivery_model.json",
         "commitment_release": "demo/school-ludwigsburg-commitment_release.json",
         "site_logistics": "demo/school-ludwigsburg-site_logistics.json",
+        "interface_management": "demo/school-ludwigsburg-interface_management.json",
         "transmittals": "demo/school-ludwigsburg-transmittals.json",
-        "economics": "demo/school-ludwigsburg-economics.json"
-      }
+        "economics": "demo/school-ludwigsburg-economics.json",
+        "hse_frame": "demo/school-ludwigsburg-hse_frame.json"
+      },
+      "people": [
+        {
+          "key": "oliver.seitz",
+          "name": "Oliver Seitz",
+          "company": {
+            "en": "Stadt Ludwigsburg, Rechtsamt",
+            "de": "Stadt Ludwigsburg, Rechtsamt"
+          },
+          "area": "m02_contract_management"
+        },
+        {
+          "key": "jens.kaltenbach",
+          "name": "Jens Kaltenbach",
+          "company": {
+            "en": "Bauüberwachung Neckarraum GmbH",
+            "de": "Bauüberwachung Neckarraum GmbH"
+          },
+          "area": "m03_engineering_scheduling"
+        },
+        {
+          "key": "hannah.schuler",
+          "name": "Hannah Schuler",
+          "company": {
+            "en": "Ingenieurbüro Schuler TGA",
+            "de": "Ingenieurbüro Schuler TGA"
+          },
+          "area": "m04_equipment"
+        },
+        {
+          "key": "birgit.neumann",
+          "name": "Dr. Birgit Neumann",
+          "company": {
+            "en": "Stadt Ludwigsburg, Hochbauamt",
+            "de": "Stadt Ludwigsburg, Hochbauamt"
+          },
+          "area": "m05_personnel"
+        },
+        {
+          "key": "markus.brenner",
+          "name": "Markus Brenner",
+          "company": {
+            "en": "Bauüberwachung Neckarraum GmbH",
+            "de": "Bauüberwachung Neckarraum GmbH"
+          },
+          "area": "m06_logistics"
+        },
+        {
+          "key": "lena.woehrle",
+          "name": "Lena Wöhrle",
+          "company": {
+            "en": "Architekten Wöhrle und Partner",
+            "de": "Architekten Wöhrle und Partner"
+          },
+          "area": "m07_design_management"
+        },
+        {
+          "key": "andreas.hellmuth",
+          "name": "Andreas Hellmuth",
+          "company": {
+            "en": "Stadt Ludwigsburg, Hochbauamt",
+            "de": "Stadt Ludwigsburg, Hochbauamt"
+          },
+          "area": "m08_procurement"
+        },
+        {
+          "key": "kerstin.albrecht",
+          "name": "Kerstin Albrecht",
+          "company": {
+            "en": "Stadt Ludwigsburg, Kämmerei",
+            "de": "Stadt Ludwigsburg, Kämmerei"
+          },
+          "area": "m09_commercial"
+        },
+        {
+          "key": "peter.gaiser",
+          "name": "Peter Gaiser",
+          "company": {
+            "en": "Prüfwerk Schulbau Ingenieure",
+            "de": "Prüfwerk Schulbau Ingenieure"
+          },
+          "area": "m10_quality"
+        },
+        {
+          "key": "silke.frank",
+          "name": "Silke Frank",
+          "company": {
+            "en": "Bauüberwachung Neckarraum GmbH",
+            "de": "Bauüberwachung Neckarraum GmbH"
+          },
+          "area": "m11_hse"
+        }
+      ]
     }
   ]
 }

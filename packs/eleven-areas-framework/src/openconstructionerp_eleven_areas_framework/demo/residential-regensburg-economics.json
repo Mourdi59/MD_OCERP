@@ -107,10 +107,19 @@
       },
       "application": {
         "code": "FA-2026-001",
-        "title": "Mietwohnraumförderung, Neubau Donauknie",
+        "title": {
+          "en": "Rental housing subsidy, new build Donauknie",
+          "de": "Mietwohnraumförderung, Neubau Donauknie"
+        },
         "programme_code": "BAY-WOHNRAUM",
-        "programme_name": "Bayerisches Wohnraumförderungsprogramm, Mietwohnraum",
-        "authority": "Regierung der Oberpfalz, Wohnraumförderung",
+        "programme_name": {
+          "en": "Bavarian housing subsidy programme, rental housing",
+          "de": "Bayerisches Wohnraumförderungsprogramm, Mietwohnraum"
+        },
+        "authority": {
+          "en": "Government of the Upper Palatinate, housing subsidy",
+          "de": "Regierung der Oberpfalz, Wohnraumförderung"
+        },
         "region": "DE-BY",
         "status": "approved",
         "submitted_days": -238,
@@ -143,7 +152,7 @@
       },
       "pct_of_frame": "0.01",
       "issuer": "Oberpfälzer Bürgschaftsbank AG",
-      "beneficiary": "Vennhof Wohnbaugesellschaft mbH",
+      "beneficiary": "Wohnungsbau Donaupark GmbH",
       "reference": "BB-2026-0117",
       "valid_from_days": -150,
       "valid_until_days": -60,
@@ -157,7 +166,7 @@
       },
       "pct_of_frame": "0.02",
       "issuer": "Oberpfälzer Bürgschaftsbank AG",
-      "beneficiary": "Vennhof Wohnbaugesellschaft mbH",
+      "beneficiary": "Wohnungsbau Donaupark GmbH",
       "reference": "VZ-2026-0342",
       "valid_from_days": -20,
       "valid_until_days": 420,
@@ -171,7 +180,7 @@
       },
       "pct_of_frame": "0.04",
       "issuer": "Oberpfälzer Bürgschaftsbank AG",
-      "beneficiary": "Vennhof Wohnbaugesellschaft mbH",
+      "beneficiary": "Wohnungsbau Donaupark GmbH",
       "reference": "VE-2026-0343",
       "valid_from_days": -20,
       "valid_until_days": 1100,
@@ -185,7 +194,7 @@
       },
       "pct_of_frame": "0.03",
       "issuer": "Oberpfälzer Bürgschaftsbank AG",
-      "beneficiary": "Vennhof Wohnbaugesellschaft mbH",
+      "beneficiary": "Wohnungsbau Donaupark GmbH",
       "reference": "GW-2026-0344",
       "valid_from_days": 1100,
       "valid_until_days": 2930,
@@ -227,7 +236,7 @@
     },
     {
       "kind": "professional_indemnity",
-      "insurer": "Bayerische Berufshaftpflicht VVaG",
+      "insurer": "Oberpfalz Planerhaftpflicht VVaG",
       "policy_number": "PHV-8830412",
       "sum_insured": "5000000",
       "deductible": "10000",

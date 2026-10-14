@@ -9,6 +9,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { CalendarClock, Compass, Factory, Grid3x3, ListChecks, Plus, Router } from 'lucide-react';
 
@@ -47,6 +48,7 @@ type Tab = 'register' | 'long_lead' | 'limits' | 'site_it' | 'frame';
 export function PlantRegisterPage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const labels = useLabelContext();
   const personName = usePeopleNames(projectId);
@@ -82,7 +84,7 @@ export function PlantRegisterPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('plant.page.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName || t('plant.page.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('plant.nav.title', { defaultValue: 'Plant register' }) },
         ]}
       />

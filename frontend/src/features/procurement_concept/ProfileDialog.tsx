@@ -178,7 +178,7 @@ export function ProfileDialog({
               const picked = chosen.get(c.code);
               const name = catalogueName(labels, 'criterion', c);
               return (
-                <li key={c.code} className="flex flex-wrap items-center gap-3 rounded-md border border-border-light px-3 py-1.5" data-testid="profile-criterion">
+                <li key={c.code} className="flex flex-wrap items-center gap-3 rounded-md border border-border-light bg-surface-elevated px-3 py-1.5" data-testid="profile-criterion">
                   <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-content-primary">
                     <input type="checkbox" checked={!!picked} onChange={() => toggle(c)} />
                     {name}

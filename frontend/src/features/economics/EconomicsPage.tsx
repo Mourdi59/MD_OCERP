@@ -11,6 +11,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Banknote, Calculator, Landmark, Scale, ShieldCheck } from 'lucide-react';
 
@@ -23,6 +24,7 @@ import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { TabBar } from '@/shared/ui/TabBar';
 import { getErrorMessage } from '@/shared/lib/api';
+import { fmtDate } from '@/shared/lib/formatters';
 
 import { runLifecycle, startPlan, type Approval, type Lifecycle, type PlanView, type PlanStatus } from './api';
 import { ExportButtons } from './ExportButtons';
@@ -83,8 +85,8 @@ function LifecycleBar({ projectId, plan }: { projectId: string; plan: PlanView }
 
 /** Who proposed the plan and who approved it, when, and by which path: the gate decision or a manager by hand. */
 function ApprovalSummary({ approval }: { approval: Approval }) {
-  const { t, i18n } = useTranslation();
-  const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(i18n.language || 'en') : '');
+  const { t } = useTranslation();
+  const day = (iso: string | null) => (iso ? fmtDate(iso) : '');
   const approved = approval.status === 'approved' && !!approval.approved_at;
   const unknown = t('economics.approval.unknown_person', { defaultValue: 'an unknown person' });
   return (
@@ -126,6 +128,7 @@ function ApprovalSummary({ approval }: { approval: Approval }) {
 export function EconomicsPage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const requested = params.get('tab') as Tab | null;
   const tab: Tab = requested && TABS.includes(requested) ? requested : 'frame';
@@ -149,7 +152,7 @@ export function EconomicsPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('economics.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName || t('economics.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('economics.ui.title', { defaultValue: 'Economics' }) },
         ]}
       />

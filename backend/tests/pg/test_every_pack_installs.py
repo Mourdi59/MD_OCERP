@@ -701,6 +701,7 @@ _ELEVEN_MODULES = (
     "commitment_release",
     "quality_concept",
     "transmittals",
+    "handbook",
 )
 _EMPTY_BY_DESIGN: dict[str, str] = {
     # Written only when a delivery is scheduled on a granted oversize permit, which needs a running site.
@@ -782,5 +783,82 @@ async def test_every_screen_of_the_eleven_areas_has_rows_for_both_filmed_project
     assert not empty, "tables with no rows for a filmed project:\n" + "\n".join(
         f"{demo_id}: {', '.join(names)}" for demo_id, names in empty.items()
     )
+    # Interfaces and transmittals are told by the pack story, not by the generic seeders:
+    # German titles, no foreign script, and nothing closed or issued before its time.
+    import re
+
+    from app.modules.interface_management.models import InterfaceRecord
+    from app.modules.transmittals.models import Transmittal
+
+    foreign = re.compile(r"[Ѐ-ӿ぀-ヿ一-鿿؀-ۿ]")
+    english = re.compile(r"\b(the|and|penetrations|drawings|supply to)\b", re.IGNORECASE)
+    async with factory() as s:
+        for demo_id in filmed:
+            pid = projects[demo_id].id
+            interfaces = (
+                (await s.execute(select(InterfaceRecord).where(InterfaceRecord.project_id == pid))).scalars().all()
+            )
+            assert 8 <= len(interfaces) <= 15, f"{demo_id}: {len(interfaces)} interfaces"
+            transmittals = (await s.execute(select(Transmittal).where(Transmittal.project_id == pid))).scalars().all()
+            assert len(transmittals) == 5, f"{demo_id}: {len(transmittals)} transmittals, the story tells five"
+            texts = [r.title for r in interfaces] + [r.owner_party or "" for r in interfaces]
+            texts += [r.subject for r in transmittals]
+            for text in texts:
+                assert not foreign.search(text), f"{demo_id}: non-German script in {text!r}"
+                assert not english.search(text), f"{demo_id}: English text in the German project: {text!r}"
+            for row in interfaces:
+                assert (row.status in ("agreed", "closed")) == (row.agreed_date is not None), row.reference
+                assert (row.status == "closed") == (row.closed_date is not None), row.reference
+
+    # Each area of a filmed project has its own named owner, and every owner but the project's own account
+    # is a roster line with a name, so the screens never print a bare id or the same person eleven times.
+    from app.modules.project_governance.models import GovernanceArea
+    from app.modules.teams.models import RosterMember
+    from app.modules.users.models import User
+
+    async with factory() as s:
+        for demo_id in filmed:
+            project = projects[demo_id]
+            owners = [
+                o
+                for o in (
+                    await s.execute(
+                        select(GovernanceArea.owner_user_id).where(
+                            GovernanceArea.project_id == project.id, GovernanceArea.retired.is_(False)
+                        )
+                    )
+                ).scalars()
+            ]
+            assert len(owners) == 11 and None not in owners, (demo_id, owners)
+            assert len(set(owners)) >= 10, f"{demo_id}: the areas share owners: {len(set(owners))} distinct"
+            named = {
+                uid
+                for uid in (
+                    await s.execute(
+                        select(RosterMember.user_id).where(
+                            RosterMember.project_id == project.id, RosterMember.user_id.is_not(None)
+                        )
+                    )
+                ).scalars()
+            }
+            people = [o for o in set(owners) if o != project.owner_id]
+            assert people and set(people) <= named, f"{demo_id}: owners without a roster name"
+            for user in (await s.execute(select(User).where(User.id.in_(people)))).scalars():
+                # Nobody can sign in as a demo person.
+                assert user.is_active is False and (user.metadata_ or {}).get("demo_person") is True, user.email
+
+    # The data room: the catalogue folder tree is materialised for each filmed project.
+    from app.modules.documents.models import DocumentFolder
+
+    async with factory() as s:
+        for demo_id in filmed:
+            folders = (
+                await s.execute(
+                    select(func.count())
+                    .select_from(DocumentFolder)
+                    .where(DocumentFolder.project_id == projects[demo_id].id)
+                )
+            ).scalar_one()
+            assert folders > 0, f"{demo_id}: the data room has no folders"
     warned = _install_warnings(caplog)
     assert not warned, warned[:20]

@@ -170,7 +170,7 @@ export function ConceptRecord({
 
   return (
     <div className="space-y-5" data-testid="concept-record">
-      <section className="rounded-lg border border-border-light p-4">
+      <section className="rounded-lg border border-border bg-surface-elevated shadow-sm p-4">
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -200,7 +200,7 @@ export function ConceptRecord({
         </div>
 
         {reopening && (
-          <div className="mt-3 rounded-md border border-border-light p-3" data-testid="concept-reopen-form">
+          <div className="mt-3 rounded-md border border-border-light bg-surface-elevated p-3" data-testid="concept-reopen-form">
             <Field
               label={t('procurement_concept.ui.record.reopen_reason', { defaultValue: 'Why the concept is reopened (required)' })}
               htmlFor="pc-reopen-reason"
@@ -264,7 +264,7 @@ export function ConceptRecord({
         ) : null}
       </section>
 
-      <section className="rounded-lg border border-border-light p-4">
+      <section className="rounded-lg border border-border bg-surface-elevated shadow-sm p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-content-primary">
             {t('procurement_concept.ui.record.rules_title', { defaultValue: 'Rules this project procures under' })}
@@ -298,7 +298,7 @@ export function ConceptRecord({
         )}
       </section>
 
-      <section className="rounded-lg border border-border-light p-4" data-testid="concept-findings">
+      <section className="rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="concept-findings">
         <h2 className="text-base font-semibold text-content-primary">
           {t('procurement_concept.ui.record.findings_title', { defaultValue: 'What the rule check found' })}
         </h2>
@@ -327,7 +327,7 @@ export function ConceptRecord({
         )}
       </section>
 
-      <section className="rounded-lg border border-border-light p-4">
+      <section className="rounded-lg border border-border bg-surface-elevated shadow-sm p-4">
         <h2 className="mb-1 text-base font-semibold text-content-primary">
           {t('procurement_concept.ui.export.title', { defaultValue: 'Printable record' })}
         </h2>

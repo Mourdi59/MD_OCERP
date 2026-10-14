@@ -26,7 +26,7 @@ export function ChecksPanel({ projectId }: { projectId: string }) {
   const title = t('stakeholders.ui.checks.title', { defaultValue: 'Checks' });
   if (query.isLoading) {
     return (
-      <section aria-label={title} aria-busy className="rounded-lg border border-border-light p-3" data-testid="checks-loading">
+      <section aria-label={title} aria-busy className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="checks-loading">
         <p className="animate-pulse text-sm text-content-tertiary">
           {t('stakeholders.ui.checks.loading', { defaultValue: 'Running the checks on the register, the plan, the commitments and the mandates.' })}
         </p>
@@ -35,7 +35,7 @@ export function ChecksPanel({ projectId }: { projectId: string }) {
   }
   if (query.isError || !query.data) {
     return (
-      <section aria-label={title} className="rounded-lg border border-border-light p-3" data-testid="checks-panel" data-state="failed">
+      <section aria-label={title} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="checks-panel" data-state="failed">
         <p className="text-sm text-content-secondary">
           {t('stakeholders.ui.checks.load_failed', { defaultValue: 'The checks could not be run. The lists on this page are still current.' })}
         </p>
@@ -46,7 +46,7 @@ export function ChecksPanel({ projectId }: { projectId: string }) {
   const open = openFindings(query.data);
   if (open.length === 0) {
     return (
-      <section aria-label={title} className="rounded-lg border border-border-light p-3" data-testid="checks-panel" data-state="clear">
+      <section aria-label={title} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="checks-panel" data-state="clear">
         <p className="flex items-center gap-2 text-sm text-content-secondary">
           <CheckCircle2 size={15} className="shrink-0 text-semantic-success" aria-hidden />
           {t('stakeholders.ui.checks.clear', { defaultValue: 'Every check on the register, the plan, the commitments and the mandates passes.' })}
@@ -56,7 +56,7 @@ export function ChecksPanel({ projectId }: { projectId: string }) {
   }
 
   return (
-    <section aria-label={title} className="rounded-lg border border-border-light p-3" data-testid="checks-panel" data-state="open">
+    <section aria-label={title} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="checks-panel" data-state="open">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">
         {t('stakeholders.ui.checks.open_title', { defaultValue: 'Needs attention' })}
       </h2>

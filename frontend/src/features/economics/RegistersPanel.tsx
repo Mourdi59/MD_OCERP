@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Check, Circle } from 'lucide-react';
 
 import { Badge, type BadgeVariant } from '@/shared/ui/Badge';
+import { fmtDate } from '@/shared/lib/formatters';
 
 import {
   addInsurance,
@@ -110,7 +111,7 @@ function SecuritiesSection({ projectId, data, canEdit, currency }: { projectId: 
 
   return (
     <Section title={t('economics.registers.securities_title', { defaultValue: 'Securities' })} testId="economics-securities">
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
             <tr>
@@ -230,7 +231,7 @@ function InsuranceSection({ projectId, data, canEdit, currency }: { projectId: s
 
   return (
     <Section title={t('economics.registers.insurance_title', { defaultValue: 'Insurance' })} testId="economics-insurance">
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
             <tr>
@@ -336,7 +337,7 @@ function InsuranceSection({ projectId, data, canEdit, currency }: { projectId: s
 }
 
 function TaxSection({ projectId, data, canEdit }: { projectId: string; data: Registers; canEdit: boolean }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const tax = data.tax;
   const save = useEconomicsAction(projectId, (body: Record<string, unknown>) => putTax(projectId, body));
   const [vat, setVat] = useState<VatTreatment>(tax?.vat_treatment ?? 'standard');
@@ -351,7 +352,7 @@ function TaxSection({ projectId, data, canEdit }: { projectId: string; data: Reg
       : value === false
         ? t('economics.registers.deduction_no', { defaultValue: 'No input tax deduction' })
         : t('economics.registers.deduction_unknown', { defaultValue: 'Not clarified' });
-  const confirmedOn = tax?.confirmed_at ? new Date(tax.confirmed_at).toLocaleDateString(i18n.language || 'en') : '';
+  const confirmedOn = tax?.confirmed_at ? fmtDate(tax.confirmed_at) : '';
 
   return (
     <Section title={t('economics.registers.tax_title', { defaultValue: 'Tax treatment' })} testId="economics-tax">

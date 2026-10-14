@@ -143,6 +143,7 @@ NON_JURISDICTION_RULE_SETS: dict[str, str] = {
     "site_logistics": _MODULE_RECORD_CHECKS,
     "engineering_brief": _MODULE_RECORD_CHECKS,
     "hse_frame": _MODULE_RECORD_CHECKS,
+    "project_handbook": _MODULE_RECORD_CHECKS,
 }
 
 

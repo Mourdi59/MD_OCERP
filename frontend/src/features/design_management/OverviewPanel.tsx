@@ -15,7 +15,7 @@ import { fmtList } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { downloadRegister, fileFrameDocument, listReadiness, listValidation, type ExportRegister } from './api';
-import { ListState, PanelHeader, ToneBadge, hasRows, type DesignContext } from './DesignBits';
+import { ListState, PanelHeader, ToneBadge, hasRows, type DesignContext, WriteButton } from './DesignBits';
 import { refusalText, useDesignList } from './hooks';
 import { labelOf, ui, uiCount, type TFn } from './labels';
 import type { UiKey } from './text';
@@ -64,7 +64,7 @@ export function OverviewPanel({ ctx, onOpenGovernance }: { ctx: DesignContext; o
       {hasRows(readiness) && (
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="readiness-list">
           {(readiness.data ?? []).map((phase) => (
-            <li key={phase.code ?? 'project'} className="rounded-lg border border-border-light p-3" data-testid="readiness-card" data-met={phase.met}>
+            <li key={phase.code ?? 'project'} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="readiness-card" data-met={phase.met}>
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-medium text-content-primary">{phase.code ? labelOf(ctx.labels, phase.name, phase.code) : ui(t, 'design.ui.overview.whole_project')}</h3>
                 <ToneBadge tone={phase.met ? 'success' : 'warning'}>
@@ -125,7 +125,7 @@ export function OverviewPanel({ ctx, onOpenGovernance }: { ctx: DesignContext; o
 
       <section className="space-y-2" data-testid="design-registers">
         <PanelHeader title={ui(t, 'design.ui.overview.registers_title')} hint={ui(t, 'design.ui.overview.registers_hint')} />
-        <ul className="divide-y divide-border-light rounded-lg border border-border-light">
+        <ul className="divide-y divide-border-light rounded-lg border border-border bg-surface-elevated shadow-sm">
           {REGISTERS.map(({ register, title }) => (
             <li key={register} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
               <span className="text-content-primary">{ui(t, title)}</span>
@@ -150,9 +150,9 @@ export function OverviewPanel({ ctx, onOpenGovernance }: { ctx: DesignContext; o
                   {ui(t, 'design.ui.overview.as_sheet')}
                 </Button>
                 {!noGates && (
-                  <Button size="sm" variant="ghost" disabled={file.isPending} onClick={() => file.mutate(register)} data-testid={`file-${register}`}>
+                  <WriteButton need="manage" size="sm" variant="ghost" disabled={file.isPending} onClick={() => file.mutate(register)} data-testid={`file-${register}`}>
                     {ui(t, 'design.ui.overview.file_in_cde')}
-                  </Button>
+                  </WriteButton>
                 )}
               </span>
             </li>

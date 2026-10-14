@@ -109,6 +109,13 @@ _AT_RISK_DAYS = 30
 #: finds its own conditions by this text and touches no other.
 AT_RISK_CONDITION = "Close the open readiness items of this area."
 _SETTLED_EVIDENCE = "The readiness evidence of this area is met."
+#: German texts of the walk's own at-risk decision, written over the English ones for a German project.
+_AT_RISK_RATIONALE = "Readiness of some areas is still open. The gate passes at risk, each gap with an owner."
+_WALK_TEXTS_DE = {
+    AT_RISK_CONDITION: "Die offenen Bereitschaftspunkte dieses Bereichs schließen.",
+    _AT_RISK_RATIONALE: "Die Bereitschaft einzelner Bereiche ist noch offen. Das Gate wird mit Risiko passiert, jede Lücke hat eine verantwortliche Person.",
+}
+_WALK_CONDITION_TEXTS = (AT_RISK_CONDITION, _WALK_TEXTS_DE[AT_RISK_CONDITION])
 _HANDOVER_TARGET_DAYS = 30
 
 
@@ -303,7 +310,7 @@ class _Stage:
                 raise SeedStop("gate_blocked", f"gate {gate.code} is blocked by {other}")
             outcome = "go_with_conditions" if gaps else "go"
             if gaps:
-                rationale = "Readiness of some areas is still open. The gate passes at risk, each gap with an owner."
+                rationale = _AT_RISK_RATIONALE
         at_risk: tuple[str, ...] = gaps if outcome == "go_with_conditions" else ()
         if at_risk:
             owner_of = {a.code: self.area_owner[a.id] for a in self.areas}
@@ -317,6 +324,8 @@ class _Stage:
                     severity="essential",
                 )
                 for code in at_risk
+                # An area the story already names a condition for keeps that one: two for the same gap would repeat it.
+                if code not in {c.area_code for c in conditions}
             )
         request = ev.DecisionRequest(
             outcome=outcome,
@@ -645,6 +654,25 @@ async def _attempt(
         return exc.code if isinstance(exc, SeedStop) else "story_error"
 
 
+async def _localise_walk_texts(session: AsyncSession, project_id: uuid.UUID) -> None:
+    """Put the German texts over the English ones the walk wrote itself (at-risk condition and rationale)."""
+    from sqlalchemy import update
+
+    from app.modules.project_governance.models import GovernanceDecision
+
+    for english, german in _WALK_TEXTS_DE.items():
+        await session.execute(
+            update(GovernanceCondition)
+            .where(GovernanceCondition.project_id == project_id, GovernanceCondition.text == english)
+            .values(text=german)
+        )
+        await session.execute(
+            update(GovernanceDecision)
+            .where(GovernanceDecision.project_id == project_id, GovernanceDecision.rationale == english)
+            .values(rationale=german)
+        )
+
+
 async def seed_project_governance_demo(session: AsyncSession, project_ids: list[uuid.UUID]) -> dict[str, Any]:
     """Seed governance on each demo project that has no governance model yet.
 
@@ -713,6 +741,8 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
                 break
             # The first failure is the cause; what the fallback then trips over is its consequence.
             reason = reason or failed
+        if reached and str(locale).lower().startswith("de"):
+            await _localise_walk_texts(session, pid)
         rows.append(seed_story.placement(pid, demo_id, planned, reached, reason or alone))
     result = seed_story.seed_result(rows, pack_file)
     for row in result["fallbacks"]:
@@ -751,7 +781,7 @@ async def settle_demo_conditions(session: AsyncSession, project_ids: list[uuid.U
     from sqlalchemy import select
 
     stmt = select(GovernanceCondition).where(
-        GovernanceCondition.text == AT_RISK_CONDITION,
+        GovernanceCondition.text.in_(_WALK_CONDITION_TEXTS),
         GovernanceCondition.status.in_(("open", "overdue")),
         GovernanceCondition.area_code.is_not(None),
         GovernanceCondition.owner_user_id.is_not(None),

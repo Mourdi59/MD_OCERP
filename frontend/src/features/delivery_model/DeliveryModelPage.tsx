@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Boxes, Compass, FileSignature, FileText, Handshake, PackageOpen, Scale, ShieldAlert } from 'lucide-react';
 
@@ -55,6 +56,7 @@ const TABS: Tab[] = ['comparison', 'risks', 'packages', 'ofi', 'contracts', 'dec
 export function DeliveryModelPage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const viewer = useViewer();
   const labels = useLabelContext();
@@ -107,7 +109,7 @@ export function DeliveryModelPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('delivery_model.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName || t('delivery_model.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('delivery_model.ui.title', { defaultValue: 'Delivery model' }) },
         ]}
       />
@@ -281,7 +283,7 @@ export function DeliveryModelPage() {
   return (
     <div className="space-y-5 animate-fade-in" data-testid="delivery-model-page">
       {header}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border-light px-4 py-3" data-testid="model-strip">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border bg-surface-elevated shadow-sm px-4 py-3" data-testid="model-strip">
         <ToneBadge tone={MODEL_TONE[model.status]} testId="model-status">
           {vocab(labels.t, MODEL_STATUS, model.status)}
         </ToneBadge>

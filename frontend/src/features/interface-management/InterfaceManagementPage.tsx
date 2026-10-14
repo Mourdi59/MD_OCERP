@@ -664,7 +664,7 @@ function InterfaceModal({
               resolves it: the RFI raising the technical question, and the
               programme activity whose need-by date it gates. Both are optional
               soft links the backend already stores. */}
-          <div className="rounded-lg border border-border-light bg-surface-secondary/40 p-3">
+          <div className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3">
             <div className="mb-2 flex items-center gap-1.5">
               <Link2 size={14} className="text-content-tertiary" />
               <span className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">
@@ -774,7 +774,7 @@ function ActionsPanel({
   };
 
   return (
-    <div className="rounded-lg border border-border-light bg-surface-secondary/40 p-3">
+    <div className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3">
       <div className="mb-2 flex items-center gap-1.5">
         <ListChecks size={14} className="text-content-tertiary" />
         <span className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">
@@ -1066,7 +1066,7 @@ const InterfaceRow = React.memo(function InterfaceRow({
           </div>
 
           {iface.notes && (
-            <div className="rounded-lg border border-border-light bg-surface-secondary/40 p-3">
+            <div className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3">
               <p className="mb-1 text-2xs font-medium uppercase tracking-wide text-content-tertiary">
                 {t('interface_management.field_notes', { defaultValue: 'Notes' })}
               </p>
@@ -1372,7 +1372,7 @@ export function InterfaceManagementPage() {
         })}
       >
         {/* SIGNAL: work-package health band */}
-        <section className="rounded-xl border border-border-light bg-surface-secondary/40 p-4">
+        <section className="rounded-xl border border-border bg-surface-elevated shadow-sm p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold text-content-primary">
               <Network size={15} className="text-oe-blue" />

@@ -194,7 +194,7 @@ export function AbortTermsDialog({ open, onClose, projectId, item, terms, bases,
         )}
 
         {fields.length > 0 && (
-          <fieldset className="rounded-lg border border-border-light p-3" data-testid="abort-parameters">
+          <fieldset className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="abort-parameters">
             <legend className="px-1 text-xs font-semibold text-content-secondary">
               {t('commitment.abort_form.parameters', { defaultValue: 'Figures this basis works with, in per cent' })}
             </legend>
@@ -261,7 +261,7 @@ export function AbortTermsDialog({ open, onClose, projectId, item, terms, bases,
               <div
                 key={s.rowId}
                 data-testid="abort-step-row"
-                className="grid gap-2 rounded-lg border border-border-light p-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+                className="grid gap-2 rounded-lg border border-border bg-surface-elevated shadow-sm p-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
               >
                 <input
                   aria-label={t('commitment.abort_form.step_name', { defaultValue: 'Step, for example fabrication started' })}
@@ -328,7 +328,7 @@ export function AbortTermsDialog({ open, onClose, projectId, item, terms, bases,
           )}
         </div>
 
-        <fieldset className="rounded-lg border border-border-light p-3">
+        <fieldset className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3">
           <legend className="px-1 text-xs font-semibold text-content-secondary">
             {t('commitment.grid.cancellation_option', { defaultValue: 'Cancellation or transfer' })}
           </legend>

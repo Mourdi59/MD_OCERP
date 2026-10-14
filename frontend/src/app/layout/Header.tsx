@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useMatch } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search, ChevronDown, ChevronRight, LogOut, User, Settings, Menu, MessageSquarePlus, FolderOpen, CheckCircle2, XCircle, Bug, BookOpen, Loader2, Upload, HelpCircle, GraduationCap, Mail, ExternalLink, Github, Sun, Moon, Monitor, Globe } from 'lucide-react';
 import clsx from 'clsx';
@@ -298,6 +298,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Commitments and releases': 'commitment.page.title',
   'Delivery model': 'delivery_model.ui.title',
   'Economics': 'economics.ui.title',
+  'HSE frame': 'hseFrame.title',
   'Plant register': 'plant.nav.title',
   'Procurement concept': 'procurement_concept.nav.title',
   'Stakeholders': 'stakeholders.ui.title',
@@ -318,6 +319,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Credentials': 'nav.credentials',
   'Staffing': 'staffing.title',
   'Engineering brief': 'engineeringBrief.title',
+  'Project handbook': 'projectHandbook.title',
   'Teams and Visibility': 'teams.title',
   'Permits': 'permits.ui.title',
 };
@@ -1743,6 +1745,16 @@ function ProjectSwitcher() {
       searchRef.current.focus();
     }
   }, [open, projects]);
+
+  // A page under /projects/<id>/ is about that project, so the picker and the
+  // breadcrumbs name it, whatever was selected before the link was opened.
+  const routeProjectId = useMatch('/projects/:projectId/*')?.params.projectId;
+  useEffect(() => {
+    if (!routeProjectId || !Array.isArray(projects)) return;
+    if (routeProjectId === activeProjectId && activeProjectName) return;
+    const hit = projects.find((p) => p.id === routeProjectId);
+    if (hit) setActiveProject(hit.id, hit.name);
+  }, [routeProjectId, projects, activeProjectId, activeProjectName, setActiveProject]);
 
   // Replace a stale ``activeProjectId`` whose project no longer exists
   // on the server (hard-deleted by another session / admin cleanup). A

@@ -13,7 +13,8 @@ import { AlertTriangle, Pencil, Search } from 'lucide-react';
 import clsx from 'clsx';
 
 import { Button } from '@/shared/ui/Button';
-import { fmtCurrency, fmtList } from '@/shared/lib/formatters';
+import { fmtList } from '@/shared/lib/formatters';
+import { formatCurrency } from '@/shared/lib/money';
 
 import {
   putMandates,
@@ -149,7 +150,7 @@ export function MandateMatrix({ screen, matrix, roles, bodies, onSaved }: Mandat
         ))}
       </ul>
 
-      <div className="overflow-x-auto rounded-lg border border-border-light">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
         <table className="w-full text-sm" data-testid="mandate-table">
           <thead className="bg-surface-secondary text-xs text-content-tertiary">
             <tr>
@@ -297,7 +298,7 @@ export function WhoDecidesLookup({ screen, matrix, roles, bodies }: WhoDecidesLo
     t('stakeholders.ui.who.unnamed_party', { defaultValue: 'A member without an account' });
 
   return (
-    <section className="space-y-3 rounded-lg border border-border-light p-3" data-testid="who-decides">
+    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="who-decides">
       <SectionHead
         title={t('stakeholders.ui.who.title', { defaultValue: 'Look up who decides' })}
         hint={t('stakeholders.ui.who.hint', { defaultValue: 'Pick a kind of decision and read who holds it today.' })}
@@ -368,11 +369,11 @@ export function WhoDecidesLookup({ screen, matrix, roles, bodies }: WhoDecidesLo
               {answer.authority.escalate_outside
                 ? t('stakeholders.ui.who.authority_outside', {
                     defaultValue: '{{amount}} is above every limit in the authority schedule and goes outside the project.',
-                    amount: fmtCurrency(answer.authority.amount, answer.authority.currency),
+                    amount: formatCurrency(answer.authority.amount, answer.authority.currency),
                   })
                 : t('stakeholders.ui.who.authority', {
                     defaultValue: '{{amount}} falls under: {{names}}',
-                    amount: fmtCurrency(answer.authority.amount, answer.authority.currency),
+                    amount: formatCurrency(answer.authority.amount, answer.authority.currency),
                     names:
                       fmtList(answer.authority.approver_user_ids.map((id) => personName(id) ?? '')) ||
                       humanizeCode(answer.authority.tier_code ?? ''),

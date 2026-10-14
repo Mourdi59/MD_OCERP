@@ -128,7 +128,7 @@ export function PlanSetup({ projectId, labels, onDone }: { projectId: string; la
   }
 
   return (
-    <div className="rounded-lg border border-border-light p-4" data-testid="plan-setup">
+    <div className="rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="plan-setup">
       <WideModalSection columns={2}>
         <WideModalField
           label={t('staffing.plan.catalogue', { defaultValue: 'Staffing catalogue' })}

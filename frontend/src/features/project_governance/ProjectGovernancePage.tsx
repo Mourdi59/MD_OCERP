@@ -9,6 +9,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, Compass, Grid3x3, Layers } from 'lucide-react';
 
@@ -46,6 +47,7 @@ type Tab = 'matrix' | 'conditions' | 'model';
 export function ProjectGovernancePage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const viewer = useViewer();
   const labels = useLabelContext();
@@ -96,7 +98,7 @@ export function ProjectGovernancePage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('governance.project.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName || t('governance.project.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('governance.project.title', { defaultValue: 'Project governance' }) },
         ]}
       />

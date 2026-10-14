@@ -95,3 +95,34 @@ def test_report_statuses_come_from_the_story_and_unknown_ones_are_ignored() -> N
         "RPT-010": {"before_gate": "submitted"},
     }
     assert _report_statuses(None) == {} and _report_statuses({}) == {}
+
+
+def test_execution_design_is_parsed_and_incomplete_input_is_ignored() -> None:
+    story = {
+        "execution": {
+            "code": "DL-005",
+            "release_code": "REL-003",
+            "title": "Execution design",
+            "release_title": "Execution issue",
+            "drawings": ["Formwork plan", "", 3],
+        }
+    }
+    plan = seed.resolve_story(story, "en", report_kinds=_kinds())
+    assert plan["execution"] == {
+        "code": "DL-005",
+        "title": "Execution design",
+        "drawings": ["Formwork plan"],
+        "release_code": "REL-003",
+        "release_title": "Execution issue",
+    }
+    assert seed.resolve_story({"execution": {"code": "DL-005"}}, "en", report_kinds=_kinds())["execution"] is None
+    assert seed.default_plan()["execution"] is None
+
+
+def test_shipped_regensburg_story_has_an_execution_design_in_both_languages() -> None:
+    path = _STORY.with_name("residential-regensburg-design_management.json")
+    story = json.loads(path.read_text(encoding="utf-8"))
+    for locale in ("en", "de"):
+        plan = seed.resolve_story(story, locale, report_kinds=_kinds())
+        assert plan["execution"] is not None
+        assert len(plan["execution"]["drawings"]) == 3

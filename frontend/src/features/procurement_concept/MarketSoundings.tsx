@@ -99,7 +99,7 @@ export function MarketSoundings({ projectId, soundings, can, packages, labels, o
             {soundings.map((s) => {
               const pkgCodes = s.package_ids.map((id) => codes.get(id)).filter((c): c is string => !!c);
               return (
-                <li key={s.id} className="rounded-lg border border-border-light p-3" data-testid="sounding-entry">
+                <li key={s.id} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="sounding-entry">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-content-primary">
                       {s.trade || t('procurement_concept.ui.sounding.untitled', { defaultValue: 'Market sounding' })}

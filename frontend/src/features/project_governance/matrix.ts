@@ -12,6 +12,7 @@ import type {
   CheckStatus,
   DocumentStatus,
   GovernanceGate,
+  GovernanceLabel,
   GovernancePhase,
   MatrixArea,
   MatrixResponse,
@@ -31,7 +32,7 @@ export type CellReadiness =
   | { kind: 'none' };
 
 export interface MatrixCell {
-  documents: Array<{ id: string; docType: string; status: DocumentStatus }>;
+  documents: Array<{ id: string; docType: string; status: DocumentStatus; name?: GovernanceLabel }>;
   readiness: CellReadiness;
 }
 
@@ -63,7 +64,12 @@ export function buildMatrix(input: {
     cells: columns.map<MatrixCell>(({ gate }) => {
       const cell = gate ? area.cells[gate.code] : undefined;
       return {
-        documents: (cell?.documents ?? []).map((d) => ({ id: d.document_id, docType: d.doc_type, status: d.status })),
+        documents: (cell?.documents ?? []).map((d) => ({
+          id: d.document_id,
+          docType: d.doc_type,
+          status: d.status,
+          name: d.name,
+        })),
         readiness: readinessOf(area, gate, cell?.check_status ?? null, !!cell?.stale),
       };
     }),

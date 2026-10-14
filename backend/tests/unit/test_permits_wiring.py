@@ -217,13 +217,14 @@ def test_the_comparison_holds_after_the_platform_attached_its_indexes() -> None:
     """Run alone or after a ``create_all`` elsewhere in the process, the answer is the same."""
     from sqlalchemy import Index
 
-    from app.core.pg_optimizations import _index_name
-
     table = _permits_tables()["oe_permits_roadmap"]
+    # Every index the revision declares under the name the hook would give it, absent from the models
+    # until the hook has run in this process: the comparison must hold with or without them.
+    declared = next(indexes for n, _c, indexes in _load_migration()._TABLES if n == table.name)
     late = [
-        Index(_index_name(table.name, [column]), table.c[column])
-        for column in ("project_id", "governance_document_id")
-        if _index_name(table.name, [column]) not in {i.name for i in table.indexes}
+        Index(n, *[table.c[c] for c in cols])
+        for n, cols in ((n, list(c)) for n, c in declared)
+        if n in _hook_name(table.name, cols) and n not in {i.name for i in table.indexes}
     ]
     stray = Index("ix_oe_permits_roadmap_stray", table.c["jurisdiction"])
     try:

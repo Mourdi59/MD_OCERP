@@ -155,7 +155,7 @@ export function ExposurePanel({ projectId, items, can, onOpenItem }: ExposurePan
           })}
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border-light">
+        <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
           <table className="w-full min-w-[56rem] text-sm" data-testid="exposure-table">
             <thead>
               <tr className="border-b border-border-light bg-surface-secondary text-left text-xs text-content-tertiary">
@@ -268,7 +268,7 @@ export function ExposurePanel({ projectId, items, can, onOpenItem }: ExposurePan
                 <li
                   key={s.id}
                   data-testid="scenario-row"
-                  className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-border-light p-2.5 text-sm"
+                  className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-2.5 text-sm"
                 >
                   <span className="text-content-primary">
                     {s.label || t('commitment.exposure.scenario_unnamed', { defaultValue: 'Unnamed view' })}

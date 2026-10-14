@@ -44,7 +44,7 @@ export function ReadinessStrip({ readiness }: { readiness: Readiness | undefined
   return (
     <section
       aria-label={t('stakeholders.ui.readiness.title', { defaultValue: 'What the next gate checks here' })}
-      className="rounded-lg border border-border-light p-3"
+      className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3"
       data-testid="readiness-strip"
     >
       <h2 className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">
@@ -180,7 +180,7 @@ export function RegisterPanel({ screen, stakeholders, readiness, onOpen, onAdd }
           {t('stakeholders.ui.register.none_in_filter', { defaultValue: 'No stakeholder matches this filter.' })}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border-light">
+        <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
           <table className="w-full min-w-[720px] text-sm" data-testid="register-table">
             <thead className="bg-surface-secondary text-left text-xs text-content-tertiary">
               <tr>

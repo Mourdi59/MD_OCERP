@@ -163,6 +163,10 @@ _STATUS_WEIGHTS: tuple[tuple[str, int], ...] = (
 # leave an open action behind.
 _SETTLED = frozenset({InterfaceStatus.AGREED.value, InterfaceStatus.CLOSED.value})
 
+_STATUS_VALUES = frozenset(s.value for s in InterfaceStatus)
+_TYPE_VALUES = frozenset(t.value for t in InterfaceType)
+_PRIORITY_VALUES = frozenset(p.value for p in Priority)
+
 # The first four positions of every register are reserved rather than drawn.
 # Left entirely to the weighted draw, everything the demo screens are built
 # around is a lottery a small register loses often enough to matter: about one
@@ -577,6 +581,129 @@ async def _seed_project(
     return counts
 
 
+def _story_int(value: object) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def parse_interface_story(story: dict | None, locale: str) -> list[dict]:
+    """The usable interfaces of a pack story, in order; a malformed entry is dropped.
+
+    Entry keys: ``reference``, ``title``, ``description``, ``owner``, ``accepter`` (``{locale: text}``
+    maps or plain text), ``interface_type``, ``status``, ``priority``, ``location``,
+    ``need_by_in_days`` (negative is past), ``agreed_days_ago``, ``closed_days_ago`` and
+    ``actions`` (``description``, ``party``, ``due_in_days``, ``done_days_ago``).
+    """
+    from app.modules.project_governance.public import story_text
+
+    raw = story.get("interfaces") if isinstance(story, dict) else None
+    if not isinstance(raw, list):
+        return []
+    out: list[dict] = []
+    for index, entry in enumerate(raw):
+        if not isinstance(entry, dict):
+            continue
+        status, kind, priority = entry.get("status"), entry.get("interface_type"), entry.get("priority")
+        title = story_text(entry.get("title"), locale)
+        need = _story_int(entry.get("need_by_in_days"))
+        agreed, closed = _story_int(entry.get("agreed_days_ago")), _story_int(entry.get("closed_days_ago"))
+        owner, accepter = story_text(entry.get("owner"), locale), story_text(entry.get("accepter"), locale)
+        actions = []
+        for act in entry.get("actions") or ():
+            text = story_text(act.get("description"), locale) if isinstance(act, dict) else ""
+            if text:
+                actions.append(
+                    {
+                        "description": text,
+                        "party": story_text(act.get("party"), locale) or None,
+                        "due": _story_int(act.get("due_in_days")),
+                        "done": _story_int(act.get("done_days_ago")),
+                    }
+                )
+        settled = status in _SETTLED
+        # A settled interface carries its agreed date (a closed one its closing date too) and no open action.
+        valid = (
+            status in _STATUS_VALUES
+            and kind in _TYPE_VALUES
+            and priority in _PRIORITY_VALUES
+            and title
+            and owner
+            and accepter
+            and need is not None
+            and (agreed is not None) == settled
+            and (closed is not None) == (status == InterfaceStatus.CLOSED.value)
+            and not (settled and any(a["done"] is None for a in actions))
+        )
+        if not valid:
+            logger.info("interface story: entry %d not usable, skipped", index)
+            continue
+        out.append(
+            {
+                "reference": str(entry.get("reference") or f"IF-{index + 1:03d}"),
+                "title": title,
+                "description": story_text(entry.get("description"), locale) or None,
+                "owner": owner,
+                "accepter": accepter,
+                "type": kind,
+                "status": status,
+                "priority": priority,
+                "location": story_text(entry.get("location"), locale) or None,
+                "need": need,
+                "agreed": agreed,
+                "closed": closed,
+                "actions": actions,
+            }
+        )
+    return out
+
+
+async def _seed_story_project(session: AsyncSession, project_id: uuid.UUID, entries: list[dict]) -> dict[str, int]:
+    """Write the interfaces a pack story tells for one project. A project that already has one is left alone."""
+    counts = {"projects": 0, "interfaces": 0, "actions": 0}
+    already = (
+        await session.execute(select(InterfaceRecord.id).where(InterfaceRecord.project_id == project_id).limit(1))
+    ).scalar_one_or_none()
+    if already is not None:
+        return counts
+    today = datetime.now(UTC).date()
+    counts["projects"] = 1
+    for index, entry in enumerate(entries):
+        interface = InterfaceRecord(
+            project_id=project_id,
+            reference=entry["reference"],
+            title=entry["title"],
+            description=entry["description"],
+            owner_party=entry["owner"],
+            accepter_party=entry["accepter"],
+            interface_type=entry["type"],
+            status=entry["status"],
+            priority=entry["priority"],
+            need_by_date=today + timedelta(days=entry["need"]),
+            agreed_date=today - timedelta(days=entry["agreed"]) if entry["agreed"] is not None else None,
+            closed_date=today - timedelta(days=entry["closed"]) if entry["closed"] is not None else None,
+            location=entry["location"],
+            sort_order=index,
+        )
+        session.add(interface)
+        await session.flush()
+        counts["interfaces"] += 1
+        for act in entry["actions"]:
+            done = act["done"] is not None
+            session.add(
+                InterfaceAction(
+                    project_id=project_id,
+                    interface_id=interface.id,
+                    description=act["description"],
+                    action_party=act["party"],
+                    due_date=today + timedelta(days=act["due"]) if act["due"] is not None else None,
+                    status=ActionStatus.DONE.value if done else ActionStatus.OPEN.value,
+                    completed_date=today - timedelta(days=act["done"]) if done else None,
+                ),
+            )
+            counts["actions"] += 1
+    await session.flush()
+    return counts
+
+
 async def seed_interface_management_demo(
     session: AsyncSession,
     project_ids: Iterable[uuid.UUID],
@@ -608,12 +735,39 @@ async def seed_interface_management_demo(
     # also empty of them, and would receive a register of invented handshakes
     # between firms on their next upgrade. Demo projects are marked, so read
     # the marker. Emptiness stays on top of this as the idempotency guard.
-    rows = (await session.execute(select(Project.id, Project.metadata_).where(Project.id.in_(ids)))).all()
-    demo_ids = {pid for pid, meta in rows if _is_demo_project(meta)}
+    rows = (
+        await session.execute(select(Project.id, Project.metadata_, Project.locale).where(Project.id.in_(ids)))
+    ).all()
+    demo_ids = {pid for pid, meta, _locale in rows if _is_demo_project(meta)}
     # Filtering before the enumerate keeps the ordinal dense, so the register
     # size a project draws never depends on how many projects that are not
     # being seeded happen to sort ahead of it.
     ids = [pid for pid in ids if pid in demo_ids]
+    if not ids:
+        return totals
+
+    # A pack that tells the register of a demo project replaces the generic one for it.
+    from app.core.demo_marker import demo_id_of
+    from app.modules.project_governance.public import demo_module_story
+
+    told: set[uuid.UUID] = set()
+    for pid, meta, locale in rows:
+        demo_id = demo_id_of(meta) if pid in demo_ids else None
+        if not demo_id:
+            continue
+        entries = parse_interface_story(demo_module_story(demo_id, "interface_management"), locale or "en")
+        if not entries:
+            continue
+        told.add(pid)
+        try:
+            async with session.begin_nested():
+                counts = await _seed_story_project(session, pid, entries)
+        except Exception:
+            logger.warning("Interface register story seed skipped for project=%s (non-fatal)", pid, exc_info=True)
+            continue
+        for key, value in counts.items():
+            totals[key] += value
+    ids = [pid for pid in ids if pid not in told]
     if not ids:
         return totals
 

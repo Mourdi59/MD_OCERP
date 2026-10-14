@@ -1,0 +1,224 @@
+{
+  "id": "eleven_areas_framework",
+  "version": 1,
+  "name_key": "",
+  "labels": {
+    "en": "Eleven module project handbook",
+    "de": "Projekthandbuch in elf Modulen"
+  },
+  "review_status": "unconfirmed",
+  "source_url": "",
+  "source_title": "",
+  "jurisdiction_countries": [],
+  "chapters": [
+    {
+      "code": "principles",
+      "area": "m01_project_management",
+      "order": 1,
+      "required": true,
+      "sources": [],
+      "folder": "dev_project_handbook",
+      "name_key": "",
+      "labels": {
+        "en": "Principles and objectives",
+        "de": "Grundsätze und Ziele"
+      }
+    },
+    {
+      "code": "organisation",
+      "area": "m01_project_management",
+      "order": 2,
+      "required": true,
+      "sources": [
+        "stakeholders",
+        "staffing"
+      ],
+      "folder": "dev_project_organisation",
+      "name_key": "",
+      "labels": {
+        "en": "Project organisation",
+        "de": "Projektorganisation"
+      }
+    },
+    {
+      "code": "communication",
+      "area": "m01_project_management",
+      "order": 3,
+      "required": true,
+      "sources": [
+        "stakeholders"
+      ],
+      "folder": "exec_correspondence",
+      "name_key": "",
+      "labels": {
+        "en": "Communication rules",
+        "de": "Kommunikationsregeln"
+      }
+    },
+    {
+      "code": "phase_model",
+      "area": "m01_project_management",
+      "order": 4,
+      "required": true,
+      "sources": [
+        "governance_gates",
+        "governance_areas"
+      ],
+      "folder": "dev_phase_model",
+      "name_key": "",
+      "labels": {
+        "en": "Phase model and gates",
+        "de": "Phasenmodell und Gates"
+      }
+    },
+    {
+      "code": "data_room",
+      "area": "m01_project_management",
+      "order": 5,
+      "required": true,
+      "sources": [
+        "data_room"
+      ],
+      "folder": "dev_data_room",
+      "name_key": "",
+      "labels": {
+        "en": "Data room and document structure",
+        "de": "Datenraum und Dokumentenstruktur"
+      }
+    },
+    {
+      "code": "contracts",
+      "area": "m02_contract_management",
+      "order": 6,
+      "required": false,
+      "sources": [],
+      "folder": "dev_contract_requirements",
+      "name_key": "",
+      "labels": {
+        "en": "Contract and permit management",
+        "de": "Vertrags- und Genehmigungsmanagement"
+      }
+    },
+    {
+      "code": "engineering",
+      "area": "m03_engineering_scheduling",
+      "order": 7,
+      "required": false,
+      "sources": [
+        "engineering_brief"
+      ],
+      "folder": "dev_frame_schedule",
+      "name_key": "",
+      "labels": {
+        "en": "Engineering and scheduling",
+        "de": "Technik und Terminplanung"
+      }
+    },
+    {
+      "code": "equipment",
+      "area": "m04_equipment",
+      "order": 8,
+      "required": false,
+      "sources": [],
+      "folder": "dev_plant_requirements",
+      "name_key": "",
+      "labels": {
+        "en": "Equipment and plant",
+        "de": "Anlagen und Ausrüstung"
+      }
+    },
+    {
+      "code": "personnel",
+      "area": "m05_personnel",
+      "order": 9,
+      "required": false,
+      "sources": [
+        "staffing"
+      ],
+      "folder": "dev_staffing_needs",
+      "name_key": "",
+      "labels": {
+        "en": "Personnel and staffing",
+        "de": "Personal und Besetzung"
+      }
+    },
+    {
+      "code": "logistics",
+      "area": "m06_logistics",
+      "order": 10,
+      "required": false,
+      "sources": [],
+      "folder": "dev_logistics_concept",
+      "name_key": "",
+      "labels": {
+        "en": "Logistics",
+        "de": "Logistik"
+      }
+    },
+    {
+      "code": "design",
+      "area": "m07_design_management",
+      "order": 11,
+      "required": false,
+      "sources": [],
+      "folder": "dev_design_concept",
+      "name_key": "",
+      "labels": {
+        "en": "Design management",
+        "de": "Planungsmanagement"
+      }
+    },
+    {
+      "code": "procurement",
+      "area": "m08_procurement",
+      "order": 12,
+      "required": false,
+      "sources": [],
+      "folder": "dev_award_concept",
+      "name_key": "",
+      "labels": {
+        "en": "Procurement",
+        "de": "Beschaffung und Vergabe"
+      }
+    },
+    {
+      "code": "commercial",
+      "area": "m09_commercial",
+      "order": 13,
+      "required": false,
+      "sources": [],
+      "folder": "dev_budget",
+      "name_key": "",
+      "labels": {
+        "en": "Commercial management",
+        "de": "Kaufmännisches Management"
+      }
+    },
+    {
+      "code": "quality",
+      "area": "m10_quality",
+      "order": 14,
+      "required": false,
+      "sources": [],
+      "folder": "dev_quality_requirements",
+      "name_key": "",
+      "labels": {
+        "en": "Quality management",
+        "de": "Qualitätsmanagement"
+      }
+    },
+    {
+      "code": "hse",
+      "area": "m11_hse",
+      "order": 15,
+      "required": false,
+      "sources": [],
+      "folder": "dev_hse_requirements",
+      "name_key": "",
+      "labels": {
+        "en": "Health, safety and environment",
+        "de": "Arbeitsschutz, Gesundheit und Umwelt"
+      }
+    }
+  ]
+}

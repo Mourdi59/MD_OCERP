@@ -215,7 +215,7 @@ export function PlanPanel({
 
   return (
     <div className="space-y-5" data-testid="plan-panel">
-      <section className="rounded-lg border border-border-light p-4" data-testid="plan-header">
+      <section className="rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="plan-header">
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -416,7 +416,7 @@ export function PlanPanel({
           />
         ) : (
           groups.map((group) => (
-            <div key={group.phase} className="overflow-x-auto rounded-lg border border-border-light" data-testid={`phase-${group.phase}`}>
+            <div key={group.phase} className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm" data-testid={`phase-${group.phase}`}>
               <table className="w-full min-w-[760px] text-sm">
                 <caption className="border-b border-border-light bg-surface-secondary px-3 py-2 text-left text-sm font-medium text-content-primary">
                   {vocab(t, PHASE, group.phase)}
@@ -651,7 +651,7 @@ export function PlanPanel({
                 const from = fillById.get(h.from_fill_id);
                 const to = positionById.get(h.to_position_id);
                 return (
-                  <li key={h.id} className="rounded-lg border border-border-light p-3" data-testid="handover-row">
+                  <li key={h.id} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="handover-row">
                     <div className="flex flex-wrap items-center gap-2 text-sm">
                       <span className="font-medium text-content-primary">
                         {from

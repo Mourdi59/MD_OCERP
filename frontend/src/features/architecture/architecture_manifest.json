@@ -89533,6 +89533,12 @@
               "annotation": "Mapped[str | None]",
               "sql_type": "String",
               "nullable": true
+            },
+            {
+              "name": "folder_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
             }
           ],
           "relationships": [
@@ -89543,6 +89549,70 @@
               "back_populates": "document"
             }
           ]
+        },
+        {
+          "class_name": "DocumentFolder",
+          "tablename": "oe_documents_folder",
+          "docstring": "One folder of a project's document tree.\n\nFolders are rows, not a path convention: a catalogue (the data room of a governance model)\nmaterialises into them, a user may add their own. ``code`` is unique within the project, so\nmaterialising the same catalogue twice finds the folders it made before. ``source`` says who made\nthe folder: ``catalogue`` folders are kept in step with their catalogue, ``manual`` ones never are.",
+          "columns": [
+            {
+              "name": "project_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_projects_project.id"
+            },
+            {
+              "name": "code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "parent_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "name",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "name_key",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "area_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "phase_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "source",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
         },
         {
           "class_name": "ProjectPhoto",
@@ -95255,6 +95325,7 @@
         "permissions.py",
         "public.py",
         "readings.py",
+        "registers.py",
         "repository.py",
         "router.py",
         "rules.py",
@@ -95650,6 +95721,230 @@
             }
           ],
           "relationships": []
+        },
+        {
+          "class_name": "Security",
+          "tablename": "oe_economics_security",
+          "docstring": "A guarantee or bond that backs the project: performance, warranty, advance payment, bid.",
+          "columns": [
+            {
+              "name": "kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "description",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "amount",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "_money",
+              "nullable": false
+            },
+            {
+              "name": "issuer",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "beneficiary",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "reference",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "valid_from",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "valid_until",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "Insurance",
+          "tablename": "oe_economics_insurance",
+          "docstring": "An insurance policy of the project: builders all risk, liability, professional indemnity.",
+          "columns": [
+            {
+              "name": "kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "insurer",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "policy_number",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "sum_insured",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "_money",
+              "nullable": false
+            },
+            {
+              "name": "deductible",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "_money",
+              "nullable": false
+            },
+            {
+              "name": "period_from",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "period_to",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "TaxTreatment",
+          "tablename": "oe_economics_tax",
+          "docstring": "How the project is treated for value added tax: one row per project.",
+          "columns": [
+            {
+              "name": "vat_treatment",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "input_tax_deduction",
+              "annotation": "Mapped[bool | None]",
+              "sql_type": "Boolean",
+              "nullable": true
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "confirmed_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "confirmed_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "ProcessSetup",
+          "tablename": "oe_economics_process",
+          "docstring": "Whether one administrative process (receivables, payables, administration) is set up.",
+          "columns": [
+            {
+              "name": "area",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "description",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "owner",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "set_up_on",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            }
+          ],
+          "relationships": []
         }
       ],
       "routes": [
@@ -95800,6 +96095,57 @@
           "path": "/",
           "handler": "export",
           "request_schema": "Literal['frame', 'case', 'financing']"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "get_registers"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "add_security",
+          "request_schema": "SecurityIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "patch_security",
+          "request_schema": "SecurityPatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/",
+          "handler": "delete_security"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "add_insurance",
+          "request_schema": "InsuranceIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "patch_insurance",
+          "request_schema": "InsurancePatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/",
+          "handler": "delete_insurance"
+        },
+        {
+          "method": "PUT",
+          "path": "/",
+          "handler": "put_tax",
+          "request_schema": "TaxIn"
+        },
+        {
+          "method": "PUT",
+          "path": "/",
+          "handler": "put_process",
+          "request_schema": "ProcessArea"
         }
       ],
       "schemas": [
@@ -96168,6 +96514,261 @@
               "type": "str"
             }
           ]
+        },
+        {
+          "class_name": "SecurityIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind",
+              "type": "SecurityKind"
+            },
+            {
+              "name": "description",
+              "type": "str"
+            },
+            {
+              "name": "amount",
+              "type": "Money"
+            },
+            {
+              "name": "issuer",
+              "type": "str"
+            },
+            {
+              "name": "beneficiary",
+              "type": "str"
+            },
+            {
+              "name": "reference",
+              "type": "str"
+            },
+            {
+              "name": "valid_from",
+              "type": "str | None"
+            },
+            {
+              "name": "valid_until",
+              "type": "str | None"
+            },
+            {
+              "name": "status",
+              "type": "SecurityStatus",
+              "default": "'requested'"
+            },
+            {
+              "name": "notes",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "SecurityPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind",
+              "type": "SecurityKind | None",
+              "default": "None"
+            },
+            {
+              "name": "description",
+              "type": "str | None"
+            },
+            {
+              "name": "amount",
+              "type": "Money | None",
+              "default": "None"
+            },
+            {
+              "name": "issuer",
+              "type": "str | None"
+            },
+            {
+              "name": "beneficiary",
+              "type": "str | None"
+            },
+            {
+              "name": "reference",
+              "type": "str | None"
+            },
+            {
+              "name": "valid_from",
+              "type": "str | None"
+            },
+            {
+              "name": "valid_until",
+              "type": "str | None"
+            },
+            {
+              "name": "status",
+              "type": "SecurityStatus | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "InsuranceIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind",
+              "type": "InsuranceKind"
+            },
+            {
+              "name": "insurer",
+              "type": "str"
+            },
+            {
+              "name": "policy_number",
+              "type": "str"
+            },
+            {
+              "name": "sum_insured",
+              "type": "Money"
+            },
+            {
+              "name": "deductible",
+              "type": "Money"
+            },
+            {
+              "name": "period_from",
+              "type": "str | None"
+            },
+            {
+              "name": "period_to",
+              "type": "str | None"
+            },
+            {
+              "name": "status",
+              "type": "InsuranceStatus",
+              "default": "'requested'"
+            },
+            {
+              "name": "notes",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "InsurancePatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind",
+              "type": "InsuranceKind | None",
+              "default": "None"
+            },
+            {
+              "name": "insurer",
+              "type": "str | None"
+            },
+            {
+              "name": "policy_number",
+              "type": "str | None"
+            },
+            {
+              "name": "sum_insured",
+              "type": "Money | None",
+              "default": "None"
+            },
+            {
+              "name": "deductible",
+              "type": "Money | None",
+              "default": "None"
+            },
+            {
+              "name": "period_from",
+              "type": "str | None"
+            },
+            {
+              "name": "period_to",
+              "type": "str | None"
+            },
+            {
+              "name": "status",
+              "type": "InsuranceStatus | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "TaxIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "The tax treatment; ``confirm`` stamps the caller and the moment as the confirmation.",
+          "fields": [
+            {
+              "name": "vat_treatment",
+              "type": "VatTreatment",
+              "default": "'standard'"
+            },
+            {
+              "name": "input_tax_deduction",
+              "type": "bool | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str"
+            },
+            {
+              "name": "confirm",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "ProcessIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "description",
+              "type": "str"
+            },
+            {
+              "name": "owner",
+              "type": "str"
+            },
+            {
+              "name": "status",
+              "type": "ProcessStatus",
+              "default": "'open'"
+            },
+            {
+              "name": "set_up_on",
+              "type": "str | None"
+            },
+            {
+              "name": "notes",
+              "type": "str"
+            }
+          ]
         }
       ],
       "import_dependencies": [
@@ -96176,7 +96777,8 @@
         "funding",
         "project_governance",
         "projects",
-        "teams"
+        "teams",
+        "users"
       ]
     },
     {
@@ -99096,6 +99698,7 @@
       "import_dependencies": [
         "documents",
         "permits",
+        "procurement_concept",
         "project_governance",
         "projects",
         "requirements",
@@ -132095,6 +132698,7 @@
         "catalogue.py",
         "errors.py",
         "evidence.py",
+        "export.py",
         "hosting.py",
         "links.py",
         "manifest.py",
@@ -132612,7 +133216,8 @@
         {
           "method": "POST",
           "path": "/",
-          "handler": "reopen_frame"
+          "handler": "revise_frame",
+          "request_schema": "s.ReviewDecision | None"
         },
         {
           "method": "GET",
@@ -132715,6 +133320,13 @@
           "path": "/",
           "handler": "validation",
           "request_schema": "date | None"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "export",
+          "response_model": "None",
+          "request_schema": "Literal['register', 'roles']"
         }
       ],
       "schemas": [
@@ -137517,6 +138129,7 @@
       "import_dependencies": [
         "bim_hub",
         "contacts",
+        "project_governance",
         "projects",
         "rfi",
         "subcontractors"
@@ -167903,6 +168516,11 @@
               "default": "None"
             },
             {
+              "name": "need_activity_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
               "name": "lead_time_days",
               "type": "int | None"
             },
@@ -169471,6 +170089,7 @@
         "router.py",
         "schemas.py",
         "seed.py",
+        "seed_people.py",
         "seed_story.py",
         "service.py",
         "validators.py"
@@ -171709,6 +172328,497 @@
         "requirements",
         "schedule",
         "teams",
+        "users"
+      ]
+    },
+    {
+      "module_id": "project_handbook",
+      "module_label": "Project handbook",
+      "module_category": "core",
+      "files": [
+        "__init__.py",
+        "catalogue.py",
+        "data_room.py",
+        "errors.py",
+        "evidence.py",
+        "export.py",
+        "fsm.py",
+        "manifest.py",
+        "messages/__init__.py",
+        "models.py",
+        "permissions.py",
+        "router.py",
+        "rules.py",
+        "schemas.py",
+        "seed.py",
+        "service.py",
+        "sources.py",
+        "validators.py"
+      ],
+      "manifest": {
+        "name": "oe_project_handbook",
+        "version": "0.1.0",
+        "display_name": "Project handbook",
+        "description": "Project handbook with a chapter catalogue, owners, versions and four-eyes approval per chapter, live links to the records of the other modules, a PDF of the whole handbook, and the data room: the governance folder tree materialised into the project's document folders",
+        "author": "OpenConstructionERP Core Team",
+        "category": "core",
+        "depends": [
+          "oe_users",
+          "oe_projects",
+          "oe_project_governance",
+          "oe_documents"
+        ],
+        "auto_install": true,
+        "enabled": true
+      },
+      "models": [
+        {
+          "class_name": "Handbook",
+          "tablename": "oe_handbook_handbook",
+          "docstring": "The project's handbook: which chapter catalogue it follows, its title and edition.",
+          "columns": [
+            {
+              "name": "catalogue_source",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "catalogue_id",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "catalogue_version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "edition",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "HandbookChapter",
+          "tablename": "oe_handbook_chapter",
+          "docstring": "One chapter. ``status`` is draft | in_review | approved | revising.",
+          "columns": [
+            {
+              "name": "handbook_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_handbook_handbook.id"
+            },
+            {
+              "name": "code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "area_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "folder_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "owner_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "content",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "draft_version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "approved_version",
+              "annotation": "Mapped[int | None]",
+              "sql_type": "Integer",
+              "nullable": true
+            },
+            {
+              "name": "submitted_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "submitted_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "approved_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "approved_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "row_version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "HandbookChapterVersion",
+          "tablename": "oe_handbook_chapter_version",
+          "docstring": "An approved text of a chapter. Never updated, never deleted but with its chapter.",
+          "columns": [
+            {
+              "name": "chapter_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_handbook_chapter.id"
+            },
+            {
+              "name": "version",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "content",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "owner_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "submitted_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "submitted_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "approved_by",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false
+            },
+            {
+              "name": "approved_at",
+              "annotation": "Mapped[datetime]",
+              "sql_type": "DateTime",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        }
+      ],
+      "routes": [
+        {
+          "method": "GET",
+          "path": "/catalogues",
+          "handler": "list_catalogues"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/handbook",
+          "handler": "get_handbook"
+        },
+        {
+          "method": "PUT",
+          "path": "/projects/{project_id}/handbook",
+          "handler": "create_handbook",
+          "request_schema": "HandbookSet"
+        },
+        {
+          "method": "PATCH",
+          "path": "/projects/{project_id}/handbook",
+          "handler": "patch_handbook",
+          "request_schema": "HandbookPatch"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/handbook/sync",
+          "handler": "sync_chapters"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/chapters/{code}",
+          "handler": "get_chapter"
+        },
+        {
+          "method": "PATCH",
+          "path": "/projects/{project_id}/chapters/{code}",
+          "handler": "patch_chapter",
+          "request_schema": "ChapterPatch"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/chapters/{code}/submit",
+          "handler": "submit_chapter"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/chapters/{code}/approve",
+          "handler": "approve_chapter"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/chapters/{code}/return",
+          "handler": "return_chapter"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/chapters/{code}/versions",
+          "handler": "chapter_versions"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/findings",
+          "handler": "handbook_findings"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/validation",
+          "handler": "validation"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/export",
+          "handler": "export"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/data-room",
+          "handler": "get_data_room"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/data-room/materialise",
+          "handler": "materialise_data_room"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/data-room/place",
+          "handler": "place_document",
+          "request_schema": "PlaceDocument"
+        }
+      ],
+      "schemas": [
+        {
+          "class_name": "_In",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": []
+        },
+        {
+          "class_name": "HandbookSet",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "Create the handbook. A missing catalogue means the pack's default, else the neutral one.",
+          "fields": [
+            {
+              "name": "catalogue_source",
+              "type": "str",
+              "default": "'shipped'"
+            },
+            {
+              "name": "catalogue_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "catalogue_version",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            },
+            {
+              "name": "edition",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "HandbookPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "title",
+              "type": "str | None"
+            },
+            {
+              "name": "edition",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "ChapterPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "Fields of a chapter. Only the fields sent are changed; ``owner_id: null`` clears the owner.",
+          "fields": [
+            {
+              "name": "title",
+              "type": "str | None"
+            },
+            {
+              "name": "content",
+              "type": "str | None"
+            },
+            {
+              "name": "owner_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "PlaceDocument",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "File a document: into the folder with this code, else the folder of the area or subject.",
+          "fields": [
+            {
+              "name": "document_id",
+              "type": "uuid.UUID"
+            },
+            {
+              "name": "folder_code",
+              "type": "str | None"
+            },
+            {
+              "name": "subject",
+              "type": "str | None"
+            },
+            {
+              "name": "area_code",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "Page",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[Any]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "0"
+            }
+          ]
+        }
+      ],
+      "import_dependencies": [
+        "contacts",
+        "documents",
+        "engineering_brief",
+        "project_governance",
+        "projects",
+        "staffing",
+        "stakeholders",
         "users"
       ]
     },
@@ -265646,10 +266756,10 @@
     },
     {
       "name": "economics",
-      "ts_files": 11,
+      "ts_files": 12,
       "css_files": 0,
       "test_files": 1,
-      "total_files": 11
+      "total_files": 12
     },
     {
       "name": "einvoice-clearance",
@@ -265891,10 +267001,10 @@
     },
     {
       "name": "hse_frame",
-      "ts_files": 9,
+      "ts_files": 11,
       "css_files": 0,
       "test_files": 1,
-      "total_files": 9
+      "total_files": 11
     },
     {
       "name": "inbound",
@@ -266219,6 +267329,13 @@
       "total_files": 29
     },
     {
+      "name": "project_handbook",
+      "ts_files": 9,
+      "css_files": 0,
+      "test_files": 1,
+      "total_files": 9
+    },
+    {
       "name": "projects",
       "ts_files": 35,
       "css_files": 0,
@@ -266430,10 +267547,10 @@
     },
     {
       "name": "site-logistics",
-      "ts_files": 33,
+      "ts_files": 34,
       "css_files": 0,
-      "test_files": 6,
-      "total_files": 33
+      "test_files": 7,
+      "total_files": 34
     },
     {
       "name": "site-prep",
@@ -267207,6 +268324,7 @@
     "engineering_brief": [
       "documents",
       "permits",
+      "procurement_concept",
       "project_governance",
       "projects",
       "requirements",
@@ -267436,6 +268554,7 @@
     "interface_management": [
       "bim_hub",
       "contacts",
+      "project_governance",
       "projects",
       "rfi",
       "subcontractors"
@@ -267715,6 +268834,16 @@
       "requirements",
       "schedule",
       "teams",
+      "users"
+    ],
+    "project_handbook": [
+      "contacts",
+      "documents",
+      "engineering_brief",
+      "project_governance",
+      "projects",
+      "staffing",
+      "stakeholders",
       "users"
     ],
     "project_intelligence": [
@@ -268144,17 +269273,17 @@
     ]
   },
   "statistics": {
-    "backend_modules": 210,
-    "modules_with_manifests": 208,
-    "total_models": 759,
-    "total_columns": 8850,
+    "backend_modules": 211,
+    "modules_with_manifests": 209,
+    "total_models": 767,
+    "total_columns": 8923,
     "total_relationships": 236,
-    "total_routes": 4501,
-    "total_schemas": 3949,
-    "total_python_files": 2657,
-    "frontend_features": 207,
-    "frontend_ts_files": 3423,
-    "frontend_backend_mapped": 186
+    "total_routes": 4528,
+    "total_schemas": 3961,
+    "total_python_files": 2678,
+    "frontend_features": 208,
+    "frontend_ts_files": 3436,
+    "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
     "about": null,
@@ -268305,6 +269434,7 @@
     "project-intelligence": "project_intelligence",
     "project-route": "project_route",
     "project_governance": "project_governance",
+    "project_handbook": "project_handbook",
     "projects": "projects",
     "property-dev": "property_dev",
     "punchlist": "punchlist",
