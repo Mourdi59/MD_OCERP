@@ -489,3 +489,33 @@ def test_regensburg_plant_register_fits_a_site_that_has_only_started() -> None:
     assert items["PL-010"]["reach"] == "ordered" and items["PL-010"]["need_days"] > 0
     assert items["PL-011"]["reach"] == "handed_over" and items["PL-008"]["reach"] == "delivered"
     assert not [c for c, i in items.items() if i["reach"] == "commissioned"]
+
+
+def test_regensburg_team_is_in_place_before_the_early_start_and_the_commissioning_lead_before_its_condition() -> None:
+    staffing = _story("residential-regensburg", "staffing")
+    running = {r[0]: r for r in staffing_seed.story_positions(staffing, staffing_seed.POSITIONS, "running_positions")}
+    # The site manager is on site before June 2026, the early start lies about 135 days before the seed day.
+    assert running["site_manager"][2] <= -135
+    assert "scheduler" in staffing["filled"]
+    assert "scheduler" in {r["site_role"] for r in staffing["roster"]}
+    pack = json.loads((_DEMO / "demo_project.json").read_text(encoding="utf-8"))
+    gate = next(e for e in pack["projects"] if e["project"]["demo_template_id"] == "residential-regensburg")
+    due = {c["area"]: c["due_in_days"] for c in gate["governance"]["gate"]["decision"]["conditions"]}
+    assert running["commissioning_manager"][2] <= due["m05_personnel"]
+
+
+def test_the_two_filmed_projects_do_not_share_their_first_entry_dates() -> None:
+    entries = {}
+    for demo in ("residential-regensburg", "school-ludwigsburg"):
+        rows = staffing_seed.story_positions(_story(demo, "staffing"), staffing_seed.POSITIONS)
+        entries[demo] = [r[2] for r in rows if r[1] == "development"]
+    assert entries["residential-regensburg"] != entries["school-ludwigsburg"]
+    assert all(a != b for a, b in zip(*entries.values(), strict=True))
+
+
+def test_the_regensburg_gate_rationale_counts_the_conditions_it_names() -> None:
+    pack = json.loads((_DEMO / "demo_project.json").read_text(encoding="utf-8"))
+    gate = next(e for e in pack["projects"] if e["project"]["demo_template_id"] == "residential-regensburg")
+    decision = gate["governance"]["gate"]["decision"]
+    assert len(decision["conditions"]) == 4
+    assert "Four areas" in decision["rationale"]["en"] and "Vier Bereiche" in decision["rationale"]["de"]
