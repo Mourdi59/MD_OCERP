@@ -53520,6 +53520,7 @@ const resource = {
     "design.catalogue.report.sound_insulation": "Schallschutznachweis",
     "design.catalogue.report.structural_design": "Tragwerksplanung und Statik",
     "design.catalogue.report.structural_proof_check": "Unabhängige Prüfung der Standsicherheit",
+    "design.catalogue.report.kitchen_planning": "Küchenplanungsgutachten",
     "design.catalogue.report.survey": "Vermessung des Grundstücks",
     "design.catalogue.report.thermal_energy": "Wärmeschutz- und Energienachweis",
     "design.catalogue.report.traffic": "Verkehrsgutachten",

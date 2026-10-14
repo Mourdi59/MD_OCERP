@@ -67,7 +67,7 @@
       { "code": "RPT-008", "kind": "environmental", "phase": "early", "author": "arch", "status": "accepted", "title": { "en": "Species protection assessment for bats and birds, and tree protection plan", "de": "Artenschutzrechtliche Pruefung Fledermaeuse und Voegel, Baumschutzplan" } },
       { "code": "RPT-009", "kind": "drainage", "phase": "mid", "author": "mep", "status": "accepted", "title": { "en": "Stormwater retention concept for the school yard", "de": "Regenrueckhaltekonzept fuer den Schulhof" } },
       { "code": "RPT-010", "kind": "acoustics", "phase": "mid", "author": "arch", "status": "in_progress", "title": "Room acoustics and sound insulation concept to DIN 18041 and DIN 4109" },
-      { "code": "RPT-011", "kind": "survey", "phase": "mid", "author": "arch", "status": "commissioned", "title": "Kitchen planning report: process flow, hygiene zones and equipment of the Mensa" },
+      { "code": "RPT-011", "kind": "kitchen_planning", "phase": "mid", "author": "arch", "status": "commissioned", "title": "Kitchen planning report: process flow, hygiene zones and equipment of the Mensa" },
       { "code": "RPT-012", "kind": "fire_proof_check", "phase": "mid", "author": "fire", "status": "required", "title": { "en": "Check of the fire protection documents by the Pruefsachverstaendiger", "de": "Pruefung der Brandschutznachweise durch den Pruefsachverstaendigen" } }
     ]
   },

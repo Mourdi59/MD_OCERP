@@ -683,3 +683,91 @@ async def test_a_pack_install_beside_the_demo_logins_leaves_every_demo_project_a
     loud, told = _governance_records(caplog)
     assert not loud, f"{slug}: the governance seed logged:\n" + "\n".join(loud[:40])
     assert not told, f"{slug}: placement fallbacks: {[r.getMessage() for r in told]}"
+
+
+# The tables behind the screens of the eleven areas, by module prefix. A filmed project of the
+# pack must have rows in each table that carries a project id, unless the table is listed here
+# with the reason it is empty on a healthy demo.
+_ELEVEN_MODULES = (
+    "project_governance",
+    "stakeholders",
+    "delivery_model",
+    "permits",
+    "plant_register",
+    "staffing",
+    "site_logistics",
+    "design_management",
+    "procurement_concept",
+    "commitment_release",
+    "quality_concept",
+    "transmittals",
+)
+_EMPTY_BY_DESIGN: dict[str, str] = {}
+
+
+@pytest.mark.timeout(1500)
+@pytest.mark.parametrize("pack_dir", _shard(["eleven-areas-framework"]))
+async def test_every_screen_of_the_eleven_areas_has_rows_for_both_filmed_projects(
+    pack_dir: str, fresh_db, caplog
+) -> None:
+    """The video series films both projects: no table behind an area's screens may be empty.
+
+    The demo logins are put there first, as in the beside-the-logins test, so the governance
+    story is told in full. Every table of the twelve modules that carries a project id is counted
+    for each project; the failure lists all the empty ones at once.
+    """
+    from app.database import Base
+    from app.modules.project_governance import catalogue_packs, seed_story
+    from app.modules.users.models import User
+
+    caplog.set_level(logging.WARNING)
+    factory = fresh_db
+    async with factory() as s:
+        for email in _DEMO_LOGINS:
+            name = email.split("@")[0]
+            s.add(
+                User(
+                    id=uuid.uuid4(),
+                    email=email,
+                    hashed_password="x",
+                    full_name=name.title(),
+                    role=name,
+                    locale="en",
+                    is_active=True,
+                    metadata_={},
+                )
+            )
+        await s.commit()
+    slug = _load_manifest(pack_dir).slug
+    done = await _stream_install(slug)
+    assert done["ok"], f"{slug}: install reported ok=False: {done['steps']}"
+    projects = await _demo_projects(factory)
+    filmed = seed_story.pack_demo_ids(catalogue_packs.active_pack_demo())
+    assert len(filmed) == 2 and all(d in projects for d in filmed), (filmed, sorted(projects))
+
+    tables = sorted(
+        (
+            t
+            for t in Base.metadata.sorted_tables
+            if "project_id" in t.c and any(t.name.startswith(f"oe_{m}_") for m in _ELEVEN_MODULES)
+        ),
+        key=lambda t: t.name,
+    )
+    assert len(tables) >= 40, f"only {len(tables)} tables found behind the eleven areas"
+    empty: dict[str, list[str]] = {}
+    async with factory() as s:
+        for demo_id in filmed:
+            pid = projects[demo_id].id
+            for table in tables:
+                if table.name in _EMPTY_BY_DESIGN:
+                    continue
+                count = (
+                    await s.execute(select(func.count()).select_from(table).where(table.c.project_id == pid))
+                ).scalar_one()
+                if not count:
+                    empty.setdefault(demo_id, []).append(table.name)
+    assert not empty, "tables with no rows for a filmed project:\n" + "\n".join(
+        f"{demo_id}: {', '.join(names)}" for demo_id, names in empty.items()
+    )
+    warned = _install_warnings(caplog)
+    assert not warned, warned[:20]
