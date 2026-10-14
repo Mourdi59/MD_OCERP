@@ -72,6 +72,14 @@ class Story:
     parties: dict[str, str] = field(default_factory=lambda: dict(_PARTY))
 
 
+_PARTY = {
+    "owner": "Projektsteuerung Bauherr",
+    "designer": "Generalplaner",
+    "contractor": "Generalunternehmer",
+    "coordinator": "SiGe-Koordination",
+    "operator": "Betreiber",
+}
+
 _STORIES: dict[str, Story] = {
     # Four multi-family buildings with a shared underground garage, about 28 months of construction.
     "DE-BY": Story(
@@ -107,13 +115,6 @@ _STORIES: dict[str, Story] = {
     ),
 }
 _DEFAULT_STORY = "DE-BW"
-_PARTY = {
-    "owner": "Projektsteuerung Bauherr",
-    "designer": "Generalplaner",
-    "contractor": "Generalunternehmer",
-    "coordinator": "SiGe-Koordination",
-    "operator": "Betreiber",
-}
 _TOTALS = ("projects", "items", "met", "roles", "linked_conditions", "links")
 
 
