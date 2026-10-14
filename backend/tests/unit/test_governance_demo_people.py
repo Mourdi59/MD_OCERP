@@ -61,3 +61,10 @@ def test_the_people_are_the_ones_the_staffing_story_names(demo_id: str) -> None:
     roster = {r["name"]["de"]: r["company"]["de"] for r in staffing["roster"]}
     for person in parse_people(_entries()[demo_id], "de"):
         assert roster.get(person["name"]) == person["company"], person
+
+
+def test_the_handbook_edition_follows_the_phase_of_each_filmed_project() -> None:
+    from app.modules.project_handbook.seed import _PROFILES
+
+    assert _PROFILES["residential-regensburg"]["edition"] == "Ausgabe 2, Ausführungsphase"
+    assert _PROFILES["school-ludwigsburg"]["edition"] == "Ausgabe 1, Entwicklungsphase"
