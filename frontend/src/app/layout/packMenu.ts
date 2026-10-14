@@ -1,14 +1,18 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 /**
- * Menu hiding for packs that bring their own frame of modules.
+ * Menu focus for packs that bring their own frame of modules.
  *
  * Choosing a framework pack (for example the eleven-area project frame) puts
- * that frame at the centre of the work, so the other modules the pack selects
- * step out of the sidebar. They stay installed. Nothing new is stored: the
- * rows are written into the same per-user list the "Edit menu" editor uses
- * (`useHiddenModules`), so showing a row again in the editor is the only way
- * back and that choice persists like any other.
+ * that frame at the centre of the work, so the sidebar narrows to it: the
+ * pack's own modules and our core modules (cost databases, estimates, the
+ * takeoff and BIM tools and a few companions) stay, and every other row steps
+ * out. The modules stay installed. Nothing new is stored: the rows are written
+ * into the same per-user list the "Edit menu" editor uses (`useHiddenModules`),
+ * so showing a row again in the editor is the only way back and that choice
+ * persists like any other. Only rows the editor itself can hide are touched,
+ * never whole sections and never the structural rows (dashboard, projects,
+ * settings, users, about).
  *
  * One marker entry per pack (`pack:<slug>`) lives in the same list and records
  * that the pack has already had its say. It is what keeps the editor's choice:
@@ -19,6 +23,23 @@
 
 /** Packs that hide the menu rows of the modules they select, by slug. */
 export const MENU_HIDING_PACKS: readonly string[] = ['eleven-areas-framework'];
+
+/**
+ * Core sidebar rows that stay visible under a focusing pack: cost databases,
+ * estimates, PDF and DWG takeoff, BIM, schedule, validation, tendering and
+ * reports. A row below one of these (`/bim/rules`) stays with it.
+ */
+export const PACK_FOCUS_CORE_ROUTES: readonly string[] = [
+  '/costs',
+  '/boq',
+  '/takeoff',
+  '/dwg-takeoff',
+  '/bim',
+  '/schedule',
+  '/validation',
+  '/tendering',
+  '/reports',
+];
 
 const MARKER_PREFIX = 'pack:';
 
@@ -63,18 +84,29 @@ export interface PackMenuInput {
   /** Modules the active pack selects (`default_modules`). */
   packModules: readonly string[];
   routeModules: Record<string, string | readonly string[]>;
+  /** Every sidebar route the "Edit menu" editor can hide. */
+  hideableRoutes: readonly string[];
+}
+
+function isCoreRoute(route: string): boolean {
+  const path = route.split('?')[0]!;
+  return PACK_FOCUS_CORE_ROUTES.some((core) => path === core || path.startsWith(`${core}/`));
 }
 
 /**
- * The hidden list after the active pack has had its say, or null when there
+ * The hidden list after the active pack has had its say (every hideable row
+ * that is neither core nor served by a pack module is added), or null when there
  * is nothing to change (no hiding pack is active, or it already ran once).
  */
 export function applyPackMenu(input: PackMenuInput): string[] | null {
-  const { hidden, activeSlug, packModules, routeModules } = input;
+  const { hidden, activeSlug, packModules, routeModules, hideableRoutes } = input;
   if (!activeSlug || !MENU_HIDING_PACKS.includes(activeSlug)) return null;
   const marker = packMarker(activeSlug);
   if (hidden.includes(marker)) return null;
   const known = new Set(hidden);
-  const added = routesOfModules(packModules, routeModules).filter((route) => !known.has(route));
+  const packRoutes = new Set(routesOfModules(packModules, routeModules));
+  const added = hideableRoutes.filter(
+    (route) => !known.has(route) && !packRoutes.has(route) && !isCoreRoute(route),
+  );
   return [...hidden, marker, ...added];
 }

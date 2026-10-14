@@ -1,8 +1,8 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
-// The sidebar hands the active framework pack's rows to the menu editor's own
-// list: once when the pack is chosen, never again after the user has had their
+// The sidebar narrows the menu for the active framework pack through the menu
+// editor's own list: once when the pack is chosen, never again after the user has had their
 // say, and not before the saved list has arrived.
 import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -93,12 +93,21 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Sidebar with a framework pack', () => {
-  it('hides the rows of the modules the pack selects, with the marker, in the editor list', async () => {
+  it('focuses the menu: pack and core rows stay, other editor rows are hidden, with the marker', async () => {
     hidden.list = ['/rfi'];
     packIs({ slug: SLUG, default_modules: ['oe_site_logistics', 'oe_unlisted'] });
     renderSidebar();
     await waitFor(() => expect(hidden.set).toHaveBeenCalledTimes(1));
-    expect(hidden.set).toHaveBeenCalledWith(['/rfi', packMarker(SLUG), '/site-logistics']);
+    const next = hidden.set.mock.calls[0]![0] as string[];
+    expect(next.slice(0, 2)).toEqual(['/rfi', packMarker(SLUG)]);
+    expect(next).toContain('/crm');
+    for (const kept of ['/site-logistics', '/costs', '/boq', '/takeoff', '/dwg-takeoff', '/bim', '/schedule']) {
+      expect(next).not.toContain(kept);
+    }
+    for (const kept of ['/validation', '/tendering', '/reports', '/', '/projects', '/settings', '/users', '/about']) {
+      expect(next).not.toContain(kept);
+    }
+    expect(next.every((entry) => !entry.startsWith('grp_'))).toBe(true);
   });
 
   it('leaves the list alone after the marker is stored, so a row shown again stays shown', async () => {

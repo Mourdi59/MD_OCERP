@@ -108,6 +108,21 @@ const adminGridItems: NavItem[] = [
   { labelKey: 'sidebar.admin_grid.about', to: '/about', icon: Info },
 ];
 
+/** Every row the "Edit menu" editor can hide: the catalogue rows plus the
+ *  module rows registered at runtime. The structural rows stay out (dashboard,
+ *  projects list, the settings, users and about tiles), and so do the Learn
+ *  rows; the edit-menu tile is an action and not in either list. */
+const PACK_MENU_KEEP_ROUTES = new Set(['/', '/projects']);
+function hideableSidebarRoutes(): string[] {
+  const routes = new Set<string>();
+  for (const group of navGroups) {
+    if (group.id === LEARN_GROUP_ID) continue;
+    for (const item of group.items) routes.add(item.to);
+    for (const mi of getModuleNavItems(group.dynamicGroupKey ?? group.id)) routes.add(mi.to);
+  }
+  return [...routes].filter((route) => !PACK_MENU_KEEP_ROUTES.has(route));
+}
+
 /** Flat lookup of every NavItem in the sidebar, keyed by `to`. The
  *  Pinned section uses this to resolve a stored route string into a
  *  full NavItem (with icon, labelKey, badge etc.) without duplicating
@@ -642,8 +657,9 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { hiddenModules, setHiddenModules, isLoading: hiddenLoading } = useHiddenModules();
   const { data: activePack } = usePartnerPack();
 
-  // A framework pack hides the menu rows of the other modules it selects, once,
-  // through the same list the editor writes. Waits for the server copy so a
+  // A framework pack focuses the menu, once, through the same list the editor
+  // writes: its own modules and the core rows stay, every other row the editor
+  // can hide is hidden. Waits for the server copy so a
   // choice made on another device is not overwritten.
   useEffect(() => {
     if (hiddenLoading || !activePack) return;
@@ -652,6 +668,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       activeSlug: activePack.active ? (activePack.manifest?.slug ?? null) : null,
       packModules: activePack.manifest?.default_modules ?? [],
       routeModules: ROUTE_BACKEND_MODULE,
+      hideableRoutes: hideableSidebarRoutes(),
     });
     if (next) setHiddenModules(next);
   }, [hiddenLoading, activePack, hiddenModules, setHiddenModules]);
