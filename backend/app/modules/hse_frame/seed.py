@@ -76,7 +76,7 @@ _STORIES: dict[str, Story] = {
         notice_sent_days_ago=9,
         plan_issued_days_ago=12,
         later_works="complete",
-        notes="Balconies are precast and weigh more than 10 t each; the crane plan is part of the safety plan.",
+        notes="Die Balkone sind Fertigteile mit mehr als 10 t Stückgewicht; der Kranplan ist Teil des SiGe-Plans.",
     ),
     # A primary school with a sports hall, about 22 months of construction.
     "DE-BW": Story(
@@ -90,22 +90,22 @@ _STORIES: dict[str, Story] = {
         later_works="draft",
         open_templates=frozenset({"de_advance_notice", "de_sige_plan", "archaeology_clearance", "de_later_works_file"}),
         execution_coordinator_appointed=False,
-        notes="The sports hall pit is deeper than 5 m next to the existing school building.",
+        notes="Die Baugrube der Sporthalle ist tiefer als 5 m und liegt neben dem Bestandsgebäude der Schule.",
         due={
-            "de_advance_notice": (_START - 28, "Owner project management"),
-            "de_sige_plan": (_START - 21, "Safety coordinator"),
-            "archaeology_clearance": (_START - 60, "Owner project management"),
-            "de_later_works_file": (_START + 400, "Safety coordinator"),
+            "de_advance_notice": (_START - 28, "Projektsteuerung Bauherr"),
+            "de_sige_plan": (_START - 21, "SiGe-Koordination"),
+            "archaeology_clearance": (_START - 60, "Projektsteuerung Bauherr"),
+            "de_later_works_file": (_START + 400, "SiGe-Koordination"),
         },
     ),
 }
 _DEFAULT_STORY = "DE-BW"
 _PARTY = {
-    "owner": "Owner project management",
-    "designer": "Lead designer",
-    "contractor": "General contractor",
-    "coordinator": "Safety coordinator",
-    "operator": "Operator",
+    "owner": "Projektsteuerung Bauherr",
+    "designer": "Generalplaner",
+    "contractor": "Generalunternehmer",
+    "coordinator": "SiGe-Koordination",
+    "operator": "Betreiber",
 }
 _TOTALS = ("projects", "items", "met", "roles", "linked_conditions", "links")
 
@@ -218,7 +218,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID, totals: dict[str,
             item.id,
             s.ItemMeet(
                 met_on=today - timedelta(days=20 + 3 * index),
-                evidence_note="Filed in the project document store.",
+                evidence_note="Nachweis liegt im Projektdokumentenordner.",
             ),
         )
         item.due_date = None
@@ -248,12 +248,10 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID, totals: dict[str,
                 role_code=code,
                 person_user_id=person,
                 person_name=await _name(session, person) if person else "",
-                organisation="" if person is None else "Safety coordination" if qualified else "Owner",
+                organisation="" if person is None else "SiGe-Koordination" if qualified else "Bauherr",
                 status=status,
                 appointed_on=on if status == "appointed" else None,
-                qualification="Qualified under the national coordinator guideline"
-                if qualified and status == "appointed"
-                else "",
+                qualification="Qualifiziert nach RAB 30" if qualified and status == "appointed" else "",
                 qualification_valid_until=today + timedelta(days=700) if qualified and status == "appointed" else None,
             ),
             owner,
