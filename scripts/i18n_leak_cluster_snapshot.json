@@ -1960,5 +1960,50 @@
     ],
     "key_count_at_seed": 3,
     "note": "Reviewed 2026-10-14 with the translation of the eleven modules: System is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: design.ui.wbs_kind.system, qualityConcept.stages.system, quality_concept.export.col_system."
+  },
+  {
+    "locale_set": [
+      "id",
+      "tr"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-14 with the second translation wave: No. and Ref is the ordinary word or abbreviation in the listed languages, spelled the same as English, while the other locales carry their own word (values read in ar, bg, bn and others). Keys: engineeringBrief.programme.code, interface_management.col_reference, permits.ui.conditions.number."
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "et",
+      "fil",
+      "fr",
+      "hr",
+      "hu",
+      "id",
+      "it",
+      "nl",
+      "no",
+      "pt",
+      "pt-BR",
+      "ro",
+      "sv",
+      "tr"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-14 with the second translation wave: Gate (the project stage-gate loanword) is the ordinary word or abbreviation in the listed languages, spelled the same as English, while the other locales carry their own word (values read in ar, bg, bn and others). Keys: commitment.item_form.gate, engineeringBrief.schedule.gate, engineering_brief.milestone_kind.gate."
+  },
+  {
+    "locale_set": [
+      "fil",
+      "fr",
+      "it",
+      "nl",
+      "ro"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-14 with the second translation wave: Concept is the ordinary word or abbreviation in the listed languages, spelled the same as English, while the other locales carry their own word (values read in ar, bg, bn and others). Keys: engineeringBrief.phase.concept, engineeringBrief.requirements.answered, engineeringBrief.tabs.concept."
   }
 ]
