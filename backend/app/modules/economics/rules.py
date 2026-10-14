@@ -219,6 +219,20 @@ def register_findings(payload: dict[str, Any]) -> list[Finding]:
     return out
 
 
+def _backed(rows: list[dict[str, Any]], good: tuple[str, ...], start_key: str, end_key: str, today: str) -> bool:
+    """Is there cover now? At least one row is in place, none ran out, and a row still only requested
+    does not block while its start lies ahead (a warranty guarantee that replaces the performance one at
+    acceptance is asked for long before it is due)."""
+
+    def fine(row: dict[str, Any]) -> bool:
+        if row.get("status") in good:
+            return not lapsed(row, end_key, today)
+        start = row.get(start_key)
+        return row.get("status") == "requested" and bool(start) and str(start) > today
+
+    return any(r.get("status") in good for r in rows) and all(fine(r) for r in rows)
+
+
 def register_state(payload: dict[str, Any]) -> dict[str, bool]:
     """The five register questions a gate asks, as booleans. The evidence reads this and nothing else."""
     reg = payload.get("registers") or {}
@@ -228,12 +242,8 @@ def register_state(payload: dict[str, Any]) -> dict[str, bool]:
     tax = reg.get("tax")
     done = {p["area"] for p in reg.get("process") or [] if p.get("status") == "set_up"}
     return {
-        "securities": bool(securities)
-        and all(
-            s.get("status") in ("in_place", "released") and not lapsed(s, "valid_until", today) for s in securities
-        ),
-        "insurance": bool(insurances)
-        and all(i.get("status") == "in_place" and not lapsed(i, "period_to", today) for i in insurances),
+        "securities": _backed(securities, ("in_place", "released"), "valid_from", "valid_until", today),
+        "insurance": _backed(insurances, ("in_place",), "period_from", "period_to", today),
         "tax": bool(tax and tax.get("confirmed") and tax.get("input_tax_deduction") is not None),
         "receivables_payables": {"receivables", "payables"} <= done,
         "administration": "administration" in done,

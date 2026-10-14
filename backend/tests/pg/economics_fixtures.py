@@ -208,3 +208,28 @@ async def fill(w: World, *, frame_amounts: tuple[str, str] = ("2000000", "400000
         w.manager,
     )
     await call(w, "add_tranche", loan.id, {"due_on": "2027-06-30", "amount": total / 2}, w.manager)
+
+
+async def fill_registers(w: World) -> None:
+    """Every register the gate asks about, in place: what a gate needs before it can decide."""
+    mgr = w.manager
+    await call(
+        w,
+        "add_security",
+        {
+            "kind": "performance",
+            "description": "Performance guarantee",
+            "status": "in_place",
+            "valid_until": "2099-12-31",
+        },
+        mgr,
+    )
+    await call(
+        w,
+        "add_insurance",
+        {"kind": "liability", "insurer": "Insurer", "status": "in_place", "period_to": "2099-12-31"},
+        mgr,
+    )
+    await call(w, "put_tax", {"vat_treatment": "standard", "input_tax_deduction": True, "confirm": True}, mgr)
+    for area in ("receivables", "payables", "administration"):
+        await call(w, "put_process", area, {"status": "set_up"}, mgr)

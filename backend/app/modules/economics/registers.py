@@ -172,7 +172,13 @@ class RegistersMixin:
         return {
             "today": _day(),
             "securities": [
-                {"id": str(s.id), "description": s.description, "status": s.status, "valid_until": s.valid_until}
+                {
+                    "id": str(s.id),
+                    "description": s.description,
+                    "status": s.status,
+                    "valid_from": s.valid_from,
+                    "valid_until": s.valid_until,
+                }
                 for s in await self.repo.securities(project_id)
             ],
             "insurances": [
@@ -180,6 +186,7 @@ class RegistersMixin:
                     "id": str(i.id),
                     "label": i.policy_number or i.insurer,
                     "status": i.status,
+                    "period_from": i.period_from,
                     "period_to": i.period_to,
                 }
                 for i in await self.repo.insurances(project_id)

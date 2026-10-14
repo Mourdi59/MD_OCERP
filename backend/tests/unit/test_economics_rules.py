@@ -168,3 +168,19 @@ def test_no_securities_or_insurance_at_all_is_not_in_place() -> None:
     state = rules.register_state(_registers(securities=[], insurances=[]))
     assert state["securities"] is False
     assert state["insurance"] is False
+
+
+def test_a_request_whose_start_lies_ahead_does_not_block_but_an_overdue_one_does() -> None:
+    ahead = {
+        "id": "s2",
+        "description": "Warranty",
+        "status": "requested",
+        "valid_from": "2027-01-01",
+        "valid_until": "2030-01-01",
+    }
+    base = _registers()["registers"]["securities"]
+    assert rules.register_state(_registers(securities=[*base, ahead]))["securities"] is True
+    overdue = {**ahead, "valid_from": "2026-01-01"}
+    assert rules.register_state(_registers(securities=[*base, overdue]))["securities"] is False
+    only_requested = _registers(securities=[ahead])
+    assert rules.register_state(only_requested)["securities"] is False
