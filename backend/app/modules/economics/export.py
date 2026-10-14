@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
+from app.core.regional_format import number_style
 from app.core.register_export import RegisterColumn, RegisterDocument, build_register_pdf, build_register_xlsx
 from app.modules.economics.messages import translate
 
@@ -37,6 +38,7 @@ def _doc(
     locale: str,
     currency: str,
     *,
+    country: str | None = None,
     totals: bool = False,
 ) -> RegisterDocument:
     return RegisterDocument(
@@ -49,11 +51,14 @@ def _doc(
         empty_text=_t("empty", locale),
         sheet_title=title[:31],
         currency=currency,
+        number_style=number_style(country, currency),
         totals_label=_t("total", locale) if totals else "",
     )
 
 
-def frame_document(view: dict[str, Any], *, project_name: str, locale: str) -> RegisterDocument:
+def frame_document(
+    view: dict[str, Any], *, project_name: str, locale: str, country: str | None = None
+) -> RegisterDocument:
     totals = view["totals"]
     rows: list[list[Any]] = [
         [
@@ -87,14 +92,18 @@ def frame_document(view: dict[str, Any], *, project_name: str, locale: str) -> R
             (_t("reserve", locale), format(_d(totals["reserve"]), "f")),
             (_t("frame_total", locale), format(_d(totals["frame"]), "f")),
         ]
-    return _doc(_t("frame_title", locale), columns, rows, details, locale, view["currency"], totals=True)
+    return _doc(
+        _t("frame_title", locale), columns, rows, details, locale, view["currency"], country=country, totals=True
+    )
 
 
 def _figure(value: Any, locale: str) -> str:
     return _t("unknown", locale) if value is None else format(Decimal(str(value)), "f")
 
 
-def case_document(view: dict[str, Any], *, project_name: str, locale: str) -> RegisterDocument:
+def case_document(
+    view: dict[str, Any], *, project_name: str, locale: str, country: str | None = None
+) -> RegisterDocument:
     k = view["key_figures"]
     rows = [
         [
@@ -125,10 +134,12 @@ def case_document(view: dict[str, Any], *, project_name: str, locale: str) -> Re
         (_t("bcr", locale), _figure(k["benefit_cost_ratio"], locale)),
         (_t("yield", locale), _figure(k["yield_on_cost_pct"], locale)),
     ]
-    return _doc(_t("case_title", locale), columns, rows, details, locale, view["currency"])
+    return _doc(_t("case_title", locale), columns, rows, details, locale, view["currency"], country=country)
 
 
-def financing_document(view: dict[str, Any], *, project_name: str, locale: str) -> RegisterDocument:
+def financing_document(
+    view: dict[str, Any], *, project_name: str, locale: str, country: str | None = None
+) -> RegisterDocument:
     cov = view["coverage"]
     rows = [
         [
@@ -158,7 +169,9 @@ def financing_document(view: dict[str, Any], *, project_name: str, locale: str) 
         (_t("shortfall", locale), _figure(cov["shortfall"], locale)),
         (_t("surplus", locale), _figure(cov["surplus"], locale)),
     ]
-    return _doc(_t("financing_title", locale), columns, rows, details, locale, view["currency"], totals=True)
+    return _doc(
+        _t("financing_title", locale), columns, rows, details, locale, view["currency"], country=country, totals=True
+    )
 
 
 def render(doc: RegisterDocument, fmt: str) -> bytes:
