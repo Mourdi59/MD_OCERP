@@ -156,6 +156,7 @@ def default_plan() -> dict[str, Any]:
         },
         "road": {"ref": "RD-01", "address": "Access road, east side", "triggers": ["excavation"], "methods": ["photo"]},
         "waiver_reason": _WAIVER_REASON,
+        "stage_names": {},
     }
 
 
@@ -283,6 +284,20 @@ def _merge_subject(default: dict[str, Any], value: Any, locale: str) -> dict[str
     return out
 
 
+def _merge_stage_names(raw: Any, locale: str) -> dict[str, str]:
+    """The names a story gives catalogue stages, by stage code; a code the project does not have is ignored later."""
+    if not isinstance(raw, dict):
+        return {}
+    names: dict[str, str] = {}
+    for code, value in raw.items():
+        name = _text(value, locale, limit=255)
+        if isinstance(code, str) and name:
+            names[code] = name
+        else:
+            logger.info("quality_concept demo story: stage name for %r ignored", code)
+    return names
+
+
 def resolve_story(
     story: dict[str, Any], locale: str, *, families: set[str], categories: set[str], regimes: set[str]
 ) -> dict[str, Any]:
@@ -334,6 +349,7 @@ def resolve_story(
     plan["units"] = _merge_units(story.get("units"), locale) or plan["units"]
     plan["neighbour"] = _merge_subject(plan["neighbour"], story.get("survey_neighbour"), locale)
     plan["road"] = _merge_subject(plan["road"], story.get("survey_road"), locale)
+    plan["stage_names"] = _merge_stage_names(story.get("stage_names"), locale)
     return plan
 
 
@@ -501,8 +517,12 @@ async def _seed_stages(
     named: uuid.UUID,
     totals: dict[str, int],
     before: bool,
+    stage_names: dict[str, str] | None = None,
 ) -> None:
-    """The catalogue stages with owners, scoped to the systems still in testing, and one system under way."""
+    """The catalogue stages with owners, scoped to the systems still in testing, and one system under way.
+
+    ``stage_names`` is what the project's story calls a stage, by code; the catalogue name stays for the rest.
+    """
     from app.modules.commissioning.models import CxSystem
     from app.modules.construction_control.gating_service import GatingService
     from app.modules.construction_control.schemas import HoldGateReleaseIn
@@ -516,8 +536,12 @@ async def _seed_stages(
     if len(staged) != len(systems):
         scope = {"mode": "systems", "values": [str(x.id) for x in staged]}
     stages = await svc.apply_catalogue_stages(pid)
+    names = stage_names or {}
     for stage in stages:
-        await svc.patch_stage(pid, stage.id, s.StageDefPatch(owner_user_id=named, applies_to=scope))
+        fields: dict[str, Any] = {"owner_user_id": named, "applies_to": scope}
+        if stage.code in names:
+            fields["name_override"] = names[stage.code]
+        await svc.patch_stage(pid, stage.id, s.StageDefPatch(**fields))
     totals["stages"] += len(stages)
     rows = await svc.sync_progress(pid)
     totals["stage_rows"] += len(rows)
@@ -799,7 +823,7 @@ async def seed_quality_concept_demo(session: AsyncSession, project_ids: Iterable
                 regimes={r.code for r in cat.acceptance_regimes},
             )
             refs = await _seed_plan(svc, pid, engineer, named, today, counts, before, plan)
-            await _seed_stages(svc, pid, engineer, authority, named, counts, before)
+            await _seed_stages(svc, pid, engineer, authority, named, counts, before, plan["stage_names"])
             await _seed_units(svc, pid, refs, today, counts, before, plan)
             await _seed_proofs(svc, pid, refs, engineer, authority, counts, before, plan["waiver_reason"])
             if before:
