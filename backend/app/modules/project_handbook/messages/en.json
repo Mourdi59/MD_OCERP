@@ -36,6 +36,7 @@
   "project_handbook.errors.permission_required": "Editing the handbook needs the edit permission.",
   "project_handbook.errors.project_not_found": "The project does not exist.",
   "project_handbook.errors.submission_refused": "The chapter cannot be submitted yet.",
+  "project_handbook.errors.unknown_action": "This action does not exist for a chapter.",
   "project_handbook.export.approved": "Approved by",
   "project_handbook.export.approved_chapters": "Approved chapters",
   "project_handbook.export.chapters": "Chapters",
