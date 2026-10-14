@@ -219,7 +219,8 @@
       ],
       "source_ref": "HOAI Anlage 10.1 LPH 4 a",
       "hosts": [
-        "permits"
+        "permits",
+        "hse"
       ]
     },
     {

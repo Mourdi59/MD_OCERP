@@ -2267,7 +2267,10 @@
       "labels": {
         "en": "Environmental and safety frame with permit conditions",
         "de": "Umwelt- und Sicherheitsrahmen mit Genehmigungsauflagen"
-      }
+      },
+      "hosts": [
+        "hse"
+      ]
     }
   ],
   "readiness_criteria": [

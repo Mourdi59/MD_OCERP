@@ -1471,7 +1471,10 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 11"
+      "source_ref": "Module 11",
+      "hosts": [
+        "hse"
+      ]
     }
   ],
   "readiness_criteria": [

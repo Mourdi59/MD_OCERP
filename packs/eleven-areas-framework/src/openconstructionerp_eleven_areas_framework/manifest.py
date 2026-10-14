@@ -25,8 +25,9 @@ MANIFEST = PartnerPackManifest(
         "Owner-side project management in eleven management areas over two phases, project development "
         "and construction execution, with one gate between them and one approved frame document per area. "
         "Selects the platform modules that fill those areas and ships the framework's phase model, "
-        "stakeholder and mandate framework, delivery forms, German permit roadmap additions and a German "
-        "site logistics catalogue as catalogue data in German and English."
+        "stakeholder and mandate framework, delivery forms, German permit roadmap additions, a German "
+        "site logistics catalogue and German health, safety and environment frame catalogues for the country "
+        "and two Laender as catalogue data in German and English."
     ),
     default_locale="de",
     additional_locales={"de": "locales/de.json", "en": "locales/en.json"},
@@ -49,6 +50,7 @@ MANIFEST = PartnerPackManifest(
         "staffing",
         "site_logistics",
         "engineering_brief",
+        "hse_frame",
     ],
     default_modules=[
         "oe_project_governance",
@@ -64,6 +66,7 @@ MANIFEST = PartnerPackManifest(
         "oe_commitment_release",
         "oe_economics",
         "oe_quality_concept",
+        "oe_hse_frame",
     ],
     hidden_modules=[],
     default_company_profile="owner_client",
@@ -129,6 +132,27 @@ MANIFEST = PartnerPackManifest(
                 "version": 1,
                 "path": "catalogues/site_logistics/eleven_areas_framework_de.json",
                 "default_for_countries": ["DE"],
+            },
+            {
+                "kind": "hse_frame",
+                "id": "eleven_areas_framework_de",
+                "version": 1,
+                "path": "catalogues/hse_frame/eleven_areas_framework_de.json",
+                "default_for_countries": ["DE"],
+            },
+            {
+                "kind": "hse_frame",
+                "id": "eleven_areas_framework_de_by",
+                "version": 1,
+                "path": "catalogues/hse_frame/eleven_areas_framework_de_by.json",
+                "default_for_countries": ["DE-BY"],
+            },
+            {
+                "kind": "hse_frame",
+                "id": "eleven_areas_framework_de_bw",
+                "version": 1,
+                "path": "catalogues/hse_frame/eleven_areas_framework_de_bw.json",
+                "default_for_countries": ["DE-BW"],
             },
         ],
         "catalogues_resolved_by_project_country": [
