@@ -1,0 +1,125 @@
+{
+  "$note": "Commissionable systems of the Ludwigsburg primary school as data, read by the commissioning demo seeder. Each entry names the system type of the neutral catalogue; the checks come from that type. No real firms or persons.",
+  "systems": [
+    {
+      "type": "mechanical",
+      "tag": "WP-01",
+      "name": {
+        "en": "Heat pump plant, geothermal probes",
+        "de": "Wärmepumpenanlage mit Erdsonden"
+      },
+      "location": {
+        "en": "Heating centre, basement",
+        "de": "Heizzentrale, Untergeschoss"
+      }
+    },
+    {
+      "type": "hvac",
+      "tag": "LÜ-01",
+      "name": {
+        "en": "CO2-controlled ventilation, classroom wing",
+        "de": "CO2-gesteuerte Lüftung Klassentrakt"
+      },
+      "location": {
+        "en": "Roof plant area classroom wing",
+        "de": "Technikzentrale Dach Klassentrakt"
+      }
+    },
+    {
+      "type": "fire",
+      "tag": "BMA-01",
+      "name": {
+        "en": "Fire detection and alarm system",
+        "de": "Brandmeldeanlage"
+      },
+      "location": {
+        "en": "Fire control room, ground floor",
+        "de": "Feuerwehr-Bedienfeld, Erdgeschoss"
+      }
+    },
+    {
+      "type": "electrical",
+      "tag": "NSHV-01",
+      "name": {
+        "en": "Main low-voltage distribution",
+        "de": "Elektro-Hauptverteilung Niederspannung"
+      },
+      "location": {
+        "en": "Electrical room, basement",
+        "de": "Elektroraum, Untergeschoss"
+      }
+    },
+    {
+      "type": "hvac",
+      "tag": "LÜ-02",
+      "name": {
+        "en": "Canteen kitchen ventilation",
+        "de": "Lüftung Mensaküche"
+      },
+      "location": {
+        "en": "Kitchen plant room",
+        "de": "Technikraum Mensaküche"
+      }
+    },
+    {
+      "type": "controls",
+      "tag": "GLT-01",
+      "name": {
+        "en": "Building management system",
+        "de": "Gebäudeleittechnik"
+      },
+      "location": {
+        "en": "Caretaker office",
+        "de": "Hausmeisterbüro"
+      }
+    },
+    {
+      "type": "elevator",
+      "tag": "AUF-01",
+      "name": {
+        "en": "Passenger lift, classroom wing",
+        "de": "Personenaufzug Klassentrakt"
+      },
+      "location": {
+        "en": "Staircase core classroom wing",
+        "de": "Treppenhauskern Klassentrakt"
+      }
+    },
+    {
+      "type": "security",
+      "tag": "EMA-01",
+      "name": {
+        "en": "Intruder alarm system",
+        "de": "Einbruchmeldeanlage"
+      },
+      "location": {
+        "en": "Entrance hall",
+        "de": "Eingangshalle"
+      }
+    },
+    {
+      "type": "plumbing",
+      "tag": "TWA-01",
+      "name": {
+        "en": "Drinking water installation",
+        "de": "Trinkwasseranlage"
+      },
+      "location": {
+        "en": "Basement, main distribution",
+        "de": "Untergeschoss, Hauptverteilung"
+      }
+    },
+    {
+      "type": "other",
+      "tag": "PV-01",
+      "name": {
+        "en": "Photovoltaic array, gym roof",
+        "de": "Photovoltaikanlage Sporthallendach"
+      },
+      "location": {
+        "en": "Gym roof",
+        "de": "Dach der Sporthalle"
+      }
+    }
+  ]
+}

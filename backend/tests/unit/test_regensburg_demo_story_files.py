@@ -36,6 +36,7 @@ _MODULES = (
     "delivery_model",
     "procurement_concept",
     "quality_concept",
+    "commissioning",
     "design_management",
     "commitment_release",
     "site_logistics",

@@ -43,10 +43,12 @@ import random
 import uuid
 from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.commissioning import seed_texts_de as de_texts
 from app.modules.commissioning.models import CxChecklist, CxChecklistItem, CxIssue, CxSystem
 from app.modules.commissioning.validators import (
     ITEM_FAIL,
@@ -370,6 +372,10 @@ _ISSUE_RESOLUTION = (
 )
 
 
+_PREFUNCTIONAL_DESCRIPTION = "Static installation checks completed before the system is energised."
+_FUNCTIONAL_DESCRIPTION = "Dynamic performance tests witnessed by the commissioning authority."
+
+
 def _rng_for(project_id: uuid.UUID) -> random.Random:
     """A deterministic RNG per project, so a re-seed reproduces the register."""
     return random.Random(f"{_SEED}:{project_id}")
@@ -511,6 +517,39 @@ _ITEM_NOTES = {
 }
 
 
+def _is_german(locale: str | None) -> bool:
+    """Whether the project reads German, so the register is written in German."""
+    return (locale or "").lower().replace("_", "-").split("-")[0] == "de"
+
+
+def _story_systems(story: dict[str, Any], locale: str) -> list[dict[str, str]]:
+    """The systems a pack story names for a project, in order; an entry that is not usable is skipped.
+
+    A story entry is ``{"type", "tag", "name", "location", "description"}`` with the texts as plain strings or
+    ``{locale: text}`` maps. Without a usable entry the project takes the built-in catalogue of systems.
+    """
+    from app.modules.project_governance.public import story_text
+
+    out: list[dict[str, str]] = []
+    raw = story.get("systems") if isinstance(story, dict) else None
+    for item in raw if isinstance(raw, list) else ():
+        if not isinstance(item, dict):
+            continue
+        system_type = item.get("type")
+        name = story_text(item.get("name"), locale) if isinstance(item.get("name"), (str, dict)) else ""
+        if system_type not in _SYSTEM_CATALOGUE or not isinstance(name, str) or not name.strip():
+            logger.info("Cx demo story: system %r ignored", item.get("tag") or item.get("name"))
+            continue
+        entry = {"type": system_type, "name": name.strip()[:255]}
+        for key, limit in (("tag", 100), ("location", 255), ("description", 2000)):
+            value = item.get(key)
+            text = story_text(value, locale) if isinstance(value, (str, dict)) else ""
+            if isinstance(text, str) and text.strip():
+                entry[key] = text.strip()[:limit]
+        out.append(entry)
+    return out
+
+
 def _build_items(
     rng: random.Random,
     checklist_id: uuid.UUID,
@@ -519,6 +558,7 @@ def _build_items(
     *,
     verified_by: str,
     window_start: datetime,
+    notes: dict[str, str] | None = None,
 ) -> list[CxChecklistItem]:
     """One checklist's items, with a result stamp only where a result exists."""
     items: list[CxChecklistItem] = []
@@ -531,7 +571,7 @@ def _build_items(
                 sequence=index + 1,
                 description=description,
                 status=item_status,
-                result_note=_ITEM_NOTES.get(item_status),
+                result_note=(notes or _ITEM_NOTES).get(item_status),
                 verified_by=verified_by if recorded else None,
                 verified_at=verified_at,
                 metadata_={},
@@ -545,8 +585,14 @@ async def _seed_project(
     project_id: uuid.UUID,
     owner_id: uuid.UUID,
     ordinal: int,
+    story: dict[str, Any] | None = None,
+    locale: str | None = None,
 ) -> dict[str, int]:
-    """Seed one project's Cx register. Returns per-entity counts (zeros when skipped)."""
+    """Seed one project's Cx register. Returns per-entity counts (zeros when skipped).
+
+    ``story`` is the pack's commissioning story for the project, if any: it names the systems the building
+    really has. ``locale`` selects the wording of checks and deficiencies.
+    """
     empty = {"projects": 0, "systems": 0, "checklists": 0, "items": 0, "issues": 0}
 
     already = (
@@ -557,29 +603,37 @@ async def _seed_project(
 
     rng = _rng_for(project_id)
     engineer, authority = await _actors(session, owner_id)
-    total = _system_count(ordinal)
+    german = _is_german(locale)
+    named = _story_systems(story or {}, locale or "en")
+    total = len(named) or _system_count(ordinal)
     lifecycles = _lifecycle_plan(total)
     now = datetime.now(UTC)
     counts = {"projects": 1, "systems": 0, "checklists": 0, "items": 0, "issues": 0}
     tests_complete_seen = 0
 
     for position in range(total):
-        system_type = _TYPE_ORDER[(position + ordinal) % len(_TYPE_ORDER)]
-        spec = _SYSTEM_CATALOGUE[system_type]
+        entry = named[position] if named else None
+        system_type = entry["type"] if entry else _TYPE_ORDER[(position + ordinal) % len(_TYPE_ORDER)]
+        spec = dict(_SYSTEM_CATALOGUE[system_type])
+        if german:
+            spec["prefunctional"], spec["functional"] = de_texts.CHECKS[system_type]
         lifecycle = lifecycles[position]
         unit_no = position + 1
         variant = position % len(spec["names"])
+        description = (
+            de_texts.SYSTEM_DESCRIPTION
+            if german
+            else f"Commissionable {system_type.replace('_', ' ')} system, "
+            f"handed over as part of the building services acceptance."
+        )
 
         system = CxSystem(
             project_id=project_id,
-            name=spec["names"][variant].format(n=unit_no),
+            name=entry["name"] if entry else spec["names"][variant].format(n=unit_no),
             system_type=system_type,
-            tag=f"{spec['tags'][variant % len(spec['tags'])]}-{unit_no:02d}",
-            location=spec["locations"][position % len(spec["locations"])],
-            description=(
-                f"Commissionable {system_type.replace('_', ' ')} system, "
-                f"handed over as part of the building services acceptance."
-            ),
+            tag=(entry or {}).get("tag") or f"{spec['tags'][variant % len(spec['tags'])]}-{unit_no:02d}",
+            location=(entry or {}).get("location") or spec["locations"][position % len(spec["locations"])],
+            description=(entry or {}).get("description") or description,
             status=lifecycle,
             created_by=engineer,
             metadata_={},
@@ -599,14 +653,15 @@ async def _seed_project(
                 system_id=system.id,
                 kind=kind,
                 title=(
-                    f"Prefunctional checklist - {system.tag}"
+                    (de_texts.PREFUNCTIONAL_TITLE if german else "Prefunctional checklist")
                     if kind == _PREFUNCTIONAL
-                    else f"Functional performance test - {system.tag}"
-                ),
+                    else (de_texts.FUNCTIONAL_TITLE if german else "Functional performance test")
+                )
+                + f" - {system.tag}",
                 description=(
-                    "Static installation checks completed before the system is energised."
+                    (de_texts.PREFUNCTIONAL_DESCRIPTION if german else _PREFUNCTIONAL_DESCRIPTION)
                     if kind == _PREFUNCTIONAL
-                    else "Dynamic performance tests witnessed by the commissioning authority."
+                    else (de_texts.FUNCTIONAL_DESCRIPTION if german else _FUNCTIONAL_DESCRIPTION)
                 ),
                 created_by=engineer,
                 metadata_={},
@@ -625,6 +680,7 @@ async def _seed_project(
                 statuses,
                 verified_by=engineer,
                 window_start=window_start + (timedelta(days=0) if kind == _PREFUNCTIONAL else timedelta(days=14)),
+                notes=de_texts.ITEM_NOTES if german else None,
             )
             session.add_all(items)
             counts["items"] += len(items)
@@ -646,10 +702,10 @@ async def _seed_project(
             session.add(
                 CxIssue(
                     system_id=system.id,
-                    description=rng.choice(_ISSUE_TEXT[severity]),
+                    description=rng.choice((de_texts.ISSUES if german else _ISSUE_TEXT)[severity]),
                     severity=severity,
                     status=issue_status,
-                    resolution=(rng.choice(_ISSUE_RESOLUTION) if closed else None),
+                    resolution=(rng.choice(de_texts.RESOLUTIONS if german else _ISSUE_RESOLUTION) if closed else None),
                     raised_by=engineer,
                     closed_by=(authority if closed else None),
                     closed_at=(_iso(window_start + timedelta(days=21, hours=11)) if closed else None),
@@ -711,10 +767,14 @@ async def seed_commissioning_demo(
     if not ids:
         return totals
 
+    from app.core.demo_marker import demo_id_of
+    from app.modules.project_governance.public import demo_module_story
     from app.modules.projects.models import Project
 
     rows = (
-        await session.execute(select(Project.id, Project.owner_id, Project.metadata_).where(Project.id.in_(ids)))
+        await session.execute(
+            select(Project.id, Project.owner_id, Project.metadata_, Project.locale).where(Project.id.in_(ids))
+        )
     ).all()
     # ``enrich_all`` hands this seeder every project in the database, which on a
     # real installation means a customer's own work. Only the demo estate is
@@ -725,7 +785,9 @@ async def seed_commissioning_demo(
     # baked fixture and carries only ``demo_id``, so a gate on ``is_demo`` skips
     # the one project users actually land on.
     demo = {
-        pid: owner for pid, owner, meta in rows if isinstance(meta, dict) and str(meta.get("demo_id") or "").strip()
+        pid: (owner, meta, locale)
+        for pid, owner, meta, locale in rows
+        if isinstance(meta, dict) and str(meta.get("demo_id") or "").strip()
     }
     # Numbered within the demo estate, not within the caller's list. The list is
     # every project in the database, so on an installation that also carries a
@@ -734,7 +796,9 @@ async def seed_commissioning_demo(
     demo_ids = [pid for pid in ids if pid in demo]
 
     for ordinal, project_id in enumerate(demo_ids):
-        owner_id = demo[project_id]
+        owner_id, meta, locale = demo[project_id]
+        # What the active pack says this building has; without a pack story the built-in systems are used.
+        story = demo_module_story(demo_id_of(meta), "commissioning")
         try:
             # A SAVEPOINT per project, so one project that cannot be seeded
             # costs only its own rows. Catching the exception is not enough on
@@ -742,7 +806,7 @@ async def seed_commissioning_demo(
             # every later project would then fail on a poisoned session rather
             # than on anything wrong with itself.
             async with session.begin_nested():
-                counts = await _seed_project(session, project_id, owner_id, ordinal)
+                counts = await _seed_project(session, project_id, owner_id, ordinal, story, locale)
         except Exception:
             logger.warning("Commissioning demo seed skipped for project=%s (non-fatal)", project_id, exc_info=True)
             continue

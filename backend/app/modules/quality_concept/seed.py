@@ -404,6 +404,26 @@ async def _actors(session: AsyncSession, pid: uuid.UUID, owner_id: uuid.UUID) ->
     return owner_id, owner_id
 
 
+def _credit_points(level: Any, count: int, available: Decimal) -> list[Decimal]:
+    """Targeted points per credit: 18, 16, 14 ... and, where that falls short, enough to reach the target level.
+
+    A target whose credits cannot reach the level's floor is flagged at risk on the readiness strip; the
+    demo targets are meant to be reachable, so the shortfall goes onto the first credit.
+    """
+    from app.modules.quality_concept import evaluator as ev
+
+    points = [Decimal(18 - 2 * n) for n in range(count)]
+    floor = ev.to_decimal(level.min_score)
+    if floor is None:
+        return points
+    if str(getattr(level, "score_unit", "points")) == "percent":
+        floor = floor * available / Decimal("100")
+    shortfall = floor - sum(points, Decimal("0"))
+    if shortfall > 0:
+        points[0] += shortfall
+    return points
+
+
 async def _seed_plan(
     svc: Any,
     pid: uuid.UUID,
@@ -469,6 +489,7 @@ async def _seed_plan(
         )
         totals["certifications"] += 1
         categories = scheme.credit_categories[: 5 if first else 3]
+        points = _credit_points(scheme.levels[-2], len(categories), Decimal("100"))
         credits = await svc.add_credits(
             pid,
             target.id,
@@ -476,7 +497,7 @@ async def _seed_plan(
                 s.CreditIn(
                     credit_code=f"{category.upper()[:3]}-{n + 1:02d}",
                     category=category,
-                    points_targeted=Decimal(18 - 2 * n),
+                    points_targeted=points[n],
                     owner_user_id=named,
                 )
                 for n, category in enumerate(categories)
@@ -633,7 +654,11 @@ async def _seed_proofs(
     for proof in proofs:
         if proof.quantity_rule:
             # A counted proof needs the placed quantity to say how many tests are due.
-            rule = s.QuantityRuleIn(**{**proof.quantity_rule, "placed_quantity": Decimal("300")})
+            # One delivered test covers the quantity placed so far, so the proof reads as met rather
+            # than as a test frequency that the single linked result cannot reach.
+            per = Decimal(str(proof.quantity_rule.get("per_quantity") or "1"))
+            minimum = int(proof.quantity_rule.get("min_count") or 1)
+            rule = s.QuantityRuleIn(**{**proof.quantity_rule, "placed_quantity": per * minimum})
             await svc.patch_proof(pid, proof.id, s.ProofPatch(quantity_rule=rule))
         evidence_type = cat.evidence_type(proof.evidence_type)
         for kind in evidence_type.fulfilled_by if evidence_type else ():

@@ -45,6 +45,7 @@ import {
   catalogueName,
   nameIn,
   gate,
+  humanizeCode,
   vocab,
   type TFn,
 } from './labels';
@@ -256,7 +257,11 @@ export function CertificationPanel(props: PanelProps) {
                       <li key={c.id} className="py-2" data-testid="credit-entry">
                         <div className="flex flex-wrap items-center gap-2 text-sm">
                           <span className="font-medium text-content-primary">{c.credit_code}</span>
-                          {c.category && <span className="text-xs text-content-tertiary">{c.category}</span>}
+                          {c.category && (
+                            <span className="text-xs text-content-tertiary">
+                              {t(`qualityConcept.creditCategory.${c.category}`, { defaultValue: humanizeCode(c.category) })}
+                            </span>
+                          )}
                           <StateBadge map={CREDIT_STATE} tones={CREDIT_TONE} code={c.state} />
                           <span className="text-content-secondary">
                             {t('qualityConcept.credits.points_line', {
