@@ -1,0 +1,273 @@
+{
+  "concept_topics": [
+    {
+      "code": "site_analysis",
+      "name_key": "engineering_brief.topic.site_analysis",
+      "required": false
+    },
+    {
+      "code": "supply",
+      "name_key": "engineering_brief.topic.supply",
+      "required": true
+    },
+    {
+      "code": "building_structure",
+      "name_key": "engineering_brief.topic.building_structure",
+      "required": true
+    },
+    {
+      "code": "modularity",
+      "name_key": "engineering_brief.topic.modularity",
+      "required": false
+    },
+    {
+      "code": "construction_method",
+      "name_key": "engineering_brief.topic.construction_method",
+      "required": true
+    },
+    {
+      "code": "prefabrication",
+      "name_key": "engineering_brief.topic.prefabrication",
+      "required": false
+    },
+    {
+      "code": "lean_control",
+      "name_key": "engineering_brief.topic.lean_control",
+      "required": false
+    },
+    {
+      "code": "site_frame",
+      "name_key": "engineering_brief.topic.site_frame",
+      "required": false
+    },
+    {
+      "code": "commissioning_sequence",
+      "name_key": "engineering_brief.topic.commissioning_sequence",
+      "required": true
+    }
+  ],
+  "id": "de",
+  "jurisdiction_countries": [
+    "DE"
+  ],
+  "milestone_kinds": [
+    {
+      "anchor": true,
+      "code": "operation_proof",
+      "gate": false,
+      "name_key": "engineering_brief.milestone_kind.operation_proof"
+    },
+    {
+      "anchor": false,
+      "code": "commissioning",
+      "gate": false,
+      "name_key": "engineering_brief.milestone_kind.commissioning"
+    },
+    {
+      "anchor": false,
+      "code": "construction_complete",
+      "gate": false,
+      "name_key": "engineering_brief.milestone_kind.construction_complete"
+    },
+    {
+      "anchor": false,
+      "code": "construction_start",
+      "gate": false,
+      "name_key": "engineering_brief.milestone_kind.construction_start"
+    },
+    {
+      "anchor": false,
+      "code": "permit_decision",
+      "gate": false,
+      "name_key": "engineering_brief.milestone_kind.permit_decision"
+    },
+    {
+      "anchor": false,
+      "code": "delivery",
+      "gate": false,
+      "name_key": "engineering_brief.milestone_kind.delivery"
+    },
+    {
+      "anchor": false,
+      "code": "award",
+      "gate": false,
+      "name_key": "engineering_brief.milestone_kind.award"
+    },
+    {
+      "anchor": false,
+      "code": "design_freeze",
+      "gate": false,
+      "name_key": "engineering_brief.milestone_kind.design_freeze"
+    },
+    {
+      "anchor": false,
+      "code": "gate",
+      "gate": true,
+      "name_key": "engineering_brief.milestone_kind.gate"
+    },
+    {
+      "anchor": false,
+      "code": "custom",
+      "gate": false,
+      "name_key": "engineering_brief.milestone_kind.custom"
+    }
+  ],
+  "milestone_templates": [
+    {
+      "code": "operation_proof",
+      "kind": "operation_proof",
+      "lead_days": 0,
+      "name_key": "engineering_brief.template.operation_proof",
+      "review_status": "unconfirmed",
+      "successor": null
+    },
+    {
+      "code": "commissioning_end",
+      "kind": "commissioning",
+      "lead_days": 30,
+      "name_key": "engineering_brief.template.commissioning_end",
+      "review_status": "unconfirmed",
+      "successor": "operation_proof"
+    },
+    {
+      "code": "commissioning_start",
+      "kind": "commissioning",
+      "lead_days": 90,
+      "name_key": "engineering_brief.template.commissioning_start",
+      "review_status": "unconfirmed",
+      "successor": "commissioning_end"
+    },
+    {
+      "code": "construction_end",
+      "kind": "construction_complete",
+      "lead_days": 14,
+      "name_key": "engineering_brief.template.construction_end",
+      "review_status": "unconfirmed",
+      "successor": "commissioning_start"
+    },
+    {
+      "code": "construction_start",
+      "kind": "construction_start",
+      "lead_days": 420,
+      "name_key": "engineering_brief.template.construction_start",
+      "review_status": "unconfirmed",
+      "successor": "construction_end"
+    },
+    {
+      "code": "permit_decision",
+      "kind": "permit_decision",
+      "lead_days": 60,
+      "name_key": "engineering_brief.template.permit_decision",
+      "review_status": "unconfirmed",
+      "successor": "construction_start"
+    },
+    {
+      "code": "long_lead_delivery",
+      "kind": "delivery",
+      "lead_days": 150,
+      "name_key": "engineering_brief.template.long_lead_delivery",
+      "review_status": "unconfirmed",
+      "successor": "construction_end"
+    },
+    {
+      "code": "award_construction",
+      "kind": "award",
+      "lead_days": 120,
+      "name_key": "engineering_brief.template.award_construction",
+      "review_status": "unconfirmed",
+      "successor": "construction_start"
+    },
+    {
+      "code": "design_freeze",
+      "kind": "design_freeze",
+      "lead_days": 150,
+      "name_key": "engineering_brief.template.design_freeze",
+      "review_status": "unconfirmed",
+      "successor": "award_construction"
+    }
+  ],
+  "name_key": "engineering_brief.catalogue.de.name",
+  "programme_kinds": [
+    {
+      "code": "gross_floor_area",
+      "default_unit": "m2",
+      "name_key": "engineering_brief.programme_kind.gross_floor_area"
+    },
+    {
+      "code": "net_usable_area",
+      "default_unit": "m2",
+      "name_key": "engineering_brief.programme_kind.net_usable_area"
+    },
+    {
+      "code": "net_room_area",
+      "default_unit": "m2",
+      "name_key": "engineering_brief.programme_kind.net_room_area"
+    },
+    {
+      "code": "gross_volume",
+      "default_unit": "m3",
+      "name_key": "engineering_brief.programme_kind.gross_volume"
+    },
+    {
+      "code": "plot_area",
+      "default_unit": "m2",
+      "name_key": "engineering_brief.programme_kind.plot_area"
+    },
+    {
+      "code": "units",
+      "default_unit": "pcs",
+      "name_key": "engineering_brief.programme_kind.units"
+    },
+    {
+      "code": "parking_spaces",
+      "default_unit": "pcs",
+      "name_key": "engineering_brief.programme_kind.parking_spaces"
+    }
+  ],
+  "requirement_categories": [
+    {
+      "code": "performance",
+      "name_key": "engineering_brief.category.performance",
+      "required": true
+    },
+    {
+      "code": "availability",
+      "name_key": "engineering_brief.category.availability",
+      "required": false
+    },
+    {
+      "code": "standards",
+      "name_key": "engineering_brief.category.standards",
+      "required": true
+    },
+    {
+      "code": "expansion_stages",
+      "name_key": "engineering_brief.category.expansion_stages",
+      "required": false
+    },
+    {
+      "code": "energy_efficiency",
+      "name_key": "engineering_brief.category.energy_efficiency",
+      "required": true
+    },
+    {
+      "code": "site_conditions",
+      "name_key": "engineering_brief.category.site_conditions",
+      "required": false
+    },
+    {
+      "code": "operation_maintenance",
+      "name_key": "engineering_brief.category.operation_maintenance",
+      "required": false
+    },
+    {
+      "code": "safety_security",
+      "name_key": "engineering_brief.category.safety_security",
+      "required": false
+    }
+  ],
+  "review_status": "unconfirmed",
+  "source_title": "Area and volume terms follow DIN 277; lead times are planning assumptions of a typical German project",
+  "source_url": "",
+  "version": 1
+}

@@ -130,7 +130,8 @@
         "construction_documents_to_procurement"
       ],
       "hosts": [
-        "design"
+        "design",
+        "engineering_brief"
       ]
     },
     {

@@ -47,6 +47,7 @@ MANIFEST = PartnerPackManifest(
         "quality_concept",
         "staffing",
         "site_logistics",
+        "engineering_brief",
     ],
     default_modules=[
         "oe_project_governance",
@@ -55,6 +56,7 @@ MANIFEST = PartnerPackManifest(
         "oe_permits",
         "oe_plant_register",
         "oe_staffing",
+        "oe_engineering_brief",
         "oe_site_logistics",
         "oe_design_management",
         "oe_procurement_concept",
@@ -136,6 +138,7 @@ MANIFEST = PartnerPackManifest(
             "design_reports",
             "quality_concept",
             "staffing_model",
+            "engineering_brief_model",
         ],
         "demo": {"path": "demo/demo_project.json"},
     },

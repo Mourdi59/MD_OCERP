@@ -10,7 +10,7 @@ The pack contains data only. It selects eleven platform modules and gives them t
 
 `oe_project_governance`, `oe_stakeholders`, `oe_delivery_model`, `oe_permits`, `oe_plant_register`,
 `oe_staffing`, `oe_site_logistics`, `oe_design_management`, `oe_procurement_concept`,
-`oe_commitment_release`, `oe_quality_concept`, together with the validation rule set of each.
+`oe_commitment_release`, `oe_quality_concept`, `oe_engineering_brief`, together with the validation rule set of each.
 
 ## What it ships
 

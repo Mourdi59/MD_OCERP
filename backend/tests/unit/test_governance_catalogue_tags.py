@@ -29,6 +29,7 @@ SUBJECTS = (
     "organisation",
     "quality",
     "staffing",
+    "engineering_brief",
     "site_logistics",
     "commitment_release",
 )
@@ -92,6 +93,7 @@ PINNED_HOSTS: dict[tuple[str, str], tuple[str, str]] = {
     ("elf_module_framework", "design"): ("m07_design_management", "m07_design_management_frame"),
     ("elf_module_framework", "plant"): ("m04_equipment", "m04_equipment_frame"),
     ("elf_module_framework", "staffing"): ("m05_personnel", "m05_personnel_frame"),
+    ("elf_module_framework", "engineering_brief"): ("m03_engineering_scheduling", "m03_engineering_scheduling_frame"),
     ("elf_module_framework", "site_logistics"): ("m06_logistics", "m06_logistics_frame"),
     ("elf_module_framework", "procurement"): ("m08_procurement", "m08_procurement_frame"),
     ("elf_module_framework", "quality"): ("m10_quality", "m10_quality_frame"),
@@ -276,6 +278,7 @@ NEEDED_BEFORE: dict[str, str] = {
     "quality": "construction_start",
     "plant": "construction_start",
     "staffing": "construction_start",
+    "engineering_brief": "procurement",
     "site_logistics": "construction_start",
     "commitment_release": "construction_start",
 }

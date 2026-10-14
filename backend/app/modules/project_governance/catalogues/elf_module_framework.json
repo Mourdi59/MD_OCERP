@@ -1374,7 +1374,10 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 3"
+      "source_ref": "Module 3",
+      "hosts": [
+        "engineering_brief"
+      ]
     },
     {
       "code": "m04_equipment_frame",
