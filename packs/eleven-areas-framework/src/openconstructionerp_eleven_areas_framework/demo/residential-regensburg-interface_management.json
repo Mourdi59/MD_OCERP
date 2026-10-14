@@ -1,0 +1,619 @@
+{
+  "$note": "Interface register story of the residential-regensburg demo project. Parties are roles, not firms; every name is invented. Dates are offsets in days from the seed day (negative need_by_in_days means already past; done_days_ago counts back from the seed day).",
+  "interfaces": [
+    {
+      "reference": "IF-001",
+      "interface_type": "contractual",
+      "status": "closed",
+      "priority": "high",
+      "title": {
+        "en": "Excavation pit and shoring: scope boundary",
+        "de": "Baugrube und Verbau: Leistungsgrenze"
+      },
+      "description": {
+        "en": "Shoring, dewatering and excavation are priced in one package. The boundary to the shell contractor is the pit base.",
+        "de": "Verbau, Grundwasserhaltung und Aushub liegen in einem Los. Die Grenze zum Rohbau ist die Baugrubensohle."
+      },
+      "owner": {
+        "en": "Civil works contractor",
+        "de": "Tiefbau und Verbau"
+      },
+      "accepter": {
+        "en": "Shell construction contractor",
+        "de": "Rohbauunternehmen"
+      },
+      "need_by_in_days": -150,
+      "location": {
+        "en": "Underground garage",
+        "de": "Tiefgarage"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Agree handover of the pit base",
+            "de": "Übergabe der Baugrubensohle abstimmen"
+          },
+          "party": {
+            "en": "Civil works contractor",
+            "de": "Tiefbau und Verbau"
+          },
+          "due_in_days": -165,
+          "done_days_ago": 168
+        },
+        {
+          "description": {
+            "en": "Record the levels jointly",
+            "de": "Höhen gemeinsam aufnehmen"
+          },
+          "party": {
+            "en": "Shell construction contractor",
+            "de": "Rohbauunternehmen"
+          },
+          "due_in_days": -160,
+          "done_days_ago": 158
+        }
+      ],
+      "agreed_days_ago": 170,
+      "closed_days_ago": 140
+    },
+    {
+      "reference": "IF-002",
+      "interface_type": "information",
+      "status": "closed",
+      "priority": "medium",
+      "title": {
+        "en": "Setting-out points for the shell",
+        "de": "Absteckpunkte für den Rohbau"
+      },
+      "description": {
+        "en": "The surveyor hands over the control points; the shell contractor confirms them before the first slab.",
+        "de": "Das Vermessungsbüro übergibt die Festpunkte, der Rohbau bestätigt sie vor der ersten Bodenplatte."
+      },
+      "owner": {
+        "en": "Civil works contractor",
+        "de": "Tiefbau und Verbau"
+      },
+      "accepter": {
+        "en": "Shell construction contractor",
+        "de": "Rohbauunternehmen"
+      },
+      "need_by_in_days": -140,
+      "location": {
+        "en": "Building plot",
+        "de": "Baugrundstück"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Hand over control point list",
+            "de": "Festpunktliste übergeben"
+          },
+          "party": {
+            "en": "Civil works contractor",
+            "de": "Tiefbau und Verbau"
+          },
+          "due_in_days": -150,
+          "done_days_ago": 149
+        },
+        {
+          "description": {
+            "en": "Confirm receipt in writing",
+            "de": "Empfang schriftlich bestätigen"
+          },
+          "party": {
+            "en": "Shell construction contractor",
+            "de": "Rohbauunternehmen"
+          },
+          "due_in_days": -145,
+          "done_days_ago": 144
+        }
+      ],
+      "agreed_days_ago": 150,
+      "closed_days_ago": 135
+    },
+    {
+      "reference": "IF-003",
+      "interface_type": "physical",
+      "status": "agreed",
+      "priority": "high",
+      "title": {
+        "en": "Services penetrations through the garage slab",
+        "de": "Durchbrüche der TGA durch die Tiefgaragendecke"
+      },
+      "description": {
+        "en": "Sleeve positions and sizes of the pipes and ducts are fixed and issued for the formwork.",
+        "de": "Positionen und Größen der Leitungs- und Kanaldurchbrüche sind festgelegt und für die Schalung freigegeben."
+      },
+      "owner": {
+        "en": "Building services contractor (MEP)",
+        "de": "Technische Gebäudeausrüstung (TGA)"
+      },
+      "accepter": {
+        "en": "Shell construction contractor",
+        "de": "Rohbauunternehmen"
+      },
+      "need_by_in_days": -20,
+      "location": {
+        "en": "Underground garage",
+        "de": "Tiefgarage"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Issue sleeve plan for formwork",
+            "de": "Aussparungsplan für die Schalung ausgeben"
+          },
+          "party": {
+            "en": "Building services contractor (MEP)",
+            "de": "Technische Gebäudeausrüstung (TGA)"
+          },
+          "due_in_days": -35,
+          "done_days_ago": 36
+        },
+        {
+          "description": {
+            "en": "Check sleeves before concreting",
+            "de": "Aussparungen vor dem Betonieren prüfen"
+          },
+          "party": {
+            "en": "Shell construction contractor",
+            "de": "Rohbauunternehmen"
+          },
+          "due_in_days": -22,
+          "done_days_ago": 22
+        }
+      ],
+      "agreed_days_ago": 25
+    },
+    {
+      "reference": "IF-004",
+      "interface_type": "physical",
+      "status": "in_progress",
+      "priority": "high",
+      "title": {
+        "en": "Wall and ceiling openings, building 2",
+        "de": "Wand- und Deckendurchbrüche Haus 2"
+      },
+      "description": {
+        "en": "Openings for risers and ventilation in the stair cores of building 2 are still being coordinated with the structural design.",
+        "de": "Öffnungen für Steigleitungen und Lüftung in den Treppenhauskernen von Haus 2 werden noch mit der Tragwerksplanung abgestimmt."
+      },
+      "owner": {
+        "en": "Building services contractor (MEP)",
+        "de": "Technische Gebäudeausrüstung (TGA)"
+      },
+      "accepter": {
+        "en": "Structural engineer",
+        "de": "Tragwerksplanung"
+      },
+      "need_by_in_days": 10,
+      "location": {
+        "en": "Building 2, stair core",
+        "de": "Haus 2, Treppenhauskern"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Mark openings in the structural model",
+            "de": "Öffnungen im Tragwerksmodell markieren"
+          },
+          "party": {
+            "en": "Building services contractor (MEP)",
+            "de": "Technische Gebäudeausrüstung (TGA)"
+          },
+          "due_in_days": -3,
+          "done_days_ago": 4
+        },
+        {
+          "description": {
+            "en": "Verify the structural effect of the openings",
+            "de": "Statische Auswirkung der Öffnungen prüfen"
+          },
+          "party": {
+            "en": "Structural engineer",
+            "de": "Tragwerksplanung"
+          },
+          "due_in_days": 7
+        }
+      ]
+    },
+    {
+      "reference": "IF-005",
+      "interface_type": "physical",
+      "status": "open",
+      "priority": "medium",
+      "title": {
+        "en": "Lift shaft tolerances against shell",
+        "de": "Aufzugsschacht: Toleranzen gegen Rohbau"
+      },
+      "description": {
+        "en": "The lift contractor needs the shaft within plumb tolerance before rails are installed.",
+        "de": "Der Aufzugsbau braucht den Schacht im Lotbereich, bevor die Schienen montiert werden."
+      },
+      "owner": {
+        "en": "Lift contractor",
+        "de": "Aufzugsbau"
+      },
+      "accepter": {
+        "en": "Shell construction contractor",
+        "de": "Rohbauunternehmen"
+      },
+      "need_by_in_days": 30,
+      "location": {
+        "en": "Building 1, lift shaft",
+        "de": "Haus 1, Aufzugsschacht"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Survey the shaft plumb",
+            "de": "Schachtlot aufnehmen"
+          },
+          "party": {
+            "en": "Shell construction contractor",
+            "de": "Rohbauunternehmen"
+          },
+          "due_in_days": 21
+        },
+        {
+          "description": {
+            "en": "Confirm shaft pit depth",
+            "de": "Schachtgrubentiefe bestätigen"
+          },
+          "party": {
+            "en": "Lift contractor",
+            "de": "Aufzugsbau"
+          },
+          "due_in_days": 24
+        }
+      ]
+    },
+    {
+      "reference": "IF-006",
+      "interface_type": "spatial",
+      "status": "in_progress",
+      "priority": "medium",
+      "title": {
+        "en": "Shared shaft: ventilation and fire dampers",
+        "de": "Gemeinsamer Schacht: Lüftung und Brandschutzklappen"
+      },
+      "description": {
+        "en": "Ventilation ducts and fire dampers share the shafts of the residential floors. Access for inspection must stay free.",
+        "de": "Lüftungskanäle und Brandschutzklappen teilen sich die Schächte der Wohngeschosse. Die Revisionszugänge müssen frei bleiben."
+      },
+      "owner": {
+        "en": "Building services contractor (MEP)",
+        "de": "Technische Gebäudeausrüstung (TGA)"
+      },
+      "accepter": {
+        "en": "Fire protection engineer",
+        "de": "Brandschutzplanung"
+      },
+      "need_by_in_days": 14,
+      "location": {
+        "en": "Building 3, shafts",
+        "de": "Haus 3, Schächte"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Update shaft layout with damper positions",
+            "de": "Schachtbelegung mit Klappenpositionen aktualisieren"
+          },
+          "party": {
+            "en": "Building services contractor (MEP)",
+            "de": "Technische Gebäudeausrüstung (TGA)"
+          },
+          "due_in_days": 5
+        },
+        {
+          "description": {
+            "en": "Confirm fire compartments",
+            "de": "Brandabschnitte bestätigen"
+          },
+          "party": {
+            "en": "Fire protection engineer",
+            "de": "Brandschutzplanung"
+          },
+          "due_in_days": 10
+        }
+      ]
+    },
+    {
+      "reference": "IF-007",
+      "interface_type": "functional",
+      "status": "open",
+      "priority": "medium",
+      "title": {
+        "en": "Heat transfer station: district heating connection",
+        "de": "Fernwärmeübergabestation: Anschluss"
+      },
+      "description": {
+        "en": "Capacity and connection point of the district heating supply are to be matched with the station design.",
+        "de": "Leistung und Anschlusspunkt der Fernwärmeversorgung sind mit der Planung der Übergabestation abzugleichen."
+      },
+      "owner": {
+        "en": "Building services contractor (MEP)",
+        "de": "Technische Gebäudeausrüstung (TGA)"
+      },
+      "accepter": {
+        "en": "Electrical contractor",
+        "de": "Elektroinstallation"
+      },
+      "need_by_in_days": 45,
+      "location": {
+        "en": "Technical room, building 1",
+        "de": "Technikraum Haus 1"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Request the utility's connection conditions",
+            "de": "Anschlussbedingungen des Versorgers anfordern"
+          },
+          "party": {
+            "en": "Building services contractor (MEP)",
+            "de": "Technische Gebäudeausrüstung (TGA)"
+          },
+          "due_in_days": 20
+        },
+        {
+          "description": {
+            "en": "Confirm power supply of the station",
+            "de": "Stromversorgung der Station bestätigen"
+          },
+          "party": {
+            "en": "Electrical contractor",
+            "de": "Elektroinstallation"
+          },
+          "due_in_days": 35
+        }
+      ]
+    },
+    {
+      "reference": "IF-008",
+      "interface_type": "schedule",
+      "status": "identified",
+      "priority": "medium",
+      "title": {
+        "en": "Facade start depends on shell completion",
+        "de": "Fassadenbeginn abhängig vom Rohbau"
+      },
+      "description": {
+        "en": "The facade scaffold can only be set up after the roof slab of each building is finished.",
+        "de": "Das Fassadengerüst kann erst nach der Fertigstellung der Dachdecke jedes Hauses gestellt werden."
+      },
+      "owner": {
+        "en": "Facade contractor",
+        "de": "Fassadenbau"
+      },
+      "accepter": {
+        "en": "Shell construction contractor",
+        "de": "Rohbauunternehmen"
+      },
+      "need_by_in_days": 90,
+      "location": {
+        "en": "Buildings 1 to 4",
+        "de": "Häuser 1 bis 4"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Agree handover date per building",
+            "de": "Übergabetermin je Haus abstimmen"
+          },
+          "party": {
+            "en": "Shell construction contractor",
+            "de": "Rohbauunternehmen"
+          },
+          "due_in_days": 60
+        },
+        {
+          "description": {
+            "en": "Confirm scaffold concept",
+            "de": "Gerüstkonzept bestätigen"
+          },
+          "party": {
+            "en": "Facade contractor",
+            "de": "Fassadenbau"
+          },
+          "due_in_days": 70
+        }
+      ]
+    },
+    {
+      "reference": "IF-009",
+      "interface_type": "physical",
+      "status": "identified",
+      "priority": "medium",
+      "title": {
+        "en": "Window installation in the external wall insulation",
+        "de": "Fenstereinbau in der Außendämmung"
+      },
+      "description": {
+        "en": "The position of the windows in the insulation layer and the sealing of the joints are not yet fixed.",
+        "de": "Lage der Fenster in der Dämmebene und die Abdichtung der Anschlussfugen sind noch nicht festgelegt."
+      },
+      "owner": {
+        "en": "Window contractor",
+        "de": "Fensterbau"
+      },
+      "accepter": {
+        "en": "Facade contractor",
+        "de": "Fassadenbau"
+      },
+      "need_by_in_days": 100,
+      "location": {
+        "en": "Buildings 1 to 4",
+        "de": "Häuser 1 bis 4"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Draw the standard window detail",
+            "de": "Regeldetail Fenstereinbau zeichnen"
+          },
+          "party": {
+            "en": "Window contractor",
+            "de": "Fensterbau"
+          },
+          "due_in_days": 75
+        },
+        {
+          "description": {
+            "en": "Review the detail against the facade design",
+            "de": "Detail gegen Fassadenplanung prüfen"
+          },
+          "party": {
+            "en": "Facade contractor",
+            "de": "Fassadenbau"
+          },
+          "due_in_days": 85
+        }
+      ]
+    },
+    {
+      "reference": "IF-010",
+      "interface_type": "physical",
+      "status": "in_progress",
+      "priority": "high",
+      "title": {
+        "en": "Roof penetrations and photovoltaic mounting",
+        "de": "Dachdurchdringungen und PV-Unterkonstruktion"
+      },
+      "description": {
+        "en": "Mounting feet of the photovoltaic system must not damage the roof waterproofing.",
+        "de": "Die Befestigungspunkte der Photovoltaikanlage dürfen die Dachabdichtung nicht verletzen."
+      },
+      "owner": {
+        "en": "Photovoltaic contractor",
+        "de": "Photovoltaik-Installation"
+      },
+      "accepter": {
+        "en": "Roofing contractor",
+        "de": "Dachdecker und Abdichtung"
+      },
+      "need_by_in_days": 35,
+      "location": {
+        "en": "Roofs, buildings 1 to 4",
+        "de": "Dächer Haus 1 bis 4"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Propose ballast or bonded mounting",
+            "de": "Auflast oder verklebte Halterung vorschlagen"
+          },
+          "party": {
+            "en": "Photovoltaic contractor",
+            "de": "Photovoltaik-Installation"
+          },
+          "due_in_days": 12
+        },
+        {
+          "description": {
+            "en": "Confirm warranty of the roof layer",
+            "de": "Gewährleistung der Dachabdichtung bestätigen"
+          },
+          "party": {
+            "en": "Roofing contractor",
+            "de": "Dachdecker und Abdichtung"
+          },
+          "due_in_days": 20
+        }
+      ]
+    },
+    {
+      "reference": "IF-011",
+      "interface_type": "information",
+      "status": "disputed",
+      "priority": "high",
+      "title": {
+        "en": "Fire protection concept against building services",
+        "de": "Brandschutzkonzept gegen TGA-Planung"
+      },
+      "description": {
+        "en": "The fire protection concept requires fire-rated penetrations, the services design assumes standard sleeves. Open since the last coordination meeting.",
+        "de": "Das Brandschutzkonzept fordert brandschutztechnisch ertüchtigte Durchführungen, die TGA-Planung geht von Standardhülsen aus. Offen seit der letzten Koordinierungsrunde."
+      },
+      "owner": {
+        "en": "Fire protection engineer",
+        "de": "Brandschutzplanung"
+      },
+      "accepter": {
+        "en": "Building services contractor (MEP)",
+        "de": "Technische Gebäudeausrüstung (TGA)"
+      },
+      "need_by_in_days": -6,
+      "location": {
+        "en": "Underground garage and stair cores",
+        "de": "Tiefgarage und Treppenhäuser"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Provide the list of fire-rated penetrations",
+            "de": "Liste der Brandschutzdurchführungen liefern"
+          },
+          "party": {
+            "en": "Fire protection engineer",
+            "de": "Brandschutzplanung"
+          },
+          "due_in_days": -12,
+          "done_days_ago": 14
+        },
+        {
+          "description": {
+            "en": "Revise the sleeve schedule",
+            "de": "Hülsenliste überarbeiten"
+          },
+          "party": {
+            "en": "Building services contractor (MEP)",
+            "de": "Technische Gebäudeausrüstung (TGA)"
+          },
+          "due_in_days": -2
+        }
+      ]
+    },
+    {
+      "reference": "IF-012",
+      "interface_type": "contractual",
+      "status": "on_hold",
+      "priority": "low",
+      "title": {
+        "en": "Scope of the surface-mounted installation",
+        "de": "Abgrenzung Aufputz-Installation"
+      },
+      "description": {
+        "en": "The scope split between electrical and drywall for surface-mounted conduits is parked until the interior finishing lots are awarded.",
+        "de": "Die Abgrenzung zwischen Elektro und Trockenbau bei Aufputz-Leerrohren ruht bis zur Vergabe der Ausbaulose."
+      },
+      "owner": {
+        "en": "Electrical contractor",
+        "de": "Elektroinstallation"
+      },
+      "accepter": {
+        "en": "Drywall contractor",
+        "de": "Trockenbau"
+      },
+      "need_by_in_days": 120,
+      "location": {
+        "en": "Buildings 1 to 4",
+        "de": "Häuser 1 bis 4"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Prepare the scope sheet for the lot award",
+            "de": "Leistungsabgrenzung für die Vergabe vorbereiten"
+          },
+          "party": {
+            "en": "Electrical contractor",
+            "de": "Elektroinstallation"
+          },
+          "due_in_days": 80
+        }
+      ]
+    }
+  ]
+}

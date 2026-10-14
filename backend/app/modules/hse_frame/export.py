@@ -69,7 +69,7 @@ async def render(svc: Any, project_id: uuid.UUID, *, what: str, fmt: str, locale
         for i in items:
             template = templates.get(i.template_code or "")
             # A row made from a template keeps the stored English title until someone edits it.
-            same = template is not None and (template.labels or {}).get("en") == i.title
+            same = template is not None and i.title in (template.labels or {}).values()
             rows.append(
                 [
                     _label(catalogue.entry("topics", i.topic), locale) or i.topic,
