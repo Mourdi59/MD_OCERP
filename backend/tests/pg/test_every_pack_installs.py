@@ -838,6 +838,11 @@ async def test_every_screen_of_the_eleven_areas_has_rows_for_both_filmed_project
             assert edition == (
                 "Ausgabe 2, Ausführungsphase" if demo_id == "residential-regensburg" else "Ausgabe 1, Entwicklungsphase"
             ), (demo_id, edition)
+            # A project waiting at the gate shows the end of its phase, the running site its first execution phase.
+            from app.modules.projects.models import Project
+
+            shown = (await s.execute(select(Project.phase).where(Project.id == project.id))).scalar_one()
+            assert shown == ("construction" if demo_id == "residential-regensburg" else "award"), (demo_id, shown)
 
     # Interfaces and transmittals are told by the pack story, not by the generic seeders:
     # German titles, no foreign script, and nothing closed or issued before its time.
