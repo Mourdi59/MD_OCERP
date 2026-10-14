@@ -7,10 +7,11 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, CircleAlert } from 'lucide-react';
+import { AlertTriangle, CircleAlert, Trash2 } from 'lucide-react';
 
 import { formatDecimalText, formatMoneyText } from '@/features/contracts/hakedis/hakedisText';
 import { Button } from '@/shared/ui/Button';
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 
 import type { Finding } from './api';
 import { FINDING } from './labels';
@@ -23,6 +24,18 @@ export function useMoney(currency: string) {
     money: (value: string | null | undefined) =>
       value === null || value === undefined ? '' : `${formatMoneyText(value, currency, locale)} ${currency}`.trim(),
     plain: (value: string | null | undefined, minDecimals = 0) => formatDecimalText(value, locale, minDecimals),
+  };
+}
+
+/** A calendar day (YYYY-MM-DD) in the reader's format; empty where there is none. */
+export function useDay() {
+  const { i18n } = useTranslation();
+  const locale = i18n.language || 'en';
+  return (iso: string | null | undefined): string => {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-').map(Number);
+    if (!y || !m || !d) return iso;
+    return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(y, m - 1, d));
   };
 }
 
@@ -61,6 +74,44 @@ export function FindingList({ findings }: { findings: Finding[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** A trash button that asks before it deletes: the row is only removed after the dialog is confirmed. */
+export function ConfirmDelete({
+  label,
+  title,
+  message,
+  onConfirm,
+}: {
+  label: string;
+  title: string;
+  message: string;
+  onConfirm: () => Promise<unknown> | unknown;
+}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const confirm = async () => {
+    setBusy(true);
+    try {
+      await onConfirm();
+    } finally {
+      setBusy(false);
+      setOpen(false);
+    }
+  };
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={label}
+        className="text-content-tertiary hover:text-semantic-error"
+        onClick={() => setOpen(true)}
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+      <ConfirmDialog open={open} title={title} message={message} loading={busy} onConfirm={confirm} onCancel={() => setOpen(false)} />
+    </>
   );
 }
 

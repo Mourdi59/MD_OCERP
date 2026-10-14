@@ -10,6 +10,10 @@ At a gate where the carrier document is required the plan must be PROPOSED (or a
 financing must cover the investment, and no error-level finding may be open. "Met" never needs an approved
 plan: the gate decision is the approval, so requiring it before the gate would deadlock the gate.
 
+Five more items come from the registers (``registers.py``): securities and insurance in place and not
+expired, the tax treatment confirmed, receivables and payables set up, and the administration set up. They
+answer the gate criteria that were manual before; the integrator maps each item to its criterion.
+
 Registered blocking, so it must not fail open. A project that has no plan does not use the module: no
 evidence, nothing blocks. A project that has one but whose governance model names no carrier gets one
 ``unknown`` item on its first area, with the reason, instead of silence.
@@ -20,6 +24,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from app.modules.economics import rules
 from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, register_evidence_provider
 
 PROVIDER_NAME = "economics.plan_ready"
@@ -57,7 +62,9 @@ async def plan_ready(session: Any, project_id: uuid.UUID, attempt: GateAttempt, 
     errors = ready["errors"]
     financing = [e for e in errors if e["code"] in FINANCING_CODES]
     others = [e for e in errors if e["code"] not in FINANCING_CODES]
+    state = rules.register_state(await svc.validation_payload(project_id))
     return [
+        *_register_items(state, link),
         EvidenceItem(
             code="economics_proposed",
             state="met" if ready["proposed"] else "not_met",
@@ -79,6 +86,22 @@ async def plan_ready(session: Any, project_id: uuid.UUID, attempt: GateAttempt, 
             link=link,
             detail=", ".join(sorted({f"{e['code']}:{e['ref']}" for e in others})),
         ),
+    ]
+
+
+_REGISTER_ITEMS = (
+    ("securities", "economics_securities_in_place", "economics.evidence.securities_in_place"),
+    ("insurance", "economics_insurance_in_place", "economics.evidence.insurance_in_place"),
+    ("tax", "economics_tax_clarified", "economics.evidence.tax_clarified"),
+    ("receivables_payables", "economics_receivables_payables_set", "economics.evidence.receivables_payables_set"),
+    ("administration", "economics_administration_set", "economics.evidence.administration_set"),
+)
+
+
+def _register_items(state: dict[str, bool], link: tuple[str, str]) -> list[EvidenceItem]:
+    return [
+        EvidenceItem(code=code, state="met" if state[key] else "not_met", label_key=label, link=link)
+        for key, code, label in _REGISTER_ITEMS
     ]
 
 

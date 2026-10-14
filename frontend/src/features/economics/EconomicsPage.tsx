@@ -12,7 +12,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Banknote, Calculator, Landmark, Scale } from 'lucide-react';
+import { Banknote, Calculator, Landmark, Scale, ShieldCheck } from 'lucide-react';
 
 import { Badge } from '@/shared/ui/Badge';
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
@@ -24,17 +24,18 @@ import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { TabBar } from '@/shared/ui/TabBar';
 import { getErrorMessage } from '@/shared/lib/api';
 
-import { runLifecycle, startPlan, type Lifecycle, type PlanView, type PlanStatus } from './api';
+import { runLifecycle, startPlan, type Approval, type Lifecycle, type PlanView, type PlanStatus } from './api';
 import { ExportButtons } from './ExportButtons';
 import { BusinessCasePanel } from './BusinessCasePanel';
 import { CostFramePanel } from './CostFramePanel';
 import { FindingList, Field, inputClass } from './EconomicsBits';
 import { FinancingPanel } from './FinancingPanel';
-import { useBusinessCase, useCostFrame, useEconomicsAction, useEconomicsPlan, useFinancing } from './hooks';
+import { RegistersPanel } from './RegistersPanel';
+import { useBusinessCase, useCostFrame, useEconomicsAction, useEconomicsPlan, useFinancing, useRegisters } from './hooks';
 import { BLOCK, PLAN_STATUS } from './labels';
 
-type Tab = 'frame' | 'case' | 'financing';
-const TABS: Tab[] = ['frame', 'case', 'financing'];
+type Tab = 'frame' | 'case' | 'financing' | 'records';
+const TABS: Tab[] = ['frame', 'case', 'financing', 'records'];
 
 const STATUS_VARIANT: Record<PlanStatus, 'neutral' | 'blue' | 'success' | 'warning'> = {
   draft: 'neutral',
@@ -80,6 +81,48 @@ function LifecycleBar({ projectId, plan }: { projectId: string; plan: PlanView }
   );
 }
 
+/** Who proposed the plan and who approved it, when, and by which path: the gate decision or a manager by hand. */
+function ApprovalSummary({ approval }: { approval: Approval }) {
+  const { t, i18n } = useTranslation();
+  const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(i18n.language || 'en') : '');
+  const approved = approval.status === 'approved' && !!approval.approved_at;
+  const unknown = t('economics.approval.unknown_person', { defaultValue: 'an unknown person' });
+  return (
+    <div className="space-y-0.5 rounded-lg border border-border p-3 text-sm" data-testid="economics-approval">
+      <div className="font-medium text-content-primary">
+        {t('economics.approval.title', { defaultValue: 'Approval, version {{number}}', number: approval.number })}
+      </div>
+      <div className="text-content-secondary">
+        {t('economics.approval.proposed', {
+          defaultValue: 'Proposed by {{name}} on {{date}}',
+          name: approval.proposed_by_name || unknown,
+          date: day(approval.proposed_at),
+        })}
+      </div>
+      <div className={approved ? 'text-semantic-success' : 'text-content-secondary'}>
+        {approved
+          ? approval.approval_source === 'gate'
+            ? t('economics.approval.approved_gate', {
+                defaultValue: 'Approved by {{name}} on {{date}} through the gate decision',
+                name: approval.approved_by_name || unknown,
+                date: day(approval.approved_at),
+              })
+            : t('economics.approval.approved_hand', {
+                defaultValue: 'Approved by {{name}} on {{date}} by hand',
+                name: approval.approved_by_name || unknown,
+                date: day(approval.approved_at),
+              })
+          : t('economics.approval.pending', { defaultValue: 'Waiting for the decision' })}
+      </div>
+      {approval.rationale && (
+        <div className="text-xs text-content-secondary">
+          {t('economics.approval.rationale', { defaultValue: 'Rationale: {{text}}', text: approval.rationale })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function EconomicsPage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -98,6 +141,7 @@ export function EconomicsPage() {
   const frameQ = useCostFrame(projectId, exists && tab === 'frame');
   const caseQ = useBusinessCase(projectId, exists && tab === 'case');
   const financingQ = useFinancing(projectId, exists && tab === 'financing');
+  const registersQ = useRegisters(projectId, exists && tab === 'records');
   const start = useEconomicsAction(projectId, () => startPlan(projectId));
 
   const header = (
@@ -193,6 +237,10 @@ export function EconomicsPage() {
     body = caseQ.isError ? failed(caseQ.error, () => caseQ.refetch()) : !caseQ.data ? loading : (
       <BusinessCasePanel projectId={projectId} data={caseQ.data} editable={editable} />
     );
+  } else if (tab === 'records') {
+    body = registersQ.isError ? failed(registersQ.error, () => registersQ.refetch()) : !registersQ.data ? loading : (
+      <RegistersPanel projectId={projectId} data={registersQ.data} canEdit={!!plan.can.records} currency={plan.currency ?? ''} />
+    );
   } else if (tab === 'financing') {
     body = financingQ.isError ? failed(financingQ.error, () => financingQ.refetch()) : !financingQ.data ? loading : (
       <FinancingPanel projectId={projectId} data={financingQ.data} editable={editable} />
@@ -212,7 +260,8 @@ export function EconomicsPage() {
           {plan.currency} {plan.classification_standard ? `- ${plan.classification_standard.toUpperCase()}` : ''}
         </span>
       </div>
-      <LifecycleBar projectId={projectId} plan={plan} />
+      {plan.can.manage && <LifecycleBar projectId={projectId} plan={plan} />}
+      {plan.approvals && plan.approvals[0] && <ApprovalSummary approval={plan.approvals[0]} />}
       {readiness && (readiness.errors.length > 0 || readiness.warnings.length > 0) && (
         <FindingList findings={[...readiness.errors, ...readiness.warnings]} />
       )}
@@ -224,11 +273,14 @@ export function EconomicsPage() {
           { id: 'frame', label: t('economics.ui.tab_frame', { defaultValue: 'Cost frame' }), icon: <Scale className="h-4 w-4" /> },
           { id: 'case', label: t('economics.ui.tab_case', { defaultValue: 'Business case' }), icon: <Calculator className="h-4 w-4" /> },
           { id: 'financing', label: t('economics.ui.tab_financing', { defaultValue: 'Financing' }), icon: <Landmark className="h-4 w-4" /> },
+          { id: 'records', label: t('economics.ui.tab_records', { defaultValue: 'Securities and processes' }), icon: <ShieldCheck className="h-4 w-4" /> },
         ]}
       />
-      <div className="flex justify-end">
-        <ExportButtons projectId={projectId} what={tab === 'case' ? 'case' : tab === 'financing' ? 'financing' : 'frame'} />
-      </div>
+      {tab !== 'records' && (
+        <div className="flex justify-end">
+          <ExportButtons projectId={projectId} what={tab === 'case' ? 'case' : tab === 'financing' ? 'financing' : 'frame'} />
+        </div>
+      )}
       {body}
     </div>
   );

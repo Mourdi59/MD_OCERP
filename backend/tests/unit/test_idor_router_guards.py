@@ -246,6 +246,15 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "close_reopening",
         "readiness",
         "validation",
+        "get_registers",
+        "add_security",
+        "patch_security",
+        "delete_security",
+        "add_insurance",
+        "patch_insurance",
+        "delete_insurance",
+        "put_tax",
+        "put_process",
     ],
     # Every project route awaits _delivery_svc, which checks project access before it builds the service.
     "delivery_model": [

@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getErrorMessage } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 
-import { economicsKeys, getBusinessCase, getCostFrame, getFinancing, getPlan } from './api';
+import { economicsKeys, getBusinessCase, getCostFrame, getFinancing, getPlan, getRegisters } from './api';
 
 export function useEconomicsPlan(projectId: string) {
   return useQuery({ queryKey: economicsKeys.plan(projectId), queryFn: () => getPlan(projectId), enabled: !!projectId });
@@ -38,6 +38,14 @@ export function useFinancing(projectId: string, enabled: boolean) {
   return useQuery({
     queryKey: economicsKeys.financing(projectId),
     queryFn: () => getFinancing(projectId),
+    enabled: !!projectId && enabled,
+  });
+}
+
+export function useRegisters(projectId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: economicsKeys.registers(projectId),
+    queryFn: () => getRegisters(projectId),
     enabled: !!projectId && enabled,
   });
 }
