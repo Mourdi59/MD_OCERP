@@ -200,7 +200,7 @@ async def test_a_release_pins_only_the_current_revision(world: DesignWorld) -> N
         with pytest.raises(DesignError) as stale:
             await svc.create_release(world.project_id, {"revision_ids": [str(old)]}, actor_id=world.editor)
         assert (stale.value.code, stale.value.status_code) == ("revision_not_current", 422)
-        assert stale.value.violations == [{"code": "revision_not_current", "revision_id": str(old)}]
+        assert [(v["code"], v["revision_id"]) for v in stale.value.violations] == [("revision_not_current", str(old))]
         rel = await svc.create_release(world.project_id, {"revision_ids": [str(current)]}, actor_id=world.editor)
         assert rel.revision_ids == [str(current)]
 
@@ -281,7 +281,9 @@ async def test_a_recipient_without_a_person_stops_the_issue(world: DesignWorld) 
         with pytest.raises(DesignError) as err:
             await DesignService(s).issue_release(world.project_id, rel_id, actor_id=world.manager)
         assert (err.value.code, err.value.status_code) == ("release_recipient_empty", 422)
-        assert err.value.violations == [{"code": "release_recipient_empty", "recipient": f"list:{empty}"}]
+        assert [(v["code"], v["recipient"]) for v in err.value.violations] == [
+            ("release_recipient_empty", f"list:{empty}")
+        ]
     async with world.factory() as s:
         sent = (await s.execute(select(Transmittal).where(Transmittal.project_id == world.project_id))).scalars().all()
     assert sent == []
