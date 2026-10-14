@@ -9,6 +9,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Compass, Download, Grid3x3, Plus, ShieldAlert, Stamp, Users } from 'lucide-react';
@@ -68,6 +69,7 @@ export function FindingsList({ findings }: { findings: Finding[] }) {
 export function CommitmentReleasePage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const capsQ = useCapabilities(projectId);
   // Still loading reads as "checking"; a failed request reads as no answer, with a retry below.
@@ -104,7 +106,7 @@ export function CommitmentReleasePage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('commitment.page.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName || t('commitment.page.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('commitment.page.title', { defaultValue: 'Commitments and releases' }) },
         ]}
       />

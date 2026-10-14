@@ -11,6 +11,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Banknote, Calculator, Landmark, Scale, ShieldCheck } from 'lucide-react';
 
@@ -126,6 +127,7 @@ function ApprovalSummary({ approval }: { approval: Approval }) {
 export function EconomicsPage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const requested = params.get('tab') as Tab | null;
   const tab: Tab = requested && TABS.includes(requested) ? requested : 'frame';
@@ -149,7 +151,7 @@ export function EconomicsPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('economics.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName || t('economics.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('economics.ui.title', { defaultValue: 'Economics' }) },
         ]}
       />

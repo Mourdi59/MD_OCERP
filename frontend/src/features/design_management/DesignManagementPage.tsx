@@ -11,6 +11,7 @@
 
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Compass } from 'lucide-react';
 
@@ -58,6 +59,7 @@ export function DesignManagementPage() {
   const { t: rawT } = useTranslation();
   const t = rawT as TFn;
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const labels = useLabelContext();
@@ -86,7 +88,7 @@ export function DesignManagementPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: ui(t, 'design.ui.project'), to: `/projects/${projectId}` },
+          { label: projectName || ui(t, 'design.ui.project'), to: `/projects/${projectId}` },
           { label: ui(t, 'design.ui.title') },
         ]}
       />

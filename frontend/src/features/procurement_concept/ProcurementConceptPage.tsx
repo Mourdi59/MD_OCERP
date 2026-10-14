@@ -11,6 +11,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Boxes, Calendar, ClipboardList, Compass, FileText, MessageSquare, Users } from 'lucide-react';
 
@@ -56,6 +57,7 @@ const TABS: Tab[] = ['packages', 'prequalification', 'market', 'schedule', 'fram
 export function ProcurementConceptPage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const labels = useLabelContext();
   const invalidate = useInvalidateProcurement(projectId);
@@ -92,7 +94,7 @@ export function ProcurementConceptPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('procurement_concept.ui.page.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName || t('procurement_concept.ui.page.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('procurement_concept.nav.title', { defaultValue: 'Procurement concept' }) },
         ]}
       />

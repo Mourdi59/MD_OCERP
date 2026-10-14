@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Boxes, Compass, FileSignature, FileText, Handshake, PackageOpen, Scale, ShieldAlert } from 'lucide-react';
 
@@ -55,6 +56,7 @@ const TABS: Tab[] = ['comparison', 'risks', 'packages', 'ofi', 'contracts', 'dec
 export function DeliveryModelPage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const viewer = useViewer();
   const labels = useLabelContext();
@@ -107,7 +109,7 @@ export function DeliveryModelPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('delivery_model.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName || t('delivery_model.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('delivery_model.ui.title', { defaultValue: 'Delivery model' }) },
         ]}
       />
