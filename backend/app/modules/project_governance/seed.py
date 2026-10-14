@@ -673,6 +673,21 @@ async def _localise_walk_texts(session: AsyncSession, project_id: uuid.UUID) -> 
         )
 
 
+async def _phase_at_the_gate(svc: GovernanceService, project: Any) -> None:
+    """A filmed project that waits at the gate out of its phase sits at the end of that phase, not at its start.
+
+    The mirror writes the first spine key of the phase; a project about to pass the gate has done the work of the
+    whole phase, so it shows the last one. A phase no gate leaves (the running site) keeps the first.
+    """
+    model = await svc.repo.get_model(project.id)
+    if model is None:
+        return
+    catalogue = await svc.catalogue_for(model)
+    if not any(g.from_phase == model.current_phase for g in catalogue.gates):
+        return
+    project.phase = catalogue.phase(model.current_phase).spine_keys[-1]
+
+
 async def seed_project_governance_demo(session: AsyncSession, project_ids: list[uuid.UUID]) -> dict[str, Any]:
     """Seed governance on each demo project that has no governance model yet.
 
@@ -743,6 +758,8 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
             reason = reason or failed
         if reached and str(locale).lower().startswith("de"):
             await _localise_walk_texts(session, pid)
+        if reached and planned == seed_story.PACK:
+            await _phase_at_the_gate(svc, project)
         rows.append(seed_story.placement(pid, demo_id, planned, reached, reason or alone))
     result = seed_story.seed_result(rows, pack_file)
     for row in result["fallbacks"]:
