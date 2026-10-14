@@ -67,6 +67,20 @@ def test_bad_values_fall_back_without_a_warning(caplog) -> None:
     assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
 
 
+def test_due_in_days_becomes_a_due_date_and_bad_values_are_dropped() -> None:
+    from datetime import date
+
+    out = seed.resolve_permit_content(
+        {"early_conditions": {"1": {"due_in_days": -30}, "2": {"due_in_days": True, "text": "x"}}}, "en"
+    )
+    assert out["early_conditions"]["1"] == {"due_in_days": -30}
+    assert out["early_conditions"]["2"] == {"text": "x"}
+    base = [{"number": "1", "kind": "obligation", "text": "a"}, {"number": "2", "kind": "obligation", "text": "b"}]
+    merged = seed.apply_condition_overrides(base, out["early_conditions"], date(2026, 10, 14))
+    assert merged[0]["due_date"] == date(2026, 9, 14) and "due_in_days" not in merged[0]
+    assert "due_date" not in merged[1]
+
+
 def test_pick_by_story_falls_back_for_unknown_or_unfit_code() -> None:
     types = _catalogue()
     default = types["baugenehmigung"]

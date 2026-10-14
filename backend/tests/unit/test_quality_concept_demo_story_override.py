@@ -58,6 +58,12 @@ def test_empty_or_malformed_story_keeps_the_default() -> None:
     assert _resolve(bad) == seed.default_plan()
 
 
+def test_stage_names_of_a_story_keep_the_good_ones() -> None:
+    plan = _resolve({"stage_names": {"factory_test": {"en": "Shell acceptance"}, "bad": 5, "other": ""}})
+    assert plan["stage_names"] == {"factory_test": "Shell acceptance"}
+    assert seed.default_plan()["stage_names"] == {}
+
+
 def test_start_days_moves_the_reports_of_the_story_before_construction() -> None:
     plan = _resolve({"start_days": 100})
     assert plan["start"] == 100

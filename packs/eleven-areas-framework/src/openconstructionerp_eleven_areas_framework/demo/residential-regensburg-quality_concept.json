@@ -518,5 +518,35 @@
   "waiver_reason": {
     "en": "Covered by the manufacturer's system warranty; a separate certificate is not issued for this package.",
     "de": "Durch die Systemgarantie des Herstellers abgedeckt; für dieses Paket wird kein gesondertes Zertifikat ausgestellt."
+  },
+  "stage_names": {
+    "delivery_limit": {
+      "en": "Scope boundaries per building",
+      "de": "Leistungsgrenzen je Haus"
+    },
+    "factory_test": {
+      "en": "Shell acceptance (Rohbauabnahme)",
+      "de": "Rohbauabnahme"
+    },
+    "installation_check": {
+      "en": "Installation check of the building services",
+      "de": "Installationsprüfung Haustechnik"
+    },
+    "startup_prefunctional": {
+      "en": "Declarations of the specialist contractors",
+      "de": "Fachunternehmererklärungen"
+    },
+    "functional_test": {
+      "en": "Functional test of the building services",
+      "de": "Funktionsprüfung Haustechnik"
+    },
+    "integrated_systems_test": {
+      "en": "Acceptance per building (Abnahme je Haus)",
+      "de": "Abnahme je Haus"
+    },
+    "performance_proof": {
+      "en": "Final acceptance and handover to the owners",
+      "de": "Schlussabnahme und Übergabe an die Eigentümer"
+    }
   }
 }

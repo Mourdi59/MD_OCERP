@@ -266,6 +266,11 @@ def test_permits() -> None:
     assert set(out["conditions"]) == {"1", "2", "3", "4", "5"}
     assert set(out["early_conditions"]) == {"1", "2"}
     assert out["conditions"]["3"]["topic"] == "ecology" and out["conditions"]["4"]["topic"] == "fire"
+    # The early start conditions carry a named party and a due date, not just the default topic.
+    for number in ("1", "2"):
+        assert out["early_conditions"][number]["responsible_party"]
+        assert isinstance(out["early_conditions"][number]["due_in_days"], int)
+    assert de["early_conditions"]["1"]["responsible_party"] != out["early_conditions"]["1"]["responsible_party"]
     assert de["building_title"] != out["building_title"]
     assert de["conditions"]["1"]["text"] != out["conditions"]["1"]["text"]
 
@@ -363,6 +368,10 @@ def test_quality_concept() -> None:
     assert any(u[2] == "total" for u in plan["units"])
     assert any(u[2] == "handover_to_operation" for u in plan["units"])
     assert plan["expert_reports"][0][0] != de["expert_reports"][0][0]
+    # A residential quarter is handed over building by building, not through an equipment ladder.
+    assert set(plan["stage_names"]) == {s["code"] for s in catalogue["commissioning_stages"]}
+    assert plan["stage_names"]["integrated_systems_test"] == "Acceptance per building (Abnahme je Haus)"
+    assert de["stage_names"]["startup_prefunctional"] == "Fachunternehmererklärungen"
 
 
 def test_design_management() -> None:

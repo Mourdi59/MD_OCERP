@@ -51,13 +51,23 @@
       "text": {
         "en": "If the building permit is refused, the pit is backfilled and the site is restored to its previous condition.",
         "de": "Wird die Baugenehmigung versagt, wird die Baugrube verfüllt und das Grundstück in den früheren Zustand versetzt."
-      }
+      },
+      "responsible_party": {
+        "en": "Developer (Bauherr)",
+        "de": "Bauherr"
+      },
+      "due_in_days": -30
     },
     "2": {
       "text": {
         "en": "Security for the restoration is lodged with the Bauordnungsamt before excavation starts.",
         "de": "Eine Sicherheit für die Wiederherstellung wird vor Beginn der Aushubarbeiten beim Bauordnungsamt hinterlegt."
-      }
+      },
+      "responsible_party": {
+        "en": "Commercial management of the developer",
+        "de": "Kaufmännische Leitung des Bauherrn"
+      },
+      "due_in_days": -125
     }
   },
   "conditions": {

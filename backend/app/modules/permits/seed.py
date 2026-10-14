@@ -32,6 +32,7 @@ import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,7 +66,7 @@ class _Story:
 
 
 # A site that has started: the early start was granted long before the building permit.
-_STARTED = _Story(330, 260, 190, 160, 141, 30, 27, 150, 128, 20, 8, 45, 20, 60, 540, -5, -35)
+_STARTED = _Story(330, 260, 190, 160, 141, 30, 27, 150, 128, 20, 8, 45, 20, 60, 540, -20, -35)
 # Before the gate into construction: the permit is three weeks old and nothing has been built.
 _BEFORE_CONSTRUCTION = _Story(210, 150, 140, 110, 96, 20, 18, 10, None, 14, 6, 190, 175, 175, 600, 21, 21)
 
@@ -129,7 +130,7 @@ async def seed_permits_demo(session: AsyncSession, project_ids: Iterable[uuid.UU
     return totals
 
 
-def _early_start_conditions(owner: uuid.UUID, overrides: dict[str, dict[str, str]] | None = None) -> list[dict]:
+def _early_start_conditions(owner: uuid.UUID, overrides: dict[str, dict[str, Any]] | None = None) -> list[dict]:
     """What every early start carries (rule 10): restore the site if the permit is refused, and give security."""
     conditions = [
         {
@@ -186,23 +187,32 @@ _TEXT_DEFAULTS: dict[str, str] = {
 # Catalogue codes a story may name, with what the permit type has to be for the roadmap to work.
 _CODE_KEYS = ("preliminary", "building", "early_start", "road", "occupancy")
 _CONDITION_FIELDS = ("text", "topic", "evidence_required", "responsible_party")
+# Day offset from the seed day (negative: past) a story may give a condition as its due date.
+_DUE_IN_DAYS = "due_in_days"
 _EARLY_NUMBERS = ("1", "2")
 _CONDITION_NUMBERS = ("1", "2", "3", "4", "5")
 
 
-def _overrides(raw: object, numbers: tuple[str, ...], locale: str) -> dict[str, dict[str, str]]:
+def _overrides(raw: object, numbers: tuple[str, ...], locale: str) -> dict[str, dict[str, Any]]:
     """Per-number field overrides of a condition list that carry usable values; the rest is dropped."""
     from app.modules.permits.conditions import TOPICS
     from app.modules.project_governance.public import story_text
 
-    out: dict[str, dict[str, str]] = {}
+    out: dict[str, dict[str, Any]] = {}
     if not isinstance(raw, dict):
         return out
     for number, fields in raw.items():
         if number not in numbers or not isinstance(fields, dict):
             logger.info("permits demo story: condition %r not usable, keeping the default", number)
             continue
-        kept: dict[str, str] = {}
+        kept: dict[str, Any] = {}
+        days = fields.get(_DUE_IN_DAYS)
+        if isinstance(days, int) and not isinstance(days, bool) and -720 <= days <= 1500:
+            kept[_DUE_IN_DAYS] = days
+        elif _DUE_IN_DAYS in fields:
+            logger.info(
+                "permits demo story: condition %s field %s not usable, keeping the default", number, _DUE_IN_DAYS
+            )
         for key in _CONDITION_FIELDS:
             if key not in fields:
                 continue
@@ -221,7 +231,8 @@ def resolve_permit_content(story: dict | None, locale: str) -> dict:
 
     Text keys are those of ``_TEXT_DEFAULTS``. ``codes`` names catalogue permit types by the keys
     in ``_CODE_KEYS``; ``conditions`` and ``early_conditions`` map a condition number to a subset of
-    ``text``, ``topic``, ``evidence_required`` and ``responsible_party``. Kind, trigger and owner of
+    ``text``, ``topic``, ``evidence_required`` and ``responsible_party``, plus ``due_in_days`` (the due
+    date as a day offset from the seed day). Kind, trigger and owner of
     a condition stay in code. An unusable value keeps the default for that key.
     """
     from app.modules.project_governance.public import story_text
@@ -244,11 +255,16 @@ def resolve_permit_content(story: dict | None, locale: str) -> dict:
     return out
 
 
-def apply_condition_overrides(conditions: list[dict], overrides: dict[str, dict[str, str]]) -> list[dict]:
-    """The conditions with the story's text, topic, evidence and party applied by condition number."""
+def apply_condition_overrides(
+    conditions: list[dict], overrides: dict[str, dict[str, Any]], today: date | None = None
+) -> list[dict]:
+    """The conditions with the story's text, topic, evidence, party and due date applied by condition number."""
     out = []
     for condition in conditions:
         merged = {**condition, **overrides.get(condition["number"], {})}
+        days = merged.pop(_DUE_IN_DAYS, None)
+        if days is not None:
+            merged["due_date"] = (today or datetime.now(UTC).date()) + timedelta(days=days)
         # An information condition has no party to answer to and nothing to prove.
         if merged.get("kind") == "information":
             merged.pop("evidence_required", None)
@@ -290,7 +306,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
         getattr(project, "locale", None) or "en",
     )
     codes = content["codes"]
-    fence_owner = await _second_person(session, pid, owner) if story is _BEFORE_CONSTRUCTION else owner
+    fence_owner = await _second_person(session, pid, owner)
 
     def ago(days: int) -> date:
         return today - timedelta(days=days)
@@ -408,7 +424,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
         # Filed while the main application was pending and granted well before it: the site was
         # cleared and excavated at the owner's risk until the building permit arrived.
         a = await file(r_early, ago(story.early_filed), content["early_reference"])
-        await svc.record_decision(
+        early_decision = await svc.record_decision(
             pid,
             a.id,
             {
@@ -421,6 +437,11 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             actor_id=owner,
             today=today,
         )
+        # The security is lodged and the restoration duty is observed since the pit was opened: both stand
+        # complied with, so a due date in their past does not read as an overdue obligation.
+        for early_condition in await svc.repo.conditions_of_permit(pid, early_decision["permit"].id):
+            if early_condition.confirmed and early_condition.trigger == "ongoing":
+                await svc.ongoing(pid, early_condition.id, "in_compliance", {}, actor_id=owner, can_manage=True)
     conditions = [
         {
             "number": "1",
@@ -467,7 +488,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             "topic": "admin",
         },
     ]
-    conditions = apply_condition_overrides(conditions, content["conditions"])
+    conditions = apply_condition_overrides(conditions, content["conditions"], today)
     granted = await svc.record_decision(
         pid,
         a_bld.id,
@@ -495,6 +516,16 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
         can_manage=fence_is_owners,
     )
     await svc.submit_evidence(pid, by_number["3"].id, actor_id=fence_owner, can_manage=fence_is_owners)
+    if story is _STARTED and not fence_is_owners:
+        # On a running site the fence went up before the pit was opened and the project owner has
+        # verified it, so the before-start condition is closed instead of lingering past its date.
+        await svc.discharge(
+            pid,
+            by_number["3"].id,
+            {"mode": "self_certified", "on_date": ago(1 - story.fence_due_in)},
+            actor_id=owner,
+            today=today,
+        )
     # The structural calculations went to the authority, which discharged the condition itself.
     dis = await svc.create_application(
         pid,
