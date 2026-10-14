@@ -2095,3 +2095,45 @@ jobs:
           name: api-smoke-report
           path: ${{ runner.temp }}/api-smoke/
           if-no-files-found: warn
+
+  elf-qa-api:
+    name: Eleven areas pack API stability
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      OE_TEST_DB: pg
+      OE_API_SMOKE: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Create empty frontend dist (hatchling force-include)
+        run: |
+          mkdir -p ../frontend/dist
+          touch ../frontend/dist/.gitkeep
+      - name: Install dependencies
+        id: install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,server]"
+      - name: Drive the eleven areas pack over HTTP
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          OE_DATA_DIR: ${{ runner.temp }}/oe-data
+          OE_API_SMOKE_REPORT_DIR: ${{ runner.temp }}/api-smoke
+        run: >-
+          pytest tests/pg/test_eleven_areas_api_smoke.py tests/pg/test_eleven_areas_flows_a.py tests/pg/test_eleven_areas_flows_b.py tests/pg/test_eleven_areas_flows_c.py tests/pg/test_eleven_areas_flows_d.py -v -rA
+          -p no:cacheprovider --timeout=2700 --timeout-method=thread
+      - name: Upload the report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: elf-qa-api-report
+          path: ${{ runner.temp }}/api-smoke/
+          if-no-files-found: warn
