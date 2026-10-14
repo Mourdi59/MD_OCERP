@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Boxes, Compass, FileSignature, Handshake, PackageOpen, Scale, ShieldAlert } from 'lucide-react';
+import { Boxes, Compass, FileSignature, FileText, Handshake, PackageOpen, Scale, ShieldAlert } from 'lucide-react';
 
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
 import { Button } from '@/shared/ui/Button';
@@ -35,6 +35,7 @@ import {
   useDeliveryModel,
   useInvalidateDelivery,
   useLabelContext,
+  useContractItems,
   useOfi,
   usePackages,
   usePersonName,
@@ -43,12 +44,13 @@ import {
   useViewer,
 } from './hooks';
 import { MODEL_STATUS, catalogueText, formName, vocab } from './labels';
+import { ContractPanel } from './ContractPanel';
 import { OfiPanel } from './OfiPanel';
 import { PackagePlanPanel } from './PackagePlanPanel';
 import { RiskMatrixPanel } from './RiskMatrixPanel';
 
-type Tab = 'comparison' | 'risks' | 'packages' | 'ofi' | 'decision';
-const TABS: Tab[] = ['comparison', 'risks', 'packages', 'ofi', 'decision'];
+type Tab = 'comparison' | 'risks' | 'packages' | 'ofi' | 'contracts' | 'decision';
+const TABS: Tab[] = ['comparison', 'risks', 'packages', 'ofi', 'contracts', 'decision'];
 
 export function DeliveryModelPage() {
   const { t } = useTranslation();
@@ -77,6 +79,7 @@ export function DeliveryModelPage() {
   const packagesQ = usePackages(projectId, hasModel);
   const consistencyQ = useConsistency(projectId, hasModel && tab === 'packages');
   const ofiQ = useOfi(projectId, hasModel && tab === 'ofi');
+  const contractQ = useContractItems(projectId, hasModel && tab === 'contracts');
   const decisionsQ = useDecisions(projectId, hasModel && tab === 'decision');
   const readinessQ = useReadiness(projectId, hasModel && tab === 'decision');
 
@@ -222,6 +225,22 @@ export function DeliveryModelPage() {
     ) : (
       <OfiPanel projectId={projectId} model={model} items={ofiQ.data} packages={packages} labels={labels} onChanged={invalidate} />
     );
+  } else if (tab === 'contracts') {
+    body = contractQ.isError ? (
+      failed(contractQ.error, () => contractQ.refetch())
+    ) : !contractQ.data ? (
+      loading
+    ) : (
+      <ContractPanel
+        projectId={projectId}
+        model={model}
+        items={contractQ.data}
+        packages={packages}
+        catalogue={catalogue}
+        labels={labels}
+        onChanged={invalidate}
+      />
+    );
   } else if (tab === 'decision') {
     body = decisionsQ.isError ? (
       failed(decisionsQ.error, () => decisionsQ.refetch())
@@ -301,6 +320,7 @@ export function DeliveryModelPage() {
             badge: packages.length > 0 ? packages.length : undefined,
           },
           { id: 'ofi', label: t('delivery_model.ui.tab.ofi', { defaultValue: 'Owner-furnished items' }), icon: <PackageOpen size={14} /> },
+          { id: 'contracts', label: t('delivery_model.ui.tab.contracts', { defaultValue: 'Contract side' }), icon: <FileText size={14} /> },
           { id: 'decision', label: t('delivery_model.ui.tab.decision', { defaultValue: 'Decision record' }), icon: <FileSignature size={14} /> },
         ]}
       />

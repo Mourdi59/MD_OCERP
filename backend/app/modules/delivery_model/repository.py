@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.delivery_model.models import (
+    ContractItem,
     ContractPackage,
     DecisionCriterion,
     DeliveryDecision,
@@ -92,3 +93,9 @@ class DeliveryModelRepository:
 
     async def ofis(self, project_id: uuid.UUID) -> list[OwnerFurnishedItem]:
         return await self._list(OwnerFurnishedItem, project_id, OwnerFurnishedItem.code)
+
+    async def contract_item(self, project_id: uuid.UUID, item_id: uuid.UUID, *, lock: bool = False) -> Any:
+        return await self._child(ContractItem, project_id, item_id, lock=lock)
+
+    async def contract_items(self, project_id: uuid.UUID) -> list[ContractItem]:
+        return await self._list(ContractItem, project_id, ContractItem.group_code, ContractItem.code)

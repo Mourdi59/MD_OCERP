@@ -112,6 +112,7 @@ export interface CatalogueCriterion {
 export interface DeliveryCatalogue {
   id: string;
   version: number;
+  contract_kinds?: ContractKind[];
   name_key?: string | null;
   review_status?: ReviewStatus;
   forms: DeliveryForm[];
@@ -410,6 +411,53 @@ export interface OfiInput {
   plant_item_id?: string | null;
 }
 
+export type ContractGroup = 'contract_form' | 'land_tenure' | 'utility_contract' | 'user_agreement' | 'partner_structure';
+export type ContractItemStatus = 'draft' | 'negotiating' | 'agreed' | 'signed' | 'terminated';
+
+/** A kind of contract-side item the pinned catalogue offers. */
+export interface ContractKind {
+  code: string;
+  group: ContractGroup;
+  name_key?: string | null;
+  labels?: LocaleTexts | null;
+}
+
+/** A contract form, land tenure, utility contract, user agreement or partner of the project. */
+export interface ContractItem {
+  id: string;
+  code: string;
+  group_code: ContractGroup;
+  kind_code: string;
+  title: string;
+  counterparty: string;
+  package_id: string | null;
+  status: ContractItemStatus;
+  reference: string;
+  start_date: string | null;
+  end_date: string | null;
+  price_basis: PriceBasis | null;
+  share_percent: string | null;
+  notes: string;
+  kind_known: boolean;
+  findings: Finding[];
+}
+
+export interface ContractItemInput {
+  code: string;
+  group_code: ContractGroup;
+  kind_code: string;
+  title: string;
+  counterparty: string;
+  package_id: string | null;
+  status: ContractItemStatus;
+  reference: string;
+  start_date: string | null;
+  end_date: string | null;
+  price_basis: PriceBasis | null;
+  share_percent: string | null;
+  notes: string;
+}
+
 export interface Readiness {
   in_use: boolean;
   met: boolean;
@@ -462,6 +510,7 @@ export const deliveryKeys = {
   packages: (projectId: string) => ['delivery-model', projectId, 'packages'] as const,
   consistency: (projectId: string) => ['delivery-model', projectId, 'consistency'] as const,
   ofi: (projectId: string) => ['delivery-model', projectId, 'ofi'] as const,
+  contractItems: (projectId: string) => ['delivery-model', projectId, 'contract-items'] as const,
   readiness: (projectId: string) => ['delivery-model', projectId, 'readiness'] as const,
   linkTargets: (projectId: string, kind: string) => ['delivery-model', projectId, 'link-targets', kind] as const,
   catalogues: ['delivery-model', 'catalogues'] as const,
@@ -674,4 +723,24 @@ export function getReadiness(projectId: string): Promise<Readiness> {
 /** Download the decision record, the risk matrix or the package plan as PDF or XLSX. */
 export function downloadExport(projectId: string, what: ExportWhat, format: ExportFormat): Promise<void> {
   return downloadWithAuth(`${API_BASE}/v1/delivery-model/projects/${projectId}/export?what=${what}&format=${format}`, `delivery_${what}.${format}`);
+}
+
+export function listContractItems(projectId: string): Promise<Page<ContractItem>> {
+  return apiGet<Page<ContractItem>>(`/v1/delivery-model/projects/${projectId}/contract-items`);
+}
+
+export function createContractItem(projectId: string, body: ContractItemInput): Promise<ContractItem> {
+  return apiPost<ContractItem>(`/v1/delivery-model/projects/${projectId}/contract-items`, body);
+}
+
+export function updateContractItem(
+  projectId: string,
+  itemId: string,
+  body: Partial<Omit<ContractItemInput, 'code' | 'group_code'>>,
+): Promise<ContractItem> {
+  return apiPatch<ContractItem>(`/v1/delivery-model/projects/${projectId}/contract-items/${itemId}`, body);
+}
+
+export function deleteContractItem(projectId: string, itemId: string): Promise<void> {
+  return apiDelete(`/v1/delivery-model/projects/${projectId}/contract-items/${itemId}`);
 }

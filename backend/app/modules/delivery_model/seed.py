@@ -75,12 +75,12 @@ DEMO_PLANT_ITEM = "PL-002"
 DEMO_PLANT_ROUTE = "framework"
 
 RATIONALE_CHOSEN = (
-    "Design and build scores highest: the owner has no in-house design team, wants one point of "
-    "responsibility and a fixed price at award, and accepts less control over design detail."
+    "Planen und Bauen erreicht die höchste Punktzahl: Der Bauherr hat kein eigenes Planungsteam, will einen "
+    "einzigen Verantwortlichen und einen Festpreis bei Vergabe und nimmt weniger Einfluss auf Planungsdetails in Kauf."
 )
 RATIONALE_LEADING = (
-    "This form scores highest on the owner's weighted criteria. The comparison, the risk allocation "
-    "and the package plan it leads to are part of this record."
+    "Diese Form erreicht bei den gewichteten Kriterien des Bauherrn die höchste Punktzahl. Der Vergleich, die "
+    "Risikoverteilung und der daraus folgende Paketplan sind Teil dieses Protokolls."
 )
 
 
@@ -124,6 +124,7 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
         "packages": 0,
         "risks": 0,
         "ofis": 0,
+        "contract_items": 0,
         "decisions": 0,
         "no_decision": [],
         "failed": [],
@@ -224,6 +225,105 @@ async def _link_demo_plant_item(session: AsyncSession, project_id: uuid.UUID, ow
     )
 
 
+# The contract side of the demo project: (group, preferred kinds in order, code, title, counterparty, status,
+# days from the seed day to the start, share). The first preferred kind the pinned catalogue has is used;
+# a group the catalogue has no kind for is left out, as everything else here.
+DEMO_CONTRACT_ITEMS: tuple[tuple[str, tuple[str, ...], str, str, str, str, int, str | None], ...] = (
+    (
+        "contract_form",
+        ("design_build_contract", "construction_contract"),
+        "CF-01",
+        "Bauvertrag für die Hauptleistung, Pauschalpreis bei Vergabe",
+        "Generalunternehmer, Vergabe steht aus",
+        "negotiating",
+        AWARD,
+        None,
+    ),
+    (
+        "land_tenure",
+        ("leasehold", "purchase"),
+        "LT-01",
+        "Grundstück im Erbbaurecht der Stadt",
+        "Stadt",
+        "signed",
+        -120,
+        None,
+    ),
+    (
+        "utility_contract",
+        ("power_connection", "water_sewer_connection"),
+        "UC-01",
+        "Mittelspannungsanschluss des Neubaus",
+        "Regionaler Netzbetreiber",
+        "agreed",
+        30,
+        None,
+    ),
+    (
+        "user_agreement",
+        ("lease_to_user", "service_level_agreement"),
+        "UA-01",
+        "Mietvertrag mit dem künftigen Betreiber, Übergabekriterien als Anlage",
+        "Künftiger Betreiber",
+        "draft",
+        START,
+        None,
+    ),
+    (
+        "partner_structure",
+        ("project_company", "joint_venture"),
+        "PS-01",
+        "Gesellschafteranteil des Bauherrn an der Projektgesellschaft",
+        "Bauherr Beteiligungs GmbH",
+        "agreed",
+        -90,
+        "70",
+    ),
+    (
+        "partner_structure",
+        ("co_investment", "consortium"),
+        "PS-02",
+        "Gesellschafteranteil des Mitinvestors an der Projektgesellschaft",
+        "Mitinvestor",
+        "agreed",
+        -90,
+        "30",
+    ),
+)
+
+
+async def _seed_contract_items(
+    svc: Any, project_id: uuid.UUID, catalogue: Any, package: Any, today: date, actor: Any
+) -> int:
+    """The contract-side items of the demo project; the caller's catalogue decides which kinds exist."""
+    form = None
+    model = await svc.require_model(project_id)
+    if model.selected_form_code:
+        form = catalogue.form(model.selected_form_code)
+    made = 0
+    for group, kinds, code, title, counterparty, status, offset, share in DEMO_CONTRACT_ITEMS:
+        kind = next((k for k in kinds if catalogue.contract_kind(group, k) is not None), None)
+        if kind is None:
+            continue
+        data: dict[str, Any] = {
+            "code": code,
+            "group_code": group,
+            "kind_code": kind,
+            "title": title,
+            "counterparty": counterparty,
+            "status": status,
+            "start_date": (today + timedelta(days=offset)).isoformat(),
+        }
+        if group == "contract_form":
+            data["package_id"] = package.id if package else None
+            data["price_basis"] = form.price_basis_at_award if form else "lump_sum"
+        if share is not None:
+            data["share_percent"] = share
+        await svc.create_contract_item(project_id, data, actor)
+        made += 1
+    return made
+
+
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, Any]:
     from app.modules.contracts.models import Contract
     from app.modules.delivery_model import hosting
@@ -247,7 +347,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             "owner_has_design_team": False,
             "owner_has_cm_capacity": False,
             "public_client": False,
-            "funding_source": "equity and bank loan",
+            "funding_source": "Eigenkapital und Bankdarlehen",
         },
     )
     # Before a proposal the matrix and the plan follow the form leading the comparison, whichever it is.
@@ -263,7 +363,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                 "basis": "ground_baseline",
                 "shares": {"owner": "60", "contractor": "40"},
                 "rationale": (
-                    "Shared on a geotechnical baseline report: the owner carries ground worse than the baseline."
+                    "Geteilt auf Grundlage eines Baugrund-Basisgutachtens: Der Bauherr trägt Baugrund, der schlechter ist als die Baseline."
                 ),
             },
             actor,
@@ -289,7 +389,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         project_id,
         {
             "code": "OFI-01",
-            "description": "Main low-voltage switchboard and transformer, owner's framework supplier",
+            "description": "Niederspannungshauptverteilung und Transformator, Lieferant aus dem Rahmenvertrag des Bauherrn",
             "item_kind": "equipment",
             "install_by": "package" if db else "owner",
             "package_id": db.id if db else None,
@@ -305,7 +405,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         project_id,
         {
             "code": "OFI-02",
-            "description": "Reception furniture from the owner's existing stock, installed by the owner",
+            "description": "Empfangsmöbel aus dem vorhandenen Bestand des Bauherrn, vom Bauherrn selbst montiert",
             "item_kind": "material",
             "install_by": "owner",
             "need_by_date": dates["furniture_need"].isoformat(),
@@ -315,6 +415,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     await svc.set_ofi_route(
         project_id, furniture.id, route="existing_stock", link_kind=None, link_id=None, actor_id=actor
     )
+    contract_items = await _seed_contract_items(svc, project_id, catalogue, db, today, actor)
     # Proposed last, so the decision record carries the allocations and the package plan it was made with.
     decisions, reason = 0, ""
     if leading is None or len(options) < 2:
@@ -342,6 +443,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         "packages": len(packages),
         "risks": len([r for r in risks if r.get("risk_id")]),
         "ofis": 2,
+        "contract_items": contract_items,
         "decisions": decisions,
         "no_decision_reason": reason,
     }

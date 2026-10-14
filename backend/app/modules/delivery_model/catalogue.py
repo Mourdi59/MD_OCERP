@@ -68,6 +68,10 @@ OVERRIDABLE = (
     "self_performs",
 )
 
+# The contract side of the project (module 2): what a contract item can be.
+CONTRACT_GROUPS = ("contract_form", "land_tenure", "utility_contract", "user_agreement", "partner_structure")
+CONTRACT_ITEM_STATUS = ("draft", "negotiating", "agreed", "signed", "terminated")
+
 # Read from the owning modules at validation time; repeated here only as the
 # fallback for a unit test environment that cannot import them.
 _RISK_CATEGORY_RE = re.compile(r"^(technical|financial|schedule|regulatory|environmental|safety|procurement)$")
@@ -218,6 +222,17 @@ class Flag(_Labelled):
     review_status: ReviewStatus = ReviewStatus.unconfirmed
 
 
+class ContractKind(_Labelled):
+    """A kind of contract-side item: a standard contract form, a land tenure, a utility, a user agreement, a partner structure."""
+
+    code: str
+    group: Literal["contract_form", "land_tenure", "utility_contract", "user_agreement", "partner_structure"]
+    description_key: str = ""
+    aliases: tuple[Alias, ...] = ()
+    source_url: str = ""
+    review_status: ReviewStatus = ReviewStatus.unconfirmed
+
+
 class DeliveryFormsCatalogue(_Labelled):
     """One catalogue body of kind ``delivery_forms``."""
 
@@ -236,6 +251,10 @@ class DeliveryFormsCatalogue(_Labelled):
     country_rules: tuple[CountryRule, ...] = ()
     package_templates: tuple[PackageTemplate, ...] = ()
     flags: tuple[Flag, ...] = ()
+    contract_kinds: tuple[ContractKind, ...] = ()
+
+    def contract_kind(self, group: str, code: str | None) -> ContractKind | None:
+        return next((k for k in self.contract_kinds if k.group == group and k.code == code), None)
 
     def form(self, code: str | None) -> DeliveryForm | None:
         return next((f for f in self.forms if f.code == code), None)
@@ -427,6 +446,13 @@ def validate_delivery_forms(obj: DeliveryFormsCatalogue, source: str) -> list[st
             if source == "shipped" and not p.title_key.startswith(I18N_PREFIX):
                 errors.append(f"shipped_label_not_i18n_key: template:{t.form}:{p.code}")
 
+    errors += [f"duplicate_contract_kind: {c}" for c in _dupes([f"{k.group}:{k.code}" for k in obj.contract_kinds])]
+    for k in obj.contract_kinds:
+        errors += _label_errors(f"contract_kind:{k.group}:{k.code}", k.name_key, k.labels, source)
+        errors += [f"alias_without_source: contract_kind:{k.code}:{a.term}" for a in k.aliases if not a.source_url]
+        if k.review_status is ReviewStatus.verified and not k.source_url:
+            errors.append(f"verified_without_source: contract_kind:{k.code}")
+
     for fl in obj.flags:
         errors += _label_errors(f"flag:{fl.code}", fl.name_key, fl.labels, source)
         errors += [f"alias_without_source: flag:{fl.code}:{a.term}" for a in fl.aliases if not a.source_url]
@@ -469,6 +495,7 @@ def register_kinds() -> None:
                 "package_templates",
                 "country_rules",
                 "flags",
+                "contract_kinds",
             ),
         )
     )

@@ -325,11 +325,59 @@ def ofi_findings(
     return out
 
 
+# ── contract side (module 2) ───────────────────────────────────────────────
+
+# Groups a project that has released procurement is expected to have settled; a missing one is a warning.
+EXPECTED_CONTRACT_GROUPS = ("land_tenure", "utility_contract", "partner_structure")
+_SIGNED_STATES = frozenset({"agreed", "signed"})
+_LIVE_STATES = frozenset({"draft", "negotiating", "agreed", "signed"})
+
+
+def contract_item_findings(
+    items: Sequence[Mapping[str, Any]],
+    kinds: Sequence[Mapping[str, Any]],
+    form: DeliveryForm | None,
+    *,
+    procurement_released: bool,
+) -> list[Finding]:
+    """Rules of the contract-side items: kind and dates, counterparty once agreed, price basis, partner shares."""
+    out: list[Finding] = []
+    known = {(k["group"], k["code"]) for k in kinds}
+    for i in items:
+        ref = str(i["code"])
+        if kinds and (i["group_code"], i["kind_code"]) not in known:
+            out.append(Finding("contract_item_kind_unknown", ERROR, ref, {"kind": i["kind_code"]}))
+        start, end = _day(i.get("start_date")), _day(i.get("end_date"))
+        if start and end and end < start:
+            out.append(Finding("contract_item_dates_invalid", ERROR, ref, {"start": str(start), "end": str(end)}))
+        if i.get("status") in _SIGNED_STATES and not (i.get("counterparty") or "").strip():
+            out.append(Finding("contract_item_without_counterparty", ERROR, ref, {"status": i["status"]}))
+        basis = i.get("price_basis")
+        if form is not None and i["group_code"] == "contract_form" and basis and basis not in form.price_bases():
+            out.append(Finding("contract_form_price_basis_inconsistent", WARNING, ref, {"basis": basis}))
+    partners = [i for i in items if i["group_code"] == "partner_structure" and i.get("status") in _LIVE_STATES]
+    shares = [i for i in partners if i.get("share_percent")]
+    if shares:
+        total = sum((dec(i["share_percent"]) for i in shares), Decimal("0"))
+        if total != HUNDRED:
+            out.append(Finding("partner_shares_not_100", ERROR, "partner_structure", {"total": str(total)}))
+    if procurement_released:
+        present = {i["group_code"] for i in items if i.get("status") in _LIVE_STATES}
+        out += [
+            Finding("contract_group_missing", WARNING, group, {"group": group})
+            for group in EXPECTED_CONTRACT_GROUPS
+            if group not in present
+        ]
+    return out
+
+
 __all__ = [
+    "EXPECTED_CONTRACT_GROUPS",
     "ERROR",
     "WARNING",
     "Finding",
     "allocation_findings",
+    "contract_item_findings",
     "dec",
     "errors",
     "hard_inconsistency",
