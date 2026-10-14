@@ -21,9 +21,9 @@ export type KeyText = readonly [key: string, english: string];
 
 export const PLAN_STATUS: Record<PlanStatus, KeyText> = {
   draft: ['economics.status.draft', 'Draft'],
-  proposed: ['economics.status.proposed', 'Proposed, waiting for the gate'],
+  proposed: ['economics.status.proposed', 'In review'],
   approved: ['economics.status.approved', 'Approved'],
-  reopened: ['economics.status.reopened', 'Reopened for a change'],
+  reopened: ['economics.status.reopened', 'Reopened'],
 };
 
 export const FLOW_KIND: Record<FlowKind, KeyText> = {
