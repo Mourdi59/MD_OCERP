@@ -844,6 +844,25 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "export",
         "frame_document",
     ],
+    # Project handbook: every route is project-scoped and awaits verify_project_access itself.
+    "project_handbook": [
+        "get_handbook",
+        "create_handbook",
+        "patch_handbook",
+        "sync_chapters",
+        "get_chapter",
+        "patch_chapter",
+        "submit_chapter",
+        "approve_chapter",
+        "return_chapter",
+        "chapter_versions",
+        "handbook_findings",
+        "validation",
+        "export",
+        "get_data_room",
+        "materialise_data_room",
+        "place_document",
+    ],
     # Engineering brief: every route is project-scoped and awaits verify_project_access itself.
     "engineering_brief": [
         "pinned_catalogue",

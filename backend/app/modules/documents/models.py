@@ -7,6 +7,7 @@ Tables:
     oe_documents_photo    - project photo gallery with EXIF/GPS metadata
     oe_documents_sheet    - individual drawing sheets extracted from multi-page PDFs
     oe_documents_bim_link - links between Documents and BIM elements
+    oe_documents_folder   - named folders of a project's document tree (the data room)
 """
 
 from __future__ import annotations
@@ -107,6 +108,10 @@ class Document(Base):
         default=None,
     )  # architectural / structural / mechanical / electrical / plumbing / civil
 
+    # The folder of the project's document tree the document is filed in. A soft reference to
+    # ``oe_documents_folder``: a folder that goes away unfiles its documents, it never deletes them.
+    folder_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, default=None, index=True)
+
     # Relationships
     bim_links: Mapped[list[DocumentBIMLink]] = relationship(
         back_populates="document",
@@ -116,6 +121,39 @@ class Document(Base):
 
     def __repr__(self) -> str:
         return f"<Document {self.name} ({self.category})>"
+
+
+class DocumentFolder(Base):
+    """One folder of a project's document tree.
+
+    Folders are rows, not a path convention: a catalogue (the data room of a governance model)
+    materialises into them, a user may add their own. ``code`` is unique within the project, so
+    materialising the same catalogue twice finds the folders it made before. ``source`` says who made
+    the folder: ``catalogue`` folders are kept in step with their catalogue, ``manual`` ones never are.
+    """
+
+    __tablename__ = "oe_documents_folder"
+    __table_args__ = (UniqueConstraint("project_id", "code", name="uq_oe_documents_folder_code"),)
+
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_projects_project.id", ondelete="CASCADE", name="fk_oe_documents_folder_project"),
+        nullable=False,
+        index=True,
+    )
+    code: Mapped[str] = mapped_column(String(120), nullable=False)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # Display text. A catalogue folder carries an i18n key the client translates; a manual one its own text.
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    name_key: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    area_code: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    phase_code: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    # catalogue | manual
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    def __repr__(self) -> str:
+        return f"<DocumentFolder {self.code}>"
 
 
 class ProjectPhoto(Base):

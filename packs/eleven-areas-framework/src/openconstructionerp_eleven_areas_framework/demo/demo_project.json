@@ -43,6 +43,12 @@
           "source": "pack",
           "id": "eleven_areas_framework_de_by",
           "version": 1
+        },
+        {
+          "kind": "handbook_model",
+          "source": "pack",
+          "id": "eleven_areas_framework",
+          "version": 1
         }
       ],
       "governance": {
@@ -326,6 +332,7 @@
       "module_files": {
         "stakeholders": "demo/residential-regensburg-stakeholders.json",
         "staffing": "demo/residential-regensburg-staffing.json",
+        "engineering_brief": "demo/residential-regensburg-engineering_brief.json",
         "permits": "demo/residential-regensburg-permits.json",
         "plant_register": "demo/residential-regensburg-plant_register.json",
         "procurement_concept": "demo/residential-regensburg-procurement_concept.json",
@@ -335,7 +342,8 @@
         "commitment_release": "demo/residential-regensburg-commitment_release.json",
         "site_logistics": "demo/residential-regensburg-site_logistics.json",
         "transmittals": "demo/residential-regensburg-transmittals.json",
-        "economics": "demo/residential-regensburg-economics.json"
+        "economics": "demo/residential-regensburg-economics.json",
+        "hse_frame": "demo/residential-regensburg-hse_frame.json"
       }
     },
     {
@@ -378,6 +386,12 @@
           "kind": "hse_frame",
           "source": "pack",
           "id": "eleven_areas_framework_de_by",
+          "version": 1
+        },
+        {
+          "kind": "handbook_model",
+          "source": "pack",
+          "id": "eleven_areas_framework",
           "version": 1
         }
       ],
@@ -643,6 +657,7 @@
       "module_files": {
         "stakeholders": "demo/school-ludwigsburg-stakeholders.json",
         "staffing": "demo/school-ludwigsburg-staffing.json",
+        "engineering_brief": "demo/school-ludwigsburg-engineering_brief.json",
         "permits": "demo/school-ludwigsburg-permits.json",
         "plant_register": "demo/school-ludwigsburg-plant_register.json",
         "procurement_concept": "demo/school-ludwigsburg-procurement_concept.json",
@@ -652,7 +667,8 @@
         "commitment_release": "demo/school-ludwigsburg-commitment_release.json",
         "site_logistics": "demo/school-ludwigsburg-site_logistics.json",
         "transmittals": "demo/school-ludwigsburg-transmittals.json",
-        "economics": "demo/school-ludwigsburg-economics.json"
+        "economics": "demo/school-ludwigsburg-economics.json",
+        "hse_frame": "demo/school-ludwigsburg-hse_frame.json"
       }
     }
   ]

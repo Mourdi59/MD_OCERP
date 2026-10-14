@@ -60,6 +60,7 @@ def test_the_pack_declares_catalogues_to_check() -> None:
     ids = sorted((entry["kind"], entry["id"]) for entry in _catalogues())
     assert ids == [
         ("delivery_forms", "eleven_areas_framework"),
+        ("handbook_model", "eleven_areas_framework"),
         ("hse_frame", "eleven_areas_framework_de"),
         ("hse_frame", "eleven_areas_framework_de_bw"),
         ("hse_frame", "eleven_areas_framework_de_by"),
