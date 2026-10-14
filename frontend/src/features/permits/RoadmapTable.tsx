@@ -127,7 +127,7 @@ export function RoadmapTable({ rows, binding, can, gatesInUse, labels, onOpen, o
           })}
         </p>
       )}
-      <div className="overflow-x-auto rounded-lg border border-border-light">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-surface-secondary text-left text-2xs uppercase tracking-wide text-content-tertiary">
             <tr>

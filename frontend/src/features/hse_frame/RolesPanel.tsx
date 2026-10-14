@@ -113,7 +113,7 @@ export function RolesPanel({ projectId, roles, catalogue, duties, write, canEdit
         const word = dutyWord(requiredNow(kind, duties));
         const held = mine.some((r) => r.in_force);
         return (
-          <section key={kind.code} className="rounded-lg border border-border-light p-3" data-testid={`role-${kind.code}`} data-required={word} data-held={held}>
+          <section key={kind.code} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid={`role-${kind.code}`} data-required={word} data-held={held}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-semibold text-content-primary">{labelOf(kind, i18n.language)}</h2>

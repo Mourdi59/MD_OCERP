@@ -69,7 +69,7 @@ export function OrgChartView({ projectId, catalogue, labels, chart }: ViewBase &
           <h2 className="text-base font-semibold text-content-primary">{vocab(t, PHASE, phase.phase)}</h2>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {phase.organisations.map((org) => (
-              <div key={org.organisation} className="rounded-lg border border-border-light p-3" data-testid="org-box">
+              <div key={org.organisation} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="org-box">
                 <h3 className="mb-2 text-sm font-medium text-content-secondary">
                   {catalogueName(labels, catalogue, 'organisation', org.organisation)}
                 </h3>
@@ -154,7 +154,7 @@ export function ComplianceView({
               min: fmtNumber(compliance.summary_min_group, 0),
             })}
           </p>
-          <div className="overflow-x-auto rounded-lg border border-border-light">
+          <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-border-light text-left text-xs text-content-tertiary">
@@ -197,7 +197,7 @@ export function ComplianceView({
           </div>
         </section>
       )}
-      <div className="overflow-x-auto rounded-lg border border-border-light">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border-light text-left text-xs text-content-tertiary">
@@ -268,7 +268,7 @@ export function ComplianceView({
 
 function UpcomingBlock({ title, empty, children, count, testId }: { title: string; empty: string; children: ReactNode; count: number; testId: string }) {
   return (
-    <section className="rounded-lg border border-border-light p-3" data-testid={testId}>
+    <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid={testId}>
       <h2 className="mb-2 text-sm font-semibold text-content-primary">{title}</h2>
       {count === 0 ? <p className="text-sm text-content-tertiary">{empty}</p> : <ul className="space-y-1.5">{children}</ul>}
     </section>
@@ -398,7 +398,7 @@ export function PlannedVsActualView({
           hours: plainNumber(rows[0]?.hours_per_day ?? ''),
         })}
       </p>
-      <div className="overflow-x-auto rounded-lg border border-border-light">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-border-light text-left text-xs text-content-tertiary">

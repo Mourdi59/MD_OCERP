@@ -83,7 +83,7 @@ export function NumberingTools({ ctx }: { ctx: DesignContext }) {
   const usable = (proposal ?? []).filter((r) => r.missing.length === 0);
 
   return (
-    <section className="space-y-3 rounded-lg border border-border-light p-4" data-testid="numbering-tools">
+    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="numbering-tools">
       <PanelHeader
         title={ui(t, 'design.ui.numbering.title')}
         hint={ui(t, 'design.ui.numbering.hint')}

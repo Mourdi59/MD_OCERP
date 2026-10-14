@@ -307,7 +307,7 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-border-light bg-surface-primary p-4" data-testid={testId}>
+    <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid={testId}>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-content-primary">{title}</h3>

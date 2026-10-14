@@ -283,7 +283,7 @@ export function DeliveryModelPage() {
   return (
     <div className="space-y-5 animate-fade-in" data-testid="delivery-model-page">
       {header}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border-light px-4 py-3" data-testid="model-strip">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border bg-surface-elevated shadow-xs px-4 py-3" data-testid="model-strip">
         <ToneBadge tone={MODEL_TONE[model.status]} testId="model-status">
           {vocab(labels.t, MODEL_STATUS, model.status)}
         </ToneBadge>

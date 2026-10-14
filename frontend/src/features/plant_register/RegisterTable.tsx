@@ -78,7 +78,7 @@ export function RegisterTable({ items, total, catalogue, labels, onOpen }: Regis
           {t('plant.register.none_in_filter', { defaultValue: 'No item matches this filter.' })}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border-light">
+        <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
           <table className="w-full min-w-[56rem] text-left text-sm">
             <thead className="bg-surface-secondary text-xs text-content-secondary">
               <tr>

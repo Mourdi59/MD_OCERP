@@ -146,7 +146,7 @@ export function ContractPanel({ projectId, model, items, packages, catalogue, la
                 .reduce((sum, r) => sum + Number(r.share_percent), 0)
             : null;
         return (
-          <section key={group} className="rounded-lg border border-border-light p-4" data-testid="contract-group" data-group={group}>
+          <section key={group} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="contract-group" data-group={group}>
             <div className="mb-2 flex flex-wrap items-center gap-3">
               <h3 className="text-sm font-semibold text-content-primary">{vocab(labels.t, CONTRACT_GROUP, group)}</h3>
               {total !== null && rows.length > 0 && (

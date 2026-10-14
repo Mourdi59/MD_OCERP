@@ -95,7 +95,7 @@ function ItemRow({ projectId, item, catalogue, write, canEdit, canManage }: Prop
   const [day, setDay] = useState(localToday());
   const open = isOpen(item.status);
   return (
-    <li className="rounded-lg border border-border-light p-3" data-testid={`item-${item.id}`} data-status={item.status}>
+    <li className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid={`item-${item.id}`} data-status={item.status}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-medium text-content-primary">{itemTitle(item, catalogue, i18n.language)}</p>

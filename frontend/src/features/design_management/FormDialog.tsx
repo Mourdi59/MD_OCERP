@@ -158,7 +158,7 @@ export function FormDialog({
       case 'multi': {
         const chosen = list(values, f.name);
         return (
-          <div {...common} role="group" aria-label={f.label} className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-border-light p-2">
+          <div {...common} role="group" aria-label={f.label} className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-border-light bg-surface-elevated p-2">
             {(f.options ?? []).length === 0 && <p className="text-xs text-content-tertiary">{ui(t, 'design.ui.form.no_choices')}</p>}
             {(f.options ?? []).map((o) => (
               <label key={o.value} className="flex items-center gap-2 text-sm text-content-primary">

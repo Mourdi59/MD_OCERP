@@ -64,7 +64,7 @@ export function GateConditionForm({
   };
 
   return (
-    <div className="space-y-2 rounded-lg border border-border-light p-3" data-testid="gate-condition-form">
+    <div className="space-y-2 rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="gate-condition-form">
       <p className="text-xs text-content-secondary">
         {t('governance.project.gate.add_condition_hint', {
           defaultValue:

@@ -180,7 +180,7 @@ export function PlanPanel({ screen, items, due, events, stakeholders, focusItemI
             {t('stakeholders.ui.plan.due_empty', { defaultValue: 'Nothing is due in the coming weeks.' })}
           </p>
         ) : (
-          <ul className="divide-y divide-border-light rounded-lg border border-border-light" data-testid="due-list">
+          <ul className="divide-y divide-border-light rounded-lg border border-border bg-surface-elevated shadow-xs" data-testid="due-list">
             {open.map((d) => {
               const item = itemOf(d.plan_item_id);
               return (
@@ -237,7 +237,7 @@ export function PlanPanel({ screen, items, due, events, stakeholders, focusItemI
               <li
                 key={item.id}
                 ref={item.id === focusItemId ? focusRef : undefined}
-                className={clsx('rounded-lg border border-border-light p-3', item.id === focusItemId && FOCUS_CLASS)}
+                className={clsx('rounded-lg border border-border-light bg-surface-elevated shadow-xs p-3', item.id === focusItemId && FOCUS_CLASS)}
                 data-testid="plan-entry"
                 data-focused={item.id === focusItemId || undefined}
               >
@@ -324,7 +324,7 @@ export function PlanPanel({ screen, items, due, events, stakeholders, focusItemI
         ) : (
           <ul className="space-y-2" data-testid="event-list">
             {events.map((e) => (
-              <li key={e.id} className="rounded-lg border border-border-light p-3" data-testid="event-entry">
+              <li key={e.id} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="event-entry">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-content-primary">{e.title}</span>
                   <ToneBadge tone={EVENT_TONE[e.status]}>{vocab(t, EVENT_STATUS, e.status)}</ToneBadge>

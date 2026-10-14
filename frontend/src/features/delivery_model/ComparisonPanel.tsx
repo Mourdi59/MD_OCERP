@@ -191,7 +191,7 @@ export function ComparisonPanel({ projectId, model, comparison, catalogue, packa
 
       {!readOnly && <ProblemList problems={ready} testId="comparison-open-points" />}
 
-      <div className="overflow-x-auto rounded-xl border border-border-light">
+      <div className="overflow-x-auto rounded-xl border border-border bg-surface-elevated shadow-xs">
         <table className="w-full min-w-[640px] text-sm" data-testid="comparison-table">
           <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
             <tr>
@@ -339,7 +339,7 @@ export function ComparisonPanel({ projectId, model, comparison, catalogue, packa
         </h2>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {comparison.options.map((o) => (
-            <article key={o.id} className="space-y-1.5 rounded-lg border border-border-light p-3" data-testid="form-card">
+            <article key={o.id} className="space-y-1.5 rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="form-card">
               <h3 className="flex flex-wrap items-center gap-2 text-sm font-medium text-content-primary">
                 {formName(labels, o.form, o.form_code)}
                 <ReviewMark status={o.form?.review_status} sourceUrl={o.form?.source_url} />

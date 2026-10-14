@@ -110,7 +110,7 @@ function SecuritiesSection({ projectId, data, canEdit, currency }: { projectId: 
 
   return (
     <Section title={t('economics.registers.securities_title', { defaultValue: 'Securities' })} testId="economics-securities">
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
         <table className="w-full text-sm">
           <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
             <tr>
@@ -230,7 +230,7 @@ function InsuranceSection({ projectId, data, canEdit, currency }: { projectId: s
 
   return (
     <Section title={t('economics.registers.insurance_title', { defaultValue: 'Insurance' })} testId="economics-insurance">
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
         <table className="w-full text-sm">
           <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
             <tr>

@@ -345,7 +345,7 @@ export function ItemDialog({
           ))}
 
         {matrix.novelty_flags.length > 0 && (
-          <fieldset className="rounded-lg border border-border-light p-3">
+          <fieldset className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3">
             <legend className="px-1 text-xs font-semibold text-content-secondary">
               {t('commitment.item_form.flags', { defaultValue: 'Raises the approval tier' })}
             </legend>
@@ -368,7 +368,7 @@ export function ItemDialog({
           </fieldset>
         )}
 
-        <fieldset className="rounded-lg border border-border-light p-3" data-testid="item-gate-fields">
+        <fieldset className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="item-gate-fields">
           <legend className="px-1 text-xs font-semibold text-content-secondary">
             {t('commitment.item_form.gate_title', { defaultValue: 'Readiness gate' })}
           </legend>

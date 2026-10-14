@@ -166,7 +166,7 @@ export function PlanImageBar({
         </p>
       )}
       {scaling && image && (
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-light p-3" data-testid="siteplan-scale-form">
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="siteplan-scale-form">
           <p className="basis-full text-sm text-content-secondary">{tx(t, 'siteplan.scale_hint')}</p>
           <label className="text-xs font-medium text-content-secondary">
             {tx(t, 'siteplan.scale_distance')}

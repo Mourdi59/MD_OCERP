@@ -203,7 +203,7 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
     <div className="space-y-5" data-testid="personnel-file">
       {back}
 
-      <section className="rounded-lg border border-border-light p-4" data-testid="file-header">
+      <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="file-header">
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
@@ -303,7 +303,7 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
                 })}
               </Quiet>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border-light">
+              <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
                 <table className="w-full min-w-[640px] text-sm">
                   <thead>
                     <tr className="border-b border-border-light text-left text-xs text-content-tertiary">
@@ -425,7 +425,7 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
             ) : (
               <ul className="space-y-2">
                 {file.travel.map((tr) => (
-                  <li key={tr.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border-light p-3 text-sm" data-testid="travel-row">
+                  <li key={tr.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-elevated shadow-xs p-3 text-sm" data-testid="travel-row">
                     <span className="font-medium text-content-primary">{vocab(t, TRAVEL_KIND, tr.kind)}</span>
                     <ToneBadge tone={TRAVEL_TONE[tr.status]}>{vocab(t, TRAVEL_STATUS, tr.status)}</ToneBadge>
                     <span className="text-content-secondary">
@@ -489,7 +489,7 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
             ) : (
               <ul className="space-y-2">
                 {file.leave.map((lv) => (
-                  <li key={lv.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border-light p-3 text-sm" data-testid="leave-row">
+                  <li key={lv.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-elevated shadow-xs p-3 text-sm" data-testid="leave-row">
                     <span className="font-medium text-content-primary">{catalogueName(labels, catalogue, 'leave_type', lv.leave_type)}</span>
                     <ToneBadge tone={LEAVE_TONE[lv.status]}>{vocab(t, LEAVE_STATUS, lv.status)}</ToneBadge>
                     <span className="text-content-secondary">
@@ -550,7 +550,7 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
             ) : (
               <ul className="space-y-2">
                 {file.accommodation.map((b, i) => (
-                  <li key={b.id ?? i} className="flex flex-wrap items-center gap-2 rounded-lg border border-border-light p-3 text-sm" data-testid="booking-row">
+                  <li key={b.id ?? i} className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-elevated shadow-xs p-3 text-sm" data-testid="booking-row">
                     <span className="font-medium text-content-primary">
                       {fmtList([b.accommodation ?? '', b.room ?? ''])}
                     </span>
@@ -571,7 +571,7 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
       )}
 
       <Section title={t('staffing.file.data_heading', { defaultValue: 'Personal data' })} testId="file-data">
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border-light p-3">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-elevated shadow-xs p-3">
           <p className="mr-auto max-w-xl text-sm text-content-secondary">
             {t('staffing.file.data_body', {
               defaultValue: 'The person concerned can download their own file. An administrator can erase the personal data on request, unless a legal retention duty or a hold still applies.',
@@ -610,7 +610,7 @@ export function PersonnelFilePanel({ projectId, fileId, catalogue, labels, perso
           ) : logQ.isError ? (
             <ErrorState compact title={refusalText(labels.t, logQ.error)} onRetry={() => logQ.refetch()} />
           ) : (
-            <ul className="divide-y divide-border-light rounded-lg border border-border-light text-sm" data-testid="access-log">
+            <ul className="divide-y divide-border-light rounded-lg border border-border bg-surface-elevated shadow-xs text-sm" data-testid="access-log">
               {(logQ.data ?? []).map((entry, i) => (
                 <li key={`${entry.at}:${i}`} className="flex flex-wrap gap-x-4 px-3 py-1.5">
                   <span className="w-40 text-content-tertiary">{entry.at ? formatDateValue(entry.at, { dateStyle: 'medium', timeStyle: 'short' }) : ''}</span>

@@ -64,7 +64,7 @@ export function OverviewPanel({ ctx, onOpenGovernance }: { ctx: DesignContext; o
       {hasRows(readiness) && (
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="readiness-list">
           {(readiness.data ?? []).map((phase) => (
-            <li key={phase.code ?? 'project'} className="rounded-lg border border-border-light p-3" data-testid="readiness-card" data-met={phase.met}>
+            <li key={phase.code ?? 'project'} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="readiness-card" data-met={phase.met}>
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-medium text-content-primary">{phase.code ? labelOf(ctx.labels, phase.name, phase.code) : ui(t, 'design.ui.overview.whole_project')}</h3>
                 <ToneBadge tone={phase.met ? 'success' : 'warning'}>
@@ -125,7 +125,7 @@ export function OverviewPanel({ ctx, onOpenGovernance }: { ctx: DesignContext; o
 
       <section className="space-y-2" data-testid="design-registers">
         <PanelHeader title={ui(t, 'design.ui.overview.registers_title')} hint={ui(t, 'design.ui.overview.registers_hint')} />
-        <ul className="divide-y divide-border-light rounded-lg border border-border-light">
+        <ul className="divide-y divide-border-light rounded-lg border border-border bg-surface-elevated shadow-xs">
           {REGISTERS.map(({ register, title }) => (
             <li key={register} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
               <span className="text-content-primary">{ui(t, title)}</span>
