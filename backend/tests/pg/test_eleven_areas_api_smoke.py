@@ -270,6 +270,15 @@ async def test_every_export_returns_a_real_file(world: World) -> None:
                         # The package board nests the package under ``contract_package``.
                         first = rows[0]
                         query[id_param] = str(first.get("id") or first["contract_package"]["id"])
+                    if id_param == "item_id" and "paper" in chosen.values():
+                        # Only the item the story flags carries a decision paper; print that one.
+                        for row in rows:
+                            papers = await world.client.get(
+                                f"{listing}/{row['id']}/decision-paper", params={"limit": 1}, headers=world.admin
+                            )
+                            if papers.status_code == 200 and _items(papers.json()):
+                                query[id_param] = str(row["id"])
+                                break
                 fmt = next((v for k, v in query.items() if k in ("format", "fmt", "export_format")), None)
                 if fmt is None:
                     fmt = next((v for k, v in chosen.items() if v in ("pdf", "xlsx")), None)
