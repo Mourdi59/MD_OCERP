@@ -135,6 +135,29 @@ interface PositionSummary {
 }
 
 /**
+ * The floor area a project description states, in m2.
+ *
+ * A description written in German spells 16.000 m2 with a point as the
+ * thousands separator; reading it as a decimal gave 16 and a cost per m2
+ * a thousand times too high. A group of exactly three digits after a
+ * separator is a thousands group, anything else is a decimal fraction.
+ * The gross floor area (BGF, GFA, GIFA, Bruttogrundfläche) wins over the
+ * first area mentioned, which is often the plot.
+ */
+export function areaFromDescription(description: string | null | undefined): number | null {
+  if (!description) return null;
+  const parse = (raw: string): number | null => {
+    const grouped = /^\d{1,3}([.,\u00a0\u202f ]\d{3})+$/.test(raw);
+    const n = grouped ? Number(raw.replace(/[.,\u00a0\u202f ]/g, '')) : Number(raw.replace(',', '.'));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const gross = /(?:BGF|GFA|GIFA|Bruttogrundfl.che|gross floor area)\D{0,24}(\d[\d.,]*)\s*m[\u00b22]/i;
+  const any = /(\d[\d.,]*)\s*m[\u00b22]/i;
+  const hit = description.match(gross) ?? description.match(any);
+  return hit ? parse(hit[1] ?? '') : null;
+}
+
+/**
  * Sum the grand totals of several estimates.
  *
  * `grand_total` arrives as a decimal string, so `total += detail.grand_total`
@@ -2341,8 +2364,7 @@ export function ProjectDetailPage() {
       /* ── Summary Cards ───────────────────────────────────────────────── */
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {(() => {
-          const areaMatch = project.description?.match(/(\d[\d.,]*)\s*m[²2]/i);
-          const area = areaMatch ? parseFloat((areaMatch[1] ?? '0').replace(',', '')) : null;
+          const area = areaFromDescription(project.description);
           const costPerM2 = area && stats.totalBudget > 0 ? stats.totalBudget / area : null;
           const costPerM2Str = costPerM2
             ? `${formatCurrency(costPerM2, currency)}/m\u00b2`

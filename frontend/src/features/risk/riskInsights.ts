@@ -129,7 +129,7 @@ export function buildRiskInsights(
       { key: 'status', label: t('risk.insights.f_status', { defaultValue: 'Status' }), kind: 'dimension' },
       { key: 'owner', label: t('risk.insights.f_owner', { defaultValue: 'Owner' }), kind: 'dimension' },
       { key: 'month', label: t('risk.insights.f_month', { defaultValue: 'Month logged' }), kind: 'dimension' },
-      { key: 'exposure', label: t('risk.insights.f_exposure', { defaultValue: 'Cost exposure' }), kind: 'measure', format: 'currency' },
+      { key: 'exposure', label: t('risk.insights.f_exposure', { defaultValue: 'Cost impact (unweighted)' }), kind: 'measure', format: 'currency' },
       { key: 'score', label: t('risk.insights.f_score', { defaultValue: 'Risk score' }), kind: 'measure', format: 'number' },
       { key: 'schedule', label: t('risk.insights.f_schedule', { defaultValue: 'Schedule impact (days)' }), kind: 'measure', format: 'number' },
       { key: 'high', label: t('risk.insights.f_high', { defaultValue: 'High / Critical' }), kind: 'measure', format: 'number' },
@@ -141,10 +141,10 @@ export function buildRiskInsights(
   const base = { datasetId: 'risks', builtin: true } as const;
   const builtins: InsightDef[] = [
     { ...base, id: 'kpi-risks', title: t('risk.insights.k_risks', { defaultValue: 'Risks' }), chart: 'kpi', agg: 'count', color: 0 },
-    { ...base, id: 'kpi-exposure', title: t('risk.insights.k_exposure', { defaultValue: 'Total exposure' }), chart: 'kpi', measure: 'exposure', agg: 'sum', color: 1 },
+    { ...base, id: 'kpi-exposure', title: t('risk.insights.k_exposure', { defaultValue: 'Total impact (unweighted)' }), chart: 'kpi', measure: 'exposure', agg: 'sum', color: 1 },
     { ...base, id: 'kpi-avg-score', title: t('risk.insights.k_avgscore', { defaultValue: 'Avg risk score' }), chart: 'kpi', measure: 'score', agg: 'avg', color: 4 },
     { ...base, id: 'kpi-high', title: t('risk.insights.k_high', { defaultValue: 'High / Critical' }), chart: 'kpi', measure: 'high', agg: 'sum', color: 1 },
-    { ...base, id: 'bar-exposure-by-cat', title: t('risk.insights.c_exposure_by_cat', { defaultValue: 'Exposure by category' }), chart: 'bar', dimension: 'category', measure: 'exposure', agg: 'sum', color: 1 },
+    { ...base, id: 'bar-exposure-by-cat', title: t('risk.insights.c_exposure_by_cat', { defaultValue: 'Impact by category' }), chart: 'bar', dimension: 'category', measure: 'exposure', agg: 'sum', color: 1 },
     { ...base, id: 'donut-by-severity', title: t('risk.insights.c_by_severity', { defaultValue: 'Risks by severity' }), chart: 'donut', dimension: 'severity', agg: 'count', color: 4 },
     { ...base, id: 'bar-by-status', title: t('risk.insights.c_by_status', { defaultValue: 'Risks by status' }), chart: 'bar', dimension: 'status', agg: 'count', color: 0 },
     { ...base, id: 'area-over-time', title: t('risk.insights.c_over_time', { defaultValue: 'Risks logged over time' }), chart: 'area', dimension: 'month', agg: 'count', color: 5 },

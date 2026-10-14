@@ -302,6 +302,8 @@ TEMPLATE = DemoTemplate(
         ("Gewinn (G)", 4.0, "profit", "direct_cost"),
         ("Mehrwertsteuer (MwSt.)", 19.0, "tax", "cumulative"),
     ],
+    # One bill, one total: the control budget would repeat the same scope.
+    with_budget_boq=False,
     total_months=34,
     tender_name="Rohbau",
     tender_companies=[

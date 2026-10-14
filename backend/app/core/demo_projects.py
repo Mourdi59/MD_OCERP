@@ -501,6 +501,9 @@ class DemoTemplate:
     # packs; an Italian quadro economico states its safety costs on a line of
     # their own, and a budget without one fails the rule that asks for it.
     budget_markups: list[tuple[str, float, str, str]] = field(default_factory=list)
+    # False seeds the project with its one bill only. The control budget is the same scope at
+    # section level, so a project that wants a single total (and a single budget) leaves it out.
+    with_budget_boq: bool = True
 
 
 # ---------------------------------------------------------------------------
@@ -12434,94 +12437,97 @@ async def install_demo_project(
     grand_total = _sum_positions(positions)
 
     # ── 4b. Second BOQ - Budget Estimate (section-level lump sums) ───
-    # The suffix has to keep the two BOQs distinguishable in a dropdown, and
-    # in the template's own language: a German cost plan gets "(Budgetstand)"
-    # rather than an English tail one dash away from its sibling's name.
-    budget_boq_id = _id()
-    budget_suffix = "(Budgetstand)" if (template.locale or "").lower().startswith("de") else "- Budget"
-    budget_boq_name = template.budget_boq_name or f"{template.boq_name} {budget_suffix}"
-    budget_boq = BOQ(
-        id=budget_boq_id,
-        project_id=project.id,
-        name=budget_boq_name,
-        description=f"Budget-level estimate for {template.project_name}",
-        # "final", not "approved". The seeder writes this column directly and
-        # so is the one writer that never meets ``BOQUpdate``'s pattern, which
-        # permits draft / final / archived. "approved" was a fourth spelling
-        # reachable from nowhere in the API: the only act that approves a bill
-        # is ``POST /boqs/{id}/lock``, and it records the approver in
-        # ``approved_by`` / ``approved_at`` while setting the status to
-        # "final". Seeding a status no transition produces put demo data in a
-        # state the product could neither reach nor leave.
-        status="final",
-        # Says what the bill is, so the pickers that list a project's bills
-        # (the schedule's among them) can label it a budget.
-        estimate_type="budget",
-        metadata_={"estimate_class": 2, "accuracy": "±15–20%"},
-    )
-    session.add(budget_boq)
-    await session.flush()
-
-    budget_sort = 0
-    for sec in sections_list:
-        budget_sort += 1
-        # Section header
-        b_sec = _make_section(
-            boq_id=budget_boq_id,
-            ordinal=sec.ordinal,
-            description=sec.description,
-            sort_order=budget_sort,
-            classification=sec.classification or {},
+    # A template can opt out (``with_budget_boq=False``): the budget is the same
+    # scope as the bill, so a project summing its bills would count it twice.
+    if template.with_budget_boq:
+        # The suffix has to keep the two BOQs distinguishable in a dropdown, and
+        # in the template's own language: a German cost plan gets "(Budgetstand)"
+        # rather than an English tail one dash away from its sibling's name.
+        budget_boq_id = _id()
+        budget_suffix = "(Budgetstand)" if (template.locale or "").lower().startswith("de") else "- Budget"
+        budget_boq_name = template.budget_boq_name or f"{template.boq_name} {budget_suffix}"
+        budget_boq = BOQ(
+            id=budget_boq_id,
+            project_id=project.id,
+            name=budget_boq_name,
+            description=f"Budget-level estimate for {template.project_name}",
+            # "final", not "approved". The seeder writes this column directly and
+            # so is the one writer that never meets ``BOQUpdate``'s pattern, which
+            # permits draft / final / archived. "approved" was a fourth spelling
+            # reachable from nowhere in the API: the only act that approves a bill
+            # is ``POST /boqs/{id}/lock``, and it records the approver in
+            # ``approved_by`` / ``approved_at`` while setting the status to
+            # "final". Seeding a status no transition produces put demo data in a
+            # state the product could neither reach nor leave.
+            status="final",
+            # Says what the bill is, so the pickers that list a project's bills
+            # (the schedule's among them) can label it a budget.
+            estimate_type="budget",
+            metadata_={"estimate_class": 2, "accuracy": "±15–20%"},
         )
-        session.add(b_sec)
-        # Single lump-sum position per section
-        sec_items = [p for p in items_list if str(p.parent_id) == str(sec.id)]
-        sec_total = sum(float(p.total or 0) for p in sec_items)
-        if sec_total > 0:
+        session.add(budget_boq)
+        await session.flush()
+
+        budget_sort = 0
+        for sec in sections_list:
             budget_sort += 1
-            b_rate = round(sec_total, 2)
-            # Every priced position carries a resource buildup. The lump-sum
-            # section row gets a deterministic trade split (by section title)
-            # that sums exactly to its rate, plus the M/L/E rollup badge.
-            b_resources = _resources_for_position(
-                description=sec.description,
-                unit="LS",
-                quantity=1.0,
-                unit_rate=b_rate,
-                classification=sec.classification or {},
-                locale=template.locale,
-            )
-            b_meta: dict = copy.deepcopy(template.position_metadata)
-            if b_resources:
-                b_meta["resources"] = b_resources
-                breakdown = _resource_breakdown_rollup(b_resources)
-                if breakdown:
-                    b_meta["resource_breakdown"] = breakdown
-            b_pos = _make_position(
+            # Section header
+            b_sec = _make_section(
                 boq_id=budget_boq_id,
-                parent_id=b_sec.id,
-                ordinal=f"{sec.ordinal}.01",
-                description=f"{sec.description} - Lump Sum",
-                unit="LS",
-                quantity=1.0,
-                unit_rate=b_rate,
+                ordinal=sec.ordinal,
+                description=sec.description,
                 sort_order=budget_sort,
                 classification=sec.classification or {},
-                metadata=b_meta,
             )
-            session.add(b_pos)
+            session.add(b_sec)
+            # Single lump-sum position per section
+            sec_items = [p for p in items_list if str(p.parent_id) == str(sec.id)]
+            sec_total = sum(float(p.total or 0) for p in sec_items)
+            if sec_total > 0:
+                budget_sort += 1
+                b_rate = round(sec_total, 2)
+                # Every priced position carries a resource buildup. The lump-sum
+                # section row gets a deterministic trade split (by section title)
+                # that sums exactly to its rate, plus the M/L/E rollup badge.
+                b_resources = _resources_for_position(
+                    description=sec.description,
+                    unit="LS",
+                    quantity=1.0,
+                    unit_rate=b_rate,
+                    classification=sec.classification or {},
+                    locale=template.locale,
+                )
+                b_meta: dict = copy.deepcopy(template.position_metadata)
+                if b_resources:
+                    b_meta["resources"] = b_resources
+                    breakdown = _resource_breakdown_rollup(b_resources)
+                    if breakdown:
+                        b_meta["resource_breakdown"] = breakdown
+                b_pos = _make_position(
+                    boq_id=budget_boq_id,
+                    parent_id=b_sec.id,
+                    ordinal=f"{sec.ordinal}.01",
+                    description=f"{sec.description} - Lump Sum",
+                    unit="LS",
+                    quantity=1.0,
+                    unit_rate=b_rate,
+                    sort_order=budget_sort,
+                    classification=sec.classification or {},
+                    metadata=b_meta,
+                )
+                session.add(b_pos)
 
-    for idx, (m_name, m_pct, m_cat, m_apply) in enumerate(template.budget_markups):
-        session.add(
-            _make_markup(
-                boq_id=budget_boq_id,
-                name=m_name,
-                percentage=m_pct,
-                category=m_cat,
-                sort_order=idx + 1,
-                apply_to=m_apply,
+        for idx, (m_name, m_pct, m_cat, m_apply) in enumerate(template.budget_markups):
+            session.add(
+                _make_markup(
+                    boq_id=budget_boq_id,
+                    name=m_name,
+                    percentage=m_pct,
+                    category=m_cat,
+                    sort_order=idx + 1,
+                    apply_to=m_apply,
+                )
             )
-        )
 
     await session.flush()
 
@@ -13318,6 +13324,122 @@ async def install_demo_project(
 
     # ── 11. Change Orders ─────────────────────────────────────────────
     _DEMO_CHANGE_ORDERS: dict[str, list[ChangeOrderDef]] = {
+        # The filmed German projects: change orders sized against their own
+        # bills (about 41 and 28 million net), so the pulse card reads in
+        # tens of thousands, not in euros. Statuses give two pending orders.
+        "residential-regensburg": [
+            (
+                "CO-001",
+                "Mehrkosten Baugrubenverbau und Wasserhaltung",
+                "Hoher Grundwasserstand in der Baugrube, Verbau und Wasserhaltung mussten verlängert werden",
+                "unforeseen",
+                "approved",
+                64200,
+                14,
+                [
+                    ("Zusätzlicher Trägerbohlwandverbau", "added", "0", "120", "0", "260.00", "m2"),
+                    ("Verlängerte Wasserhaltung", "added", "0", "3", "0", "11000.00", "month"),
+                ],
+            ),
+            (
+                "CO-002",
+                "Zusätzliche Ladeinfrastruktur Tiefgarage",
+                "Die Bauherrin wünscht 20 weitere Ladepunkte und ein Lastmanagement für die Tiefgarage",
+                "client_request",
+                "approved",
+                90000,
+                5,
+                [
+                    ("Ladepunkte Tiefgarage zusätzlich", "added", "0", "20", "0", "2600.00", "pcs"),
+                    ("Lastmanagement Ladeinfrastruktur", "added", "0", "1", "0", "38000.00", "lsum"),
+                ],
+            ),
+            (
+                "CO-003",
+                "Schallschutz Wohnungstrennwände erhöht",
+                "Das Schallschutzgutachten verlangt dickere Trennwände und entkoppelte Anschlüsse",
+                "design_change",
+                "submitted",
+                74000,
+                7,
+                [
+                    (
+                        "Wohnungstrennwände Kalksandstein, höhere Rohdichte",
+                        "modified",
+                        "2400",
+                        "2400",
+                        "105.00",
+                        "124.00",
+                        "m2",
+                    ),
+                    ("Entkopplungsstreifen und Anschlussdetails", "added", "0", "1", "0", "28400.00", "lsum"),
+                ],
+            ),
+            (
+                "CO-004",
+                "Brandschutzauflage Tiefgaragenrampe",
+                "Das Bauordnungsamt fordert eine zusätzliche Entrauchung der Tiefgaragenrampe",
+                "regulatory",
+                "submitted",
+                92500,
+                6,
+                [
+                    ("Entrauchung Tiefgaragenrampe", "added", "0", "1", "0", "92500.00", "lsum"),
+                ],
+            ),
+        ],
+        "school-ludwigsburg": [
+            (
+                "CO-001",
+                "Baugrubenverbau bei Schichtenwasser",
+                "Schichtenwasser und Fels im Aushub: längerer Verbau und Mehraushub in Fels",
+                "unforeseen",
+                "approved",
+                39600,
+                9,
+                [
+                    ("Zusätzlicher Baugrubenverbau", "added", "0", "80", "0", "210.00", "m2"),
+                    ("Mehraushub Fels", "added", "0", "600", "0", "38.00", "m3"),
+                ],
+            ),
+            (
+                "CO-002",
+                "Akustikwandbekleidung Mensa",
+                "Die Stadt Ludwigsburg wünscht die Akustikwandbekleidung auch in der Mensa",
+                "client_request",
+                "approved",
+                30100,
+                4,
+                [
+                    ("Akustik-Wandbekleidung Mensa", "added", "0", "350", "0", "86.00", "m2"),
+                ],
+            ),
+            (
+                "CO-003",
+                "Sonnenschutz Südfassade Sporthalle",
+                "Der Hitzeschutznachweis verlangt außenliegenden Sonnenschutz auch an der Sporthalle",
+                "design_change",
+                "submitted",
+                46200,
+                6,
+                [
+                    ("Außenliegender Sonnenschutz Sporthalle", "added", "0", "220", "0", "210.00", "m2"),
+                ],
+            ),
+            (
+                "CO-004",
+                "Brandschutzauflage Fluchttreppenhaus",
+                "Die Brandschutzprüfung verlangt zusätzliche Brandschutztüren und Klappen im Fluchttreppenhaus",
+                "regulatory",
+                "submitted",
+                15240,
+                5,
+                [
+                    ("Brandschutztüren T90", "added", "0", "6", "0", "1700.00", "pcs"),
+                    ("Brandschutzklappen", "added", "0", "18", "0", "280.00", "pcs"),
+                ],
+            ),
+        ],
         "residential-berlin": [
             (
                 "CO-001",
