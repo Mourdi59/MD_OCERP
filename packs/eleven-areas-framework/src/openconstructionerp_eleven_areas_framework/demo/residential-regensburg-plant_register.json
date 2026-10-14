@@ -443,8 +443,8 @@
       "class": "ahu",
       "quantity": "2",
       "redundancy": "",
-      "need_days": -20,
-      "reach": "commissioned",
+      "need_days": 300,
+      "reach": "ordered",
       "performance": [
         {
           "key": "air_volume",

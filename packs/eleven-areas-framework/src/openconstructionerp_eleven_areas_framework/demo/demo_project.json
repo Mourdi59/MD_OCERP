@@ -302,8 +302,8 @@
           "decision": {
             "outcome": "go_with_conditions",
             "rationale": {
-              "en": "The frame documents are in force and the building permit is granted. The early start already runs, so the decision releases the execution formally. Three areas go ahead at risk, each with a named condition and owner; the commissioning manager is still to be appointed.",
-              "de": "Die Rahmendokumente gelten und die Baugenehmigung liegt vor. Der vorzeitige Baubeginn läuft bereits, der Beschluss gibt die Ausführung förmlich frei. Drei Bereiche gehen mit je einer benannten Bedingung und Verantwortlichen unter Vorbehalt in die Ausführung; die Inbetriebnahmeleitung ist noch zu besetzen."
+              "en": "The frame documents are in force and the building permit is granted. The early start already runs, so the decision releases the execution formally. Four areas go ahead at risk, each with a named condition and owner; the commissioning manager is still to be appointed.",
+              "de": "Die Rahmendokumente gelten und die Baugenehmigung liegt vor. Der vorzeitige Baubeginn läuft bereits, der Beschluss gibt die Ausführung förmlich frei. Vier Bereiche gehen mit je einer benannten Bedingung und Verantwortlichen unter Vorbehalt in die Ausführung; die Inbetriebnahmeleitung ist noch zu besetzen."
             },
             "conditions": [
               {

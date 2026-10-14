@@ -3,42 +3,42 @@
     {
       "role": "project_director",
       "phase": "development",
-      "entry": -240,
+      "entry": -265,
       "exit": null,
       "status": "open"
     },
     {
       "role": "project_manager",
       "phase": "development",
-      "entry": -240,
+      "entry": -250,
       "exit": null,
       "status": "open"
     },
     {
       "role": "design_manager",
       "phase": "development",
-      "entry": -240,
+      "entry": -235,
       "exit": null,
       "status": "open"
     },
     {
       "role": "cost_manager",
       "phase": "development",
-      "entry": -210,
+      "entry": -195,
       "exit": null,
       "status": "open"
     },
     {
       "role": "contract_manager",
       "phase": "development",
-      "entry": -180,
+      "entry": -165,
       "exit": null,
       "status": "open"
     },
     {
       "role": "scheduler",
       "phase": "development",
-      "entry": -150,
+      "entry": -120,
       "exit": null,
       "status": "open"
     },

@@ -121,6 +121,7 @@
     "design_manager",
     "cost_manager",
     "contract_manager",
+    "scheduler",
     "site_manager",
     "hse_manager",
     "site_supervisor_civil",
@@ -250,6 +251,18 @@
     },
     {
       "name": {
+        "en": "Maximilian Aigner",
+        "de": "Maximilian Aigner"
+      },
+      "company": {
+        "en": "Terminplanung Aigner",
+        "de": "Terminplanung Aigner"
+      },
+      "site_role": "scheduler",
+      "allocation": 60
+    },
+    {
+      "name": {
         "en": "Florian Wagenhuber",
         "de": "Florian Wagenhuber"
       },
@@ -367,28 +380,28 @@
     {
       "role": "site_manager",
       "phase": "execution",
-      "entry": -30,
+      "entry": -140,
       "exit": null,
       "status": "open"
     },
     {
       "role": "hse_manager",
       "phase": "execution",
-      "entry": -30,
+      "entry": -140,
       "exit": null,
       "status": "open"
     },
     {
       "role": "site_supervisor_civil",
       "phase": "execution",
-      "entry": -30,
+      "entry": -140,
       "exit": null,
       "status": "open"
     },
     {
       "role": "document_controller",
       "phase": "execution",
-      "entry": -30,
+      "entry": -120,
       "exit": null,
       "status": "open"
     },
@@ -409,7 +422,7 @@
     {
       "role": "commissioning_manager",
       "phase": "execution",
-      "entry": 400,
+      "entry": 170,
       "exit": null,
       "status": "open"
     },

@@ -168,3 +168,18 @@ def test_no_securities_or_insurance_at_all_is_not_in_place() -> None:
     state = rules.register_state(_registers(securities=[], insurances=[]))
     assert state["securities"] is False
     assert state["insurance"] is False
+
+
+def test_a_drawn_tranche_lies_in_the_past_and_the_story_is_refused_otherwise() -> None:
+    profile = load_profile(story_for("residential-regensburg"), "en", TODAY)
+    equity = profile.sources[0]
+    assert equity.drawn == 1 and date.fromisoformat(equity.due[0]) < TODAY
+    assert all(s.drawn == 0 for s in profile.sources[1:])
+    story = story_for("residential-regensburg")
+    story["sources"][0]["drawn"] = 2
+    try:
+        load_profile(story, "en", TODAY)
+    except StoryError as err:
+        assert "drawn" in str(err)
+    else:
+        raise AssertionError("a tranche in the future cannot be drawn")

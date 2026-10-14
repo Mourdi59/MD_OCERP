@@ -847,6 +847,25 @@ async def test_every_screen_of_the_eleven_areas_has_rows_for_both_filmed_project
                 # Nobody can sign in as a demo person.
                 assert user.is_active is False and (user.metadata_ or {}).get("demo_person") is True, user.email
 
+            # The handbook chapters of an area are written by that area's owner, and the edition names the phase.
+            from app.modules.project_handbook.models import Handbook, HandbookChapter
+
+            area_owner = {
+                a.code: a.owner_user_id
+                for a in (
+                    await s.execute(select(GovernanceArea).where(GovernanceArea.project_id == project.id))
+                ).scalars()
+            }
+            chapters = (
+                await s.execute(select(HandbookChapter).where(HandbookChapter.project_id == project.id))
+            ).scalars()
+            wrong = [c.code for c in chapters if c.area_code in area_owner and c.owner_id != area_owner[c.area_code]]
+            assert not wrong, f"{demo_id}: handbook chapters not owned by their area owner: {wrong}"
+            edition = (await s.execute(select(Handbook.edition).where(Handbook.project_id == project.id))).scalar_one()
+            assert edition == (
+                "Ausgabe 2, Ausführungsphase" if demo_id == "residential-regensburg" else "Ausgabe 1, Entwicklungsphase"
+            ), (demo_id, edition)
+
     # The data room: the catalogue folder tree is materialised for each filmed project.
     from app.modules.documents.models import DocumentFolder
 

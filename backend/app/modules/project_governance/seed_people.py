@@ -141,6 +141,7 @@ async def assign_demo_people(session: AsyncSession, project_ids: list[uuid.UUID]
     """
     from app.modules.project_governance import catalogue_packs, seed_story
     from app.modules.project_governance.models import GovernanceArea, GovernanceCondition
+    from app.modules.project_handbook.models import HandbookChapter
     from app.modules.projects.models import Project
 
     totals = {"projects": 0, "areas": 0}
@@ -187,6 +188,15 @@ async def assign_demo_people(session: AsyncSession, project_ids: list[uuid.UUID]
                     )
                 ).scalars():
                     cond.owner_user_id = user_id
+            # The chapters of the area's handbook are written by the same person.
+            for chapter in (
+                await session.execute(
+                    select(HandbookChapter).where(
+                        HandbookChapter.project_id == project_id, HandbookChapter.area_code == area.code
+                    )
+                )
+            ).scalars():
+                chapter.owner_id = user_id
             done += 1
         await session.flush()
         if done:

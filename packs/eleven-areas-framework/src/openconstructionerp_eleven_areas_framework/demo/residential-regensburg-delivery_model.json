@@ -59,15 +59,50 @@
       ],
       "code": "CF-01",
       "title": {
-        "en": "General contractor agreement for the quarter, lump sum at award",
-        "de": "Generalunternehmervertrag Quartier, Pauschalpreis bei Vergabe"
+        "en": "General contractor agreement for the shell works, lump sum at award",
+        "de": "Generalunternehmervertrag Rohbau, Pauschalpreis bei Vergabe"
       },
       "counterparty": {
-        "en": "General contractor, award pending",
-        "de": "Generalunternehmer, Vergabe steht aus"
+        "en": "Shell contractor, award pending",
+        "de": "Rohbau-Generalunternehmer, Vergabe steht aus"
       },
       "status": "negotiating",
       "days": 165
+    },
+    {
+      "group": "contract_form",
+      "kinds": [
+        "construction_contract",
+        "design_build_contract"
+      ],
+      "code": "CF-02",
+      "title": {
+        "en": "Construction contract lots 1 and 2: excavation pit and shoring",
+        "de": "Bauvertrag Los 1 und 2: Baugrube und Verbau"
+      },
+      "counterparty": {
+        "en": "Civil works contractor Donautal Tiefbau GmbH",
+        "de": "Tiefbauunternehmen Donautal Tiefbau GmbH"
+      },
+      "status": "signed",
+      "days": -35
+    },
+    {
+      "group": "contract_form",
+      "kinds": [
+        "consultant_agreement"
+      ],
+      "code": "CF-03",
+      "title": {
+        "en": "Architect and engineer agreements under HOAI",
+        "de": "Architekten- und Ingenieurverträge nach HOAI"
+      },
+      "counterparty": {
+        "en": "Planning partnership Donauknie",
+        "de": "Planungsgemeinschaft Donauknie"
+      },
+      "status": "signed",
+      "days": -240
     },
     {
       "group": "land_tenure",

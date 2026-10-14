@@ -475,3 +475,65 @@ def test_ludwigsburg_design_story_has_no_english_only_text() -> None:
         return [path] if isinstance(node, str) and len(node.split()) >= 3 else []
 
     assert plain(_story("school-ludwigsburg", "design_management")) == []
+
+
+def test_regensburg_contracts_and_guarantees_tell_one_story() -> None:
+    """The shell contract is still open, the pit works are signed, and the guarantees belong to the signed one."""
+    items = {i["code"]: i for i in _story("residential-regensburg", "delivery_model")["contract_items"]}
+    assert items["CF-01"]["status"] == "negotiating" and items["CF-01"]["days"] > 0
+    assert items["CF-02"]["status"] == "signed" and items["CF-02"]["days"] < 0
+    securities = {s["kind"]: s for s in _story("residential-regensburg", "economics")["securities"]}
+    for kind in ("advance_payment", "performance"):
+        assert securities[kind]["status"] == "in_place"
+        assert securities[kind]["valid_from_days"] >= items["CF-02"]["days"]
+        assert "civil works" in securities[kind]["description"]["en"]
+    assert "pending" in items["CF-01"]["counterparty"]["en"]
+
+
+def test_regensburg_plant_register_fits_a_site_that_has_only_started() -> None:
+    """Nothing is commissioned before the first slab: the show apartment units are ordered for a later need date."""
+    items = {i["code"]: i for i in _story("residential-regensburg", "plant_register")["items"]}
+    assert items["PL-010"]["reach"] == "ordered" and items["PL-010"]["need_days"] > 0
+    assert items["PL-011"]["reach"] == "handed_over" and items["PL-008"]["reach"] == "delivered"
+    assert not [c for c, i in items.items() if i["reach"] == "commissioned"]
+
+
+def test_regensburg_team_is_in_place_before_the_early_start_and_the_commissioning_lead_before_its_condition() -> None:
+    staffing = _story("residential-regensburg", "staffing")
+    running = {r[0]: r for r in staffing_seed.story_positions(staffing, staffing_seed.POSITIONS, "running_positions")}
+    # The site manager is on site before June 2026, the early start lies about 135 days before the seed day.
+    assert running["site_manager"][2] <= -135
+    assert "scheduler" in staffing["filled"]
+    assert "scheduler" in {r["site_role"] for r in staffing["roster"]}
+    pack = json.loads((_DEMO / "demo_project.json").read_text(encoding="utf-8"))
+    gate = next(e for e in pack["projects"] if e["project"]["demo_template_id"] == "residential-regensburg")
+    due = {c["area"]: c["due_in_days"] for c in gate["governance"]["gate"]["decision"]["conditions"]}
+    assert running["commissioning_manager"][2] <= due["m05_personnel"]
+
+
+def test_the_two_filmed_projects_do_not_share_their_first_entry_dates() -> None:
+    entries = {}
+    for demo in ("residential-regensburg", "school-ludwigsburg"):
+        rows = staffing_seed.story_positions(_story(demo, "staffing"), staffing_seed.POSITIONS)
+        entries[demo] = [r[2] for r in rows if r[1] == "development"]
+    assert entries["residential-regensburg"] != entries["school-ludwigsburg"]
+    assert all(a != b for a, b in zip(*entries.values(), strict=True))
+
+
+def test_the_regensburg_gate_rationale_counts_the_conditions_it_names() -> None:
+    pack = json.loads((_DEMO / "demo_project.json").read_text(encoding="utf-8"))
+    gate = next(e for e in pack["projects"] if e["project"]["demo_template_id"] == "residential-regensburg")
+    decision = gate["governance"]["gate"]["decision"]
+    assert len(decision["conditions"]) == 4
+    assert "Four areas" in decision["rationale"]["en"] and "Vier Bereiche" in decision["rationale"]["de"]
+
+
+@pytest.mark.parametrize("demo", ["residential-regensburg", "school-ludwigsburg"])
+def test_the_road_application_names_its_authority_and_reference(demo: str) -> None:
+    """The road occupation file is never an empty form: the road authority and its reference are in the story."""
+    for locale in ("en", "de"):
+        content = permits_seed.resolve_permit_content(_story(demo, "permits"), locale)
+        assert content["road_authority_name"] != permits_seed._TEXT_DEFAULTS["road_authority_name"]
+        assert content["road_reference"] != permits_seed._TEXT_DEFAULTS["road_reference"]
+    de = permits_seed.resolve_permit_content(_story(demo, "permits"), "de")
+    assert "Tiefbauamt" in de["road_authority_name"]

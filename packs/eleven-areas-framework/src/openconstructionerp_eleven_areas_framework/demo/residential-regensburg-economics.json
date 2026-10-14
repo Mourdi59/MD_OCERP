@@ -67,13 +67,15 @@
       },
       "share": "0.25",
       "due_days": [
+        -90,
         19,
         230
       ],
       "condition": {
         "en": "Plot at book value",
         "de": "Grundstück zum Buchwert"
-      }
+      },
+      "drawn": 1
     },
     {
       "kind": "bank_loan",
@@ -147,8 +149,8 @@
     {
       "kind": "bid",
       "description": {
-        "en": "Bid bond of the general contractor",
-        "de": "Bietungsbürgschaft des Generalunternehmers"
+        "en": "Bid bond of the civil works contractor",
+        "de": "Bietungsbürgschaft des Tiefbauunternehmens"
       },
       "pct_of_frame": "0.01",
       "issuer": "Oberpfälzer Bürgschaftsbank AG",
@@ -161,43 +163,43 @@
     {
       "kind": "advance_payment",
       "description": {
-        "en": "Advance payment guarantee",
-        "de": "Vorauszahlungsbürgschaft"
+        "en": "Advance payment guarantee of the civil works contractor (lots 1 and 2)",
+        "de": "Vorauszahlungsbürgschaft des Tiefbauunternehmens (Los 1 und 2)"
       },
       "pct_of_frame": "0.02",
       "issuer": "Oberpfälzer Bürgschaftsbank AG",
       "beneficiary": "Wohnungsbau Donaupark GmbH",
       "reference": "VZ-2026-0342",
-      "valid_from_days": -20,
+      "valid_from_days": -35,
       "valid_until_days": 420,
       "status": "in_place"
     },
     {
       "kind": "performance",
       "description": {
-        "en": "Performance guarantee of the general contractor",
-        "de": "Vertragserfüllungsbürgschaft des Generalunternehmers"
+        "en": "Performance guarantee of the civil works contractor (lots 1 and 2)",
+        "de": "Vertragserfüllungsbürgschaft des Tiefbauunternehmens (Los 1 und 2)"
       },
       "pct_of_frame": "0.04",
       "issuer": "Oberpfälzer Bürgschaftsbank AG",
       "beneficiary": "Wohnungsbau Donaupark GmbH",
       "reference": "VE-2026-0343",
-      "valid_from_days": -20,
-      "valid_until_days": 1100,
+      "valid_from_days": -35,
+      "valid_until_days": 420,
       "status": "in_place"
     },
     {
       "kind": "warranty",
       "description": {
-        "en": "Warranty guarantee after acceptance",
-        "de": "Gewährleistungsbürgschaft nach Abnahme"
+        "en": "Warranty guarantee after acceptance of lots 1 and 2",
+        "de": "Gewährleistungsbürgschaft nach Abnahme Los 1 und 2"
       },
       "pct_of_frame": "0.03",
       "issuer": "Oberpfälzer Bürgschaftsbank AG",
       "beneficiary": "Wohnungsbau Donaupark GmbH",
       "reference": "GW-2026-0344",
-      "valid_from_days": 1100,
-      "valid_until_days": 2930,
+      "valid_from_days": 420,
+      "valid_until_days": 2246,
       "status": "requested",
       "notes": {
         "en": "Replaces the performance guarantee at acceptance, five years from acceptance.",

@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 
 _PROFILES: dict[str, dict[str, str]] = {
     "residential-regensburg": {
+        # The site runs: the handbook is in its second edition.
+        "edition": "Ausgabe 2, Ausführungsphase",
         "name": "Wohnquartier Regensburg Donaupark",
         "kind": "ein Wohnquartier mit vier Mehrfamilienhäusern",
         "size": "rund 120 Wohnungen und einer Tiefgarage mit 110 Stellplätzen",
@@ -43,6 +45,7 @@ _PROFILES: dict[str, dict[str, str]] = {
         "period": "Bezug der ersten Wohnungen zwölf Monate nach Baubeginn des ersten Hauses",
     },
     "school-ludwigsburg": {
+        "edition": "Ausgabe 1, Entwicklungsphase",
         "name": "Schulzentrum Ludwigsburg",
         "kind": "ein vierzügiges Gymnasium mit Mensa und Sporthalle",
         "size": "16 Klassenräumen, Fachräumen, Mensa und einer Dreifeldhalle auf rund 10.500 m² Brutto-Grundfläche",
@@ -227,7 +230,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, demo_id: s
         actor_id=owner,
         tenant_id=None,
         title=f"Projekthandbuch {project.name}",
-        edition="Ausgabe 1, Entwicklungsphase",
+        edition=profile["edition"],
         default_owner_id=owner,
     )
     for row in await svc._chapters(project_id):
