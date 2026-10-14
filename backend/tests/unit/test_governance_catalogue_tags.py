@@ -278,6 +278,7 @@ NEEDED_BEFORE: dict[str, str] = {
     "staffing": "construction_start",
     "site_logistics": "construction_start",
     "commitment_release": "construction_start",
+    "economics": "procurement",
 }
 
 # The requirements this platform added, written out by hand. A document that hosts several

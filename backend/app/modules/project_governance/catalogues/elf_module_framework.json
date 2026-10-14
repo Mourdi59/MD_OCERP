@@ -1445,7 +1445,8 @@
       ],
       "source_ref": "Module 9",
       "hosts": [
-        "commitment_release"
+        "commitment_release",
+        "economics"
       ]
     },
     {

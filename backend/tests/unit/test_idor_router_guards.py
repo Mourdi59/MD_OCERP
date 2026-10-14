@@ -211,6 +211,35 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "validation",
         "export_matrix",
     ],
+    # Every project route of the module; each awaits _economics_svc, which checks project access first.
+    "economics": [
+        "get_plan",
+        "start_plan",
+        "patch_plan",
+        "get_business_case",
+        "add_flow_line",
+        "patch_flow_line",
+        "delete_flow_line",
+        "get_cost_frame",
+        "add_frame_line",
+        "patch_frame_line",
+        "delete_frame_line",
+        "generate_frame",
+        "get_financing",
+        "add_source",
+        "patch_source",
+        "delete_source",
+        "add_tranche",
+        "patch_tranche",
+        "delete_tranche",
+        "propose",
+        "withdraw",
+        "approve",
+        "reopen",
+        "close_reopening",
+        "readiness",
+        "validation",
+    ],
     # Every project route awaits _delivery_svc, which checks project access before it builds the service.
     "delivery_model": [
         "pinned_catalogue",
@@ -1093,6 +1122,9 @@ _GUARD_WRAPPERS = frozenset(
         # quality_concept.router: _project_service calls verify_project_access on the path's project
         # before it builds the service every handler works through.
         "_project_service",
+        # economics.router: the one place a handler gets its EconomicsService. It awaits
+        # verify_project_access(project_id, user_id, session) before it returns the service.
+        "_economics_svc",
     }
 )
 
