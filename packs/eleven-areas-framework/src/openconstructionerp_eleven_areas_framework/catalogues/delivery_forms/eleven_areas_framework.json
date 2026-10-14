@@ -1643,5 +1643,217 @@
   "labels": {
     "en": "Delivery forms of the eleven module framework",
     "de": "Abwicklungsformen des Elf-Module-Rahmens"
-  }
+  },
+  "contract_kinds": [
+    {
+      "code": "construction_contract",
+      "group": "contract_form",
+      "name_key": "",
+      "labels": {
+        "en": "Construction contract",
+        "de": "Bauvertrag"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "design_build_contract",
+      "group": "contract_form",
+      "name_key": "",
+      "labels": {
+        "en": "Design and build contract",
+        "de": "Planen-und-Bauen-Vertrag"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "construction_management_contract",
+      "group": "contract_form",
+      "name_key": "",
+      "labels": {
+        "en": "Construction management contract",
+        "de": "Projektsteuerungs- und Baumanagementvertrag"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "consultant_agreement",
+      "group": "contract_form",
+      "name_key": "",
+      "labels": {
+        "en": "Consultant agreement",
+        "de": "Planer- und Beratervertrag"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "purchase",
+      "group": "land_tenure",
+      "name_key": "",
+      "labels": {
+        "en": "Purchase of the site",
+        "de": "Grundstückskauf"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "leasehold",
+      "group": "land_tenure",
+      "name_key": "",
+      "labels": {
+        "en": "Leasehold (heritable building right)",
+        "de": "Erbbaurecht"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "option",
+      "group": "land_tenure",
+      "name_key": "",
+      "labels": {
+        "en": "Option on the site",
+        "de": "Optionsvertrag zum Grundstück"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "easement",
+      "group": "land_tenure",
+      "name_key": "",
+      "labels": {
+        "en": "Easement or right of way",
+        "de": "Dienstbarkeit oder Wegerecht"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "development_agreement",
+      "group": "land_tenure",
+      "name_key": "",
+      "labels": {
+        "en": "Development agreement with the municipality",
+        "de": "Städtebaulicher Vertrag"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "power_connection",
+      "group": "utility_contract",
+      "name_key": "",
+      "labels": {
+        "en": "Power grid connection",
+        "de": "Stromnetzanschluss"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "water_sewer_connection",
+      "group": "utility_contract",
+      "name_key": "",
+      "labels": {
+        "en": "Water and sewer connection",
+        "de": "Wasser- und Abwasseranschluss"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "district_heating",
+      "group": "utility_contract",
+      "name_key": "",
+      "labels": {
+        "en": "District heating supply",
+        "de": "Fernwärmeversorgung"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "gas_connection",
+      "group": "utility_contract",
+      "name_key": "",
+      "labels": {
+        "en": "Gas connection",
+        "de": "Gasanschluss"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "telecom_connection",
+      "group": "utility_contract",
+      "name_key": "",
+      "labels": {
+        "en": "Telecommunications connection",
+        "de": "Telekommunikationsanschluss"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "lease_to_user",
+      "group": "user_agreement",
+      "name_key": "",
+      "labels": {
+        "en": "Lease to the user",
+        "de": "Mietvertrag mit dem Nutzer"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "service_level_agreement",
+      "group": "user_agreement",
+      "name_key": "",
+      "labels": {
+        "en": "Service level agreement with the user",
+        "de": "Leistungsvereinbarung mit dem Nutzer"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "handover_criteria_agreement",
+      "group": "user_agreement",
+      "name_key": "",
+      "labels": {
+        "en": "Handover criteria agreed with the user",
+        "de": "Übergabekriterien mit dem Nutzer"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "project_company",
+      "group": "partner_structure",
+      "name_key": "",
+      "labels": {
+        "en": "Project company (special purpose vehicle)",
+        "de": "Projektgesellschaft"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "joint_venture",
+      "group": "partner_structure",
+      "name_key": "",
+      "labels": {
+        "en": "Joint venture",
+        "de": "Arbeits- oder Bietergemeinschaft"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "consortium",
+      "group": "partner_structure",
+      "name_key": "",
+      "labels": {
+        "en": "Consortium",
+        "de": "Konsortium"
+      },
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "co_investment",
+      "group": "partner_structure",
+      "name_key": "",
+      "labels": {
+        "en": "Co-investment",
+        "de": "Beteiligung"
+      },
+      "review_status": "unconfirmed"
+    }
+  ]
 }

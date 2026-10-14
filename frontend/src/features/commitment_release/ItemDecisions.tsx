@@ -236,7 +236,7 @@ export function PendingRequest({
             />
           </Field>
           {answer === 'approved' && !isAbort && (
-            <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               <Field
                 id="decide-conditions"
                 label={t('commitment.decide.conditions', { defaultValue: 'Conditions' })}

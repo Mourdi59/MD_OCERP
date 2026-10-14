@@ -54,6 +54,7 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     "modules/daily_diary/router.py": {"diary_pdf"},
     "modules/delivery_model/router.py": {"export"},
     "modules/design_management/router.py": {"export"},
+    "modules/economics/router.py": {"export"},
     "modules/einvoice/router.py": {"generate_invoice"},
     "modules/fieldreports/router.py": {"export_pdf"},
     # ``_export_tr_einvoice`` writes XML, not a PDF; the search finds it through the
@@ -79,6 +80,8 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     "modules/site_logistics/router.py": {"plan_export"},
     # The one function both staffing exports answer through; it takes the locale the labels were written in.
     "modules/staffing/router.py": {"_file"},
+    "modules/engineering_brief/router.py": {"_file"},
+    "modules/project_handbook/router.py": {"_file"},
     "modules/stakeholders/router.py": {"export_organisation", "export_register"},
     "modules/subcontractors/router.py": {"export_payment_hakedis_pdf"},
     "modules/tendering/router.py": {

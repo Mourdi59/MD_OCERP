@@ -223,7 +223,7 @@ export function LinkList({ projectId, item, editVerdict, onChanged }: LinkListPr
       {adding && (
         <div className="mt-2 space-y-2 rounded-lg bg-surface-secondary p-3" data-testid="link-add-form">
           {add.isError && <RefusalBox message={refusalText(t, add.error)} />}
-          <div className="grid gap-2 sm:grid-cols-[1fr_2fr]">
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
             <select
               aria-label={t('commitment.links.kind', { defaultValue: 'Kind of document' })}
               className={FIELD_CLASS}
@@ -420,7 +420,7 @@ function CheckPanel({
           })}
         </p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <Field id="check-document" label={t('commitment.links.document', { defaultValue: 'Document' })}>
           <select
             id="check-document"

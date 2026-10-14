@@ -297,6 +297,8 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Public Funding': 'funding.title',
   'Commitments and releases': 'commitment.page.title',
   'Delivery model': 'delivery_model.ui.title',
+  'Economics': 'economics.ui.title',
+  'HSE frame': 'hseFrame.title',
   'Plant register': 'plant.nav.title',
   'Procurement concept': 'procurement_concept.nav.title',
   'Stakeholders': 'stakeholders.ui.title',
@@ -316,6 +318,8 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'RFQ Bidding': 'rfq_bidding.title',
   'Credentials': 'nav.credentials',
   'Staffing': 'staffing.title',
+  'Engineering brief': 'engineeringBrief.title',
+  'Project handbook': 'projectHandbook.title',
   'Teams and Visibility': 'teams.title',
   'Permits': 'permits.ui.title',
 };

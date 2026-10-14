@@ -180,7 +180,7 @@ export function ReleaseDialog({
           </RefusalBox>
         )}
 
-        <dl className="grid grid-cols-3 gap-3 rounded-lg bg-surface-secondary p-3 text-sm">
+        <dl className="grid grid-cols-1 gap-3 rounded-lg bg-surface-secondary p-3 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-xs text-content-tertiary">{t('commitment.grid.planned', { defaultValue: 'Planned' })}</dt>
             <dd className="font-medium text-content-primary">
@@ -203,7 +203,7 @@ export function ReleaseDialog({
           </div>
         </dl>
 
-        <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <Field
             id="release-amount"
             label={t('commitment.release.amount', { defaultValue: 'Amount' })}

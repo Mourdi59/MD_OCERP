@@ -52,5 +52,131 @@
     },
     "item_kind": "material"
   },
-  "plant_item": "PL-002"
+  "plant_item": "PL-002",
+  "contract_items": [
+    {
+      "group": "contract_form",
+      "kinds": [
+        "construction_contract"
+      ],
+      "code": "CF-01",
+      "title": {
+        "en": "Construction contracts under VOB/B per trade lot",
+        "de": "Bauverträge nach VOB/B je Fachlos"
+      },
+      "counterparty": {
+        "en": "Trade lot contractors, awarded under VOB/A",
+        "de": "Fachlosunternehmen, Vergabe nach VOB/A"
+      },
+      "status": "draft",
+      "days": 165
+    },
+    {
+      "group": "contract_form",
+      "kinds": [
+        "consultant_agreement"
+      ],
+      "code": "CF-02",
+      "title": {
+        "en": "Architect and engineer agreements under HOAI",
+        "de": "Architekten- und Ingenieurverträge nach HOAI"
+      },
+      "counterparty": {
+        "en": "Neckar design partnership",
+        "de": "Planungsgemeinschaft Neckar"
+      },
+      "status": "signed",
+      "days": -200
+    },
+    {
+      "group": "land_tenure",
+      "kinds": [
+        "easement",
+        "purchase"
+      ],
+      "code": "LT-01",
+      "title": {
+        "en": "Right of way and utility easement over the neighbouring plot",
+        "de": "Leitungs- und Wegerecht über das Nachbargrundstück"
+      },
+      "counterparty": {
+        "en": "Parish of the Protestant church",
+        "de": "Evangelische Kirchengemeinde"
+      },
+      "status": "agreed",
+      "days": -60
+    },
+    {
+      "group": "utility_contract",
+      "kinds": [
+        "power_connection",
+        "water_sewer_connection"
+      ],
+      "code": "UC-01",
+      "title": {
+        "en": "Power connection of the school with photovoltaic feed-in",
+        "de": "Stromanschluss der Schule mit Photovoltaikeinspeisung"
+      },
+      "counterparty": {
+        "en": "Grid operator Ludwigsburg",
+        "de": "Netzbetreiber Ludwigsburg"
+      },
+      "status": "agreed",
+      "days": 45
+    },
+    {
+      "group": "utility_contract",
+      "kinds": [
+        "district_heating"
+      ],
+      "code": "UC-02",
+      "title": {
+        "en": "District heating supply from the neighbourhood network",
+        "de": "Nahwärmeversorgung aus dem Quartiersnetz"
+      },
+      "counterparty": {
+        "en": "Municipal utility of Ludwigsburg",
+        "de": "Stadtwerke Ludwigsburg"
+      },
+      "status": "negotiating",
+      "days": 75
+    },
+    {
+      "group": "user_agreement",
+      "kinds": [
+        "service_level_agreement",
+        "handover_criteria_agreement"
+      ],
+      "code": "UA-01",
+      "title": {
+        "en": "Usage agreement with the school management, handover criteria for canteen and gym",
+        "de": "Nutzungsvereinbarung mit der Schulleitung, Übergabekriterien Mensa und Sporthalle"
+      },
+      "counterparty": {
+        "en": "School management and school administration office",
+        "de": "Schulleitung und Schulverwaltungsamt"
+      },
+      "status": "draft",
+      "days": 190
+    },
+    {
+      "group": "partner_structure",
+      "kinds": [
+        "project_company",
+        "co_investment"
+      ],
+      "code": "PS-01",
+      "title": {
+        "en": "City share of the school building company",
+        "de": "Gesellschafteranteil der Stadt an der Schulbau GmbH"
+      },
+      "counterparty": {
+        "en": "City of Ludwigsburg",
+        "de": "Stadt Ludwigsburg"
+      },
+      "status": "agreed",
+      "days": -150,
+      "share": "100"
+    }
+  ]
 }

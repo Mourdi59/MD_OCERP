@@ -1060,7 +1060,7 @@ async def test_a_new_matrix_pins_what_the_active_pack_names_before_the_modules_o
     version = get_catalogue_kind(AUTHORITY_SCHEDULE_KIND).get_shipped(other).version
     asked: list[tuple[str, str | None]] = []
 
-    def pack_says(kind, country_code=None):
+    def pack_says(kind, country_code=None, subdivision_code=None):
         asked.append((kind, country_code))
         return public.CataloguePin("shipped", other, version)
 

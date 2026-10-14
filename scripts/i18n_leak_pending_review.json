@@ -3202,5 +3202,189 @@
     "en_value": "MEP",
     "n": 29,
     "reason": "MEP is the discipline code (mechanical, electrical, plumbing) and stays as is in most locales; 13 locales use their own trade term (for example TGA in de, VVS/El in sv), taken from each file's own category_mep. Filed for native review."
+  },
+  "delivery_model.ui.matrix.share": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "fr",
+      "ja",
+      "tr",
+      "zh"
+    ],
+    "en_value": "{{party}}: {{share}} %",
+    "n": 38,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "design.common.ok": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "bg",
+      "bn",
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "fa",
+      "he",
+      "hi",
+      "hr",
+      "ko",
+      "ru",
+      "th",
+      "uk",
+      "ur"
+    ],
+    "en_value": "OK",
+    "n": 27,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "design.ui.setup.target_shown": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "fr",
+      "ja",
+      "zh"
+    ],
+    "en_value": "{{phase}}: {{status}}",
+    "n": 39,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "quality_concept.common.ok": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "ar",
+      "bn",
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "fa",
+      "he",
+      "hi",
+      "ko",
+      "th",
+      "tr",
+      "ur"
+    ],
+    "en_value": "OK",
+    "n": 29,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "site_logistics.plan.enum.flow_mode.kanban": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "ar",
+      "bg",
+      "bn",
+      "de",
+      "ja",
+      "ko",
+      "ru",
+      "uk",
+      "ur",
+      "zh"
+    ],
+    "en_value": "Kanban",
+    "n": 32,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "site_logistics.plan.f.incoterm": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "ar",
+      "bg",
+      "bn",
+      "de",
+      "ja",
+      "kk",
+      "ko",
+      "ky",
+      "ru",
+      "uk",
+      "ur",
+      "uz",
+      "zh"
+    ],
+    "en_value": "Incoterm",
+    "n": 29,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "site_logistics.plan.m2": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "ar",
+      "bg",
+      "bn",
+      "fa",
+      "he",
+      "kk",
+      "ky",
+      "mn",
+      "ru",
+      "uk"
+    ],
+    "en_value": "{{value}} m2",
+    "n": 32,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "site_logistics.plan.neighbourhood.dba": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "ar",
+      "kk",
+      "ky",
+      "mn",
+      "ru",
+      "uk"
+    ],
+    "en_value": "{{value}} dB(A)",
+    "n": 36,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "staffing.handover.person_on": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "ar",
+      "fa",
+      "ja",
+      "ur",
+      "zh"
+    ],
+    "en_value": "{{person}}, {{position}}",
+    "n": 37,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "staffing.org_chart.person_proposed": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "ja",
+      "ko",
+      "zh"
+    ],
+    "en_value": "{{name}} ({{status}})",
+    "n": 39,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "staffing.position.fte": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "de",
+      "pl"
+    ],
+    "en_value": "FTE",
+    "n": 40,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
+  },
+  "staffing.position.fte_times": {
+    "added_by": "i18n translation of the eleven modules (2026-10-14)",
+    "differs_in": [
+      "ar",
+      "de",
+      "fa",
+      "pl"
+    ],
+    "en_value": "{{fte}} FTE x {{n}}",
+    "n": 38,
+    "reason": "Short term, unit or placeholder template. The locales listed in differs_in carry a real localized form (own script, punctuation, spacing or word), the others write it as in English. Each differing value was read in the locale file rather than counted; none is an untranslated copy of a sentence."
   }
 }

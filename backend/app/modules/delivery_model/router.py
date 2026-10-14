@@ -34,11 +34,13 @@ from app.core.tenant_scope import resolve_tenant_id
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
 from app.modules.delivery_model.catalogue import DELIVERY_FORMS_KIND
 from app.modules.delivery_model.errors import DeliveryModelError
-from app.modules.delivery_model.messages import available_locales, translate
+from app.modules.delivery_model.messages import available_locales, translate, with_label_texts
 from app.modules.delivery_model.schemas import (
     AllocationPut,
     CatalogueChange,
     ConfirmIn,
+    ContractItemIn,
+    ContractItemPatch,
     FindingOut,
     ModelPatch,
     ModelSet,
@@ -171,7 +173,8 @@ async def pinned_catalogue(project_id: uuid.UUID, session: SessionDep, user_id: 
     """The full body of the catalogue the project pins (forms, parties, categories, criteria, templates)."""
     svc = await _delivery_svc(project_id, user_id, session)
     model = await _run(svc.require_model(project_id))
-    return (await _run(svc.catalogue_for(model))).model_dump(mode="json")
+    body = (await _run(svc.catalogue_for(model))).model_dump(mode="json")
+    return with_label_texts(body, get_locale() or "en")
 
 
 # ── model ──────────────────────────────────────────────────────────────────
@@ -605,6 +608,46 @@ async def set_ofi_status(
     svc = await _delivery_svc(project_id, user_id, session)
     await _run(svc.set_ofi_status(project_id, ofi_id, body.status, _uid(user_id)))
     return await _ofi_out(svc, project_id, ofi_id)
+
+
+# ── contract-side items (module 2) ─────────────────────────────────────────
+
+
+async def _contract_item_out(svc: DeliveryModelService, project_id: uuid.UUID, item_id: uuid.UUID) -> dict[str, Any]:
+    return next(i for i in await svc.contract_item_views(project_id) if i["id"] == str(item_id))
+
+
+@router.get(_P + "/contract-items", dependencies=[READ])
+async def list_contract_items(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    svc = await _delivery_svc(project_id, user_id, session)
+    return _page(await _run(svc.contract_item_views(project_id)))
+
+
+@router.post(_P + "/contract-items", status_code=201, dependencies=[EDIT])
+async def create_contract_item(
+    project_id: uuid.UUID, body: ContractItemIn, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    svc = await _delivery_svc(project_id, user_id, session)
+    row = await _run(svc.create_contract_item(project_id, body.model_dump(), _uid(user_id)))
+    return await _contract_item_out(svc, project_id, row.id)
+
+
+@router.patch(_P + "/contract-items/{item_id}", dependencies=[EDIT])
+async def update_contract_item(
+    project_id: uuid.UUID, item_id: uuid.UUID, body: ContractItemPatch, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    svc = await _delivery_svc(project_id, user_id, session)
+    await _run(svc.update_contract_item(project_id, item_id, body.model_dump(exclude_unset=True), _uid(user_id)))
+    return await _contract_item_out(svc, project_id, item_id)
+
+
+@router.delete(_P + "/contract-items/{item_id}", status_code=204, dependencies=[EDIT])
+async def delete_contract_item(
+    project_id: uuid.UUID, item_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> Response:
+    svc = await _delivery_svc(project_id, user_id, session)
+    await _run(svc.delete_contract_item(project_id, item_id, _uid(user_id)))
+    return Response(status_code=204)
 
 
 # ── readiness, validation, export ──────────────────────────────────────────

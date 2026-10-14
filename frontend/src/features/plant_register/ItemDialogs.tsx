@@ -526,7 +526,7 @@ export function LimitsDialog({
           {steps.map((s) => {
             const name = catalogueName(labels, catalogue, 'delivery_limit_steps', s.code);
             return (
-              <li key={s.code} className="grid items-center gap-2 sm:grid-cols-[1fr_1fr_1.5fr]" data-testid="limit-step">
+              <li key={s.code} className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.5fr)]" data-testid="limit-step">
                 <span className="text-sm text-content-primary">{name}</span>
                 <select
                   aria-label={t('plant.limits.party_for', { defaultValue: 'Party for {{step}}', step: name })}

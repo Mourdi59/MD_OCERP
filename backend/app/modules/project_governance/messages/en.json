@@ -153,6 +153,22 @@
         "fail": "Area {area} is marked not applicable without a reason",
         "suggestion": "Write down why the area does not apply"
       }
+    },
+    "catalogue": {
+      "neutral": {
+        "gate": {
+          "approval_to_detail": "Gate: Permit to Detailed design",
+          "award_to_construction": "Gate: Award to Construction",
+          "brief_to_concept": "Gate: Brief to Concept",
+          "concept_to_design": "Gate: Concept to Design",
+          "construction_to_handover": "Gate: Construction to Handover",
+          "design_to_approval": "Gate: Design to Permit",
+          "detail_to_tender": "Gate: Detailed design to Tender",
+          "handover_to_operation": "Gate: Handover to Operation",
+          "strategy_to_brief": "Gate: Strategy to Brief",
+          "tender_to_award": "Gate: Tender to Award"
+        }
+      }
     }
   }
 }

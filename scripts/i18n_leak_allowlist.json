@@ -1738,5 +1738,70 @@
     "en_value": "{{lat}}, {{lon}}",
     "note": "only placeholders joined by punctuation; nothing in it is a word to translate",
     "reason_category": "template_only"
+  },
+  "commitment.refs.plant_item": {
+    "en_value": "{{code}} {{name}}",
+    "note": "only placeholders joined by punctuation or a middle dot; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "delivery_model.ui.export.pdf": {
+    "en_value": "PDF",
+    "note": "file format or application name on an export control, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "delivery_model.ui.link.code_and_title": {
+    "en_value": "{{code}} · {{title}}",
+    "note": "only placeholders joined by punctuation or a middle dot; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "design.ui.dist_format.pdf": {
+    "en_value": "PDF",
+    "note": "file format or application name on an export control, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "design.ui.overview.as_pdf": {
+    "en_value": "PDF",
+    "note": "file format or application name on an export control, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "design.ui.overview.as_sheet": {
+    "en_value": "Excel",
+    "note": "file format or application name on an export control, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "site_logistics.plan.readiness.pdf": {
+    "en_value": "PDF",
+    "note": "file format or application name on an export control, written the same in every locale; the one locale that differs (de) adds its own noun for the file, an accepted translation",
+    "reason_category": "product_name"
+  },
+  "site_logistics.plan.readiness.xlsx": {
+    "en_value": "Excel",
+    "note": "file format or application name on an export control, written the same in every locale; the one locale that differs (de) adds its own noun for the file, an accepted translation",
+    "reason_category": "product_name"
+  },
+  "site_logistics.plan.with_unit": {
+    "en_value": "{{value}} {{unit}}",
+    "note": "only placeholders joined by punctuation or a middle dot; nothing in it is a word to translate",
+    "reason_category": "template_only"
+  },
+  "qualityConcept.stages.cell_label": {
+    "en_value": "{{system}}, {{stage}}: {{state}}",
+    "note": "accessible label made only of three placeholders and punctuation; the locales that differ (de adds the word for stage, fr, ja, zh, ar, fa and ur use their own punctuation) carry that form, the rest have nothing to translate",
+    "reason_category": "template_only"
+  },
+  "engineeringBrief.export.pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "engineeringBrief.export.xlsx": {
+    "en_value": "Excel",
+    "note": "application name on an export button, written the same in every locale",
+    "reason_category": "product_name"
+  },
+  "economics.export.pdf": {
+    "en_value": "PDF",
+    "note": "file format name on an export button, written the same in every locale",
+    "reason_category": "product_name"
   }
 }

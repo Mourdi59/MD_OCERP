@@ -35,7 +35,7 @@ from app.core.tenant_scope import resolve_tenant_id
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
 from app.modules.quality_concept import capabilities as caps
 from app.modules.quality_concept import evaluator as ev
-from app.modules.quality_concept import references
+from app.modules.quality_concept import permit_conditions, references
 from app.modules.quality_concept import schemas as s
 from app.modules.quality_concept.catalogue import shipped_catalogue
 from app.modules.quality_concept.errors import QualityConceptError
@@ -578,6 +578,15 @@ async def list_requirements(
 ) -> dict[str, Any]:
     svc = await _project_service(project_id, user_id, session, payload)
     return _page([_requirement_out(r) for r in await _run(svc.list_requirements(project_id))])
+
+
+@router.get(P + "/permit-conditions", dependencies=[READ])
+async def list_permit_conditions(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """Permit conditions of module 2 as derived quality requirements and checks (read only)."""
+    await _project_service(project_id, user_id, session, payload)
+    return await permit_conditions.load(session, project_id)
 
 
 @router.post(P + "/requirements", status_code=201, dependencies=[MANAGE])

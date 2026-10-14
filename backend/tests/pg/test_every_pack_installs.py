@@ -701,6 +701,7 @@ _ELEVEN_MODULES = (
     "commitment_release",
     "quality_concept",
     "transmittals",
+    "handbook",
 )
 _EMPTY_BY_DESIGN: dict[str, str] = {
     # Written only when a delivery is scheduled on a granted oversize permit, which needs a running site.
@@ -819,5 +820,18 @@ async def test_every_screen_of_the_eleven_areas_has_rows_for_both_filmed_project
                 # Nobody can sign in as a demo person.
                 assert user.is_active is False and (user.metadata_ or {}).get("demo_person") is True, user.email
 
+    # The data room: the catalogue folder tree is materialised for each filmed project.
+    from app.modules.documents.models import DocumentFolder
+
+    async with factory() as s:
+        for demo_id in filmed:
+            folders = (
+                await s.execute(
+                    select(func.count())
+                    .select_from(DocumentFolder)
+                    .where(DocumentFolder.project_id == projects[demo_id].id)
+                )
+            ).scalar_one()
+            assert folders > 0, f"{demo_id}: the data room has no folders"
     warned = _install_warnings(caplog)
     assert not warned, warned[:20]

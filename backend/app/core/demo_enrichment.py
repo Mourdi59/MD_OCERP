@@ -213,13 +213,16 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         from app.modules.documents.documents_seed import seed_documents_demo
         from app.modules.documents.photos_seed import seed_photos
         from app.modules.dwg_takeoff.seed import seed_dwg_takeoff_demo
+        from app.modules.economics.seed import seed_economics_demo
         from app.modules.einvoice_clearance.seed import seed_einvoice_clearance_demo
+        from app.modules.engineering_brief.seed import seed_engineering_brief_demo
         from app.modules.estimate_basis.seed import seed_estimate_basis_demo
         from app.modules.field_time.seed import seed_field_time_demo
         from app.modules.finance.einvoice_settings_seed import seed_einvoice_settings_demo
         from app.modules.forms.submissions_seed import seed_forms_submissions_demo
         from app.modules.full_evm.seed import seed_full_evm_demo
         from app.modules.hse_advanced.seed import seed_hse_advanced_demo
+        from app.modules.hse_frame.seed import seed_hse_frame_demo
         from app.modules.interface_management.seed import seed_interface_management_demo
         from app.modules.markups.seed import seed_markups
         from app.modules.moc.seed import seed_moc
@@ -229,6 +232,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         from app.modules.portal.seed import seed_portal_demo
         from app.modules.portfolio.seed import seed_portfolio_demo
         from app.modules.procurement_concept.seed import seed_procurement_concept_demo
+        from app.modules.project_handbook.seed import seed_project_handbook_demo
         from app.modules.qms.models import ITPPlan
         from app.modules.qms.seed import seed_qms
         from app.modules.quality_concept.seed import seed_quality_concept_demo
@@ -428,6 +432,9 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             # The owner's delivery form decision links the contract the
             # contracts seeder wrote above. Guards itself per project.
             ("delivery_model", None, lambda s: seed_delivery_model_demo(s, _demo_pids)),
+            # The business case, cost frame and financing plan are cut from the bill
+            # the estimate seeders wrote, so they run after them. Guards itself per project.
+            ("economics", None, lambda s: seed_economics_demo(s, _demo_pids)),
             # The authority permit roadmap and its condition register: the
             # permits a project of its country needs, two decided with
             # conditions, one under review. Links the schedule activities the
@@ -486,6 +493,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             # or item.
             ("site_prep", None, lambda s: seed_site_prep_demo(s, _demo_pids)),
             ("staffing", None, lambda s: seed_staffing_demo(s, _demo_pids)),
+            ("engineering_brief", None, lambda s: seed_engineering_brief_demo(s, _demo_pids)),
             # Gates, laydown zones and a working week of deliveries, each one
             # booked against a real position of the project's own bill - which is
             # what gives the delivery board its estimate coverage table something
@@ -519,6 +527,9 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             # project's CDE, so it runs after the documents seed above.
             ("closeout", None, lambda s: seed_closeout_demo(s, _demo_pids)),
             ("quality_concept", None, lambda s: seed_quality_concept_demo(s, _demo_pids)),
+            # The HSE frame of the German demo projects. It links the permit conditions, incidents,
+            # permits to work and audits the seeders above wrote, so it runs after all of them.
+            ("hse_frame", None, lambda s: seed_hse_frame_demo(s, _demo_pids)),
             # A structure over the projects rather than a register inside one:
             # it files the whole estate into one tree, so it runs once the
             # estate is complete.
@@ -547,6 +558,9 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             ("reconciliation", None, lambda s: seed_reconciliation_demo(s, _demo_pids)),
             # Reads the package plan the delivery-model seeder wrote; skips projects without one.
             ("procurement_concept", None, lambda s: seed_procurement_concept_demo(s, _demo_pids)),
+            # The handbook reads the stakeholders, positions and milestones seeded above and files the
+            # documents seeded earlier into the data room; it has to come after all of them.
+            ("project_handbook", None, lambda s: seed_project_handbook_demo(s, _demo_pids)),
         ]
         # Project governance runs first and is the only seeder that pins a phase
         # model: phase model, area owners, a decided first gate, frame documents
@@ -561,20 +575,26 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         report["demo_cast"] = await _demo_cast(async_session_factory, _demo_pids)
         report["project_governance"] = {"seed": await _seed_governance(async_session_factory, _demo_pids)}
 
-        for _name, _marker, _build in _module_seeders:
-            try:
-                if _marker is not None:
-                    async with async_session_factory() as _chk:
-                        _n = (await _chk.execute(_msel(_func.count()).select_from(_marker))).scalar_one()
-                    if _n:
-                        continue
-                async with async_session_factory() as _ms:
-                    _counts = await _build(_ms)
-                    await _ms.commit()
-                    if isinstance(_counts, dict) and any(_counts.values()):
-                        logger.info("%s demo seed: %s", _name, _counts)
-            except Exception:
-                logger.warning("%s demo seed skipped (non-fatal)", _name, exc_info=True)
+        # The module seeders write the history the governance story has already bound the frames on.
+        # The permits roadmap and the design frame guards, which send a live change to a binding
+        # frame through a change request, stand aside for exactly this span (see core.demo_history).
+        from app.core.demo_history import recording_demo_history
+
+        with recording_demo_history():
+            for _name, _marker, _build in _module_seeders:
+                try:
+                    if _marker is not None:
+                        async with async_session_factory() as _chk:
+                            _n = (await _chk.execute(_msel(_func.count()).select_from(_marker))).scalar_one()
+                        if _n:
+                            continue
+                    async with async_session_factory() as _ms:
+                        _counts = await _build(_ms)
+                        await _ms.commit()
+                        if isinstance(_counts, dict) and any(_counts.values()):
+                            logger.info("%s demo seed: %s", _name, _counts)
+                except Exception:
+                    logger.warning("%s demo seed skipped (non-fatal)", _name, exc_info=True)
 
         # Governance decided its gates before the modules had rows, so an area
         # whose module answered "not met" passed at risk with an open condition.
