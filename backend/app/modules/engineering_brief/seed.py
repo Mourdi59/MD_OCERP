@@ -317,7 +317,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, demo_id: s
     project = await session.get(Project, project_id)
     actor = project.owner_id
     svc = EngineeringBriefService(session)
-    counts = {"requirements": 0, "concepts": 0, "programme": 0, "milestones": 0, "submitted": 0}
+    counts = {"requirements": 0, "concepts": 0, "programme": 0, "milestones": 0, "submitted": 0, "gates_bound": 0}
 
     await svc.set_brief(
         project_id,
@@ -382,6 +382,13 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, demo_id: s
         gates = await svc.milestones_from_gates(project_id, actor)
         counts["milestones"] += len(gates)
 
+    # The schedule module takes the milestones and owns the date of every undecided gate. A decided gate
+    # keeps what it was decided with; nothing may be refused here, or the demo would show an unbound gate.
+    published = await svc.publish_schedule(project_id, actor)
+    if published["gates_skipped"]:
+        logger.warning("engineering brief demo: gates not bound for %s: %s", project_id, published["gates_skipped"])
+    counts["gates_bound"] = len(published["gates_bound"])
+
     # Submit only what the checks accept; a brief with a blocking finding stays the draft somebody is on.
     blocking = [f for f in await svc.submission_findings(project_id) if f.severity == "error"]
     if not blocking:
@@ -400,7 +407,15 @@ async def seed_engineering_brief_demo(session: AsyncSession, project_ids: Iterab
     from app.modules.engineering_brief.models import EngineeringBrief
     from app.modules.projects.models import Project
 
-    totals = {"projects": 0, "requirements": 0, "concepts": 0, "programme": 0, "milestones": 0, "submitted": 0}
+    totals = {
+        "projects": 0,
+        "requirements": 0,
+        "concepts": 0,
+        "programme": 0,
+        "milestones": 0,
+        "submitted": 0,
+        "gates_bound": 0,
+    }
     ids = list(project_ids)
     if not ids:
         return totals

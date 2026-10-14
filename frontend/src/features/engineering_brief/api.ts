@@ -39,6 +39,19 @@ export type ExportFormat = 'pdf' | 'xlsx';
 export type ExportWhat = 'requirements' | 'concept' | 'programme' | 'schedule';
 export type Severity = 'error' | 'warning';
 
+export interface BriefGate {
+  id: string;
+  code: string;
+  label: string;
+  order: number;
+  status: string;
+  target_date: string | null;
+}
+
+export function listGates(projectId: string) {
+  return apiGet<Page<BriefGate>>(`/v1/engineering_brief/projects/${projectId}/gates`);
+}
+
 export const CONSTRAINT_TYPES: ConstraintType[] = [
   'equals',
   'not_equals',
@@ -258,6 +271,7 @@ export interface PublishResult {
   moved: number;
   gates_bound: string[];
   gates_skipped: string[];
+  gates_decided?: string[];
 }
 
 export interface BriefSetInput {

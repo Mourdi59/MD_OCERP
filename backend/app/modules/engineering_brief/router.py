@@ -444,6 +444,14 @@ async def delete_milestone(
 # ── readiness, validation, export ──────────────────────────────────────────
 
 
+@router.get("/projects/{project_id}/gates", response_model=Page[dict[str, Any]], dependencies=[READ])
+async def list_gates(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """The governance gates of the project, for the gate selector of a milestone (read only)."""
+    await verify_project_access(project_id, user_id, session)
+    gates = await _run(EngineeringBriefService(session)._gates(project_id))
+    return _page(json_safe(gates))
+
+
 @router.get("/projects/{project_id}/readiness", dependencies=[READ])
 async def readiness(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, gate_code: str = Query(..., max_length=64)

@@ -14,6 +14,7 @@ import {
   listBriefFindings,
   listCatalogues,
   listConcepts,
+  listGates,
   listMilestones,
   listProgramme,
   listRequirements,
@@ -86,6 +87,15 @@ export function useProgramme(projectId: string, enabled: boolean) {
   return useQuery({
     queryKey: briefKeys.programme(projectId),
     queryFn: () => listProgramme(projectId).then((page) => page.items),
+    enabled: enabled && !!projectId,
+    retry: false,
+  });
+}
+
+export function useGates(projectId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['engineering_brief', projectId, 'gates'],
+    queryFn: () => listGates(projectId).then((page) => page.items),
     enabled: enabled && !!projectId,
     retry: false,
   });

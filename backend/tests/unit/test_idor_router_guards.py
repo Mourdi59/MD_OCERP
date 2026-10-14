@@ -834,6 +834,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "readiness",
         "validation",
         "export",
+        "list_gates",
     ],
     # Staffing: every route is project-scoped and awaits verify_project_access
     # itself; personnel-file routes add rule 13 (tier plus relationship) in the

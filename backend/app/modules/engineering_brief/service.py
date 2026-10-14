@@ -1290,6 +1290,7 @@ class EngineeringBriefService:
         # The schedule now owns the date of every undecided gate that has a milestone.
         bound: list[str] = []
         skipped: list[str] = []
+        decided: list[str] = []
         gates = {g["code"]: g for g in await self._gates(project_id)}
         for m in milestones:
             gate = gates.get(m.gate_code) if m.gate_code else None
@@ -1298,7 +1299,7 @@ class EngineeringBriefService:
             if gate["schedule_activity_id"] == m.activity_id:
                 continue
             if gate["status"] == "decided":
-                skipped.append(gate["code"])
+                decided.append(gate["code"])
                 continue
             try:
                 await GovernanceService(self.session).plan_gate(
@@ -1324,6 +1325,7 @@ class EngineeringBriefService:
             "moved": moved,
             "gates_bound": bound,
             "gates_skipped": skipped,
+            "gates_decided": decided,
         }
 
     # ── gate readiness and validation ──────────────────────────────────────

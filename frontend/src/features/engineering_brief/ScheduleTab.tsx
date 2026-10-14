@@ -35,6 +35,7 @@ import {
   type MilestoneInput,
 } from './api';
 import { ExportButtons, FIELD_CLASS, FormError, ReadOnlyNotice, useBriefAction, useSubmit } from './BriefBits';
+import { useGates } from './hooks';
 import { itemLabel, refusalText, type LabelContext, type TFn } from './labels';
 
 const EMPTY: MilestoneInput = { kind_code: '', name: '', planned_date: null, lead_days: 0, successor_id: null, gate_code: null, notes: '' };
@@ -86,6 +87,7 @@ function MilestoneDialog({
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState<MilestoneInput>(EMPTY);
+  const gates = useGates(projectId, open);
   const [tried, setTried] = useState(false);
   const sub = useSubmit(() => {
     onDone();
@@ -194,7 +196,14 @@ function MilestoneDialog({
         </WideModalField>
         {kind?.gate ? (
           <WideModalField label={t('engineeringBrief.schedule.gate', { defaultValue: 'Gate' })}>
-            <input className={FIELD_CLASS} value={form.gate_code ?? ''} maxLength={64} onChange={(e) => setForm({ ...form, gate_code: e.target.value || null })} />
+            <select className={FIELD_CLASS} value={form.gate_code ?? ''} onChange={(e) => setForm({ ...form, gate_code: e.target.value || null })} data-testid="brief-milestone-gate">
+              <option value="">{t('engineeringBrief.none', { defaultValue: 'None' })}</option>
+              {(gates.data ?? []).map((g) => (
+                <option key={g.code} value={g.code}>
+                  {g.label || g.code}
+                </option>
+              ))}
+            </select>
           </WideModalField>
         ) : null}
       </div>
