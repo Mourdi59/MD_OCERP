@@ -408,6 +408,9 @@ async def test_staffing_plan_and_position_lifecycle(world: World) -> None:
     plan = await f.call("GET", f"{base}/plan")
     plan_status = f.body(plan).get("status")
 
+    # The organisation of a custom position is a code of the pinned catalogue, not free text.
+    pinned = f.body(await f.call("GET", f"{base}/catalogue"))
+    org_codes = [o.get("code") for o in pinned.get("organisations") or [] if isinstance(o, dict) and o.get("code")]
     created = await f.call(
         "POST",
         f"{base}/positions",
@@ -415,7 +418,7 @@ async def test_staffing_plan_and_position_lifecycle(world: World) -> None:
         json={
             "role_code": "custom",
             "custom_label": f"QA position {_tag()}",
-            "organisation": "QA GmbH",
+            "organisation": org_codes[0] if org_codes else "contractor",
             "phase": "execution",
         },
     )
@@ -591,6 +594,8 @@ async def test_stakeholders_register_assessment_and_plan(world: World) -> None:
         if seed_plan.get(key):
             plan_body[key] = seed_plan[key]
     plan_body["audience_stakeholder_ids"] = [sid]
+    # An item needs a start date (with a frequency) or a trigger; a one-off a week out is the plain case.
+    plan_body["starts_on"] = (date.today() + timedelta(days=7)).isoformat()
     pi = await f.call("POST", f"{base}/plan-items", expect=(201,), json=plan_body)
     item = f.body(pi).get("id")
     if item:

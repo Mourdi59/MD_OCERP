@@ -267,7 +267,9 @@ async def test_every_export_returns_a_real_file(world: World) -> None:
                     got = await world.client.get(listing, params={"limit": 50}, headers=world.admin)
                     rows = _items(got.json())
                     if rows:
-                        query[id_param] = str(rows[0]["id"])
+                        # The package board nests the package under ``contract_package``.
+                        first = rows[0]
+                        query[id_param] = str(first.get("id") or first["contract_package"]["id"])
                 fmt = next((v for k, v in query.items() if k in ("format", "fmt", "export_format")), None)
                 if fmt is None:
                     fmt = next((v for k, v in chosen.items() if v in ("pdf", "xlsx")), None)
