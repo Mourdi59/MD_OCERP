@@ -738,7 +738,9 @@ class TestDeadlineSweepAcrossProjects:
                 stmt = stmt.where(Notification.entity_id == record)
             return (await session.execute(stmt)).scalar_one()
 
-        now = datetime.now(UTC)
+        # Midday of today: the second sweep an hour later must stay on the same calendar day, or the windows
+        # move under it (a run at 23:10 UTC would see every date a day closer) and a fresh reminder is due.
+        now = datetime.now(UTC).replace(hour=12, minute=0, second=0, microsecond=0)
         async with factory() as session:
             await sweep_overdue(session, now=now)
             await session.commit()

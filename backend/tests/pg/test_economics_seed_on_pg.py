@@ -186,19 +186,21 @@ async def test_with_gates_the_decided_gate_approves_the_demo_plan_by_someone_els
         await _mark(w, "residential-regensburg")
         gate = await prepare_gate(w, GATE)
         # The demo is installed with the plan, so no plan exists yet when the decision is taken: the decider
-        # goes at risk on the commercial area, with the plan as the condition, and the seed then finds a decided gate.
-        condition = ProposedCondition(
-            area_code="m09_commercial",
-            document_type=None,
-            text="Cost plan proposed and financed",
-            owner_user_id=str(w.owner),
+        # goes at risk on the commercial area, with the plan as the condition, and the seed then finds a decided
+        # gate. The quality concept of the gate is not part of this story and is taken at risk as well.
+        conditions = tuple(
+            ProposedCondition(area_code=area, document_type=None, text=text, owner_user_id=str(w.owner))
+            for area, text in (
+                ("m09_commercial", "Cost plan proposed and financed"),
+                ("m10_quality", "Quality concept approved"),
+            )
         )
         await decide(
             w,
             gate.id,
             "go_with_conditions",
-            conditions=(condition,),
-            proceed_at_risk_areas=("m09_commercial",),
+            conditions=conditions,
+            proceed_at_risk_areas=("m09_commercial", "m10_quality"),
             rationale="The commercial frame follows with the demo plan.",
         )
         doc = (await documents(w))[COMMERCIAL_DOC]
