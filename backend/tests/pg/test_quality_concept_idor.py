@@ -119,6 +119,13 @@ async def test_reading_never_writes_and_the_plan_needs_the_manage_permission(wor
             "edit_plan": True,
             "submit": False,
             "submit_reason": "concept_incomplete",
+            # This project has gates: the gate approves and a change request reopens, so neither is offered here.
+            "approve": False,
+            "approve_reason": "approved_by_gate",
+            "approve_applies": False,
+            "reopen": False,
+            "reopen_reason": "reopened_by_change_request",
+            "reopen_applies": False,
         }
         assert _code(await c.post(_p(world, "concept"))) == (409, "concept_exists")
         patched = await c.patch(_p(world, "concept"), json={"packages": [{"ref": "P-01", "title": "Structure"}]})

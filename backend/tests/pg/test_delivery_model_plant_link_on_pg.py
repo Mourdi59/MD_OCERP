@@ -43,6 +43,8 @@ class Dates:
     enquiry_date: date | None
     lead_source: str
     long_lead: bool
+    procurement_route: str = "owner_furnished_contractor_installed"
+    status: str = "identified"
 
 
 def _register(monkeypatch, items: dict[tuple[uuid.UUID, uuid.UUID], Dates]) -> None:
@@ -207,7 +209,10 @@ async def test_the_demo_links_the_switchboard_once_the_register_has_seeded(world
     _no_register(monkeypatch)
     await _seed(w)
     async with w.factory() as s:
-        assert await seed.link_demo_plant_items(s, [w.project_id]) == {"linked": 0}
+        assert await seed.link_demo_plant_items(s, [w.project_id]) == {
+            "linked": 0,
+            "skipped": [{"project_id": str(w.project_id), "reason": "plant_register_unavailable"}],
+        }
     d = _dates(seed.DEMO_PLANT_LINKS["OFI-01"])
     _register(monkeypatch, {(w.project_id, d.plant_item_id): d})
     for expected in (1, 0):  # the second run finds it linked

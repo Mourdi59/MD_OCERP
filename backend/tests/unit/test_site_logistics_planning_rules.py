@@ -679,7 +679,9 @@ def test_the_governance_port_names_the_catalogue_of_a_country(country, expected,
 
     cat.register_kind()
     # No active pack and no regional pack has a say here: the shipped files answer alone.
-    monkeypatch.setattr(catalogue_packs, "pack_default_candidates", lambda kind, country_code: ())
+    monkeypatch.setattr(
+        catalogue_packs, "pack_default_candidates", lambda kind, country_code=None, subdivision_code=None: ()
+    )
     monkeypatch.setattr(catalogue_store, "regional_pack_entry", lambda kind, country_code: None)
     pin = public.default_catalogue_pin(cat.SITE_LOGISTICS_KIND, country)
     assert (pin.catalogue_id if pin is not None else cat.DEFAULT_CATALOGUE_ID) == expected
@@ -704,7 +706,10 @@ def test_the_port_is_the_only_country_default_in_the_module() -> None:
     ]
     assert readers == [], "only the governance port reads the countries of a catalogue"
     source = inspect.getsource(plan_service.LogisticsPlanService._default_pin)
-    assert source.count("default_catalogue_pin(SITE_LOGISTICS_KIND, country)") == 1
+    assert (
+        source.count('default_catalogue_pin(SITE_LOGISTICS_KIND, country, getattr(project, "subdivision_code", None)')
+        == 1
+    )
     assert "DEFAULT_CATALOGUE_ID" in source
     shipped = cat.shipped_catalogues()
     assert {c.id: c.jurisdiction_countries for c in shipped.values()} == {
