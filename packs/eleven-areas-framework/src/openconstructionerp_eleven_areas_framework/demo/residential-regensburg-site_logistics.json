@@ -344,5 +344,7 @@
   "rejected_cargo": {
     "en": "Site welfare unit exchange",
     "de": "Austausch Sozialcontainer"
-  }
+  },
+  "customs_before_gate": true,
+  "complaints_before_gate": true
 }

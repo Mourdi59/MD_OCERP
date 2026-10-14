@@ -702,7 +702,10 @@ _ELEVEN_MODULES = (
     "quality_concept",
     "transmittals",
 )
-_EMPTY_BY_DESIGN: dict[str, str] = {}
+_EMPTY_BY_DESIGN: dict[str, str] = {
+    # Written only when a delivery is scheduled on a granted oversize permit, which needs a running site.
+    "oe_site_logistics_permit_transport": "a site before its construction gate schedules no delivery",
+}
 
 
 @pytest.mark.timeout(1500)

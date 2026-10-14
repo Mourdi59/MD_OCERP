@@ -62,3 +62,35 @@ def test_shipped_school_story_uses_real_catalogue_codes() -> None:
     assert {h[0] for h in handovers} <= set(story["filled"])
     assert {h[1] for h in handovers} <= {r[0] for r in rows}
     assert "\u2014" not in _STORY.read_text(encoding="utf-8")
+
+
+def test_a_story_roster_gives_the_people_in_filling_order_and_drops_unusable_rows() -> None:
+    from app.modules.staffing.seed import story_roster
+
+    story = {
+        "roster": [
+            {"name": {"en": "A", "de": "Ä"}, "company": "Firma", "site_role": "project_director", "allocation": 40},
+            {"name": "B"},
+            {"company": "no name"},
+            "x",
+            {"name": "C", "allocation": 400},
+        ]
+    }
+    rows = story_roster(story, "de")
+    assert [r["name"] for r in rows] == ["Ä", "B", "C"]
+    assert [r["allocation"] for r in rows] == [40, 100, 100]
+    assert story_roster({}, "de") == [] and story_roster({"roster": "x"}, "de") == []
+
+
+def test_every_shipped_staffing_story_has_a_person_for_each_filled_role() -> None:
+    import json
+    from pathlib import Path
+
+    from app.modules.staffing.seed import FILLED, story_roster
+
+    demo = Path(__file__).resolve().parents[3] / "packs" / "eleven-areas-framework" / "src"
+    for path in demo.glob("*/demo/*-staffing.json"):
+        story = json.loads(path.read_text(encoding="utf-8"))
+        names = [r["name"] for r in story_roster(story, "de")]
+        assert len(names) >= len(story.get("filled") or FILLED), path.name
+        assert len(set(names)) == len(names), path.name
