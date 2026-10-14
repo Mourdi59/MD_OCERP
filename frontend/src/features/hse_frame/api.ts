@@ -251,48 +251,46 @@ export function downloadExport(projectId: string, what: ExportWhat, format: 'pdf
   return downloadWithAuth(`${API_BASE}/v1/hse-frame/projects/${projectId}/export?what=${what}&format=${format}`, `hse_${what}.${format}`);
 }
 
-const base = (projectId: string) => `/v1/hse-frame/projects/${projectId}`;
-
-export const getFrame = (p: string) => apiGet<FrameView>(`${base(p)}/frame`);
-export const createFrame = (p: string) => apiPost<Frame>(`${base(p)}/frame`);
-export const patchFrame = (p: string, body: FramePatch) => apiPatch<Frame, FramePatch>(`${base(p)}/frame`, body);
-export const getCatalogue = (p: string) => apiGet<Catalogue>(`${base(p)}/catalogue`);
+export const getFrame = (p: string) => apiGet<FrameView>(`/v1/hse-frame/projects/${p}/frame`);
+export const createFrame = (p: string) => apiPost<Frame>(`/v1/hse-frame/projects/${p}/frame`);
+export const patchFrame = (p: string, body: FramePatch) => apiPatch<Frame, FramePatch>(`/v1/hse-frame/projects/${p}/frame`, body);
+export const getCatalogue = (p: string) => apiGet<Catalogue>(`/v1/hse-frame/projects/${p}/catalogue`);
 export const applyTemplates = (p: string) =>
-  apiPost<{ created: number; skipped: number }>(`${base(p)}/frame/apply-templates`);
+  apiPost<{ created: number; skipped: number }>(`/v1/hse-frame/projects/${p}/frame/apply-templates`);
 export const consolidatePermitConditions = (p: string) =>
-  apiPost<{ created: number; already_linked: number }>(`${base(p)}/frame/consolidate-permit-conditions`);
-export const submitFrame = (p: string) => apiPost<Frame>(`${base(p)}/frame/submit`);
-export const approveFrame = (p: string) => apiPost<Frame>(`${base(p)}/frame/approve`);
-export const reviseFrame = (p: string, note = '') => apiPost<Frame>(`${base(p)}/frame/revise`, { note });
+  apiPost<{ created: number; already_linked: number }>(`/v1/hse-frame/projects/${p}/frame/consolidate-permit-conditions`);
+export const submitFrame = (p: string) => apiPost<Frame>(`/v1/hse-frame/projects/${p}/frame/submit`);
+export const approveFrame = (p: string) => apiPost<Frame>(`/v1/hse-frame/projects/${p}/frame/approve`);
+export const reviseFrame = (p: string, note = '') => apiPost<Frame>(`/v1/hse-frame/projects/${p}/frame/revise`, { note });
 export const pinCatalogue = (p: string, body: { source: string; catalogue_id: string; version?: number }) =>
-  apiPut<Frame, typeof body>(`${base(p)}/frame/catalogue`, body);
+  apiPut<Frame, typeof body>(`/v1/hse-frame/projects/${p}/frame/catalogue`, body);
 
-export const listItems = (p: string) => apiGet<Page<Item>>(`${base(p)}/items`);
-export const createItem = (p: string, body: ItemCreate) => apiPost<Item, ItemCreate>(`${base(p)}/items`, body);
+export const listItems = (p: string) => apiGet<Page<Item>>(`/v1/hse-frame/projects/${p}/items`);
+export const createItem = (p: string, body: ItemCreate) => apiPost<Item, ItemCreate>(`/v1/hse-frame/projects/${p}/items`, body);
 export const patchItem = (p: string, id: string, body: Partial<Item>) =>
-  apiPatch<Item, Partial<Item>>(`${base(p)}/items/${id}`, body);
+  apiPatch<Item, Partial<Item>>(`/v1/hse-frame/projects/${p}/items/${id}`, body);
 export const meetItem = (p: string, id: string, body: { met_on?: string; evidence_note?: string }) =>
-  apiPost<Item, typeof body>(`${base(p)}/items/${id}/meet`, body);
+  apiPost<Item, typeof body>(`/v1/hse-frame/projects/${p}/items/${id}/meet`, body);
 export const waiveItem = (p: string, id: string, body: { reason: string; not_applicable: boolean }) =>
-  apiPost<Item, typeof body>(`${base(p)}/items/${id}/waive`, body);
-export const reopenItem = (p: string, id: string) => apiPost<Item>(`${base(p)}/items/${id}/reopen`);
-export const deleteItem = (p: string, id: string) => apiDelete(`${base(p)}/items/${id}`);
+  apiPost<Item, typeof body>(`/v1/hse-frame/projects/${p}/items/${id}/waive`, body);
+export const reopenItem = (p: string, id: string) => apiPost<Item>(`/v1/hse-frame/projects/${p}/items/${id}/reopen`);
+export const deleteItem = (p: string, id: string) => apiDelete(`/v1/hse-frame/projects/${p}/items/${id}`);
 export const addLink = (p: string, itemId: string, body: { link_kind: string; link_id: string }) =>
-  apiPost<Item, typeof body>(`${base(p)}/items/${itemId}/links`, body);
+  apiPost<Item, typeof body>(`/v1/hse-frame/projects/${p}/items/${itemId}/links`, body);
 export const removeLink = (p: string, itemId: string, linkId: string) =>
-  apiDelete(`${base(p)}/items/${itemId}/links/${linkId}`);
+  apiDelete(`/v1/hse-frame/projects/${p}/items/${itemId}/links/${linkId}`);
 export const listCandidates = (p: string, kind: string, q: string) =>
-  apiGet<Page<Candidate>>(`${base(p)}/link-candidates?kind=${encodeURIComponent(kind)}&q=${encodeURIComponent(q)}`);
+  apiGet<Page<Candidate>>(`/v1/hse-frame/projects/${p}/link-candidates?kind=${encodeURIComponent(kind)}&q=${encodeURIComponent(q)}`);
 
-export const listRoles = (p: string) => apiGet<Page<Role>>(`${base(p)}/roles`);
-export const createRole = (p: string, body: RoleCreate) => apiPost<Role, RoleCreate>(`${base(p)}/roles`, body);
+export const listRoles = (p: string) => apiGet<Page<Role>>(`/v1/hse-frame/projects/${p}/roles`);
+export const createRole = (p: string, body: RoleCreate) => apiPost<Role, RoleCreate>(`/v1/hse-frame/projects/${p}/roles`, body);
 export const patchRole = (p: string, id: string, body: Partial<Role>) =>
-  apiPatch<Role, Partial<Role>>(`${base(p)}/roles/${id}`, body);
-export const deleteRole = (p: string, id: string) => apiDelete(`${base(p)}/roles/${id}`);
+  apiPatch<Role, Partial<Role>>(`/v1/hse-frame/projects/${p}/roles/${id}`, body);
+export const deleteRole = (p: string, id: string) => apiDelete(`/v1/hse-frame/projects/${p}/roles/${id}`);
 
-export const getReadiness = (p: string) => apiGet<Readiness>(`${base(p)}/readiness`);
-export const getSummary = (p: string) => apiGet<Summary>(`${base(p)}/summary`);
-export const getChecks = (p: string) => apiGet<Page<Check>>(`${base(p)}/validation`);
+export const getReadiness = (p: string) => apiGet<Readiness>(`/v1/hse-frame/projects/${p}/readiness`);
+export const getSummary = (p: string) => apiGet<Summary>(`/v1/hse-frame/projects/${p}/summary`);
+export const getChecks = (p: string) => apiGet<Page<Check>>(`/v1/hse-frame/projects/${p}/validation`);
 
 export const hseKeys = {
   all: (p: string) => ['hse-frame', p] as const,
