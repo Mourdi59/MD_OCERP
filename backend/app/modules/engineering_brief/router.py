@@ -404,7 +404,7 @@ async def milestones_from_gates(project_id: uuid.UUID, session: SessionDep, user
     """A gate milestone for every gate of the project that has none."""
     await verify_project_access(project_id, user_id, session)
     svc = EngineeringBriefService(session)
-    rows = await _run(svc.milestones_from_gates(project_id, _uid(user_id)))
+    rows = await _run(svc.milestones_from_gates(project_id, _uid(user_id), get_locale() or "en"))
     ids = {str(r.id) for r in rows}
     return _page([v for v in await svc.milestone_views(project_id) if v["id"] in ids])
 
