@@ -93,3 +93,25 @@ async def test_a_package_near_a_milestone_is_bound_to_it_and_the_others_stay_put
         loose = await s.get(AwardPackage, far)
         assert bound.need_activity_id is not None and bound.need_date == str(day)
         assert loose.need_activity_id is None and loose.need_date == str(day + timedelta(days=400))
+
+
+@pytest.mark.parametrize("demo_id", ["residential-regensburg", "school-ludwigsburg"])
+async def test_the_pack_apply_entry_point_leaves_each_demo_project_with_a_brief(factory, demo_id: str) -> None:
+    from sqlalchemy import select
+
+    from app.modules.engineering_brief.models import EngineeringBrief
+    from app.modules.projects.models import Project
+
+    w = await build_world(factory, governance=True, brief=False)
+    async with w.factory() as s:
+        project = await s.get(Project, w.project_id)
+        project.metadata_ = {**(project.metadata_ or {}), "demo_id": demo_id}
+        await s.flush()
+        totals = await brief_seed.seed_engineering_brief_demo(s, [w.project_id])
+        await s.commit()
+    assert totals["projects"] == 1, totals
+    async with w.factory() as s:
+        found = (
+            await s.execute(select(EngineeringBrief.id).where(EngineeringBrief.project_id == w.project_id))
+        ).scalar_one_or_none()
+    assert found is not None
