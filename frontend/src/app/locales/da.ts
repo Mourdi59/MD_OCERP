@@ -22309,6 +22309,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iterationer på tværs af {{risks}} risici",
     "risk.montecarlo.running": "Kører…",
     "risk.montecarlo.tornado": "Største bidragydere (tornado)",
+    "risk.montecarlo.run_needs_editor": "Kørsel af en simulation kræver rollen Redaktør.",
     "risk.no_project_desc": "Åbn et projekt først for at se og håndtere risici.",
     "risk.open_5d": "Afspejl i 5D-reserve",
     "risk.open_schedule": "Vis 4D-tidsplan",

@@ -21619,6 +21619,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{risks}} خطرات میں {{iterations}} iterations",
     "risk.montecarlo.running": "چل رہی ہے…",
     "risk.montecarlo.tornado": "سرفہرست شراکت دار (tornado)",
+    "risk.montecarlo.run_needs_editor": "سمولیشن چلانے کے لیے ایڈیٹر کا کردار درکار ہے۔",
     "risk.no_project_desc": "خطرات دیکھنے اور منظم کرنے کے لیے پہلے ایک پروجیکٹ کھولیں۔",
     "risk.open_5d": "5D contingency میں ظاہر کریں",
     "risk.open_schedule": "4D شیڈول دیکھیں",

@@ -21451,6 +21451,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{risks}}টি ঝুঁকি জুড়ে {{iterations}}টি পুনরাবৃত্তি",
     "risk.montecarlo.running": "চালানো হচ্ছে…",
     "risk.montecarlo.tornado": "শীর্ষ অবদানকারী (টর্নেডো)",
+    "risk.montecarlo.run_needs_editor": "সিমুলেশন চালাতে «সম্পাদক» ভূমিকা প্রয়োজন।",
     "risk.no_project_desc": "ঝুঁকি দেখতে ও পরিচালনা করতে প্রথমে একটি প্রকল্প খুলুন।",
     "risk.open_5d": "5D কন্টিনজেন্সিতে প্রতিফলিত করুন",
     "risk.open_schedule": "4D সময়সূচী দেখুন",

@@ -22158,6 +22158,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} รอบ ครอบคลุมความเสี่ยง {{risks}} รายการ",
     "risk.montecarlo.running": "กำลังรัน…",
     "risk.montecarlo.tornado": "ปัจจัยหลัก (กราฟทอร์นาโด)",
+    "risk.montecarlo.run_needs_editor": "การเรียกใช้การจำลองต้องใช้บทบาทบรรณาธิการ",
     "risk.no_project_desc": "เปิดโครงการก่อนเพื่อดูและจัดการความเสี่ยง",
     "risk.open_5d": "สะท้อนในเงินสำรอง 5D",
     "risk.open_schedule": "ดูแผนงาน 4D",

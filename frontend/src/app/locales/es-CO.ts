@@ -20959,6 +20959,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iteraciones en {{risks}} riesgos",
     "risk.montecarlo.running": "Ejecutando…",
     "risk.montecarlo.tornado": "Principales contribuyentes (tornado)",
+    "risk.montecarlo.run_needs_editor": "Ejecutar una simulación requiere el rol de Editor.",
     "risk.no_project_desc": "Abre primero un proyecto para ver y gestionar los riesgos.",
     "risk.open_5d": "Reflejar en la contingencia 5D",
     "risk.open_schedule": "Ver cronograma 4D",

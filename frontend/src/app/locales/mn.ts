@@ -22241,6 +22241,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{risks}} эрсдэл дээр {{iterations}} давталт",
     "risk.montecarlo.running": "Ажиллаж байна…",
     "risk.montecarlo.tornado": "Гол хувь нэмэр оруулагчид (торнадо)",
+    "risk.montecarlo.run_needs_editor": "Симуляц ажиллуулахад Засварлагч үүрэг шаардлагатай.",
     "risk.no_project_desc": "Эрсдэлийг харж удирдахын тулд эхлээд төсөл нээнэ үү.",
     "risk.open_5d": "5D нөөц зардалд тусгах",
     "risk.open_schedule": "4D хуваарь харах",

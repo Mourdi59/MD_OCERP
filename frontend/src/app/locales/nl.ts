@@ -21987,6 +21987,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iteraties over {{risks}} risico's",
     "risk.montecarlo.running": "Bezig…",
     "risk.montecarlo.tornado": "Belangrijkste bijdragers (tornado)",
+    "risk.montecarlo.run_needs_editor": "Een simulatie uitvoeren vereist de rol Redacteur.",
     "risk.no_project_desc": "Open eerst een project om risico's te bekijken en beheren.",
     "risk.open_5d": "Verwerken in 5D-reserve",
     "risk.open_schedule": "4D-planning bekijken",

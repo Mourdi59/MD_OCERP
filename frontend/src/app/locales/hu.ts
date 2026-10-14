@@ -21891,6 +21891,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iteráció {{risks}} kockázaton",
     "risk.montecarlo.running": "Futtatás…",
     "risk.montecarlo.tornado": "Legnagyobb hatású tényezők (tornádó)",
+    "risk.montecarlo.run_needs_editor": "Szimuláció futtatásához Szerkesztő szerepkör szükséges.",
     "risk.no_project_desc": "Előbb nyisson meg egy projektet a kockázatok megtekintéséhez és kezeléséhez.",
     "risk.open_5d": "Megjelenítés az 5D tartalékkeretben",
     "risk.open_schedule": "4D ütemterv megtekintése",

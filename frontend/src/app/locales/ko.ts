@@ -22112,6 +22112,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "리스크 {{risks}}건에 걸쳐 {{iterations}}회 반복",
     "risk.montecarlo.running": "실행 중…",
     "risk.montecarlo.tornado": "주요 기여 요인 (토네이도)",
+    "risk.montecarlo.run_needs_editor": "시뮬레이션을 실행하려면 편집자 역할이 필요합니다.",
     "risk.no_project_desc": "리스크를 보고 관리하려면 먼저 프로젝트를 여세요.",
     "risk.open_5d": "5D 예비비에 반영",
     "risk.open_schedule": "4D 일정 보기",

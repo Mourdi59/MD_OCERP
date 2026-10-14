@@ -22327,6 +22327,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iteratsiooni {{risks}} riski peale",
     "risk.montecarlo.running": "Käivitamine…",
     "risk.montecarlo.tornado": "Suurimad mõjutajad (tornaadograafik)",
+    "risk.montecarlo.run_needs_editor": "Simulatsiooni käivitamiseks on vaja rolli Toimetaja.",
     "risk.no_project_desc": "Avage esmalt projekt, et riske vaadata ja hallata.",
     "risk.open_5d": "Kajasta 5D reservis",
     "risk.open_schedule": "Vaata 4D ajakava",

@@ -21759,6 +21759,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} איטרציות על פני {{risks}} סיכונים",
     "risk.montecarlo.running": "מריץ…",
     "risk.montecarlo.tornado": "התורמים המובילים (טורנדו)",
+    "risk.montecarlo.run_needs_editor": "הרצת סימולציה דורשת את התפקיד עורך.",
     "risk.no_project_desc": "פתחו פרויקט תחילה כדי לצפות ולנהל סיכונים.",
     "risk.open_5d": "שיקוף במקריות 5D",
     "risk.open_schedule": "הצגת לוח זמנים 4D",

@@ -21535,6 +21535,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} تکرار در {{risks}} ریسک",
     "risk.montecarlo.running": "در حال اجرا…",
     "risk.montecarlo.tornado": "بیشترین سهم‌داران (تورنادو)",
+    "risk.montecarlo.run_needs_editor": "اجرای شبیه‌سازی به نقش «ویرایشگر» نیاز دارد.",
     "risk.no_project_desc": "ابتدا یک پروژه باز کنید تا ریسک‌ها را ببینید و مدیریت کنید.",
     "risk.open_5d": "انعکاس در اقتضای 5D",
     "risk.open_schedule": "مشاهده زمان‌بندی 4D",

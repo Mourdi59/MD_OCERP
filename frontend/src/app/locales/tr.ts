@@ -22619,6 +22619,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{risks}} risk üzerinde {{iterations}} yineleme",
     "risk.montecarlo.running": "Çalışıyor…",
     "risk.montecarlo.tornado": "En büyük katkıda bulunanlar (tornado)",
+    "risk.montecarlo.run_needs_editor": "Simülasyon çalıştırmak için Editör rolü gerekir.",
     "risk.no_project_desc": "Riskleri görüntülemek ve yönetmek için önce bir proje açın.",
     "risk.open_5d": "5D beklenmedik durum payına yansıt",
     "risk.open_schedule": "4D Cetveli Görüntüle",

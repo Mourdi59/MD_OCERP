@@ -22158,6 +22158,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iteracija kroz {{risks}} rizika",
     "risk.montecarlo.running": "Pokretanje…",
     "risk.montecarlo.tornado": "Najveći doprinositelji (tornado)",
+    "risk.montecarlo.run_needs_editor": "Pokretanje simulacije zahtijeva ulogu Urednik.",
     "risk.no_project_desc": "Najprije otvorite projekt za pregled i upravljanje rizicima.",
     "risk.open_5d": "Prikaži u 5D rezervi",
     "risk.open_schedule": "Prikaži 4D raspored",

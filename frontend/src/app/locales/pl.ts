@@ -22676,6 +22676,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iteracji dla {{risks}} ryzyk",
     "risk.montecarlo.running": "Trwa…",
     "risk.montecarlo.tornado": "Najwięksi kontrybutorzy (tornado)",
+    "risk.montecarlo.run_needs_editor": "Uruchomienie symulacji wymaga roli Redaktor.",
     "risk.no_project_desc": "Najpierw otwórz projekt, aby przeglądać ryzyka i nimi zarządzać.",
     "risk.open_5d": "Odzwierciedl w rezerwie 5D",
     "risk.open_schedule": "Pokaż harmonogram 4D",

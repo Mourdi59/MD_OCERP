@@ -22390,6 +22390,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iterații pe {{risks}} riscuri",
     "risk.montecarlo.running": "Se rulează…",
     "risk.montecarlo.tornado": "Principalii contribuitori (tornado)",
+    "risk.montecarlo.run_needs_editor": "Rularea unei simulări necesită rolul Editor.",
     "risk.no_project_desc": "Deschideți mai întâi un proiect pentru a vedea și gestiona riscurile.",
     "risk.open_5d": "Reflectă în rezerva de risc 5D",
     "risk.open_schedule": "Vezi graficul 4D",

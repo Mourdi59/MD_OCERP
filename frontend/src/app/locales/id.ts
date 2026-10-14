@@ -21936,6 +21936,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iterasi pada {{risks}} risiko",
     "risk.montecarlo.running": "Menjalankan…",
     "risk.montecarlo.tornado": "Kontributor teratas (tornado)",
+    "risk.montecarlo.run_needs_editor": "Menjalankan simulasi memerlukan peran Editor.",
     "risk.no_project_desc": "Buka proyek terlebih dahulu untuk melihat dan mengelola risiko.",
     "risk.open_5d": "Cerminkan dalam kontingensi 5D",
     "risk.open_schedule": "Lihat Jadwal 4D",

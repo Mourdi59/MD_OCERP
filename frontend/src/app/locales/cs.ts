@@ -22323,6 +22323,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iterací napříč {{risks}} riziky",
     "risk.montecarlo.running": "Probíhá…",
     "risk.montecarlo.tornado": "Hlavní přispěvatelé (tornádo)",
+    "risk.montecarlo.run_needs_editor": "Spuštění simulace vyžaduje roli Editor.",
     "risk.no_project_desc": "Pro zobrazení a správu rizik nejprve otevřete projekt.",
     "risk.open_5d": "Promítnout do 5D rezervy",
     "risk.open_schedule": "Zobrazit 4D harmonogram",

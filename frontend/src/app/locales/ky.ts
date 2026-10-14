@@ -18356,6 +18356,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{risks}} тобокелдик боюнча {{iterations}} итерация",
     "risk.montecarlo.running": "Иштетилүүдө…",
     "risk.montecarlo.tornado": "Эң чоң салым кошуучулар (торнадо)",
+    "risk.montecarlo.run_needs_editor": "Симуляцияны иштетүү үчүн «Редактор» ролу керек.",
     "risk.no_project_desc": "Тобокелдиктерди көрүү жана башкаруу үчүн алгач долбоорду ачыңыз.",
     "risk.open_5d": "5D резервинде чагылдыруу",
     "risk.open_schedule": "4D Графикти көрүү",

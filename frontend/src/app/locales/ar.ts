@@ -23140,6 +23140,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} تكرار عبر {{risks}} مخاطر",
     "risk.montecarlo.running": "جارٍ التشغيل…",
     "risk.montecarlo.tornado": "أبرز المساهمين (تورنادو)",
+    "risk.montecarlo.run_needs_editor": "تشغيل المحاكاة يتطلب دور «محرّر».",
     "risk.no_project_desc": "افتح مشروعاً أولاً لعرض المخاطر وإدارتها.",
     "risk.open_5d": "عكسه في احتياطي 5D",
     "risk.open_schedule": "عرض الجدول 4D",

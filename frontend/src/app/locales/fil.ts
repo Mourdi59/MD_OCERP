@@ -21457,6 +21457,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iterasyon sa {{risks}} panganib",
     "risk.montecarlo.running": "Tumatakbo…",
     "risk.montecarlo.tornado": "Nangungunang kontribyutor (tornado)",
+    "risk.montecarlo.run_needs_editor": "Kailangan ng role na Patnugot para magpatakbo ng simulation.",
     "risk.no_project_desc": "Buksan muna ang isang proyekto para tingnan at pamahalaan ang mga panganib.",
     "risk.open_5d": "Ipakita sa 5D contingency",
     "risk.open_schedule": "Tingnan ang 4D Schedule",

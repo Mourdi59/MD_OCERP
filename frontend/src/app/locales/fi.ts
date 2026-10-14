@@ -22054,6 +22054,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} iteraatiota {{risks}} riskin osalta",
     "risk.montecarlo.running": "Suoritetaan…",
     "risk.montecarlo.tornado": "Suurimmat vaikuttajat (tornado)",
+    "risk.montecarlo.run_needs_editor": "Simulaation ajaminen vaatii Muokkaaja-roolin.",
     "risk.no_project_desc": "Avaa ensin projekti nähdäksesi ja hallitaksesi riskejä.",
     "risk.open_5d": "Huomioi 5D-varauksessa",
     "risk.open_schedule": "Näytä 4D-aikataulu",

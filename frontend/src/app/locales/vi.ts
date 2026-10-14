@@ -21991,6 +21991,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} lần lặp trên {{risks}} rủi ro",
     "risk.montecarlo.running": "Đang chạy…",
     "risk.montecarlo.tornado": "Các yếu tố đóng góp hàng đầu (biểu đồ tornado)",
+    "risk.montecarlo.run_needs_editor": "Chạy mô phỏng cần vai trò Biên tập viên.",
     "risk.no_project_desc": "Mở một dự án trước để xem và quản lý rủi ro.",
     "risk.open_5d": "Phản ánh vào dự phòng 5D",
     "risk.open_schedule": "Xem tiến độ 4D",

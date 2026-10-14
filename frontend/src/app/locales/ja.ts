@@ -22112,6 +22112,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "リスク {{risks}} 件にわたり {{iterations}} 回反復",
     "risk.montecarlo.running": "実行中…",
     "risk.montecarlo.tornado": "主な寄与要因（トルネード）",
+    "risk.montecarlo.run_needs_editor": "シミュレーションの実行には「編集者」ロールが必要です。",
     "risk.no_project_desc": "まずプロジェクトを開いて、リスクを表示・管理してください。",
     "risk.open_5d": "5D予備費に反映",
     "risk.open_schedule": "4Dスケジュールを表示",

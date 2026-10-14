@@ -21612,6 +21612,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} επαναλήψεις σε {{risks}} κινδύνους",
     "risk.montecarlo.running": "Εκτέλεση…",
     "risk.montecarlo.tornado": "Κορυφαίοι συντελεστές (tornado)",
+    "risk.montecarlo.run_needs_editor": "Για την εκτέλεση προσομοίωσης απαιτείται ο ρόλος Συντάκτης.",
     "risk.no_project_desc": "Ανοίξτε πρώτα ένα έργο για να δείτε και να διαχειριστείτε κινδύνους.",
     "risk.open_5d": "Αντανάκλαση στο αποθεματικό απροόπτων 5D",
     "risk.open_schedule": "Προβολή Χρονοδιαγράμματος 4D",

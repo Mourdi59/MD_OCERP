@@ -22160,6 +22160,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "对 {{risks}} 项风险进行了 {{iterations}} 次迭代",
     "risk.montecarlo.running": "正在运行…",
     "risk.montecarlo.tornado": "主要影响因素（龙卷风图）",
+    "risk.montecarlo.run_needs_editor": "运行模拟需要“编辑者”角色。",
     "risk.no_project_desc": "请先打开一个项目以查看和管理风险。",
     "risk.open_5d": "在 5D 预备费中反映",
     "risk.open_schedule": "查看 4D 进度计划",

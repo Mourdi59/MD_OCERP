@@ -21563,6 +21563,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{risks}} тәуекел бойынша {{iterations}} итерация",
     "risk.montecarlo.running": "Жүргізілуде…",
     "risk.montecarlo.tornado": "Үздік үлес қосушылар (торнадо)",
+    "risk.montecarlo.run_needs_editor": "Симуляцияны іске қосу үшін «Редактор» рөлі қажет.",
     "risk.no_project_desc": "Тәуекелдерді көру және басқару үшін алдымен жобаны ашыңыз.",
     "risk.open_5d": "5D резервте көрсету",
     "risk.open_schedule": "4D Кестені Көру",

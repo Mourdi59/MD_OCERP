@@ -22593,6 +22593,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{iterations}} итераций по {{risks}} рискам",
     "risk.montecarlo.running": "Выполнение…",
     "risk.montecarlo.tornado": "Основные факторы (торнадо)",
+    "risk.montecarlo.run_needs_editor": "Для запуска симуляции нужна роль «Редактор».",
     "risk.no_project_desc": "Сначала откройте проект, чтобы просматривать риски и управлять ими.",
     "risk.open_5d": "Отразить в 5D-резерве",
     "risk.open_schedule": "Просмотреть 4D-график",

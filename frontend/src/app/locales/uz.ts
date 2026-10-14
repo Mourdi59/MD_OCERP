@@ -21962,6 +21962,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{risks}} ta xavf boʻyicha {{iterations}} ta iteratsiya",
     "risk.montecarlo.running": "Ishlamoqda…",
     "risk.montecarlo.tornado": "Eng katta hissa qoʻshuvchilar (tornado)",
+    "risk.montecarlo.run_needs_editor": "Simulyatsiyani ishga tushirish uchun Tahrirlovchi roli kerak.",
     "risk.no_project_desc": "Xavflarni koʻrish va boshqarish uchun avval loyihani oching.",
     "risk.open_5d": "5D zaxirada aks ettirish",
     "risk.open_schedule": "4D Jadvalni koʻrish",

@@ -22328,6 +22328,7 @@ const resource = {
     "risk.montecarlo.run_done_detail": "{{risks}} जोखिमों में {{iterations}} पुनरावृत्तियाँ",
     "risk.montecarlo.running": "चल रहा है…",
     "risk.montecarlo.tornado": "शीर्ष योगदानकर्ता (टोरनेडो)",
+    "risk.montecarlo.run_needs_editor": "सिमुलेशन चलाने के लिए संपादक भूमिका आवश्यक है।",
     "risk.no_project_desc": "जोखिम देखने और प्रबंधित करने के लिए पहले एक परियोजना खोलें।",
     "risk.open_5d": "5D आकस्मिकता में दर्शाएँ",
     "risk.open_schedule": "4D अनुसूची देखें",
