@@ -77,3 +77,21 @@ def test_shipped_school_story_has_no_dashes() -> None:
     text = _STORY.read_text(encoding="utf-8")
     assert "\u2014" not in text
     assert "\u2013" not in text
+
+
+def test_report_statuses_come_from_the_story_and_unknown_ones_are_ignored() -> None:
+    from app.modules.design_management.seed import _report_statuses
+
+    story = {
+        "overrides": {
+            "RPT-005": {"status_before_gate": "in_progress", "status_after_gate": "required"},
+            "RPT-001": {"status_after_gate": "done"},
+            "bad": "x",
+        },
+        "extra": [{"code": "RPT-010", "status_before_gate": "submitted"}, "x", {"title": "no code"}],
+    }
+    assert _report_statuses(story) == {
+        "RPT-005": {"before_gate": "in_progress", "after_gate": "required"},
+        "RPT-010": {"before_gate": "submitted"},
+    }
+    assert _report_statuses(None) == {} and _report_statuses({}) == {}

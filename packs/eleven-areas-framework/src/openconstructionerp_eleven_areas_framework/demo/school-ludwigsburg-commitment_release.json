@@ -1,41 +1,74 @@
 {
   "$note": "Commitment release story of the Ludwigsburg school, told before the Baubeschluss gate. The slot item (CR-002) is the supply order of the heat pump and links to plant item PL-001; its order_signed_days and manufacturing_started_days agree with convert_by_days and slot_from_days of the held slot in the plant register story. All names invented.",
   "works": {
-    "title": "Trade lot 1: reinforced concrete frame and shell",
+    "title": {
+      "en": "Trade lot 1: reinforced concrete frame and shell",
+      "de": "Fachlos 1: Stahlbetonrohbau"
+    },
     "amount": "6200000",
     "lead_time_days": 45,
     "award_days": 165
   },
   "slot": {
-    "title": "Heat pump: supply order on the held manufacturing slot",
+    "title": {
+      "en": "Heat pump: supply order on the held manufacturing slot",
+      "de": "Wärmepumpe: Liefervertrag auf dem reservierten Fertigungsslot"
+    },
     "amount": "380000",
     "lead_time_days": 140,
-    "release_note": "Authority to sign the heat pump supply order before the Baubeschluss gate, recommended by the Technischer Ausschuss. The manufacturing slot is held free of charge and lapses if the order is not signed by its conversion date.",
+    "release_note": {
+      "en": "Authority to sign the heat pump supply order before the Baubeschluss gate, recommended by the Technischer Ausschuss. The manufacturing slot is held free of charge and lapses if the order is not signed by its conversion date.",
+      "de": "Ermächtigung zur Unterzeichnung des Liefervertrags für die Wärmepumpe vor dem Baubeschluss, empfohlen vom Technischen Ausschuss. Der Fertigungsslot ist kostenfrei reserviert und verfällt, wenn der Vertrag bis zum Umwandlungstermin nicht unterzeichnet ist."
+    },
     "salvage_value": "45000",
-    "source_note": "Budget quotation: cancellation terms that apply once the order is signed",
+    "source_note": {
+      "en": "Budget quotation: cancellation terms that apply once the order is signed",
+      "de": "Budgetangebot: Stornobedingungen, die nach Vertragsunterzeichnung gelten"
+    },
     "order_signed_days": 45,
     "manufacturing_started_days": 300,
     "release_days_ago": 33,
     "plant_item": "PL-001"
   },
   "design": {
-    "title": "Design appointment, HOAI phases 1 to 4, after the VgV procedure",
+    "title": {
+      "en": "Design appointment, HOAI phases 1 to 4, after the VgV procedure",
+      "de": "Planungsauftrag, HOAI-Leistungsphasen 1 bis 4, nach dem VgV-Verfahren"
+    },
     "amount": "3100000",
     "decision_days": 45,
     "loss_estimate": "150000",
-    "brief_text": "Raumprogramm signed off by the Schulleitung and the Schulamt",
+    "brief_text": {
+      "en": "Raumprogramm signed off by the Schulleitung and the Schulamt",
+      "de": "Raumprogramm von Schulleitung und Schulamt abgenommen"
+    },
     "first_amount": "420000",
-    "first_note": "First tranche: Leistungsphasen 1 and 2 (Grundlagenermittlung, Vorplanung)",
-    "first_condition": "Vorplanung approved by the Technischer Ausschuss before the next tranche",
+    "first_note": {
+      "en": "First tranche: Leistungsphasen 1 and 2 (Grundlagenermittlung, Vorplanung)",
+      "de": "Erste Teilfreigabe: Leistungsphasen 1 und 2 (Grundlagenermittlung, Vorplanung)"
+    },
+    "first_condition": {
+      "en": "Vorplanung approved by the Technischer Ausschuss before the next tranche",
+      "de": "Vorplanung vom Technischen Ausschuss gebilligt, bevor die nächste Teilfreigabe erfolgt"
+    },
     "second_amount": "580000",
-    "second_note": "Second tranche: Leistungsphasen 3 and 4 (Entwurfsplanung, Genehmigungsplanung)"
+    "second_note": {
+      "en": "Second tranche: Leistungsphasen 3 and 4 (Entwurfsplanung, Genehmigungsplanung)",
+      "de": "Zweite Teilfreigabe: Leistungsphasen 3 und 4 (Entwurfsplanung, Genehmigungsplanung)"
+    }
   },
   "enabling": {
-    "title": "Enabling works: Kampfmittel survey, tree protection and service diversions",
+    "title": {
+      "en": "Enabling works: Kampfmittel survey, tree protection and service diversions",
+      "de": "Vorbereitende Maßnahmen: Kampfmittelsondierung, Baumschutz und Leitungsverlegungen"
+    },
     "amount": "145000"
   },
   "contingency": {
-    "title": "Contingency drawdown for ground conditions and Altlasten",
+    "title": {
+      "en": "Contingency drawdown for ground conditions and Altlasten",
+      "de": "Abruf der Reserve für Baugrund und Altlasten"
+    },
     "amount": "320000"
   }
 }

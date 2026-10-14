@@ -73,7 +73,7 @@ def test_shipped_school_story_resolves_against_the_shipped_catalogue() -> None:
     assert len(plan["requirements"]) == len(story["requirements"])
     assert len(plan["expert_reports"]) == len(story["expert_reports"])
     assert len(plan["units"]) == len(story["units"])
-    assert plan["neighbour"]["address"] == story["survey_neighbour"]["address"]
+    assert plan["neighbour"]["address"] == story["survey_neighbour"]["address"]["en"]
     assert plan["neighbour"]["triggers"] == ["excavation", "vibration"]
     subjects = " ".join(r[0] for r in plan["expert_reports"])
     for needle in ("DIN 18041", "DIN 18032-2", "DIN 18040-1", "Pruefsachverstaendiger", "Blower door", "CO2"):

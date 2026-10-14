@@ -330,7 +330,20 @@
           "decide go_with_conditions as the manager login: one condition on m05_personnel, owner the project owner, due in 180 days, text 'Commissioning manager appointed before the first factory test'"
         ]
       },
-      "demo_id": "eleven-areas-residential"
+      "demo_id": "eleven-areas-residential",
+      "module_files": {
+        "stakeholders": "demo/residential-regensburg-stakeholders.json",
+        "staffing": "demo/residential-regensburg-staffing.json",
+        "permits": "demo/residential-regensburg-permits.json",
+        "plant_register": "demo/residential-regensburg-plant_register.json",
+        "procurement_concept": "demo/residential-regensburg-procurement_concept.json",
+        "quality_concept": "demo/residential-regensburg-quality_concept.json",
+        "design_management": "demo/residential-regensburg-design_management.json",
+        "delivery_model": "demo/residential-regensburg-delivery_model.json",
+        "commitment_release": "demo/residential-regensburg-commitment_release.json",
+        "site_logistics": "demo/residential-regensburg-site_logistics.json",
+        "transmittals": "demo/residential-regensburg-transmittals.json"
+      }
     },
     {
       "project": {

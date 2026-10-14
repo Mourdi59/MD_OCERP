@@ -1,0 +1,74 @@
+{
+  "$note": "Commitment release story of the Regensburg residential quarter, told before the construction gate. The slot item (CR-002) is the supply order of the quarter transformers and links to plant item PL-001; its order_signed_days and manufacturing_started_days agree with convert_by_days and slot_from_days of the held slot in the plant register story. All names invented.",
+  "works": {
+    "title": {
+      "en": "Lot 1 and 2: excavation pit, shoring and reinforced concrete shell",
+      "de": "Los 1 und 2: Baugrube, Verbau und Stahlbeton-Rohbau"
+    },
+    "amount": "11800000",
+    "lead_time_days": 45,
+    "award_days": 165
+  },
+  "slot": {
+    "title": {
+      "en": "Transformers 2 x 800 kVA: supply order on the held manufacturing slot",
+      "de": "Transformatoren 2 x 800 kVA: Lieferauftrag auf dem gehaltenen Fertigungsplatz"
+    },
+    "amount": "185000",
+    "lead_time_days": 140,
+    "release_note": {
+      "en": "Authority to sign the transformer supply order before the construction gate, agreed by the supervisory board. The manufacturing slot is held free of charge and lapses if the order is not signed by its conversion date.",
+      "de": "Vollmacht zur Bestellung der Transformatoren vor dem Baubeschluss, vom Aufsichtsrat beschlossen. Der Fertigungsplatz wird gebührenfrei gehalten und verfällt, wenn nicht bis zum Umwandlungstermin bestellt ist."
+    },
+    "salvage_value": "25000",
+    "source_note": {
+      "en": "Budget quotation: cancellation terms that apply once the order is signed",
+      "de": "Budgetangebot: Stornobedingungen, die nach Bestellung gelten"
+    },
+    "order_signed_days": 45,
+    "manufacturing_started_days": 300,
+    "release_days_ago": 33,
+    "plant_item": "PL-001"
+  },
+  "design": {
+    "title": {
+      "en": "Design appointment, HOAI phases 1 to 4, after the VgV procedure",
+      "de": "Planungsauftrag, HOAI Leistungsphasen 1 bis 4, nach dem VgV-Verfahren"
+    },
+    "amount": "1900000",
+    "decision_days": 45,
+    "loss_estimate": "120000",
+    "brief_text": {
+      "en": "Room and apartment programme signed off by the management and the Regierung der Oberpfalz",
+      "de": "Raum- und Wohnungsprogramm von der Geschäftsführung und der Regierung der Oberpfalz freigegeben"
+    },
+    "first_amount": "380000",
+    "first_note": {
+      "en": "First tranche: Leistungsphasen 1 and 2 (Grundlagenermittlung, Vorplanung)",
+      "de": "Erste Tranche: Leistungsphasen 1 und 2 (Grundlagenermittlung, Vorplanung)"
+    },
+    "first_condition": {
+      "en": "Vorplanung approved by the supervisory board before the next tranche",
+      "de": "Vorplanung vom Aufsichtsrat vor der nächsten Tranche freigegeben"
+    },
+    "second_amount": "540000",
+    "second_note": {
+      "en": "Second tranche: Leistungsphasen 3 and 4 (Entwurfsplanung, Genehmigungsplanung)",
+      "de": "Zweite Tranche: Leistungsphasen 3 und 4 (Entwurfsplanung, Genehmigungsplanung)"
+    }
+  },
+  "enabling": {
+    "title": {
+      "en": "Enabling works: ordnance survey, demolition of the old buildings and service diversions",
+      "de": "Vorbereitende Maßnahmen: Kampfmittelsondierung, Abbruch Altbestand und Leitungsverlegungen"
+    },
+    "amount": "410000"
+  },
+  "contingency": {
+    "title": {
+      "en": "Contingency drawdown for ground and groundwater conditions",
+      "de": "Freigabe aus der Risikoreserve für Boden- und Grundwasserverhältnisse"
+    },
+    "amount": "650000"
+  }
+}

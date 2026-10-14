@@ -66,7 +66,7 @@ def test_slot_story_agrees_with_plant_register_story(shipped: dict) -> None:
     held = register["slots"]["held"]
     assert slot["order_signed_days"] == held["convert_by_days"]
     assert slot["manufacturing_started_days"] == held["slot_from_days"]
-    assert "heat pump" in slot["title"].lower() and linked["class"] == "heat_pump"
+    assert "heat pump" in slot["title"]["en"].lower() and linked["class"] == "heat_pump"
 
 
 def test_shipped_story_text_hygiene() -> None:

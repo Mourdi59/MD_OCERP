@@ -160,13 +160,31 @@
       "from": "project_manager",
       "to": "operator_plant_manager",
       "overlap_days": 30,
-      "scope": "Open items, commissioning sequence, training of the caretaker and the Mensa kitchen lead, and the handover plan for the summer-holiday move-in."
+      "scope": {
+        "en": "Open items, commissioning sequence, training of the caretaker and the Mensa kitchen lead, and the handover plan for the summer-holiday move-in.",
+        "de": "Offene Punkte, Inbetriebnahmefolge, Einweisung von Hausmeister und Küchenleitung der Mensa sowie der Übergabeplan für den Einzug in den Sommerferien."
+      }
     },
     {
       "from": "design_manager",
       "to": "commissioning_manager",
       "overlap_days": 20,
-      "scope": "Design intent, acoustic and CO2-controlled ventilation test criteria, sports hall floor acceptance, as-built status."
+      "scope": {
+        "en": "Design intent, acoustic and CO2-controlled ventilation test criteria, sports hall floor acceptance, as-built status.",
+        "de": "Planungsziele, Prüfkriterien für Raumakustik und CO2-geregelte Lüftung, Abnahme des Sporthallenbodens, Stand der Bestandsdokumentation."
+      }
     }
-  ]
+  ],
+  "waiver_note": {
+    "en": "Renewal filed with the registration body; confirmation of receipt is on file.",
+    "de": "Verlängerung bei der Registrierungsstelle beantragt; die Eingangsbestätigung liegt vor."
+  },
+  "home_place": {
+    "en": "Home city",
+    "de": "Heimatort"
+  },
+  "site_place": {
+    "en": "Site",
+    "de": "Baustelle Neckarweihingen"
+  }
 }

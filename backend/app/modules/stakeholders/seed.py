@@ -84,6 +84,7 @@ _TEXT_DEFAULTS: dict[str, dict[str, str]] = {
         "feedback_summary": "Update sent with the newsletter",
     },
     "client": {"display_name": "Client organisation", "company_name": "Client"},
+    "route": {"name": "Stakeholder commitment"},
 }
 # text, category, stakeholder codes, due offset in days from the seed day, verification
 _COMMITMENTS: tuple[tuple[str, str, tuple[str, ...], int, str], ...] = (
@@ -289,14 +290,15 @@ async def _roster_for(session: AsyncSession, project_id: uuid.UUID, user_id: uui
     return row.id
 
 
-async def _commitment_route(session: AsyncSession, project_id: uuid.UUID, approver: uuid.UUID) -> uuid.UUID:
+async def _commitment_route(
+    session: AsyncSession, project_id: uuid.UUID, approver: uuid.UUID, name: str = "Stakeholder commitment"
+) -> uuid.UUID:
     """The project's own single-step route for commitments, naming ``approver``; reused when the seed made it."""
     from app.modules.approval_routes.schemas import RouteCreate, StepCreate
     from app.modules.approval_routes.service import ApprovalRouteService
     from app.modules.stakeholders.service import TARGET_KIND
 
     routes = ApprovalRouteService(session)
-    name = "Stakeholder commitment"
     for route in await routes.list_routes(project_id=project_id, target_kind=TARGET_KIND, include_inactive=False):
         if route.project_id == project_id and route.name == name:
             return route.id
@@ -360,7 +362,11 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     svc = StakeholderService(session)
     # Agreeing a commitment goes through the project's commitment route; its approver is a second person.
     approver = next((u for u in team if u != owner), None)
-    route = await _commitment_route(session, project_id, approver) if approver is not None else None
+    route = (
+        await _commitment_route(session, project_id, approver, merge_texts(story, "route", locale)["name"])
+        if approver is not None
+        else None
+    )
     await svc.put_settings(project_id, {"commitment_route_id": str(route)} if route else {}, actor_id=owner)
     # While the gate into construction is undecided the site does not run: promises about site operation
     # are agreed and nothing more, and the committee briefing for that gate is still ahead.

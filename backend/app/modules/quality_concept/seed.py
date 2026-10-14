@@ -127,6 +127,9 @@ def _offsets(value: Any) -> tuple[int, ...] | None:
     return None if any(d is None for d in days) else tuple(d for d in days if d is not None)
 
 
+_WAIVER_REASON = "Covered by the manufacturer's system warranty; a separate certificate is not issued for this package."
+
+
 def default_plan() -> dict[str, Any]:
     """The built-in story as one dict: the constants above, in the shape ``resolve_story`` returns."""
     return {
@@ -152,6 +155,7 @@ def default_plan() -> dict[str, Any]:
             "methods": ["photo", "crack_mapping"],
         },
         "road": {"ref": "RD-01", "address": "Access road, east side", "triggers": ["excavation"], "methods": ["photo"]},
+        "waiver_reason": _WAIVER_REASON,
     }
 
 
@@ -298,6 +302,7 @@ def resolve_story(
     plan = default_plan()
     if not story:
         return plan
+    plan["waiver_reason"] = _text(story.get("waiver_reason"), locale, limit=2000) or _WAIVER_REASON
     start = _days(story.get("start_days"), 30, 720)
     if start is not None:
         plan["start"] = start
@@ -582,6 +587,7 @@ async def _seed_proofs(
     authority: uuid.UUID,
     totals: dict[str, int],
     before: bool,
+    waiver_reason: str = _WAIVER_REASON,
 ) -> None:
     """The catalogue proof plan of each package, evidence from the project's own records, and decisions."""
     concept = await svc.require_concept(pid)
@@ -633,7 +639,7 @@ async def _seed_proofs(
         await svc.request_waiver(
             pid,
             open_proofs[-1].id,
-            "Covered by the manufacturer's system warranty; a separate certificate is not issued for this package.",
+            waiver_reason,
             engineer,
         )
 
@@ -795,7 +801,7 @@ async def seed_quality_concept_demo(session: AsyncSession, project_ids: Iterable
             refs = await _seed_plan(svc, pid, engineer, named, today, counts, before, plan)
             await _seed_stages(svc, pid, engineer, authority, named, counts, before)
             await _seed_units(svc, pid, refs, today, counts, before, plan)
-            await _seed_proofs(svc, pid, refs, engineer, authority, counts, before)
+            await _seed_proofs(svc, pid, refs, engineer, authority, counts, before, plan["waiver_reason"])
             if before:
                 await _seed_surveys_ahead(svc, pid, today, counts, plan)
             else:

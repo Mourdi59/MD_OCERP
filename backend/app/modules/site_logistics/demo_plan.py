@@ -104,6 +104,28 @@ _PLAN_TEXT_DEFAULTS: dict[str, str] = {
     "dust_description": "Dust on parked cars on the east side after excavation.",
     "dust_response": "Water spraying twice a day; wheel wash moved to the exit.",
     "noise_description": "Reversing alarms before 07:00 at the north gate.",
+    "power_provider": "Local grid operator",
+    "water_provider": "Municipal water utility",
+    "sewage_provider": "Municipal drainage utility",
+    "crane_1_consumer": "Tower crane 1",
+    "crane_2_consumer": "Tower crane 2",
+    "welfare_consumer": "Site offices and welfare",
+    "telecom_point": "Duct at the north gate",
+    "telecom_consumer": "Site offices data link",
+    "heavy_carrier": "Heavy haulage carrier",
+    "heavy_origin": "Manufacturer works",
+    "oversize_conditions": "Route survey ordered; application to follow with the survey.",
+    "spoil_carrier": "Earthworks haulier",
+    "spoil_origin": "Site",
+    "spoil_destination": "Licensed soil tip",
+    "rebar_carrier": "Steel supplier transport",
+    "rebar_origin": "Rebar yard",
+    "customs_title": "Medium voltage switchgear",
+    "customs_place": "Manufacturer works, loading dock",
+    "customs_broker": "Customs broker",
+    "customs_line_1": "Switchgear panels, 24 kV",
+    "customs_line_2": "Control cabinets",
+    "customs_unit": "pcs",
 }
 _DEFAULT_STRATEGY: tuple[tuple[str, str, str, str | None, int], ...] = (
     ("rebar", "Reinforcement, cut and bent", "stock", "A-LAY", 5),
@@ -345,7 +367,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         {
             "media_kind": "power",
             "phase": "construction",
-            "provider_name": "Local grid operator",
+            "provider_name": content["power_provider"],
             "connection_point": content["power_connection_point"],
             "available_capacity": Decimal("250"),
             "contracted_capacity": Decimal("160"),
@@ -358,7 +380,11 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
     # Applied for before construction; contracted and connected once the site runs.
     for target in ("requested",) if planned else ("requested", "offered", "contracted", "connected"):
         await svc.transition_media(pid, power.id, target, actor)
-    for consumer, kva in (("Tower crane 1", "60"), ("Tower crane 2", "60"), ("Site offices and welfare", "40")):
+    for consumer, kva in (
+        (content["crane_1_consumer"], "60"),
+        (content["crane_2_consumer"], "60"),
+        (content["welfare_consumer"], "40"),
+    ):
         await svc.create_demand(
             pid,
             power.id,
@@ -375,7 +401,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         power.id,
         {
             "stage_id": stage1.id,
-            "consumer": "Site offices and welfare",
+            "consumer": content["welfare_consumer"],
             "peak_demand": Decimal("40"),
             "simultaneity_factor": Decimal("0.8"),
         },
@@ -385,7 +411,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         pid,
         {
             "media_kind": "water",
-            "provider_name": "Municipal water utility",
+            "provider_name": content["water_provider"],
             "connection_point": content["water_connection_point"],
             "application_ref": "WAT-014",
             "applied_on": today - timedelta(days=10),
@@ -406,7 +432,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             pid,
             {
                 "media_kind": "sewage",
-                "provider_name": "Municipal drainage utility",
+                "provider_name": content["sewage_provider"],
                 "connection_point": content["sewage_connection_point"],
                 "available_capacity": Decimal("12"),
                 "application_ref": "SEW-007",
@@ -419,17 +445,17 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         await svc.create_demand(
             pid,
             sewage.id,
-            {"stage_id": stage2.id, "consumer": "Site offices and welfare", "peak_demand": Decimal("4")},
+            {"stage_id": stage2.id, "consumer": content["welfare_consumer"], "peak_demand": Decimal("4")},
             actor,
         )
         # Telecom is known to be needed and not applied for yet.
         telecom = await svc.create_media(
-            pid, {"media_kind": "telecom", "connection_point": "Duct at the north gate"}, actor
+            pid, {"media_kind": "telecom", "connection_point": content["telecom_point"]}, actor
         )
         await svc.create_demand(
             pid,
             telecom.id,
-            {"stage_id": stage1.id, "consumer": "Site offices data link", "peak_demand": Decimal("100")},
+            {"stage_id": stage1.id, "consumer": content["telecom_consumer"], "peak_demand": Decimal("100")},
             actor,
         )
 
@@ -487,8 +513,8 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             "direction": "inbound",
             "transport_kind": "heavy_oversize",
             "title": content["heavy_title"],
-            "carrier_name": "Heavy haulage carrier",
-            "origin": "Manufacturer works",
+            "carrier_name": content["heavy_carrier"],
+            "origin": content["heavy_origin"],
             "destination": content["heavy_destination"],
             "gate_id": gate.id if gate else None,
             "planned_window_start": datetime.combine(day, time(22, 0), tzinfo=UTC),
@@ -511,7 +537,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
                 "transport_id": heavy.id,
                 "permit_kind": "oversize_permit",
                 "authority": content["oversize_authority"],
-                "conditions": "Route survey ordered; application to follow with the survey.",
+                "conditions": content["oversize_conditions"],
             },
             actor,
         )
@@ -563,9 +589,9 @@ async def _seed_rest(
             "direction": "outbound",
             "transport_kind": "outbound_spoil",
             "title": content["spoil_title"],
-            "carrier_name": "Earthworks haulier",
-            "origin": "Site",
-            "destination": "Licensed soil tip",
+            "carrier_name": content["spoil_carrier"],
+            "origin": content["spoil_origin"],
+            "destination": content["spoil_destination"],
             "gate_id": gate.id if gate else None,
             "planned_window_start": datetime.combine(today + timedelta(days=first + 2), time(8, 0), tzinfo=UTC),
             "planned_window_end": datetime.combine(today + timedelta(days=first + 2), time(15, 0), tzinfo=UTC),
@@ -579,8 +605,8 @@ async def _seed_rest(
             "direction": "inbound",
             "transport_kind": "inbound_delivery",
             "title": content["rebar_title"],
-            "carrier_name": "Steel supplier transport",
-            "origin": "Rebar yard",
+            "carrier_name": content["rebar_carrier"],
+            "origin": content["rebar_origin"],
             "destination": content["rebar_destination"],
             "gate_id": gate.id if gate else None,
             "planned_window_start": datetime.combine(today + timedelta(days=first + 4), time(9, 0), tzinfo=UTC),
@@ -594,7 +620,7 @@ async def _seed_rest(
 
     # Nothing is ordered before the gate, so there is no shipment to clear yet.
     if not planned:
-        await _seed_customs(session, svc, pid)
+        await _seed_customs(session, svc, pid, content)
 
     # Complaints come with a running site; coordination with the authorities starts before it.
     if not planned:
@@ -641,7 +667,7 @@ async def _seed_complaints(svc: Any, pid: uuid.UUID, today: Any, content: dict[s
     )
 
 
-async def _seed_customs(session: AsyncSession, svc: Any, pid: uuid.UUID) -> None:
+async def _seed_customs(session: AsyncSession, svc: Any, pid: uuid.UUID, content: dict[str, Any]) -> None:
     actor = None
     # Customs: imported switchgear under FCA, the buyer (us) clears import. Values are
     # in the project's currency; a project without one gets the case without values.
@@ -652,21 +678,21 @@ async def _seed_customs(session: AsyncSession, svc: Any, pid: uuid.UUID) -> None
         pid,
         {
             "direction": "import",
-            "title": "Medium voltage switchgear",
+            "title": content["customs_title"],
             "incoterm": "FCA",
-            "named_place": "Manufacturer works, loading dock",
+            "named_place": content["customs_place"],
             "transport_mode": "road",
             "country_of_origin": "CH",
             "declarant_party": "buyer",
-            "broker_name": "Customs broker",
+            "broker_name": content["customs_broker"],
             **({"customs_value": Decimal("184500.00"), "currency": currency} if currency else {}),
         },
         actor,
         can_see_values=True,
     )
     for desc, hs, qty, value in (
-        ("Switchgear panels, 24 kV", "853720", "6", "171000.00"),
-        ("Control cabinets", "853710", "2", "13500.00"),
+        (content["customs_line_1"], "853720", "6", "171000.00"),
+        (content["customs_line_2"], "853710", "2", "13500.00"),
     ):
         await svc.create_line(
             pid,
@@ -675,7 +701,7 @@ async def _seed_customs(session: AsyncSession, svc: Any, pid: uuid.UUID) -> None
                 "description": desc,
                 "hs_code": hs,
                 "quantity": Decimal(qty),
-                "unit": "pcs",
+                "unit": content["customs_unit"],
                 **({"value": Decimal(value), "currency": currency} if currency else {}),
                 "origin_country": "CH",
             },

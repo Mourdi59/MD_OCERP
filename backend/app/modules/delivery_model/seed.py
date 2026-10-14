@@ -167,13 +167,16 @@ def resolve_story(story: dict[str, Any] | None, locale: str = "en") -> dict[str,
     def capability(raw: Any) -> dict[str, Any] | None:
         if not (isinstance(raw, dict) and set(raw) <= set(OWNER_CAPABILITY)):
             return None
+        out = dict(raw)
         for key, value in raw.items():
             if key == "funding_source":
-                if not (isinstance(value, str) and len(value) <= 120):
+                text = _text(value, locale)
+                if not (text and len(text) <= 120):
                     return None
+                out[key] = text
             elif not isinstance(value, bool):
                 return None
-        return {**OWNER_CAPABILITY, **raw}
+        return {**OWNER_CAPABILITY, **out}
 
     def day(raw: Any) -> int | None:
         return raw if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 0 else None
@@ -366,6 +369,7 @@ async def _seed_project(
     story = story or {}
     project = await session.get(Project, project_id)
     actor = project.owner_id
+    locale = getattr(project, "locale", None) or "en"
     svc = DeliveryModelService(session)
     model = await svc.get_model(project_id) or await svc.set_model(project_id, actor_id=actor, tenant_id=None)
     catalogue = await svc.catalogue_for(model)
@@ -397,7 +401,7 @@ async def _seed_project(
         )
         await svc.confirm_allocations(project_id, ["ground_conditions"], actor)
     seeded = [code for code in story.get("risks", SEEDED_RISKS) if catalogue.category(code) is not None]
-    risks = await svc.seed_risks(project_id, seeded, preview=False, actor_id=actor, locale="en") if seeded else []
+    risks = await svc.seed_risks(project_id, seeded, preview=False, actor_id=actor, locale=locale) if seeded else []
     packages = await svc.derive_packages(project_id, actor) if leading else []
     contract_id = (
         await session.execute(

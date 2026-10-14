@@ -4,59 +4,515 @@
   "regime": "de_vob_b",
   "regime_before_construction": "de_vob_b",
   "packages": [
-    { "ref": "PKG-STR", "title": "Shell and timber frame facade" },
-    { "ref": "PKG-FIT", "title": "Fit-out, building services, kitchen and sports hall" }
+    {
+      "ref": "PKG-STR",
+      "title": {
+        "en": "Shell and timber frame facade",
+        "de": "Rohbau und Holzrahmenfassade"
+      }
+    },
+    {
+      "ref": "PKG-FIT",
+      "title": {
+        "en": "Fit-out, building services, kitchen and sports hall",
+        "de": "Ausbau, Gebäudetechnik, Küche und Sporthalle"
+      }
+    }
   ],
   "standards": [
-    { "code": "EN 206", "title": "Concrete: specification, performance, production and conformity", "family": "concrete", "discipline": "structure", "package": 0 },
-    { "code": "DIN EN 13501", "title": "Fire classification of construction products and building elements", "family": "fire", "discipline": "fire", "package": 0, "mandate": "statute" },
-    { "code": "DIN 4109", "title": "Sound insulation in buildings", "family": "acoustics", "discipline": "building_physics", "package": 0, "mandate": "statute" },
-    { "code": "DIN 18041", "title": "Acoustic quality in rooms: classrooms and sports halls", "family": "acoustics", "discipline": "building_physics", "package": 0 },
-    { "code": "DIN 18040-1", "title": "Accessible building design: public buildings", "discipline": "accessibility", "package": 0, "mandate": "statute" },
-    { "code": "DIN EN ISO 9972", "title": "Airtightness of buildings: fan pressurization method (blower door test)", "family": "energy", "discipline": "building_physics", "package": 0 },
-    { "code": "DIN V 18599", "title": "Energy efficiency of buildings: proof under the GEG", "family": "energy", "discipline": "building_physics", "package": 1, "mandate": "statute" },
-    { "code": "VDI 6022", "title": "Hygiene requirements for ventilation systems", "family": "building_services", "discipline": "mep", "package": 1 },
-    { "code": "DIN 18032-2", "title": "Sports halls: floors for sports use, requirements and testing", "discipline": "sports", "package": 1 }
+    {
+      "code": "EN 206",
+      "title": {
+        "en": "Concrete: specification, performance, production and conformity",
+        "de": "Beton: Festlegung, Eigenschaften, Herstellung und Konformität"
+      },
+      "family": "concrete",
+      "discipline": "structure",
+      "package": 0
+    },
+    {
+      "code": "DIN EN 13501",
+      "title": {
+        "en": "Fire classification of construction products and building elements",
+        "de": "Klassifizierung von Bauprodukten und Bauarten zu ihrem Brandverhalten"
+      },
+      "family": "fire",
+      "discipline": "fire",
+      "package": 0,
+      "mandate": "statute"
+    },
+    {
+      "code": "DIN 4109",
+      "title": {
+        "en": "Sound insulation in buildings",
+        "de": "Schallschutz im Hochbau"
+      },
+      "family": "acoustics",
+      "discipline": "building_physics",
+      "package": 0,
+      "mandate": "statute"
+    },
+    {
+      "code": "DIN 18041",
+      "title": {
+        "en": "Acoustic quality in rooms: classrooms and sports halls",
+        "de": "Akustische Qualität in Räumen: Unterrichtsräume und Sporthallen"
+      },
+      "family": "acoustics",
+      "discipline": "building_physics",
+      "package": 0
+    },
+    {
+      "code": "DIN 18040-1",
+      "title": {
+        "en": "Accessible building design: public buildings",
+        "de": "Barrierefreies Bauen: öffentlich zugängliche Gebäude"
+      },
+      "discipline": "accessibility",
+      "package": 0,
+      "mandate": "statute"
+    },
+    {
+      "code": "DIN EN ISO 9972",
+      "title": {
+        "en": "Airtightness of buildings: fan pressurization method (blower door test)",
+        "de": "Luftdichtheit von Gebäuden: Differenzdruckverfahren (Blower-Door-Test)"
+      },
+      "family": "energy",
+      "discipline": "building_physics",
+      "package": 0
+    },
+    {
+      "code": "DIN V 18599",
+      "title": {
+        "en": "Energy efficiency of buildings: proof under the GEG",
+        "de": "Energetische Bewertung von Gebäuden: Nachweis nach GEG"
+      },
+      "family": "energy",
+      "discipline": "building_physics",
+      "package": 1,
+      "mandate": "statute"
+    },
+    {
+      "code": "VDI 6022",
+      "title": {
+        "en": "Hygiene requirements for ventilation systems",
+        "de": "Hygieneanforderungen an Lüftungsanlagen"
+      },
+      "family": "building_services",
+      "discipline": "mep",
+      "package": 1
+    },
+    {
+      "code": "DIN 18032-2",
+      "title": {
+        "en": "Sports halls: floors for sports use, requirements and testing",
+        "de": "Sporthallen: Böden für Sporthallen, Anforderungen und Prüfung"
+      },
+      "discipline": "sports",
+      "package": 1
+    }
   ],
   "requirements": [
-    { "category": "quality.acoustics", "entity": "Classrooms", "attribute": "reverberation time (DIN 18041, room group A)", "value": "0.6", "unit": "s", "source": "Room acoustics concept 2.1" },
-    { "category": "quality.acoustics", "entity": "Sports hall", "attribute": "reverberation time", "value": "<= 1.8", "unit": "s", "source": "Room acoustics concept 3.4" },
-    { "category": "quality.user", "entity": "Teaching rooms, Mensa and sports hall", "attribute": "ventilation: CO2 concentration, demand controlled", "value": "<= 1000", "unit": "ppm", "source": "Ventilation concept 4.2" },
-    { "category": "quality.user", "entity": "Entrances, teaching rooms and sanitary rooms", "attribute": "accessibility (DIN 18040-1)", "value": "fulfilled, checked by the accessibility officer", "unit": "", "source": "Building permit, condition 12" },
-    { "category": "quality.energy", "entity": "Timber frame facade", "attribute": "air permeability n50", "value": "<= 1.0", "unit": "1/h", "source": "GEG energy proof 2.3" },
-    { "category": "quality.material", "entity": "Sports hall floor", "attribute": "shock absorption (DIN 18032-2)", "value": ">= 53", "unit": "%", "source": "Sports hall specification 1.5" },
-    { "category": "quality.fire", "entity": "Escape routes and timber frame facade", "attribute": "fire protection as in the approved concept", "value": "acceptance by the Pruefsachverstaendiger", "unit": "", "source": "Fire protection concept 5" },
-    { "category": "quality.standards_basis", "entity": "Mensa production kitchen", "attribute": "hygiene concept", "value": "approved before first use", "unit": "", "source": "Kitchen planning, food hygiene concept" },
-    { "category": "quality.fm_data", "entity": "Technical equipment and kitchen", "attribute": "asset data set", "value": "complete at handover", "unit": "", "source": "Information needs 2.3" }
+    {
+      "category": "quality.acoustics",
+      "entity": {
+        "en": "Classrooms",
+        "de": "Klassenzimmer"
+      },
+      "attribute": {
+        "en": "reverberation time (DIN 18041, room group A)",
+        "de": "Nachhallzeit (DIN 18041, Raumgruppe A)"
+      },
+      "value": "0.6",
+      "unit": "s",
+      "source": {
+        "en": "Room acoustics concept 2.1",
+        "de": "Raumakustikkonzept 2.1"
+      }
+    },
+    {
+      "category": "quality.acoustics",
+      "entity": {
+        "en": "Sports hall",
+        "de": "Sporthalle"
+      },
+      "attribute": {
+        "en": "reverberation time",
+        "de": "Nachhallzeit"
+      },
+      "value": "<= 1.8",
+      "unit": "s",
+      "source": {
+        "en": "Room acoustics concept 3.4",
+        "de": "Raumakustikkonzept 3.4"
+      }
+    },
+    {
+      "category": "quality.user",
+      "entity": {
+        "en": "Teaching rooms, Mensa and sports hall",
+        "de": "Unterrichtsräume, Mensa und Sporthalle"
+      },
+      "attribute": {
+        "en": "ventilation: CO2 concentration, demand controlled",
+        "de": "Lüftung: CO2-Konzentration, bedarfsgeregelt"
+      },
+      "value": "<= 1000",
+      "unit": "ppm",
+      "source": {
+        "en": "Ventilation concept 4.2",
+        "de": "Lüftungskonzept 4.2"
+      }
+    },
+    {
+      "category": "quality.user",
+      "entity": {
+        "en": "Entrances, teaching rooms and sanitary rooms",
+        "de": "Eingänge, Unterrichtsräume und Sanitärräume"
+      },
+      "attribute": {
+        "en": "accessibility (DIN 18040-1)",
+        "de": "Barrierefreiheit (DIN 18040-1)"
+      },
+      "value": {
+        "en": "fulfilled, checked by the accessibility officer",
+        "de": "erfüllt, geprüft durch die Behindertenbeauftragte"
+      },
+      "unit": "",
+      "source": {
+        "en": "Building permit, condition 12",
+        "de": "Baugenehmigung, Auflage 12"
+      }
+    },
+    {
+      "category": "quality.energy",
+      "entity": {
+        "en": "Timber frame facade",
+        "de": "Holzrahmenfassade"
+      },
+      "attribute": {
+        "en": "air permeability n50",
+        "de": "Luftdurchlässigkeit n50"
+      },
+      "value": "<= 1.0",
+      "unit": "1/h",
+      "source": {
+        "en": "GEG energy proof 2.3",
+        "de": "GEG-Energienachweis 2.3"
+      }
+    },
+    {
+      "category": "quality.material",
+      "entity": {
+        "en": "Sports hall floor",
+        "de": "Sporthallenboden"
+      },
+      "attribute": {
+        "en": "shock absorption (DIN 18032-2)",
+        "de": "Kraftabbau (DIN 18032-2)"
+      },
+      "value": ">= 53",
+      "unit": "%",
+      "source": {
+        "en": "Sports hall specification 1.5",
+        "de": "Leistungsbeschreibung Sporthalle 1.5"
+      }
+    },
+    {
+      "category": "quality.fire",
+      "entity": {
+        "en": "Escape routes and timber frame facade",
+        "de": "Rettungswege und Holzrahmenfassade"
+      },
+      "attribute": {
+        "en": "fire protection as in the approved concept",
+        "de": "Brandschutz wie im genehmigten Konzept"
+      },
+      "value": {
+        "en": "acceptance by the Pruefsachverstaendiger",
+        "de": "Abnahme durch den Prüfsachverständigen"
+      },
+      "unit": "",
+      "source": {
+        "en": "Fire protection concept 5",
+        "de": "Brandschutzkonzept 5"
+      }
+    },
+    {
+      "category": "quality.standards_basis",
+      "entity": {
+        "en": "Mensa production kitchen",
+        "de": "Mensa-Produktionsküche"
+      },
+      "attribute": {
+        "en": "hygiene concept",
+        "de": "Hygienekonzept"
+      },
+      "value": {
+        "en": "approved before first use",
+        "de": "vor der ersten Nutzung genehmigt"
+      },
+      "unit": "",
+      "source": {
+        "en": "Kitchen planning, food hygiene concept",
+        "de": "Küchenplanung, Lebensmittelhygienekonzept"
+      }
+    },
+    {
+      "category": "quality.fm_data",
+      "entity": {
+        "en": "Technical equipment and kitchen",
+        "de": "Technische Ausrüstung und Küche"
+      },
+      "attribute": {
+        "en": "asset data set",
+        "de": "Anlagendatensatz"
+      },
+      "value": {
+        "en": "complete at handover",
+        "de": "bei Übergabe vollständig"
+      },
+      "unit": "",
+      "source": {
+        "en": "Information needs 2.3",
+        "de": "Informationsbedarf 2.3"
+      }
+    }
   ],
   "expert_reports": [
-    { "subject": "Independent check of the structural analysis by the Pruefingenieur", "trigger": "before_concreting", "frequency": "once", "offsets": [-200], "state": "completed", "planned_offsets": [215] },
-    { "subject": "Fire protection inspection of the services penetrations", "trigger": "before_concealment", "frequency": "per_floor", "offsets": [-20, 25], "state": "reporting", "planned_offsets": [400, 450] },
-    { "subject": "Blower door test of the timber frame facade", "trigger": "after_installation", "frequency": "per_section", "offsets": [60, 120], "state": "planned", "planned_offsets": [330, 380] },
-    { "subject": "Commissioning and hygiene check of the CO2-controlled ventilation", "trigger": "before_commissioning", "frequency": "per_section", "offsets": [130], "state": "planned", "planned_offsets": [470] },
-    { "subject": "Acoustic measurement to DIN 18041 in classrooms and sports hall", "trigger": "after_installation", "frequency": "per_section", "offsets": [140, 150], "state": "planned", "planned_offsets": [500, 520] },
-    { "subject": "Floor test of the sports hall to DIN 18032-2", "trigger": "before_acceptance", "frequency": "once", "offsets": [155], "state": "planned", "planned_offsets": [540] },
-    { "subject": "Hygiene acceptance of the Mensa production kitchen", "trigger": "before_acceptance", "frequency": "once", "offsets": [160], "state": "planned", "planned_offsets": [545] },
-    { "subject": "Accessibility check to DIN 18040-1", "trigger": "before_acceptance", "frequency": "once", "offsets": [165], "state": "planned", "planned_offsets": [550] },
-    { "subject": "Fire protection acceptance by the Pruefsachverstaendiger", "trigger": "before_acceptance", "frequency": "once", "offsets": [170], "state": "planned", "planned_offsets": [560] }
+    {
+      "subject": {
+        "en": "Independent check of the structural analysis by the Pruefingenieur",
+        "de": "Unabhängige Prüfung der Standsicherheitsberechnung durch den Prüfingenieur"
+      },
+      "trigger": "before_concreting",
+      "frequency": "once",
+      "offsets": [
+        -200
+      ],
+      "state": "completed",
+      "planned_offsets": [
+        215
+      ]
+    },
+    {
+      "subject": {
+        "en": "Fire protection inspection of the services penetrations",
+        "de": "Brandschutztechnische Prüfung der Leitungsdurchführungen"
+      },
+      "trigger": "before_concealment",
+      "frequency": "per_floor",
+      "offsets": [
+        -20,
+        25
+      ],
+      "state": "reporting",
+      "planned_offsets": [
+        400,
+        450
+      ]
+    },
+    {
+      "subject": {
+        "en": "Blower door test of the timber frame facade",
+        "de": "Blower-Door-Messung der Holzrahmenfassade"
+      },
+      "trigger": "after_installation",
+      "frequency": "per_section",
+      "offsets": [
+        60,
+        120
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        330,
+        380
+      ]
+    },
+    {
+      "subject": {
+        "en": "Commissioning and hygiene check of the CO2-controlled ventilation",
+        "de": "Inbetriebnahme und Hygieneprüfung der CO2-geregelten Lüftung"
+      },
+      "trigger": "before_commissioning",
+      "frequency": "per_section",
+      "offsets": [
+        130
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        470
+      ]
+    },
+    {
+      "subject": {
+        "en": "Acoustic measurement to DIN 18041 in classrooms and sports hall",
+        "de": "Akustikmessung nach DIN 18041 in Klassenzimmern und Sporthalle"
+      },
+      "trigger": "after_installation",
+      "frequency": "per_section",
+      "offsets": [
+        140,
+        150
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        500,
+        520
+      ]
+    },
+    {
+      "subject": {
+        "en": "Floor test of the sports hall to DIN 18032-2",
+        "de": "Bodenprüfung der Sporthalle nach DIN 18032-2"
+      },
+      "trigger": "before_acceptance",
+      "frequency": "once",
+      "offsets": [
+        155
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        540
+      ]
+    },
+    {
+      "subject": {
+        "en": "Hygiene acceptance of the Mensa production kitchen",
+        "de": "Hygieneabnahme der Mensa-Produktionsküche"
+      },
+      "trigger": "before_acceptance",
+      "frequency": "once",
+      "offsets": [
+        160
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        545
+      ]
+    },
+    {
+      "subject": {
+        "en": "Accessibility check to DIN 18040-1",
+        "de": "Barrierefreiheitsprüfung nach DIN 18040-1"
+      },
+      "trigger": "before_acceptance",
+      "frequency": "once",
+      "offsets": [
+        165
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        550
+      ]
+    },
+    {
+      "subject": {
+        "en": "Fire protection acceptance by the Pruefsachverstaendiger",
+        "de": "Brandschutzabnahme durch den Prüfsachverständigen"
+      },
+      "trigger": "before_acceptance",
+      "frequency": "once",
+      "offsets": [
+        170
+      ],
+      "state": "planned",
+      "planned_offsets": [
+        560
+      ]
+    }
   ],
   "units": [
-    { "code": "AU-01", "title": "Shell and timber frame facade", "kind": "partial_package", "days": 60, "packages": [0] },
-    { "code": "AU-02", "title": "Building services and kitchen", "kind": "partial_package", "days": 130, "packages": [1] },
-    { "code": "AU-03", "title": "Sports hall, before the school year", "kind": "partial_section", "days": 150, "packages": [1], "section": "Sports hall" },
-    { "code": "AU-04", "title": "Whole works", "kind": "total", "days": 170 },
-    { "code": "AU-05", "title": "Handover to the school and the city", "kind": "handover_to_operation", "days": 185 }
+    {
+      "code": "AU-01",
+      "title": {
+        "en": "Shell and timber frame facade",
+        "de": "Rohbau und Holzrahmenfassade"
+      },
+      "kind": "partial_package",
+      "days": 60,
+      "packages": [
+        0
+      ]
+    },
+    {
+      "code": "AU-02",
+      "title": {
+        "en": "Building services and kitchen",
+        "de": "Gebäudetechnik und Küche"
+      },
+      "kind": "partial_package",
+      "days": 130,
+      "packages": [
+        1
+      ]
+    },
+    {
+      "code": "AU-03",
+      "title": {
+        "en": "Sports hall, before the school year",
+        "de": "Sporthalle, vor Beginn des Schuljahres"
+      },
+      "kind": "partial_section",
+      "days": 150,
+      "packages": [
+        1
+      ],
+      "section": {
+        "en": "Sports hall",
+        "de": "Sporthalle"
+      }
+    },
+    {
+      "code": "AU-04",
+      "title": {
+        "en": "Whole works",
+        "de": "Gesamtleistung"
+      },
+      "kind": "total",
+      "days": 170
+    },
+    {
+      "code": "AU-05",
+      "title": {
+        "en": "Handover to the school and the city",
+        "de": "Übergabe an Schule und Stadt"
+      },
+      "kind": "handover_to_operation",
+      "days": 185
+    }
   ],
   "survey_neighbour": {
     "ref": "NB-01",
-    "address": "Adjacent residential building, west boundary",
-    "triggers": ["excavation", "vibration"],
-    "methods": ["photo", "crack_mapping"]
+    "address": {
+      "en": "Adjacent residential building, west boundary",
+      "de": "Angrenzendes Wohngebäude, Westgrenze"
+    },
+    "triggers": [
+      "excavation",
+      "vibration"
+    ],
+    "methods": [
+      "photo",
+      "crack_mapping"
+    ]
   },
   "survey_road": {
     "ref": "RD-01",
-    "address": "School access road, east side",
-    "triggers": ["excavation"],
-    "methods": ["photo"]
+    "address": {
+      "en": "School access road, east side",
+      "de": "Schulzufahrt, Ostseite"
+    },
+    "triggers": [
+      "excavation"
+    ],
+    "methods": [
+      "photo"
+    ]
+  },
+  "waiver_reason": {
+    "en": "Covered by the manufacturer's system warranty; a separate certificate is not issued for this package.",
+    "de": "Durch die Systemgarantie des Herstellers abgedeckt; für dieses Paket wird kein gesondertes Zertifikat ausgestellt."
   }
 }

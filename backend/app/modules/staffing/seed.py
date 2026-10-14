@@ -230,7 +230,7 @@ def _day(today: date, offset: int | None) -> date | None:
 
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
     from app.core.demo_marker import demo_id_of
-    from app.modules.project_governance.public import demo_module_story
+    from app.modules.project_governance.public import demo_module_story, story_text
     from app.modules.projects.models import Project
     from app.modules.staffing import rules
     from app.modules.staffing.service import Actor, StaffingService
@@ -280,6 +280,12 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     missing = {(r, k) for r, k, _ in story_pairs(story, "missing")} or {MISSING}
     waived = {(r, k) for r, k, _ in story_pairs(story, "waived")} or {WAIVED}
     handovers = story_handovers(story, locale, HANDOVERS)
+    # Words a story may give in the project's language: the note of a waived document and the trip endpoints.
+    waiver_note = story_text(story.get("waiver_note"), locale) or (
+        "Renewal filed with the registration body; confirmation of receipt is on file."
+    )
+    home_place = story_text(story.get("home_place"), locale) or "Home city"
+    site_place = story_text(story.get("site_place"), locale) or "Site"
 
     await svc.set_plan(
         project_id,
@@ -352,7 +358,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                     project_id,
                     pfile.id,
                     kind_code,
-                    "Renewal filed with the registration body; confirmation of receipt is on file.",
+                    waiver_note,
                     actor,
                 )
                 continue
@@ -378,8 +384,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         priced_part = {"cost": amount, "currency": currency} if priced else {}
         return {
             "kind": kind,
-            "from_place": "Home city",
-            "to_place": "Site",
+            "from_place": home_place,
+            "to_place": site_place,
             "depart_date": today + timedelta(days=depart),
             "return_date": _day(today, back),
             **priced_part,

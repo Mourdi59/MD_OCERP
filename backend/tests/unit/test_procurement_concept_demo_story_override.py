@@ -72,7 +72,7 @@ def test_shipped_school_story_merges_against_the_shipped_catalogue() -> None:
         seed.merge_package_story(seed._DEFAULTS["design"], story["kinds"]["design"], procedures, "en")["public"]
         == "open"
     )
-    assert seed.merge_names(seed._FREE_NAMES, story["free_names"], "en") == tuple(story["free_names"])
+    assert seed.merge_names(seed._FREE_NAMES, story["free_names"], "en") == tuple(n["en"] for n in story["free_names"])
     assert seed.merge_prequal(story["prequal"], "en")["weights"] == ["40", "25", "35"]
     assert seed.merge_framework(story["framework"], "en")["code"] == "FW-SCHOOL-01"
     assert seed.merge_framework(story["framework"], "en")["package_kinds"] == ["supply"]

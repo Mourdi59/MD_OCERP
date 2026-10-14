@@ -378,17 +378,19 @@ def _item_from_story(raw: Any, codes: dict[str, set[str]], locale: str) -> dict[
         return None
     spec["performance"] = []
     for entry in raw.get("performance", []):
-        if not (isinstance(entry, dict) and _is_text(entry.get("key")) and _is_text(entry.get("value"))):
+        value = story_text(entry.get("value"), locale) if isinstance(entry, dict) else None
+        if not (isinstance(entry, dict) and _is_text(entry.get("key")) and _is_text(value)):
             return None
-        unit = entry.get("unit", "")
+        unit = story_text(entry.get("unit", ""), locale)
         if not isinstance(unit, str):
             return None
-        spec["performance"].append({"key": entry["key"], "value": entry["value"], "unit": unit})
+        spec["performance"].append({"key": entry["key"], "value": value, "unit": unit})
     spec["quotes"] = []
     for q in raw.get("quotes", []):
         if not (isinstance(q, list) and len(q) == 7):
             return None
         source, name, enq, resp, lo, hi, basis = q
+        name = story_text(name, locale)
         if not (
             source in codes["lead_time_sources"]
             and _is_text(name)
@@ -406,6 +408,7 @@ def _item_from_story(raw: Any, codes: dict[str, set[str]], locale: str) -> dict[
         if not (isinstance(sp, list) and len(sp) == 4):
             return None
         category, text, qty, unit = sp
+        text, unit = story_text(text, locale), story_text(unit, locale)
         if not (category in codes["spare_categories"] and _is_text(text) and _is_decimal(qty) and _is_text(unit)):
             return None
         spec["spares"].append((category, text, qty, unit))
@@ -571,6 +574,15 @@ def resolve_story(story: dict[str, Any] | None, codes: dict[str, set[str]], loca
             logger.info("plant_register demo story: key %r is malformed, the default is kept", key)
         else:
             out[key] = value
+    from app.modules.project_governance.public import story_text
+
+    for key in ("paper_route_name", "no_asset_reason"):
+        if key in story:
+            text = story_text(story[key], locale)
+            if _is_text(text):
+                out[key] = text
+            else:
+                logger.info("plant_register demo story: key %r is not usable text, the default is kept", key)
     for key in _INT_KEYS:
         if key.lower() in story:
             if _is_int(story[key.lower()]) and story[key.lower()] >= 0:
@@ -767,7 +779,13 @@ async def _deciders(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UU
 
 
 async def _approve_paper(
-    session: AsyncSession, svc: Any, project_id: uuid.UUID, item_id: uuid.UUID, paper: Any, owner: uuid.UUID
+    session: AsyncSession,
+    svc: Any,
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    paper: Any,
+    owner: uuid.UUID,
+    route_name: str = "Plant decision paper sign-off",
 ) -> bool:
     """Take the paper through a real approval route, decided by somebody other than its submitter.
 
@@ -802,9 +820,7 @@ async def _approve_paper(
             return False
     else:
         signer = next(iter(people))
-        route = Route(
-            project_id=project_id, name="Plant decision paper sign-off", target_kind=PAPER_TARGET_KIND, is_active=True
-        )
+        route = Route(project_id=project_id, name=route_name, target_kind=PAPER_TARGET_KIND, is_active=True)
         session.add(route)
         await session.flush()
         session.add(Step(route_id=route.id, ordinal=1, approver_user_id=signer, mode="any"))
@@ -924,7 +940,15 @@ async def _seed_project(
         approved = False
         if spec.get("paper"):
             paper = await svc.create_paper(project_id, item.id, paper_spec, actor_id=owner)
-            approved = await _approve_paper(session, svc, project_id, item.id, paper, owner)
+            approved = await _approve_paper(
+                session,
+                svc,
+                project_id,
+                item.id,
+                paper,
+                owner,
+                story.get("paper_route_name", "Plant decision paper sign-off"),
+            )
             counts["papers_left_draft"] += 0 if approved else 1
         if reach == "identified":
             continue
@@ -962,7 +986,9 @@ async def _seed_project(
                 confirm=True,
                 service_contract_id=None,
                 actor_id=owner,
-                no_asset_reason="Maintained by the operator's own staff; no service contract is let for it.",
+                no_asset_reason=story.get(
+                    "no_asset_reason", "Maintained by the operator's own staff; no service contract is let for it."
+                ),
             )
     for kind, desc, start in story.get("it_services", _IT_SERVICES):
         await svc.create_it_service(

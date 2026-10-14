@@ -1,0 +1,790 @@
+{
+  "$note": "Plant register story of the Regensburg residential quarter: building services and equipment of four apartment buildings with an underground car park. Applied on top of the module seeder by key; all names invented. Item PL-001 (transformers) is the order the commitment release slot item links to, and PL-002 (district heating substations) is the item the delivery model records as owner-furnished.",
+  "items": [
+    {
+      "code": "PL-001",
+      "title": {
+        "en": "Transformers 20/0.4 kV, 2 x 800 kVA, for the quarter supply",
+        "de": "Transformatoren 20/0,4 kV, 2 x 800 kVA, für die Quartiersversorgung"
+      },
+      "class": "power_transformer",
+      "quantity": "2",
+      "redundancy": "",
+      "need_days": 640,
+      "reach": "enquired",
+      "route": true,
+      "performance": [
+        {
+          "key": "rated_power",
+          "value": "800",
+          "unit": "kVA"
+        },
+        {
+          "key": "primary_voltage",
+          "value": "20",
+          "unit": "kV"
+        }
+      ],
+      "quotes": [
+        [
+          "market_sounding",
+          {
+            "en": "Market sounding, three transformer manufacturers",
+            "de": "Marktsondierung bei drei Transformatorenherstellern"
+          },
+          -110,
+          -96,
+          22,
+          30,
+          "from_order"
+        ],
+        [
+          "supplier_quote",
+          {
+            "en": "Transformer manufacturer A (budget quote)",
+            "de": "Transformatorenhersteller A (Budgetangebot)"
+          },
+          -38,
+          -24,
+          26,
+          32,
+          "from_order"
+        ]
+      ],
+      "slot": "held",
+      "spares": [
+        [
+          "strategic_spares",
+          {
+            "en": "Temperature sensor and bushing set",
+            "de": "Temperaturfühler und Durchführungssatz"
+          },
+          "1",
+          "set"
+        ]
+      ]
+    },
+    {
+      "code": "PL-002",
+      "title": {
+        "en": "District heating substations for the four buildings, 4 units",
+        "de": "Fernwärme-Hausstationen für die vier Gebäude, 4 Stück"
+      },
+      "class": "boiler",
+      "quantity": "4",
+      "redundancy": "",
+      "need_days": 560,
+      "reach": "route_set",
+      "performance": [
+        {
+          "key": "heating_capacity",
+          "value": "380",
+          "unit": "kW"
+        },
+        {
+          "key": "flow_temperature",
+          "value": "70",
+          "unit": "C"
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Substation manufacturer A",
+            "de": "Stationshersteller A"
+          },
+          -60,
+          -46,
+          20,
+          26,
+          "from_order"
+        ],
+        [
+          "supplier_quote",
+          {
+            "en": "Substation manufacturer B",
+            "de": "Stationshersteller B"
+          },
+          -55,
+          -38,
+          14,
+          18,
+          "from_approved_drawings"
+        ]
+      ],
+      "paper": true,
+      "spares": [
+        [
+          "special_tools",
+          {
+            "en": "Flushing and descaling kit for the heat exchangers",
+            "de": "Spül- und Entkalkungsset für die Wärmetauscher"
+          },
+          "1",
+          "set"
+        ],
+        [
+          "operating_consumables",
+          {
+            "en": "Gasket and filter set for the first year",
+            "de": "Dichtungs- und Filtersatz für das erste Jahr"
+          },
+          "4",
+          "set"
+        ]
+      ]
+    },
+    {
+      "code": "PL-003",
+      "title": {
+        "en": "PV inverters and tenant electricity storage 250 kWh",
+        "de": "PV-Wechselrichter und Mieterstrom-Speicher 250 kWh"
+      },
+      "class": "battery_storage",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 700,
+      "reach": "enquired",
+      "route": true,
+      "performance": [
+        {
+          "key": "storage_capacity",
+          "value": "250",
+          "unit": "kWh"
+        },
+        {
+          "key": "pv_peak_power",
+          "value": "420",
+          "unit": "kWp"
+        }
+      ],
+      "quotes": [
+        [
+          "expert_estimate",
+          {
+            "en": "Estimate of the owner's engineer",
+            "de": "Schätzung des Fachplaners des Bauherrn"
+          },
+          -15,
+          null,
+          16,
+          22,
+          "from_order"
+        ]
+      ],
+      "slot": "requested",
+      "spares": [
+        [
+          "commissioning_spares",
+          {
+            "en": "Fuse and connector set for the inverters",
+            "de": "Sicherungs- und Steckersatz für die Wechselrichter"
+          },
+          "1",
+          "set"
+        ]
+      ]
+    },
+    {
+      "code": "PL-004",
+      "title": {
+        "en": "Decentralised apartment ventilation units with heat recovery, 120 apartments",
+        "de": "Dezentrale Wohnungslüftungsgeräte mit Wärmerückgewinnung, 120 Wohnungen"
+      },
+      "class": "ahu",
+      "quantity": "120",
+      "redundancy": "",
+      "need_days": 520,
+      "reach": "enquired",
+      "performance": [
+        {
+          "key": "air_volume",
+          "value": "120",
+          "unit": "m3/h"
+        },
+        {
+          "key": "heat_recovery",
+          "value": "85",
+          "unit": "%"
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Ventilation unit manufacturer (budget quote)",
+            "de": "Lüftungsgerätehersteller (Budgetangebot)"
+          },
+          -25,
+          -12,
+          18,
+          24,
+          "from_order"
+        ]
+      ],
+      "spares": [
+        [
+          "operating_consumables",
+          {
+            "en": "First filter change set per apartment",
+            "de": "Erster Filterwechselsatz je Wohnung"
+          },
+          "120",
+          "set"
+        ]
+      ]
+    },
+    {
+      "code": "PL-005",
+      "title": {
+        "en": "Passenger lifts, 1000 kg, barrier-free to DIN 18040-2",
+        "de": "Personenaufzüge, 1000 kg, barrierefrei nach DIN 18040-2"
+      },
+      "class": "lift",
+      "quantity": "8",
+      "redundancy": "",
+      "need_days": 480,
+      "reach": "ordered",
+      "performance": [
+        {
+          "key": "rated_load",
+          "value": "1000",
+          "unit": "kg"
+        },
+        {
+          "key": "stops",
+          "value": "6",
+          "unit": ""
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Lift manufacturer (firm quote)",
+            "de": "Aufzughersteller (verbindliches Angebot)"
+          },
+          -80,
+          -66,
+          24,
+          30,
+          "from_approved_drawings"
+        ]
+      ],
+      "spares": [
+        [
+          "commissioning_spares",
+          {
+            "en": "Door operator spares",
+            "de": "Ersatzteile für Türantriebe"
+          },
+          "1",
+          "set"
+        ]
+      ]
+    },
+    {
+      "code": "PL-006",
+      "title": {
+        "en": "Heating control and remote meter reading with smart meter gateways",
+        "de": "Heizungsregelung und Fernauslesung mit Smart-Meter-Gateways"
+      },
+      "class": "bms_controls",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 600,
+      "reach": "specified",
+      "performance": [
+        {
+          "key": "metered_apartments",
+          "value": "120",
+          "unit": ""
+        }
+      ],
+      "quotes": [],
+      "spares": [
+        [
+          "strategic_spares",
+          {
+            "en": "Spare controller and gateway",
+            "de": "Ersatzregler und Gateway"
+          },
+          "1",
+          "set"
+        ]
+      ]
+    },
+    {
+      "code": "PL-007",
+      "title": {
+        "en": "Mechanical ventilation and smoke extraction of the underground car park",
+        "de": "Maschinelle Lüftung und Rauchabzug der Tiefgarage"
+      },
+      "class": "ahu",
+      "quantity": "2",
+      "redundancy": "",
+      "need_days": 680,
+      "reach": "identified",
+      "performance": [
+        {
+          "key": "air_volume",
+          "value": "30000",
+          "unit": "m3/h"
+        }
+      ],
+      "quotes": [],
+      "spares": []
+    },
+    {
+      "code": "PL-008",
+      "title": {
+        "en": "Fibre-optic house connections and distribution network",
+        "de": "Glasfaser-Hausanschlüsse und Verteilnetz"
+      },
+      "class": "it_core_network",
+      "quantity": "2",
+      "redundancy": "N+1",
+      "need_days": 30,
+      "reach": "delivered",
+      "performance": [
+        {
+          "key": "uplink",
+          "value": "10",
+          "unit": "Gbit/s"
+        },
+        {
+          "key": "connected_apartments",
+          "value": "120",
+          "unit": ""
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Network distributor (firm quote)",
+            "de": "Netzwerk-Distributor (verbindliches Angebot)"
+          },
+          -150,
+          -143,
+          10,
+          14,
+          "from_order"
+        ]
+      ],
+      "spares": [
+        [
+          "strategic_spares",
+          {
+            "en": "Spare switch and optics",
+            "de": "Ersatz-Switch und optische Module"
+          },
+          "1",
+          "set"
+        ]
+      ]
+    },
+    {
+      "code": "PL-009",
+      "title": {
+        "en": "Smoke and heat extraction of the stairwells and fire alarm of the car park",
+        "de": "Rauch- und Wärmeabzug der Treppenhäuser und Brandmeldeanlage der Tiefgarage"
+      },
+      "class": "bms_controls",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 120,
+      "reach": "manufactured",
+      "performance": [
+        {
+          "key": "stairwells",
+          "value": "9",
+          "unit": ""
+        },
+        {
+          "key": "detection_zones",
+          "value": "24",
+          "unit": ""
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Fire protection system manufacturer",
+            "de": "Hersteller der Brandschutzanlage"
+          },
+          -190,
+          -176,
+          14,
+          18,
+          "from_order"
+        ]
+      ],
+      "spares": [
+        [
+          "commissioning_spares",
+          {
+            "en": "Detector heads and drive set",
+            "de": "Meldersatz und Antriebssatz"
+          },
+          "1",
+          "set"
+        ]
+      ]
+    },
+    {
+      "code": "PL-010",
+      "title": {
+        "en": "Ventilation units, show apartment and site office",
+        "de": "Lüftungsgeräte, Musterwohnung und Baubüro"
+      },
+      "class": "ahu",
+      "quantity": "2",
+      "redundancy": "",
+      "need_days": -20,
+      "reach": "commissioned",
+      "performance": [
+        {
+          "key": "air_volume",
+          "value": "300",
+          "unit": "m3/h"
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Ventilation unit manufacturer",
+            "de": "Lüftungsgerätehersteller"
+          },
+          -300,
+          -288,
+          12,
+          16,
+          "from_approved_drawings"
+        ]
+      ],
+      "spares": []
+    },
+    {
+      "code": "PL-011",
+      "title": {
+        "en": "Mobile heating units for the winter works",
+        "de": "Mobile Heizgeräte für den Winterbau"
+      },
+      "class": "boiler",
+      "quantity": "2",
+      "redundancy": "N+1",
+      "need_days": -75,
+      "reach": "handed_over",
+      "performance": [
+        {
+          "key": "heating_capacity",
+          "value": "60",
+          "unit": "kW"
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Heating unit supplier",
+            "de": "Heizgerätelieferant"
+          },
+          -360,
+          -349,
+          8,
+          10,
+          "from_order"
+        ]
+      ],
+      "spares": []
+    },
+    {
+      "code": "PL-012",
+      "title": {
+        "en": "Air source heat pump (dropped, district heating chosen)",
+        "de": "Luft-Wasser-Wärmepumpe (verworfen, Fernwärme gewählt)"
+      },
+      "class": "heat_pump",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 560,
+      "reach": "cancelled",
+      "performance": [
+        {
+          "key": "heating_capacity",
+          "value": "380",
+          "unit": "kW"
+        }
+      ],
+      "quotes": [],
+      "spares": []
+    },
+    {
+      "code": "PL-013",
+      "title": {
+        "en": "Precast concrete balconies, 96 units",
+        "de": "Balkon-Fertigteile aus Stahlbeton, 96 Stück"
+      },
+      "class": "facade_unit",
+      "quantity": "96",
+      "redundancy": "",
+      "need_days": 400,
+      "reach": "route_set",
+      "performance": [
+        {
+          "key": "balcony_depth",
+          "value": "2.0",
+          "unit": "m"
+        }
+      ],
+      "quotes": [
+        [
+          "supplier_quote",
+          {
+            "en": "Precast plant (budget quote)",
+            "de": "Fertigteilwerk (Budgetangebot)"
+          },
+          -35,
+          -24,
+          20,
+          26,
+          "from_approved_drawings"
+        ]
+      ],
+      "spares": []
+    },
+    {
+      "code": "PL-014",
+      "title": {
+        "en": "Medium voltage switchgear of the transformer station, 6 panels",
+        "de": "Mittelspannungs-Schaltanlage der Trafostation, 6 Felder"
+      },
+      "class": "mv_switchgear",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 640,
+      "reach": "specified",
+      "performance": [
+        {
+          "key": "panels",
+          "value": "6",
+          "unit": ""
+        }
+      ],
+      "quotes": [],
+      "spares": []
+    }
+  ],
+  "limits": {
+    "supply": "supplier",
+    "deliver_to_site": "supplier",
+    "offload": "supplier",
+    "set_in_place": "installer",
+    "connect": "installer",
+    "test": "supplier",
+    "commission": "supplier",
+    "accept": "owner",
+    "train": "supplier",
+    "document": "supplier"
+  },
+  "paper": {
+    "question": {
+      "en": "Which substation offer fits the heating season and the planned move-in of the first building at acceptable risk?",
+      "de": "Welches Stationsangebot passt zur Heizperiode und zum geplanten Einzug im ersten Gebäude bei vertretbarem Risiko?"
+    },
+    "criteria": [
+      {
+        "code": "lead_time",
+        "title": {
+          "en": "Lead time",
+          "de": "Lieferzeit"
+        },
+        "weight": "4"
+      },
+      {
+        "code": "cost",
+        "title": {
+          "en": "Cost",
+          "de": "Kosten"
+        },
+        "weight": "3"
+      },
+      {
+        "code": "service",
+        "title": {
+          "en": "Connection to the district heating network and local service",
+          "de": "Anschlussfähigkeit ans Fernwärmenetz und Service vor Ort"
+        },
+        "weight": "3"
+      }
+    ],
+    "options": [
+      {
+        "code": "a",
+        "title": {
+          "en": "Manufacturer A, from order",
+          "de": "Hersteller A, ab Bestellung"
+        },
+        "lead_weeks": 26,
+        "scores": {
+          "lead_time": "2",
+          "cost": "4",
+          "service": "4"
+        }
+      },
+      {
+        "code": "b",
+        "title": {
+          "en": "Manufacturer B, from approved drawings",
+          "de": "Hersteller B, ab freigegebenen Zeichnungen"
+        },
+        "lead_weeks": 18,
+        "scores": {
+          "lead_time": "4",
+          "cost": "3",
+          "service": "4"
+        }
+      }
+    ],
+    "recommendation": "b",
+    "rationale": {
+      "en": "Option B keeps the connection date agreed with the municipal utility and the first heating period; the drawing review with the utility is scheduled.",
+      "de": "Option B hält den mit den Stadtwerken vereinbarten Anschlusstermin und die erste Heizperiode; die Planabstimmung mit den Stadtwerken ist terminiert."
+    }
+  },
+  "slots": {
+    "held": {
+      "vendor_name": {
+        "en": "Transformer manufacturer A",
+        "de": "Transformatorenhersteller A"
+      },
+      "terms": {
+        "en": "The manufacturer holds the slot without a fee until the conversion date; the slot itself binds no money. Authority to sign the supply order is released as a commitment of the project after the supervisory board has agreed the award, and the slot lapses if the order is not signed by that date.",
+        "de": "Der Hersteller hält den Fertigungsplatz bis zum Umwandlungstermin gebührenfrei; der Platz selbst bindet kein Geld. Die Vollmacht zur Bestellung wird als Verpflichtung des Projekts freigegeben, nachdem der Aufsichtsrat der Vergabe zugestimmt hat; der Platz verfällt, wenn bis zu diesem Termin nicht bestellt ist."
+      },
+      "slot_from_days": 300,
+      "slot_to_days": 360,
+      "convert_by_days": 45
+    },
+    "requested": {
+      "vendor_name": {
+        "en": "Inverter and storage packager",
+        "de": "Anbieter für Wechselrichter und Speicher"
+      },
+      "terms": {
+        "en": "Fee non-refundable, credited in full to the order if signed by the conversion date.",
+        "de": "Gebühr nicht erstattbar, bei Bestellung bis zum Umwandlungstermin voll auf den Auftrag angerechnet."
+      },
+      "reservation_fee": "15000.00",
+      "slot_from_days": 330,
+      "slot_to_days": 390,
+      "convert_by_days": 45
+    }
+  },
+  "it_services": [
+    {
+      "kind": "cde_access",
+      "description": {
+        "en": "Common data environment access for the housing company, the design teams and the trade lots",
+        "de": "Zugang zur gemeinsamen Datenumgebung für Wohnungsbaugesellschaft, Planer und Gewerke"
+      },
+      "start_days": -30
+    },
+    {
+      "kind": "site_network",
+      "description": {
+        "en": "Site office network and wireless coverage",
+        "de": "Netzwerk und WLAN der Baustelleneinrichtung"
+      },
+      "start_days": 60
+    },
+    {
+      "kind": "access_control",
+      "description": {
+        "en": "Gate access control of the site",
+        "de": "Zutrittskontrolle am Baustellentor"
+      },
+      "start_days": 60
+    },
+    {
+      "kind": "cctv",
+      "description": {
+        "en": "Camera watch of the site fence towards the riverside path",
+        "de": "Kameraüberwachung des Bauzauns zum Uferweg"
+      },
+      "start_days": 90
+    }
+  ],
+  "site_plant": [
+    {
+      "kind": "tower_crane",
+      "name": {
+        "en": "Tower crane, swing area kept clear of the neighbouring plots",
+        "de": "Turmdrehkran, Schwenkbereich frei von den Nachbargrundstücken"
+      },
+      "x": "40.0",
+      "y": "35.0",
+      "reach_m": "60.00",
+      "max_load_t": "8.00"
+    },
+    {
+      "kind": "mobile_crane_pad",
+      "name": {
+        "en": "Crane pad for precast balconies and car park elements",
+        "de": "Kranstellfläche für Balkon-Fertigteile und Tiefgaragenelemente"
+      },
+      "x": "15.0",
+      "y": "75.0",
+      "reach_m": "45.00",
+      "max_load_t": "100.00"
+    },
+    {
+      "kind": "site_office",
+      "name": {
+        "en": "Site office and meeting containers",
+        "de": "Baubüro- und Besprechungscontainer"
+      },
+      "x": "5.0",
+      "y": "5.0"
+    },
+    {
+      "kind": "welfare",
+      "name": {
+        "en": "Welfare containers for the trades",
+        "de": "Sozialcontainer für die Gewerke"
+      },
+      "x": "9.0",
+      "y": "5.0"
+    },
+    {
+      "kind": "storage",
+      "name": {
+        "en": "Covered storage for windows and apartment doors",
+        "de": "Überdachtes Lager für Fenster und Wohnungstüren"
+      },
+      "x": "30.0",
+      "y": "8.0"
+    },
+    {
+      "kind": "temporary_power",
+      "name": {
+        "en": "Temporary power distribution (Baustrom)",
+        "de": "Baustromverteilung"
+      },
+      "x": "8.0",
+      "y": "12.0"
+    }
+  ],
+  "paper_route_name": {
+    "en": "Plant decision paper sign-off",
+    "de": "Freigabe der Entscheidungsvorlage Anlagen"
+  },
+  "no_asset_reason": {
+    "en": "Maintained by the property management of the housing company; no service contract is let for it.",
+    "de": "Wird von der Hausverwaltung der Wohnungsbaugesellschaft gewartet; ein Wartungsvertrag wird dafür nicht vergeben."
+  }
+}

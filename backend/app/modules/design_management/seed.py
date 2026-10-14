@@ -93,6 +93,7 @@ def default_plan() -> dict[str, Any]:
             "answer": "Plant room enlarged to match the ventilation concept.",
         },
         "reports": {},
+        "report_status": {},
         "extra_reports": (),
         "permit": {"title": "Building permit application", "form": "Application form"},
     }
@@ -131,6 +132,33 @@ def _wbs_rows(value: Any, locale: str) -> tuple[tuple[str, str, str], ...] | Non
         if code and name and kind in _WBS_KINDS:
             rows.append((code, name, kind))
     return tuple(rows) or None
+
+
+def _report_statuses(value: Any) -> dict[str, dict[str, str]]:
+    """Where the story leaves a report, per report code: ``before_gate`` and ``after_gate`` (both optional).
+
+    Applies to the five built-in reports and to extra reports. Before the gate the seed still decides which
+    reports of the closing phase may be open, so a status the story gives there only stands when it is not
+    ``accepted`` for more than one report; an unknown status is ignored.
+    """
+    out: dict[str, dict[str, str]] = {}
+    if not isinstance(value, dict):
+        return out
+    items: list[tuple[Any, Any]] = []
+    if isinstance(value.get("overrides"), dict):
+        items += list(value["overrides"].items())
+    items += [(i.get("code"), i) for i in value.get("extra") or [] if isinstance(i, dict)]
+    for code, item in items:
+        if not (isinstance(code, str) and isinstance(item, dict)):
+            continue
+        picked = {
+            key: item[field]
+            for key, field in (("before_gate", "status_before_gate"), ("after_gate", "status_after_gate"))
+            if item.get(field) in _REPORT_STATUSES
+        }
+        if picked:
+            out[code] = picked
+    return out
 
 
 def _merge_reports(
@@ -246,6 +274,7 @@ def resolve_story(story: dict[str, Any], locale: str, *, report_kinds: set[str])
             "answer": _txt(review.get("answer"), locale, 1000) or plan["review"]["answer"],
         }
     plan["reports"], plan["extra_reports"] = _merge_reports(story.get("reports"), report_kinds, locale)
+    plan["report_status"] = _report_statuses(story.get("reports"))
     permit = story.get("permit")
     if isinstance(permit, dict):
         plan["permit"] = {
@@ -637,14 +666,16 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             e["kind"],
             {"early": p_early, "mid": p_mid}[e["phase"]],
             # Before the gate everything of the closing phase is done except the one report above.
-            "accepted" if pre is not None else e["status"],
+            e["status"] if pre is None else "accepted",
             e["author"],
             e["checker"],
         )
         for e in plan["extra_reports"]
     ]
     titles = {e["code"]: e["title"] for e in plan["extra_reports"]}
+    stated = plan.get("report_status") or {}
     for code, kind, phase, status, author, checker in [*report_plan, *extras]:
+        status = stated.get(code, {}).get("before_gate" if pre is not None else "after_gate", status)
         kind_override, title_override = plan["reports"].get(code, ("", ""))
         kind = kind_override or kind
         report = await svc.create_report(
