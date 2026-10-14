@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { fmtList } from '@/shared/lib/formatters';
 import { Input } from '@/shared/ui/Input';
 
 import { createRole, deleteRole, localToday, patchRole, type Catalogue, type CatRole, type Duties, type Role } from './api';
@@ -135,7 +136,7 @@ export function RolesPanel({ projectId, roles, catalogue, duties, write, canEdit
                 {mine.map((r) => (
                   <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid={`assignment-${r.id}`} data-status={r.status}>
                     <span className="text-content-primary">
-                      {[r.person_name, r.organisation].filter(Boolean).join(', ') || t('hseFrame.role.unnamed', { defaultValue: 'No person named' })}
+                      {fmtList([r.person_name, r.organisation]) || t('hseFrame.role.unnamed', { defaultValue: 'No person named' })}
                       <span className="ml-2 text-xs text-content-secondary">
                         {[
                           t(`hseFrame.role_status.${r.status}`, { defaultValue: r.status }),
