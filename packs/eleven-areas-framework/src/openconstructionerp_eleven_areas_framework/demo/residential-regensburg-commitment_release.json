@@ -70,5 +70,73 @@
       "de": "Freigabe aus der Risikoreserve für Boden- und Grundwasserverhältnisse"
     },
     "amount": "650000"
+  },
+  "labels": {
+    "scenario": {
+      "en": "Stop today",
+      "de": "Stopp heute"
+    }
+  },
+  "running_works": {
+    "title": {
+      "en": "Lot 1 and 2: excavation pit, shoring and reinforced concrete shell",
+      "de": "Los 1 und 2: Baugrube, Verbau und Stahlbeton-Rohbau"
+    },
+    "source_note": {
+      "en": "Estimate of the contractor for a stop of the shell works, not from the contract",
+      "de": "Schätzung des Auftragnehmers für einen Baustopp im Rohbau, nicht aus dem Vertrag"
+    },
+    "release_note": {
+      "en": "Release of the full package after the award of lots 1 and 2",
+      "de": "Freigabe des gesamten Pakets nach der Vergabe der Lose 1 und 2"
+    }
+  },
+  "running_facade": {
+    "title": {
+      "en": "Precast balconies and windows with a long lead time",
+      "de": "Fertigteilbalkone und Fenster mit langer Lieferzeit"
+    },
+    "amount": "1450000",
+    "source_note": {
+      "en": "Supplier quotation, cancellation terms",
+      "de": "Lieferantenangebot, Stornobedingungen"
+    },
+    "salvage_value": "120000"
+  },
+  "running_design": {
+    "title": {
+      "en": "Design appointment, HOAI phases 5 to 8, execution design and site supervision",
+      "de": "Planungsauftrag, HOAI Leistungsphasen 5 bis 8, Ausführungsplanung und Objektüberwachung"
+    },
+    "amount": "1100000",
+    "brief_text": {
+      "en": "Execution design brief released by the management and the supervisory board",
+      "de": "Vorgaben zur Ausführungsplanung von der Geschäftsführung und dem Aufsichtsrat freigegeben"
+    },
+    "evidence": {
+      "en": "Brief rev. C, signed",
+      "de": "Vorgaben Stand C, unterzeichnet"
+    },
+    "first_amount": "380000",
+    "first_note": {
+      "en": "First tranche: Leistungsphase 5 (Ausführungsplanung)",
+      "de": "Erste Tranche: Leistungsphase 5 (Ausführungsplanung)"
+    },
+    "first_condition": {
+      "en": "Execution drawings of the shell approved before the next tranche",
+      "de": "Ausführungspläne des Rohbaus vor der nächsten Tranche freigegeben"
+    },
+    "second_amount": "540000",
+    "second_note": {
+      "en": "Second tranche: Leistungsphasen 6 to 8 (tendering, award, site supervision)",
+      "de": "Zweite Tranche: Leistungsphasen 6 bis 8 (Vorbereitung und Mitwirkung der Vergabe, Objektüberwachung)"
+    }
+  },
+  "running_contingency": {
+    "title": {
+      "en": "Contingency drawdown for ground and groundwater conditions",
+      "de": "Freigabe aus der Risikoreserve für Boden- und Grundwasserverhältnisse"
+    },
+    "amount": "650000"
   }
 }
