@@ -1482,132 +1482,154 @@
       "code": "frame_document_approved",
       "area": "m01_project_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
     },
     {
       "code": "next_phase_tasks_done",
       "area": "m01_project_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
     },
     {
       "code": "frame_document_approved",
       "area": "m02_contract_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
     },
     {
       "code": "next_phase_tasks_done",
       "area": "m02_contract_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
     },
     {
       "code": "frame_document_approved",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
     },
     {
       "code": "next_phase_tasks_done",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
     },
     {
       "code": "frame_document_approved",
       "area": "m04_equipment",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
     },
     {
       "code": "next_phase_tasks_done",
       "area": "m04_equipment",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
     },
     {
       "code": "frame_document_approved",
       "area": "m05_personnel",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
     },
     {
       "code": "next_phase_tasks_done",
       "area": "m05_personnel",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
     },
     {
       "code": "frame_document_approved",
       "area": "m06_logistics",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
     },
     {
       "code": "next_phase_tasks_done",
       "area": "m06_logistics",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
     },
     {
       "code": "frame_document_approved",
       "area": "m07_design_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
     },
     {
       "code": "next_phase_tasks_done",
       "area": "m07_design_management",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
     },
     {
       "code": "frame_document_approved",
       "area": "m08_procurement",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
     },
     {
       "code": "next_phase_tasks_done",
       "area": "m08_procurement",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
     },
     {
       "code": "frame_document_approved",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
     },
     {
       "code": "next_phase_tasks_done",
       "area": "m09_commercial",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
     },
     {
       "code": "frame_document_approved",
       "area": "m10_quality",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
     },
     {
       "code": "next_phase_tasks_done",
       "area": "m10_quality",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
     },
     {
       "code": "frame_document_approved",
       "area": "m11_hse",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
     },
     {
       "code": "next_phase_tasks_done",
       "area": "m11_hse",
       "gate": "development_to_execution",
+      "manual_only": true,
       "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
     }
   ]
