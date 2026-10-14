@@ -2007,9 +2007,13 @@ class PlantService:
         One notice per person, item and kind per calendar day: the periodic job
         and the manual run may both pass here many times a day.
         """
+        return (await self.notify_order_date_once(view))[0]
+
+    async def notify_order_date_once(self, view: dict[str, Any]) -> tuple[str | None, bool]:
+        """:meth:`notify_order_date` and whether anybody was told by this call (not told earlier today)."""
         status = view["order_status"]
         if status not in ("overdue", "due_soon"):
-            return None
+            return None, False
         item: PlantItem = view["item"]
         kind = f"order_{status}"
         ctx = {
@@ -2029,7 +2033,7 @@ class PlantService:
                 self._publish("plant.order.overdue", data)
             else:
                 self._publish("plant.order.due_soon", data)
-        return status
+        return status, told
 
     async def _notified_today(self, user_id: uuid.UUID, kind: str, item_id: uuid.UUID) -> bool:
         from app.modules.notifications.models import Notification

@@ -103,7 +103,8 @@ async def run_once(*, today: date | None = None, session_factory: Any = None) ->
 
             async def notify(svc: Any, project_id: uuid.UUID = project_id, item_id: uuid.UUID = item_id) -> bool:
                 found = await svc.item_views(project_id, today=day, only=[item_id])
-                return bool(found) and await svc.notify_order_date(found[0]) is not None
+                # Counted when somebody was told now; an item that is still due but was told today is not a notice.
+                return bool(found) and (await svc.notify_order_date_once(found[0]))[1]
 
             done["order_notices"] += await _unit(factory, f"order date of item {item_id}", notify)
 
