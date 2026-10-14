@@ -201,6 +201,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         from app.modules.forms.submissions_seed import seed_forms_submissions_demo
         from app.modules.full_evm.seed import seed_full_evm_demo
         from app.modules.hse_advanced.seed import seed_hse_advanced_demo
+        from app.modules.hse_frame.seed import seed_hse_frame_demo
         from app.modules.interface_management.seed import seed_interface_management_demo
         from app.modules.markups.seed import seed_markups
         from app.modules.moc.seed import seed_moc
@@ -495,6 +496,9 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             # project's CDE, so it runs after the documents seed above.
             ("closeout", None, lambda s: seed_closeout_demo(s, _demo_pids)),
             ("quality_concept", None, lambda s: seed_quality_concept_demo(s, _demo_pids)),
+            # The HSE frame of the German demo projects. It links the permit conditions, incidents,
+            # permits to work and audits the seeders above wrote, so it runs after all of them.
+            ("hse_frame", None, lambda s: seed_hse_frame_demo(s, _demo_pids)),
             # A structure over the projects rather than a register inside one:
             # it files the whole estate into one tree, so it runs once the
             # estate is complete.

@@ -1,0 +1,30 @@
+{
+  "id": "de_by",
+  "version": 1,
+  "name_key": "hse_frame.catalogue.de_by",
+  "labels": {
+    "en": "HSE frame, Bavaria",
+    "de": "HSE-Rahmen, Bayern"
+  },
+  "jurisdiction": "DE-BY",
+  "jurisdiction_countries": [],
+  "extends": "de",
+  "review_status": "unconfirmed",
+  "templates": [
+    {
+      "code": "archaeology_clearance",
+      "topic": "site_clearance",
+      "labels": {
+        "en": "Ground heritage clearance under the Bavarian heritage act is on file",
+        "de": "Freigabe zu Bodendenkmälern nach dem Bayerischen Denkmalschutzgesetz liegt vor"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory",
+      "legal_basis": "BayDSchG Art. 7, 8",
+      "source_url": "https://www.gesetze-bayern.de/Content/Document/BayDSchG",
+      "review_status": "unconfirmed"
+    }
+  ]
+}

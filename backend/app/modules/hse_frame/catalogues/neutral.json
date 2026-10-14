@@ -1,0 +1,499 @@
+{
+  "id": "neutral",
+  "version": 1,
+  "name_key": "hse_frame.catalogue.neutral",
+  "labels": {
+    "en": "Neutral HSE frame",
+    "de": "Neutraler HSE-Rahmen"
+  },
+  "jurisdiction": "",
+  "jurisdiction_countries": [],
+  "review_status": "unconfirmed",
+  "topics": [
+    {
+      "code": "hse_requirements",
+      "labels": {
+        "en": "HSE requirements on designers and contractors",
+        "de": "HSE-Anforderungen an Planer und Unternehmer"
+      },
+      "basis": "items",
+      "criterion": "hse_requirements_issued"
+    },
+    {
+      "code": "environmental_review",
+      "labels": {
+        "en": "Environmental review",
+        "de": "Umweltprüfung"
+      },
+      "basis": "items",
+      "criterion": "environmental_assessment_done"
+    },
+    {
+      "code": "site_clearance",
+      "labels": {
+        "en": "Site clearances",
+        "de": "Freigaben für das Baufeld"
+      },
+      "basis": "items",
+      "criterion": "site_clearances_on_file"
+    },
+    {
+      "code": "permit_conditions",
+      "labels": {
+        "en": "Permit conditions",
+        "de": "Genehmigungsauflagen"
+      },
+      "basis": "permits"
+    },
+    {
+      "code": "energy_climate",
+      "labels": {
+        "en": "Energy and climate",
+        "de": "Energie und Klima"
+      },
+      "basis": "items",
+      "criterion": "energy_and_climate_targets_set"
+    },
+    {
+      "code": "sustainability",
+      "labels": {
+        "en": "Sustainability",
+        "de": "Nachhaltigkeit"
+      },
+      "basis": "items",
+      "criterion": "sustainability_targets_set"
+    },
+    {
+      "code": "health_safety_coordination",
+      "labels": {
+        "en": "Health and safety coordination",
+        "de": "Sicherheits- und Gesundheitsschutzkoordination"
+      },
+      "basis": "roles",
+      "criterion": "safety_coordination_appointed"
+    },
+    {
+      "code": "security",
+      "labels": {
+        "en": "Security concept",
+        "de": "Sicherheitskonzept (Security)"
+      },
+      "basis": "items",
+      "criterion": "security_concept_approved"
+    },
+    {
+      "code": "risk_assessment",
+      "labels": {
+        "en": "Risk assessment",
+        "de": "Gefährdungsbeurteilung"
+      },
+      "basis": "items"
+    },
+    {
+      "code": "environment_measures",
+      "labels": {
+        "en": "Environmental measures in execution",
+        "de": "Umweltmaßnahmen in der Ausführung"
+      },
+      "basis": "items"
+    }
+  ],
+  "role_kinds": [
+    {
+      "code": "safety_coordinator_design",
+      "labels": {
+        "en": "Safety and health coordinator (design stage)",
+        "de": "SiGe-Koordinator (Planungsphase)"
+      },
+      "party": "coordinator",
+      "phase": "development",
+      "required_when": "multiple_employers",
+      "qualification_required": true
+    },
+    {
+      "code": "safety_coordinator_execution",
+      "labels": {
+        "en": "Safety and health coordinator (execution stage)",
+        "de": "SiGe-Koordinator (Ausführungsphase)"
+      },
+      "party": "coordinator",
+      "phase": "execution",
+      "required_when": "multiple_employers",
+      "qualification_required": true
+    },
+    {
+      "code": "owner_hse_representative",
+      "labels": {
+        "en": "Owner's HSE representative",
+        "de": "HSE-Beauftragter des Bauherrn"
+      },
+      "party": "owner",
+      "phase": "both",
+      "required_when": "always"
+    },
+    {
+      "code": "contractor_hse_manager",
+      "labels": {
+        "en": "Contractor's HSE manager",
+        "de": "HSE-Verantwortlicher des Unternehmers"
+      },
+      "party": "contractor",
+      "phase": "execution"
+    },
+    {
+      "code": "environmental_manager",
+      "labels": {
+        "en": "Environmental manager",
+        "de": "Umweltbeauftragter"
+      },
+      "party": "contractor",
+      "phase": "execution"
+    },
+    {
+      "code": "security_manager",
+      "labels": {
+        "en": "Security manager",
+        "de": "Sicherheitsverantwortlicher (Security)"
+      },
+      "party": "owner",
+      "phase": "both"
+    }
+  ],
+  "templates": [
+    {
+      "code": "hse_requirements_in_tender",
+      "topic": "hse_requirements",
+      "labels": {
+        "en": "HSE requirements for designers and contractors are part of the tender documents",
+        "de": "HSE-Anforderungen an Planer und Unternehmer sind Teil der Vergabeunterlagen"
+      },
+      "audience": [
+        "designer",
+        "contractor"
+      ],
+      "obligation": "mandatory",
+      "in_tender_documents": true
+    },
+    {
+      "code": "design_hazard_reduction",
+      "topic": "hse_requirements",
+      "labels": {
+        "en": "Designers reduce hazards by design and document the residual risks",
+        "de": "Planer vermeiden Gefährdungen durch die Planung und dokumentieren Restrisiken"
+      },
+      "audience": [
+        "designer"
+      ],
+      "obligation": "mandatory"
+    },
+    {
+      "code": "contractor_safety_management",
+      "topic": "hse_requirements",
+      "labels": {
+        "en": "Contractors provide a site safety organisation and induction",
+        "de": "Unternehmer stellen eine Arbeitsschutzorganisation und Einweisungen sicher"
+      },
+      "audience": [
+        "contractor"
+      ],
+      "obligation": "mandatory",
+      "in_tender_documents": true
+    },
+    {
+      "code": "coordination_appointed_note",
+      "topic": "hse_requirements",
+      "labels": {
+        "en": "Cooperation with the safety coordinator is written into every contract",
+        "de": "Zusammenarbeit mit dem Koordinator ist in jedem Vertrag geregelt"
+      },
+      "audience": [
+        "contractor",
+        "designer"
+      ],
+      "obligation": "recommended",
+      "in_tender_documents": true
+    },
+    {
+      "code": "environmental_impact_screening",
+      "topic": "environmental_review",
+      "labels": {
+        "en": "Environmental impact screening is done and filed",
+        "de": "Umweltverträglichkeitsprüfung ist erfolgt und abgelegt"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory"
+    },
+    {
+      "code": "species_protection",
+      "topic": "environmental_review",
+      "labels": {
+        "en": "Species protection is assessed",
+        "de": "Artenschutz ist geprüft"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory"
+    },
+    {
+      "code": "noise_assessment",
+      "topic": "environmental_review",
+      "labels": {
+        "en": "Construction noise is assessed against the limits",
+        "de": "Baulärm ist gegen die Grenzwerte geprüft"
+      },
+      "audience": [
+        "owner",
+        "contractor"
+      ],
+      "obligation": "mandatory"
+    },
+    {
+      "code": "emissions_assessment",
+      "topic": "environmental_review",
+      "labels": {
+        "en": "Dust and emissions during construction are assessed",
+        "de": "Staub und Emissionen in der Bauphase sind geprüft"
+      },
+      "audience": [
+        "owner",
+        "contractor"
+      ],
+      "obligation": "recommended"
+    },
+    {
+      "code": "ordnance_clearance",
+      "topic": "site_clearance",
+      "labels": {
+        "en": "Explosive ordnance clearance is on file",
+        "de": "Kampfmittelfreiheit liegt vor"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory"
+    },
+    {
+      "code": "contamination_clearance",
+      "topic": "site_clearance",
+      "labels": {
+        "en": "Contaminated land is investigated and cleared",
+        "de": "Altlasten sind untersucht und freigegeben"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory"
+    },
+    {
+      "code": "archaeology_clearance",
+      "topic": "site_clearance",
+      "labels": {
+        "en": "Archaeological and heritage clearance is on file",
+        "de": "Freigabe zu Bodendenkmälern liegt vor"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory"
+    },
+    {
+      "code": "energy_legal_requirements",
+      "topic": "energy_climate",
+      "labels": {
+        "en": "Legal energy requirements for the building are fixed as design targets",
+        "de": "Gesetzliche Energieanforderungen sind als Planungsziele festgelegt"
+      },
+      "audience": [
+        "designer"
+      ],
+      "obligation": "mandatory"
+    },
+    {
+      "code": "energy_source_and_waste_heat",
+      "topic": "energy_climate",
+      "labels": {
+        "en": "Energy source and use of waste heat are decided",
+        "de": "Herkunft der Energie und Abwärmenutzung sind festgelegt"
+      },
+      "audience": [
+        "designer",
+        "owner"
+      ],
+      "obligation": "recommended"
+    },
+    {
+      "code": "sustainability_targets",
+      "topic": "sustainability",
+      "labels": {
+        "en": "Sustainability targets for building and operation are set",
+        "de": "Nachhaltigkeitsziele für Gebäude und Betrieb sind festgelegt"
+      },
+      "audience": [
+        "owner",
+        "designer"
+      ],
+      "obligation": "recommended"
+    },
+    {
+      "code": "sustainability_reporting",
+      "topic": "sustainability",
+      "labels": {
+        "en": "Reporting duties are identified and assigned",
+        "de": "Berichtspflichten sind ermittelt und zugewiesen"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "recommended"
+    },
+    {
+      "code": "security_perimeter_access",
+      "topic": "security",
+      "labels": {
+        "en": "Security concept covers perimeter, access control and protected zones for construction and operation",
+        "de": "Sicherheitskonzept regelt Perimeter, Zutritt und Schutzzonen für Bau und Betrieb"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "recommended"
+    },
+    {
+      "code": "risk_assessment_per_trade",
+      "topic": "risk_assessment",
+      "labels": {
+        "en": "A risk assessment exists for every trade on site",
+        "de": "Für jedes Gewerk auf der Baustelle liegt eine Gefährdungsbeurteilung vor"
+      },
+      "audience": [
+        "contractor"
+      ],
+      "obligation": "mandatory",
+      "evidence_kind": "hse_jsa"
+    },
+    {
+      "code": "waste_and_spill_plan",
+      "topic": "environment_measures",
+      "labels": {
+        "en": "Waste, spill and water protection measures are in place",
+        "de": "Maßnahmen für Abfall, Leckagen und Gewässerschutz sind eingerichtet"
+      },
+      "audience": [
+        "contractor"
+      ],
+      "obligation": "recommended"
+    }
+  ],
+  "hazardous_works": [
+    {
+      "code": "excavation_deep",
+      "labels": {
+        "en": "Deep excavation or work at height",
+        "de": "Tiefe Baugruben oder Arbeiten in der Höhe"
+      }
+    },
+    {
+      "code": "hazardous_substances",
+      "labels": {
+        "en": "Hazardous substances",
+        "de": "Gefahrstoffe"
+      }
+    },
+    {
+      "code": "ionising_radiation",
+      "labels": {
+        "en": "Ionising radiation",
+        "de": "Ionisierende Strahlung"
+      }
+    },
+    {
+      "code": "high_voltage",
+      "labels": {
+        "en": "Work near high-voltage lines",
+        "de": "Arbeiten nahe Hochspannungsleitungen"
+      }
+    },
+    {
+      "code": "drowning",
+      "labels": {
+        "en": "Risk of drowning",
+        "de": "Ertrinkungsgefahr"
+      }
+    },
+    {
+      "code": "tunnelling",
+      "labels": {
+        "en": "Wells, underground earthworks, tunnelling",
+        "de": "Brunnenbau, Erdarbeiten unter Tage, Tunnelbau"
+      }
+    },
+    {
+      "code": "diving",
+      "labels": {
+        "en": "Diving",
+        "de": "Taucharbeiten"
+      }
+    },
+    {
+      "code": "compressed_air",
+      "labels": {
+        "en": "Work in compressed air",
+        "de": "Arbeiten in Druckluft"
+      }
+    },
+    {
+      "code": "explosives",
+      "labels": {
+        "en": "Use of explosives",
+        "de": "Sprengarbeiten"
+      }
+    },
+    {
+      "code": "heavy_precast",
+      "labels": {
+        "en": "Erecting or dismantling heavy precast elements",
+        "de": "Montage schwerer Fertigteile"
+      }
+    }
+  ],
+  "plan_elements": [
+    {
+      "code": "site_layout",
+      "labels": {
+        "en": "Site set-up and traffic routes",
+        "de": "Baustelleneinrichtung und Verkehrswege"
+      }
+    },
+    {
+      "code": "work_sequence",
+      "labels": {
+        "en": "Work sequence and trade coordination",
+        "de": "Arbeitsabläufe und Gewerkekoordination"
+      }
+    },
+    {
+      "code": "hazardous_work_measures",
+      "labels": {
+        "en": "Protective measures for hazardous works",
+        "de": "Schutzmaßnahmen für besonders gefährliche Arbeiten"
+      }
+    },
+    {
+      "code": "emergency_rescue",
+      "labels": {
+        "en": "Emergency and rescue arrangements",
+        "de": "Notfall- und Rettungsorganisation"
+      }
+    },
+    {
+      "code": "responsibilities",
+      "labels": {
+        "en": "Responsibilities and communication",
+        "de": "Zuständigkeiten und Kommunikation"
+      }
+    }
+  ]
+}
