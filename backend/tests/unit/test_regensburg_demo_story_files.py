@@ -481,3 +481,11 @@ def test_regensburg_contracts_and_guarantees_tell_one_story() -> None:
         assert securities[kind]["valid_from_days"] >= items["CF-02"]["days"]
         assert "civil works" in securities[kind]["description"]["en"]
     assert "pending" in items["CF-01"]["counterparty"]["en"]
+
+
+def test_regensburg_plant_register_fits_a_site_that_has_only_started() -> None:
+    """Nothing is commissioned before the first slab: the show apartment units are ordered for a later need date."""
+    items = {i["code"]: i for i in _story("residential-regensburg", "plant_register")["items"]}
+    assert items["PL-010"]["reach"] == "ordered" and items["PL-010"]["need_days"] > 0
+    assert items["PL-011"]["reach"] == "handed_over" and items["PL-008"]["reach"] == "delivered"
+    assert not [c for c, i in items.items() if i["reach"] == "commissioned"]
