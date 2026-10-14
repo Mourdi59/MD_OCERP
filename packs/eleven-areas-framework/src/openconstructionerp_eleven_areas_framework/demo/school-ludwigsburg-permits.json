@@ -116,5 +116,10 @@
         "de": "Die Genehmigung ersetzt nicht den Energienachweis nach GEG, die artenschutzrechtliche Freigabe oder die Erlaubnis zur Straßennutzung."
       }
     }
-  }
+  },
+  "road_authority_name": {
+    "en": "City of Ludwigsburg, civil engineering office",
+    "de": "Stadt Ludwigsburg, Tiefbauamt"
+  },
+  "road_reference": "SN-2026-0187"
 }

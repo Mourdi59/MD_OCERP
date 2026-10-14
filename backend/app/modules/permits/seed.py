@@ -177,6 +177,8 @@ _TEXT_DEFAULTS: dict[str, str] = {
     "preliminary_reference": "PRE-0418",
     "building_reference": "BP-0112",
     "early_reference": "ES-0031",
+    "road_authority_name": "Local road authority",
+    "road_reference": "SN-0207",
     "clock_stop_reason": "Authority asked for the revised drainage layout",
     "clock_resume_reason": "Revised drainage layout delivered",
     "evidence_note": "Tree protection fence along the northern boundary, photographed from the gate",
@@ -531,6 +533,15 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             pid, a.id, "under_review", actor_id=owner, can_manage=True, today=ago(story.early_filed - 3)
         )
     if r_road is not None:
-        a = await svc.create_application(pid, {"requirement_id": r_road.id}, actor_id=owner)
+        # The road is the road authority's, not the building authority's; the file carries both so it never reads empty.
+        a = await svc.create_application(
+            pid,
+            {
+                "requirement_id": r_road.id,
+                "authority_name": content["road_authority_name"],
+                "authority_reference": content["road_reference"],
+            },
+            actor_id=owner,
+        )
         await svc.transition_application(pid, a.id, "preparing", actor_id=owner, can_manage=True, today=today)
     return {"requirements": len(made), "conditions": len(conditions)}

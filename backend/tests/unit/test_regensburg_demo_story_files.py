@@ -519,3 +519,14 @@ def test_the_regensburg_gate_rationale_counts_the_conditions_it_names() -> None:
     decision = gate["governance"]["gate"]["decision"]
     assert len(decision["conditions"]) == 4
     assert "Four areas" in decision["rationale"]["en"] and "Vier Bereiche" in decision["rationale"]["de"]
+
+
+@pytest.mark.parametrize("demo", ["residential-regensburg", "school-ludwigsburg"])
+def test_the_road_application_names_its_authority_and_reference(demo: str) -> None:
+    """The road occupation file is never an empty form: the road authority and its reference are in the story."""
+    for locale in ("en", "de"):
+        content = permits_seed.resolve_permit_content(_story(demo, "permits"), locale)
+        assert content["road_authority_name"] != permits_seed._TEXT_DEFAULTS["road_authority_name"]
+        assert content["road_reference"] != permits_seed._TEXT_DEFAULTS["road_reference"]
+    de = permits_seed.resolve_permit_content(_story(demo, "permits"), "de")
+    assert "Tiefbauamt" in de["road_authority_name"]
