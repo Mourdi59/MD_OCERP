@@ -52,6 +52,8 @@ import { getModuleNavItems } from '@/modules/_registry';
 import { APP_VERSION } from '@/shared/lib/version';
 import { useSidebarBadges } from '@/shared/hooks/useSidebarBadges';
 import { useHiddenModules } from '@/shared/hooks/useHiddenModules';
+import { usePartnerPack } from '@/shared/hooks/usePartnerPack';
+import { applyPackMenu, visibleHiddenRoutes } from './packMenu';
 import { useIsRTL } from '@/shared/hooks/useIsRTL';
 import { preloadRouteOnHover, cancelRoutePreload } from '@/shared/lib/routePreload';
 import { useI18nReady } from '@/shared/lib/useI18nReady';
@@ -637,7 +639,23 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   // routes) and one for whole sections (`editingHiddenGroups`, group ids).
   // Both are seeded on entry and committed together on Save, so hiding a
   // module and hiding a section share one Save/Cancel gesture.
-  const { hiddenModules, setHiddenModules } = useHiddenModules();
+  const { hiddenModules, setHiddenModules, isLoading: hiddenLoading } = useHiddenModules();
+  const { data: activePack } = usePartnerPack();
+
+  // A framework pack hides the menu rows of the other modules it selects, once,
+  // through the same list the editor writes. Waits for the server copy so a
+  // choice made on another device is not overwritten.
+  useEffect(() => {
+    if (hiddenLoading || !activePack) return;
+    const next = applyPackMenu({
+      hidden: hiddenModules,
+      activeSlug: activePack.active ? (activePack.manifest?.slug ?? null) : null,
+      packModules: activePack.manifest?.default_modules ?? [],
+      routeModules: ROUTE_BACKEND_MODULE,
+    });
+    if (next) setHiddenModules(next);
+  }, [hiddenLoading, activePack, hiddenModules, setHiddenModules]);
+  const hiddenRowCount = visibleHiddenRoutes(hiddenModules).length;
   const [editMode, setEditMode] = useState(false);
   const [editingHidden, setEditingHidden] = useState<string[]>([]);
   const [editingHiddenGroups, setEditingHiddenGroups] = useState<string[]>([]);
@@ -1530,7 +1548,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
              pinned bar directly beneath the "Edit menu" tile below (see the
              admin grid), so the user always finds them without scrolling to
              the end of the module list. */}
-        {!iconified && !editMode && hiddenModules.length + hiddenGroups.length > 0 && (
+        {!iconified && !editMode && hiddenRowCount + hiddenGroups.length > 0 && (
           <div className="pt-3 pb-1 px-3">
             <button
               type="button"
@@ -1542,7 +1560,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
               <span>
                 {t('sidebar.hidden_count', {
                   defaultValue: '{{count}} hidden',
-                  count: hiddenModules.length + hiddenGroups.length,
+                  count: hiddenRowCount + hiddenGroups.length,
                 })}
               </span>
             </button>
@@ -1763,11 +1781,11 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
               <X size={12} strokeWidth={2.25} />
               <span>{t('sidebar.cancel', { defaultValue: 'Cancel' })}</span>
             </button>
-            {editingHidden.length + editingHiddenGroups.length > 0 && (
+            {visibleHiddenRoutes(editingHidden).length + editingHiddenGroups.length > 0 && (
               <span className="shrink-0 text-2xs text-content-tertiary tabular-nums">
                 {t('sidebar.hidden_count', {
                   defaultValue: '{{count}} hidden',
-                  count: editingHidden.length + editingHiddenGroups.length,
+                  count: visibleHiddenRoutes(editingHidden).length + editingHiddenGroups.length,
                 })}
               </span>
             )}
