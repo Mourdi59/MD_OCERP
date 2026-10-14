@@ -114,7 +114,7 @@ export function DesignManagementPage() {
 
   if (setupQ.isLoading) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <SkeletonTable rows={6} columns={6} />
       </div>
@@ -122,7 +122,7 @@ export function DesignManagementPage() {
   }
   if (setupQ.isError) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <ErrorState title={ui(t, 'design.ui.load_failed')} hint={getErrorMessage(setupQ.error)} onRetry={() => setupQ.refetch()} />
       </div>
@@ -132,7 +132,7 @@ export function DesignManagementPage() {
   const setup = setupQ.data;
   if (!setup) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="design-management-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="design-management-page">
         {header}
         <DesignAccessContext.Provider value={access}>
           <SetupStart projectId={projectId} labels={labels} onDone={invalidate} />
@@ -177,7 +177,7 @@ export function DesignManagementPage() {
 
   return (
     <DesignAccessContext.Provider value={access}>
-      <div className="space-y-5 animate-fade-in" data-testid="design-management-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="design-management-page">
         {header}
         <TabBar<Tab>
           ariaLabel={ui(t, 'design.ui.tabs')}

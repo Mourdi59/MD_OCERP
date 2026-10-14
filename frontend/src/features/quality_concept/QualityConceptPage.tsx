@@ -210,7 +210,7 @@ export function QualityConceptPage() {
 
   if (conceptQ.isLoading) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <SkeletonTable rows={6} columns={5} />
       </div>
@@ -218,7 +218,7 @@ export function QualityConceptPage() {
   }
   if (conceptQ.isError && isConceptMissing(conceptQ.error)) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="quality-concept-missing">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="quality-concept-missing">
         {header}
         <RefusalNote refusal={write.refusal} />
         <EmptyState
@@ -238,7 +238,7 @@ export function QualityConceptPage() {
   }
   if (conceptQ.isError || !conceptQ.data) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <ErrorState
           title={t('qualityConcept.load_failed', { defaultValue: 'The quality concept could not be loaded' })}
@@ -271,7 +271,7 @@ export function QualityConceptPage() {
   else body = <ConceptPanel {...panel} />;
 
   return (
-    <div className="space-y-5 animate-fade-in" data-testid="quality-concept-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="quality-concept-page">
       {header}
       <ReadinessStrip projectId={projectId} />
       {!panel.editable && (

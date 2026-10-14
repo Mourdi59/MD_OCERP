@@ -67,10 +67,13 @@
   --oe-bg-secondary: #f5f5f7;
   --oe-bg-tertiary: #fbfbfd;
   --oe-bg-elevated: #ffffff;
+  /* Content wash of the module pages: a step darker than --oe-bg-secondary so the elevated cards read as cards (1.16:1 against #fff, text tokens stay AA on it, tertiary 4.61, quaternary 4.52). */
+  --oe-bg-page: #eeeef2;
   --oe-bg-ch: 255 255 255;
   --oe-bg-secondary-ch: 245 245 247;
   --oe-bg-tertiary-ch: 251 251 253;
   --oe-bg-elevated-ch: 255 255 255;
+  --oe-bg-page-ch: 238 238 242;
 
   /* Borders */
   --oe-border: #d2d2d7;
@@ -257,10 +260,13 @@
   --oe-bg-secondary: #161822;
   --oe-bg-tertiary: #1a1d2b;
   --oe-bg-elevated: #1e2130;
+  /* Dark: the page background itself, 1.18:1 against elevated. */
+  --oe-bg-page: var(--oe-bg);
   --oe-bg-ch: 15 17 23;
   --oe-bg-secondary-ch: 22 24 34;
   --oe-bg-tertiary-ch: 26 29 43;
   --oe-bg-elevated-ch: 30 33 48;
+  --oe-bg-page-ch: 15 17 23;
 
   /* Borders — subtle, low-contrast */
   --oe-border: #2a2d3e;

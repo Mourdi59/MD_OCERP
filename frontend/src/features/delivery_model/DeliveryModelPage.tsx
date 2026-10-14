@@ -139,7 +139,7 @@ export function DeliveryModelPage() {
 
   if (modelQ.isLoading) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <SkeletonTable rows={6} columns={5} />
       </div>
@@ -147,7 +147,7 @@ export function DeliveryModelPage() {
   }
   if (modelQ.isError) {
     return (
-      <div className="space-y-5 animate-fade-in">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5">
         {header}
         <ErrorState
           title={t('delivery_model.ui.load_failed', { defaultValue: 'The delivery model could not be loaded' })}
@@ -161,7 +161,7 @@ export function DeliveryModelPage() {
   const model = modelQ.data;
   if (!model) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="delivery-model-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="delivery-model-page">
         {header}
         <EmptyState
           icon={<Handshake size={28} />}
@@ -281,7 +281,7 @@ export function DeliveryModelPage() {
   const catalogueSummaryName = catalogue ? catalogueText(labels, { key: catalogue.name_key, code: catalogue.id }) : '';
 
   return (
-    <div className="space-y-5 animate-fade-in" data-testid="delivery-model-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="delivery-model-page">
       {header}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border bg-surface-elevated shadow-sm px-4 py-3" data-testid="model-strip">
         <ToneBadge tone={MODEL_TONE[model.status]} testId="model-status">

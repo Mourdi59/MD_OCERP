@@ -97,7 +97,7 @@ export function EngineeringBriefPage() {
 
   if (briefQ.isLoading) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="engineering-brief-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="engineering-brief-page">
         {header}
         {loading}
       </div>
@@ -105,7 +105,7 @@ export function EngineeringBriefPage() {
   }
   if (briefQ.isError) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="engineering-brief-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="engineering-brief-page">
         {header}
         {failed(briefQ.error, () => briefQ.refetch())}
       </div>
@@ -115,7 +115,7 @@ export function EngineeringBriefPage() {
   const brief = briefQ.data;
   if (!brief) {
     return (
-      <div className="space-y-5 animate-fade-in" data-testid="engineering-brief-page">
+      <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="engineering-brief-page">
         {header}
         <EmptyState
           icon={<FileText size={28} />}
@@ -167,7 +167,7 @@ export function EngineeringBriefPage() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in" data-testid="engineering-brief-page">
+    <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="engineering-brief-page">
       {header}
       <ApprovalPanel
         projectId={projectId}
