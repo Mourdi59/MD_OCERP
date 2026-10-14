@@ -318,8 +318,13 @@ class HseFrameService:
 
     # ── templates ──────────────────────────────────────────────────────────
 
-    async def apply_templates(self, project_id: uuid.UUID, actor: uuid.UUID | None) -> dict[str, int]:
-        """Create register rows from the catalogue templates whose trigger holds; running it twice adds nothing."""
+    async def apply_templates(
+        self, project_id: uuid.UUID, actor: uuid.UUID | None, locale: str = "en"
+    ) -> dict[str, int]:
+        """Create register rows from the catalogue templates whose trigger holds; running it twice adds nothing.
+
+        The row title is stored in ``locale``, English when the template has no label in it.
+        """
         frame = await self.ensure_frame(project_id, actor)
         self._assert_draft(frame)
         catalogue = await self.catalogue_for(frame)
@@ -338,7 +343,7 @@ class HseFrameService:
                     frame_id=frame.id,
                     topic=template.topic,
                     template_code=template.code,
-                    title=_label(template, "en"),
+                    title=_label(template, locale),
                     audience=list(template.audience),
                     obligation=template.obligation,
                     legal_basis=template.legal_basis,

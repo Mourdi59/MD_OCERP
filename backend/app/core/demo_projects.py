@@ -11640,6 +11640,11 @@ async def _seed_module_data(
         from app.modules.transmittals.models import Transmittal, TransmittalItem
 
         tr_list = generated.get("transmittals", [])
+        from app.modules.project_governance.public import demo_module_story
+
+        if demo_module_story(demo_id, "transmittals"):
+            # The pack tells this project's transmittals itself (transmittals/seed.py).
+            tr_list = []
         for tr in tr_list:
             tr_obj = Transmittal(
                 id=_id(),

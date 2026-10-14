@@ -1,0 +1,506 @@
+{
+  "$note": "Interface register story of the school-ludwigsburg demo project. Parties are roles, not firms; every name is invented. Dates are offsets in days from the seed day (negative need_by_in_days means already past; done_days_ago counts back from the seed day).",
+  "interfaces": [
+    {
+      "reference": "IF-001",
+      "interface_type": "information",
+      "status": "in_progress",
+      "priority": "high",
+      "title": {
+        "en": "Structural grid and floor plan coordination",
+        "de": "Raster und Grundrisse: Abstimmung Architektur und Tragwerk"
+      },
+      "description": {
+        "en": "The skeleton grid of the classroom wings has to match the room layout. Columns must not cut into teaching rooms.",
+        "de": "Das Stützenraster der Klassentrakte muss zum Raumprogramm passen. Stützen dürfen nicht in Unterrichtsräume ragen."
+      },
+      "owner": {
+        "en": "Architect",
+        "de": "Architekturbüro"
+      },
+      "accepter": {
+        "en": "Structural engineer",
+        "de": "Tragwerksplanung"
+      },
+      "need_by_in_days": -10,
+      "location": {
+        "en": "Classroom wings",
+        "de": "Klassentrakte"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Overlay grid and room layout",
+            "de": "Raster und Grundrisse überlagern"
+          },
+          "party": {
+            "en": "Architect",
+            "de": "Architekturbüro"
+          },
+          "due_in_days": -20,
+          "done_days_ago": 21
+        },
+        {
+          "description": {
+            "en": "Report conflicting columns",
+            "de": "Kollidierende Stützen melden"
+          },
+          "party": {
+            "en": "Structural engineer",
+            "de": "Tragwerksplanung"
+          },
+          "due_in_days": 5
+        }
+      ]
+    },
+    {
+      "reference": "IF-002",
+      "interface_type": "physical",
+      "status": "open",
+      "priority": "high",
+      "title": {
+        "en": "Services penetrations through the skeleton",
+        "de": "Durchbrüche der TGA durch das Skelett"
+      },
+      "description": {
+        "en": "Positions of ventilation ducts and risers through beams and slabs are to be fixed before the structural drawings are issued.",
+        "de": "Lage der Lüftungskanäle und Steigleitungen durch Unterzüge und Decken ist vor Ausgabe der Tragwerkspläne festzulegen."
+      },
+      "owner": {
+        "en": "Building services contractor (MEP)",
+        "de": "Technische Gebäudeausrüstung (TGA)"
+      },
+      "accepter": {
+        "en": "Structural engineer",
+        "de": "Tragwerksplanung"
+      },
+      "need_by_in_days": 25,
+      "location": {
+        "en": "Classroom wings",
+        "de": "Klassentrakte"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Provide duct routes with sizes",
+            "de": "Kanaltrassen mit Abmessungen liefern"
+          },
+          "party": {
+            "en": "Building services contractor (MEP)",
+            "de": "Technische Gebäudeausrüstung (TGA)"
+          },
+          "due_in_days": 14
+        },
+        {
+          "description": {
+            "en": "Mark permissible openings",
+            "de": "Zulässige Öffnungen markieren"
+          },
+          "party": {
+            "en": "Structural engineer",
+            "de": "Tragwerksplanung"
+          },
+          "due_in_days": 21
+        }
+      ]
+    },
+    {
+      "reference": "IF-003",
+      "interface_type": "physical",
+      "status": "open",
+      "priority": "medium",
+      "title": {
+        "en": "Timber facade against the shell",
+        "de": "Holzfassade gegen Rohbau"
+      },
+      "description": {
+        "en": "The anchor points of the timber facade have to be cast in or drilled; the tolerances of the shell decide which.",
+        "de": "Die Ankerpunkte der Holzfassade müssen einbetoniert oder gebohrt werden. Die Toleranzen des Rohbaus entscheiden."
+      },
+      "owner": {
+        "en": "Timber construction contractor",
+        "de": "Holzbau"
+      },
+      "accepter": {
+        "en": "Structural engineer",
+        "de": "Tragwerksplanung"
+      },
+      "need_by_in_days": 40,
+      "location": {
+        "en": "Facade, classroom wings",
+        "de": "Fassade Klassentrakte"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Propose anchor system",
+            "de": "Ankersystem vorschlagen"
+          },
+          "party": {
+            "en": "Timber construction contractor",
+            "de": "Holzbau"
+          },
+          "due_in_days": 25
+        },
+        {
+          "description": {
+            "en": "Confirm load transfer",
+            "de": "Lastabtrag bestätigen"
+          },
+          "party": {
+            "en": "Structural engineer",
+            "de": "Tragwerksplanung"
+          },
+          "due_in_days": 35
+        }
+      ]
+    },
+    {
+      "reference": "IF-004",
+      "interface_type": "functional",
+      "status": "identified",
+      "priority": "medium",
+      "title": {
+        "en": "Heat pump and underfloor heating",
+        "de": "Wärmepumpe und Fußbodenheizung"
+      },
+      "description": {
+        "en": "Flow temperatures of the heat pump and the design of the underfloor heating circuits are to be matched.",
+        "de": "Vorlauftemperaturen der Wärmepumpe und Auslegung der Fußbodenheizkreise sind aufeinander abzustimmen."
+      },
+      "owner": {
+        "en": "Building services contractor (MEP)",
+        "de": "Technische Gebäudeausrüstung (TGA)"
+      },
+      "accepter": {
+        "en": "Architect",
+        "de": "Architekturbüro"
+      },
+      "need_by_in_days": 50,
+      "location": {
+        "en": "Technical room",
+        "de": "Technikzentrale"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Issue heating load calculation",
+            "de": "Heizlastberechnung ausgeben"
+          },
+          "party": {
+            "en": "Building services contractor (MEP)",
+            "de": "Technische Gebäudeausrüstung (TGA)"
+          },
+          "due_in_days": 30
+        },
+        {
+          "description": {
+            "en": "Confirm floor build-up",
+            "de": "Fußbodenaufbau bestätigen"
+          },
+          "party": {
+            "en": "Architect",
+            "de": "Architekturbüro"
+          },
+          "due_in_days": 40
+        }
+      ]
+    },
+    {
+      "reference": "IF-005",
+      "interface_type": "physical",
+      "status": "open",
+      "priority": "high",
+      "title": {
+        "en": "Fire protection concept and ventilation",
+        "de": "Brandschutzkonzept und Lüftungsanlage"
+      },
+      "description": {
+        "en": "Fire dampers and smoke control in the ventilation system must follow the fire compartments of the school.",
+        "de": "Brandschutzklappen und Entrauchung der Lüftungsanlage müssen den Brandabschnitten der Schule folgen."
+      },
+      "owner": {
+        "en": "Fire protection engineer",
+        "de": "Brandschutzplanung"
+      },
+      "accepter": {
+        "en": "Building services contractor (MEP)",
+        "de": "Technische Gebäudeausrüstung (TGA)"
+      },
+      "need_by_in_days": 30,
+      "location": {
+        "en": "Escape routes",
+        "de": "Rettungswege"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Issue fire compartment plan",
+            "de": "Brandabschnittsplan ausgeben"
+          },
+          "party": {
+            "en": "Fire protection engineer",
+            "de": "Brandschutzplanung"
+          },
+          "due_in_days": 15
+        },
+        {
+          "description": {
+            "en": "Mark damper positions",
+            "de": "Klappenpositionen eintragen"
+          },
+          "party": {
+            "en": "Building services contractor (MEP)",
+            "de": "Technische Gebäudeausrüstung (TGA)"
+          },
+          "due_in_days": 28
+        }
+      ]
+    },
+    {
+      "reference": "IF-006",
+      "interface_type": "information",
+      "status": "in_progress",
+      "priority": "medium",
+      "title": {
+        "en": "Room acoustics and drywall system",
+        "de": "Raumakustik und Trockenbausystem"
+      },
+      "description": {
+        "en": "Required reverberation times of classrooms and the Mensa decide on ceiling and wall systems.",
+        "de": "Die geforderten Nachhallzeiten der Klassenräume und der Mensa bestimmen Decken- und Wandsysteme."
+      },
+      "owner": {
+        "en": "Acoustics consultant",
+        "de": "Bauakustik"
+      },
+      "accepter": {
+        "en": "Architect",
+        "de": "Architekturbüro"
+      },
+      "need_by_in_days": 45,
+      "location": {
+        "en": "Classrooms and Mensa",
+        "de": "Klassenräume und Mensa"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Issue acoustic requirements per room",
+            "de": "Akustische Anforderungen je Raum ausgeben"
+          },
+          "party": {
+            "en": "Acoustics consultant",
+            "de": "Bauakustik"
+          },
+          "due_in_days": -20,
+          "done_days_ago": 18
+        },
+        {
+          "description": {
+            "en": "Select the ceiling system",
+            "de": "Deckensystem auswählen"
+          },
+          "party": {
+            "en": "Architect",
+            "de": "Architekturbüro"
+          },
+          "due_in_days": 35
+        }
+      ]
+    },
+    {
+      "reference": "IF-007",
+      "interface_type": "spatial",
+      "status": "identified",
+      "priority": "medium",
+      "title": {
+        "en": "Kitchen planning and Mensa layout",
+        "de": "Küchenplanung und Mensagrundriss"
+      },
+      "description": {
+        "en": "The kitchen equipment needs connections and shafts that the architect's plan does not show yet.",
+        "de": "Die Küchengeräte brauchen Anschlüsse und Schächte, die der Grundriss noch nicht zeigt."
+      },
+      "owner": {
+        "en": "Kitchen planner",
+        "de": "Großküchenplanung"
+      },
+      "accepter": {
+        "en": "Building services contractor (MEP)",
+        "de": "Technische Gebäudeausrüstung (TGA)"
+      },
+      "need_by_in_days": 60,
+      "location": {
+        "en": "Mensa",
+        "de": "Mensa"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Issue equipment list with connections",
+            "de": "Geräteliste mit Anschlüssen ausgeben"
+          },
+          "party": {
+            "en": "Kitchen planner",
+            "de": "Großküchenplanung"
+          },
+          "due_in_days": 35
+        },
+        {
+          "description": {
+            "en": "Reserve shafts and routes",
+            "de": "Schächte und Trassen vorsehen"
+          },
+          "party": {
+            "en": "Building services contractor (MEP)",
+            "de": "Technische Gebäudeausrüstung (TGA)"
+          },
+          "due_in_days": 50
+        }
+      ]
+    },
+    {
+      "reference": "IF-008",
+      "interface_type": "physical",
+      "status": "identified",
+      "priority": "low",
+      "title": {
+        "en": "Sports hall roof and rooftop equipment",
+        "de": "Sporthallendach und Dachaufbauten"
+      },
+      "description": {
+        "en": "Loads and openings of ventilation units and photovoltaics on the hall roof have to be known to the structural engineer.",
+        "de": "Lasten und Öffnungen von Lüftungsgeräten und Photovoltaik auf dem Hallendach müssen der Tragwerksplanung bekannt sein."
+      },
+      "owner": {
+        "en": "Photovoltaic contractor",
+        "de": "Photovoltaik-Installation"
+      },
+      "accepter": {
+        "en": "Structural engineer",
+        "de": "Tragwerksplanung"
+      },
+      "need_by_in_days": 70,
+      "location": {
+        "en": "Sports hall",
+        "de": "Sporthalle"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "List loads and openings",
+            "de": "Lasten und Öffnungen auflisten"
+          },
+          "party": {
+            "en": "Photovoltaic contractor",
+            "de": "Photovoltaik-Installation"
+          },
+          "due_in_days": 45
+        },
+        {
+          "description": {
+            "en": "Check the roof structure",
+            "de": "Dachtragwerk prüfen"
+          },
+          "party": {
+            "en": "Structural engineer",
+            "de": "Tragwerksplanung"
+          },
+          "due_in_days": 60
+        }
+      ]
+    },
+    {
+      "reference": "IF-009",
+      "interface_type": "contractual",
+      "status": "identified",
+      "priority": "medium",
+      "title": {
+        "en": "Sports floor build-up and slab",
+        "de": "Sportbodenaufbau und Bodenplatte"
+      },
+      "description": {
+        "en": "The sports floor needs a flatness the slab has to guarantee; the scope split is open until tendering.",
+        "de": "Der Sportboden braucht eine Ebenheit, die die Bodenplatte gewährleisten muss. Die Leistungsabgrenzung ist bis zur Ausschreibung offen."
+      },
+      "owner": {
+        "en": "Sports floor contractor",
+        "de": "Sportbodenbau"
+      },
+      "accepter": {
+        "en": "Structural engineer",
+        "de": "Tragwerksplanung"
+      },
+      "need_by_in_days": 90,
+      "location": {
+        "en": "Sports hall",
+        "de": "Sporthalle"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "State flatness requirement",
+            "de": "Ebenheitsanforderung nennen"
+          },
+          "party": {
+            "en": "Sports floor contractor",
+            "de": "Sportbodenbau"
+          },
+          "due_in_days": 50
+        },
+        {
+          "description": {
+            "en": "Reflect it in the slab specification",
+            "de": "In die Leistungsbeschreibung der Bodenplatte übernehmen"
+          },
+          "party": {
+            "en": "Structural engineer",
+            "de": "Tragwerksplanung"
+          },
+          "due_in_days": 75
+        }
+      ]
+    },
+    {
+      "reference": "IF-010",
+      "interface_type": "schedule",
+      "status": "on_hold",
+      "priority": "low",
+      "title": {
+        "en": "Handover to the school operation",
+        "de": "Übergabe an den Schulbetrieb"
+      },
+      "description": {
+        "en": "The sequence of the move into the wings depends on the school year; parked until the construction schedule exists.",
+        "de": "Die Reihenfolge des Einzugs in die Trakte hängt vom Schuljahr ab. Zurückgestellt bis der Bauzeitenplan vorliegt."
+      },
+      "owner": {
+        "en": "Architect",
+        "de": "Architekturbüro"
+      },
+      "accepter": {
+        "en": "Kitchen planner",
+        "de": "Großküchenplanung"
+      },
+      "need_by_in_days": 150,
+      "location": {
+        "en": "Whole school",
+        "de": "Gesamte Schule"
+      },
+      "actions": [
+        {
+          "description": {
+            "en": "Collect the school's wishes for the move",
+            "de": "Wünsche der Schule zum Einzug sammeln"
+          },
+          "party": {
+            "en": "Architect",
+            "de": "Architekturbüro"
+          },
+          "due_in_days": 100
+        }
+      ]
+    }
+  ]
+}
