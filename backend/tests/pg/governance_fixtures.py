@@ -296,7 +296,8 @@ async def decide(
             )
         except GovernanceError as exc:
             # Name what was refused: a bare code hides which evidence or rule stopped the decision.
-            raise AssertionError(f"decision refused: {exc.code} {exc.violations}") from exc
+            exc.add_note(f"decision refused: {exc.code} {exc.violations}")
+            raise
         await s.commit()
         return d
 
