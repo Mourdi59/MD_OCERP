@@ -4,7 +4,17 @@
 // Every word the economics screens show, as a message key and the English it
 // stands for. Keys are written out in full so the locale gates can see them.
 
-import type { FlowKind, PlanStatus, SourceKind } from './api';
+import type {
+  FlowKind,
+  InsuranceKind,
+  InsuranceStatus,
+  PlanStatus,
+  ProcessArea,
+  SecurityKind,
+  SecurityStatus,
+  SourceKind,
+  VatTreatment,
+} from './api';
 
 /** A message key and the English it stands for, handed to `t` as `defaultValue`. */
 export type KeyText = readonly [key: string, english: string];
@@ -59,6 +69,52 @@ export const FINDING: Record<string, KeyText> = {
   grant_over_award: ['economics.finding.grant_over_award', 'A grant is entered above what its application was awarded: {{ref}}.'],
   grant_without_application: ['economics.finding.grant_without_application', 'A grant is not linked to a funding application: {{ref}}.'],
   investment_below_frame: ['economics.finding.investment_below_frame', 'The investment in the business case is below the cost frame.'],
+  security_expired: ['economics.finding.security_expired', 'A security has run out and is not renewed: {{ref}}.'],
+  insurance_expired: ['economics.finding.insurance_expired', 'An insurance has ended and is not renewed: {{ref}}.'],
+  tax_not_confirmed: ['economics.finding.tax_not_confirmed', 'The tax treatment and the input tax deduction are not confirmed.'],
+  process_not_set_up: ['economics.finding.process_not_set_up', 'A process is not set up: {{ref}}.'],
+};
+
+export const SECURITY_KIND: Record<SecurityKind, KeyText> = {
+  performance: ['economics.security.performance', 'Performance guarantee'],
+  warranty: ['economics.security.warranty', 'Warranty guarantee'],
+  advance_payment: ['economics.security.advance_payment', 'Advance payment guarantee'],
+  bid: ['economics.security.bid', 'Bid bond'],
+  other: ['economics.security.other', 'Other security'],
+};
+
+export const SECURITY_STATUS: Record<SecurityStatus, KeyText> = {
+  requested: ['economics.security_status.requested', 'Requested'],
+  in_place: ['economics.security_status.in_place', 'In place'],
+  released: ['economics.security_status.released', 'Released'],
+  expired: ['economics.security_status.expired', 'Expired'],
+};
+
+export const INSURANCE_KIND: Record<InsuranceKind, KeyText> = {
+  builders_all_risk: ['economics.insurance.builders_all_risk', 'Builders all risk'],
+  liability: ['economics.insurance.liability', 'Liability'],
+  professional_indemnity: ['economics.insurance.professional_indemnity', 'Professional indemnity'],
+  other: ['economics.insurance.other', 'Other insurance'],
+};
+
+export const INSURANCE_STATUS: Record<InsuranceStatus, KeyText> = {
+  requested: ['economics.insurance_status.requested', 'Requested'],
+  in_place: ['economics.insurance_status.in_place', 'In place'],
+  expired: ['economics.insurance_status.expired', 'Expired'],
+};
+
+export const VAT_TREATMENT: Record<VatTreatment, KeyText> = {
+  standard: ['economics.vat.standard', 'Taxable at the standard rate'],
+  reverse_charge: ['economics.vat.reverse_charge', 'Reverse charge'],
+  exempt: ['economics.vat.exempt', 'Exempt'],
+  mixed: ['economics.vat.mixed', 'Partly taxable'],
+  other: ['economics.vat.other', 'Other'],
+};
+
+export const PROCESS_AREA: Record<ProcessArea, KeyText> = {
+  receivables: ['economics.process.receivables', 'Receivables'],
+  payables: ['economics.process.payables', 'Payables'],
+  administration: ['economics.process.administration', 'Project administration'],
 };
 
 export const BLOCK: Record<string, KeyText> = {
