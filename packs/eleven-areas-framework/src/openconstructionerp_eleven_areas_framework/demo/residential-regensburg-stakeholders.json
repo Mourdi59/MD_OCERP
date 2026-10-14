@@ -92,8 +92,8 @@
     {
       "code": "S-009",
       "label": {
-        "en": "Bezirksausschuss Donaupark (district committee)",
-        "de": "Bezirksausschuss Donaupark"
+        "en": "Bürgerverein Donaupark (residents' association)",
+        "de": "Bürgerverein Donaupark"
       },
       "power": 4,
       "interest": 4,
@@ -224,8 +224,8 @@
   },
   "site_tour": {
     "title": {
-      "en": "Site tour for the Bezirksausschuss",
-      "de": "Baustellenbegehung für den Bezirksausschuss"
+      "en": "Site tour for the Bürgerverein",
+      "de": "Baustellenbegehung für den Bürgerverein"
     },
     "outcome": {
       "en": "The committee asked for a progress report before the summer break and for a named contact for the neighbourhood",

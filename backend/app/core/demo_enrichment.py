@@ -112,6 +112,25 @@ async def _seed_governance(session_factory: Any, demo_pids: list[uuid.UUID]) -> 
         return {"ok": False, "error": type(exc).__name__}
 
 
+async def _assign_governance_people(session_factory: Any, demo_pids: list[uuid.UUID]) -> dict[str, Any]:
+    """Name the owner of each area of a pack demo project, and hand the counts back.
+
+    Never raises, for the same reason as :func:`_seed_governance`.
+    """
+    try:
+        from app.modules.project_governance.seed_people import assign_demo_people
+
+        async with session_factory() as _gs:
+            _people = await assign_demo_people(_gs, demo_pids)
+            await _gs.commit()
+        if _people.get("areas"):
+            logger.info("project_governance demo people assigned: %s", _people)
+        return _people
+    except Exception:
+        logger.warning("project_governance demo people skipped (non-fatal)", exc_info=True)
+        return {"ok": False}
+
+
 async def _settle_governance(session_factory: Any, demo_pids: list[uuid.UUID]) -> dict[str, Any]:
     """Clear the at-risk conditions the module seeders have answered, and hand the counts back.
 
@@ -611,6 +630,10 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
                         await _qs.commit()
             except Exception:
                 logger.warning("qms demo seed skipped for %s (non-fatal)", _pid, exc_info=True)
+
+        # Last: the areas of a pack demo project get their named owners, after every seeder that
+        # needed the demo logins as owner and after the roster, whose lines the owners join.
+        report["project_governance"]["people"] = await _assign_governance_people(async_session_factory, _demo_pids)
     except Exception:
         logger.warning("Feature-module demo seeds skipped (non-fatal)", exc_info=True)
     return report

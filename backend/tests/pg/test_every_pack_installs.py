@@ -809,6 +809,44 @@ async def test_every_screen_of_the_eleven_areas_has_rows_for_both_filmed_project
             for row in interfaces:
                 assert (row.status in ("agreed", "closed")) == (row.agreed_date is not None), row.reference
                 assert (row.status == "closed") == (row.closed_date is not None), row.reference
+
+    # Each area of a filmed project has its own named owner, and every owner but the project's own account
+    # is a roster line with a name, so the screens never print a bare id or the same person eleven times.
+    from app.modules.project_governance.models import GovernanceArea
+    from app.modules.teams.models import RosterMember
+    from app.modules.users.models import User
+
+    async with factory() as s:
+        for demo_id in filmed:
+            project = projects[demo_id]
+            owners = [
+                o
+                for o in (
+                    await s.execute(
+                        select(GovernanceArea.owner_user_id).where(
+                            GovernanceArea.project_id == project.id, GovernanceArea.retired.is_(False)
+                        )
+                    )
+                ).scalars()
+            ]
+            assert len(owners) == 11 and None not in owners, (demo_id, owners)
+            assert len(set(owners)) >= 10, f"{demo_id}: the areas share owners: {len(set(owners))} distinct"
+            named = {
+                uid
+                for uid in (
+                    await s.execute(
+                        select(RosterMember.user_id).where(
+                            RosterMember.project_id == project.id, RosterMember.user_id.is_not(None)
+                        )
+                    )
+                ).scalars()
+            }
+            people = [o for o in set(owners) if o != project.owner_id]
+            assert people and set(people) <= named, f"{demo_id}: owners without a roster name"
+            for user in (await s.execute(select(User).where(User.id.in_(people)))).scalars():
+                # Nobody can sign in as a demo person.
+                assert user.is_active is False and (user.metadata_ or {}).get("demo_person") is True, user.email
+
     # The data room: the catalogue folder tree is materialised for each filmed project.
     from app.modules.documents.models import DocumentFolder
 

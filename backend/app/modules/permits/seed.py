@@ -60,12 +60,14 @@ class _Story:
     road_needed_in: int
     occupancy_needed_in: int
     fence_due_in: int
+    # When the structural calculations of condition 1 fall due: before the start, so already past on a running site.
+    calc_due_in: int
 
 
 # A site that has started: the early start was granted long before the building permit.
-_STARTED = _Story(330, 260, 190, 160, 141, 30, 27, 150, 128, 20, 8, 45, 20, 60, 540, -5)
+_STARTED = _Story(330, 260, 190, 160, 141, 30, 27, 150, 128, 20, 8, 45, 20, 60, 540, -5, -35)
 # Before the gate into construction: the permit is three weeks old and nothing has been built.
-_BEFORE_CONSTRUCTION = _Story(210, 150, 140, 110, 96, 20, 18, 10, None, 14, 6, 190, 175, 175, 600, 21)
+_BEFORE_CONSTRUCTION = _Story(210, 150, 140, 110, 96, 20, 18, 10, None, 14, 6, 190, 175, 175, 600, 21, 21)
 
 
 async def _story(session: AsyncSession, pid: uuid.UUID) -> _Story:
@@ -425,7 +427,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             "trigger": "before_start",
             "topic": "structural",
             "owner_user_id": owner,
-            "due_date": today + timedelta(days=21),
+            "due_date": today + timedelta(days=story.calc_due_in),
             "evidence_required": "Checked calculations with the checking engineer's report",
         },
         {

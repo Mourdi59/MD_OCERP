@@ -291,7 +291,13 @@ export interface MatrixCellOut {
   check_status: CheckStatus | null;
   rag: Rag;
   stale: boolean;
-  documents: Array<{ document_id: string; doc_type: string; status: DocumentStatus; required: boolean }>;
+  documents: Array<{
+    document_id: string;
+    doc_type: string;
+    status: DocumentStatus;
+    required: boolean;
+    name?: GovernanceLabel;
+  }>;
 }
 
 export interface MatrixArea {

@@ -22,7 +22,7 @@
   "owner_capability": {
     "owner_has_design_team": false,
     "owner_has_cm_capacity": true,
-    "public_client": true,
+    "public_client": false,
     "funding_source": "Eigenmittel und Förderdarlehen der Wohnraumförderung Bayern"
   },
   "risks": [
@@ -95,8 +95,8 @@
       ],
       "code": "UC-01",
       "title": {
-        "en": "Power grid connection for 180 dwellings",
-        "de": "Netzanschluss Strom für 180 Wohneinheiten"
+        "en": "Power grid connection for 120 dwellings",
+        "de": "Netzanschluss Strom für 120 Wohneinheiten"
       },
       "counterparty": {
         "en": "Regional grid operator",

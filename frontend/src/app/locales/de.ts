@@ -32877,6 +32877,7 @@ const resource = {
     "governance.project.matrix.blockers_one": "{{count}} Blocker",
     "governance.project.matrix.blockers_other": "{{count}} Blocker",
     "governance.project.matrix.current_phase": "Aktuelle Phase",
+    "governance.project.matrix.no_gate": "Kein Gate in dieser Phase",
     "governance.project.matrix.next_gate": "Nächstes Gate",
     "governance.project.matrix.no_blockers": "Keine Blocker",
     "governance.project.matrix.open_gate": "Gate öffnen",

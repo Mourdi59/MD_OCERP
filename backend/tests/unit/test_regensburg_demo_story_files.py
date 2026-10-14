@@ -173,7 +173,8 @@ def _texts(node: Any, path: tuple[str, ...] = ()):
 def test_every_module_has_a_file_registered_in_the_demo_project() -> None:
     demo = json.loads((_DEMO / "demo_project.json").read_text(encoding="utf-8"))
     entry = next(p for p in demo["projects"] if p["project"]["demo_template_id"] == "residential-regensburg")
-    assert set(entry["module_files"]) == set(_MODULES) | set(_GERMAN_ONLY)
+    # Other modules (economics, brief, HSE) register their own files; these eleven must all be there.
+    assert set(_MODULES) <= set(entry["module_files"])
     for module, relative in entry["module_files"].items():
         assert relative == f"demo/residential-regensburg-{module}.json"
         assert (_DEMO.parent / relative).is_file()
