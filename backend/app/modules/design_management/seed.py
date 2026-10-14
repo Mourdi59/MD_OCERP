@@ -339,6 +339,72 @@ async def seed_design_management_demo(session: AsyncSession, project_ids: Iterab
     return totals
 
 
+async def align_demo_wbs_with_references(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
+    """Give the budget lines and schedule rows of a demo project the WBS nodes they point at.
+
+    The demo budgets are keyed on the cost-plan group of the bill and the schedule
+    rows on their outline or milestone code, while the design WBS is seeded from the
+    pack story alone, so each of those values pointed at nothing and the rule
+    ``wbs_reference_resolves`` warned once per row. This runs after the seeders that
+    write those rows and adds the missing node, named after the row that carries the
+    value. Only demo projects with a design setup are touched, only finance and
+    schedule references are adopted, and a value that already resolves is left alone.
+    The caller commits.
+    """
+    from sqlalchemy import text
+
+    from app.core.demo_marker import demo_id_of
+    from app.modules.design_management import wbs_refs
+    from app.modules.design_management.models import DesignSetup
+    from app.modules.design_management.service import DesignService
+    from app.modules.projects.models import Project
+
+    totals = {"projects": 0, "nodes": 0}
+    ids = list(project_ids)
+    if not ids:
+        return totals
+    names_sql = {
+        "finance": "SELECT wbs_id, category FROM oe_finance_budget WHERE project_id = :pid AND wbs_id IS NOT NULL",
+        "schedule": (
+            "SELECT a.wbs_code, a.name FROM oe_schedule_activity a "
+            "JOIN oe_schedule_schedule s ON s.id = a.schedule_id WHERE s.project_id = :pid"
+        ),
+    }
+    rows = (await session.execute(select(Project.id, Project.metadata_).where(Project.id.in_(ids)))).all()
+    for pid in [pid for pid, meta in rows if demo_id_of(meta)]:
+        setup = (await session.execute(select(DesignSetup).where(DesignSetup.project_id == pid))).scalar_one_or_none()
+        if setup is None:
+            continue
+        owner = (await session.get(Project, pid)).owner_id
+        svc = DesignService(session)
+        nodes = await svc.wbs_rows(pid)
+        missing: dict[str, str] = {}
+        for ref in await wbs_refs.unresolved_references(session, pid, nodes):
+            if ref.module in names_sql and ref.value not in missing:
+                missing[ref.value] = ""
+        if not missing:
+            continue
+        for sql in names_sql.values():
+            for value, name in (await session.execute(text(sql), {"pid": str(pid)})).all():
+                key = str(value or "").strip()
+                if key in missing and not missing[key] and name:
+                    missing[key] = str(name).strip()
+        created = 0
+        for value in sorted(missing, key=lambda v: (len(v), v)):
+            codes = {n.code: n for n in await svc.wbs_rows(pid)}
+            parent = max(
+                (c for c in codes if value.startswith(c + (setup.wbs_separator or "."))), key=len, default=None
+            )
+            data: dict[str, Any] = {"code": value, "name": missing[value] or value, "kind": "system"}
+            if parent is not None:
+                data["parent_id"] = str(codes[parent].id)
+            await svc.create_wbs(pid, data, actor_id=owner)
+            created += 1
+        totals["projects"] += 1
+        totals["nodes"] += created
+    return totals
+
+
 async def _pre_construction(session: AsyncSession, project_id: uuid.UUID) -> tuple[str, str] | None:
     """``(phase the gate closes, phase it opens)`` while the gate into construction is undecided, else ``None``.
 

@@ -140,7 +140,10 @@ export function PackageBoard({ projectId, concept, packages, labels, onPlan, onC
                 <tr key={cp.id} className="border-t border-border-light align-top" data-testid="package-row" data-package={cp.code}>
                   <td className="px-3 py-2.5">
                     <div className="font-medium text-content-primary">
-                      <span className="font-mono text-xs text-content-tertiary">{cp.code}</span> {cp.title}
+                      {!/^[a-z][a-z0-9_]*$/.test(cp.code) && (
+                        <span className="mr-2 font-mono text-xs text-content-tertiary">{cp.code}</span>
+                      )}
+                      {cp.title}
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-content-tertiary">
                       {view.package_kind ? (

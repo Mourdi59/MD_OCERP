@@ -26,7 +26,7 @@ from app.modules.design_management import numbering as nb
 from app.modules.design_management import rules as dr
 from app.modules.design_management import wbs as wr
 from app.modules.design_management.catalogue import DrawingNumbering
-from app.modules.design_management.messages import translate
+from app.modules.design_management.messages import is_key_present, translate
 
 DESIGN_RULE_SET = "design_management"
 
@@ -34,6 +34,13 @@ DESIGN_RULE_SET = "design_management"
 def _locale(context: ValidationContext) -> str:
     meta = getattr(context, "metadata", None) or {}
     return str(meta.get("locale") or "en")
+
+
+def _label(group: str, code: Any, locale: str) -> str:
+    """The localized name of a module or phase code; a code the bundle does not know is shown as written."""
+    text = str(code or "").strip()
+    key = f"design.common.{group}.{text}"
+    return translate(key, locale=locale) if text and is_key_present(key, locale) else (text or "-")
 
 
 def _data(context: ValidationContext) -> dict[str, Any]:
@@ -100,7 +107,9 @@ class WbsReferenceResolves(_DesignRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         loc = _locale(context)
         out = [
-            self._result(loc, False, f"{u['module']}:{u['row_id']}", module=u["module"], value=u["value"])
+            self._result(
+                loc, False, f"{u['module']}:{u['row_id']}", module=_label("module", u["module"], loc), value=u["value"]
+            )
             for u in _rows(context, "unresolved")
         ]
         return out or [self._result(loc, True, "wbs")]
@@ -218,7 +227,11 @@ class DeliverableCompleteForPhase(_DesignRule):
         loc = _locale(context)
         return [
             self._result(
-                loc, d["status"] in ("accepted", "waived"), d["code"], code=d["code"], phase=d.get("phase_code")
+                loc,
+                d["status"] in ("accepted", "waived"),
+                d["code"],
+                code=d["code"],
+                phase=_label("phase", d.get("phase_code"), loc),
             )
             for d in _rows(context, "deliverables")
             if d.get("required")

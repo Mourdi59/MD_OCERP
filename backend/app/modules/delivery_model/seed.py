@@ -539,7 +539,7 @@ async def _seed_project(
         await svc.confirm_allocations(project_id, ["ground_conditions"], actor)
     seeded = [code for code in story.get("risks", SEEDED_RISKS) if catalogue.category(code) is not None]
     risks = await svc.seed_risks(project_id, seeded, preview=False, actor_id=actor, locale=locale) if seeded else []
-    packages = await svc.derive_packages(project_id, actor) if leading else []
+    packages = await svc.derive_packages(project_id, actor, locale=locale) if leading else []
     contract_id = (
         await session.execute(
             select(Contract.id).where(Contract.project_id == project_id).order_by(Contract.created_at).limit(1)

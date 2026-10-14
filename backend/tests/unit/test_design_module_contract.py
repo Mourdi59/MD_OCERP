@@ -246,6 +246,30 @@ async def test_rules_report_failures_from_a_payload() -> None:
     }
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("locale", "module", "phase"),
+    [("de", "Finanzen", "Ausführung"), ("en", "Finance", "Execution")],
+)
+async def test_warning_texts_name_the_module_and_phase_not_their_codes(locale: str, module: str, phase: str) -> None:
+    """A reference and a deliverable warn in the viewer's language; a code the bundle lacks stays as written."""
+    payload = {
+        "unresolved": [
+            {"module": "finance", "table": "oe_finance_budget", "row_id": "x", "value": "210"},
+            {"module": "plugin_x", "table": "t", "row_id": "y", "value": "9"},
+        ],
+        "deliverables": [{"code": "DL-4", "phase_code": "execution", "status": "in_progress", "required": True}],
+    }
+    context = ValidationContext(data=payload, metadata={"locale": locale})
+    by_key = {cls.key: await cls().validate(context) for cls in DESIGN_RULES}
+    refs = [r.message for r in by_key["wbs_reference_resolves"]]
+    assert any(module in m and "210" in m for m in refs)
+    assert any("plugin_x" in m for m in refs)
+    assert not any("finance" in m for m in refs)
+    [deliverable] = by_key["deliverable_complete_for_phase"]
+    assert phase in deliverable.message and "execution" not in deliverable.message
+
+
 def _migration():
     path = _VERSIONS / "v74_design_management.py"
     spec = importlib.util.spec_from_file_location("v74_design_management", path)

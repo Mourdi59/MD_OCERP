@@ -28,7 +28,33 @@
       "wip": "In Bearbeitung"
     },
     "common": {
-      "ok": "OK"
+      "ok": "OK",
+      "module": {
+        "boq": "Leistungsverzeichnis",
+        "cvr": "Kosten-Wert-Abgleich",
+        "design_management": "Planungsmanagement",
+        "field_time": "Zeiterfassung",
+        "fieldreports": "Bautagesberichte",
+        "finance": "Finanzen",
+        "inspections": "Prüfungen",
+        "procurement": "Beschaffung",
+        "schedule": "Terminplan"
+      },
+      "phase": {
+        "approval": "Genehmigung",
+        "award": "Vergabe",
+        "brief": "Bedarfsplanung",
+        "concept": "Konzept",
+        "construction": "Bauausführung",
+        "design": "Planung",
+        "detail": "Ausführungsplanung",
+        "development": "Entwicklung",
+        "execution": "Ausführung",
+        "handover": "Übergabe",
+        "operation": "Betrieb",
+        "strategy": "Strategie",
+        "tender": "Ausschreibung"
+      }
     },
     "errors": {
       "answer_required": "Eine Antwort ist erforderlich.",

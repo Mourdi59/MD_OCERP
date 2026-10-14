@@ -209,7 +209,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             seed_daily_diary_showcase_de,
         )
         from app.modules.delivery_model.seed import seed_delivery_model_demo
-        from app.modules.design_management.seed import seed_design_management_demo
+        from app.modules.design_management.seed import align_demo_wbs_with_references, seed_design_management_demo
         from app.modules.documents.documents_seed import seed_documents_demo
         from app.modules.documents.photos_seed import seed_photos
         from app.modules.dwg_takeoff.seed import seed_dwg_takeoff_demo
@@ -530,6 +530,10 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             # The HSE frame of the German demo projects. It links the permit conditions, incidents,
             # permits to work and audits the seeders above wrote, so it runs after all of them.
             ("hse_frame", None, lambda s: seed_hse_frame_demo(s, _demo_pids)),
+            # The WBS nodes the budget lines and schedule rows of the demo projects point at. Those
+            # rows are written by seeders that run after the design seeder, so this closes the loop
+            # once they are all in; without it the design page opens on one warning per row.
+            ("design_wbs_alignment", None, lambda s: align_demo_wbs_with_references(s, _demo_pids)),
             # A structure over the projects rather than a register inside one:
             # it files the whole estate into one tree, so it runs once the
             # estate is complete.
