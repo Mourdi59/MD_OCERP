@@ -57554,6 +57554,12 @@ const resource = {
     "projectHandbook.finding.no_chapters": "Das Handbuch hat keine Kapitel",
     "projectHandbook.finding.required_chapter_open": "Erforderliches Kapitel nicht freigegeben",
     "projectHandbook.finding.review_overdue": "Prüfung wartet seit mehr als zwei Wochen",
+    "projectHandbook.owner_change": "Verantwortliche Person ändern",
+    "projectHandbook.owner_apply": "Übernehmen",
+    "projectHandbook.owner_cancel": "Abbrechen",
+    "projectHandbook.owner_confirm_title": "Verantwortung für dieses Kapitel ändern?",
+    "projectHandbook.owner_confirm_message": "{{from}} ist für dieses Kapitel nicht mehr verantwortlich. {{to}} übernimmt.",
+    "projectHandbook.owner_confirm_clear": "{{from}} ist für dieses Kapitel nicht mehr verantwortlich, und niemand übernimmt. Ein Kapitel ohne verantwortliche Person kann nicht eingereicht werden.",
     // --- /Project handbook ---
     // --- Engineering brief ---
     "engineeringBrief.untitled": "Lastenheft",

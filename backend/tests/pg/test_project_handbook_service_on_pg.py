@@ -9,6 +9,8 @@ into the documents module idempotently. Each test builds its own throwaway datab
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 import pytest_asyncio
 from sqlalchemy import func, select
@@ -92,6 +94,18 @@ async def test_editing_an_approved_chapter_opens_a_revision_and_keeps_the_approv
     await call(w, "submit", "principles", actor(w.owner))
     await call(w, "approve", "principles", actor(w.decider, manage=True))
     assert [v["version"] for v in await call(w, "versions", "principles")] == [2, 1]
+
+
+async def test_handing_an_approved_chapter_to_someone_else_opens_no_revision(factory) -> None:
+    w = await build_world(factory)
+    await call(w, "patch_chapter", "principles", {"content": "Fassung eins"}, actor(w.owner))
+    await call(w, "submit", "principles", actor(w.owner))
+    await call(w, "approve", "principles", actor(w.decider, manage=True))
+    row = await call(w, "patch_chapter", "principles", {"owner_id": w.decider}, actor(w.owner))
+    assert (row.status, row.draft_version, row.approved_version, row.owner_id) == ("approved", 1, 1, w.decider)
+    with pytest.raises(HandbookError) as err:
+        await call(w, "patch_chapter", "principles", {"owner_id": uuid.uuid4()}, actor(w.owner))
+    assert (err.value.status_code, err.value.code) == (422, "owner_not_found")
 
 
 async def test_a_chapter_in_review_cannot_be_edited_until_it_is_returned(factory) -> None:

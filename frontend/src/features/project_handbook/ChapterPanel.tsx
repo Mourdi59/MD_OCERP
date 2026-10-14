@@ -26,6 +26,7 @@ import {
   type ChapterVersion,
   type LinkedSource,
 } from './api';
+import { OwnerControl } from './OwnerControl';
 import { useChapter, useHandbookAction } from './hooks';
 import {
   CHAPTER_STATUS,
@@ -275,7 +276,9 @@ export function ChapterPanel({
       </header>
 
       <dl className="grid grid-cols-2 gap-3 rounded-lg border border-border-light bg-surface-secondary px-4 py-3 md:grid-cols-4">
-        <Fact label={t('projectHandbook.owner', { defaultValue: 'Owner' })}>{chapter.owner_name}</Fact>
+        <Fact label={t('projectHandbook.owner', { defaultValue: 'Owner' })}>
+          <OwnerControl projectId={projectId} chapter={chapter} canChange={editable} onChanged={done} />
+        </Fact>
         <Fact label={t('projectHandbook.working_version', { defaultValue: 'Working version' })}>
           {chapter.draft_version}
         </Fact>

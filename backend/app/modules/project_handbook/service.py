@@ -427,7 +427,8 @@ class ProjectHandbookService:
             new["content"] = ""
         if not new:
             return row
-        if row.status == "approved":
+        # Handing the chapter to someone else changes no approved text, so it opens no revision.
+        if row.status == "approved" and ({"title", "content"} & new.keys()):
             await self._fsm(row, "revising", actor.user_id)
             row.draft_version = (row.approved_version or row.draft_version) + 1
         for key, value in new.items():

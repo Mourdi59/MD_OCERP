@@ -49633,6 +49633,12 @@ const resource = {
     "projectHandbook.finding.no_chapters": "The handbook has no chapters",
     "projectHandbook.finding.required_chapter_open": "Required chapter not approved",
     "projectHandbook.finding.review_overdue": "Review waiting for more than two weeks",
+    "projectHandbook.owner_change": "Change owner",
+    "projectHandbook.owner_apply": "Apply",
+    "projectHandbook.owner_cancel": "Cancel",
+    "projectHandbook.owner_confirm_title": "Change the owner of this chapter?",
+    "projectHandbook.owner_confirm_message": "{{from}} is no longer responsible for this chapter. {{to}} takes over.",
+    "projectHandbook.owner_confirm_clear": "{{from}} is no longer responsible for this chapter, and nobody takes over. A chapter without an owner cannot be submitted.",
     // --- /Project handbook ---
     // --- Engineering brief ---
     "engineeringBrief.untitled": "Engineering brief",

@@ -195,6 +195,17 @@ export function syncChapters(projectId: string): Promise<{ created: number; upda
   return apiPost<{ created: number; updated: number }>(`/v1/project_handbook/projects/${projectId}/handbook/sync`);
 }
 
+export interface ProjectMember {
+  user_id: string;
+  email: string;
+  full_name: string;
+}
+
+/** The people who can own a chapter: the members of the project. */
+export function listProjectMembers(projectId: string): Promise<ProjectMember[]> {
+  return apiGet<ProjectMember[]>(`/v1/projects/${projectId}/members/`);
+}
+
 /* ── Chapters ─────────────────────────────────────────────────────────── */
 
 export function getChapter(projectId: string, code: string): Promise<ChapterDetail> {
