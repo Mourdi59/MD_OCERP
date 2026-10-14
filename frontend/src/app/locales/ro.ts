@@ -32751,6 +32751,7 @@ const resource = {
     "governance.project.matrix.blockers_one": "{{count}} blocaj",
     "governance.project.matrix.blockers_few": "{{count}} blocaje",
     "governance.project.matrix.blockers_other": "{{count}} de blocaje",
+    "governance.project.matrix.no_gate": "Niciun punct de control în această fază",
     "governance.catalogue.aho_heft9.area.a": "A Organizare, informare, coordonare și documentare",
     "governance.catalogue.aho_heft9.area.b": "B Calitate și cantități",
     "governance.catalogue.aho_heft9.area.c": "C Costuri și finanțare",

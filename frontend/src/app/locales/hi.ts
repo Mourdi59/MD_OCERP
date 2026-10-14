@@ -32256,6 +32256,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "इस गेट पर {{count}} खुली बाधाएँ हैं। जब तक बाधाएँ हल न हों या शर्तों में न बदलें, सीधा \"आगे बढ़ें\" अस्वीकार किया जाता है।",
     "governance.project.matrix.blockers_one": "{{count}} बाधा",
     "governance.project.matrix.blockers_other": "{{count}} बाधाएँ",
+    "governance.project.matrix.no_gate": "इस चरण में कोई गेट नहीं",
     "governance.catalogue.aho_heft9.area.a": "A संगठन, सूचना, समन्वय और दस्तावेज़ीकरण",
     "governance.catalogue.aho_heft9.area.b": "B गुणवत्ता और मात्राएँ",
     "governance.catalogue.aho_heft9.area.c": "C लागत और वित्त",

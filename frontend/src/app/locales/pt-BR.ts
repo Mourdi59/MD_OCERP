@@ -31553,6 +31553,7 @@ const resource = {
     "governance.project.matrix.no_blockers": "Sem bloqueios",
     "governance.project.matrix.open_gate": "Abrir gate",
     "governance.project.matrix.planned_on": "Previsto {{date}}",
+    "governance.project.matrix.no_gate": "Sem gate nesta fase",
     "governance.project.model.change_apply": "Mudar o modelo de fases",
     "governance.project.model.change_title": "Mudar o modelo de fases",
     "governance.project.model.choose_title": "Escolha um modelo de fases",

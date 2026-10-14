@@ -32926,6 +32926,7 @@ const resource = {
     "governance.project.matrix.blockers_few": "{{count}} блокера",
     "governance.project.matrix.blockers_many": "{{count}} блокеров",
     "governance.project.matrix.blockers_other": "{{count}} блокеров",
+    "governance.project.matrix.no_gate": "На этом этапе нет гейта",
     "governance.catalogue.aho_heft9.area.a": "A Организация, информация, координация и документация",
     "governance.catalogue.aho_heft9.area.b": "B Качество и объёмы",
     "governance.catalogue.aho_heft9.area.c": "C Затраты и финансирование",

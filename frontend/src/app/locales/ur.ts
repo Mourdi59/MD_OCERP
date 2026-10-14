@@ -31759,6 +31759,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "اس گیٹ پر {{count}} کھلی رکاوٹیں ہیں۔ جب تک رکاوٹیں حل نہ ہوں یا شرائط میں نہ بدلیں، سادہ \"آگے بڑھیں\" مسترد کیا جاتا ہے۔",
     "governance.project.matrix.blockers_one": "{{count}} رکاوٹ",
     "governance.project.matrix.blockers_other": "{{count}} رکاوٹیں",
+    "governance.project.matrix.no_gate": "اس مرحلے میں کوئی گیٹ نہیں",
     "governance.catalogue.aho_heft9.area.a": "A تنظیم، معلومات، ہم آہنگی اور دستاویزات",
     "governance.catalogue.aho_heft9.area.b": "B معیار اور مقداریں",
     "governance.catalogue.aho_heft9.area.c": "C لاگت اور مالیات",

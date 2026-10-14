@@ -32353,6 +32353,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Ennek a gate-nek {{count}} nyitott akadálya van. Az egyszerű „Folytatás” elutasításra kerül, amíg az akadályok meg nem oldódnak vagy feltételekké nem alakulnak.",
     "governance.project.matrix.blockers_one": "{{count}} akadály",
     "governance.project.matrix.blockers_other": "{{count}} akadály",
+    "governance.project.matrix.no_gate": "Ebben a fázisban nincs kapu",
     "governance.catalogue.aho_heft9.area.a": "A Szervezés, tájékoztatás, koordináció és dokumentáció",
     "governance.catalogue.aho_heft9.area.b": "B Minőségek és mennyiségek",
     "governance.catalogue.aho_heft9.area.c": "C Költség és finanszírozás",

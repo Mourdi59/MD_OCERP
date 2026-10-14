@@ -32534,6 +32534,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Deze gate heeft {{count}} open blokkades. Een gewoon \"Doorgaan\" wordt geweigerd totdat de blokkades zijn opgelost of omgezet in voorwaarden.",
     "governance.project.matrix.blockers_one": "{{count}} blokkade",
     "governance.project.matrix.blockers_other": "{{count}} blokkades",
+    "governance.project.matrix.no_gate": "Geen gate in deze fase",
     "governance.catalogue.aho_heft9.area.a": "A Organisatie, informatie, coördinatie en documentatie",
     "governance.catalogue.aho_heft9.area.b": "B Kwaliteiten en hoeveelheden",
     "governance.catalogue.aho_heft9.area.c": "C Kosten en financiering",

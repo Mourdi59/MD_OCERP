@@ -31919,6 +31919,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Энэ гейтэд {{count}} нээлттэй саад байна. Саадуудыг шийдэх эсвэл нөхцөл болгох хүртэл энгийн \"Үргэлжлүүлэх\" татгалзагдана.",
     "governance.project.matrix.blockers_one": "{{count}} саад",
     "governance.project.matrix.blockers_other": "{{count}} саад",
+    "governance.project.matrix.no_gate": "Энэ шатанд гейт байхгүй",
     "governance.catalogue.aho_heft9.area.a": "A Байгууллага, мэдээлэл, зохицуулалт, баримтжуулалт",
     "governance.catalogue.aho_heft9.area.b": "B Чанар ба хэмжээ",
     "governance.catalogue.aho_heft9.area.c": "C Өртөг ба санхүүжилт",

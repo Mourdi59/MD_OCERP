@@ -31615,6 +31615,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Бұл гейтте {{count}} ашық кедергі бар. Кедергілер шешілмейінше немесе шарттарға айналмайынша қарапайым \"Жалғастыру\" қабылданбайды.",
     "governance.project.matrix.blockers_one": "{{count}} кедергі",
     "governance.project.matrix.blockers_other": "{{count}} кедергі",
+    "governance.project.matrix.no_gate": "Бұл кезеңде гейт жоқ",
     "governance.catalogue.aho_heft9.area.a": "A Ұйым, ақпарат, үйлестіру және құжаттау",
     "governance.catalogue.aho_heft9.area.b": "B Сапа және көлемдер",
     "governance.catalogue.aho_heft9.area.c": "C Құн және қаржы",

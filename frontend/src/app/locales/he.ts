@@ -31929,6 +31929,7 @@ const resource = {
     "governance.project.matrix.blockers_one": "{{count}} חסם",
     "governance.project.matrix.blockers_two": "{{count}} חסמים",
     "governance.project.matrix.blockers_other": "{{count}} חסמים",
+    "governance.project.matrix.no_gate": "אין שער בשלב זה",
     "governance.catalogue.aho_heft9.area.a": "A ארגון, מידע, תיאום ותיעוד",
     "governance.catalogue.aho_heft9.area.b": "B איכויות וכמויות",
     "governance.catalogue.aho_heft9.area.c": "C עלויות ומימון",

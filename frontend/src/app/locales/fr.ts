@@ -32817,6 +32817,7 @@ const resource = {
     "governance.project.matrix.blockers_one": "{{count}} point bloquant",
     "governance.project.matrix.blockers_many": "{{count}} points bloquants",
     "governance.project.matrix.blockers_other": "{{count}} points bloquants",
+    "governance.project.matrix.no_gate": "Aucun jalon de décision dans cette phase",
     "governance.catalogue.aho_heft9.area.a": "A Organisation, information, coordination et documentation",
     "governance.catalogue.aho_heft9.area.b": "B Qualités et quantités",
     "governance.catalogue.aho_heft9.area.c": "C Coûts et financement",

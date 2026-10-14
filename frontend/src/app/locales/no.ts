@@ -32424,6 +32424,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Denne gaten har {{count}} åpne blokkeringer. Et vanlig \"Fortsett\" avvises til blokkeringene er løst eller gjort om til betingelser.",
     "governance.project.matrix.blockers_one": "{{count}} blokkering",
     "governance.project.matrix.blockers_other": "{{count}} blokkeringer",
+    "governance.project.matrix.no_gate": "Ingen gate i denne fasen",
     "governance.catalogue.aho_heft9.area.a": "A Organisasjon, informasjon, koordinering og dokumentasjon",
     "governance.catalogue.aho_heft9.area.b": "B Kvaliteter og mengder",
     "governance.catalogue.aho_heft9.area.c": "C Kostnader og finansiering",

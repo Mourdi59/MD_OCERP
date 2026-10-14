@@ -31609,6 +31609,7 @@ const resource = {
     "governance.project.matrix.no_blockers": "Sin bloqueos",
     "governance.project.matrix.open_gate": "Abrir gate",
     "governance.project.matrix.planned_on": "Previsto {{date}}",
+    "governance.project.matrix.no_gate": "Sin punto de control en esta fase",
     "governance.project.model.change_apply": "Cambiar modelo de fases",
     "governance.project.model.change_title": "Cambiar el modelo de fases",
     "governance.project.model.choose_title": "Elija un modelo de fases",

@@ -31568,6 +31568,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "May {{count}} bukas na hadlang ang gate na ito. Tinatanggihan ang simpleng \"Magpatuloy\" hanggang malutas ang mga hadlang o gawing kondisyon.",
     "governance.project.matrix.blockers_one": "{{count}} hadlang",
     "governance.project.matrix.blockers_other": "{{count}} hadlang",
+    "governance.project.matrix.no_gate": "Walang gate sa yugtong ito",
     "governance.catalogue.aho_heft9.area.a": "A Organisasyon, impormasyon, koordinasyon at dokumentasyon",
     "governance.catalogue.aho_heft9.area.b": "B Kalidad at dami",
     "governance.catalogue.aho_heft9.area.c": "C Gastos at pananalapi",

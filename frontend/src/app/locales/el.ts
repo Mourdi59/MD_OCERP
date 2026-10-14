@@ -31646,6 +31646,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Αυτή η πύλη έχει {{count}} ανοιχτά εμπόδια. Ένα απλό «Συνέχεια» απορρίπτεται μέχρι τα εμπόδια να επιλυθούν ή να γίνουν όροι.",
     "governance.project.matrix.blockers_one": "{{count}} εμπόδιο",
     "governance.project.matrix.blockers_other": "{{count}} εμπόδια",
+    "governance.project.matrix.no_gate": "Δεν υπάρχει πύλη σε αυτή τη φάση",
     "governance.catalogue.aho_heft9.area.a": "A Οργάνωση, πληροφόρηση, συντονισμός και τεκμηρίωση",
     "governance.catalogue.aho_heft9.area.b": "B Ποιότητες και ποσότητες",
     "governance.catalogue.aho_heft9.area.c": "C Κόστος και χρηματοδότηση",

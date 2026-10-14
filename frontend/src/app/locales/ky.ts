@@ -29733,6 +29733,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Бул гейтте {{count}} ачык тоскоолдук бар. Тоскоолдуктар чечилмейинче же шарттарга айланмайынча жөнөкөй \"Улантуу\" четке кагылат.",
     "governance.project.matrix.blockers_one": "{{count}} тоскоолдук",
     "governance.project.matrix.blockers_other": "{{count}} тоскоолдук",
+    "governance.project.matrix.no_gate": "Бул этапта гейт жок",
     "governance.catalogue.aho_heft9.area.a": "A Уюм, маалымат, макулдашуу жана документтештирүү",
     "governance.catalogue.aho_heft9.area.b": "B Сапат жана көлөмдөр",
     "governance.catalogue.aho_heft9.area.c": "C Нарк жана каржылоо",

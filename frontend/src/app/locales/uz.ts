@@ -32660,6 +32660,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Bu gateʼda {{count}} ochiq toʻsiq bor. Toʻsiqlar hal qilinmaguncha yoki shartlarga aylantirilmaguncha oddiy \"Davom etish\" rad etiladi.",
     "governance.project.matrix.blockers_one": "{{count}} toʻsiq",
     "governance.project.matrix.blockers_other": "{{count}} toʻsiq",
+    "governance.project.matrix.no_gate": "Bu bosqichda gate yoʼq",
     "governance.catalogue.aho_heft9.area.a": "A Tashkilot, axborot, muvofiqlashtirish va hujjatlashtirish",
     "governance.catalogue.aho_heft9.area.b": "B Sifat va hajmlar",
     "governance.catalogue.aho_heft9.area.c": "C Xarajat va moliya",

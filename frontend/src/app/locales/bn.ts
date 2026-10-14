@@ -31568,6 +31568,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "এই গেটে {{count}}টি খোলা বাধা আছে। বাধাগুলো সমাধান বা শর্তে রূপান্তর না হওয়া পর্যন্ত সরাসরি \"এগিয়ে যান\" প্রত্যাখ্যাত হবে।",
     "governance.project.matrix.blockers_one": "{{count}}টি বাধা",
     "governance.project.matrix.blockers_other": "{{count}}টি বাধা",
+    "governance.project.matrix.no_gate": "এই পর্যায়ে কোনো গেট নেই",
     "governance.catalogue.aho_heft9.area.a": "A সংগঠন, তথ্য, সমন্বয় ও নথিভুক্তি",
     "governance.catalogue.aho_heft9.area.b": "B মান ও পরিমাণ",
     "governance.catalogue.aho_heft9.area.c": "C খরচ ও অর্থায়ন",

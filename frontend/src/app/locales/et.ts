@@ -32411,6 +32411,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Sellel gate'il on {{count}} avatud takistust. Lihtne „Jätka“ lükatakse tagasi, kuni takistused on lahendatud või tingimusteks muudetud.",
     "governance.project.matrix.blockers_one": "{{count}} takistus",
     "governance.project.matrix.blockers_other": "{{count}} takistust",
+    "governance.project.matrix.no_gate": "Selles faasis puudub värav",
     "governance.catalogue.aho_heft9.area.a": "A Korraldus, teave, koordineerimine ja dokumenteerimine",
     "governance.catalogue.aho_heft9.area.b": "B Kvaliteet ja kogused",
     "governance.catalogue.aho_heft9.area.c": "C Kulud ja rahastamine",

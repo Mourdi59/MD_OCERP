@@ -32404,6 +32404,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Tässä portissa on {{count}} avointa estettä. Pelkkä \"Jatka\" hylätään, kunnes esteet on ratkaistu tai muutettu ehdoiksi.",
     "governance.project.matrix.blockers_one": "{{count}} este",
     "governance.project.matrix.blockers_other": "{{count}} estettä",
+    "governance.project.matrix.no_gate": "Tässä vaiheessa ei ole porttia",
     "governance.catalogue.aho_heft9.area.a": "A Organisaatio, tiedotus, koordinointi ja dokumentointi",
     "governance.catalogue.aho_heft9.area.b": "B Laadut ja määrät",
     "governance.catalogue.aho_heft9.area.c": "C Kustannukset ja rahoitus",

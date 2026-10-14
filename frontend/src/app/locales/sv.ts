@@ -32554,6 +32554,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Den här gaten har {{count}} öppna hinder. Ett vanligt \"Fortsätt\" avvisas tills hindren är lösta eller omvandlade till villkor.",
     "governance.project.matrix.blockers_one": "{{count}} hinder",
     "governance.project.matrix.blockers_other": "{{count}} hinder",
+    "governance.project.matrix.no_gate": "Ingen gate i den här fasen",
     "governance.catalogue.aho_heft9.area.a": "A Organisation, information, samordning och dokumentation",
     "governance.catalogue.aho_heft9.area.b": "B Kvaliteter och mängder",
     "governance.catalogue.aho_heft9.area.c": "C Kostnad och finansiering",

@@ -32318,6 +32318,7 @@ const resource = {
     "governance.project.unknown_person": "プロジェクトメンバー",
     "governance.project.decision.open_blockers_other": "このゲートには未解決のブロッカーが {{count}} 件あります。ブロッカーが解決されるか条件に変わるまで、通常の「続行」は拒否されます。",
     "governance.project.matrix.blockers_other": "ブロッカー {{count}} 件",
+    "governance.project.matrix.no_gate": "このフェーズにゲートはありません",
     "governance.catalogue.aho_heft9.area.a": "A 組織、情報、調整、文書化",
     "governance.catalogue.aho_heft9.area.b": "B 品質と数量",
     "governance.catalogue.aho_heft9.area.c": "C コストと資金調達",

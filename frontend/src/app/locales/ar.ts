@@ -33447,6 +33447,7 @@ const resource = {
     "governance.project.matrix.blockers_few": "{{count}} عوائق",
     "governance.project.matrix.blockers_many": "{{count}} عائقًا",
     "governance.project.matrix.blockers_other": "{{count}} عائق",
+    "governance.project.matrix.no_gate": "لا توجد بوابة في هذه المرحلة",
     "governance.catalogue.aho_heft9.area.a": "A التنظيم والمعلومات والتنسيق والتوثيق",
     "governance.catalogue.aho_heft9.area.b": "B الجودة والكميات",
     "governance.catalogue.aho_heft9.area.c": "C التكلفة والتمويل",

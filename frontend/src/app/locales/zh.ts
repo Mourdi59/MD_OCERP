@@ -32366,6 +32366,7 @@ const resource = {
     "governance.project.unknown_person": "项目成员",
     "governance.project.decision.open_blockers_other": "此关口有 {{count}} 个未解决的阻塞项。在阻塞项解决或转为条件之前，单纯的“继续”会被拒绝。",
     "governance.project.matrix.blockers_other": "{{count}} 个阻塞项",
+    "governance.project.matrix.no_gate": "该阶段无阶段门",
     "governance.catalogue.aho_heft9.area.a": "A 组织、信息、协调与文档",
     "governance.catalogue.aho_heft9.area.b": "B 质量与数量",
     "governance.catalogue.aho_heft9.area.c": "C 成本与融资",

@@ -32228,6 +32228,7 @@ const resource = {
     "governance.project.unknown_person": "Anggota proyek",
     "governance.project.decision.open_blockers_other": "Gate ini punya {{count}} hambatan terbuka. \"Lanjutkan\" biasa ditolak sampai hambatan diselesaikan atau diubah menjadi syarat.",
     "governance.project.matrix.blockers_other": "{{count}} hambatan",
+    "governance.project.matrix.no_gate": "Tidak ada gerbang di fase ini",
     "governance.catalogue.aho_heft9.area.a": "A Organisasi, informasi, koordinasi, dan dokumentasi",
     "governance.catalogue.aho_heft9.area.b": "B Kualitas dan kuantitas",
     "governance.catalogue.aho_heft9.area.c": "C Biaya dan pendanaan",

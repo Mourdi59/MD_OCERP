@@ -33301,6 +33301,7 @@ const resource = {
     "governance.project.matrix.blockers_few": "{{count}} blokady",
     "governance.project.matrix.blockers_many": "{{count}} blokad",
     "governance.project.matrix.blockers_other": "{{count}} blokad",
+    "governance.project.matrix.no_gate": "Brak bramki w tej fazie",
     "governance.catalogue.aho_heft9.area.a": "A Organizacja, informacja, koordynacja i dokumentacja",
     "governance.catalogue.aho_heft9.area.b": "B Jakość i ilości",
     "governance.catalogue.aho_heft9.area.c": "C Koszty i finansowanie",

@@ -32545,6 +32545,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Denne gate har {{count}} åbne blokeringer. Et almindeligt \"Fortsæt\" afvises, til blokeringerne er løst eller omdannet til betingelser.",
     "governance.project.matrix.blockers_one": "{{count}} blokering",
     "governance.project.matrix.blockers_other": "{{count}} blokeringer",
+    "governance.project.matrix.no_gate": "Ingen gate i denne fase",
     "governance.catalogue.aho_heft9.area.a": "A Organisation, information, koordinering og dokumentation",
     "governance.catalogue.aho_heft9.area.b": "B Kvaliteter og mængder",
     "governance.catalogue.aho_heft9.area.c": "C Omkostninger og finansiering",

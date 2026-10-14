@@ -32645,6 +32645,7 @@ const resource = {
     "governance.project.matrix.blockers_one": "{{count}} blokada",
     "governance.project.matrix.blockers_few": "{{count}} blokade",
     "governance.project.matrix.blockers_other": "{{count}} blokada",
+    "governance.project.matrix.no_gate": "Nema gatea u ovoj fazi",
     "governance.catalogue.aho_heft9.area.a": "A Organizacija, informacije, koordinacija i dokumentacija",
     "governance.catalogue.aho_heft9.area.b": "B Kvaliteta i količine",
     "governance.catalogue.aho_heft9.area.c": "C Troškovi i financiranje",

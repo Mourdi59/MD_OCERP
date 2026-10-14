@@ -32930,6 +32930,7 @@ const resource = {
     "governance.project.matrix.blockers_few": "{{count}} překážky",
     "governance.project.matrix.blockers_many": "{{count}} překážky",
     "governance.project.matrix.blockers_other": "{{count}} překážek",
+    "governance.project.matrix.no_gate": "V této fázi není žádná brána",
     "governance.catalogue.aho_heft9.area.a": "A Organizace, informace, koordinace a dokumentace",
     "governance.catalogue.aho_heft9.area.b": "B Kvalita a množství",
     "governance.catalogue.aho_heft9.area.c": "C Náklady a financování",

@@ -32523,6 +32523,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Този гейт има {{count}} отворени блокера. Обикновено „Продължи“ се отхвърля, докато блокерите не бъдат решени или превърнати в условия.",
     "governance.project.matrix.blockers_one": "{{count}} блокер",
     "governance.project.matrix.blockers_other": "{{count}} блокера",
+    "governance.project.matrix.no_gate": "Няма гейт в тази фаза",
     "governance.catalogue.aho_heft9.area.a": "A Организация, информация, координация и документация",
     "governance.catalogue.aho_heft9.area.b": "B Качества и количества",
     "governance.catalogue.aho_heft9.area.c": "C Разходи и финансиране",

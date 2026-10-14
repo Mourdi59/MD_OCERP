@@ -32325,6 +32325,7 @@ const resource = {
     "governance.project.unknown_person": "프로젝트 구성원",
     "governance.project.decision.open_blockers_other": "이 게이트에는 해결되지 않은 블로커가 {{count}}건 있습니다. 블로커가 해결되거나 조건으로 바뀔 때까지 단순 \"계속\"은 거부됩니다.",
     "governance.project.matrix.blockers_other": "블로커 {{count}}건",
+    "governance.project.matrix.no_gate": "이 단계에는 게이트가 없습니다",
     "governance.catalogue.aho_heft9.area.a": "A 조직, 정보, 조정 및 문서화",
     "governance.catalogue.aho_heft9.area.b": "B 품질 및 수량",
     "governance.catalogue.aho_heft9.area.c": "C 비용 및 자금 조달",

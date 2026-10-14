@@ -33264,6 +33264,7 @@ const resource = {
     "governance.project.matrix.blockers_few": "{{count}} блокери",
     "governance.project.matrix.blockers_many": "{{count}} блокерів",
     "governance.project.matrix.blockers_other": "{{count}} блокерів",
+    "governance.project.matrix.no_gate": "На цьому етапі немає гейту",
     "governance.catalogue.aho_heft9.area.a": "A Організація, інформація, координація та документація",
     "governance.catalogue.aho_heft9.area.b": "B Якість і обсяги",
     "governance.catalogue.aho_heft9.area.c": "C Витрати та фінансування",

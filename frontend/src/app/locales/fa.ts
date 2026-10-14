@@ -31705,6 +31705,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "این دروازه {{count}} مانع باز دارد. «ادامه» ساده تا زمانی که مانع‌ها حل یا به شرط تبدیل نشوند رد می‌شود.",
     "governance.project.matrix.blockers_one": "{{count}} مانع",
     "governance.project.matrix.blockers_other": "{{count}} مانع",
+    "governance.project.matrix.no_gate": "در این مرحله گیت وجود ندارد",
     "governance.catalogue.aho_heft9.area.a": "A سازمان، اطلاعات، هماهنگی و مستندسازی",
     "governance.catalogue.aho_heft9.area.b": "B کیفیت و مقادیر",
     "governance.catalogue.aho_heft9.area.c": "C هزینه و تأمین مالی",

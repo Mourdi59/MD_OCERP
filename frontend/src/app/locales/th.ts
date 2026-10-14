@@ -32371,6 +32371,7 @@ const resource = {
     "governance.project.unknown_person": "สมาชิกโครงการ",
     "governance.project.decision.open_blockers_other": "เกตนี้มีอุปสรรคที่เปิดอยู่ {{count}} รายการ \"ดำเนินการต่อ\" เฉย ๆ จะถูกปฏิเสธจนกว่าอุปสรรคจะได้รับการแก้ไขหรือเปลี่ยนเป็นเงื่อนไข",
     "governance.project.matrix.blockers_other": "อุปสรรค {{count}} รายการ",
+    "governance.project.matrix.no_gate": "ไม่มีเกทในขั้นตอนนี้",
     "governance.catalogue.aho_heft9.area.a": "A องค์กร ข้อมูล การประสานงานและเอกสาร",
     "governance.catalogue.aho_heft9.area.b": "B คุณภาพและปริมาณงาน",
     "governance.catalogue.aho_heft9.area.c": "C ต้นทุนและการเงิน",

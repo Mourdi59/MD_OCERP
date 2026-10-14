@@ -32382,6 +32382,7 @@ const resource = {
     "governance.project.unknown_person": "Thành viên dự án",
     "governance.project.decision.open_blockers_other": "Cổng này có {{count}} trở ngại đang mở. \"Tiếp tục\" đơn thuần bị từ chối cho đến khi các trở ngại được giải quyết hoặc chuyển thành điều kiện.",
     "governance.project.matrix.blockers_other": "{{count}} trở ngại",
+    "governance.project.matrix.no_gate": "Không có cổng kiểm soát trong giai đoạn này",
     "governance.catalogue.aho_heft9.area.a": "A Tổ chức, thông tin, phối hợp và tài liệu",
     "governance.catalogue.aho_heft9.area.b": "B Chất lượng và khối lượng",
     "governance.catalogue.aho_heft9.area.c": "C Chi phí và tài chính",

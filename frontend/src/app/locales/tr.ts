@@ -32965,6 +32965,7 @@ const resource = {
     "governance.project.decision.open_blockers_other": "Bu gate'in {{count}} açık engeli var. Düz \"Devam\" kararı, engeller çözülene veya koşullara dönüştürülene kadar reddedilir.",
     "governance.project.matrix.blockers_one": "{{count}} engel",
     "governance.project.matrix.blockers_other": "{{count}} engel",
+    "governance.project.matrix.no_gate": "Bu aşamada kapı yok",
     "governance.catalogue.aho_heft9.area.a": "A Organizasyon, bilgi, koordinasyon ve dokümantasyon",
     "governance.catalogue.aho_heft9.area.b": "B Nitelikler ve miktarlar",
     "governance.catalogue.aho_heft9.area.c": "C Maliyet ve finansman",
