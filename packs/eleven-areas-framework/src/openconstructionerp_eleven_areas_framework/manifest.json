@@ -4,7 +4,7 @@
   "partner_url": null,
   "pack_version": "0.1.0",
   "pack_type": "industry",
-  "description": "Owner-side project management in eleven management areas over two phases, project development and construction execution, with one gate between them and one approved frame document per area. Selects the platform modules that fill those areas and ships the framework's phase model, stakeholder and mandate framework, delivery forms, German permit roadmap additions and a German site logistics catalogue and German health, safety and environment frame catalogues for the country and two Laender as catalogue data in German and English.",
+  "description": "Owner-side project management in eleven management areas over two phases, project development and construction execution, with one gate between them and one approved frame document per area. Selects the platform modules that fill those areas and ships the framework's phase model, stakeholder and mandate framework, delivery forms, German permit roadmap additions, a German site logistics catalogue and German health, safety and environment frame catalogues for the country and two Laender as catalogue data in German and English.",
   "default_locale": "de",
   "additional_locales": {
     "de": "locales/de.json",
@@ -29,7 +29,8 @@
     "staffing",
     "site_logistics",
     "engineering_brief",
-    "hse_frame"
+    "hse_frame",
+    "project_handbook"
   ],
   "default_modules": [
     "oe_project_governance",
@@ -45,7 +46,8 @@
     "oe_commitment_release",
     "oe_economics",
     "oe_quality_concept",
-    "oe_hse_frame"
+    "oe_hse_frame",
+    "oe_project_handbook"
   ],
   "hidden_modules": [],
   "default_company_profile": "owner_client",
@@ -90,6 +92,13 @@
         "id": "eleven_areas_framework",
         "version": 1,
         "path": "catalogues/delivery_forms/eleven_areas_framework.json",
+        "default_for_new_projects": true
+      },
+      {
+        "kind": "handbook_model",
+        "id": "eleven_areas_framework",
+        "version": 1,
+        "path": "catalogues/handbook_model/eleven_areas_framework.json",
         "default_for_new_projects": true
       },
       {
