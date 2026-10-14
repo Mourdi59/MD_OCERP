@@ -16,12 +16,19 @@ import pytest_asyncio
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.modules.economics.seed import PROFILES, seed_economics_demo
+from app.modules.economics.seed import seed_economics_demo
 from tests._pg import isolated_engine
+from tests.economics_stories import fake_demo_module_story, story_for
 from tests.pg.economics_fixtures import build_world, call
 from tests.pg.governance_fixtures import World
 
 pytestmark = pytest.mark.asyncio
+
+
+@pytest.fixture(autouse=True)
+def _pack_story(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The eleven-areas pack is the active pack: its economics stories are what the seeder reads."""
+    monkeypatch.setattr("app.modules.project_governance.public.demo_module_story", fake_demo_module_story)
 
 
 async def _mark(w: World, demo_id: str) -> None:
@@ -73,7 +80,7 @@ async def test_a_demo_project_gets_a_frame_a_case_and_covering_financing(world: 
     assert Decimal(financing["coverage"]["shortfall"]) == 0
     assert Decimal(financing["coverage"]["surplus"]) == 0
     assert Decimal(financing["coverage"]["sources_total"]) == Decimal(frame["totals"]["frame"])
-    assert len(financing["sources"]) == len(PROFILES["residential-regensburg"].sources)
+    assert len(financing["sources"]) == len(story_for("residential-regensburg")["sources"])
     for source in financing["sources"]:
         assert source["tranche_total"] == source["amount"]
 
@@ -84,13 +91,41 @@ async def test_a_demo_project_gets_a_frame_a_case_and_covering_financing(world: 
     assert Decimal(case["key_figures"]["total_investment"]) == Decimal(frame["totals"]["frame"])
 
 
+async def test_a_demo_project_the_pack_has_no_story_for_is_left_alone(world: World) -> None:
+    await _mark(world, "some-other-demo")
+    out = await _seed(world)
+    assert out["projects"] == 0 and out["ok"] is True
+    assert (await call(world, "cost_frame"))["lines"] == []
+
+
+async def test_the_registers_of_the_story_are_filled_and_dated_from_the_install_day(world: World) -> None:
+    await _mark(world, "residential-regensburg")
+    out = await _seed(world)
+    assert (out["securities"], out["insurances"], out["process"]) == (4, 4, 3)
+    regs = await call(world, "registers")
+    kinds = {s["kind"]: s for s in regs["securities"]}
+    assert set(kinds) == {"bid", "advance_payment", "performance", "warranty"}
+    assert kinds["performance"]["description"] == "Vertragserfüllungsbürgschaft des Generalunternehmers"
+    assert Decimal(kinds["performance"]["amount"]) % 1000 == 0 and Decimal(kinds["performance"]["amount"]) > 0
+    assert kinds["performance"]["lapsed"] is False
+    assert regs["tax"]["confirmed"] is True and regs["tax"]["confirmed_by_name"]
+    assert [p["status"] for p in regs["process"]] == ["set_up", "set_up", "set_up"]
+    assert regs["state"] == {
+        "securities": True,
+        "insurance": False,  # the fire insurance of the shell is still only requested
+        "tax": True,
+        "receivables_payables": True,
+        "administration": True,
+    }
+
+
 async def test_a_second_run_adds_nothing(world: World) -> None:
     await _mark(world, "school-ludwigsburg")
     first = await _seed(world)
     again = await _seed(world)
     assert first["projects"] == 1
     assert again["projects"] == 0
-    assert len((await call(world, "financing"))["sources"]) == len(PROFILES["school-ludwigsburg"].sources)
+    assert len((await call(world, "financing"))["sources"]) == len(story_for("school-ludwigsburg")["sources"])
 
 
 async def test_a_demo_project_without_a_bill_is_skipped_with_a_reason() -> None:

@@ -1,0 +1,308 @@
+{
+  "$note": "Economics story of the Regensburg residential quarter: a rental housing scheme of a private housing company, financed with equity, a promotional loan, the state housing subsidy and a bank loan, and approved. Day offsets count from the day the demo is installed (negative = in the past). Securities and insurance are set as a share of the cost frame. All names are invented.",
+  "discount_pct": "3.0",
+  "horizon": 40,
+  "build_years": 3,
+  "approve": true,
+  "proposal_note": {
+    "en": "Cost frame, business case and financing agreed with the client and the lenders.",
+    "de": "Kostenrahmen, Business Case und Finanzierung mit der Bauherrschaft und den Kreditgebern abgestimmt."
+  },
+  "investment_label": {
+    "en": "Construction and project costs",
+    "de": "Bau- und Projektkosten"
+  },
+  "flows": [
+    {
+      "kind": "revenue",
+      "label": {
+        "en": "Residential rent",
+        "de": "Wohnraummiete"
+      },
+      "amount": "1584000",
+      "from": 3,
+      "to": null,
+      "escalation": "2.0"
+    },
+    {
+      "kind": "revenue",
+      "label": {
+        "en": "Parking rent",
+        "de": "Stellplatzmiete"
+      },
+      "amount": "125400",
+      "from": 3,
+      "to": null,
+      "escalation": "2.0"
+    },
+    {
+      "kind": "operating_cost",
+      "label": {
+        "en": "Operation, upkeep and management",
+        "de": "Betrieb, Instandhaltung und Verwaltung"
+      },
+      "amount": "376000",
+      "from": 3,
+      "to": null,
+      "escalation": "2.0"
+    },
+    {
+      "kind": "residual",
+      "label": {
+        "en": "Residual value of land and building",
+        "de": "Restwert von Grundstück und Gebäude"
+      },
+      "amount": "24000000",
+      "from": 40,
+      "to": 40,
+      "escalation": "0"
+    }
+  ],
+  "sources": [
+    {
+      "kind": "equity",
+      "name": {
+        "en": "Own funds including the plot",
+        "de": "Eigenmittel einschließlich Grundstück"
+      },
+      "share": "0.25",
+      "due_days": [
+        19,
+        230
+      ],
+      "condition": {
+        "en": "Plot at book value",
+        "de": "Grundstück zum Buchwert"
+      }
+    },
+    {
+      "kind": "bank_loan",
+      "name": {
+        "en": "Promotional loan for energy-efficient new build",
+        "de": "Förderdarlehen für energieeffizienten Neubau"
+      },
+      "share": "0.20",
+      "rate": "1.9",
+      "due_days": [
+        138,
+        504,
+        869
+      ]
+    },
+    {
+      "kind": "subsidy",
+      "name": {
+        "en": "State housing subsidy Bavaria",
+        "de": "Staatliche Wohnraumförderung Bayern"
+      },
+      "share": "0.12",
+      "due_days": [
+        322,
+        688,
+        930
+      ],
+      "condition": {
+        "en": "Paid on certified progress",
+        "de": "Auszahlung nach bescheinigtem Baufortschritt"
+      },
+      "application": {
+        "code": "FA-2026-001",
+        "title": "Mietwohnraumförderung, Neubau Donauknie",
+        "programme_code": "BAY-WOHNRAUM",
+        "programme_name": "Bayerisches Wohnraumförderungsprogramm, Mietwohnraum",
+        "authority": "Regierung der Oberpfalz, Wohnraumförderung",
+        "region": "DE-BY",
+        "status": "approved",
+        "submitted_days": -238,
+        "decided_days": -106,
+        "reference": "WF-2026-04417"
+      }
+    },
+    {
+      "kind": "bank_loan",
+      "name": {
+        "en": "Bank loan",
+        "de": "Hausbank-Darlehen"
+      },
+      "share": null,
+      "rate": "3.9",
+      "due_days": [
+        93,
+        366,
+        610,
+        855
+      ]
+    }
+  ],
+  "securities": [
+    {
+      "kind": "bid",
+      "description": {
+        "en": "Bid bond of the general contractor",
+        "de": "Bietungsbürgschaft des Generalunternehmers"
+      },
+      "pct_of_frame": "0.01",
+      "issuer": "Oberpfälzer Bürgschaftsbank AG",
+      "beneficiary": "Vennhof Wohnbaugesellschaft mbH",
+      "reference": "BB-2026-0117",
+      "valid_from_days": -150,
+      "valid_until_days": -60,
+      "status": "released"
+    },
+    {
+      "kind": "advance_payment",
+      "description": {
+        "en": "Advance payment guarantee",
+        "de": "Vorauszahlungsbürgschaft"
+      },
+      "pct_of_frame": "0.02",
+      "issuer": "Oberpfälzer Bürgschaftsbank AG",
+      "beneficiary": "Vennhof Wohnbaugesellschaft mbH",
+      "reference": "VZ-2026-0342",
+      "valid_from_days": -20,
+      "valid_until_days": 420,
+      "status": "in_place"
+    },
+    {
+      "kind": "performance",
+      "description": {
+        "en": "Performance guarantee of the general contractor",
+        "de": "Vertragserfüllungsbürgschaft des Generalunternehmers"
+      },
+      "pct_of_frame": "0.04",
+      "issuer": "Oberpfälzer Bürgschaftsbank AG",
+      "beneficiary": "Vennhof Wohnbaugesellschaft mbH",
+      "reference": "VE-2026-0343",
+      "valid_from_days": -20,
+      "valid_until_days": 1100,
+      "status": "in_place"
+    },
+    {
+      "kind": "warranty",
+      "description": {
+        "en": "Warranty guarantee after acceptance",
+        "de": "Gewährleistungsbürgschaft nach Abnahme"
+      },
+      "pct_of_frame": "0.03",
+      "issuer": "Oberpfälzer Bürgschaftsbank AG",
+      "beneficiary": "Vennhof Wohnbaugesellschaft mbH",
+      "reference": "GW-2026-0344",
+      "valid_from_days": 1100,
+      "valid_until_days": 2930,
+      "status": "requested",
+      "notes": {
+        "en": "Replaces the performance guarantee at acceptance, five years from acceptance.",
+        "de": "Ersetzt die Vertragserfüllungsbürgschaft zur Abnahme, fünf Jahre ab Abnahme."
+      }
+    }
+  ],
+  "insurances": [
+    {
+      "kind": "builders_all_risk",
+      "insurer": "Rhein-Main Bauversicherung AG",
+      "policy_number": "BLV-4471028",
+      "pct_of_frame": "1.00",
+      "deductible": "10000",
+      "period_from_days": -20,
+      "period_to_days": 1130,
+      "status": "in_place",
+      "notes": {
+        "en": "Sum insured is the construction value.",
+        "de": "Versicherungssumme ist der Bauwert."
+      }
+    },
+    {
+      "kind": "liability",
+      "insurer": "Rhein-Main Bauversicherung AG",
+      "policy_number": "BHP-2210965",
+      "sum_insured": "10000000",
+      "deductible": "5000",
+      "period_from_days": -20,
+      "period_to_days": 1130,
+      "status": "in_place",
+      "notes": {
+        "en": "Owner's liability during construction.",
+        "de": "Bauherrenhaftpflicht während der Bauzeit."
+      }
+    },
+    {
+      "kind": "professional_indemnity",
+      "insurer": "Bayerische Berufshaftpflicht VVaG",
+      "policy_number": "PHV-8830412",
+      "sum_insured": "5000000",
+      "deductible": "10000",
+      "period_from_days": -300,
+      "period_to_days": 1500,
+      "status": "in_place",
+      "notes": {
+        "en": "Policy of the lead designer, copy on file.",
+        "de": "Police der Generalplanung, Kopie liegt vor."
+      }
+    },
+    {
+      "kind": "other",
+      "insurer": "Rhein-Main Bauversicherung AG",
+      "policy_number": "FRV-4471029",
+      "sum_insured": "12000000",
+      "deductible": "25000",
+      "period_from_days": 60,
+      "period_to_days": 420,
+      "status": "requested",
+      "notes": {
+        "en": "Fire insurance of the shell, offer requested.",
+        "de": "Feuerrohbauversicherung, Angebot angefragt."
+      }
+    }
+  ],
+  "tax": {
+    "vat_treatment": "exempt",
+    "input_tax_deduction": false,
+    "notes": {
+      "en": "Letting of residential space is exempt from value added tax (section 4 no. 12 UStG), so the input tax of the construction cannot be deducted. The cost frame is gross.",
+      "de": "Die Vermietung von Wohnraum ist nach § 4 Nr. 12 UStG umsatzsteuerfrei, ein Vorsteuerabzug aus den Baukosten entfällt. Der Kostenrahmen versteht sich brutto."
+    },
+    "confirm": true,
+    "confirmed_days": -75
+  },
+  "process": [
+    {
+      "area": "receivables",
+      "description": {
+        "en": "Rent invoicing and dunning run in the property management system from the first letting.",
+        "de": "Mietabrechnung und Mahnwesen laufen ab der ersten Vermietung im Hausverwaltungssystem."
+      },
+      "owner": {
+        "en": "Head of accounting",
+        "de": "Leitung Rechnungswesen"
+      },
+      "status": "set_up",
+      "set_up_days": -40
+    },
+    {
+      "area": "payables",
+      "description": {
+        "en": "Invoices are checked by the site supervision, released by the project manager and paid within the discount period.",
+        "de": "Rechnungen prüft die Bauleitung, die Projektleitung gibt frei, gezahlt wird innerhalb der Skontofrist."
+      },
+      "owner": {
+        "en": "Head of accounting",
+        "de": "Leitung Rechnungswesen"
+      },
+      "status": "set_up",
+      "set_up_days": -40
+    },
+    {
+      "area": "administration",
+      "description": {
+        "en": "Project file plan, signing authorities and the drawdown calendar of the lenders are in place.",
+        "de": "Aktenplan, Zeichnungsberechtigungen und der Abrufkalender der Kreditgeber sind eingerichtet."
+      },
+      "owner": {
+        "en": "Project controller",
+        "de": "Projektcontrolling"
+      },
+      "status": "set_up",
+      "set_up_days": -30
+    }
+  ]
+}

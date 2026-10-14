@@ -1,0 +1,283 @@
+{
+  "$note": "Economics story of the Ludwigsburg school: a municipal investment financed with the municipal budget, two grants and a municipal loan. The plan is proposed and waits for the decision; the tax treatment and one process are still open on purpose. Day offsets count from the day the demo is installed. All names are invented.",
+  "discount_pct": "2.0",
+  "horizon": 40,
+  "build_years": 3,
+  "approve": false,
+  "proposal_note": {
+    "en": "Cost frame, business case and financing agreed with the municipal council committee and the funding bodies.",
+    "de": "Kostenrahmen, Business Case und Finanzierung mit dem Gemeinderatsausschuss und den Fördergebern abgestimmt."
+  },
+  "investment_label": {
+    "en": "Construction and project costs",
+    "de": "Bau- und Projektkosten"
+  },
+  "flows": [
+    {
+      "kind": "revenue",
+      "label": {
+        "en": "Avoided leasing of temporary classrooms",
+        "de": "Entfallene Miete für Containerklassenräume"
+      },
+      "amount": "640000",
+      "from": 3,
+      "to": null,
+      "escalation": "1.5"
+    },
+    {
+      "kind": "revenue",
+      "label": {
+        "en": "Hall and canteen use by third parties",
+        "de": "Fremdnutzung von Sporthalle und Mensa"
+      },
+      "amount": "120000",
+      "from": 3,
+      "to": null,
+      "escalation": "1.5"
+    },
+    {
+      "kind": "operating_cost",
+      "label": {
+        "en": "Operation and upkeep",
+        "de": "Betrieb und Unterhaltung"
+      },
+      "amount": "546000",
+      "from": 3,
+      "to": null,
+      "escalation": "2.0"
+    },
+    {
+      "kind": "residual",
+      "label": {
+        "en": "Residual value of the building",
+        "de": "Restwert des Gebäudes"
+      },
+      "amount": "9000000",
+      "from": 40,
+      "to": 40,
+      "escalation": "0"
+    }
+  ],
+  "sources": [
+    {
+      "kind": "equity",
+      "name": {
+        "en": "Municipal budget",
+        "de": "Eigenmittel der Stadt"
+      },
+      "share": "0.35",
+      "due_days": [
+        48,
+        322,
+        688
+      ]
+    },
+    {
+      "kind": "grant",
+      "name": {
+        "en": "State school building grant",
+        "de": "Schulbauförderung des Landes"
+      },
+      "share": "0.30",
+      "due_days": [
+        230,
+        596,
+        869
+      ],
+      "condition": {
+        "en": "Paid on proof of use",
+        "de": "Auszahlung nach Verwendungsnachweis"
+      },
+      "application": {
+        "code": "FA-2026-001",
+        "title": "Neubau Schule, Förderantrag Land",
+        "programme_code": "BW-SCHULBAU",
+        "programme_name": "Schulbauförderung Baden-Württemberg",
+        "authority": "Regierungspräsidium Stuttgart, Schulbauförderung",
+        "region": "DE-BW",
+        "status": "approved",
+        "submitted_days": -216,
+        "decided_days": -36,
+        "reference": "SB-2026-0873"
+      }
+    },
+    {
+      "kind": "grant",
+      "name": {
+        "en": "Federal all-day school programme",
+        "de": "Bundesprogramm Ganztagsausbau"
+      },
+      "share": "0.10",
+      "due_days": [
+        504,
+        869
+      ],
+      "application": {
+        "code": "FA-2026-002",
+        "title": "Ganztagsausbau, Mittelanforderung Bund",
+        "programme_code": "DE-GANZTAG",
+        "programme_name": "Investitionsprogramm Ganztagsausbau",
+        "authority": "Bund, über das Land Baden-Württemberg",
+        "region": "DE",
+        "status": "submitted",
+        "submitted_days": -23,
+        "expected_days": 107
+      }
+    },
+    {
+      "kind": "bank_loan",
+      "name": {
+        "en": "Municipal loan",
+        "de": "Kommunaldarlehen"
+      },
+      "share": null,
+      "rate": "2.6",
+      "due_days": [
+        138,
+        504,
+        824
+      ]
+    }
+  ],
+  "securities": [
+    {
+      "kind": "bid",
+      "description": {
+        "en": "Bid bond of the general contractor",
+        "de": "Bietungsbürgschaft des Generalunternehmers"
+      },
+      "pct_of_frame": "0.01",
+      "issuer": "Neckar-Bürgschaftsbank eG",
+      "beneficiary": "Stadt Ludwigsburg",
+      "reference": "BB-2026-0511",
+      "valid_from_days": -170,
+      "valid_until_days": -75,
+      "status": "released"
+    },
+    {
+      "kind": "performance",
+      "description": {
+        "en": "Performance guarantee of the general contractor",
+        "de": "Vertragserfüllungsbürgschaft des Generalunternehmers"
+      },
+      "pct_of_frame": "0.04",
+      "issuer": "Neckar-Bürgschaftsbank eG",
+      "beneficiary": "Stadt Ludwigsburg",
+      "reference": "VE-2026-0902",
+      "valid_from_days": -30,
+      "valid_until_days": 1000,
+      "status": "in_place"
+    },
+    {
+      "kind": "warranty",
+      "description": {
+        "en": "Warranty guarantee after acceptance",
+        "de": "Gewährleistungsbürgschaft nach Abnahme"
+      },
+      "pct_of_frame": "0.03",
+      "issuer": "Neckar-Bürgschaftsbank eG",
+      "beneficiary": "Stadt Ludwigsburg",
+      "reference": "GW-2026-0903",
+      "valid_from_days": 1000,
+      "valid_until_days": 2830,
+      "status": "requested",
+      "notes": {
+        "en": "Replaces the performance guarantee at acceptance, five years from acceptance.",
+        "de": "Ersetzt die Vertragserfüllungsbürgschaft zur Abnahme, fünf Jahre ab Abnahme."
+      }
+    }
+  ],
+  "insurances": [
+    {
+      "kind": "builders_all_risk",
+      "insurer": "Kommunaler Versicherungsverbund Württemberg",
+      "policy_number": "BLV-1190342",
+      "pct_of_frame": "1.00",
+      "deductible": "10000",
+      "period_from_days": -30,
+      "period_to_days": 1030,
+      "status": "in_place",
+      "notes": {
+        "en": "Sum insured is the construction value.",
+        "de": "Versicherungssumme ist der Bauwert."
+      }
+    },
+    {
+      "kind": "liability",
+      "insurer": "Kommunaler Versicherungsverbund Württemberg",
+      "policy_number": "BHP-1190377",
+      "sum_insured": "10000000",
+      "deductible": "2500",
+      "period_from_days": -30,
+      "period_to_days": 1030,
+      "status": "in_place",
+      "notes": {
+        "en": "Owner's liability during construction.",
+        "de": "Bauherrenhaftpflicht während der Bauzeit."
+      }
+    },
+    {
+      "kind": "professional_indemnity",
+      "insurer": "Bayerische Berufshaftpflicht VVaG",
+      "policy_number": "PHV-7712250",
+      "sum_insured": "5000000",
+      "deductible": "10000",
+      "period_from_days": -260,
+      "period_to_days": 1400,
+      "status": "in_place",
+      "notes": {
+        "en": "Policy of the lead designer, copy on file.",
+        "de": "Police der Generalplanung, Kopie liegt vor."
+      }
+    }
+  ],
+  "tax": {
+    "vat_treatment": "other",
+    "input_tax_deduction": false,
+    "notes": {
+      "en": "The school is a sovereign task of the municipality, so there is no entrepreneurial use and no input tax deduction. The treatment of the third-party use of the hall is still to be agreed with the treasury.",
+      "de": "Die Schule ist eine hoheitliche Aufgabe der Stadt, es gibt keine unternehmerische Nutzung und keinen Vorsteuerabzug. Die Behandlung der Fremdnutzung der Halle ist mit der Kämmerei noch abzustimmen."
+    },
+    "confirm": false
+  },
+  "process": [
+    {
+      "area": "receivables",
+      "description": {
+        "en": "Grant drawdowns are requested through the funding portal and booked against the grant notices.",
+        "de": "Fördermittel werden über das Förderportal abgerufen und gegen die Zuwendungsbescheide gebucht."
+      },
+      "owner": {
+        "en": "Treasury",
+        "de": "Kämmerei"
+      },
+      "status": "set_up",
+      "set_up_days": -25
+    },
+    {
+      "area": "payables",
+      "description": {
+        "en": "Invoices are checked by the building authority and paid after the release by the project manager.",
+        "de": "Rechnungen prüft das Hochbauamt, die Zahlung erfolgt nach Freigabe durch die Projektleitung."
+      },
+      "owner": {
+        "en": "Treasury",
+        "de": "Kämmerei"
+      },
+      "status": "set_up",
+      "set_up_days": -25
+    },
+    {
+      "area": "administration",
+      "description": {
+        "en": "The project file plan and the signing authorities are still to be agreed with the central administration.",
+        "de": "Aktenplan und Zeichnungsberechtigungen sind mit der zentralen Verwaltung noch abzustimmen."
+      },
+      "owner": {
+        "en": "Building authority",
+        "de": "Hochbauamt"
+      },
+      "status": "open"
+    }
+  ]
+}

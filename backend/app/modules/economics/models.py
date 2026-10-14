@@ -9,6 +9,7 @@ Tables (all prefixed ``oe_economics_``):
     funding_source  -- a source of finance (equity, loan, grant, ...)
     tranche         -- a dated drawdown of one source
     approval        -- a proposed or approved version of the whole, frozen with a hash
+    security, insurance, tax, process -- the registers that back the plan (never frozen)
 
 Nothing the platform already knows is stored again: the estimate of a frame
 line is read from the bill, what is committed from the commitment counting
@@ -179,3 +180,74 @@ class Approval(Base):
     )
     four_eyes: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     approval_blocked_reason: Mapped[str] = mapped_column(String(64), nullable=False, default="", server_default="")
+
+
+class Security(Base):
+    """A guarantee or bond that backs the project: performance, warranty, advance payment, bid."""
+
+    __tablename__ = "oe_economics_security"
+    __table_args__ = (Index("ix_oe_eco_security_project", "project_id", "sort_order"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_eco_security_project")
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
+    amount: Mapped[Decimal] = mapped_column(_money(), nullable=False, default=Decimal("0"))
+    issuer: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
+    beneficiary: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
+    reference: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
+    valid_from: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    valid_until: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="requested", server_default="requested")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+
+
+class Insurance(Base):
+    """An insurance policy of the project: builders all risk, liability, professional indemnity."""
+
+    __tablename__ = "oe_economics_insurance"
+    __table_args__ = (Index("ix_oe_eco_insurance_project", "project_id", "sort_order"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_eco_insurance_project")
+    kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    insurer: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
+    policy_number: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
+    sum_insured: Mapped[Decimal] = mapped_column(_money(), nullable=False, default=Decimal("0"))
+    deductible: Mapped[Decimal] = mapped_column(_money(), nullable=False, default=Decimal("0"))
+    period_from: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    period_to: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="requested", server_default="requested")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+
+
+class TaxTreatment(Base):
+    """How the project is treated for value added tax: one row per project."""
+
+    __tablename__ = "oe_economics_tax"
+    __table_args__ = (UniqueConstraint("project_id", name="uq_oe_eco_tax_project"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_eco_tax_project")
+    vat_treatment: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="standard", server_default="standard"
+    )
+    # None = not yet clarified.
+    input_tax_deduction: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    confirmed_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ProcessSetup(Base):
+    """Whether one administrative process (receivables, payables, administration) is set up."""
+
+    __tablename__ = "oe_economics_process"
+    __table_args__ = (UniqueConstraint("project_id", "area", name="uq_oe_eco_process_area"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_eco_process_project")
+    area: Mapped[str] = mapped_column(String(20), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    owner: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="open", server_default="open")
+    set_up_on: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
