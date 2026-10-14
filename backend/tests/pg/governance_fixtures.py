@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.project_governance import evaluator as ev
 from app.modules.project_governance import evidence as evidence_registry
+from app.modules.project_governance.errors import GovernanceError
 from app.modules.project_governance.models import GovernanceArea, GovernanceDocument, GovernanceGate
 from app.modules.project_governance.service import GovernanceService
 
@@ -289,9 +290,13 @@ async def decide(
             acknowledged_evidence=tuple(seen),
             **kw,
         )
-        d = await GovernanceService(s).decide(
-            w.project_id, gate_id, request=req, decider_id=decider or w.decider, role="manager", today=today
-        )
+        try:
+            d = await GovernanceService(s).decide(
+                w.project_id, gate_id, request=req, decider_id=decider or w.decider, role="manager", today=today
+            )
+        except GovernanceError as exc:
+            # Name what was refused: a bare code hides which evidence or rule stopped the decision.
+            raise AssertionError(f"decision refused: {exc.code} {exc.violations}") from exc
         await s.commit()
         return d
 
