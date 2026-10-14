@@ -30,6 +30,7 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.modules.delivery_model.models import DeliveryModel
 from app.modules.procurement_concept import plan_source as plan
 from app.modules.procurement_concept.events import handle_frame_document
 from app.modules.procurement_concept.hosting import CAPABILITY, SUBJECT, hosting_of
@@ -108,10 +109,11 @@ async def add_contract_package(
 async def set_delivery_form(w: World, form: str, *, public_client: bool = True) -> None:
     async with w.factory() as s:
         await s.execute(
-            sa.insert(plan.MODEL_TABLE).values(
+            sa.insert(DeliveryModel.__table__).values(
                 id=uuid.uuid4(),
                 project_id=w.project_id,
                 catalogue_id="neutral",
+                catalogue_version=1,
                 selected_form_code=form,
                 status="approved",
                 owner_capability={"public_client": public_client},

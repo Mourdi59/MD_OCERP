@@ -45,6 +45,11 @@ from tests.pg.staffing_fixtures import (
 pytestmark = pytest.mark.asyncio
 
 
+def _flag(flag: dict) -> dict:
+    """A ``can`` flag without ``applies``: these tests are about whether and why, not about relevance."""
+    return {k: v for k, v in flag.items() if k != "applies"}
+
+
 @pytest_asyncio.fixture
 async def factory():
     register_staffing_permissions()
@@ -122,10 +127,10 @@ async def test_every_permission_without_a_relationship_opens_nothing(factory) ->
     err = await _refused(call(w, "open_file", file_id, everything))
     assert err.code == "no_relationship_to_person"
     listed = {f["id"]: f for f in await call(w, "file_list", everything)}
-    assert listed[str(file_id)]["can"]["open"] == {"allowed": False, "reason": "no_relationship_to_person"}
+    assert _flag(listed[str(file_id)]["can"]["open"]) == {"allowed": False, "reason": "no_relationship_to_person"}
     assert listed[str(file_id)]["can_open"] is False
     mine = {f["id"]: f for f in await call(w, "file_list", admin(w))}
-    assert mine[str(file_id)]["can"]["open"] == {"allowed": True, "reason": None}
+    assert _flag(mine[str(file_id)]["can"]["open"]) == {"allowed": True, "reason": None}
 
 
 async def test_a_file_is_created_only_by_someone_related_to_the_person(factory) -> None:
@@ -209,7 +214,7 @@ async def test_the_compliance_matrix_shows_document_states_only_to_who_may_open_
     assert len(seen["items"]) == 2
     for row in seen["items"]:
         assert row["cells"] == {} and row["file_id"] is None
-        assert row["can"]["see_documents"] == {"allowed": False, "reason": "no_relationship_to_person"}
+        assert _flag(row["can"]["see_documents"]) == {"allowed": False, "reason": "no_relationship_to_person"}
     assert seen["document_kinds"] == []
     # Two people are too few to count: any number would be a statement about one of them.
     assert seen["summary"] == [] and seen["summary_min_group"] == 5
@@ -595,8 +600,8 @@ async def test_the_own_file_is_readable_but_not_editable_by_the_person(factory) 
         svc = StaffingService(s)
         view = await svc.file_view(w.project_id, await svc.open_file(w.project_id, file_id, me), me)
         await s.commit()
-    assert view["can"]["edit"] == {"allowed": False, "reason": "own_file_read_only"}
-    assert view["can"]["export"] == {"allowed": True, "reason": None}
+    assert _flag(view["can"]["edit"]) == {"allowed": False, "reason": "own_file_read_only"}
+    assert _flag(view["can"]["export"]) == {"allowed": True, "reason": None}
     err = await _refused(call(w, "update_file", file_id, {"employer_organisation": "X"}, me))
     assert err.code == "own_file_read_only"
     assert uuid.UUID(view["id"]) == file_id

@@ -1291,7 +1291,8 @@ async def test_the_rule_set_reports_each_rule_on_real_rows(world: World) -> None
     assert failed["critical_has_market_evidence"] == "warning"  # an error only from route_set on
     assert "critical_has_decision_paper" in failed
     passed = {r["rule_id"].split(".")[-1] for r in await run_rules(payload, "en") if r["passed"]}
-    assert {"single_basis_quote", "lead_time_has_enquiry_date"} <= passed
+    # The basis-quote rule starts at ``enquired``; this item is only ``specified``, so it has nothing to say yet.
+    assert "lead_time_has_enquiry_date" in passed and "single_basis_quote" not in passed
 
 
 # ── demo seed ─────────────────────────────────────────────────────────────

@@ -110,7 +110,7 @@ async def test_every_flag_agrees_with_its_write(world: World) -> None:
         first = stages["items"][0]
         assert first["can"]["delete"] == _no("last_stage")
         assert await _refusals_agree(c, f"{root}/stages/{first['id']}", first["can"]) >= 2
-        second = await _made(await c.post(f"{root}/stages", json={"code": "S2", "title": "Fit-out"}))
+        second = await _made(await c.post(f"{root}/stages", json={"code": "s2", "title": "Fit-out"}))
         assert second["can"]["delete"] == OK
         active = await _move(
             c, f"{root}/stages/{first['id']}", (await _listed(c, f"{root}/stages", first["id"]))["can"], "active"

@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import app.modules.procurement_concept.events as pc_events
 import app.modules.project_governance.events as gov_events
+from app.modules.delivery_model.models import DeliveryModel
 from app.modules.procurement_concept import plan_source as plan
 from app.modules.procurement_concept.catalogue import register_kind
 from app.modules.procurement_concept.evidence import PROVIDER_NAME, concept_ready, register_gate_evidence
@@ -228,10 +229,11 @@ async def _demo_project(w: World, *, currency: str, country: str, public: bool) 
                 )
             )
         await s.execute(
-            sa.insert(plan.MODEL_TABLE).values(
+            sa.insert(DeliveryModel.__table__).values(
                 id=uuid.uuid4(),
                 project_id=pid,
                 catalogue_id="neutral",
+                catalogue_version=1,
                 selected_form_code="design_bid_build_split",
                 status="approved",
                 owner_capability={"public_client": public},
