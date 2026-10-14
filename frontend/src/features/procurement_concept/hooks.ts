@@ -24,6 +24,7 @@ import {
   listAdvanceReleases,
   listCostSections,
   listFrameworks,
+  getPermitLotRequirements,
   listGates,
   listProjectFrameworks,
   listTenderPackages,
@@ -231,4 +232,12 @@ export function useLabelContext(): LabelContext {
     }),
     [t, i18n],
   );
+}
+
+export function usePermitLotRequirements(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: procurementKeys.permitConditions(projectId),
+    queryFn: () => getPermitLotRequirements(projectId),
+    enabled: !!projectId && enabled,
+  });
 }

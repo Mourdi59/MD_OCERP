@@ -55351,7 +55351,7 @@ const resource = {
     "qualityConcept.reason.systems_not_released": "Ein abhängiges System ist nicht freigegeben",
     "qualityConcept.reason.unknown_predicate": "Diese Prüfung ist nicht bekannt",
     "qualityConcept.refusal.unknown": "Die Aktion konnte nicht ausgeführt werden.",
-    "qualityConcept.refusal.with_detail": "{{message}} Details: {{detail}}",
+    "qualityConcept.refusal.with_detail": "{{message}} Einzelheiten: {{detail}}",
     "qualityConcept.requiredBy.acceptance_unit": "Abnahmeeinheit",
     "qualityConcept.requiredBy.activity": "Terminplanvorgang",
     "qualityConcept.requiredBy.date": "Festes Datum",

@@ -87,6 +87,7 @@
   "quality_concept.evidence.approved": "Quality concept approved",
   "quality_concept.evidence.complete": "Quality concept complete",
   "quality_concept.evidence.preservation_planned": "Evidence preservation planned for every affected subject",
+  "quality_concept.evidence.permit_conditions_proven": "Every permit condition due before the start of construction is proven",
   "quality_concept.export.acceptance.title": "Acceptance register",
   "quality_concept.export.certification.title": "Certification targets",
   "quality_concept.export.col.accepted_on": "Accepted on",
