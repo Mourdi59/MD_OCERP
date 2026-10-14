@@ -71,6 +71,7 @@ class Source:
     rate: str | None = None
     condition: str = ""
     application: Application | None = None
+    drawn: int = 0  # leading tranches already drawn, on their due date; they must lie in the past
 
 
 @dataclass(frozen=True)
@@ -215,6 +216,9 @@ def _sources(story: dict[str, Any], locale: str, today: date) -> tuple[Source, .
         due = raw.get("due_days")
         _need(isinstance(due, list) and bool(due), f"{key}.due_days")
         app = raw.get("application")
+        drawn = raw.get("drawn", 0)
+        _need(isinstance(drawn, int) and not isinstance(drawn, bool) and 0 <= drawn <= len(due), f"{key}.drawn")
+        _need(all(_int(v, f"{key}.due_days") < 0 for v in due[:drawn]), f"{key}.drawn")
         out.append(
             Source(
                 kind=_str(raw.get("kind"), f"{key}.kind", "en", required=True),
@@ -224,6 +228,7 @@ def _sources(story: dict[str, Any], locale: str, today: date) -> tuple[Source, .
                 rate=None if raw.get("rate") is None else _dec(raw["rate"], f"{key}.rate", low=D(0)),
                 condition=_str(raw.get("condition"), f"{key}.condition", locale),
                 application=_parse_application(app, today, f"{key}.application") if isinstance(app, dict) else None,
+                drawn=drawn,
             )
         )
     return tuple(out)
@@ -481,6 +486,7 @@ async def _seed_project(
         )
 
     tranches = 0
+    to_draw: list[tuple[uuid.UUID, str]] = []
     given = D(0)
     for source in profile.sources:
         amount = (frame_total - given) if source.share is None else (frame_total * D(source.share)).quantize(D("0.01"))
@@ -499,13 +505,18 @@ async def _seed_project(
             },
             owner,
         )
-        for due, part in zip(source.due, split(amount, len(source.due)), strict=True):
-            await service.add_tranche(
+        for n, (due, part) in enumerate(zip(source.due, split(amount, len(source.due)), strict=True)):
+            tranche = await service.add_tranche(
                 pid, row.id, {"due_on": due, "amount": part, "condition": source.condition}, owner
             )
+            if n < source.drawn:
+                to_draw.append((tranche.id, due))
             tranches += 1
     await _registers(service, pid, owner, profile, frame_total)
     status = await _settle(session, service, pid, owner, profile)
+    # Drawing is a fact of the project and stays open on an approved plan.
+    for tranche_id, due in to_draw:
+        await service.patch_tranche(pid, tranche_id, {"status": "drawn", "drawn_on": due}, owner)
     return {
         "frame_lines": len(frame),
         "flow_lines": len(profile.flows) + 1,
