@@ -702,13 +702,17 @@ _ELEVEN_MODULES = (
     "quality_concept",
     "transmittals",
 )
-_EMPTY_BY_DESIGN: dict[str, str] = {}
+_EMPTY_BY_DESIGN: dict[str, str] = {
+    # Written only when a delivery is scheduled on a granted oversize permit, which needs a running site.
+    "oe_site_logistics_permit_transport": "a site before its construction gate schedules no delivery",
+}
 
 
 @pytest.mark.timeout(1500)
+@pytest.mark.parametrize("path", ["modules_page", "apply"])
 @pytest.mark.parametrize("pack_dir", _shard(["eleven-areas-framework"]))
 async def test_every_screen_of_the_eleven_areas_has_rows_for_both_filmed_projects(
-    pack_dir: str, fresh_db, caplog
+    pack_dir: str, path: str, fresh_db, caplog
 ) -> None:
     """The video series films both projects: no table behind an area's screens may be empty.
 
@@ -739,8 +743,17 @@ async def test_every_screen_of_the_eleven_areas_has_rows_for_both_filmed_project
             )
         await s.commit()
     slug = _load_manifest(pack_dir).slug
-    done = await _stream_install(slug)
-    assert done["ok"], f"{slug}: install reported ok=False: {done['steps']}"
+    if path == "apply":
+        # The route the Modules page "apply" button and the API take: it must land every demo the pack pins.
+        from app.core.partner_pack.apply import apply_pack
+
+        applied = await apply_pack(slug, install_demo=True, app=None)
+        assert applied["applied"] is True
+        assert "demo_project_failed" not in applied["effects"], applied["effects"]
+        assert len(applied["effects"].get("demo_projects", [])) == 2, applied["effects"]
+    else:
+        done = await _stream_install(slug)
+        assert done["ok"], f"{slug}: install reported ok=False: {done['steps']}"
     projects = await _demo_projects(factory)
     filmed = seed_story.pack_demo_ids(catalogue_packs.active_pack_demo())
     assert len(filmed) == 2 and all(d in projects for d in filmed), (filmed, sorted(projects))

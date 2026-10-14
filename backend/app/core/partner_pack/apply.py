@@ -592,55 +592,60 @@ async def apply_pack(
     else:
         skipped_disables = list(plan["modules_to_disable"])
 
-    # Install the pack's flagship country demo project (idempotent, fail-soft).
-    # Independent session so a demo failure never rolls back the module changes.
+    # Install the pack's demo projects (idempotent, fail-soft): every id the manifest pins, or the
+    # flagship country demo of a pack that pins none. Each project has a session of its own so a
+    # failure never rolls back the module changes or another project.
+    installed_ids: list[uuid.UUID] = []
     if install_demo:
         try:
             from app.core.demo_projects import PACK_DEMO_PROJECT, install_demo_project
+            from app.core.partner_pack.full_install import _demo_install_list
             from app.database import async_session_factory
 
-            demo_id = PACK_DEMO_PROJECT.get(m.slug)
-            if demo_id:
-                async with async_session_factory() as demo_session:
-                    demo_res = await install_demo_project(demo_session, demo_id, partner_pack=m.slug)
-                    # Activate the pack's estimating methodology on the demo
-                    # project in the same transaction so it opens with the
-                    # partner's cascade (bases + markup steps), not the flat
-                    # international default. Builtin template slug only; an
-                    # unknown slug is skipped with a warning. Fail-soft.
-                    _meth_effect = await _activate_pack_methodology(demo_session, m, demo_res.get("project_id"))
-                    if _meth_effect:
-                        effects["methodology"] = _meth_effect
-                    await demo_session.commit()
-                effects["demo_project"] = {
-                    "demo_id": demo_id,
-                    "project_id": demo_res.get("project_id"),
-                    "project_name": demo_res.get("project_name"),
-                    "already_installed": bool(demo_res.get("already_installed")),
-                }
+            demo_ids = _demo_install_list(m.slug, 10, country_fill=False)
+            flagship = PACK_DEMO_PROJECT.get(m.slug)
+            if flagship and flagship not in demo_ids:
+                demo_ids.insert(0, flagship)
+            installed_rows: list[dict[str, Any]] = []
+            for demo_id in demo_ids:
+                try:
+                    async with async_session_factory() as demo_session:
+                        demo_res = await install_demo_project(demo_session, demo_id, partner_pack=m.slug)
+                        # Activate the pack's estimating methodology on the first (flagship) demo
+                        # project in the same transaction so it opens with the partner's cascade
+                        # (bases + markup steps), not the flat international default. Builtin
+                        # template slug only; an unknown slug is skipped with a warning. Fail-soft.
+                        if not installed_rows:
+                            _meth_effect = await _activate_pack_methodology(demo_session, m, demo_res.get("project_id"))
+                            if _meth_effect:
+                                effects["methodology"] = _meth_effect
+                        await demo_session.commit()
+                except Exception as exc:  # noqa: BLE001 - one bad demo never stops the others
+                    effects.setdefault("demo_projects_failed", []).append({"demo_id": demo_id, "error": str(exc)})
+                    logger.warning("Partner-pack apply: demo project '%s' failed: %s", demo_id, exc)
+                    continue
+                installed_rows.append(
+                    {
+                        "demo_id": demo_id,
+                        "project_id": demo_res.get("project_id"),
+                        "project_name": demo_res.get("project_name"),
+                        "already_installed": bool(demo_res.get("already_installed")),
+                    }
+                )
+                _pid_raw = demo_res.get("project_id")
+                if _pid_raw:
+                    installed_ids.append(_pid_raw if isinstance(_pid_raw, uuid.UUID) else uuid.UUID(str(_pid_raw)))
                 logger.info(
                     "Partner-pack apply: demo project '%s' %s for pack %s",
                     demo_id,
                     "already present" if demo_res.get("already_installed") else "installed",
                     m.slug,
                 )
-
-                # Run the rich per-module enrichment (photos, takeoff, clash,
-                # carbon, qms, variations, costmodel, moc, markups, catalog, BIM
-                # grouping) over the freshly installed project. Without this an
-                # in-app pack apply opens with those modules empty, since
-                # install_demo_project only seeds BOQ / budget / schedule /
-                # tender / BIM model / PDFs. Fail-soft: enrichment errors never
-                # abort the apply, and each seeder isolates itself per session.
-                try:
-                    from app.core.demo_enrichment import enrich_projects
-
-                    _pid_raw = demo_res.get("project_id")
-                    if _pid_raw:
-                        _pid = _pid_raw if isinstance(_pid_raw, uuid.UUID) else uuid.UUID(str(_pid_raw))
-                        await enrich_projects([_pid])
-                except Exception as enrich_exc:  # noqa: BLE001 - enrichment never aborts apply
-                    logger.warning("Partner-pack apply: demo enrichment failed: %s", enrich_exc)
+            if installed_rows:
+                effects["demo_project"] = installed_rows[0]
+                effects["demo_projects"] = installed_rows
+            if "demo_projects_failed" in effects:
+                effects["demo_project_failed"] = {"error": str(effects["demo_projects_failed"])}
         except Exception as exc:  # noqa: BLE001 - a demo failure must not abort the apply
             effects["demo_project_failed"] = {"error": str(exc)}
             logger.warning("Partner-pack apply: demo project install failed: %s", exc)
@@ -655,6 +660,20 @@ async def apply_pack(
     save_applied_state(state)
     # Make co-branding / locale / active-pack resolution take effect immediately.
     reset_cache()
+
+    # Run the rich per-module enrichment (photos, takeoff, clash, carbon, qms, variations, costmodel,
+    # moc, markups, catalog, BIM grouping, the eleven areas) over the freshly installed projects.
+    # Without this an in-app pack apply opens with those modules empty, since install_demo_project
+    # only seeds BOQ / budget / schedule / tender / BIM model / PDFs. It runs only now: the seeders
+    # read the story of the ACTIVE pack, and the pack is active once its record is saved. Fail-soft:
+    # enrichment errors never abort the apply, and each seeder isolates itself per session.
+    if installed_ids:
+        try:
+            from app.core.demo_enrichment import enrich_projects
+
+            await enrich_projects(installed_ids)
+        except Exception as enrich_exc:  # noqa: BLE001 - enrichment never aborts apply
+            logger.warning("Partner-pack apply: demo enrichment failed: %s", enrich_exc)
 
     logger.info("Partner pack applied: %s v%s by %s", m.slug, m.pack_version, actor or "system")
     return {
