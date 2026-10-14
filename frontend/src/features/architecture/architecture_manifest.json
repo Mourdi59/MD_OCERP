@@ -267479,10 +267479,10 @@
     },
     {
       "name": "risk",
-      "ts_files": 11,
+      "ts_files": 12,
       "css_files": 0,
-      "test_files": 3,
-      "total_files": 11
+      "test_files": 4,
+      "total_files": 12
     },
     {
       "name": "rom-estimate",
