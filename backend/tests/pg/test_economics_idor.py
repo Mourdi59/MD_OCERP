@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import uuid
 from contextlib import asynccontextmanager
+from decimal import Decimal
 
 import pytest
 import pytest_asyncio
@@ -71,11 +72,42 @@ async def test_a_stranger_from_another_tenant_cannot_read_edit_or_propose(world:
             await c.get(f"{p}/cost-frame"),
             await c.get(f"{p}/financing"),
             await c.get(f"{p}/readiness"),
+            await c.get(f"{p}/export?what=financing&format=xlsx"),
             await c.post(f"{p}/cost-frame/lines", json={"code": "500", "amount": "1"}),
             await c.post(f"{p}/propose", json={"rationale": "x"}),
             await c.post(f"{p}/approve"),
         ]
     assert [r.status_code for r in responses] == [404] * len(responses)
+
+
+async def test_every_document_exports_as_pdf_and_xlsx_in_the_readers_language(world: World) -> None:
+    await fill(world)
+    p = f"{BASE}/projects/{world.project_id}"
+    async with client_as(world, world.manager, "manager") as c:
+        for what in ("frame", "case", "financing"):
+            pdf = await c.get(f"{p}/export?what={what}&format=pdf")
+            xlsx = await c.get(f"{p}/export?what={what}&format=xlsx")
+            assert pdf.status_code == 200, what
+            assert pdf.content.startswith(b"%PDF"), what
+            assert xlsx.status_code == 200, what
+            assert xlsx.content.startswith(b"PK"), what
+            assert pdf.headers["content-language"]
+            assert xlsx.headers["content-language"] == pdf.headers["content-language"]
+
+
+async def test_the_printed_figures_are_the_screens_figures(world: World) -> None:
+    from app.core.register_export import register_text_rows
+    from app.modules.economics import export as ex
+
+    await fill(world)
+    frame = await call(world, "cost_frame")
+    doc = ex.frame_document(frame, project_name="P", locale="de")
+    rows = register_text_rows(doc)
+    assert rows[0][2] == "Budget"
+    assert any("2.000.000,00" in cell for row in rows for cell in row)
+    financing = await call(world, "financing")
+    printed = ex.financing_document(financing, project_name="P", locale="en")
+    assert Decimal(financing["coverage"]["sources_total"]) == sum((Decimal(r[3]) for r in printed.rows), Decimal(0))
 
 
 async def test_an_editor_can_edit_but_not_propose_or_approve(world: World) -> None:

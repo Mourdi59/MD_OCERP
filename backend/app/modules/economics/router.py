@@ -21,9 +21,9 @@ without gates and answers 409 ``approved_by_gate_decision`` otherwise.
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.core.i18n import get_locale
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
@@ -360,3 +360,38 @@ async def validation(project_id: uuid.UUID, session: SessionDep, user_id: Curren
                 }
             )
     return _page(findings)
+
+
+_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@router.get(_P + "/export", dependencies=[READ])
+async def export(
+    project_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    what: Literal["frame", "case", "financing"] = "frame",
+    fmt: Literal["pdf", "xlsx"] = Query("pdf", alias="format"),
+) -> Response:
+    """The cost frame, the business case or the financing plan as a printable document."""
+    from app.modules.economics import export as ex
+    from app.modules.projects.models import Project
+
+    svc = await _economics_svc(project_id, user_id, session)
+    locale = get_locale() or "en"
+    project = await session.get(Project, project_id)
+    labels = {"project_name": getattr(project, "name", "") or "", "locale": locale}
+    if what == "case":
+        doc = ex.case_document(await _run(svc.business_case(project_id)), **labels)
+    elif what == "financing":
+        doc = ex.financing_document(await _run(svc.financing(project_id)), **labels)
+    else:
+        doc = ex.frame_document(await _run(svc.cost_frame(project_id)), **labels)
+    return Response(
+        content=ex.render(doc, fmt),
+        media_type="application/pdf" if fmt == "pdf" else _XLSX,
+        headers={
+            "Content-Disposition": f'attachment; filename="economics_{what}.{fmt}"',
+            "Content-Language": locale,
+        },
+    )

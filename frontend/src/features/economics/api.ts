@@ -9,7 +9,7 @@
 // travels as decimal strings in both directions; the server refuses floats, so
 // nothing here converts an amount to a number.
 
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/shared/lib/api';
+import { API_BASE, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
 
 export type PlanStatus = 'draft' | 'proposed' | 'approved' | 'reopened';
 export type FlowKind = 'investment' | 'revenue' | 'operating_cost' | 'residual';
@@ -201,3 +201,14 @@ export const deleteTranche = (pid: string, id: string) => apiDelete(`${base(pid)
 export type Lifecycle = 'propose' | 'withdraw' | 'approve' | 'reopen' | 'reopen/close';
 export const runLifecycle = (pid: string, action: Lifecycle, body: Record<string, unknown> = {}) =>
   apiPost<PlanView>(`${base(pid)}/${action}`, body);
+
+export type ExportWhat = 'frame' | 'case' | 'financing';
+export type ExportFormat = 'pdf' | 'xlsx';
+
+/** Download the cost frame, the business case or the financing plan as PDF or XLSX. */
+export function downloadExport(projectId: string, what: ExportWhat, format: ExportFormat): Promise<void> {
+  return downloadWithAuth(
+    `${API_BASE}/v1/economics/projects/${projectId}/export?what=${what}&format=${format}`,
+    `economics_${what}.${format}`,
+  );
+}

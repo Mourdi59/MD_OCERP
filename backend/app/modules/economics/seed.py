@@ -34,7 +34,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 D = Decimal
+PROPOSAL_NOTE = "Cost frame, business case and financing agreed with the client and the lenders."
 STEP = D("100000")
+
+
+@dataclass(frozen=True)
+class Application:
+    """The funding application behind a grant or subsidy source, and the programme it was made under."""
+
+    code: str
+    title: str
+    programme_code: str
+    programme_name: str
+    authority: str
+    region: str
+    status: str  # submitted | approved
+    submitted_on: str
+    decided_on: str = ""
+    expected_on: str = ""
+    reference: str = ""
 
 
 @dataclass(frozen=True)
@@ -45,6 +63,7 @@ class Source:
     due: tuple[str, ...]  # tranche dates, the amount split evenly, the last tranche taking the cent remainder
     rate: str | None = None
     condition: str = ""
+    application: Application | None = None
 
 
 @dataclass(frozen=True)
@@ -54,12 +73,14 @@ class Profile:
     build_years: int
     flows: tuple[tuple[str, str, str, int, int | None, str], ...]  # kind, label, amount, from, to, escalation
     sources: tuple[Source, ...]
+    approve: bool = False  # the story has reached the decision: the plan is approved, else it waits in review
 
 
 PROFILES: dict[str, Profile] = {
     # 120 flats, 11 000 m2 living area, 110 parking spaces: rent 12.00 EUR/m2 a month, parking 95 EUR a month,
     # costs of operation and upkeep about a fifth of the rent, a long holding horizon with a residual value.
     "residential-regensburg": Profile(
+        approve=True,
         discount_pct="3.0",
         horizon=40,
         build_years=3,
@@ -86,6 +107,18 @@ PROFILES: dict[str, Profile] = {
                 ("2027-09-01", "2028-09-01", "2029-05-01"),
                 None,
                 "Paid on certified progress",
+                Application(
+                    code="FA-2026-001",
+                    title="Mietwohnraumförderung, Neubau Donauknie",
+                    programme_code="BAY-WOHNRAUM",
+                    programme_name="Bayerisches Wohnraumförderungsprogramm, Mietwohnraum",
+                    authority="Regierung von Oberbayern, Wohnraumförderung",
+                    region="DE-BY",
+                    status="approved",
+                    submitted_on="2026-02-18",
+                    decided_on="2026-06-30",
+                    reference="WF-2026-04417",
+                ),
             ),
             Source("bank_loan", "Bank loan", None, ("2027-01-15", "2027-10-15", "2028-06-15", "2029-02-15"), "3.9"),
         ),
@@ -112,8 +145,38 @@ PROFILES: dict[str, Profile] = {
                 ("2027-06-01", "2028-06-01", "2029-03-01"),
                 None,
                 "Paid on proof of use",
+                Application(
+                    code="FA-2026-001",
+                    title="Neubau Schule, Förderantrag Land",
+                    programme_code="BW-SCHULBAU",
+                    programme_name="Schulbauförderung Baden-Württemberg",
+                    authority="Regierungspräsidium Stuttgart, Schulbauförderung",
+                    region="DE-BW",
+                    status="approved",
+                    submitted_on="2026-03-12",
+                    decided_on="2026-09-08",
+                    reference="SB-2026-0873",
+                ),
             ),
-            Source("grant", "Federal all-day school programme", "0.10", ("2028-03-01", "2029-03-01")),
+            Source(
+                "grant",
+                "Federal all-day school programme",
+                "0.10",
+                ("2028-03-01", "2029-03-01"),
+                None,
+                "",
+                Application(
+                    code="FA-2026-002",
+                    title="Ganztagsausbau, Mittelanforderung Bund",
+                    programme_code="DE-GANZTAG",
+                    programme_name="Investitionsprogramm Ganztagsausbau",
+                    authority="Bund, über das Land Baden-Württemberg",
+                    region="DE",
+                    status="submitted",
+                    submitted_on="2026-09-21",
+                    expected_on="2027-01-29",
+                ),
+            ),
             Source("bank_loan", "Municipal loan", None, ("2027-03-01", "2028-03-01", "2029-01-15"), "2.6"),
         ),
     ),
@@ -149,6 +212,9 @@ async def seed_economics_demo(session: AsyncSession, project_ids: Iterable[uuid.
         "flow_lines": 0,
         "sources": 0,
         "tranches": 0,
+        "applications": 0,
+        "proposed": 0,
+        "approved": 0,
         "skipped": [],
         "failed": [],
         "ok": True,
@@ -243,6 +309,9 @@ async def _seed_project(
     for source in profile.sources:
         amount = (frame_total - given) if source.share is None else (frame_total * D(source.share)).quantize(D("0.01"))
         given += amount
+        application_id = None
+        if source.application is not None:
+            application_id = await _application(session, pid, source.application, amount, frame_total)
         row = await service.add_source(
             pid,
             {
@@ -250,6 +319,7 @@ async def _seed_project(
                 "name": source.name,
                 "amount": amount,
                 "interest_rate_pct": D(source.rate) if source.rate is not None else None,
+                "funding_application_id": application_id,
             },
             owner,
         )
@@ -258,9 +328,125 @@ async def _seed_project(
                 pid, row.id, {"due_on": due, "amount": part, "condition": source.condition}, owner
             )
             tranches += 1
+    status = await _settle(session, service, pid, owner, profile)
     return {
         "frame_lines": len(frame),
         "flow_lines": len(profile.flows) + 1,
         "sources": len(profile.sources),
         "tranches": tranches,
+        "applications": sum(1 for x in profile.sources if x.application is not None),
+        "proposed": int(status in ("proposed", "approved")),
+        "approved": int(status == "approved"),
     }
+
+
+async def _application(
+    session: AsyncSession, pid: uuid.UUID, app: Application, amount: Decimal, frame_total: Decimal
+) -> uuid.UUID:
+    """The funding application of a grant source, filed under its programme (created once as reference data)."""
+    from app.modules.funding.models import FundingApplication, FundingProgramme
+    from app.modules.projects.models import Project
+
+    country = app.region[:2]
+    programme = (
+        await session.execute(
+            select(FundingProgramme).where(
+                FundingProgramme.code == app.programme_code, FundingProgramme.country == country
+            )
+        )
+    ).scalar_one_or_none()
+    if programme is None:
+        programme = FundingProgramme(
+            code=app.programme_code,
+            name=app.programme_name,
+            authority_name=app.authority,
+            authority_level="national" if app.region == country else "regional",
+            country=country,
+            region_code=app.region if app.region != country else "",
+            instrument="grant",
+            currency="EUR",
+            status="open",
+        )
+        session.add(programme)
+        await session.flush()
+    project = await session.get(Project, pid)
+    client = ((project.metadata_ or {}).get("client") if project is not None else "") or ""
+    approved = app.status == "approved"
+    row = FundingApplication(
+        project_id=pid,
+        programme_id=programme.id,
+        code=app.code,
+        title=app.title,
+        applicant_name=str(client),
+        applicant_type="company",
+        status=app.status,
+        eligible_cost_base=frame_total,
+        requested_amount=amount,
+        own_share_amount=frame_total - amount,
+        currency="EUR",
+        submitted_on=app.submitted_on,
+        decision_expected_on=app.expected_on or app.decided_on,
+        decided_on=app.decided_on,
+        award_reference=app.reference,
+        approved_amount=amount if approved else Decimal("0"),
+    )
+    session.add(row)
+    await session.flush()
+    return row.id
+
+
+async def _settle(
+    session: AsyncSession, service: Any, pid: uuid.UUID, owner: uuid.UUID | None, profile: Profile
+) -> str:
+    """Propose the plan as a team member, and let the governance decision approve it when the story reached it.
+
+    Under four-eyes the proposer is never the person who decides, so the proposal is made by a member other
+    than the gate decider where the team has one. A plan whose gate has been decided is approved by the
+    service's own binding rule: the proposal is dated just before that decision, as it would have been made.
+    Without gates a different team member approves by hand. Where none of that is possible the plan stays
+    proposed, which is the honest state.
+    """
+    from datetime import timedelta
+
+    from app.modules.economics import hosting
+    from app.modules.teams.models import Team, TeamMembership
+
+    members = list(
+        (
+            await session.execute(
+                select(TeamMembership.user_id)
+                .join(Team, Team.id == TeamMembership.team_id)
+                .where(Team.project_id == pid)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    gates = await hosting.gates_in_use(session, pid)
+    doc = (await hosting.carrier_document(session, pid))[0] if gates else None
+    decision = None
+    if doc is not None and doc.status == "binding" and doc.approved_gate_id is not None:
+        decision = await hosting.latest_gate_decision(session, pid, doc.approved_gate_id, ("go", "go_with_conditions"))
+    decider = getattr(decision, "decided_by", None)
+    proposer = next((m for m in members if m != decider), owner)
+    try:
+        await service.propose(pid, PROPOSAL_NOTE, proposer)
+    except Exception:
+        logger.warning("economics demo seed: the plan of %s could not be proposed", pid, exc_info=True)
+        return "draft"
+    plan = await service.require_plan(pid)
+    if not profile.approve:
+        return plan.status
+    if gates:
+        if decision is None or decider is None or decider == proposer:
+            return plan.status
+        approval = await service.repo.approval(pid, plan.current_approval_id)
+        if decision.decided_at is not None and approval is not None:
+            approval.proposed_at = decision.decided_at - timedelta(days=3)
+            await session.flush()
+        await service.sync_with_governance(pid)
+    else:
+        approver = next((m for m in members if m != proposer), None)
+        if approver is not None:
+            await service.approve_by_hand(pid, approver)
+    return (await service.require_plan(pid)).status

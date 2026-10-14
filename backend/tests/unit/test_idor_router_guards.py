@@ -213,6 +213,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
     ],
     # Every project route of the module; each awaits _economics_svc, which checks project access first.
     "economics": [
+        "export",
         "get_plan",
         "start_plan",
         "patch_plan",
