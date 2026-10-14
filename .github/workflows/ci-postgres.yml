@@ -2064,6 +2064,9 @@ jobs:
       OE_API_SMOKE: '1'
       SEED_DEMO: 'true'
       OE_TEST_FAST_STARTUP: '0'
+      # One event loop, so the sized pool of a real install is safe here. The suite default (a new connection
+      # per checkout) is unbounded: the demo seed's event handlers alone ran the cluster out of its 100 slots.
+      OE_TEST_NULLPOOL: '0'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
