@@ -139,7 +139,15 @@ def merge_package_story(
     """
     out: dict[str, Any] = dict(
         previous
-        or {"value": base[0], "public": base[1], "private": base[2], "lead": base[3], "offset": None, "notes": ""}
+        or {
+            "value": base[0],
+            "public": base[1],
+            "private": base[2],
+            "lead": base[3],
+            "offset": None,
+            "notes": "",
+            "award_ago": None,
+        }
     )
     if not isinstance(entry, dict):
         return out
@@ -164,6 +172,9 @@ def merge_package_story(
     offset = _story_int(entry.get("start_offset_days"), 0, 720)
     if offset is not None:
         out["offset"] = offset
+    ago = _story_int(entry.get("award_days_ago"), 1, 720)
+    if ago is not None:
+        out["award_ago"] = ago
     notes = _story_str(entry.get("notes"), locale, limit=2000)
     if notes:
         out["notes"] = notes
@@ -487,6 +498,9 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         offset = merged["offset"] if merged["offset"] is not None else 30 + 45 * i
         start = today + timedelta(days=10) if row.is_advance else plan_from + timedelta(days=offset)
         row.need_date = (start + timedelta(days=(steps.total_days() if steps else 0) + lead)).isoformat()
+        if cp.kind == "design" and merged["award_ago"] is not None:
+            # An awarded package was awarded in the past: the award date is the need date less the lead time.
+            row.need_date = (today - timedelta(days=merged["award_ago"]) + timedelta(days=lead)).isoformat()
         session.add(row)
         awards.append(row)
     await session.flush()

@@ -477,7 +477,7 @@
         {
           "kind": "hse_frame",
           "source": "pack",
-          "id": "eleven_areas_framework_de_by",
+          "id": "eleven_areas_framework_de_bw",
           "version": 1
         },
         {
@@ -640,8 +640,8 @@
               "status": "ready",
               "rag": "green",
               "note": {
-                "en": "Mandate of the school building committee is in force. The council has confirmed the project budget.",
-                "de": "Der Auftrag des Schulbauausschusses gilt. Der Gemeinderat hat das Projektbudget bestätigt."
+                "en": "Mandate of the Technischer Ausschuss is in force. The council has confirmed the project budget.",
+                "de": "Der Auftrag des Technischen Ausschusses gilt. Der Gemeinderat hat das Projektbudget bestätigt."
               }
             },
             {
