@@ -60,6 +60,6 @@ def with_label_texts(node: Any, locale: str = DEFAULT_LOCALE) -> Any:
         return node
     out = {k: with_label_texts(v, locale) for k, v in node.items()}
     key = out.get("name_key")
-    if isinstance(key, str) and key and "labels" in out and not out["labels"]:
+    if isinstance(key, str) and key and not out.get("labels"):
         out["labels"] = label_texts(key, None, locale)
     return out

@@ -122,7 +122,7 @@ class TestTranslateFallback:
         """Unknown locale must not crash; it must warn and serve English."""
         reload_bundle()  # reset per-process fallback-warned cache
         caplog.clear()
-        with caplog.at_level(logging.WARNING, logger="app.core.validation.messages"):
+        with caplog.at_level(logging.INFO, logger="app.core.validation.messages"):
             msg = translate(
                 "boq_quality.position_has_quantity.fail",
                 locale="xx_unknown",
@@ -262,7 +262,7 @@ class TestRegionalLocaleChaining:
         """A genuinely unsupported region-shaped locale must still degrade to English, never a raw key."""
         reload_bundle()
         caplog.clear()
-        with caplog.at_level(logging.WARNING, logger="app.core.validation.messages"):
+        with caplog.at_level(logging.INFO, logger="app.core.validation.messages"):
             msg = translate("din276.cost_group_required.fail", locale="xx-YY", ordinal="01")
         assert msg == translate("din276.cost_group_required.fail", locale="en", ordinal="01")
         assert any("falling back" in r.message.lower() for r in caplog.records)
@@ -361,7 +361,7 @@ class TestRuleLocaleWiring:
             data={"positions": [{"ordinal": "BAD"}]},
             metadata={"locale": "zz"},
         )
-        with caplog.at_level(logging.WARNING, logger="app.core.validation.messages"):
+        with caplog.at_level(logging.INFO, logger="app.core.validation.messages"):
             results = await rule.validate(ctx)
         assert results[0].message == "Ordinal 'BAD' does not match the GAEB OZ-Maske of this file"
         assert any("falling back" in r.message.lower() for r in caplog.records)

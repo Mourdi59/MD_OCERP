@@ -121,6 +121,17 @@ def phases_enabling_in(catalogue: Any, capability: str) -> tuple[str, ...]:
     return tuple(p.code for p in catalogue.phases_enabling(capability))
 
 
+def _memo_part(value: Any) -> Any:
+    """A session is keyed by identity; so is anything else that cannot be hashed."""
+    if isinstance(value, AsyncSession):
+        return id(value)
+    try:
+        hash(value)
+    except TypeError:
+        return id(value)
+    return value
+
+
 def _once_per_collection(fn: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
     """Within one evidence collection a repeated call with the same arguments is answered from memory.
 
@@ -132,7 +143,7 @@ def _once_per_collection(fn: Callable[..., Awaitable[Any]]) -> Callable[..., Awa
         memo = COLLECTION_MEMO.get()
         if memo is None:
             return await fn(*args, **kwargs)
-        key = (fn.__name__, *(id(a) if isinstance(a, AsyncSession) else a for a in args), tuple(sorted(kwargs.items())))
+        key = (fn.__name__, *(_memo_part(a) for a in args), tuple(sorted((k, _memo_part(v)) for k, v in kwargs.items())))
         if key not in memo:
             memo[key] = await fn(*args, **kwargs)
         return memo[key]

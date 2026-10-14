@@ -75,6 +75,10 @@ KNOWN_ABSENT_FROM_HUB: dict[str, str] = {
         "DecisionCriterion is a weighted selection criterion for comparing delivery forms, "
         "not a defect. The census matches it by name only; the module holds no defect register."
     ),
+    "engineering_brief": (
+        "SpecificationIssue is a numbered issue of the requirements specification as a document, "
+        "not a defect. The census matches it by name only; the module holds no defect register."
+    ),
     "qms": (
         "QMSNCR and QMSPunchItem. The QMS module was built as a unified replacement for "
         "the legacy inspections, ncr and punchlist modules and its docstring says the "

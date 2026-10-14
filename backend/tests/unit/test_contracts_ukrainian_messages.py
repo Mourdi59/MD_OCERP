@@ -85,7 +85,7 @@ def test_ukrainian_retention_amount_percent_and_unchecked_currency() -> None:
 def test_contract_bundle_retains_unknown_locale_and_missing_key_fallback(caplog) -> None:
     bundle = MessageBundle(MESSAGES)
     key = "compliance_gate.errors.signature_blocked"
-    with caplog.at_level(logging.WARNING, logger="app.core.validation.messages"):
+    with caplog.at_level(logging.INFO, logger="app.core.validation.messages"):
         assert bundle.translate(key, locale="xx", findings="F-1") == (
             "This contract cannot be signed until these are resolved: F-1"
         )
