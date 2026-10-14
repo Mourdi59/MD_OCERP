@@ -210,7 +210,10 @@ def test_migration_matches_models() -> None:
         model_idx = {i.name: [c.name for c in i.columns] for i in table.indexes}
         assert all(model_idx.get(n) == c for n, c in declared.items()), (name, declared, model_idx)
         beside = {n: c for n, c in model_idx.items() if n not in declared}
-        assert all(n in _hook_name(name, c) for n, c in beside.items()), (name, beside)
+        # Only the offenders go into the message: the whole dict is long once the hook has run, and the
+        # assertion rewriter elides the middle of a long repr, which can hide the very index at fault.
+        foreign = {n: c for n, c in beside.items() if n not in _hook_name(name, c)}
+        assert not foreign, (name, foreign)
 
 
 def test_the_comparison_holds_after_the_platform_attached_its_indexes() -> None:
