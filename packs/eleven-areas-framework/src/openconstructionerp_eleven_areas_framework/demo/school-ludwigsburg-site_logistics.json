@@ -1,0 +1,96 @@
+{
+  "$note": "Site logistics story of the Ludwigsburg school. The site lies beside a running school: pupils' path and site fence are separate, vehicle movements keep clear of school start, breaks and end, one crane serves the structure. All names are invented.",
+  "gates": [
+    {
+      "name": "Gate 1 - delivery road west",
+      "open": "08:00",
+      "close": "15:00",
+      "capacity": 2,
+      "note": "Only construction gate for heavy vehicles. Banksman on duty. Pupils use the fenced path on the east side, never this road."
+    },
+    {
+      "name": "Gate 2 - sports hall side",
+      "open": "08:00",
+      "close": "15:00",
+      "capacity": 1,
+      "note": "Rigid vehicles only, used for the sports hall and kitchen wing. Closed whenever pupils are in the yard next to it."
+    }
+  ],
+  "vehicles": ["Articulated flatbed", "Rigid 18t"],
+  "zones": [
+    {
+      "name": "Laydown A - west field",
+      "capacity": "520 m2 / 70 t",
+      "note": "Reinforcement and formwork. Behind the hoarding, inside the tower crane radius, out of sight of the yard."
+    },
+    {
+      "name": "Laydown B - timber facade store",
+      "capacity": "260 m2",
+      "note": "Covered storage for prefabricated timber facade elements. Dry, no stacking above 3 m."
+    }
+  ],
+  "area_names": {
+    "SITE": "Building site with hoarding",
+    "A-BLD": "School, sports hall and Mensa footprint",
+    "A-LAY": "Laydown A west field",
+    "A-LAY2": "Timber facade store",
+    "A-SET": "Site offices and welfare",
+    "A-TRF": "Construction road and turning area",
+    "A-RES": "Reserve and pupils' path buffer"
+  },
+  "stage_1_title": "Excavation and tree protection",
+  "stage_2_title": "Concrete frame and timber facade",
+  "power_connection_point": "Transformer kiosk at the west gate, outside the pupils' area",
+  "water_connection_point": "Hydrant in the delivery road",
+  "water_consumer": "Concrete curing, dust suppression and wheel wash",
+  "sewage_connection_point": "Manhole in the delivery road",
+  "strategy": [
+    {"flow_code": "rebar", "description": "Reinforcement, cut and bent, delivered by slab", "mode": "stock", "storage_area": "A-LAY", "buffer_days": 4},
+    {"flow_code": "timber", "description": "Prefabricated timber facade elements, stored dry", "mode": "kanban", "storage_area": "A-LAY2", "buffer_days": 3},
+    {"flow_code": "precast", "description": "Precast stair cores, set from the truck outside pupil arrival and departure", "mode": "direct_install", "storage_area": null, "buffer_days": 0}
+  ],
+  "delivery_open": "08:00",
+  "delivery_close": "15:00",
+  "rules_text": {
+    "en": "Book every delivery 48 hours ahead with the site manager, who clears the slot with the school office. No vehicle movements during pupil arrival (07:30 to 08:00) or departure (15:00 to 16:00), and none on the yard side during breaks. No waiting on the public road. Wheel wash on exit.",
+    "de": "Jede Anlieferung 48 Stunden vorher bei der Bauleitung anmelden, die das Zeitfenster mit dem Schulsekretariat abstimmt. Keine Fahrbewegungen zu Schulbeginn (07:30 bis 08:00) und Schulende (15:00 bis 16:00), keine auf der Hofseite in den Pausen. Kein Warten auf der oeffentlichen Strasse. Radwaesche bei der Ausfahrt."
+  },
+  "noise_zone_type": "residential",
+  "day_dba": 55,
+  "night_dba": 40,
+  "municipality_contact": "City of Ludwigsburg, building control office (Baurechtsamt)",
+  "parking_note": "No site parking on the school grounds or in the residential streets. Site staff use the leased lot at the sports ground, with a shuttle at 07:00 and 16:30.",
+  "heavy_title": "Transformer for the campus supply 62 t",
+  "heavy_destination": "Site, delivery gate west",
+  "heavy_route_notes": "Ring road, then the delivery road from the west. Escort stops traffic at the school crossing; no passage during pupil arrival and departure, night move only.",
+  "oversize_authority": "Road traffic authority of the city",
+  "night_authority": "Environmental authority of the district",
+  "spoil_title": "Excavated soil to the licensed tip, outside school start and end",
+  "rebar_title": "Reinforcement, ground floor slab of the classroom wing",
+  "rebar_destination": "Laydown A west field",
+  "dust_description": "Dust on the windows of the existing school building and on parked cars after excavation.",
+  "dust_response": "Water spraying twice a day, wheel wash at the gate, school windows on the site side kept shut during earthworks.",
+  "noise_description": "Reversing alarms before school start at the delivery gate, reported by the head teacher.",
+  "coordination": [
+    {
+      "body": "municipality",
+      "topic": "Crane position and road occupation at the delivery road",
+      "outcome": "Agreed in principle with the building control office; written application for the road occupation to follow.",
+      "days_ago": 9,
+      "next_action_in": 5
+    },
+    {
+      "body": "neighbours",
+      "topic": "Separate pupils' path and site fence, school start and break plan",
+      "outcome": "Head teacher and parents' council informed; path along the east side marked and fenced before the first delivery.",
+      "days_ago": 6,
+      "next_action_in": 12
+    },
+    {
+      "body": "utility",
+      "topic": "Water and power connection dates",
+      "outcome": "Utility confirmed the connection in four weeks.",
+      "days_ago": 2
+    }
+  ]
+}

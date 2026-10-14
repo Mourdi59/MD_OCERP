@@ -1,0 +1,136 @@
+{
+  "$note": "Design transmittals of the Ludwigsburg school from the design team to the client (the city's school construction office and the school). Recipients are roles, not persons; every name is invented.",
+  "transmittals": [
+    {
+      "subject": {
+        "en": "Architecture, design development: floor plans, sections and facade, for approval",
+        "de": "Architektur Entwurfsplanung: Grundrisse, Schnitte und Fassade zur Freigabe"
+      },
+      "purpose_code": "for_approval",
+      "cover_note": "Design development set of the classroom wings, sports hall and Mensa, including the timber facade and the separate pupils' path. Please approve for the Technical Committee.",
+      "issued_days_ago": 140,
+      "response_due_in_days": 21,
+      "recipients": [
+        {
+          "name": "Client representative, school construction office",
+          "action_required": "Approve",
+          "acknowledged_after_days": 1,
+          "response": "Approved with two comments: widen the bicycle parking and move the kitchen delivery away from the yard.",
+          "responded_after_days": 18
+        },
+        {
+          "name": "Head teacher, primary school",
+          "action_required": "Review",
+          "acknowledged_after_days": 2,
+          "response": "Learning clusters and break yard confirmed by the teaching staff.",
+          "responded_after_days": 15
+        }
+      ],
+      "items": [
+        {"description": "Floor plans ground floor to second floor, 1:100", "notes": "Classroom wings, administration, Mensa"},
+        {"description": "Sections and elevations, timber facade, 1:100", "notes": "Wood facade on the concrete frame"},
+        {"description": "Site plan with pupils' path and construction access, 1:500"}
+      ]
+    },
+    {
+      "subject": {
+        "en": "Structural design: frame, foundation and sports hall roof, for review",
+        "de": "Tragwerksplanung: Skelett, Gruendung und Sporthallendach zur Pruefung"
+      },
+      "purpose_code": "for_review",
+      "cover_note": "Structural concept and calculation basis for the concrete frame and the long-span sports hall roof. The Pruefingenieur receives the same set.",
+      "issued_days_ago": 95,
+      "response_due_in_days": 14,
+      "recipients": [
+        {
+          "name": "Client representative, school construction office",
+          "action_required": "Review",
+          "acknowledged_after_days": 1,
+          "response": "Taken note of; the calculation check by the Pruefingenieur is commissioned.",
+          "responded_after_days": 10
+        },
+        {
+          "name": "Pruefingenieur for structural design",
+          "action_required": "Check",
+          "acknowledged_after_days": 2
+        }
+      ],
+      "items": [
+        {"description": "Structural concept report with load assumptions"},
+        {"description": "Foundation and frame drawings, ground floor to roof, 1:50"},
+        {"description": "Calculation of the sports hall roof girders", "notes": "First part, further parts follow"}
+      ]
+    },
+    {
+      "subject": {
+        "en": "Building services: ventilation, heating and heat pump, for approval",
+        "de": "Technische Gebaeudeausruestung: Lueftung, Heizung und Waermepumpe zur Freigabe"
+      },
+      "purpose_code": "for_approval",
+      "cover_note": "Concept and layout of the CO2-controlled ventilation of the classrooms, the heat pump and the PV system, with the energy proof basis under the GEG.",
+      "issued_days_ago": 60,
+      "response_due_in_days": 14,
+      "recipients": [
+        {
+          "name": "Client representative, school construction office",
+          "action_required": "Approve",
+          "acknowledged_after_days": 1
+        },
+        {
+          "name": "Facility management of the city",
+          "action_required": "Review",
+          "acknowledged_after_days": 3,
+          "response": "Maintenance access to the roof plant and the heat pump room confirmed.",
+          "responded_after_days": 12
+        }
+      ],
+      "items": [
+        {"description": "Ventilation concept and schematics for classrooms, sports hall and kitchen"},
+        {"description": "Heat pump and PV layout, 1:100"},
+        {"description": "Energy proof basis (GEG), draft"}
+      ]
+    },
+    {
+      "subject": {
+        "en": "Acoustics and fire protection: room acoustics report and fire protection concept, for information",
+        "de": "Akustik und Brandschutz: Raumakustikgutachten und Brandschutzkonzept zur Information"
+      },
+      "purpose_code": "for_information",
+      "cover_note": "Room acoustics for the classrooms and the sports hall (reverberation targets per DIN 18041) and the fire protection concept as agreed with the Pruefsachverstaendiger.",
+      "issued_days_ago": 30,
+      "recipients": [
+        {
+          "name": "Client representative, school construction office",
+          "action_required": "Note",
+          "acknowledged_after_days": 2
+        },
+        {
+          "name": "Head teacher, primary school",
+          "action_required": "Note"
+        }
+      ],
+      "items": [
+        {"description": "Room acoustics report, classrooms and sports hall"},
+        {"description": "Fire protection concept with escape route plans"}
+      ]
+    },
+    {
+      "subject": {
+        "en": "Tender documents for the shell lots, in preparation",
+        "de": "Ausschreibungsunterlagen Rohbaulose in Vorbereitung"
+      },
+      "purpose_code": "for_tender",
+      "cover_note": "Draft bill of quantities (GAEB) and contract conditions for the shell lots; the issue waits for the decision of the Gemeinderat.",
+      "recipients": [
+        {
+          "name": "Procurement office of the city",
+          "action_required": "Review"
+        }
+      ],
+      "items": [
+        {"description": "Draft bill of quantities, shell lots"},
+        {"description": "Draft contract conditions and schedule of the lots"}
+      ]
+    }
+  ]
+}

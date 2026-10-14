@@ -43,6 +43,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.quality_concept import schemas as s
+from app.modules.quality_concept import vocab
 from app.modules.quality_concept.models import QualityConcept
 
 logger = logging.getLogger(__name__)
@@ -98,6 +99,239 @@ _TOTALS = (
 )
 
 
+_REPORT_STATES = ("planned", "commissioned", "reporting", "completed", "cancelled")
+
+
+def _text(value: Any, locale: str, *, limit: int = 500) -> str | None:
+    """A non-empty story text in the project's locale, else ``None`` (the default stays)."""
+    from app.modules.project_governance.public import story_text
+
+    if not isinstance(value, (str, dict)):
+        return None
+    text = story_text(value, locale)
+    return text.strip()[:limit] if isinstance(text, str) and text.strip() else None
+
+
+def _days(value: Any, low: int = -720, high: int = 1500) -> int | None:
+    """An integer day offset within ``[low, high]``; ``None`` for anything else (bool included)."""
+    if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+        return None
+    return value
+
+
+def _offsets(value: Any) -> tuple[int, ...] | None:
+    """A non-empty list of day offsets, or ``None``."""
+    if not isinstance(value, list) or not value:
+        return None
+    days = [_days(v) for v in value]
+    return None if any(d is None for d in days) else tuple(d for d in days if d is not None)
+
+
+def default_plan() -> dict[str, Any]:
+    """The built-in story as one dict: the constants above, in the shape ``resolve_story`` returns."""
+    return {
+        "start": _START,
+        "regime": _REGIME,
+        "regime_before": _REGIME_BEFORE_CONSTRUCTION,
+        "packages": _PACKAGES,
+        "standards": tuple((*row, "contract") for row in _STANDARDS),
+        "requirements": _REQUIREMENTS,
+        "expert_reports": tuple(
+            (*row, _REPORTS_AFTER_START[i % len(_REPORTS_AFTER_START)]) for i, row in enumerate(_EXPERT_REPORTS)
+        ),
+        "units": (
+            ("AU-01", "Structure, building section A", "partial_section", 45, (0,), "A"),
+            ("AU-02", "Building services", "partial_package", 120, (1,), ""),
+            ("AU-03", "Whole works", "total", 150, (), ""),
+            ("AU-04", "Handover to operation", "handover_to_operation", 165, (), ""),
+        ),
+        "neighbour": {
+            "ref": "NB-01",
+            "address": "Adjacent building, north boundary",
+            "triggers": ["excavation"],
+            "methods": ["photo", "crack_mapping"],
+        },
+        "road": {"ref": "RD-01", "address": "Access road, east side", "triggers": ["excavation"], "methods": ["photo"]},
+    }
+
+
+def _merge_standards(value: Any, families: set[str], locale: str) -> tuple[tuple, ...] | None:
+    """Standard rows ``(code, title, family, discipline, package index, mandate)``; ``None`` keeps the default."""
+    if not isinstance(value, list):
+        return None
+    rows = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        code = _text(item.get("code"), locale, limit=120)
+        title = _text(item.get("title"), locale)
+        family, package = item.get("family"), item.get("package", 0)
+        mandate = item.get("mandate", "contract")
+        if not code or not title or package not in (0, 1) or isinstance(package, bool):
+            logger.info("quality_concept demo story: standard %r ignored", item.get("code"))
+            continue
+        if family is not None and family not in families:
+            family = None
+        discipline = _text(item.get("discipline"), locale, limit=40) or ""
+        rows.append(
+            (code, title, family, discipline, package, mandate if mandate in vocab.STANDARD_MANDATE else "contract")
+        )
+    return tuple(rows) or None
+
+
+def _merge_requirements(value: Any, categories: set[str], locale: str) -> tuple[tuple, ...] | None:
+    """Requirement rows ``(category, entity, attribute, value, unit, source)``; ``None`` keeps the default."""
+    if not isinstance(value, list):
+        return None
+    rows = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        category = item.get("category")
+        entity, attribute = (
+            _text(item.get("entity"), locale, limit=255),
+            _text(item.get("attribute"), locale, limit=255),
+        )
+        if not (isinstance(category, str) and category in categories and entity and attribute):
+            logger.info("quality_concept demo story: requirement %r ignored", item.get("category"))
+            continue
+        rows.append(
+            (
+                category,
+                entity,
+                attribute,
+                _text(item.get("value"), locale) or "",
+                _text(item.get("unit"), locale, limit=50) or "",
+                _text(item.get("source"), locale) or "",
+            )
+        )
+    return tuple(rows) or None
+
+
+def _merge_reports(value: Any, start: int, locale: str) -> tuple[tuple, ...] | None:
+    """Expert report rows ``(subject, trigger, frequency, offsets, state, planned offsets)``.
+
+    ``planned_offsets`` is where the report falls due in the story before construction; without it the report
+    follows the start by 30 days plus 40 per row.
+    """
+    if not isinstance(value, list):
+        return None
+    rows = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        subject = _text(item.get("subject"), locale)
+        offsets = _offsets(item.get("offsets"))
+        if not subject or offsets is None:
+            logger.info("quality_concept demo story: expert report %r ignored", item.get("subject"))
+            continue
+        trigger, frequency, state = item.get("trigger", ""), item.get("frequency", ""), item.get("state", "planned")
+        planned = _offsets(item.get("planned_offsets")) or (start + 30 + 40 * len(rows),)
+        rows.append(
+            (
+                subject,
+                trigger if trigger in ("", *vocab.EXPERT_REPORT_TRIGGERS) else "",
+                frequency if frequency in ("", *vocab.EXPERT_REPORT_FREQUENCIES) else "",
+                offsets,
+                state if state in _REPORT_STATES else "planned",
+                planned,
+            )
+        )
+    return tuple(rows) or None
+
+
+def _merge_units(value: Any, locale: str) -> tuple[tuple, ...] | None:
+    """Acceptance unit rows ``(code, title, kind, days, package indexes, section)``; ``None`` keeps the default."""
+    if not isinstance(value, list):
+        return None
+    rows = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        code, title = _text(item.get("code"), locale, limit=40), _text(item.get("title"), locale)
+        kind, days, packages = item.get("kind"), _days(item.get("days"), 0, 1500), item.get("packages", [])
+        if not (code and title and kind in vocab.ACCEPTANCE_KINDS and days is not None):
+            logger.info("quality_concept demo story: acceptance unit %r ignored", item.get("code"))
+            continue
+        indexes = (
+            tuple(i for i in packages if i in (0, 1) and not isinstance(i, bool)) if isinstance(packages, list) else ()
+        )
+        section = _text(item.get("section"), locale, limit=255) or ("A" if kind == "partial_section" else "")
+        rows.append((code, title, kind, days, indexes, section))
+    return tuple(rows) or None
+
+
+def _merge_subject(default: dict[str, Any], value: Any, locale: str) -> dict[str, Any]:
+    """A survey subject (reference, address, influence triggers, methods) with the story on top."""
+    out = dict(default)
+    if not isinstance(value, dict):
+        return out
+    ref, address = _text(value.get("ref"), locale, limit=64), _text(value.get("address"), locale)
+    if ref:
+        out["ref"] = ref
+    if address:
+        out["address"] = address
+    triggers, methods = value.get("triggers"), value.get("methods")
+    if isinstance(triggers, list) and triggers and all(t in vocab.INFLUENCE_TRIGGERS for t in triggers):
+        out["triggers"] = list(triggers)
+    if isinstance(methods, list) and methods and all(m in vocab.SURVEY_METHODS for m in methods):
+        out["methods"] = list(methods)
+    return out
+
+
+def resolve_story(
+    story: dict[str, Any], locale: str, *, families: set[str], categories: set[str], regimes: set[str]
+) -> dict[str, Any]:
+    """The plan of one project: the built-in story with ``story`` applied key by key.
+
+    Args:
+        story: The pack's story object for this module, or ``{}``.
+        locale: Locale for ``{"en", "de"}`` texts.
+        families: Standard family codes of the project's catalogue.
+        categories: Requirement category codes of the catalogue.
+        regimes: Acceptance regime codes of the catalogue.
+
+    Returns:
+        The dict ``default_plan`` returns. A value that is malformed or names a code the catalogue does not
+        have keeps its default.
+    """
+    plan = default_plan()
+    if not story:
+        return plan
+    start = _days(story.get("start_days"), 30, 720)
+    if start is not None:
+        plan["start"] = start
+        plan["expert_reports"] = tuple(
+            (*row[:5], (start + 30 + 40 * i,)) for i, row in enumerate(plan["expert_reports"])
+        )
+    for key, field in (("regime", "regime"), ("regime_before_construction", "regime_before")):
+        code = story.get(key)
+        if code is None:
+            continue
+        if isinstance(code, str) and code in regimes:
+            plan[field] = code
+        else:
+            logger.info("quality_concept demo story: acceptance regime %r ignored", code)
+    packages = story.get("packages")
+    if isinstance(packages, list) and len(packages) >= 2:
+        rows = tuple(
+            (str(pk["ref"])[:64], t)
+            for pk in packages
+            if isinstance(pk, dict) and pk.get("ref") and (t := _text(pk.get("title"), locale, limit=255))
+        )
+        if len(rows) >= 2:
+            plan["packages"] = rows
+    plan["standards"] = _merge_standards(story.get("standards"), families, locale) or plan["standards"]
+    plan["requirements"] = _merge_requirements(story.get("requirements"), categories, locale) or plan["requirements"]
+    plan["expert_reports"] = (
+        _merge_reports(story.get("expert_reports"), plan["start"], locale) or plan["expert_reports"]
+    )
+    plan["units"] = _merge_units(story.get("units"), locale) or plan["units"]
+    plan["neighbour"] = _merge_subject(plan["neighbour"], story.get("survey_neighbour"), locale)
+    plan["road"] = _merge_subject(plan["road"], story.get("survey_road"), locale)
+    return plan
+
+
 async def _before_construction(session: AsyncSession, pid: uuid.UUID) -> bool:
     """Whether the gate into the phase that starts construction exists and is still undecided."""
     from app.modules.project_governance import public
@@ -150,15 +384,23 @@ async def _actors(session: AsyncSession, pid: uuid.UUID, owner_id: uuid.UUID) ->
 
 
 async def _seed_plan(
-    svc: Any, pid: uuid.UUID, actor: uuid.UUID, named: uuid.UUID, today: date, totals: dict[str, int], before: bool
+    svc: Any,
+    pid: uuid.UUID,
+    actor: uuid.UUID,
+    named: uuid.UUID,
+    today: date,
+    totals: dict[str, int],
+    before: bool,
+    plan: dict[str, Any],
 ) -> list[str]:
     """Packages, standards, requirements, certification targets and expert reports. Returns the package refs."""
     await svc.patch_concept(
-        pid, s.ConceptPatch(packages=[s.PackageScopeIn(ref=ref, code=ref, title=title) for ref, title in _PACKAGES])
+        pid,
+        s.ConceptPatch(packages=[s.PackageScopeIn(ref=ref, code=ref, title=title) for ref, title in plan["packages"]]),
     )
     concept = await svc.require_concept(pid)
     refs = [p["ref"] for p in await svc.applicable_packages(concept)][:2]
-    for code, title, family, discipline, package in _STANDARDS:
+    for code, title, family, discipline, package, mandate in plan["standards"]:
         await svc.create_standard(
             pid,
             s.StandardIn(
@@ -167,10 +409,11 @@ async def _seed_plan(
                 family_code=family,
                 discipline=discipline,
                 package_refs=refs[package : package + 1],
+                mandate=mandate,
             ),
         )
         totals["standards"] += 1
-    for category, entity, attribute, value, unit, source in _REQUIREMENTS:
+    for category, entity, attribute, value, unit, source in plan["requirements"]:
         await svc.add_requirement(
             pid,
             s.QualityRequirementIn(
@@ -227,10 +470,10 @@ async def _seed_plan(
             await svc.patch_credit(pid, credits[0].id, s.CreditPatch(action="achieve", points_achieved=Decimal("17")))
             await svc.patch_credit(pid, credits[1].id, s.CreditPatch(action="submit_evidence"))
 
-    for index, (subject, trigger, frequency, offsets, state) in enumerate(_EXPERT_REPORTS):
+    for subject, trigger, frequency, offsets, state, planned in plan["expert_reports"]:
         if before:
             # Nothing is built yet: every report is still planned and falls due after the start.
-            offsets, state = _REPORTS_AFTER_START[index % len(_REPORTS_AFTER_START)], "planned"
+            offsets, state = planned, "planned"
         await svc.create_expert_report(
             pid,
             s.ExpertReportIn(
@@ -308,16 +551,12 @@ async def _seed_stages(
 
 
 async def _seed_units(
-    svc: Any, pid: uuid.UUID, refs: list[str], today: date, totals: dict[str, int], before: bool
+    svc: Any, pid: uuid.UUID, refs: list[str], today: date, totals: dict[str, int], before: bool, plan: dict[str, Any]
 ) -> None:
     # Before construction the acceptances lie after commissioning, a year and a half ahead.
-    shift = _START + 250 if before else 0
-    for code, title, kind, days, packages in (
-        ("AU-01", "Structure, building section A", "partial_section", 45, refs[:1]),
-        ("AU-02", "Building services", "partial_package", 120, refs[1:2]),
-        ("AU-03", "Whole works", "total", 150, []),
-        ("AU-04", "Handover to operation", "handover_to_operation", 165, []),
-    ):
+    shift = plan["start"] + 250 if before else 0
+    for code, title, kind, days, indexes, section in plan["units"]:
+        packages = [refs[i] for i in indexes if i < len(refs)]
         if kind.startswith("partial_") and not packages:
             continue
         await svc.create_unit(
@@ -326,9 +565,9 @@ async def _seed_units(
                 code=code,
                 title=title,
                 kind=kind,
-                regime_code=_REGIME_BEFORE_CONSTRUCTION if before else _REGIME,
+                regime_code=plan["regime_before"] if before else plan["regime"],
                 package_refs=packages,
-                section_ref="A" if kind == "partial_section" else "",
+                section_ref=section,
                 planned_date=today + timedelta(days=days + shift),
             ),
         )
@@ -399,21 +638,20 @@ async def _seed_proofs(
         )
 
 
-async def _seed_surveys_ahead(svc: Any, pid: uuid.UUID, today: date, totals: dict[str, int]) -> None:
+async def _seed_surveys_ahead(
+    svc: Any, pid: uuid.UUID, today: date, totals: dict[str, int], plan: dict[str, Any]
+) -> None:
     """Before construction: the condition surveys are planned shortly before the start, none is carried out."""
-    for kind, ref, address, methods, days in (
-        ("neighbour_building", "NB-01", "Adjacent building, north boundary", ["photo", "crack_mapping"], 20),
-        ("public_road", "RD-01", "Access road, east side", ["photo"], 10),
-    ):
+    for kind, subject, days in (("neighbour_building", plan["neighbour"], 20), ("public_road", plan["road"], 10)):
         await svc.create_survey(
             pid,
             s.PreservationIn(
                 subject_kind=kind,
-                subject_ref=ref,
-                address=address,
-                influence_triggers=["excavation"],
-                methods=methods,
-                planned_date=today + timedelta(days=_START - days),
+                subject_ref=subject["ref"],
+                address=subject["address"],
+                influence_triggers=subject["triggers"],
+                methods=subject["methods"],
+                planned_date=today + timedelta(days=plan["start"] - days),
             ),
         )
         totals["surveys"] += 1
@@ -451,15 +689,18 @@ async def _seed_course(svc: Any, pid: uuid.UUID, engineer: uuid.UUID, today: dat
         await svc.submit(pid, engineer)
 
 
-async def _seed_surveys(svc: Any, pid: uuid.UUID, actor: uuid.UUID, today: date, totals: dict[str, int]) -> None:
+async def _seed_surveys(
+    svc: Any, pid: uuid.UUID, actor: uuid.UUID, today: date, totals: dict[str, int], plan: dict[str, Any]
+) -> None:
+    nb, road = plan["neighbour"], plan["road"]
     before = await svc.create_survey(
         pid,
         s.PreservationIn(
             subject_kind="neighbour_building",
-            subject_ref="NB-01",
-            address="Adjacent building, north boundary",
-            influence_triggers=["excavation"],
-            methods=["photo", "crack_mapping"],
+            subject_ref=nb["ref"],
+            address=nb["address"],
+            influence_triggers=nb["triggers"],
+            methods=nb["methods"],
             planned_date=today - timedelta(days=300),
         ),
     )
@@ -479,10 +720,10 @@ async def _seed_surveys(svc: Any, pid: uuid.UUID, actor: uuid.UUID, today: date,
         pid,
         s.PreservationIn(
             subject_kind="neighbour_building",
-            subject_ref="NB-01",
-            address="Adjacent building, north boundary",
-            influence_triggers=["excavation"],
-            methods=["photo", "crack_mapping"],
+            subject_ref=nb["ref"],
+            address=nb["address"],
+            influence_triggers=nb["triggers"],
+            methods=nb["methods"],
             phase="after",
             paired_with_id=before.id,
             planned_date=today + timedelta(days=120),
@@ -492,10 +733,10 @@ async def _seed_surveys(svc: Any, pid: uuid.UUID, actor: uuid.UUID, today: date,
         pid,
         s.PreservationIn(
             subject_kind="public_road",
-            subject_ref="RD-01",
-            address="Access road, east side",
-            influence_triggers=["excavation"],
-            methods=["photo"],
+            subject_ref=road["ref"],
+            address=road["address"],
+            influence_triggers=road["triggers"],
+            methods=road["methods"],
             planned_date=today + timedelta(days=10),
         ),
     )
@@ -512,6 +753,8 @@ async def seed_quality_concept_demo(session: AsyncSession, project_ids: Iterable
     Returns:
         Dict with per-entity insert counts.
     """
+    from app.core.demo_marker import demo_id_of
+    from app.modules.project_governance.public import demo_module_story
     from app.modules.projects.models import Project
     from app.modules.quality_concept.service import QualityConceptService
 
@@ -520,14 +763,16 @@ async def seed_quality_concept_demo(session: AsyncSession, project_ids: Iterable
     if not ids:
         return totals
     rows = (
-        await session.execute(select(Project.id, Project.owner_id, Project.metadata_).where(Project.id.in_(ids)))
+        await session.execute(
+            select(Project.id, Project.owner_id, Project.metadata_, Project.locale).where(Project.id.in_(ids))
+        )
     ).all()
     seeded = set(
         (await session.execute(select(QualityConcept.project_id).where(QualityConcept.project_id.in_(ids)))).scalars()
     )
     today = datetime.now(UTC).date()
     svc = QualityConceptService(session)
-    for pid, owner, meta in rows:
+    for pid, owner, meta, locale in rows:
         if pid in seeded or not (isinstance(meta, dict) and str(meta.get("demo_id") or "").strip()):
             continue
         engineer, authority = await _actors(session, pid, owner)
@@ -539,14 +784,22 @@ async def seed_quality_concept_demo(session: AsyncSession, project_ids: Iterable
             before = await _before_construction(session, pid)
             named = await _named(session, pid, engineer, owner)
             await svc.ensure_concept(pid, engineer)
-            refs = await _seed_plan(svc, pid, engineer, named, today, counts, before)
+            cat = await svc.catalogue_for(await svc.require_concept(pid))
+            plan = resolve_story(
+                demo_module_story(demo_id_of(meta), "quality_concept"),
+                locale or "en",
+                families={f.code for f in cat.standard_families},
+                categories={c.code for c in cat.requirement_categories},
+                regimes={r.code for r in cat.acceptance_regimes},
+            )
+            refs = await _seed_plan(svc, pid, engineer, named, today, counts, before, plan)
             await _seed_stages(svc, pid, engineer, authority, named, counts, before)
-            await _seed_units(svc, pid, refs, today, counts, before)
+            await _seed_units(svc, pid, refs, today, counts, before, plan)
             await _seed_proofs(svc, pid, refs, engineer, authority, counts, before)
             if before:
-                await _seed_surveys_ahead(svc, pid, today, counts)
+                await _seed_surveys_ahead(svc, pid, today, counts, plan)
             else:
-                await _seed_surveys(svc, pid, engineer, today, counts)
+                await _seed_surveys(svc, pid, engineer, today, counts, plan)
                 await _seed_course(svc, pid, engineer, today)
         counts["projects"] = 1
         for key, value in counts.items():

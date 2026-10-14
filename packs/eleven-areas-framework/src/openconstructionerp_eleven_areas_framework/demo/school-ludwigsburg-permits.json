@@ -1,0 +1,69 @@
+{
+  "$note": "Permit story of the Ludwigsburg school (Baden-Wuerttemberg). The catalogue codes are those of the DE-BW permit catalogue the project pins, resolved through the federal catalogue it extends. Kind, trigger and owner of every condition stay in the seeder; the story only words them. All references are invented.",
+  "codes": {
+    "preliminary": "bauvoranfrage",
+    "building": "baugenehmigung",
+    "early_start": "vorzeitiger_baubeginn",
+    "road": "sondernutzung_strasse",
+    "occupancy": "nutzungsaufnahme_anzeige"
+  },
+  "preliminary_title": {
+    "en": "Preliminary decision on the school site and building envelope",
+    "de": "Bauvoranfrage zu Schulstandort und Baukoerper"
+  },
+  "building_title": {
+    "en": "Building permit for the primary school with sports hall and Mensa",
+    "de": "Baugenehmigung Grundschule mit Sporthalle und Mensa"
+  },
+  "early_title": {
+    "en": "Early start of excavation and tree protection works at own risk",
+    "de": "Vorzeitiger Baubeginn Aushub und Baumschutz auf eigenes Risiko"
+  },
+  "road_title": {
+    "en": "Road occupation for the tower crane and the delivery road",
+    "de": "Sondernutzung Strasse fuer Kran und Anlieferstrasse"
+  },
+  "occupancy_title": {
+    "en": "Occupancy approval before the start of the school year",
+    "de": "Nutzungsaufnahme vor Beginn des Schuljahres"
+  },
+  "authority_name": "Building control office of the City of Ludwigsburg (Baurechtsamt)",
+  "preliminary_reference": "BV-2026-0187",
+  "building_reference": "BG-2026-0342",
+  "early_reference": "VB-2026-0058",
+  "clock_stop_reason": "Baurechtsamt asked for the revised rainwater retention layout and the parking and bicycle space proof",
+  "clock_resume_reason": "Revised retention layout and space proof delivered, fire protection concept confirmed by the Pruefsachverstaendiger",
+  "evidence_note": "Tree protection fence (Baumschutz) along the old lime trees on the east side, photographed from the school gate and dated",
+  "early_conditions": {
+    "1": {
+      "text": "If the building permit is refused, the site is restored and the school grounds are handed back as they were."
+    },
+    "2": {
+      "text": "Security for the restoration is lodged with the Baurechtsamt before excavation starts."
+    }
+  },
+  "conditions": {
+    "1": {
+      "text": "Before work starts, submit the structural calculations of the concrete frame and the sports hall roof, checked by the Pruefingenieur.",
+      "topic": "structural",
+      "evidence_required": "Checked structural calculations with the report of the Pruefingenieur"
+    },
+    "2": {
+      "text": "Noisy works are permitted on working days between 08:00 and 17:00 only, and not during written exams or the break times of the school; the school office is told a week ahead of loud works.",
+      "topic": "noise",
+      "responsible_party": "Main contractor"
+    },
+    "3": {
+      "text": "The existing trees on the east side are protected by a Baumschutz fence before any excavation, kept until completion and checked weekly.",
+      "topic": "ecology",
+      "evidence_required": "Dated photograph of the fence in place, with the weekly check list"
+    },
+    "4": {
+      "text": "Before the school is occupied, the fire protection measures, the fire alarm system and the escape routes are accepted by the Pruefsachverstaendiger for fire protection.",
+      "topic": "fire"
+    },
+    "5": {
+      "text": "The permit does not replace the energy proof under the GEG, the Artenschutz clearance or the consent for the road occupation."
+    }
+  }
+}

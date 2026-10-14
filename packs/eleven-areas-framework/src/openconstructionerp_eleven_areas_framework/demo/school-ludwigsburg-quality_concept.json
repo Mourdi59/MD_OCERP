@@ -1,0 +1,62 @@
+{
+  "$note": "Quality concept of the Ludwigsburg school as data, applied on top of the module seeder defaults key by key. Day offsets count from the seed day. Package index 0 is the structure and envelope package, 1 the fit-out and services package. No real firms or persons.",
+  "start_days": 190,
+  "regime": "de_vob_b",
+  "regime_before_construction": "de_vob_b",
+  "packages": [
+    { "ref": "PKG-STR", "title": "Shell and timber frame facade" },
+    { "ref": "PKG-FIT", "title": "Fit-out, building services, kitchen and sports hall" }
+  ],
+  "standards": [
+    { "code": "EN 206", "title": "Concrete: specification, performance, production and conformity", "family": "concrete", "discipline": "structure", "package": 0 },
+    { "code": "DIN EN 13501", "title": "Fire classification of construction products and building elements", "family": "fire", "discipline": "fire", "package": 0, "mandate": "statute" },
+    { "code": "DIN 4109", "title": "Sound insulation in buildings", "family": "acoustics", "discipline": "building_physics", "package": 0, "mandate": "statute" },
+    { "code": "DIN 18041", "title": "Acoustic quality in rooms: classrooms and sports halls", "family": "acoustics", "discipline": "building_physics", "package": 0 },
+    { "code": "DIN 18040-1", "title": "Accessible building design: public buildings", "discipline": "accessibility", "package": 0, "mandate": "statute" },
+    { "code": "DIN EN ISO 9972", "title": "Airtightness of buildings: fan pressurization method (blower door test)", "family": "energy", "discipline": "building_physics", "package": 0 },
+    { "code": "DIN V 18599", "title": "Energy efficiency of buildings: proof under the GEG", "family": "energy", "discipline": "building_physics", "package": 1, "mandate": "statute" },
+    { "code": "VDI 6022", "title": "Hygiene requirements for ventilation systems", "family": "building_services", "discipline": "mep", "package": 1 },
+    { "code": "DIN 18032-2", "title": "Sports halls: floors for sports use, requirements and testing", "discipline": "sports", "package": 1 }
+  ],
+  "requirements": [
+    { "category": "quality.acoustics", "entity": "Classrooms", "attribute": "reverberation time (DIN 18041, room group A)", "value": "0.6", "unit": "s", "source": "Room acoustics concept 2.1" },
+    { "category": "quality.acoustics", "entity": "Sports hall", "attribute": "reverberation time", "value": "<= 1.8", "unit": "s", "source": "Room acoustics concept 3.4" },
+    { "category": "quality.user", "entity": "Teaching rooms, Mensa and sports hall", "attribute": "ventilation: CO2 concentration, demand controlled", "value": "<= 1000", "unit": "ppm", "source": "Ventilation concept 4.2" },
+    { "category": "quality.user", "entity": "Entrances, teaching rooms and sanitary rooms", "attribute": "accessibility (DIN 18040-1)", "value": "fulfilled, checked by the accessibility officer", "unit": "", "source": "Building permit, condition 12" },
+    { "category": "quality.energy", "entity": "Timber frame facade", "attribute": "air permeability n50", "value": "<= 1.0", "unit": "1/h", "source": "GEG energy proof 2.3" },
+    { "category": "quality.material", "entity": "Sports hall floor", "attribute": "shock absorption (DIN 18032-2)", "value": ">= 53", "unit": "%", "source": "Sports hall specification 1.5" },
+    { "category": "quality.fire", "entity": "Escape routes and timber frame facade", "attribute": "fire protection as in the approved concept", "value": "acceptance by the Pruefsachverstaendiger", "unit": "", "source": "Fire protection concept 5" },
+    { "category": "quality.standards_basis", "entity": "Mensa production kitchen", "attribute": "hygiene concept", "value": "approved before first use", "unit": "", "source": "Kitchen planning, food hygiene concept" },
+    { "category": "quality.fm_data", "entity": "Technical equipment and kitchen", "attribute": "asset data set", "value": "complete at handover", "unit": "", "source": "Information needs 2.3" }
+  ],
+  "expert_reports": [
+    { "subject": "Independent check of the structural analysis by the Pruefingenieur", "trigger": "before_concreting", "frequency": "once", "offsets": [-200], "state": "completed", "planned_offsets": [215] },
+    { "subject": "Fire protection inspection of the services penetrations", "trigger": "before_concealment", "frequency": "per_floor", "offsets": [-20, 25], "state": "reporting", "planned_offsets": [400, 450] },
+    { "subject": "Blower door test of the timber frame facade", "trigger": "after_installation", "frequency": "per_section", "offsets": [60, 120], "state": "planned", "planned_offsets": [330, 380] },
+    { "subject": "Commissioning and hygiene check of the CO2-controlled ventilation", "trigger": "before_commissioning", "frequency": "per_section", "offsets": [130], "state": "planned", "planned_offsets": [470] },
+    { "subject": "Acoustic measurement to DIN 18041 in classrooms and sports hall", "trigger": "after_installation", "frequency": "per_section", "offsets": [140, 150], "state": "planned", "planned_offsets": [500, 520] },
+    { "subject": "Floor test of the sports hall to DIN 18032-2", "trigger": "before_acceptance", "frequency": "once", "offsets": [155], "state": "planned", "planned_offsets": [540] },
+    { "subject": "Hygiene acceptance of the Mensa production kitchen", "trigger": "before_acceptance", "frequency": "once", "offsets": [160], "state": "planned", "planned_offsets": [545] },
+    { "subject": "Accessibility check to DIN 18040-1", "trigger": "before_acceptance", "frequency": "once", "offsets": [165], "state": "planned", "planned_offsets": [550] },
+    { "subject": "Fire protection acceptance by the Pruefsachverstaendiger", "trigger": "before_acceptance", "frequency": "once", "offsets": [170], "state": "planned", "planned_offsets": [560] }
+  ],
+  "units": [
+    { "code": "AU-01", "title": "Shell and timber frame facade", "kind": "partial_package", "days": 60, "packages": [0] },
+    { "code": "AU-02", "title": "Building services and kitchen", "kind": "partial_package", "days": 130, "packages": [1] },
+    { "code": "AU-03", "title": "Sports hall, before the school year", "kind": "partial_section", "days": 150, "packages": [1], "section": "Sports hall" },
+    { "code": "AU-04", "title": "Whole works", "kind": "total", "days": 170 },
+    { "code": "AU-05", "title": "Handover to the school and the city", "kind": "handover_to_operation", "days": 185 }
+  ],
+  "survey_neighbour": {
+    "ref": "NB-01",
+    "address": "Adjacent residential building, west boundary",
+    "triggers": ["excavation", "vibration"],
+    "methods": ["photo", "crack_mapping"]
+  },
+  "survey_road": {
+    "ref": "RD-01",
+    "address": "School access road, east side",
+    "triggers": ["excavation"],
+    "methods": ["photo"]
+  }
+}

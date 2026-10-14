@@ -1,0 +1,41 @@
+{
+  "$note": "Commitment release story of the Ludwigsburg school, told before the Baubeschluss gate. The slot item (CR-002) is the supply order of the heat pump and links to plant item PL-001; its order_signed_days and manufacturing_started_days agree with convert_by_days and slot_from_days of the held slot in the plant register story. All names invented.",
+  "works": {
+    "title": "Trade lot 1: reinforced concrete frame and shell",
+    "amount": "6200000",
+    "lead_time_days": 45,
+    "award_days": 165
+  },
+  "slot": {
+    "title": "Heat pump: supply order on the held manufacturing slot",
+    "amount": "380000",
+    "lead_time_days": 140,
+    "release_note": "Authority to sign the heat pump supply order before the Baubeschluss gate, recommended by the Technischer Ausschuss. The manufacturing slot is held free of charge and lapses if the order is not signed by its conversion date.",
+    "salvage_value": "45000",
+    "source_note": "Budget quotation: cancellation terms that apply once the order is signed",
+    "order_signed_days": 45,
+    "manufacturing_started_days": 300,
+    "release_days_ago": 33,
+    "plant_item": "PL-001"
+  },
+  "design": {
+    "title": "Design appointment, HOAI phases 1 to 4, after the VgV procedure",
+    "amount": "3100000",
+    "decision_days": 45,
+    "loss_estimate": "150000",
+    "brief_text": "Raumprogramm signed off by the Schulleitung and the Schulamt",
+    "first_amount": "420000",
+    "first_note": "First tranche: Leistungsphasen 1 and 2 (Grundlagenermittlung, Vorplanung)",
+    "first_condition": "Vorplanung approved by the Technischer Ausschuss before the next tranche",
+    "second_amount": "580000",
+    "second_note": "Second tranche: Leistungsphasen 3 and 4 (Entwurfsplanung, Genehmigungsplanung)"
+  },
+  "enabling": {
+    "title": "Enabling works: Kampfmittel survey, tree protection and service diversions",
+    "amount": "145000"
+  },
+  "contingency": {
+    "title": "Contingency drawdown for ground conditions and Altlasten",
+    "amount": "320000"
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "$note": "Design management of the Ludwigsburg school as data, applied on top of the module seeder defaults key by key. The phases come from the pinned phase model; design stages follow the HOAI phases LP 1 to LP 9 in the wording. Structure (which report is open at the gate, four-eyes steps) stays in the seeder. No real firms or persons.",
+  "wbs": {
+    "top": { "code": "1", "name": "School building" },
+    "children": [
+      { "code": "1.1", "name": "Substructure and sports hall foundation", "kind": "system" },
+      { "code": "1.2", "name": "Concrete frame", "kind": "system" },
+      { "code": "1.3", "name": "Timber frame facade and roof with photovoltaic", "kind": "system" },
+      { "code": "1.4", "name": "Building services: heat pump, ventilation, Mensa kitchen", "kind": "system" }
+    ],
+    "extra": [
+      { "code": "2", "name": "Sports hall", "kind": "location" },
+      { "code": "3", "name": "External works and school yard", "kind": "location" }
+    ]
+  },
+  "roles": {
+    "owner": { "title": { "en": "Design manager of the school building office", "de": "Planungsverantwortliche des Hochbauamts" } },
+    "arch": { "title": "Lead architect (HOAI LP 1 to 8)", "originator": "ARC" },
+    "struct": { "title": "Structural engineer for concrete and timber", "originator": "STR" },
+    "mep": { "title": "Building services engineer (heat pump, ventilation, kitchen)", "originator": "MEP" },
+    "fire": { "title": "Fire protection engineer", "originator": "FSE" },
+    "checker": { "title": { "en": "Independent structural checker (Pruefingenieur)", "de": "Pruefingenieur fuer Standsicherheit" }, "originator": "CHK" }
+  },
+  "approval_points": {
+    "AP-001": { "en": "Gemeinderat decision on the preliminary design (HOAI LP 2)", "de": "Gemeinderatsbeschluss zur Vorplanung (HOAI LP 2)" },
+    "AP-002": "Cost estimate to DIN 276 checked before the permit application (LP 3)",
+    "AP-003": "Sign-off of room layouts by the school management and the parents' council"
+  },
+  "deliverables": {
+    "DL-001": "Preliminary design plans and sections (LP 2)",
+    "DL-002": "Structural concept for the concrete frame and the timber frame facade (LP 2)",
+    "DL-003": "Building permit drawings for the Baurechtsamt (LP 4)",
+    "DL-004": "Building services layouts: heat pump, CO2-controlled ventilation, Mensa kitchen (LP 3 to 5)"
+  },
+  "drawings": [
+    "Ground floor plan with classroom clusters and Mensa",
+    "Section A-A through the sports hall",
+    "Foundation layout of the sports hall and the classroom wing",
+    "Site plan for the building permit",
+    "Elevations with the timber frame facade",
+    "Ventilation ground floor"
+  ],
+  "releases": {
+    "REL-001": "Preliminary design issue (LP 2) for the Technischer Ausschuss",
+    "REL-002": "Building permit set for the Baurechtsamt (LP 4)"
+  },
+  "review": {
+    "title": "End of preliminary design review (LP 2)",
+    "comments": [
+      "Plant room is too small for the heat pump and the CO2-controlled ventilation units",
+      "Width of the central stair to be checked against the escape route in the fire protection concept",
+      "Foundation level of the sports hall differs from the soil report"
+    ],
+    "answer": "Plant room enlarged to take the heat pump and the ventilation units."
+  },
+  "reports": {
+    "overrides": {
+      "RPT-001": { "title": "Geotechnical report and soil survey" },
+      "RPT-002": { "title": { "en": "Fire protection concept, agreed with the Pruefsachverstaendiger", "de": "Brandschutzkonzept, mit dem Pruefsachverstaendigen abgestimmt" } },
+      "RPT-003": { "title": "Structural design of the concrete frame and the timber frame facade" },
+      "RPT-004": { "title": { "en": "Structural proof check by the Pruefingenieur", "de": "Pruefung der Standsicherheitsnachweise durch den Pruefingenieur" } },
+      "RPT-005": { "title": { "en": "GEG energy proof for heat pump, photovoltaic and timber frame facade", "de": "GEG-Energienachweis fuer Waermepumpe, Photovoltaik und Holzrahmenfassade" } }
+    },
+    "extra": [
+      { "code": "RPT-006", "kind": "contamination", "phase": "early", "author": "struct", "status": "accepted", "title": { "en": "Contamination screening of the site", "de": "Altlastenerkundung des Grundstuecks" } },
+      { "code": "RPT-007", "kind": "uxo", "phase": "early", "author": "struct", "status": "accepted", "title": { "en": "Explosive ordnance precheck of the site", "de": "Kampfmittelvorpruefung des Grundstuecks" } },
+      { "code": "RPT-008", "kind": "environmental", "phase": "early", "author": "arch", "status": "accepted", "title": { "en": "Species protection assessment for bats and birds, and tree protection plan", "de": "Artenschutzrechtliche Pruefung Fledermaeuse und Voegel, Baumschutzplan" } },
+      { "code": "RPT-009", "kind": "drainage", "phase": "mid", "author": "mep", "status": "accepted", "title": { "en": "Stormwater retention concept for the school yard", "de": "Regenrueckhaltekonzept fuer den Schulhof" } },
+      { "code": "RPT-010", "kind": "acoustics", "phase": "mid", "author": "arch", "status": "in_progress", "title": "Room acoustics and sound insulation concept to DIN 18041 and DIN 4109" },
+      { "code": "RPT-011", "kind": "survey", "phase": "mid", "author": "arch", "status": "commissioned", "title": "Kitchen planning report: process flow, hygiene zones and equipment of the Mensa" },
+      { "code": "RPT-012", "kind": "fire_proof_check", "phase": "mid", "author": "fire", "status": "required", "title": { "en": "Check of the fire protection documents by the Pruefsachverstaendiger", "de": "Pruefung der Brandschutznachweise durch den Pruefsachverstaendigen" } }
+    ]
+  },
+  "permit": {
+    "title": { "en": "Building permit application under the LBO BW", "de": "Bauantrag nach LBO BW" },
+    "form": { "en": "Application form and building documents for the Baurechtsamt", "de": "Antragsformular und Bauvorlagen fuer das Baurechtsamt" }
+  }
+}

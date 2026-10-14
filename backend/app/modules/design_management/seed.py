@@ -37,6 +37,224 @@ logger = logging.getLogger(__name__)
 _DESIGN_SPINE = ("concept", "design", "approval", "detail")
 
 
+_WBS_KINDS = ("location", "system")
+_ROLE_KEYS = ("owner", "arch", "struct", "mep", "fire", "checker")
+_REPORT_STATUSES = ("required", "commissioned", "in_progress", "submitted", "accepted")
+# Where a story report sits: the first or the second design phase of the project (never the phase after the gate).
+_REPORT_PHASES = ("early", "mid")
+
+
+def default_plan() -> dict[str, Any]:
+    """The built-in text of the demo: the wording the seed used before stories existed."""
+    return {
+        "wbs_top": ("1", "Building"),
+        "wbs_children": (
+            ("1.1", "Substructure", "system"),
+            ("1.2", "Superstructure", "system"),
+            ("1.3", "Envelope", "system"),
+            ("1.4", "Building services", "system"),
+        ),
+        "wbs_extra": (("2", "External works", "location"),),
+        "roles": {
+            "owner": ("Owner's design manager", None),
+            "arch": ("Lead architect", "ARC"),
+            "struct": ("Structural engineer", "STR"),
+            "mep": ("Building services engineer", "MEP"),
+            "fire": ("Fire safety specialist", "FSE"),
+            "checker": ("Independent structural checker", "CHK"),
+        },
+        "approval_points": {
+            "AP-001": "Owner sign-off of the concept",
+            "AP-002": "Cost check before the permit application",
+            "AP-003": "User sign-off of room layouts",
+        },
+        "deliverables": {
+            "DL-001": "Concept plans and sections",
+            "DL-002": "Structural concept",
+            "DL-003": "Permit drawings",
+            "DL-004": "Building services layouts",
+        },
+        "drawings": (
+            "Ground floor plan",
+            "Section A-A",
+            "Foundation layout",
+            "Site plan for the permit",
+            "Elevations for the permit",
+            "Ventilation ground floor",
+        ),
+        "releases": {"REL-001": "Concept issue", "REL-002": "Permit drawings"},
+        "review": {
+            "title": "End of concept review",
+            "comments": (
+                "Plant room size does not match the ventilation concept",
+                "Stair width to be checked against the escape route",
+                "Foundation level differs from the ground report",
+            ),
+            "answer": "Plant room enlarged to match the ventilation concept.",
+        },
+        "reports": {},
+        "extra_reports": (),
+        "permit": {"title": "Building permit application", "form": "Application form"},
+    }
+
+
+def _txt(value: Any, locale: str, limit: int = 255) -> str | None:
+    """A non-empty story text in the project's locale, else ``None`` (the default stays)."""
+    from app.modules.project_governance.public import story_text
+
+    if not isinstance(value, (str, dict)):
+        return None
+    text = story_text(value, locale)
+    return text.strip()[:limit] if isinstance(text, str) and text.strip() else None
+
+
+def _titles(default: dict[str, str], value: Any, locale: str) -> dict[str, str]:
+    """``default`` with the titles of the story's entries for codes ``default`` already has."""
+    out = dict(default)
+    if isinstance(value, dict):
+        for code in out:
+            title = _txt(value.get(code), locale)
+            if title:
+                out[code] = title
+    return out
+
+
+def _wbs_rows(value: Any, locale: str) -> tuple[tuple[str, str, str], ...] | None:
+    """``(code, name, kind)`` rows; ``None`` when the story gives none that are valid."""
+    if not isinstance(value, list):
+        return None
+    rows = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        code, name, kind = _txt(item.get("code"), locale, 40), _txt(item.get("name"), locale), item.get("kind")
+        if code and name and kind in _WBS_KINDS:
+            rows.append((code, name, kind))
+    return tuple(rows) or None
+
+
+def _merge_reports(
+    value: Any, report_kinds: set[str], locale: str
+) -> tuple[dict[str, tuple[str, str]], tuple[dict, ...]]:
+    """Overrides of the five built-in reports, and the extra reports of the story.
+
+    A report kind the catalogue does not list is ignored. An extra report is kept only with a code that is not
+    already taken, a known kind, an author role, and a phase of the design part of the project.
+    """
+    overrides: dict[str, tuple[str, str]] = {}
+    extras: list[dict] = []
+    if not isinstance(value, dict):
+        return overrides, ()
+    if isinstance(value.get("overrides"), dict):
+        for code, item in value["overrides"].items():
+            if not (isinstance(item, dict) and code in ("RPT-001", "RPT-002", "RPT-003", "RPT-004", "RPT-005")):
+                continue
+            kind = item.get("kind") if item.get("kind") in report_kinds else ""
+            overrides[code] = (kind, _txt(item.get("title"), locale) or "")
+    taken = {"RPT-001", "RPT-002", "RPT-003", "RPT-004", "RPT-005"}
+    for item in value.get("extra") if isinstance(value.get("extra"), list) else []:
+        if not isinstance(item, dict):
+            continue
+        code, title = item.get("code"), _txt(item.get("title"), locale)
+        author, checker = item.get("author"), item.get("checker")
+        if not (
+            isinstance(code, str)
+            and code not in taken
+            and item.get("kind") in report_kinds
+            and title
+            and author in _ROLE_KEYS
+            and item.get("phase") in _REPORT_PHASES
+            and (checker is None or checker in _ROLE_KEYS)
+        ):
+            logger.info("design_management demo story: extra report %r ignored", item.get("code"))
+            continue
+        taken.add(code)
+        status = item.get("status")
+        extras.append(
+            {
+                "code": code,
+                "kind": item["kind"],
+                "title": title,
+                "phase": item["phase"],
+                "author": author,
+                "checker": checker,
+                "status": status if status in _REPORT_STATUSES else "required",
+            }
+        )
+    return overrides, tuple(extras)
+
+
+def resolve_story(story: dict[str, Any], locale: str, *, report_kinds: set[str]) -> dict[str, Any]:
+    """The wording of one project: the built-in text with ``story`` applied key by key.
+
+    Args:
+        story: The pack's story object for this module, or ``{}``.
+        locale: Locale for ``{"en", "de"}`` texts.
+        report_kinds: Report kind codes of the project's reports catalogue.
+
+    Returns:
+        The dict ``default_plan`` returns. Structure (phases, statuses of the built-in reports, four-eyes
+        steps) stays in the seed; the story supplies names, titles and texts, and extra reports.
+    """
+    plan = default_plan()
+    if not story:
+        return plan
+    wbs = story.get("wbs")
+    if isinstance(wbs, dict):
+        top = wbs.get("top")
+        code, name = (
+            (_txt(top.get("code"), locale, 40), _txt(top.get("name"), locale))
+            if isinstance(top, dict)
+            else (None, None)
+        )
+        children = _wbs_rows(wbs.get("children"), locale)
+        # The children are numbered under the top node: a story that names one must name a matching set.
+        if code and name and children and all(c[0].startswith(f"{code}.") for c in children):
+            plan["wbs_top"], plan["wbs_children"] = (code, name), children
+        extra = _wbs_rows(wbs.get("extra"), locale)
+        if extra is not None:
+            plan["wbs_extra"] = extra
+    roles = story.get("roles")
+    if isinstance(roles, dict):
+        merged = {}
+        for key, (title, orig) in plan["roles"].items():
+            item = roles.get(key)
+            item = item if isinstance(item, dict) else {}
+            code = item.get("originator")
+            merged[key] = (
+                _txt(item.get("title"), locale) or title,
+                code if orig is not None and isinstance(code, str) and re.fullmatch(r"[A-Z]{2,4}", code) else orig,
+            )
+        plan["roles"] = merged
+    plan["approval_points"] = _titles(plan["approval_points"], story.get("approval_points"), locale)
+    plan["deliverables"] = _titles(plan["deliverables"], story.get("deliverables"), locale)
+    plan["releases"] = _titles(plan["releases"], story.get("releases"), locale)
+    drawings = story.get("drawings")
+    if isinstance(drawings, list) and len(drawings) == len(plan["drawings"]):
+        titles = [_txt(d, locale) for d in drawings]
+        if all(titles):
+            plan["drawings"] = tuple(titles)
+    review = story.get("review")
+    if isinstance(review, dict):
+        given = review.get("comments") if isinstance(review.get("comments"), list) else []
+        plan["review"] = {
+            "title": _txt(review.get("title"), locale) or plan["review"]["title"],
+            "comments": tuple(
+                (_txt(given[i], locale, 1000) if i < len(given) else None) or default
+                for i, default in enumerate(plan["review"]["comments"])
+            ),
+            "answer": _txt(review.get("answer"), locale, 1000) or plan["review"]["answer"],
+        }
+    plan["reports"], plan["extra_reports"] = _merge_reports(story.get("reports"), report_kinds, locale)
+    permit = story.get("permit")
+    if isinstance(permit, dict):
+        plan["permit"] = {
+            "title": _txt(permit.get("title"), locale) or plan["permit"]["title"],
+            "form": _txt(permit.get("form"), locale) or plan["permit"]["form"],
+        }
+    return plan
+
+
 async def seed_design_management_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
     """Seed every demo project in ``project_ids`` that has no design setup. The caller commits."""
     from app.core.demo_marker import demo_id_of
@@ -149,10 +367,12 @@ async def _routes(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID
 
 
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
+    from app.core.demo_marker import demo_id_of
     from app.modules.cde.models import DocumentContainer
     from app.modules.cde.schemas import RevisionCreate
     from app.modules.cde.service import CDEService
     from app.modules.design_management.service import DesignService
+    from app.modules.project_governance.public import demo_module_story
     from app.modules.projects.models import Project
 
     project = await session.get(Project, project_id)
@@ -160,6 +380,12 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     svc = DesignService(session)
     setup = await svc.set_setup(project_id, actor_id=actor, tenant_id=None)
     scheme = await svc.scheme(setup)
+    reports_cat = await svc.reports_catalogue(setup)
+    plan = resolve_story(
+        demo_module_story(demo_id_of(project.metadata_), "design_management"),
+        getattr(project, "locale", None) or "en",
+        report_kinds={k.code for k in reports_cat.report_kinds},
+    )
     phases = await svc.phases(project_id)
     design_phases = [p for p in phases if p["spine_key"] in _DESIGN_SPINE] or phases
     p_early = design_phases[0]["code"]
@@ -177,17 +403,14 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     # WBS: only when the project has none (never touch a WBS someone built).
     wbs = await svc.wbs_rows(project_id)
     if not wbs:
-        top = await svc.create_wbs(project_id, {"code": "1", "name": "Building", "kind": "location"}, actor_id=actor)
-        for code, name, kind in (
-            ("1.1", "Substructure", "system"),
-            ("1.2", "Superstructure", "system"),
-            ("1.3", "Envelope", "system"),
-            ("1.4", "Building services", "system"),
-        ):
+        top_code, top_name = plan["wbs_top"]
+        top = await svc.create_wbs(project_id, {"code": top_code, "name": top_name, "kind": "location"}, actor_id=actor)
+        for code, name, kind in plan["wbs_children"]:
             await svc.create_wbs(
                 project_id, {"code": code, "name": name, "kind": kind, "parent_id": top.id}, actor_id=actor
             )
-        await svc.create_wbs(project_id, {"code": "2", "name": "External works", "kind": "location"}, actor_id=actor)
+        for code, name, kind in plan["wbs_extra"]:
+            await svc.create_wbs(project_id, {"code": code, "name": name, "kind": kind}, actor_id=actor)
         wbs = await svc.wbs_rows(project_id)
     wbs_leaf = next((w for w in wbs if not (w.metadata_ or {}).get("closed")), None)
 
@@ -197,14 +420,15 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         "mep": _example(scheme, "discipline", "building_services"),
     }
     roles = {}
-    for key, title, kind, orig in (
-        ("owner", "Owner's design manager", "owner", None),
-        ("arch", "Lead architect", "discipline_designer", "ARC"),
-        ("struct", "Structural engineer", "discipline_designer", "STR"),
-        ("mep", "Building services engineer", "discipline_designer", "MEP"),
-        ("fire", "Fire safety specialist", "specialist", "FSE"),
-        ("checker", "Independent structural checker", "checker", "CHK"),
+    for key, kind in (
+        ("owner", "owner"),
+        ("arch", "discipline_designer"),
+        ("struct", "discipline_designer"),
+        ("mep", "discipline_designer"),
+        ("fire", "specialist"),
+        ("checker", "checker"),
     ):
+        title, orig = plan["roles"][key]
         roles[key] = await svc.create_role(
             project_id,
             {
@@ -220,11 +444,12 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         roles[key].status = "active"
     setup.lead_designer_role_id = roles["arch"].id
 
-    for code, title, phase, kind in (
-        ("AP-001", "Owner sign-off of the concept", p_early, "owner_approval"),
-        ("AP-002", "Cost check before the permit application", p_mid, "cost_check"),
-        ("AP-003", "User sign-off of room layouts", p_mid, "user_signoff"),
+    for code, phase, kind in (
+        ("AP-001", p_early, "owner_approval"),
+        ("AP-002", p_mid, "cost_check"),
+        ("AP-003", p_mid, "user_signoff"),
     ):
+        title = plan["approval_points"][code]
         await svc.create_approval_point(
             project_id,
             {"code": code, "title": title, "phase_code": phase, "kind": kind, "approver_role_id": roles["owner"].id},
@@ -232,12 +457,13 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         )
 
     deliverables = {}
-    for code, title, phase, role, count in (
-        ("DL-001", "Concept plans and sections", p_early, "arch", 2),
-        ("DL-002", "Structural concept", p_early, "struct", 1),
-        ("DL-003", "Permit drawings", p_mid, "arch", 2 if pre else 3),
-        ("DL-004", "Building services layouts", p_late, "mep", 2),
+    for code, phase, role, count in (
+        ("DL-001", p_early, "arch", 2),
+        ("DL-002", p_early, "struct", 1),
+        ("DL-003", p_mid, "arch", 2 if pre else 3),
+        ("DL-004", p_late, "mep", 2),
     ):
+        title = plan["deliverables"][code]
         deliverables[code] = await svc.create_deliverable(
             project_id,
             {
@@ -257,13 +483,17 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     # Before construction: the drawings of the closing phase are published, so their schedule lines
     # are accepted; the one drawing of the next phase is work in progress and counts for no line yet.
     done = "A4" if pre else None
-    for title, role, dl, phase, form, spatial, sheet_type, suit in (
-        ("Ground floor plan", "arch", "DL-001", p_early, "plan", "ground", "plan", done or "S3"),
-        ("Section A-A", "arch", "DL-001", p_early, "section", "whole", "section", done or "S4"),
-        ("Foundation layout", "struct", "DL-002", p_early, "plan", "basement", "plan", done or "S2"),
-        ("Site plan for the permit", "arch", "DL-003", p_mid, "site_plan", "whole", "general", "A4"),
-        ("Elevations for the permit", "arch", "DL-003", p_mid, "elevation", "whole", "elevation", done or "S0"),
-        ("Ventilation ground floor", "mep", None if pre else "DL-004", p_late, "plan", "ground", "plan", "S0"),
+    for title, (role, dl, phase, form, spatial, sheet_type, suit) in zip(
+        plan["drawings"],
+        (
+            ("arch", "DL-001", p_early, "plan", "ground", "plan", done or "S3"),
+            ("arch", "DL-001", p_early, "section", "whole", "section", done or "S4"),
+            ("struct", "DL-002", p_early, "plan", "basement", "plan", done or "S2"),
+            ("arch", "DL-003", p_mid, "site_plan", "whole", "general", "A4"),
+            ("arch", "DL-003", p_mid, "elevation", "whole", "elevation", done or "S0"),
+            ("mep", None if pre else "DL-004", p_late, "plan", "ground", "plan", "S0"),
+        ),
+        strict=True,
     ):
         project_code = re.sub(r"[^A-Z0-9]", "", (project.project_code or "").upper())[:6]
         values = {
@@ -324,7 +554,9 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         # Prepared and marked ready by the second person: the demo user approves it and issues it.
         await _routes(session, project_id, actor, second)
         concept = await svc.create_release(
-            project_id, {"code": "REL-001", "title": "Concept issue", "revision_ids": shared[:3]}, actor_id=second
+            project_id,
+            {"code": "REL-001", "title": plan["releases"]["REL-001"], "revision_ids": shared[:3]},
+            actor_id=second,
         )
         await svc.release_transition(project_id, concept.id, "ready", actor_id=second)
     else:
@@ -332,12 +564,16 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         logger.info("design_management demo seed: project %s has no second person, one-person story", project_id)
         setup.four_eyes_release = False
         concept = await svc.create_release(
-            project_id, {"code": "REL-001", "title": "Concept issue", "revision_ids": shared[:3]}, actor_id=actor
+            project_id,
+            {"code": "REL-001", "title": plan["releases"]["REL-001"], "revision_ids": shared[:3]},
+            actor_id=actor,
         )
         await svc.release_transition(project_id, concept.id, "ready", actor_id=actor)
     preparer = (second or actor) if pre else actor
     permit_set = await svc.create_release(
-        project_id, {"code": "REL-002", "title": "Permit drawings", "revision_ids": shared[3:]}, actor_id=preparer
+        project_id,
+        {"code": "REL-002", "title": plan["releases"]["REL-002"], "revision_ids": shared[3:]},
+        actor_id=preparer,
     )
     if pre is not None:
         # Released before the gate: prepared by one person, approved on the route and issued by the other.
@@ -351,18 +587,14 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         project_id,
         {
             "code": "REV-001",
-            "title": "End of concept review",
+            "title": plan["review"]["title"],
             "phase_code": p_early,
             "deliverable_ids": [deliverables["DL-001"].id, deliverables["DL-002"].id],
             "reviewer_role_ids": [roles["owner"].id, roles["mep"].id],
         },
         actor_id=actor,
     )
-    for text, severity, idx in (
-        ("Plant room size does not match the ventilation concept", "major", 0),
-        ("Stair width to be checked against the escape route", "minor", 1),
-        ("Foundation level differs from the ground report", "minor", 2),
-    ):
+    for text, severity, idx in zip(plan["review"]["comments"], ("major", "minor", "minor"), range(3), strict=True):
         comment = await svc.add_comment(
             project_id,
             review.id,
@@ -376,7 +608,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                 comment.id,
                 "answered",
                 actor_id=actor,
-                answer="Plant room enlarged to match the ventilation concept.",
+                answer=plan["review"]["answer"],
                 role_id=roles["arch"].id,
             )
             await svc.comment_transition(project_id, comment.id, "closed", actor_id=actor)
@@ -399,13 +631,28 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             ("RPT-004", "structural_proof_check", p_mid, "required", "struct", "checker"),
             ("RPT-005", "thermal_energy", p_mid, "required", "mep", None),
         )
-    for code, kind, phase, status, author, checker in report_plan:
+    extras = [
+        (
+            e["code"],
+            e["kind"],
+            {"early": p_early, "mid": p_mid}[e["phase"]],
+            # Before the gate everything of the closing phase is done except the one report above.
+            "accepted" if pre is not None else e["status"],
+            e["author"],
+            e["checker"],
+        )
+        for e in plan["extra_reports"]
+    ]
+    titles = {e["code"]: e["title"] for e in plan["extra_reports"]}
+    for code, kind, phase, status, author, checker in [*report_plan, *extras]:
+        kind_override, title_override = plan["reports"].get(code, ("", ""))
+        kind = kind_override or kind
         report = await svc.create_report(
             project_id,
             {
                 "code": code,
                 "kind_code": kind,
-                "title": kind.replace("_", " ").capitalize(),
+                "title": titles.get(code) or title_override or kind.replace("_", " ").capitalize(),
                 "phase_code": phase,
                 "author_role_id": roles[author].id,
                 "checker_role_id": roles[checker].id if checker else None,
@@ -422,17 +669,16 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             await svc.report_transition(project_id, report.id, step, actor_id=actor)
         count_reports += 1
 
-    reports_cat = await svc.reports_catalogue(setup)
     country = (project.country_code or "").upper()
     profile = next((p.code for p in reports_cat.permit_steps if country in p.jurisdiction_countries), "neutral")
     permit = await svc.create_permit(
-        project_id, {"code": "PP-001", "title": "Building permit application", "profile_code": profile}, actor_id=actor
+        project_id, {"code": "PP-001", "title": plan["permit"]["title"], "profile_code": profile}, actor_id=actor
     )
     for drawing, c, _rev in drawing_rows[3:5]:
         await svc.add_permit_item(
             project_id, permit.id, {"kind": "drawing", "title": drawing.title, "container_id": c.id}, actor_id=actor
         )
-    await svc.add_permit_item(project_id, permit.id, {"kind": "form", "title": "Application form"}, actor_id=actor)
+    await svc.add_permit_item(project_id, permit.id, {"kind": "form", "title": plan["permit"]["form"]}, actor_id=actor)
     await session.flush()
     return {
         "drawings": len(drawing_rows),

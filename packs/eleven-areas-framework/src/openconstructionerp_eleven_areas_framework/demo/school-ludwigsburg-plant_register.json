@@ -1,0 +1,278 @@
+{
+  "$note": "Plant register story of the Ludwigsburg school: building services and equipment of a four-form-entry all-day primary school with sports hall and Mensa production kitchen. Applied on top of the module seeder by key; all names invented. Item PL-001 (heat pump) is the order the commitment release slot item links to, and PL-002 (Mensa kitchen) is the item the delivery model records as owner-furnished.",
+  "items": [
+    {
+      "code": "PL-001",
+      "title": "Ground source heat pump 400 kW with probe field connection",
+      "class": "heat_pump",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 640,
+      "reach": "enquired",
+      "route": true,
+      "performance": [
+        { "key": "heating_capacity", "value": "400", "unit": "kW" },
+        { "key": "flow_temperature", "value": "40", "unit": "C" },
+        { "key": "scop", "value": "4.6", "unit": "" }
+      ],
+      "quotes": [
+        ["market_sounding", "Market sounding, three heat pump manufacturers", -110, -96, 22, 30, "from_order"],
+        ["supplier_quote", "Heat pump manufacturer A (budget quote)", -38, -24, 26, 32, "from_order"]
+      ],
+      "slot": "held",
+      "spares": [["strategic_spares", "Compressor service kit and sensor set", "1", "set"]]
+    },
+    {
+      "code": "PL-002",
+      "title": "Mensa production kitchen equipment, 600 meals per day",
+      "class": "kitchen_equipment",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 900,
+      "reach": "route_set",
+      "performance": [
+        { "key": "covers_per_day", "value": "600", "unit": "" },
+        { "key": "hygiene_concept", "value": "HACCP clean and unclean line", "unit": "" }
+      ],
+      "quotes": [
+        ["supplier_quote", "Kitchen equipment manufacturer A", -60, -46, 20, 26, "from_order"],
+        ["supplier_quote", "Kitchen equipment manufacturer B", -55, -38, 14, 18, "from_approved_drawings"]
+      ],
+      "paper": true,
+      "spares": [
+        ["special_tools", "Cleaning and descaling kit for combi steamers", "1", "set"],
+        ["operating_consumables", "Filter and gasket set for the first year", "2", "set"]
+      ]
+    },
+    {
+      "code": "PL-003",
+      "title": "PV inverters and battery storage 120 kWh for self-consumption",
+      "class": "battery_storage",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 700,
+      "reach": "enquired",
+      "route": true,
+      "performance": [
+        { "key": "storage_capacity", "value": "120", "unit": "kWh" },
+        { "key": "pv_peak_power", "value": "280", "unit": "kWp" }
+      ],
+      "quotes": [["expert_estimate", "Owner's engineer estimate", -15, null, 16, 22, "from_order"]],
+      "slot": "requested",
+      "spares": [["commissioning_spares", "Fuse and connector set for the inverters", "1", "set"]]
+    },
+    {
+      "code": "PL-004",
+      "title": "Ventilation units with heat recovery, classroom wings, CO2 controlled",
+      "class": "ahu",
+      "quantity": "4",
+      "redundancy": "",
+      "need_days": 600,
+      "reach": "enquired",
+      "performance": [
+        { "key": "air_volume", "value": "6500", "unit": "m3/h" },
+        { "key": "heat_recovery", "value": "80", "unit": "%" }
+      ],
+      "quotes": [["supplier_quote", "Ventilation unit manufacturer (budget quote)", -25, -12, 18, 24, "from_order"]],
+      "spares": [["operating_consumables", "First filter change set per unit", "4", "set"]]
+    },
+    {
+      "code": "PL-005",
+      "title": "Passenger lifts, 1275 kg, accessible to DIN 18040",
+      "class": "lift",
+      "quantity": "2",
+      "redundancy": "",
+      "need_days": 560,
+      "reach": "ordered",
+      "performance": [
+        { "key": "rated_load", "value": "1275", "unit": "kg" },
+        { "key": "stops", "value": "3", "unit": "" }
+      ],
+      "quotes": [["supplier_quote", "Lift manufacturer (firm quote)", -80, -66, 24, 30, "from_approved_drawings"]],
+      "spares": [["commissioning_spares", "Door operator spares", "1", "set"]]
+    },
+    {
+      "code": "PL-006",
+      "title": "Building automation with CO2-controlled room ventilation",
+      "class": "bms_controls",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 700,
+      "reach": "specified",
+      "performance": [{ "key": "controlled_rooms", "value": "62", "unit": "" }],
+      "quotes": [],
+      "spares": [["strategic_spares", "Spare controller and room sensors", "1", "set"]]
+    },
+    {
+      "code": "PL-007",
+      "title": "Sports hall ventilation unit with heat recovery",
+      "class": "ahu",
+      "quantity": "2",
+      "redundancy": "",
+      "need_days": 880,
+      "reach": "identified",
+      "performance": [{ "key": "air_volume", "value": "9000", "unit": "m3/h" }],
+      "quotes": [],
+      "spares": []
+    },
+    {
+      "code": "PL-008",
+      "title": "IT core network, WLAN and media technology backbone",
+      "class": "it_core_network",
+      "quantity": "2",
+      "redundancy": "N+1",
+      "need_days": 30,
+      "reach": "delivered",
+      "performance": [
+        { "key": "uplink", "value": "10", "unit": "Gbit/s" },
+        { "key": "wlan_access_points", "value": "140", "unit": "" }
+      ],
+      "quotes": [["supplier_quote", "Network distributor (firm quote)", -150, -143, 10, 14, "from_order"]],
+      "spares": [["strategic_spares", "Spare switch and optics", "1", "set"]]
+    },
+    {
+      "code": "PL-009",
+      "title": "Fire alarm and voice alarm system",
+      "class": "bms_controls",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 120,
+      "reach": "manufactured",
+      "performance": [
+        { "key": "detection_zones", "value": "48", "unit": "" },
+        { "key": "voice_alarm_zones", "value": "18", "unit": "" }
+      ],
+      "quotes": [["supplier_quote", "Fire alarm system manufacturer", -190, -176, 14, 18, "from_order"]],
+      "spares": [["commissioning_spares", "Detector heads and sounder set", "1", "set"]]
+    },
+    {
+      "code": "PL-010",
+      "title": "Ventilation units, interim classroom pavilion",
+      "class": "ahu",
+      "quantity": "2",
+      "redundancy": "",
+      "need_days": -20,
+      "reach": "commissioned",
+      "performance": [{ "key": "air_volume", "value": "2500", "unit": "m3/h" }],
+      "quotes": [["supplier_quote", "Ventilation unit manufacturer", -300, -288, 12, 16, "from_approved_drawings"]],
+      "spares": []
+    },
+    {
+      "code": "PL-011",
+      "title": "Temporary heating units, interim classroom pavilion",
+      "class": "boiler",
+      "quantity": "2",
+      "redundancy": "N+1",
+      "need_days": -75,
+      "reach": "handed_over",
+      "performance": [{ "key": "heating_capacity", "value": "60", "unit": "kW" }],
+      "quotes": [["supplier_quote", "Heating unit supplier", -360, -349, 8, 10, "from_order"]],
+      "spares": []
+    },
+    {
+      "code": "PL-012",
+      "title": "Air source heat pump (dropped, ground source chosen)",
+      "class": "heat_pump",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 640,
+      "reach": "cancelled",
+      "performance": [{ "key": "heating_capacity", "value": "400", "unit": "kW" }],
+      "quotes": [],
+      "spares": []
+    },
+    {
+      "code": "PL-013",
+      "title": "Prefabricated timber facade elements, school wings",
+      "class": "facade_unit",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 450,
+      "reach": "route_set",
+      "performance": [{ "key": "facade_area", "value": "3800", "unit": "m2" }],
+      "quotes": [
+        ["supplier_quote", "Timber construction manufacturer (budget quote)", -35, -24, 20, 26, "from_approved_drawings"]
+      ],
+      "spares": []
+    },
+    {
+      "code": "PL-014",
+      "title": "Kitchen extraction with grease separation, Mensa",
+      "class": "ahu",
+      "quantity": "1",
+      "redundancy": "",
+      "need_days": 880,
+      "reach": "specified",
+      "performance": [{ "key": "air_volume", "value": "8000", "unit": "m3/h" }],
+      "quotes": [],
+      "spares": []
+    }
+  ],
+  "limits": {
+    "supply": "supplier",
+    "deliver_to_site": "supplier",
+    "offload": "supplier",
+    "set_in_place": "installer",
+    "connect": "installer",
+    "test": "supplier",
+    "commission": "supplier",
+    "accept": "owner",
+    "train": "supplier",
+    "document": "supplier"
+  },
+  "paper": {
+    "question": "Which kitchen equipment offer fits the installation and commissioning window of the summer holidays at acceptable risk?",
+    "criteria": [
+      { "code": "lead_time", "title": "Lead time", "weight": "4" },
+      { "code": "cost", "title": "Cost", "weight": "3" },
+      { "code": "hygiene_service", "title": "Hygiene proof and local service", "weight": "3" }
+    ],
+    "options": [
+      {
+        "code": "a",
+        "title": "Manufacturer A, from order",
+        "lead_weeks": 26,
+        "scores": { "lead_time": "2", "cost": "4", "hygiene_service": "4" }
+      },
+      {
+        "code": "b",
+        "title": "Manufacturer B, from approved drawings",
+        "lead_weeks": 18,
+        "scores": { "lead_time": "4", "cost": "3", "hygiene_service": "4" }
+      }
+    ],
+    "recommendation": "b",
+    "rationale": "Option B keeps installation and the hygiene acceptance by the food inspection inside the summer holidays; the drawing review with the kitchen planner is scheduled."
+  },
+  "slots": {
+    "held": {
+      "vendor_name": "Heat pump manufacturer A",
+      "terms": "The manufacturer holds the slot without a fee until the conversion date; the slot itself binds no money. Authority to sign the supply order is released as a commitment of the project after the Technischer Ausschuss has recommended the award, and the slot lapses if the order is not signed by that date.",
+      "slot_from_days": 300,
+      "slot_to_days": 360,
+      "convert_by_days": 45
+    },
+    "requested": {
+      "vendor_name": "Inverter and storage packager",
+      "terms": "Fee non-refundable, credited in full to the order if signed by the conversion date.",
+      "reservation_fee": "12000.00",
+      "slot_from_days": 330,
+      "slot_to_days": 390,
+      "convert_by_days": 45
+    }
+  },
+  "it_services": [
+    { "kind": "cde_access", "description": "Common data environment access for the city, the design teams and the trade lots", "start_days": -30 },
+    { "kind": "site_network", "description": "Site office network and wireless coverage", "start_days": 60 },
+    { "kind": "access_control", "description": "Gate access control of the site, separated from the school entrance", "start_days": 60 },
+    { "kind": "cctv", "description": "Camera watch of the site fence towards the running school grounds", "start_days": 90 }
+  ],
+  "site_plant": [
+    { "kind": "tower_crane", "name": "Tower crane, swing area clear of pupil routes", "x": "38.0", "y": "30.0", "reach_m": "55.00", "max_load_t": "6.00" },
+    { "kind": "mobile_crane_pad", "name": "Crane pad for timber facade elements and sports hall beams", "x": "14.0", "y": "70.0", "reach_m": "40.00", "max_load_t": "80.00" },
+    { "kind": "site_office", "name": "Site office and meeting containers", "x": "5.0", "y": "5.0" },
+    { "kind": "welfare", "name": "Welfare containers for the trade lots", "x": "9.0", "y": "5.0" },
+    { "kind": "storage", "name": "Timber element storage under cover", "x": "30.0", "y": "8.0" },
+    { "kind": "temporary_power", "name": "Temporary power distribution (Baustrom)", "x": "8.0", "y": "12.0" }
+  ]
+}

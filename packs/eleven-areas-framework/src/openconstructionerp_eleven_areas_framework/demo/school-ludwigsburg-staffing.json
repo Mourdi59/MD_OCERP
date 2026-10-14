@@ -1,0 +1,172 @@
+{
+  "positions": [
+    {
+      "role": "project_director",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "project_manager",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "design_manager",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "cost_manager",
+      "phase": "development",
+      "entry": -210,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "contract_manager",
+      "phase": "development",
+      "entry": -180,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "scheduler",
+      "phase": "development",
+      "entry": -150,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_manager",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "hse_manager",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_supervisor_civil",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "document_controller",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "quality_manager",
+      "phase": "execution",
+      "entry": 190,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_supervisor_mep",
+      "phase": "execution",
+      "entry": 190,
+      "exit": 560,
+      "status": "recruiting"
+    },
+    {
+      "role": "commissioning_manager",
+      "phase": "execution",
+      "entry": 440,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_plant_manager",
+      "phase": "operation",
+      "entry": 470,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_shift_lead",
+      "phase": "operation",
+      "entry": 500,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_technician",
+      "phase": "operation",
+      "entry": 520,
+      "exit": null,
+      "status": "open"
+    }
+  ],
+  "mobilisation_in_days": 175,
+  "commissioning_in_days": 560,
+  "filled": [
+    "project_director",
+    "project_manager",
+    "design_manager",
+    "cost_manager",
+    "contract_manager",
+    "site_manager",
+    "hse_manager",
+    "site_supervisor_civil",
+    "document_controller"
+  ],
+  "expiring": [
+    {
+      "role": "site_supervisor_civil",
+      "kind": "work_permit",
+      "days": 20
+    },
+    {
+      "role": "hse_manager",
+      "kind": "safety_training",
+      "days": 45
+    },
+    {
+      "role": "site_manager",
+      "kind": "occupational_health_certificate",
+      "days": 80
+    }
+  ],
+  "missing": [
+    {
+      "role": "hse_manager",
+      "kind": "qualification"
+    }
+  ],
+  "waived": [
+    {
+      "role": "site_manager",
+      "kind": "professional_licence"
+    }
+  ],
+  "handovers": [
+    {
+      "from": "project_manager",
+      "to": "operator_plant_manager",
+      "overlap_days": 30,
+      "scope": "Open items, commissioning sequence, training of the caretaker and the Mensa kitchen lead, and the handover plan for the summer-holiday move-in."
+    },
+    {
+      "from": "design_manager",
+      "to": "commissioning_manager",
+      "overlap_days": 20,
+      "scope": "Design intent, acoustic and CO2-controlled ventilation test criteria, sports hall floor acceptance, as-built status."
+    }
+  ]
+}

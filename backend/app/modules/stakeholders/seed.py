@@ -50,6 +50,161 @@ _STAKEHOLDERS: tuple[tuple[str, str, str, bool, int, int, str, str, int, int], .
     ("S-014", "Financing bank", "lender", False, 4, 2, "supportive", "supportive", 1, 90),
 )
 
+_LEVELS = ("unaware", "resistant", "neutral", "supportive", "leading")
+_Row = tuple[str, str, str, bool, int, int, str, str, int, int]
+# The texts a story may replace, by section; a missing key keeps the default below.
+_TEXT_DEFAULTS: dict[str, dict[str, str]] = {
+    "assessment": {
+        "rationale": "Initial stakeholder analysis workshop",
+        "drift_rationale": "After the information evening the residents' tone changed",
+    },
+    "newsletter": {
+        "title": "Neighbour newsletter",
+        "purpose": "Keep the neighbourhood informed about works, deliveries and noisy phases",
+        "key_message": "What happens next month, and whom to call",
+    },
+    "evening": {
+        "title": "Information evening for residents",
+        "purpose": "Present the construction logistics plan and collect concerns",
+        "location": "Community hall next to the site",
+        "outcome": "Main concerns: early deliveries, dust on the access road, blocked cycle lane",
+        "feedback_summary": "Answers to all concerns sent with the following newsletter",
+    },
+    "authority_meeting": {
+        "title": "Authority coordination meeting",
+        "purpose": "Coordinate permit conditions and inspections",
+    },
+    "briefing": {
+        "title": "Steering committee briefing",
+        "purpose": "Brief the client board on stakeholder status before each decision",
+    },
+    "site_tour": {
+        "title": "Site tour for the district council",
+        "outcome": "Council asked for a progress update before the summer recess",
+        "feedback_summary": "Update sent with the newsletter",
+    },
+    "client": {"display_name": "Client organisation", "company_name": "Client"},
+}
+# text, category, stakeholder codes, due offset in days from the seed day, verification
+_COMMITMENTS: tuple[tuple[str, str, tuple[str, ...], int, str], ...] = (
+    (
+        "No deliveries before 07:00 on weekdays",
+        "working_hours",
+        ("S-006", "S-007"),
+        180,
+        "Gate log of delivery times, checked weekly",
+    ),
+    (
+        "Wheel washing at the site exit and weekly road sweeping",
+        "traffic",
+        ("S-006",),
+        30,
+        "Photos in the site diary",
+    ),
+    (
+        "Temporary cycle lane diversion signed before the access road closes",
+        "access",
+        ("S-010", "S-008"),
+        -3,
+        "Signage plan approved by the road authority",
+    ),
+    (
+        "Monthly noise measurement report to the residents",
+        "noise",
+        ("S-006",),
+        10,
+        "Report attached to the newsletter",
+    ),
+    (
+        "Contact person and hotline number on the site hoarding",
+        "information",
+        ("S-006", "S-007", "S-008"),
+        7,
+        "Photo of the hoarding",
+    ),
+)
+
+
+def _text(value: Any, locale: str) -> str | None:
+    """A story text as a non-empty string, or ``None`` when absent or malformed."""
+    from app.modules.project_governance.public import story_text
+
+    if not isinstance(value, (str, dict)):
+        return None
+    text = story_text(value, locale)
+    return text.strip() if isinstance(text, str) and text.strip() else None
+
+
+def merge_texts(story: dict[str, Any], section: str, locale: str) -> dict[str, str]:
+    """The texts of one section: the defaults with every valid story text laid over them."""
+    out = dict(_TEXT_DEFAULTS[section])
+    given = story.get(section)
+    if isinstance(given, dict):
+        for key in out:
+            text = _text(given.get(key), locale)
+            if text is not None:
+                out[key] = text
+            elif key in given:
+                logger.info("stakeholders demo story: %s.%s is not usable text, default kept", section, key)
+    return out
+
+
+def _bounded(r: dict[str, Any], key: str, default: int, lo: int, hi: int) -> int:
+    v = r.get(key, default)
+    if isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi:
+        return v
+    logger.info("stakeholders demo story: %s=%r out of range, default kept", key, v)
+    return default
+
+
+def merge_register(base: tuple[_Row, ...], story: dict[str, Any], locale: str) -> tuple[_Row, ...]:
+    """The register with the story's per-code overrides (label, power, interest, levels, attitude, age) applied.
+
+    Codes and categories stay as they are: other code refers to them by role.
+    """
+    rows = story.get("stakeholders")
+    given = {r.get("code"): r for r in rows if isinstance(r, dict)} if isinstance(rows, list) else {}
+    out: list[_Row] = []
+    for code, label, category, group, power, interest, cur, des, att, age in base:
+        r = given.get(code, {})
+        out.append(
+            (
+                code,
+                _text(r.get("label"), locale) or label,
+                category,
+                group,
+                _bounded(r, "power", power, 1, 5),
+                _bounded(r, "interest", interest, 1, 5),
+                r["current"] if r.get("current") in _LEVELS else cur,
+                r["desired"] if r.get("desired") in _LEVELS else des,
+                _bounded(r, "attitude", att, -2, 2),
+                _bounded(r, "age_days", age, 0, 730),
+            )
+        )
+    return tuple(out)
+
+
+def merge_commitments(story: dict[str, Any], locale: str) -> list[tuple[str, str, tuple[str, ...], int, str]]:
+    """The five commitments; the story may replace text, verification and due offset of each by position."""
+    rows = story.get("commitments")
+    given = rows if isinstance(rows, list) else []
+    out = []
+    for i, (text, category, who, due, verification) in enumerate(_COMMITMENTS):
+        r = given[i] if i < len(given) and isinstance(given[i], dict) else {}
+        d = r.get("due_days", due)
+        if not isinstance(d, int) or isinstance(d, bool):
+            d = due
+        out.append(
+            (
+                _text(r.get("text"), locale) or text,
+                category,
+                who,
+                d,
+                _text(r.get("verification"), locale) or verification,
+            )
+        )
+    return out
+
 
 async def seed_stakeholders_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
     """Seed every demo project in ``project_ids`` that has no settings yet. The caller commits."""
@@ -179,6 +334,8 @@ async def _decide(session: AsyncSession, svc: Any, instance_id: uuid.UUID, appro
 
 
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
+    from app.core.demo_marker import demo_id_of
+    from app.modules.project_governance.public import demo_module_story
     from app.modules.projects.models import Project
     from app.modules.stakeholders.models import StakeholderAssessment
     from app.modules.stakeholders.service import StakeholderService
@@ -186,6 +343,16 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
 
     project = await session.get(Project, project_id)
     owner = project.owner_id
+    story = demo_module_story(demo_id_of(project.metadata_), "stakeholders")
+    locale = getattr(project, "locale", None) or "en"
+    register = merge_register(_STAKEHOLDERS, story, locale)
+    assessment = merge_texts(story, "assessment", locale)
+    nl = merge_texts(story, "newsletter", locale)
+    ev = merge_texts(story, "evening", locale)
+    am = merge_texts(story, "authority_meeting", locale)
+    br = merge_texts(story, "briefing", locale)
+    tour = merge_texts(story, "site_tour", locale)
+    org = merge_texts(story, "client", locale)
     team = await _team(session, project_id, owner)
     pm = team[1] if len(team) > 1 else owner
     comms = team[2] if len(team) > 2 else pm
@@ -200,7 +367,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     gate = await _gate_before_construction(session, project_id)
 
     ids: dict[str, uuid.UUID] = {}
-    for code, label, category, group, power, interest, cur, des, att, age in _STAKEHOLDERS:
+    for code, label, category, group, power, interest, cur, des, att, age in register:
         row = await svc.create_stakeholder(
             project_id,
             {
@@ -224,7 +391,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                 "engagement_current": cur,
                 "engagement_desired": des,
                 "attitude": att,
-                "rationale": "Initial stakeholder analysis workshop",
+                "rationale": assessment["rationale"],
             },
             actor_id=pm,
             now=datetime.now(UTC) - timedelta(days=age),
@@ -239,7 +406,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             "engagement_current": "neutral",
             "engagement_desired": "supportive",
             "attitude": 0,
-            "rationale": "After the information evening the residents' tone changed",
+            "rationale": assessment["drift_rationale"],
         },
         actor_id=comms,
     )
@@ -247,9 +414,9 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     newsletter = await svc.create_plan_item(
         project_id,
         {
-            "title": "Neighbour newsletter",
-            "purpose": "Keep the neighbourhood informed about works, deliveries and noisy phases",
-            "key_message": "What happens next month, and whom to call",
+            "title": nl["title"],
+            "purpose": nl["purpose"],
+            "key_message": nl["key_message"],
             "audience_categories": ["neighbour"],
             "participation_level": "inform",
             "channel": "newsletter",
@@ -265,8 +432,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     evening_plan = await svc.create_plan_item(
         project_id,
         {
-            "title": "Information evening for residents",
-            "purpose": "Present the construction logistics plan and collect concerns",
+            "title": ev["title"],
+            "purpose": ev["purpose"],
             "audience_stakeholder_ids": [str(ids["S-006"]), str(ids["S-007"]), str(ids["S-008"])],
             "participation_level": "consult",
             "channel": "information_evening",
@@ -281,8 +448,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     await svc.create_plan_item(
         project_id,
         {
-            "title": "Authority coordination meeting",
-            "purpose": "Coordinate permit conditions and inspections",
+            "title": am["title"],
+            "purpose": am["purpose"],
             "audience_stakeholder_ids": [str(ids["S-002"]), str(ids["S-003"])],
             "participation_level": "consult",
             "channel": "meeting",
@@ -297,8 +464,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     briefing = await svc.create_plan_item(
         project_id,
         {
-            "title": "Steering committee briefing",
-            "purpose": "Brief the client board on stakeholder status before each decision",
+            "title": br["title"],
+            "purpose": br["purpose"],
             "audience_stakeholder_ids": [str(ids["S-012"])],
             "participation_level": "inform",
             "channel": "meeting",
@@ -320,12 +487,12 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             "plan_item_id": str(evening_plan.id),
             "held_on": evening_day,
             "status": "held",
-            "location": "Community hall next to the site",
+            "location": ev["location"],
             "stakeholder_ids": [str(ids["S-006"]), str(ids["S-007"]), str(ids["S-008"])],
             "attendance_count": 64,
-            "outcome": "Main concerns: early deliveries, dust on the access road, blocked cycle lane",
+            "outcome": ev["outcome"],
             # Forty days on, the answers have gone back to the residents; three weeks on, they are still due.
-            **({"feedback_summary": "Answers to all concerns sent with the following newsletter"} if gate else {}),
+            **({"feedback_summary": ev["feedback_summary"]} if gate else {}),
         },
         actor_id=comms,
     )
@@ -356,15 +523,15 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     await svc.create_event(
         project_id,
         {
-            "title": "Site tour for the district council",
+            "title": tour["title"],
             "participation_level": "inform",
             "format_code": "site_tour",
             "held_on": today - timedelta(days=50),
             "status": "held",
             "stakeholder_ids": [str(ids["S-009"])],
             "attendance_count": 9,
-            "outcome": "Council asked for a progress update before the summer recess",
-            "feedback_summary": "Update sent with the newsletter",
+            "outcome": tour["outcome"],
+            "feedback_summary": tour["feedback_summary"],
         },
         actor_id=pm,
     )
@@ -390,45 +557,15 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         commitments += 1
         return c.id
 
-    c1 = await promise(
-        "No deliveries before 07:00 on weekdays",
-        "working_hours",
-        ["S-006", "S-007"],
-        today + timedelta(days=180),
-        "Gate log of delivery times, checked weekly",
-    )
-    c2 = await promise(
-        "Wheel washing at the site exit and weekly road sweeping",
-        "traffic",
-        ["S-006"],
-        today + timedelta(days=30),
-        "Photos in the site diary",
-    )
-    c3 = await promise(
-        "Temporary cycle lane diversion signed before the access road closes",
-        "access",
-        ["S-010", "S-008"],
-        today - timedelta(days=3),
-        "Signage plan approved by the road authority",
-    )
-    c4 = await promise(
-        "Monthly noise measurement report to the residents",
-        "noise",
-        ["S-006"],
-        today + timedelta(days=10),
-        "Report attached to the newsletter",
-    )
-    await promise(
-        "Contact person and hotline number on the site hoarding",
-        "information",
-        ["S-006", "S-007", "S-008"],
-        today + timedelta(days=7),
-        "Photo of the hoarding",
-    )
+    made = [
+        await promise(text, category, list(who), today + timedelta(days=due), verification)
+        for text, category, who, due, verification in merge_commitments(story, locale)
+    ]
+    c1, c2, c3, c4 = made[:4]
 
     # Roles from the team, then the steering committee, then decisions under the mandate.
     # The client is an organisation: a roster entry without a user account.
-    client = RosterMember(project_id=project_id, display_name="Client organisation", company_name="Client")
+    client = RosterMember(project_id=project_id, display_name=org["display_name"], company_name=org["company_name"])
     session.add(client)
     await session.flush()
     await svc.put_role_holders(
