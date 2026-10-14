@@ -158,6 +158,33 @@ def story_pairs(story: dict[str, Any], key: str) -> list[tuple[str, str, dict[st
     return out
 
 
+def story_roster(story: dict[str, Any], locale: str) -> list[dict[str, Any]]:
+    """The invented people the story puts on the project roster, in the order they fill the roles.
+
+    A row needs a ``name``; ``company`` and ``site_role`` are optional texts and ``allocation`` a
+    percentage from 1 to 100. A row that is not usable is dropped with an info line.
+    """
+    from app.modules.project_governance.public import story_text
+
+    rows = story.get("roster")
+    out: list[dict[str, Any]] = []
+    for row in rows if isinstance(rows, list) else []:
+        name = story_text(row.get("name"), locale) if isinstance(row, dict) else ""
+        if not name:
+            logger.info("staffing demo story: roster row %r is not usable, dropped", row)
+            continue
+        allocation = _int(row.get("allocation"))
+        out.append(
+            {
+                "name": name,
+                "company": story_text(row.get("company"), locale),
+                "site_role": story_text(row.get("site_role"), locale),
+                "allocation": allocation if allocation is not None and 0 < allocation <= 100 else 100,
+            }
+        )
+    return out
+
+
 def story_handovers(story: dict[str, Any], locale: str, default: tuple[tuple[str, str, int, str], ...]) -> tuple:
     """The handovers of the story as ``(giver, receiver, overlap days, scope)``, or ``default`` when none is usable."""
     from app.modules.project_governance.public import story_text
@@ -237,7 +264,29 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     from app.modules.teams.models import RosterMember
     from app.modules.teams.seed import seed_teams_roster
 
-    await seed_teams_roster(session, project_id=project_id)
+    project = await session.get(Project, project_id)
+    story = demo_module_story(demo_id_of(project.metadata_), "staffing")
+    locale = getattr(project, "locale", None) or "en"
+    cast = story_roster(story, locale)
+    if cast:
+        # The story names its own people. They are written before the generic demo roster, which then
+        # finds a roster and adds nobody, so the files are about people that belong to this project.
+        today_ = datetime.now(UTC).date()
+        for person in cast:
+            session.add(
+                RosterMember(
+                    project_id=project_id,
+                    display_name=person["name"],
+                    company_name=person["company"],
+                    site_role=person["site_role"],
+                    allocation_percent=person["allocation"],
+                    starts_on=today_ - timedelta(days=60),
+                    certifications=[],
+                )
+            )
+        await session.flush()
+    else:
+        await seed_teams_roster(session, project_id=project_id)
     members = list(
         (
             await session.execute(
@@ -248,12 +297,14 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                     RosterMember.project_id == project_id,
                     RosterMember.user_id.is_(None),
                     RosterMember.contact_id.is_(None),
+                    # With a story cast only those people: other roster rows (the client organisation)
+                    # are not staff of the project.
+                    *([RosterMember.display_name.in_([p["name"] for p in cast])] if cast else []),
                 )
                 .order_by(RosterMember.created_at, RosterMember.id)
             )
         ).scalars()
     )
-    project = await session.get(Project, project_id)
     owner = project.owner_id
     # The project owner plans the demo and is the line manager of every position, which is what lets
     # them open the files. The erase permission is not needed and not taken.
@@ -263,8 +314,6 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     svc = StaffingService(session)
     today = datetime.now(UTC).date()
     early = await before_construction(session, project_id)
-    story = demo_module_story(demo_id_of(project.metadata_), "staffing")
-    locale = getattr(project, "locale", None) or "en"
     planned = story_positions(story, POSITIONS_BEFORE_CONSTRUCTION) if early else POSITIONS
     commissioning = COMMISSIONING_BEFORE_CONSTRUCTION_IN_DAYS if early else COMMISSIONING_IN_DAYS
     if early and _int(story.get("commissioning_in_days")) is not None:
