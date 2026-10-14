@@ -250,6 +250,7 @@ async def test_matrix_shape(world: World) -> None:
             "doc_type": "business_case",
             "status": "in_review",
             "required": True,
+            "name": {"key": f"{NS}.doc.business_case", "text": None},
         }
     ]
     assert rows["integration"]["cells"][G1]["documents"] == []

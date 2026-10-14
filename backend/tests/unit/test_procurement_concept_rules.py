@@ -704,7 +704,9 @@ def test_concept_codes_are_plain_strings_of_the_catalogue() -> None:
 def test_the_package_body_takes_only_fields_the_module_reads() -> None:
     """A field nothing reads is not offered for writing; the cost reference is the BOQ section or nothing."""
     with pytest.raises(ValueError):
-        PackagePut.model_validate({"need_activity_id": "00000000-0000-0000-0000-000000000001"})
+        PackagePut.model_validate({"lead_buffer_days": 3})
+    # The need date may be bound to a schedule milestone, which the module reads.
+    assert PackagePut.model_validate({"need_activity_id": "00000000-0000-0000-0000-000000000001"}).need_activity_id
     section = "00000000-0000-0000-0000-000000000002"
     with pytest.raises(ValueError):
         PackagePut.model_validate({"cost_ref_kind": "cost_line", "cost_ref_id": section})

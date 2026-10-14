@@ -289,6 +289,7 @@
     "backend/app/modules/project_governance/catalogue_packs.py::_PARSED",
     "backend/app/modules/project_governance/evidence.py::_LINK_ROUTES",
     "backend/app/modules/project_governance/evidence.py::_REGISTRY",
+    "backend/app/modules/project_handbook/sources.py::_SOURCES",
     "backend/app/modules/project_intelligence/advisor.py::_llm_cache",
     "backend/app/modules/project_intelligence/router.py::_state_cache",
     "backend/app/modules/projects/module_presence.py::_PRESENCE_CACHE",

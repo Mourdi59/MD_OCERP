@@ -972,9 +972,11 @@ class LogisticsPlanService:
 
     @classmethod
     def _guard_media_transition(cls, row: Any, target: str) -> None:
+        # The state machine first: ``can`` marks a step the record cannot take as not applicable, and the
+        # write must answer the same way before it asks for the capacity.
+        cls._guard_move(pl.MEDIA_FSM, row, target)
         if target == "contracted" and row.contracted_capacity is None:
             raise LogisticsError("contracted_capacity_required", 422)
-        cls._guard_move(pl.MEDIA_FSM, row, target)
 
     @staticmethod
     def _demand_frozen(row: Any) -> tuple[str, ...]:

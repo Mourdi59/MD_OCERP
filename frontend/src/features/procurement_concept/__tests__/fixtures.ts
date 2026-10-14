@@ -154,6 +154,7 @@ export function award(patch: Partial<AwardPackage> = {}): AwardPackage {
     framework_agreement_id: null,
     evaluation_method: 'lowest_price',
     need_date: '2027-06-01',
+    need_activity_id: null,
     lead_time_days: null,
     procedure_days: null,
     planned_start: null,

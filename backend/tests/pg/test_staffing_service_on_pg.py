@@ -22,7 +22,7 @@ from app.modules.staffing.errors import StaffingError
 from app.modules.staffing.permissions import register_staffing_permissions
 from app.modules.staffing.service import Actor, StaffingService
 from tests._pg import isolated_engine
-from tests.pg.governance_fixtures import add_revision, decide, prepare_gate
+from tests.pg.governance_fixtures import add_revision, decide, only_evidence, prepare_gate
 from tests.pg.staffing_fixtures import (
     GATE,
     PERSONNEL_FRAME,
@@ -54,9 +54,10 @@ async def factory():
     from app.modules.staffing.evidence import register_gate_evidence
 
     register_staffing_permissions()
-    register_gate_evidence()
-    async with isolated_engine() as engine:
-        yield async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    # Only this module's evidence answers: the other modules' providers would refuse a gate this test needs to pass.
+    with only_evidence(register=register_gate_evidence):
+        async with isolated_engine() as engine:
+            yield async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
 async def _plan(w):

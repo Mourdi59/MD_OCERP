@@ -31,8 +31,9 @@ from app.database import GUID, Base
 _PROJECT_FK = "oe_projects_project.id"
 
 
-def _project_fk() -> Any:
-    return mapped_column(GUID(), ForeignKey(_PROJECT_FK, ondelete="CASCADE"), nullable=False)
+def _project_fk(name: str) -> Any:
+    """The project reference; the constraint name is spelled out so the revision and the models agree on it."""
+    return mapped_column(GUID(), ForeignKey(_PROJECT_FK, ondelete="CASCADE", name=name), nullable=False)
 
 
 class HseFrame(Base):
@@ -41,7 +42,7 @@ class HseFrame(Base):
     __tablename__ = "oe_hsef_frame"
     __table_args__ = (UniqueConstraint("project_id", name="uq_oe_hsef_frame_project"),)
 
-    project_id: Mapped[uuid.UUID] = _project_fk()
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_hsef_frame_project")
     catalogue_source: Mapped[str] = mapped_column(String(20), nullable=False, default="shipped")
     catalogue_id: Mapped[str] = mapped_column(String(64), nullable=False, default="neutral")
     catalogue_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -86,7 +87,7 @@ class HseItem(Base):
         UniqueConstraint("frame_id", "template_code", name="uq_oe_hsef_item_template"),
     )
 
-    project_id: Mapped[uuid.UUID] = _project_fk()
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_hsef_item_project")
     frame_id: Mapped[uuid.UUID] = mapped_column(
         GUID(), ForeignKey("oe_hsef_frame.id", ondelete="CASCADE", name="fk_oe_hsef_item_frame"), nullable=False
     )
@@ -125,7 +126,7 @@ class HseRole(Base):
     __tablename__ = "oe_hsef_role"
     __table_args__ = (Index("ix_oe_hsef_role_project_code", "project_id", "role_code"),)
 
-    project_id: Mapped[uuid.UUID] = _project_fk()
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_hsef_role_project")
     frame_id: Mapped[uuid.UUID] = mapped_column(
         GUID(), ForeignKey("oe_hsef_frame.id", ondelete="CASCADE", name="fk_oe_hsef_role_frame"), nullable=False
     )
@@ -154,7 +155,7 @@ class HseLink(Base):
         Index("ix_oe_hsef_link_project", "project_id"),
     )
 
-    project_id: Mapped[uuid.UUID] = _project_fk()
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_hsef_link_project")
     item_id: Mapped[uuid.UUID] = mapped_column(
         GUID(), ForeignKey("oe_hsef_item.id", ondelete="CASCADE", name="fk_oe_hsef_link_item"), nullable=False
     )

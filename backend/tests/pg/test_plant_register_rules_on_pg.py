@@ -503,7 +503,8 @@ async def test_a_project_without_gates_takes_a_critical_item_from_identified_to_
     code, blockers, _ = await _refused(
         w, lambda svc: svc.transition_item(w.project_id, iid, "route_set", actor_id=w.manager, today=TODAY)
     )
-    assert code == "transition_blocked" and "critical_without_decision" in blockers
+    # A single blocking rule is named by its own code; ``transition_blocked`` stands for several at once.
+    assert code == "critical_without_decision" and "critical_without_decision" in blockers
 
     paper = await _submitted(w, iid, by=w.manager)
     assert paper.status == "submitted"

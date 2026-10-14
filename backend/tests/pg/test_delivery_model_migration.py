@@ -35,6 +35,18 @@ def _load(name: str):
 
 
 _rev = _load("v70_delivery_model")
+_contract = _load("v79_delivery_contract_items")
+
+
+def _upgrade() -> None:
+    """The module's tables come from its first revision and the one that added the contract side."""
+    _rev.upgrade()
+    _contract.upgrade()
+
+
+def _downgrade() -> None:
+    _contract.downgrade()
+    _rev.downgrade()
 
 
 def _run(sync_conn, direction) -> None:
@@ -87,13 +99,13 @@ async def test_revision_reproduces_the_model_schema_up_down_up() -> None:
         async with engine.begin() as conn:
             await _drop_all(conn)
         async with engine.begin() as conn:
-            await conn.run_sync(_run, _rev.upgrade)
+            await conn.run_sync(_run, _upgrade)
             first = await conn.run_sync(_reflect)
         async with engine.begin() as conn:
-            await conn.run_sync(_run, _rev.downgrade)
+            await conn.run_sync(_run, _downgrade)
             down = await conn.run_sync(_reflect)
         async with engine.begin() as conn:
-            await conn.run_sync(_run, _rev.upgrade)
+            await conn.run_sync(_run, _upgrade)
             second = await conn.run_sync(_reflect)
 
     assert not set(TABLES) & down["tables"]
@@ -107,7 +119,7 @@ async def test_revision_is_a_no_op_over_a_create_all_schema() -> None:
     async with isolated_engine() as engine:
         async with engine.begin() as conn:
             before = await conn.run_sync(_reflect)
-            await conn.run_sync(_run, _rev.upgrade)
+            await conn.run_sync(_run, _upgrade)
             after = await conn.run_sync(_reflect)
     for table in TABLES:
         assert after[table] == before[table]

@@ -23,7 +23,7 @@ async def test_port_calls_are_answered_once_per_collection(monkeypatch) -> None:
 
         async def get_model(self, project_id):
             calls["model"] += 1
-            return None
+            return
 
     monkeypatch.setattr(public, "GovernanceRepository", _Repo)
     saved = dict(ev._REGISTRY)

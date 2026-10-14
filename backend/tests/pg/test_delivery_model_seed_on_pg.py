@@ -146,16 +146,14 @@ async def test_a_project_without_a_phase_model_keeps_the_running_story_and_is_re
     assert (await view(w))["status"] == "under_evaluation"
 
 
-async def test_a_catalogue_with_one_form_is_seeded_without_a_decision(factory, caplog) -> None:
+async def test_a_catalogue_with_one_form_cannot_be_published_so_no_project_is_pinned_to_one(factory) -> None:
+    from app.modules.project_governance.errors import GovernanceError
+
     w = await build_world(factory)
     await _mark_demo(w)
-    await _pin_forms(w, ("design_build",))
-    with caplog.at_level(logging.INFO, logger="app.modules.delivery_model.seed"):
-        out = await _seed(w)
-    assert out["failed"] == [] and out["ok"] is False
-    assert [r.levelno for r in caplog.records if r.name == "app.modules.delivery_model.seed"] == [logging.ERROR]
-    assert out["no_decision"] == [{"project_id": str(w.project_id), "reason": "too_few_forms"}]
-    assert [o["form_code"] for o in (await call(w, "comparison"))["options"]] == ["design_build"]
+    with pytest.raises(GovernanceError) as refused:
+        await _pin_forms(w, ("design_build",))
+    assert refused.value.code == "catalogue_invalid"
 
 
 async def test_a_project_that_is_not_a_demo_project_is_left_alone(factory) -> None:
