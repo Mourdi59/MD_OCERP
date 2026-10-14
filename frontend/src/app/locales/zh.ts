@@ -57116,6 +57116,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match 目录索引器",
     "processes.match_catalogue_indexer.purpose": "准备导入的价目表，使 CAD-BIM Match 能推荐其中的条目。",
     "processes.match_catalogue_indexer.off_impact": "导入的价目表无法为 CAD-BIM Match 建立索引。已发布的目录仍可正常使用。",
+    "processes.commitment_release_sweeper.name": "承诺释放检查",
+    "processes.commitment_release_sweeper.off_impact": "中标文件不会自动关联，决策日期过期时也没有人会收到提醒。",
+    "processes.commitment_release_sweeper.purpose": "每小时将中标草拟的文件关联到持有该中标的条目，并对未释放且决策日期已过的条目进行升级提醒。",
+    "processes.site_logistics_sweep.name": "现场物流截止日期检查",
+    "processes.site_logistics_sweep.off_impact": "在有人打开页面之前，即将到期的许可、逾期的邻里投诉和已接收的运输不会被标记。",
+    "processes.site_logistics_sweep.purpose": "检查即将到期的许可、已过答复期限的邻里投诉，以及货物已接收的运输，免得有人为此还得打开页面。",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "贷款方资料准备草稿",
     "contracts.lender_preparation.notice": "只读工作副本。这不是向贷款方提交的申请、认证或放款。源记录分别读取，可能发生变化。",

@@ -55500,6 +55500,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Katalogindexerare för Match",
     "processes.match_catalogue_indexer.purpose": "Förbereder importerade prislistor så att CAD-BIM Match kan föreslå deras poster.",
     "processes.match_catalogue_indexer.off_impact": "Importerade prislistor kan inte indexeras för CAD-BIM Match. Publicerade kataloger fungerar som vanligt.",
+    "processes.commitment_release_sweeper.name": "Kontroller av frigörande av åtaganden",
+    "processes.commitment_release_sweeper.off_impact": "Tilldelningsdokument länkas inte automatiskt och ingen varnas när ett beslutsdatum passerar.",
+    "processes.commitment_release_sweeper.purpose": "Varje timme länkar den dokument som upprättats för en tilldelning till posten som har tilldelningen, och eskalerar poster vars beslutsdatum har passerat utan frigörande.",
+    "processes.site_logistics_sweep.name": "Kontroller av tidsfrister i bygglogistik",
+    "processes.site_logistics_sweep.off_impact": "Utgående tillstånd, försenade grannklagomål och mottagna transporter markeras inte förrän någon öppnar sidan.",
+    "processes.site_logistics_sweep.purpose": "Kontrollerar tillstånd som löper ut, grannklagomål som passerat svarstiden och transporter vars gods har tagits emot, så att ingen behöver öppna en sida för det.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Utkast till underlag för långivaren",
     "contracts.lender_preparation.notice": "Skrivskyddad arbetskopia. Detta är ingen inlämning till långivaren, attestering eller utbetalning. Källposterna läses separat och kan ändras.",

@@ -57784,6 +57784,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Indexeur de catalogues pour Match",
     "processes.match_catalogue_indexer.purpose": "Prépare les bordereaux de prix importés pour que CAD-BIM Match puisse proposer leurs articles.",
     "processes.match_catalogue_indexer.off_impact": "Les bordereaux de prix importés ne peuvent pas être indexés pour CAD-BIM Match. Les catalogues publiés continuent de fonctionner.",
+    "processes.commitment_release_sweeper.name": "Contrôles de libération des engagements",
+    "processes.commitment_release_sweeper.off_impact": "Les documents d'attribution ne sont pas liés automatiquement et personne n'est alerté lorsqu'une date de décision est dépassée.",
+    "processes.commitment_release_sweeper.purpose": "Chaque heure, lie les documents rédigés pour une attribution à l'élément qui porte l'attribution, et escalade les éléments dont la date de décision est dépassée sans libération.",
+    "processes.site_logistics_sweep.name": "Contrôles des échéances de logistique de chantier",
+    "processes.site_logistics_sweep.off_impact": "Les autorisations qui expirent, les réclamations de voisins en retard et les transports réceptionnés ne sont signalés qu'à l'ouverture de la page.",
+    "processes.site_logistics_sweep.purpose": "Contrôle les autorisations qui arrivent à expiration, les réclamations de voisins au-delà de leur délai de réponse et les transports dont les marchandises ont été réceptionnées, pour que personne n'ait à ouvrir une page pour cela.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Brouillon de préparation pour le prêteur",
     "contracts.lender_preparation.notice": "Copie de travail en lecture seule. Il ne s’agit ni d’un dépôt auprès du prêteur, ni d’une certification, ni d’un décaissement. Les données sources sont lues séparément et peuvent changer.",

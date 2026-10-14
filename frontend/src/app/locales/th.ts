@@ -54647,6 +54647,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "ตัวจัดทำดัชนีแคตตาล็อกสำหรับ Match",
     "processes.match_catalogue_indexer.purpose": "เตรียมบัญชีราคาที่นำเข้า เพื่อให้ CAD-BIM Match แนะนำรายการจากบัญชีนั้นได้",
     "processes.match_catalogue_indexer.off_impact": "ไม่สามารถจัดทำดัชนีบัญชีราคาที่นำเข้าสำหรับ CAD-BIM Match ได้ แคตตาล็อกที่เผยแพร่แล้วยังใช้งานได้ตามปกติ",
+    "processes.commitment_release_sweeper.name": "ตรวจการปลดภาระผูกพัน",
+    "processes.commitment_release_sweeper.off_impact": "เอกสารการประกวดราคาไม่เชื่อมโยงโดยอัตโนมัติ และไม่มีใครได้รับการแจ้งเตือนเมื่อพ้นวันที่ตัดสิน",
+    "processes.commitment_release_sweeper.purpose": "ทุกชั่วโมง เชื่อมเอกสารที่ร่างสำหรับการประกวดราคาเข้ากับรายการที่ถือการประกวดราคา และยกระดับรายการที่พ้นวันที่ตัดสินโดยยังไม่ได้ปลด",
+    "processes.site_logistics_sweep.name": "ตรวจกำหนดเวลาโลจิสติกส์หน้างาน",
+    "processes.site_logistics_sweep.off_impact": "ใบอนุญาตที่กำลังจะหมดอายุ คำร้องเรียนจากเพื่อนบ้านที่เกินกำหนด และการขนส่งที่รับของแล้ว จะไม่ถูกทำเครื่องหมายจนกว่าจะมีคนเปิดหน้านี้",
+    "processes.site_logistics_sweep.purpose": "ตรวจใบอนุญาตที่จะหมดอายุ คำร้องเรียนจากเพื่อนบ้านที่พ้นกำหนดตอบ และการขนส่งที่รับสินค้าแล้ว เพื่อไม่ให้ต้องเปิดหน้าเพื่อดูเรื่องนี้",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "ร่างเตรียมข้อมูลสำหรับผู้ให้กู้",
     "contracts.lender_preparation.notice": "สำเนาทำงานแบบอ่านอย่างเดียว ไม่ใช่การยื่นต่อผู้ให้กู้ การรับรอง หรือการเบิกจ่าย ข้อมูลต้นทางถูกอ่านแยกกันและอาจเปลี่ยนแปลงได้",

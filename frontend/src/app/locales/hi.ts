@@ -54888,6 +54888,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match के लिए कैटलॉग इंडेक्सर",
     "processes.match_catalogue_indexer.purpose": "आयात की गई मूल्य सूचियों को तैयार करता है ताकि CAD-BIM Match उनके आइटम सुझा सके।",
     "processes.match_catalogue_indexer.off_impact": "आयात की गई मूल्य सूचियाँ CAD-BIM Match के लिए इंडेक्स नहीं हो सकतीं। प्रकाशित कैटलॉग पहले की तरह काम करते हैं।",
+    "processes.commitment_release_sweeper.name": "प्रतिबद्धता रिलीज़ जाँच",
+    "processes.commitment_release_sweeper.off_impact": "अवॉर्ड दस्तावेज़ अपने-आप लिंक नहीं होते और निर्णय की तारीख बीतने पर किसी को चेतावनी नहीं मिलती।",
+    "processes.commitment_release_sweeper.purpose": "हर घंटे, अवॉर्ड के लिए तैयार किए गए दस्तावेज़ों को उस आइटम से लिंक करता है जिस पर अवॉर्ड है, और ऐसे आइटमों को एस्केलेट करता है जिनकी निर्णय तिथि रिलीज़ के बिना बीत चुकी है।",
+    "processes.site_logistics_sweep.name": "साइट लॉजिस्टिक्स समय-सीमा जाँच",
+    "processes.site_logistics_sweep.off_impact": "समाप्त होने वाली परमिट, समय-सीमा बीत चुकी पड़ोसी शिकायतें और प्राप्त ट्रांसपोर्ट तब तक चिह्नित नहीं होते जब तक कोई पेज नहीं खोलता।",
+    "processes.site_logistics_sweep.purpose": "समाप्त होने वाली परमिट, उत्तर की समय-सीमा बीत चुकी पड़ोसी शिकायतें, और ऐसे ट्रांसपोर्ट जिनका माल प्राप्त हो चुका है, इनकी जाँच करता है, ताकि इसके लिए किसी को पेज न खोलना पड़े।",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "ऋणदाता के लिए तैयारी का मसौदा",
     "contracts.lender_preparation.notice": "केवल पढ़ने योग्य कार्य प्रति। यह ऋणदाता को प्रस्तुत आवेदन, प्रमाणन या ऋण वितरण नहीं है। स्रोत रिकॉर्ड अलग-अलग पढ़े जाते हैं और बदल सकते हैं।",

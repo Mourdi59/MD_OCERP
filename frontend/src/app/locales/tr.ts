@@ -55766,6 +55766,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match için katalog dizinleyici",
     "processes.match_catalogue_indexer.purpose": "İçe aktarılan birim fiyat listelerini, CAD-BIM Match kalemlerini önerebilsin diye hazırlar.",
     "processes.match_catalogue_indexer.off_impact": "İçe aktarılan birim fiyat listeleri CAD-BIM Match için dizinlenemez. Yayımlanmış kataloglar çalışmaya devam eder.",
+    "processes.commitment_release_sweeper.name": "Taahhüt serbest bırakma kontrolleri",
+    "processes.commitment_release_sweeper.off_impact": "İhale belgeleri otomatik olarak bağlanmaz ve bir karar tarihi geçtiğinde kimse uyarılmaz.",
+    "processes.commitment_release_sweeper.purpose": "Her saat, bir ihale için hazırlanan belgeleri ihaleyi taşıyan kalemle bağlar ve serbest bırakılmadan karar tarihi geçen kalemleri yükseltir.",
+    "processes.site_logistics_sweep.name": "Şantiye lojistiği süre kontrolleri",
+    "processes.site_logistics_sweep.off_impact": "Süresi dolmak üzere olan izinler, süresi geçmiş komşu şikayetleri ve teslim alınmış nakliyeler, biri sayfayı açana kadar işaretlenmez.",
+    "processes.site_logistics_sweep.purpose": "Süresi dolacak izinleri, yanıt süresi geçmiş komşu şikayetlerini ve malı teslim alınmış nakliyeleri kontrol eder; böylece bunun için kimsenin sayfa açmasına gerek kalmaz.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Kredi veren için hazırlık taslağı",
     "contracts.lender_preparation.notice": "Salt okunur çalışma kopyasıdır. Kredi verene başvuru, tutar onayı veya kredi kullandırımı değildir. Kaynak kayıtlar ayrı ayrı okunur ve değişebilir.",

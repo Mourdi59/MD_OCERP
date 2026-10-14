@@ -54845,6 +54845,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "فهرست‌گذار کاتالوگ برای Match",
     "processes.match_catalogue_indexer.purpose": "فهرست‌های قیمت واردشده را آماده می‌کند تا CAD-BIM Match بتواند ردیف‌های آن‌ها را پیشنهاد دهد.",
     "processes.match_catalogue_indexer.off_impact": "فهرست‌های قیمت واردشده را نمی‌توان برای CAD-BIM Match فهرست‌گذاری کرد. کاتالوگ‌های منتشرشده همچنان کار می‌کنند.",
+    "processes.commitment_release_sweeper.name": "بررسی‌های آزادسازی تعهدات",
+    "processes.commitment_release_sweeper.off_impact": "اسناد واگذاری به‌طور خودکار پیوند داده نمی‌شوند و هنگام گذشتن تاریخ تصمیم، به کسی هشدار داده نمی‌شود.",
+    "processes.commitment_release_sweeper.purpose": "هر ساعت، اسنادی را که واگذاری تهیه کرده به ردیفی که واگذاری را در خود دارد پیوند می‌دهد و ردیف‌هایی را که تاریخ تصمیمشان بدون آزادسازی گذشته، ارجاع می‌دهد.",
+    "processes.site_logistics_sweep.name": "بررسی مهلت‌های لجستیک کارگاه",
+    "processes.site_logistics_sweep.off_impact": "مجوزهای رو به انقضا، شکایات معوق همسایگان و حمل‌ونقل‌های دریافت‌شده تا زمانی که کسی صفحه را باز نکند، علامت‌گذاری نمی‌شوند.",
+    "processes.site_logistics_sweep.purpose": "مجوزهایی را که منقضی می‌شوند، شکایات همسایگان که از مهلت پاسخ گذشته‌اند و حمل‌ونقل‌هایی را که کالایشان دریافت شده بررسی می‌کند، تا لازم نباشد کسی برای این کار صفحه‌ای را باز کند.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "پیش‌نویس آماده‌سازی برای وام‌دهنده",
     "contracts.lender_preparation.notice": "نسخهٔ کاری فقط‌خواندنی. این نسخه به معنای ارائه به وام‌دهنده، گواهی یا پرداخت تسهیلات نیست. سوابق مبدأ جداگانه خوانده می‌شوند و ممکن است تغییر کنند.",

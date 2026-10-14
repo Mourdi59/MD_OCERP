@@ -55158,6 +55158,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "מאנדקס קטלוגים עבור Match",
     "processes.match_catalogue_indexer.purpose": "מכין מחירונים מיובאים כדי ש-CAD-BIM Match יוכל להציע את הסעיפים שלהם.",
     "processes.match_catalogue_indexer.off_impact": "לא ניתן לאנדקס מחירונים מיובאים עבור CAD-BIM Match. קטלוגים שפורסמו ממשיכים לעבוד.",
+    "processes.commitment_release_sweeper.name": "בדיקות שחרור התחייבויות",
+    "processes.commitment_release_sweeper.off_impact": "מסמכי הזכייה אינם מקושרים אוטומטית, ואף אחד אינו מקבל התראה כשתאריך החלטה חולף.",
+    "processes.commitment_release_sweeper.purpose": "בכל שעה מקשר מסמכים שנוסחו לזכייה לפריט שמחזיק בזכייה, ומעלה לטיפול פריטים שתאריך ההחלטה שלהם חלף ללא שחרור.",
+    "processes.site_logistics_sweep.name": "בדיקות מועדי לוגיסטיקת אתר",
+    "processes.site_logistics_sweep.off_impact": "היתרים שפוקעים, תלונות שכנים שחלף מועדן ותחבורה שהתקבלה אינם מסומנים עד שמישהו פותח את הדף.",
+    "processes.site_logistics_sweep.purpose": "בודק היתרים שפוקעים, תלונות שכנים שחלף מועד התגובה להן, ותחבורה שהסחורה שלה התקבלה, כדי שאף אחד לא יצטרך לפתוח דף לשם כך.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "טיוטת הכנה למלווה",
     "contracts.lender_preparation.notice": "עותק עבודה לקריאה בלבד. אין זו הגשה למלווה, אישור סכום או העברת כספים. רשומות המקור נקראות בנפרד ועשויות להשתנות.",

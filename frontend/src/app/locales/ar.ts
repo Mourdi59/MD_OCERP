@@ -57728,6 +57728,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "مفهرس الكتالوجات لأجل Match",
     "processes.match_catalogue_indexer.purpose": "يجهّز قوائم الأسعار المستوردة ليتمكن CAD-BIM Match من اقتراح بنودها.",
     "processes.match_catalogue_indexer.off_impact": "لا يمكن فهرسة قوائم الأسعار المستوردة لأجل CAD-BIM Match. الكتالوجات المنشورة تعمل كالمعتاد.",
+    "processes.commitment_release_sweeper.name": "فحوصات إطلاق الالتزامات",
+    "processes.commitment_release_sweeper.off_impact": "لا تُربط مستندات الترسية تلقائيًا، ولا يُنبَّه أحد عند تجاوز تاريخ القرار.",
+    "processes.commitment_release_sweeper.purpose": "تربط كل ساعة المستندات التي أعدتها الترسية بالبند الذي يحمل الترسية، وتُصعِّد البنود التي تجاوز تاريخ قرارها دون إطلاق.",
+    "processes.site_logistics_sweep.name": "فحوصات مواعيد الخدمات اللوجستية للموقع",
+    "processes.site_logistics_sweep.off_impact": "لا تُعلَّم التصاريح المنتهية قريبًا، ولا شكاوى الجيران المتأخرة، ولا النقل المستلم حتى يفتح أحد الصفحة.",
+    "processes.site_logistics_sweep.purpose": "تتحقق من التصاريح التي تنتهي صلاحيتها، وشكاوى الجيران التي تجاوزت موعد الرد، والنقل الذي استُلمت بضائعه، حتى لا يضطر أحد إلى فتح صفحة لذلك.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "مسودة التحضير للمُقرض",
     "contracts.lender_preparation.notice": "نسخة عمل للقراءة فقط. لا تمثل تقديمًا إلى المُقرض أو تصديقًا أو صرفًا. تُقرأ سجلات المصدر كلٌّ على حدة وقد تتغير.",

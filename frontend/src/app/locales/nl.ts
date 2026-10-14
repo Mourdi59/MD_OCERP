@@ -55766,6 +55766,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Catalogusindexeerder voor Match",
     "processes.match_catalogue_indexer.purpose": "Bereidt geïmporteerde prijslijsten voor zodat CAD-BIM Match de posten ervan kan voorstellen.",
     "processes.match_catalogue_indexer.off_impact": "Geïmporteerde prijslijsten kunnen niet worden geïndexeerd voor CAD-BIM Match. Gepubliceerde catalogi blijven werken.",
+    "processes.commitment_release_sweeper.name": "Controles op vrijgave van verplichtingen",
+    "processes.commitment_release_sweeper.off_impact": "Gunningsdocumenten worden niet automatisch gekoppeld en niemand krijgt een waarschuwing wanneer een beslissingsdatum verstrijkt.",
+    "processes.commitment_release_sweeper.purpose": "Koppelt elk uur de documenten die voor een gunning zijn opgesteld aan het item dat de gunning draagt, en escaleert items waarvan de beslissingsdatum is verstreken zonder vrijgave.",
+    "processes.site_logistics_sweep.name": "Controles op deadlines van bouwlogistiek",
+    "processes.site_logistics_sweep.off_impact": "Verlopende vergunningen, te late buurklachten en ontvangen transporten worden pas gemarkeerd als iemand de pagina opent.",
+    "processes.site_logistics_sweep.purpose": "Controleert vergunningen die verlopen, buurklachten waarvan de reactietermijn is verstreken en transporten waarvan de goederen zijn ontvangen, zodat niemand daarvoor een pagina hoeft te openen.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Conceptvoorbereiding voor de kredietverstrekker",
     "contracts.lender_preparation.notice": "Alleen-lezen werkkopie. Dit is geen indiening bij de kredietverstrekker, certificering of uitbetaling. De brongegevens worden afzonderlijk gelezen en kunnen veranderen.",

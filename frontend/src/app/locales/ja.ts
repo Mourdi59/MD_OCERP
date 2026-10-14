@@ -56179,6 +56179,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match 用カタログインデクサー",
     "processes.match_catalogue_indexer.purpose": "取り込んだ単価表を準備し、CAD-BIM Match がその項目を提案できるようにします。",
     "processes.match_catalogue_indexer.off_impact": "取り込んだ単価表は CAD-BIM Match 用にインデックスできません。公開済みカタログは引き続き使えます。",
+    "processes.commitment_release_sweeper.name": "コミットメント解放チェック",
+    "processes.commitment_release_sweeper.off_impact": "落札文書は自動的にリンクされず、決定日を過ぎても誰にも通知されません。",
+    "processes.commitment_release_sweeper.purpose": "毎時、落札で作成された文書を落札を保持する項目にリンクし、解放されないまま決定日を過ぎた項目をエスカレーションします。",
+    "processes.site_logistics_sweep.name": "現場ロジスティクス期限チェック",
+    "processes.site_logistics_sweep.off_impact": "期限が近い許可証、期限を過ぎた近隣からの苦情、受領済みの輸送は、誰かがページを開くまで検出されません。",
+    "processes.site_logistics_sweep.purpose": "期限切れとなる許可証、回答期限を過ぎた近隣からの苦情、貨物が受領済みの輸送を確認し、そのためにページを開く必要をなくします。",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "貸し手向け準備資料の下書き",
     "contracts.lender_preparation.notice": "読み取り専用の作業用コピーです。貸し手への提出、証明、融資実行を行うものではありません。元の記録は個別に読み取られ、変更される場合があります。",

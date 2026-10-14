@@ -54655,6 +54655,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Bộ lập chỉ mục danh mục cho Match",
     "processes.match_catalogue_indexer.purpose": "Chuẩn bị các bảng giá đã nhập để CAD-BIM Match có thể gợi ý các hạng mục của chúng.",
     "processes.match_catalogue_indexer.off_impact": "Không thể lập chỉ mục bảng giá đã nhập cho CAD-BIM Match. Các danh mục đã xuất bản vẫn hoạt động.",
+    "processes.commitment_release_sweeper.name": "Kiểm tra giải phóng cam kết",
+    "processes.commitment_release_sweeper.off_impact": "Hồ sơ trúng thầu không tự động liên kết và không ai được cảnh báo khi quá hạn quyết định.",
+    "processes.commitment_release_sweeper.purpose": "Mỗi giờ, liên kết các tài liệu soạn cho gói thầu với hạng mục đang giữ gói thầu, và leo thang các hạng mục đã quá hạn quyết định mà chưa giải phóng.",
+    "processes.site_logistics_sweep.name": "Kiểm tra thời hạn logistics công trường",
+    "processes.site_logistics_sweep.off_impact": "Giấy phép sắp hết hạn, khiếu nại của hàng xóm quá hạn và vận chuyển đã nhận sẽ không được đánh dấu cho đến khi có người mở trang.",
+    "processes.site_logistics_sweep.purpose": "Kiểm tra giấy phép sắp hết hạn, khiếu nại hàng xóm đã quá hạn trả lời và các chuyến vận chuyển đã nhận hàng, để không ai phải mở trang cho việc này.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Bản nháp chuẩn bị cho bên cho vay",
     "contracts.lender_preparation.notice": "Bản làm việc chỉ đọc. Đây không phải hồ sơ nộp cho bên cho vay, chứng nhận hay giải ngân. Các bản ghi nguồn được đọc riêng và có thể thay đổi.",

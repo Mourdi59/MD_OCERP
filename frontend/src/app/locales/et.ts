@@ -54835,6 +54835,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Kataloogide indekseerija Matchi jaoks",
     "processes.match_catalogue_indexer.purpose": "Valmistab imporditud hinnakirjad ette, et CAD-BIM Match saaks pakkuda nende positsioone.",
     "processes.match_catalogue_indexer.off_impact": "Imporditud hinnakirju ei saa CAD-BIM Matchi jaoks indekseerida. Avaldatud kataloogid töötavad edasi.",
+    "processes.commitment_release_sweeper.name": "Kohustuste vabastamise kontrollid",
+    "processes.commitment_release_sweeper.off_impact": "Hankedokumendid ei seostu automaatselt ja keegi ei saa hoiatust, kui otsustuskuupäev möödub.",
+    "processes.commitment_release_sweeper.purpose": "Iga tund seob hankest koostatud dokumendid selle kirjega seotud reaga ja tõstab esile read, mille otsustuskuupäev on möödunud ilma vabastamiseta.",
+    "processes.site_logistics_sweep.name": "Ehitusobjekti logistika tähtaegade kontrollid",
+    "processes.site_logistics_sweep.off_impact": "Aeguvaid lubasid, tähtaja ületanud naabrikaebusi ja vastuvõetud transporte ei märgita enne, kui keegi lehe avab.",
+    "processes.site_logistics_sweep.purpose": "Kontrollib aeguvaid lube, naabrite kaebusi, mille vastamistähtaeg on möödas, ja transporte, mille kaup on vastu võetud, et keegi ei peaks selle jaoks lehte avama.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Laenuandjale ettevalmistatava materjali mustand",
     "contracts.lender_preparation.notice": "Kirjutuskaitstud töökoopia. See ei ole laenuandjale esitatav taotlus, kinnitamine ega väljamakse. Lähtekirjed loetakse eraldi ja võivad muutuda.",

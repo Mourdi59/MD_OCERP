@@ -55155,6 +55155,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match-এর জন্য ক্যাটালগ ইনডেক্সার",
     "processes.match_catalogue_indexer.purpose": "আমদানি করা মূল্য তালিকা প্রস্তুত করে, যাতে CAD-BIM Match তার আইটেম সাজেস্ট করতে পারে।",
     "processes.match_catalogue_indexer.off_impact": "আমদানি করা মূল্য তালিকা CAD-BIM Match-এর জন্য ইনডেক্স করা যাচ্ছে না। প্রকাশিত ক্যাটালগ আগের মতোই কাজ করে।",
+    "processes.commitment_release_sweeper.name": "কমিটমেন্ট ছাড়ের যাচাই",
+    "processes.commitment_release_sweeper.off_impact": "অ্যাওয়ার্ড ডকুমেন্ট স্বয়ংক্রিয়ভাবে লিংক হয় না এবং সিদ্ধান্তের তারিখ পেরোলে কাউকে সতর্ক করা হয় না।",
+    "processes.commitment_release_sweeper.purpose": "প্রতি ঘণ্টায় অ্যাওয়ার্ডের খসড়া করা ডকুমেন্টগুলোকে যে আইটেমে অ্যাওয়ার্ড আছে সেটির সাথে লিংক করে, এবং ছাড় ছাড়াই সিদ্ধান্তের তারিখ পেরিয়ে যাওয়া আইটেমগুলো উপরে তুলে দেয়।",
+    "processes.site_logistics_sweep.name": "সাইট লজিস্টিকস সময়সীমা যাচাই",
+    "processes.site_logistics_sweep.off_impact": "কেউ পেজ না খোলা পর্যন্ত মেয়াদোত্তীর্ণপ্রায় পারমিট, মেয়াদ পেরোনো প্রতিবেশী অভিযোগ এবং গৃহীত পরিবহন চিহ্নিত হয় না।",
+    "processes.site_logistics_sweep.purpose": "মেয়াদ শেষ হতে চলা পারমিট, উত্তরের সময়সীমা পেরোনো প্রতিবেশী অভিযোগ, এবং যেসব পরিবহনের মাল পৌঁছেছে সেগুলো পরীক্ষা করে, যাতে কাউকে এর জন্য পেজ খুলতে না হয়।",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "ঋণদাতার জন্য প্রস্তুতির খসড়া",
     "contracts.lender_preparation.notice": "শুধু পড়ার জন্য কাজের অনুলিপি। এটি ঋণদাতার কাছে জমা দেওয়া আবেদন, প্রত্যয়ন বা অর্থ ছাড় নয়। উৎস রেকর্ডগুলো আলাদাভাবে পড়া হয় এবং পরিবর্তিত হতে পারে।",

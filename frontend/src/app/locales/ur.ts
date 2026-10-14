@@ -54845,6 +54845,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match کے لیے کیٹلاگ انڈیکسر",
     "processes.match_catalogue_indexer.purpose": "درآمد شدہ قیمتوں کی فہرستیں تیار کرتا ہے تاکہ CAD-BIM Match ان کے آئٹمز تجویز کر سکے۔",
     "processes.match_catalogue_indexer.off_impact": "درآمد شدہ قیمتوں کی فہرستیں CAD-BIM Match کے لیے انڈیکس نہیں ہو سکتیں۔ شائع شدہ کیٹلاگ بدستور کام کرتے ہیں۔",
+    "processes.commitment_release_sweeper.name": "کمٹمنٹ ریلیز کی جانچ",
+    "processes.commitment_release_sweeper.off_impact": "ایوارڈ دستاویزات خودکار طور پر لنک نہیں ہوتیں اور فیصلے کی تاریخ گزرنے پر کسی کو خبردار نہیں کیا جاتا۔",
+    "processes.commitment_release_sweeper.purpose": "ہر گھنٹے، ایوارڈ کے لیے تیار کردہ دستاویزات کو اس آئٹم سے لنک کرتا ہے جس پر ایوارڈ ہے، اور ان آئٹمز کو آگے بڑھاتا ہے جن کی فیصلے کی تاریخ ریلیز کے بغیر گزر چکی ہو۔",
+    "processes.site_logistics_sweep.name": "سائٹ لاجسٹکس ڈیڈلائن کی جانچ",
+    "processes.site_logistics_sweep.off_impact": "ختم ہونے والے پرمٹ، مدت گزرنے والی ہمسایوں کی شکایات اور وصول شدہ ترسیلات اس وقت تک نشان زد نہیں ہوتیں جب تک کوئی صفحہ نہ کھولے۔",
+    "processes.site_logistics_sweep.purpose": "ختم ہونے والے پرمٹ، جواب کی مدت گزرنے والی ہمسایوں کی شکایات، اور وہ ترسیلات جن کا سامان وصول ہو چکا ہے، ان کی جانچ کرتا ہے تاکہ اس کے لیے کسی کو صفحہ کھولنا نہ پڑے۔",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "قرض دہندہ کے لیے تیاری کا مسودہ",
     "contracts.lender_preparation.notice": "صرف پڑھنے کے لیے عملی نقل۔ یہ قرض دہندہ کو جمع کرائی گئی درخواست، تصدیق یا رقم کا اجرا نہیں ہے۔ ماخذ ریکارڈ الگ الگ پڑھے جاتے ہیں اور بدل سکتے ہیں۔",

@@ -56133,6 +56133,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Indexátor katalogů pro Match",
     "processes.match_catalogue_indexer.purpose": "Připraví importované ceníky, aby CAD-BIM Match mohl navrhovat jejich položky.",
     "processes.match_catalogue_indexer.off_impact": "Importované ceníky nelze zaindexovat pro CAD-BIM Match. Zveřejněné katalogy fungují dál.",
+    "processes.commitment_release_sweeper.name": "Kontroly uvolnění závazků",
+    "processes.commitment_release_sweeper.off_impact": "Dokumenty k zakázce se nepropojují automaticky a nikdo není upozorněn, když uplyne termín rozhodnutí.",
+    "processes.commitment_release_sweeper.purpose": "Každou hodinu propojí dokumenty, které zadání připravilo, s položkou, která zakázku drží, a eskaluje položky, jejichž termín rozhodnutí uplynul bez uvolnění.",
+    "processes.site_logistics_sweep.name": "Kontroly termínů stavební logistiky",
+    "processes.site_logistics_sweep.off_impact": "Blížící se expirace povolení, po termínu neodpovězené stížnosti sousedů a přijaté dopravy se neoznačí, dokud někdo neotevře stránku.",
+    "processes.site_logistics_sweep.purpose": "Kontroluje povolení, jejichž platnost končí, stížnosti sousedů po termínu odpovědi a dopravy, jejichž zboží bylo přijato, aby nikdo nemusel kvůli tomu otevírat stránku.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Pracovní návrh pro věřitele",
     "contracts.lender_preparation.notice": "Pracovní kopie pouze pro čtení. Nejde o podání věřiteli, osvědčení ani čerpání úvěru. Zdrojové záznamy se načítají samostatně a mohou se měnit.",

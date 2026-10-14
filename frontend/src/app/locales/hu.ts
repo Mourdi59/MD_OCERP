@@ -57450,6 +57450,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Katalógusindexelő a Matchhez",
     "processes.match_catalogue_indexer.purpose": "Előkészíti az importált árlistákat, hogy a CAD-BIM Match javasolhassa a tételeiket.",
     "processes.match_catalogue_indexer.off_impact": "Az importált árlisták nem indexelhetők a CAD-BIM Matchhez. A közzétett katalógusok továbbra is működnek.",
+    "processes.commitment_release_sweeper.name": "Kötelezettség-felszabadítási ellenőrzések",
+    "processes.commitment_release_sweeper.off_impact": "A szerződéskötési dokumentumok nem kapcsolódnak automatikusan, és senki nem kap figyelmeztetést, amikor egy döntési határidő lejár.",
+    "processes.commitment_release_sweeper.purpose": "Óránként összekapcsolja a szerződéskötés dokumentumait azzal a tétellel, amely a szerződést tartalmazza, és eszkalálja azokat a tételeket, amelyek döntési határideje felszabadítás nélkül lejárt.",
+    "processes.site_logistics_sweep.name": "Építkezési logisztikai határidő-ellenőrzések",
+    "processes.site_logistics_sweep.off_impact": "A lejáró engedélyek, a határidőn túli szomszédi panaszok és a beérkezett szállítmányok nem kerülnek megjelölésre, amíg valaki meg nem nyitja az oldalt.",
+    "processes.site_logistics_sweep.purpose": "Ellenőrzi a lejáró engedélyeket, a válaszhatáridőn túli szomszédi panaszokat és azokat a szállításokat, amelyek árut már átvettek, hogy senkinek ne kelljen ezért oldalt megnyitnia.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Tervezet a hitelezőnek szánt előkészítéshez",
     "contracts.lender_preparation.notice": "Csak olvasható munkapéldány. Ez nem a hitelezőnek benyújtott kérelem, igazolás vagy folyósítás. A forrásrekordok külön kerülnek beolvasásra, és változhatnak.",

@@ -56941,6 +56941,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Індексатор каталогів для Match",
     "processes.match_catalogue_indexer.purpose": "Готує імпортовані прайс-листи, щоб CAD-BIM Match міг підказувати їхні позиції.",
     "processes.match_catalogue_indexer.off_impact": "Імпортовані прайс-листи не можна проіндексувати для CAD-BIM Match. Опубліковані каталоги й далі працюють.",
+    "processes.commitment_release_sweeper.name": "Перевірки звільнення зобов'язань",
+    "processes.commitment_release_sweeper.off_impact": "Документи закупівлі не пов'язуються автоматично, і ніхто не отримує попередження, коли спливає дата рішення.",
+    "processes.commitment_release_sweeper.purpose": "Щогодини пов'язує документи, підготовлені для закупівлі, з позицією, яка її містить, і ескалює позиції, дата рішення яких минула без звільнення.",
+    "processes.site_logistics_sweep.name": "Перевірки строків будівельної логістики",
+    "processes.site_logistics_sweep.off_impact": "Дозволи, що спливають, прострочені скарги сусідів і прийняті перевезення не позначаються, доки хтось не відкриє сторінку.",
+    "processes.site_logistics_sweep.purpose": "Перевіряє дозволи, строк дії яких спливає, скарги сусідів із простроченим строком відповіді та перевезення, вантаж за якими прийнято, щоб нікому не доводилося відкривати сторінку для цього.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Чернетка підготовки для кредитора",
     "contracts.lender_preparation.notice": "Робоча копія лише для читання. Це не подання кредитору, не засвідчення суми й не видача траншу. Вихідні записи зчитуються окремо та можуть змінюватися.",

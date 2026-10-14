@@ -54846,6 +54846,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match үшін каталог индекстеушісі",
     "processes.match_catalogue_indexer.purpose": "Импортталған бағалар тізімін дайындайды, сонда CAD-BIM Match олардың позицияларын ұсына алады.",
     "processes.match_catalogue_indexer.off_impact": "Импортталған бағалар тізімін CAD-BIM Match үшін индекстеу мүмкін емес. Жарияланған каталогтар жұмысын жалғастырады.",
+    "processes.commitment_release_sweeper.name": "Міндеттемелерді босатуды тексеру",
+    "processes.commitment_release_sweeper.off_impact": "Конкурс құжаттары автоматты түрде байланыстырылмайды және шешім күні өткенде ешкім ескертілмейді.",
+    "processes.commitment_release_sweeper.purpose": "Әр сағат сайын конкурс үшін дайындалған құжаттарды конкурс бар элементпен байланыстырады және босатусыз шешім мерзімі өткен элементтерді эскалациялайды.",
+    "processes.site_logistics_sweep.name": "Нысан логистикасының мерзімдерін тексеру",
+    "processes.site_logistics_sweep.off_impact": "Мерзімі біте жаздаған рұқсаттар, мерзімі өткен көрші шағымдары және қабылданған тасымалдар бет ашылмайынша белгіленбейді.",
+    "processes.site_logistics_sweep.purpose": "Мерзімі біткелі тұрған рұқсаттарды, жауап мерзімі өткен көрші шағымдарын және тауары қабылданған тасымалдауларды тексереді, сондықтан ешкім ол үшін бетті ашудың қажеті жоқ.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Несие берушіге арналған дайындық жобасы",
     "contracts.lender_preparation.notice": "Тек оқуға арналған жұмыс көшірмесі. Бұл несие берушіге өтінім беру, куәландыру немесе қаражат беру емес. Бастапқы жазбалар бөлек оқылады және өзгеруі мүмкін.",

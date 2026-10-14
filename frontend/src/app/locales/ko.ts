@@ -55265,6 +55265,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match용 카탈로그 인덱서",
     "processes.match_catalogue_indexer.purpose": "가져온 단가표를 준비하여 CAD-BIM Match가 그 항목을 제안할 수 있게 합니다.",
     "processes.match_catalogue_indexer.off_impact": "가져온 단가표는 CAD-BIM Match용으로 색인할 수 없습니다. 게시된 카탈로그는 계속 작동합니다.",
+    "processes.commitment_release_sweeper.name": "약정 해제 점검",
+    "processes.commitment_release_sweeper.off_impact": "낙찰 문서는 자동으로 연결되지 않으며, 결정 기한이 지나도 아무에게도 알림이 가지 않습니다.",
+    "processes.commitment_release_sweeper.purpose": "매시간 낙찰 문서를 낙찰이 걸린 항목에 연결하고, 해제되지 않은 채 결정 기한이 지난 항목을 에스컬레이션합니다.",
+    "processes.site_logistics_sweep.name": "현장 물류 기한 점검",
+    "processes.site_logistics_sweep.off_impact": "만료 예정 허가, 기한이 지난 인근 민원, 수령한 운송은 누군가 페이지를 열기 전까지 표시되지 않습니다.",
+    "processes.site_logistics_sweep.purpose": "만료되는 허가, 회신 기한이 지난 인근 민원, 화물이 수령된 운송을 점검하여 아무도 이를 위해 페이지를 열 필요가 없게 합니다.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "대출기관 제출 준비 초안",
     "contracts.lender_preparation.notice": "읽기 전용 작업 사본입니다. 대출기관 제출, 금액 인증 또는 대출 실행이 아닙니다. 원본 기록은 개별적으로 읽으며 변경될 수 있습니다.",

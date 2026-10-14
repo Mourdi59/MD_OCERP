@@ -54646,6 +54646,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Pengindeks katalog untuk Match",
     "processes.match_catalogue_indexer.purpose": "Menyiapkan daftar harga hasil impor agar CAD-BIM Match dapat menyarankan item-itemnya.",
     "processes.match_catalogue_indexer.off_impact": "Daftar harga hasil impor tidak dapat diindeks untuk CAD-BIM Match. Katalog yang dipublikasikan tetap berfungsi.",
+    "processes.commitment_release_sweeper.name": "Pemeriksaan pelepasan komitmen",
+    "processes.commitment_release_sweeper.off_impact": "Dokumen penghargaan tidak tertaut otomatis dan tidak ada yang diperingatkan saat tanggal keputusan terlewat.",
+    "processes.commitment_release_sweeper.purpose": "Setiap jam, menautkan dokumen yang disusun untuk penghargaan ke item yang memegang penghargaan, dan mengeskalasi item yang tanggal keputusannya terlewat tanpa pelepasan.",
+    "processes.site_logistics_sweep.name": "Pemeriksaan tenggat logistik lokasi",
+    "processes.site_logistics_sweep.off_impact": "Izin yang akan habis, keluhan tetangga yang melewati tenggat, dan transportasi yang sudah diterima tidak ditandai sampai ada yang membuka halaman.",
+    "processes.site_logistics_sweep.purpose": "Memeriksa izin yang akan berakhir, keluhan tetangga yang melewati batas tanggapan, dan transportasi yang barangnya sudah diterima, agar tidak ada yang perlu membuka halaman untuk itu.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Draf persiapan untuk pemberi pinjaman",
     "contracts.lender_preparation.notice": "Salinan kerja hanya baca. Ini bukan pengajuan kepada pemberi pinjaman, sertifikasi, atau pencairan. Catatan sumber dibaca secara terpisah dan dapat berubah.",

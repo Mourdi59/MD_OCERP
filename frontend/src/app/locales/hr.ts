@@ -55212,6 +55212,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Indekser kataloga za Match",
     "processes.match_catalogue_indexer.purpose": "Priprema uvezene cjenike kako bi CAD-BIM Match mogao predlagati njihove stavke.",
     "processes.match_catalogue_indexer.off_impact": "Uvezeni cjenici ne mogu se indeksirati za CAD-BIM Match. Objavljeni katalozi i dalje rade.",
+    "processes.commitment_release_sweeper.name": "Provjere oslobađanja obveza",
+    "processes.commitment_release_sweeper.off_impact": "Dokumenti o dodjeli ne povezuju se automatski i nitko nije upozoren kad istekne datum odluke.",
+    "processes.commitment_release_sweeper.purpose": "Svakih sat povezuje dokumente pripremljene za dodjelu sa stavkom koja nosi dodjelu i eskalira stavke kojima je datum odluke prošao bez oslobađanja.",
+    "processes.site_logistics_sweep.name": "Provjere rokova građevinske logistike",
+    "processes.site_logistics_sweep.off_impact": "Istekle dozvole, zakašnjele pritužbe susjeda i zaprimljeni prijevozi ne označavaju se dok netko ne otvori stranicu.",
+    "processes.site_logistics_sweep.purpose": "Provjerava dozvole koje istječu, pritužbe susjeda kojima je prošao rok za odgovor i prijevoze čija je roba zaprimljena, kako nitko ne bi morao otvarati stranicu zbog toga.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Nacrt pripreme za zajmodavca",
     "contracts.lender_preparation.notice": "Radna kopija samo za čitanje. Ovo nije podnošenje zajmodavcu, ovjera ni isplata. Izvorni zapisi čitaju se odvojeno i mogu se promijeniti.",

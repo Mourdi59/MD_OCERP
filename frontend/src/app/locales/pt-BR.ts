@@ -51725,6 +51725,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Indexador de catálogos para o Match",
     "processes.match_catalogue_indexer.purpose": "Prepara as listas de preços importadas para que o CAD-BIM Match possa sugerir os respectivos itens.",
     "processes.match_catalogue_indexer.off_impact": "As listas de preços importadas não podem ser indexadas para o CAD-BIM Match. Os catálogos publicados continuam funcionando.",
+    "processes.commitment_release_sweeper.name": "Verificações de liberação de compromissos",
+    "processes.commitment_release_sweeper.off_impact": "Documentos de adjudicação não são vinculados automaticamente e ninguém é avisado quando uma data de decisão passa.",
+    "processes.commitment_release_sweeper.purpose": "A cada hora, vincula os documentos redigidos para uma adjudicação ao item que contém a adjudicação, e escala os itens cuja data de decisão passou sem liberação.",
+    "processes.site_logistics_sweep.name": "Verificações de prazos da logística de obra",
+    "processes.site_logistics_sweep.off_impact": "Licenças prestes a vencer, reclamações de vizinhos atrasadas e transportes recebidos não são sinalizados até que alguém abra a página.",
+    "processes.site_logistics_sweep.purpose": "Verifica licenças que vencem, reclamações de vizinhos com prazo de resposta vencido e transportes cujas mercadorias foram recebidas, para que ninguém precise abrir uma página para isso.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Rascunho de preparação para o financiador",
     "contracts.lender_preparation.notice": "Cópia de trabalho só de leitura. Não constitui uma submissão ao financiador, certificação ou desembolso. Os registros de origem são lidos separadamente e podem mudar.",

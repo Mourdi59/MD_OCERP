@@ -54843,6 +54843,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Indexer ng katalogo para sa Match",
     "processes.match_catalogue_indexer.purpose": "Inihahanda ang mga na-import na listahan ng presyo para maimungkahi ng CAD-BIM Match ang mga item nito.",
     "processes.match_catalogue_indexer.off_impact": "Hindi ma-index ang mga na-import na listahan ng presyo para sa CAD-BIM Match. Gumagana pa rin ang mga nai-publish na katalogo.",
+    "processes.commitment_release_sweeper.name": "Mga pagsusuri sa paglabas ng commitment",
+    "processes.commitment_release_sweeper.off_impact": "Hindi awtomatikong naiuugnay ang mga dokumento ng award at walang naaabisuhan kapag lumampas ang petsa ng desisyon.",
+    "processes.commitment_release_sweeper.purpose": "Bawat oras, iniuugnay ang mga dokumentong inihanda ng isang award sa item na may hawak ng award, at itinataas sa escalation ang mga item na lumampas na sa petsa ng desisyon nang walang paglabas.",
+    "processes.site_logistics_sweep.name": "Mga pagsusuri sa deadline ng site logistics",
+    "processes.site_logistics_sweep.off_impact": "Hindi namamarkahan ang mga permit na malapit nang mag-expire, mga reklamo ng kapitbahay na overdue, at mga natanggap na transport hangga't walang nagbubukas ng pahina.",
+    "processes.site_logistics_sweep.purpose": "Tinitingnan ang mga permit na mag-e-expire, mga reklamo ng kapitbahay na lampas na sa petsa ng sagot, at mga transport na natanggap na ang mga kalakal, para hindi na kailangang magbukas ng pahina ang sinuman para dito.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Burador ng paghahanda para sa nagpapautang",
     "contracts.lender_preparation.notice": "Kopyang pantrabaho na mababasa lamang. Hindi ito pagsusumite sa nagpapautang, sertipikasyon, o paglabas ng pondo. Hiwalay na binabasa ang mga pinagmulang tala at maaaring magbago ang mga ito.",

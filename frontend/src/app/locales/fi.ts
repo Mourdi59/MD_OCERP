@@ -54889,6 +54889,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Luetteloiden indeksoija Matchia varten",
     "processes.match_catalogue_indexer.purpose": "Valmistelee tuodut hinnastot, jotta CAD-BIM Match voi ehdottaa niiden nimikkeitä.",
     "processes.match_catalogue_indexer.off_impact": "Tuotuja hinnastoja ei voi indeksoida CAD-BIM Matchia varten. Julkaistut luettelot toimivat edelleen.",
+    "processes.commitment_release_sweeper.name": "Sitoumusten vapauttamisen tarkistukset",
+    "processes.commitment_release_sweeper.off_impact": "Hankintapäätösasiakirjoja ei linkitetä automaattisesti, eikä kukaan saa ilmoitusta, kun päätöspäivä ohittuu.",
+    "processes.commitment_release_sweeper.purpose": "Linkittää tunnin välein hankintapäätöksen laatimat asiakirjat siihen kohteeseen, jolla hankinta on, ja nostaa esiin kohteet, joiden päätöspäivä on ohittunut ilman vapautusta.",
+    "processes.site_logistics_sweep.name": "Työmaalogistiikan määräaikojen tarkistukset",
+    "processes.site_logistics_sweep.off_impact": "Vanhenevia lupia, myöhässä olevia naapurivalituksia ja vastaanotettuja kuljetuksia ei merkitä, ennen kuin joku avaa sivun.",
+    "processes.site_logistics_sweep.purpose": "Tarkistaa vanhenevat luvat, vastausajan ohittaneet naapurivalitukset ja kuljetukset, joiden tavara on vastaanotettu, jotta kenenkään ei tarvitse avata sivua siihen.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Luonnos rahoittajalle valmisteltavasta aineistosta",
     "contracts.lender_preparation.notice": "Vain luku -muotoinen työkopio. Tämä ei ole hakemus rahoittajalle, maksun varmennus eikä lainan nosto. Lähdetiedot luetaan erikseen, ja ne voivat muuttua.",

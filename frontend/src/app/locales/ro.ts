@@ -55202,6 +55202,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Indexator de cataloage pentru Match",
     "processes.match_catalogue_indexer.purpose": "Pregătește listele de prețuri importate pentru ca CAD-BIM Match să poată sugera articolele lor.",
     "processes.match_catalogue_indexer.off_impact": "Listele de prețuri importate nu pot fi indexate pentru CAD-BIM Match. Cataloagele publicate continuă să funcționeze.",
+    "processes.commitment_release_sweeper.name": "Verificări de eliberare a angajamentelor",
+    "processes.commitment_release_sweeper.off_impact": "Documentele de atribuire nu sunt legate automat, iar nimeni nu este avertizat când trece o dată de decizie.",
+    "processes.commitment_release_sweeper.purpose": "La fiecare oră, leagă documentele redactate pentru o atribuire de elementul care deține atribuirea și escaladează elementele a căror dată de decizie a trecut fără eliberare.",
+    "processes.site_logistics_sweep.name": "Verificări ale termenelor logisticii de șantier",
+    "processes.site_logistics_sweep.off_impact": "Autorizațiile care expiră, reclamațiile vecinilor depășite și transporturile recepționate nu sunt semnalate până când cineva nu deschide pagina.",
+    "processes.site_logistics_sweep.purpose": "Verifică autorizațiile care expiră, reclamațiile vecinilor cu termenul de răspuns depășit și transporturile a căror marfă a fost recepționată, pentru ca nimeni să nu fie nevoit să deschidă o pagină pentru asta.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Ciornă de pregătire pentru creditor",
     "contracts.lender_preparation.notice": "Copie de lucru doar pentru citire. Nu reprezintă o depunere la creditor, o certificare sau o debursare. Înregistrările sursă sunt citite separat și se pot modifica.",

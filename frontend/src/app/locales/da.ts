@@ -54885,6 +54885,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Katalogindekserer til Match",
     "processes.match_catalogue_indexer.purpose": "Gør importerede prislister klar, så CAD-BIM Match kan foreslå deres poster.",
     "processes.match_catalogue_indexer.off_impact": "Importerede prislister kan ikke indekseres til CAD-BIM Match. Udgivne kataloger virker stadig.",
+    "processes.commitment_release_sweeper.name": "Kontrol af frigivelse af forpligtelser",
+    "processes.commitment_release_sweeper.off_impact": "Tildelingsdokumenter kobles ikke automatisk, og ingen advares, når en beslutningsdato er overskredet.",
+    "processes.commitment_release_sweeper.purpose": "Hver time kobler den dokumenter, som en tildeling har udarbejdet, til den post der har tildelingen, og eskalerer poster, hvis beslutningsdato er passeret uden frigivelse.",
+    "processes.site_logistics_sweep.name": "Kontrol af frister i byggelogistik",
+    "processes.site_logistics_sweep.off_impact": "Udløbende tilladelser, forsinkede naboklager og modtagne transporter markeres ikke, før nogen åbner siden.",
+    "processes.site_logistics_sweep.purpose": "Kontrollerer tilladelser der udløber, naboklager hvis svarfrist er overskredet, og transporter hvis varer er modtaget, så ingen behøver at åbne en side for det.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Udkast til materiale til långiveren",
     "contracts.lender_preparation.notice": "Skrivebeskyttet arbejdskopi. Dette er hverken en indsendelse til långiveren, en attestering eller en udbetaling. Kildeposterne læses separat og kan ændre sig.",

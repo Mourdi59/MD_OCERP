@@ -56394,6 +56394,12 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Indeksator katalogów dla Match",
     "processes.match_catalogue_indexer.purpose": "Przygotowuje zaimportowane cenniki, aby CAD-BIM Match mógł podpowiadać ich pozycje.",
     "processes.match_catalogue_indexer.off_impact": "Zaimportowanych cenników nie można zaindeksować dla CAD-BIM Match. Opublikowane katalogi nadal działają.",
+    "processes.commitment_release_sweeper.name": "Kontrole zwolnienia zobowiązań",
+    "processes.commitment_release_sweeper.off_impact": "Dokumenty przetargowe nie są łączone automatycznie i nikt nie dostaje ostrzeżenia, gdy minie termin decyzji.",
+    "processes.commitment_release_sweeper.purpose": "Co godzinę łączy dokumenty przygotowane dla przetargu z pozycją, która go zawiera, i eskaluje pozycje, których termin decyzji minął bez zwolnienia.",
+    "processes.site_logistics_sweep.name": "Kontrole terminów logistyki placu budowy",
+    "processes.site_logistics_sweep.off_impact": "Wygasające pozwolenia, przeterminowane skargi sąsiadów i odebrane transporty nie są oznaczane, dopóki ktoś nie otworzy strony.",
+    "processes.site_logistics_sweep.purpose": "Sprawdza pozwolenia, które wygasają, skargi sąsiadów po terminie odpowiedzi oraz transporty, których towar został odebrany, aby nikt nie musiał w tym celu otwierać strony.",
     // --- Draft lender preparation ---
     "contracts.lender_preparation.title": "Robocze przygotowanie dla kredytodawcy",
     "contracts.lender_preparation.notice": "Kopia robocza tylko do odczytu. Nie stanowi złożenia wniosku kredytodawcy, poświadczenia ani wypłaty środków. Rekordy źródłowe są odczytywane osobno i mogą się zmieniać.",
