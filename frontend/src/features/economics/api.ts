@@ -263,20 +263,20 @@ export const getBusinessCase = (pid: string) => apiGet<BusinessCase>(`/v1/econom
 export const getCostFrame = (pid: string) => apiGet<CostFrame>(`/v1/economics/projects/${pid}/cost-frame`);
 export const getFinancing = (pid: string) => apiGet<Financing>(`/v1/economics/projects/${pid}/financing`);
 
-export const getRegisters = (pid: string) => apiGet<Registers>(`${base(pid)}/registers`);
+export const getRegisters = (pid: string) => apiGet<Registers>(`/v1/economics/projects/${pid}/registers`);
 export const addSecurity = (pid: string, body: Record<string, unknown>) =>
-  apiPost<Registers>(`${base(pid)}/registers/securities`, body);
+  apiPost<Registers>(`/v1/economics/projects/${pid}/registers/securities`, body);
 export const patchSecurity = (pid: string, id: string, body: Record<string, unknown>) =>
-  apiPatch<Registers>(`${base(pid)}/registers/securities/${id}`, body);
-export const deleteSecurity = (pid: string, id: string) => apiDelete(`${base(pid)}/registers/securities/${id}`);
+  apiPatch<Registers>(`/v1/economics/projects/${pid}/registers/securities/${id}`, body);
+export const deleteSecurity = (pid: string, id: string) => apiDelete(`/v1/economics/projects/${pid}/registers/securities/${id}`);
 export const addInsurance = (pid: string, body: Record<string, unknown>) =>
-  apiPost<Registers>(`${base(pid)}/registers/insurances`, body);
+  apiPost<Registers>(`/v1/economics/projects/${pid}/registers/insurances`, body);
 export const patchInsurance = (pid: string, id: string, body: Record<string, unknown>) =>
-  apiPatch<Registers>(`${base(pid)}/registers/insurances/${id}`, body);
-export const deleteInsurance = (pid: string, id: string) => apiDelete(`${base(pid)}/registers/insurances/${id}`);
-export const putTax = (pid: string, body: Record<string, unknown>) => apiPut<Registers>(`${base(pid)}/registers/tax`, body);
+  apiPatch<Registers>(`/v1/economics/projects/${pid}/registers/insurances/${id}`, body);
+export const deleteInsurance = (pid: string, id: string) => apiDelete(`/v1/economics/projects/${pid}/registers/insurances/${id}`);
+export const putTax = (pid: string, body: Record<string, unknown>) => apiPut<Registers>(`/v1/economics/projects/${pid}/registers/tax`, body);
 export const putProcess = (pid: string, area: ProcessArea, body: Record<string, unknown>) =>
-  apiPut<Registers>(`${base(pid)}/registers/process/${area}`, body);
+  apiPut<Registers>(`/v1/economics/projects/${pid}/registers/process/${area}`, body);
 
 export const addFlowLine = (pid: string, body: Record<string, unknown>) =>
   apiPost<unknown>(`/v1/economics/projects/${pid}/business-case/lines`, body);
