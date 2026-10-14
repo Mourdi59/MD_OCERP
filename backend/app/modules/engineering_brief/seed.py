@@ -503,8 +503,18 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, demo_id: s
     made = await svc.milestones_from_catalogue(project_id, None, actor)
     counts["milestones"] += len(made)
     if catalogue.gate_kind is not None:
-        gates = await svc.milestones_from_gates(project_id, actor)
+        gates = await svc.milestones_from_gates(project_id, actor, "de")
         counts["milestones"] += len(gates)
+        # A gate without a target date still gets a believable one: after the previous gate and never before today.
+        previous = date.today()
+        for row in await svc.milestone_views(project_id):
+            if not row["gate_code"]:
+                continue
+            if row["planned_date"] is None:
+                previous = previous + timedelta(days=75)
+                await svc.update_milestone(project_id, uuid.UUID(row["id"]), {"planned_date": previous}, actor)
+            else:
+                previous = max(previous, date.fromisoformat(row["planned_date"]))
 
     # The schedule module takes the milestones and owns the date of every undecided gate. A decided gate
     # keeps what it was decided with; nothing may be refused here, or the demo would show an unbound gate.

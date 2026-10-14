@@ -1160,7 +1160,9 @@ class EngineeringBriefService:
         )
         return made
 
-    async def milestones_from_gates(self, project_id: uuid.UUID, actor_id: Any) -> list[FrameMilestone]:
+    async def milestones_from_gates(
+        self, project_id: uuid.UUID, actor_id: Any, locale: str = "en"
+    ) -> list[FrameMilestone]:
         """One gate milestone for every gate of the project that has none, dated like the gate."""
         brief = await self._open_for_edit(project_id, actor_id)
         catalogue = await self.catalogue_for(brief)
@@ -1177,13 +1179,18 @@ class EngineeringBriefService:
             # A tenant catalogue carries its own text; a shipped one an i18n key the client translates, so
             # the stored name falls back to the code and the screen shows the gate's label beside it.
             text = (g["label"] or {}).get("text") or {}
-            name = text.get("en") or next(iter(text.values()), None) or str(g["code"]).replace("_", " ")
+            name = (
+                text.get(locale)
+                or text.get("en")
+                or next(iter(text.values()), None)
+                or str(g["code"]).replace("_", " ")
+            )
             row = FrameMilestone(
                 project_id=project_id,
                 brief_id=brief.id,
                 code=_next_code("MS", [m.code for m in existing] + [m.code for m in made]),
                 kind_code=catalogue.gate_kind,
-                name=f"{translate('engineering_brief.gate_milestone_prefix')} {name}".strip(),
+                name=f"{translate('engineering_brief.gate_milestone_prefix', locale=locale)} {name}".strip(),
                 planned_date=g["target_date"],
                 gate_code=g["code"],
                 sort_order=len(existing) + len(made),
