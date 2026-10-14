@@ -302,10 +302,20 @@
           "decision": {
             "outcome": "go_with_conditions",
             "rationale": {
-              "en": "The frame documents are in force and the building permit is granted. Two areas go ahead at risk with a named owner each; the commissioning manager is still to be appointed.",
-              "de": "Die Rahmendokumente gelten und die Baugenehmigung liegt vor. Zwei Bereiche gehen mit benanntem Verantwortlichen unter Vorbehalt in die Ausführung; die Inbetriebnahmeleitung ist noch zu besetzen."
+              "en": "The frame documents are in force and the building permit is granted. The early start already runs, so the decision releases the execution formally. Three areas go ahead at risk, each with a named condition and owner; the commissioning manager is still to be appointed.",
+              "de": "Die Rahmendokumente gelten und die Baugenehmigung liegt vor. Der vorzeitige Baubeginn läuft bereits, der Beschluss gibt die Ausführung förmlich frei. Drei Bereiche gehen mit je einer benannten Bedingung und Verantwortlichen unter Vorbehalt in die Ausführung; die Inbetriebnahmeleitung ist noch zu besetzen."
             },
             "conditions": [
+              {
+                "area": "m02_contract_management",
+                "text": {
+                  "en": "Construction contract with the shell contractor signed and the securities lodged",
+                  "de": "Bauvertrag mit dem Rohbauunternehmer unterzeichnet und Sicherheiten hinterlegt"
+                },
+                "owner": "owner",
+                "due_in_days": 60,
+                "severity": "essential"
+              },
               {
                 "area": "m05_personnel",
                 "text": {
@@ -314,6 +324,26 @@
                 },
                 "owner": "owner",
                 "due_in_days": 180,
+                "severity": "essential"
+              },
+              {
+                "area": "m07_design_management",
+                "text": {
+                  "en": "Structural check of the execution design of the underground car park released and the plan release granted",
+                  "de": "Prüfung der Ausführungsplanung der Tiefgarage durch die Prüfstatik abgeschlossen und Planfreigabe erteilt"
+                },
+                "owner": "owner",
+                "due_in_days": 30,
+                "severity": "essential"
+              },
+              {
+                "area": "m09_commercial",
+                "text": {
+                  "en": "Order for the precast balconies placed before the latest decision date",
+                  "de": "Bestellung der Balkon-Fertigteile vor dem spätesten Entscheidungstermin ausgelöst"
+                },
+                "owner": "cost",
+                "due_in_days": 14,
                 "severity": "essential"
               }
             ]
