@@ -295,3 +295,36 @@ def active_pack_demo_reading() -> tuple[str, dict[str, Any] | None]:
         logger.error("demo file of pack %s has no schema version this seed reads: %s", slug, path)
         return "unreadable", None
     return "read", data
+
+
+def demo_module_story(demo_id: str | None, module: str) -> dict[str, Any]:
+    """What the active pack's demo file says one module seeder should tell for a demo project.
+
+    The module seeders keep their own default story and apply this on top of it,
+    key by key, so a project the file does not name (or a pack without a demo
+    file) gets the default. A file lists the module stories of a project under
+    ``module_files`` (module name -> path of a JSON file in the pack), one file
+    per module so no story has to be edited in the middle of another.
+
+    Returns:
+        The story object, or ``{}`` when there is none. A named file that is
+        missing or is not a JSON object is a fault of the pack: it is logged at
+        error level and the default story is told.
+    """
+    from app.modules.project_governance import seed_story
+
+    entry = seed_story.entry_for(active_pack_demo(), demo_id)
+    files = entry.get("module_files") if entry else None
+    path = files.get(module) if isinstance(files, dict) else None
+    if not isinstance(path, str) or not path:
+        return {}
+    slug = getattr(discovery.get_active_pack(), "slug", "")
+    raw = discovery.read_pack_file(slug, path)
+    try:
+        story = json.loads(raw.decode("utf-8-sig")) if raw is not None else None
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        story = None
+    if not isinstance(story, dict):
+        logger.error("pack %s names a %s story for %s that cannot be read: %s", slug, module, demo_id, path)
+        return {}
+    return story

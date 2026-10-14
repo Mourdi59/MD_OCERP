@@ -603,10 +603,11 @@ async def test_a_fresh_pack_install_tells_every_demo_project_by_its_owner_alone(
     assert logins == [], f"{slug}: this world is the one without the demo logins, found {logins}"
 
     projects = await _demo_projects(factory)
-    pack_project = seed_story.pack_demo_id(catalogue_packs.active_pack_demo())
+    pack_projects = seed_story.pack_demo_ids(catalogue_packs.active_pack_demo())
+    filmed_ids = [d for d in expected if d in pack_projects]
     for demo_id in expected:
         has = await _governance_of(factory, projects[demo_id].id)
-        if demo_id == pack_project:
+        if demo_id in filmed_ids:
             assert has["models"] == [], f"{slug}: the filmed project {demo_id} was told without its cast"
             continue
         assert len(has["models"]) == 1, f"{slug}: demo {demo_id} has no governance model"
@@ -616,11 +617,11 @@ async def test_a_fresh_pack_install_tells_every_demo_project_by_its_owner_alone(
         assert "decided" not in {g.status for g in has["gates"]}, demo_id
 
     loud, told = _governance_records(caplog)
-    filmed = [m for m in loud if "was planned at" in m] if pack_project in expected else []
-    assert len(filmed) == (1 if pack_project in expected else 0), loud
+    filmed = [m for m in loud if "was planned at" in m]
+    assert len(filmed) == len(filmed_ids), loud
     assert sorted(loud) == sorted(filmed), f"{slug}: the governance seed logged:\n" + "\n".join(loud[:40])
     quiet = [r for r in told if r.levelno == logging.INFO]
-    assert len(quiet) == len([d for d in expected if d != pack_project]), [r.getMessage() for r in told]
+    assert len(quiet) == len([d for d in expected if d not in filmed_ids]), [r.getMessage() for r in told]
     assert all("no_decider" in r.getMessage() for r in told), [r.getMessage() for r in told]
 
 
@@ -662,10 +663,10 @@ async def test_a_pack_install_beside_the_demo_logins_leaves_every_demo_project_a
     assert expected, f"{slug} installs no demos, so this test asks nothing"
 
     projects = await _demo_projects(factory)
-    pack_project = seed_story.pack_demo_id(catalogue_packs.active_pack_demo())
+    pack_projects = seed_story.pack_demo_ids(catalogue_packs.active_pack_demo())
     placed = 0
     for demo_id in expected:
-        planned = seed_story.planned_moment(demo_id, pack_project)
+        planned = seed_story.planned_moment(demo_id, pack_projects)
         has = await _governance_of(factory, projects[demo_id].id)
         assert len(has["models"]) == 1, f"{slug}: demo {demo_id} has no governance model (planned {planned})"
         if planned in ("execution", "near_handover"):
@@ -675,7 +676,9 @@ async def test_a_pack_install_beside_the_demo_logins_leaves_every_demo_project_a
         elif planned == "first_gate":
             decided = len(has["decisions"])
             assert decided == 1, f"{slug}: {demo_id} has {decided} gate decisions, the first-gate story takes one"
-    assert placed or pack_project in expected, f"{slug}: none of {expected} is a placed project, pick another pack"
+    assert placed or set(pack_projects) & set(expected), (
+        f"{slug}: none of {expected} is a placed project, pick another pack"
+    )
 
     loud, told = _governance_records(caplog)
     assert not loud, f"{slug}: the governance seed logged:\n" + "\n".join(loud[:40])

@@ -42,10 +42,11 @@ from app.modules.project_governance.catalogue_kinds import (
     register_host_subject,
     register_phase_capability,
 )
-from app.modules.project_governance.catalogue_packs import CataloguePin
+from app.modules.project_governance.catalogue_packs import CataloguePin, demo_module_story
 from app.modules.project_governance.catalogue_store import default_catalogue_pin, resolve_catalogue
 from app.modules.project_governance.errors import GovernanceError
 from app.modules.project_governance.repository import GovernanceRepository
+from app.modules.project_governance.seed_story import text_of as story_text
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,9 @@ __all__ = [
     "condition_views",
     "control_settings",
     "ControlSettings",
+    "story_text",
     "decision_views",
+    "demo_module_story",
     "document_views",
     "gate_views",
     "ChangeRequestView",
