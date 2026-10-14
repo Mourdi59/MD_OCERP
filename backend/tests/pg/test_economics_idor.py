@@ -104,7 +104,7 @@ async def test_the_printed_figures_are_the_screens_figures(world: World) -> None
 
     await fill(world)
     frame = await call(world, "cost_frame")
-    doc = ex.frame_document(frame, project_name="P", locale="de")
+    doc = ex.frame_document(frame, project_name="P", locale="de", country="DE")
     rows = register_text_rows(doc)
     assert rows[0][2] == "Budget"
     assert any("2.000.000,00" in cell for row in rows for cell in row)

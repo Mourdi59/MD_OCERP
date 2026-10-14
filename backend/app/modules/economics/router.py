@@ -381,13 +381,20 @@ async def export(
     fmt: Literal["pdf", "xlsx"] = Query("pdf", alias="format"),
 ) -> Response:
     """The cost frame, the business case or the financing plan as a printable document."""
+    from app.core.regional_format import document_country
     from app.modules.economics import export as ex
     from app.modules.projects.models import Project
 
     svc = await _economics_svc(project_id, user_id, session)
     locale = get_locale() or "en"
     project = await session.get(Project, project_id)
-    labels = {"project_name": getattr(project, "name", "") or "", "locale": locale}
+    labels = {
+        "project_name": getattr(project, "name", "") or "",
+        "locale": locale,
+        "country": document_country(
+            getattr(project, "country_code", None), getattr(project, "region", None), getattr(project, "currency", None)
+        ),
+    }
     if what == "case":
         doc = ex.case_document(await _run(svc.business_case(project_id)), **labels)
     elif what == "financing":
