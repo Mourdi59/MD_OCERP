@@ -40,6 +40,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_log import log_activity
+from app.core.demo_history import RECORDING_DEMO_HISTORY
 from app.core.events import publish_after_commit
 from app.core.fsm import FSMError
 from app.modules.permits import conditions as cnd
@@ -484,6 +485,9 @@ class PermitService:
         """
         await self._mirror_binding(roadmap)
         if roadmap.status != "agreed":
+            return None
+        if RECORDING_DEMO_HISTORY.get():
+            # The demo seed writes the history the frame was bound on, not a live change.
             return None
         from app.modules.project_governance import public
 

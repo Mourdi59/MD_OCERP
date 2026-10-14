@@ -95247,6 +95247,7 @@
         "errors.py",
         "events.py",
         "evidence.py",
+        "export.py",
         "hosting.py",
         "manifest.py",
         "messages/__init__.py",
@@ -95274,8 +95275,7 @@
           "oe_projects",
           "oe_project_governance",
           "oe_boq",
-          "oe_costmodel",
-          "oe_funding"
+          "oe_costmodel"
         ],
         "auto_install": true,
         "enabled": true
@@ -95632,7 +95632,9 @@
               "name": "governance_document_id",
               "annotation": "Mapped[uuid.UUID | None]",
               "sql_type": "GUID",
-              "nullable": true
+              "nullable": true,
+              "is_fk": true,
+              "fk_target": "oe_governance_document.id"
             },
             {
               "name": "four_eyes",
@@ -95792,6 +95794,12 @@
           "method": "GET",
           "path": "/",
           "handler": "validation"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "export",
+          "request_schema": "Literal['frame', 'case', 'financing']"
         }
       ],
       "schemas": [
@@ -96167,7 +96175,8 @@
         "costmodel",
         "funding",
         "project_governance",
-        "projects"
+        "projects",
+        "teams"
       ]
     },
     {
@@ -98123,6 +98132,130 @@
             }
           ],
           "relationships": []
+        },
+        {
+          "class_name": "Study",
+          "tablename": "oe_engbrief_study",
+          "docstring": "A tracked study that backs a gate criterion: a site analysis or a suitability study.",
+          "columns": [
+            {
+              "name": "code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "scope",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "author",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "study_date",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "result",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "conclusion",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "SpecificationIssue",
+          "tablename": "oe_engbrief_issue",
+          "docstring": "One issue of the requirements specification: a numbered version of the brief as a document.",
+          "columns": [
+            {
+              "name": "version_no",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "issued_at",
+              "annotation": "Mapped[datetime]",
+              "sql_type": "DateTime",
+              "nullable": false
+            },
+            {
+              "name": "issued_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "requirements_hash",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "requirement_count",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "note",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            }
+          ],
+          "relationships": []
         }
       ],
       "routes": [
@@ -98294,6 +98427,39 @@
           "method": "DELETE",
           "path": "/projects/{project_id}/milestones/{milestone_id}",
           "handler": "delete_milestone"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/studies",
+          "handler": "list_studies"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/studies",
+          "handler": "create_study",
+          "request_schema": "StudyIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/projects/{project_id}/studies/{study_id}",
+          "handler": "update_study",
+          "request_schema": "StudyPatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/projects/{project_id}/studies/{study_id}",
+          "handler": "delete_study"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/specification",
+          "handler": "list_specification_issues"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/specification/issue",
+          "handler": "issue_specification",
+          "request_schema": "IssueIn"
         },
         {
           "method": "GET",
@@ -98823,9 +98989,112 @@
               "type": "list[str] | None"
             }
           ]
+        },
+        {
+          "class_name": "StudyIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind",
+              "type": "STUDY_KIND"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            },
+            {
+              "name": "scope",
+              "type": "str"
+            },
+            {
+              "name": "author",
+              "type": "str"
+            },
+            {
+              "name": "study_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "result",
+              "type": "str"
+            },
+            {
+              "name": "conclusion",
+              "type": "STUDY_CONCLUSION",
+              "default": "'open'"
+            },
+            {
+              "name": "document_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "StudyPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind",
+              "type": "STUDY_KIND | None",
+              "default": "None"
+            },
+            {
+              "name": "title",
+              "type": "str | None"
+            },
+            {
+              "name": "scope",
+              "type": "str | None"
+            },
+            {
+              "name": "author",
+              "type": "str | None"
+            },
+            {
+              "name": "study_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "result",
+              "type": "str | None"
+            },
+            {
+              "name": "conclusion",
+              "type": "STUDY_CONCLUSION | None",
+              "default": "None"
+            },
+            {
+              "name": "document_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "IssueIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "note",
+              "type": "str"
+            }
+          ]
         }
       ],
       "import_dependencies": [
+        "documents",
         "permits",
         "project_governance",
         "projects",
@@ -265335,10 +265604,10 @@
     },
     {
       "name": "delivery_model",
-      "ts_files": 25,
+      "ts_files": 26,
       "css_files": 0,
-      "test_files": 3,
-      "total_files": 25
+      "test_files": 4,
+      "total_files": 26
     },
     {
       "name": "design-options",
@@ -265377,10 +265646,10 @@
     },
     {
       "name": "economics",
-      "ts_files": 10,
+      "ts_files": 11,
       "css_files": 0,
       "test_files": 1,
-      "total_files": 10
+      "total_files": 11
     },
     {
       "name": "einvoice-clearance",
@@ -265391,10 +265660,10 @@
     },
     {
       "name": "engineering_brief",
-      "ts_files": 15,
+      "ts_files": 17,
       "css_files": 0,
       "test_files": 2,
-      "total_files": 15
+      "total_files": 17
     },
     {
       "name": "enterprise-workflows",
@@ -266926,6 +267195,7 @@
       "funding",
       "project_governance",
       "projects",
+      "teams",
       "users"
     ],
     "einvoice": [],
@@ -266935,6 +267205,7 @@
       "projects"
     ],
     "engineering_brief": [
+      "documents",
       "permits",
       "project_governance",
       "projects",
@@ -267875,14 +268146,14 @@
   "statistics": {
     "backend_modules": 210,
     "modules_with_manifests": 208,
-    "total_models": 757,
-    "total_columns": 8832,
+    "total_models": 759,
+    "total_columns": 8850,
     "total_relationships": 236,
-    "total_routes": 4494,
-    "total_schemas": 3946,
-    "total_python_files": 2656,
+    "total_routes": 4501,
+    "total_schemas": 3949,
+    "total_python_files": 2657,
     "frontend_features": 207,
-    "frontend_ts_files": 3419,
+    "frontend_ts_files": 3423,
     "frontend_backend_mapped": 186
   },
   "frontend_backend_mapping": {

@@ -153,6 +153,22 @@
         "fail": "Bereich {area} ist ohne Begründung als nicht zutreffend gekennzeichnet",
         "suggestion": "Schreiben Sie auf, warum der Bereich nicht zutrifft"
       }
+    },
+    "catalogue": {
+      "neutral": {
+        "gate": {
+          "approval_to_detail": "Gate: Genehmigung zu Detailplanung",
+          "award_to_construction": "Gate: Vergabe zu Ausführung",
+          "brief_to_concept": "Gate: Bedarfsklärung zu Konzept",
+          "concept_to_design": "Gate: Konzept zu Entwurf",
+          "construction_to_handover": "Gate: Ausführung zu Übergabe",
+          "design_to_approval": "Gate: Entwurf zu Genehmigung",
+          "detail_to_tender": "Gate: Detailplanung zu Ausschreibung",
+          "handover_to_operation": "Gate: Übergabe zu Betrieb",
+          "strategy_to_brief": "Gate: Strategie zu Bedarfsklärung",
+          "tender_to_award": "Gate: Ausschreibung zu Vergabe"
+        }
+      }
     }
   }
 }

@@ -122,13 +122,15 @@ def _int(value: Any) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
-def story_positions(story: dict[str, Any], default: tuple[_Position, ...]) -> tuple[_Position, ...]:
+def story_positions(
+    story: dict[str, Any], default: tuple[_Position, ...], key: str = "positions"
+) -> tuple[_Position, ...]:
     """The pre-construction positions table of the story; rows of a bad shape are dropped, none left keeps ``default``.
 
     A row is ``{"role", "phase", "entry", "exit", "status"}`` with day offsets from the seed day. Role codes the
     catalogue does not know are skipped later, where the catalogue is at hand.
     """
-    rows = story.get("positions")
+    rows = story.get(key)
     out: list[_Position] = []
     for r in rows if isinstance(rows, list) else []:
         entry = _int(r.get("entry")) if isinstance(r, dict) else None
@@ -314,10 +316,16 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     svc = StaffingService(session)
     today = datetime.now(UTC).date()
     early = await before_construction(session, project_id)
-    planned = story_positions(story, POSITIONS_BEFORE_CONSTRUCTION) if early else POSITIONS
+    # A story tells both moments: ``positions`` before the gate, ``running_positions`` once the site runs.
+    planned = (
+        story_positions(story, POSITIONS_BEFORE_CONSTRUCTION)
+        if early
+        else story_positions(story, POSITIONS, "running_positions")
+    )
     commissioning = COMMISSIONING_BEFORE_CONSTRUCTION_IN_DAYS if early else COMMISSIONING_IN_DAYS
-    if early and _int(story.get("commissioning_in_days")) is not None:
-        commissioning = story["commissioning_in_days"]
+    commissioning_key = "commissioning_in_days" if early else "running_commissioning_in_days"
+    if _int(story.get(commissioning_key)) is not None:
+        commissioning = story[commissioning_key]
     mobilisation = _int(story.get("mobilisation_in_days")) if early else None
     mobilisation = MOBILISATION_IN_DAYS if mobilisation is None else mobilisation
     filled = [r for r in story.get("filled", ()) if isinstance(r, str)] if isinstance(story.get("filled"), list) else []

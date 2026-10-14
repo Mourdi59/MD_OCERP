@@ -318,5 +318,19 @@
       "en": "Application form and building documents for the Bauordnungsamt",
       "de": "Antragsformular und Bauvorlagen für das Bauordnungsamt"
     }
+  },
+  "route_names": {
+    "design_approval_point": {
+      "en": "Design approval point sign-off",
+      "de": "Freigabe der Planungsfreigabepunkte"
+    },
+    "design_release": {
+      "en": "Design release sign-off",
+      "de": "Freigabe der Planstände"
+    }
+  },
+  "first_issue": {
+    "en": "first issue",
+    "de": "Erstausgabe"
   }
 }

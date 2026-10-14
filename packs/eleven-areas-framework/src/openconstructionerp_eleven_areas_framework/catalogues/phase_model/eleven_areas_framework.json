@@ -2531,7 +2531,7 @@
       "code": "site_analysis_done",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
-      "manual_only": true,
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.site_analysis_done",
       "labels": {
         "en": "Site analysis is complete",
@@ -2619,7 +2619,7 @@
       "code": "requirements_specification_issued",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
-      "manual_only": true,
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.requirements_specification_issued",
       "labels": {
         "en": "Requirements specification is issued",
@@ -2630,7 +2630,7 @@
       "code": "suitability_studies_done",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
-      "manual_only": true,
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.suitability_studies_done",
       "labels": {
         "en": "Suitability studies and tests are complete",

@@ -320,5 +320,120 @@
       "site_role": "site_supervisor_mep",
       "allocation": 100
     }
-  ]
+  ],
+  "running_positions": [
+    {
+      "role": "project_director",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "project_manager",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "design_manager",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "cost_manager",
+      "phase": "development",
+      "entry": -210,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "contract_manager",
+      "phase": "development",
+      "entry": -180,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "scheduler",
+      "phase": "development",
+      "entry": -150,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_manager",
+      "phase": "execution",
+      "entry": -30,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "hse_manager",
+      "phase": "execution",
+      "entry": -30,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_supervisor_civil",
+      "phase": "execution",
+      "entry": -30,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "document_controller",
+      "phase": "execution",
+      "entry": -30,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "quality_manager",
+      "phase": "execution",
+      "entry": 30,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_supervisor_mep",
+      "phase": "execution",
+      "entry": 45,
+      "exit": 520,
+      "status": "recruiting"
+    },
+    {
+      "role": "commissioning_manager",
+      "phase": "execution",
+      "entry": 400,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_plant_manager",
+      "phase": "operation",
+      "entry": 430,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_shift_lead",
+      "phase": "operation",
+      "entry": 460,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_technician",
+      "phase": "operation",
+      "entry": 480,
+      "exit": null,
+      "status": "open"
+    }
+  ],
+  "running_commissioning_in_days": 500
 }
