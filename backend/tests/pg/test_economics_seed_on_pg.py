@@ -112,7 +112,7 @@ async def test_the_registers_of_the_story_are_filled_and_dated_from_the_install_
     assert [p["status"] for p in regs["process"]] == ["set_up", "set_up", "set_up"]
     assert regs["state"] == {
         "securities": True,
-        "insurance": False,  # the fire insurance of the shell is still only requested
+        "insurance": True,  # the fire insurance of the shell is requested but its period starts later
         "tax": True,
         "receivables_payables": True,
         "administration": True,
@@ -200,10 +200,12 @@ async def test_with_gates_the_decided_gate_approves_the_demo_plan_by_someone_els
 
 
 @pytest.mark.parametrize(
-    ("demo_id", "gross_low", "gross_high"),
-    [("residential-regensburg", 58_000_000, 60_500_000), ("school-ludwigsburg", 40_000_000, 41_700_000)],
+    ("demo_id", "direct_low", "direct_high"),
+    # The installed bill carries the direct cost only; the markups (and with them the gross of about 59.2 and
+    # 40.8 million) are added to the bill by the demo enrichment, which this test does not run.
+    [("residential-regensburg", 40_000_000, 41_500_000), ("school-ludwigsburg", 27_500_000, 28_600_000)],
 )
-async def test_the_real_demo_bills_give_the_expected_plan(pg_session, demo_id, gross_low, gross_high) -> None:
+async def test_the_real_demo_bills_give_the_expected_plan(pg_session, demo_id, direct_low, direct_high) -> None:
     """Install the shipped demo, seed its economics and read the totals back against the bill."""
     from app.core.demo_projects import install_demo_project
     from app.modules.economics.service import EconomicsService
@@ -221,8 +223,11 @@ async def test_the_real_demo_bills_give_the_expected_plan(pg_session, demo_id, g
     readiness = await service.readiness(pid)
     estimate = Decimal(frame["totals"]["estimate"])
     total = Decimal(frame["totals"]["frame"])
-    print(f"\nDEMO {demo_id}: estimate {estimate} frame {total} sources {financing['coverage']['sources_total']}")
-    assert gross_low <= estimate <= gross_high
+    print(
+        f"\nDEMO {demo_id}: direct {frame['totals']['estimate_direct']} markups {frame['totals']['markups']} "
+        f"estimate {estimate} frame {total} sources {financing['coverage']['sources_total']}"
+    )
+    assert direct_low <= Decimal(frame["totals"]["estimate_direct"]) <= direct_high
     assert estimate <= total <= estimate * Decimal("1.04")
     assert Decimal(financing["coverage"]["sources_total"]) == total
     assert readiness["errors"] == []

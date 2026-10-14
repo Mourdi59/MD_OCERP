@@ -183,3 +183,19 @@ def test_a_drawn_tranche_lies_in_the_past_and_the_story_is_refused_otherwise() -
         assert "drawn" in str(err)
     else:
         raise AssertionError("a tranche in the future cannot be drawn")
+
+
+def test_a_request_whose_start_lies_ahead_does_not_block_but_an_overdue_one_does() -> None:
+    ahead = {
+        "id": "s2",
+        "description": "Warranty",
+        "status": "requested",
+        "valid_from": "2027-01-01",
+        "valid_until": "2030-01-01",
+    }
+    base = _registers()["registers"]["securities"]
+    assert rules.register_state(_registers(securities=[*base, ahead]))["securities"] is True
+    overdue = {**ahead, "valid_from": "2026-01-01"}
+    assert rules.register_state(_registers(securities=[*base, overdue]))["securities"] is False
+    only_requested = _registers(securities=[ahead])
+    assert rules.register_state(only_requested)["securities"] is False

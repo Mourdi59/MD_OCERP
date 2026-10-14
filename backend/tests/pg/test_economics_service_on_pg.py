@@ -30,6 +30,7 @@ from tests.pg.economics_fixtures import (
     build_world,
     call,
     fill,
+    fill_registers,
 )
 from tests.pg.governance_fixtures import areas, decide, documents, only_evidence, prepare_gate
 
@@ -296,6 +297,7 @@ async def test_a_project_with_gates_is_not_approved_by_hand(world) -> None:
 
 
 async def _decide_gate(w) -> None:
+    await fill_registers(w)
     g = await prepare_gate(w, GATE)
     await decide(w, g.id, "go")
     doc = (await documents(w))[COMMERCIAL_DOC]
@@ -349,27 +351,7 @@ REGISTER_OPEN = dict.fromkeys(
 
 
 async def _fill_registers(world) -> None:
-    mgr = world.manager
-    await call(
-        world,
-        "add_security",
-        {
-            "kind": "performance",
-            "description": "Performance guarantee",
-            "status": "in_place",
-            "valid_until": "2099-12-31",
-        },
-        mgr,
-    )
-    await call(
-        world,
-        "add_insurance",
-        {"kind": "liability", "insurer": "Insurer", "status": "in_place", "period_to": "2099-12-31"},
-        mgr,
-    )
-    await call(world, "put_tax", {"vat_treatment": "standard", "input_tax_deduction": True, "confirm": True}, mgr)
-    for area in ("receivables", "payables", "administration"):
-        await call(world, "put_process", area, {"status": "set_up"}, mgr)
+    await fill_registers(world)
 
 
 async def test_the_gate_reads_the_plan_through_its_evidence_provider(world) -> None:
