@@ -1,0 +1,294 @@
+{
+  "$note": "Design transmittals of the Regensburg residential quarter from the design team to the client (the housing company). Recipients are roles, not persons; every name is invented.",
+  "transmittals": [
+    {
+      "subject": {
+        "en": "Architecture, design development: floor plans, sections and elevations, for approval",
+        "de": "Architektur Entwurfsplanung: Grundrisse, Schnitte und Ansichten zur Freigabe"
+      },
+      "purpose_code": "for_approval",
+      "cover_note": {
+        "en": "Design development set of the four buildings with the staggered top floor, the apartment mix and the quarter square. Please approve for the supervisory board.",
+        "de": "Entwurfsplanung der vier Gebäude mit Staffelgeschoss, Wohnungsmix und Quartiersplatz. Bitte für den Aufsichtsrat freigeben."
+      },
+      "issued_days_ago": 140,
+      "response_due_in_days": 21,
+      "recipients": [
+        {
+          "name": {
+            "en": "Project manager, housing company",
+            "de": "Projektleitung der Wohnungsbaugesellschaft"
+          },
+          "action_required": {
+            "en": "Approve",
+            "de": "Freigabe"
+          },
+          "acknowledged_after_days": 1,
+          "response": {
+            "en": "Approved with two comments: widen the bicycle rooms and move the refuse room away from the playground.",
+            "de": "Freigegeben mit zwei Anmerkungen: Fahrradräume verbreitern und Müllraum vom Spielplatz abrücken."
+          },
+          "responded_after_days": 18
+        },
+        {
+          "name": {
+            "en": "Subsidy officer, Regierung der Oberpfalz",
+            "de": "Sachbearbeitung Wohnraumförderung, Regierung der Oberpfalz"
+          },
+          "action_required": {
+            "en": "Review",
+            "de": "Prüfung"
+          },
+          "acknowledged_after_days": 2,
+          "response": {
+            "en": "Apartment sizes and rent categories confirmed for the subsidised share.",
+            "de": "Wohnungsgrößen und Mietkategorien für den geförderten Anteil bestätigt."
+          },
+          "responded_after_days": 15
+        }
+      ],
+      "items": [
+        {
+          "description": {
+            "en": "Floor plans ground floor to staggered floor, 1:100",
+            "de": "Grundrisse Erdgeschoss bis Staffelgeschoss, 1:100"
+          },
+          "notes": {
+            "en": "Four buildings, apartment mix and barrier-free units",
+            "de": "Vier Gebäude, Wohnungsmix und barrierefreie Wohnungen"
+          }
+        },
+        {
+          "description": {
+            "en": "Sections and elevations, 1:100",
+            "de": "Schnitte und Ansichten, 1:100"
+          },
+          "notes": {
+            "en": "Masonry with thermal insulation facade, precast balconies",
+            "de": "Mauerwerk mit Wärmedämmverbundsystem, Balkon-Fertigteile"
+          }
+        },
+        {
+          "description": {
+            "en": "Site plan with the quarter square and the playground, 1:500",
+            "de": "Lageplan mit Quartiersplatz und Spielplatz, 1:500"
+          }
+        }
+      ]
+    },
+    {
+      "subject": {
+        "en": "Structural design: underground car park, shells and balconies, for review",
+        "de": "Tragwerksplanung: Tiefgarage, Rohbauten und Balkone zur Prüfung"
+      },
+      "purpose_code": "for_review",
+      "cover_note": {
+        "en": "Structural concept and calculation basis for the white tank of the car park, the concrete shells and the precast balconies. The approved inspector for structural stability receives the same set.",
+        "de": "Tragwerkskonzept und Berechnungsgrundlage für die weiße Wanne der Tiefgarage, die Stahlbetonrohbauten und die Balkon-Fertigteile. Der Prüfsachverständige für Standsicherheit erhält denselben Satz."
+      },
+      "issued_days_ago": 95,
+      "response_due_in_days": 14,
+      "recipients": [
+        {
+          "name": {
+            "en": "Project manager, housing company",
+            "de": "Projektleitung der Wohnungsbaugesellschaft"
+          },
+          "action_required": {
+            "en": "Review",
+            "de": "Prüfung"
+          },
+          "acknowledged_after_days": 1,
+          "response": {
+            "en": "Taken note of; the check of the calculation by the inspector is commissioned.",
+            "de": "Zur Kenntnis genommen; die Prüfung der Berechnung durch den Prüfsachverständigen ist beauftragt."
+          },
+          "responded_after_days": 10
+        },
+        {
+          "name": {
+            "en": "Approved inspector for structural stability",
+            "de": "Prüfsachverständiger für Standsicherheit"
+          },
+          "action_required": {
+            "en": "Check",
+            "de": "Prüfen"
+          },
+          "acknowledged_after_days": 2
+        }
+      ],
+      "items": [
+        {
+          "description": {
+            "en": "Structural concept report with load assumptions and groundwater levels",
+            "de": "Tragwerkskonzept mit Lastannahmen und Grundwasserständen"
+          }
+        },
+        {
+          "description": {
+            "en": "Foundation and car park drawings, 1:50",
+            "de": "Gründungs- und Tiefgaragenpläne, 1:50"
+          }
+        },
+        {
+          "description": {
+            "en": "Calculation of the precast balcony connections",
+            "de": "Berechnung der Balkonanschlüsse"
+          },
+          "notes": {
+            "en": "First part, further parts follow",
+            "de": "Erster Teil, weitere Teile folgen"
+          }
+        }
+      ]
+    },
+    {
+      "subject": {
+        "en": "Building services: district heating, ventilation and photovoltaic, for approval",
+        "de": "Technische Gebäudeausrüstung: Fernwärme, Lüftung und Photovoltaik zur Freigabe"
+      },
+      "purpose_code": "for_approval",
+      "cover_note": {
+        "en": "Concept and layout of the district heating substations, the apartment ventilation and the roof photovoltaic, with the energy proof basis for efficiency house 40.",
+        "de": "Konzept und Anordnung der Fernwärme-Hausstationen, der Wohnungslüftung und der Dach-Photovoltaik mit der Berechnungsgrundlage für das Effizienzhaus 40."
+      },
+      "issued_days_ago": 60,
+      "response_due_in_days": 14,
+      "recipients": [
+        {
+          "name": {
+            "en": "Project manager, housing company",
+            "de": "Projektleitung der Wohnungsbaugesellschaft"
+          },
+          "action_required": {
+            "en": "Approve",
+            "de": "Freigabe"
+          },
+          "acknowledged_after_days": 1
+        },
+        {
+          "name": {
+            "en": "Property management of the housing company",
+            "de": "Hausverwaltung der Wohnungsbaugesellschaft"
+          },
+          "action_required": {
+            "en": "Review",
+            "de": "Prüfung"
+          },
+          "acknowledged_after_days": 3,
+          "response": {
+            "en": "Maintenance access to the substations and the roof plant confirmed.",
+            "de": "Wartungszugang zu den Stationen und zur Dachtechnik bestätigt."
+          },
+          "responded_after_days": 12
+        }
+      ],
+      "items": [
+        {
+          "description": {
+            "en": "Heating and ventilation concept with schematics",
+            "de": "Heizungs- und Lüftungskonzept mit Schemata"
+          }
+        },
+        {
+          "description": {
+            "en": "Photovoltaic layout and tenant electricity concept, 1:100",
+            "de": "Photovoltaik-Belegung und Mieterstromkonzept, 1:100"
+          }
+        },
+        {
+          "description": {
+            "en": "Energy proof basis (GEG), draft",
+            "de": "Grundlagen des Energienachweises (GEG), Entwurf"
+          }
+        }
+      ]
+    },
+    {
+      "subject": {
+        "en": "Sound insulation and fire protection: sound insulation proof and fire protection concept, for information",
+        "de": "Schall- und Brandschutz: Schallschutznachweis und Brandschutzkonzept zur Information"
+      },
+      "purpose_code": "for_information",
+      "cover_note": {
+        "en": "Sound insulation proof for the apartment separating walls and ceilings (DIN 4109) and the fire protection concept as agreed with the approved fire protection inspector.",
+        "de": "Schallschutznachweis für Wohnungstrennwände und -decken (DIN 4109) und Brandschutzkonzept, abgestimmt mit dem Prüfsachverständigen für Brandschutz."
+      },
+      "issued_days_ago": 30,
+      "recipients": [
+        {
+          "name": {
+            "en": "Project manager, housing company",
+            "de": "Projektleitung der Wohnungsbaugesellschaft"
+          },
+          "action_required": {
+            "en": "Note",
+            "de": "Kenntnisnahme"
+          },
+          "acknowledged_after_days": 2
+        },
+        {
+          "name": {
+            "en": "Property management of the housing company",
+            "de": "Hausverwaltung der Wohnungsbaugesellschaft"
+          },
+          "action_required": {
+            "en": "Note",
+            "de": "Kenntnisnahme"
+          }
+        }
+      ],
+      "items": [
+        {
+          "description": {
+            "en": "Sound insulation proof",
+            "de": "Schallschutznachweis"
+          }
+        },
+        {
+          "description": {
+            "en": "Fire protection concept with escape route plans",
+            "de": "Brandschutzkonzept mit Rettungswegplänen"
+          }
+        }
+      ]
+    },
+    {
+      "subject": {
+        "en": "Tender documents for the shell lots, in preparation",
+        "de": "Ausschreibungsunterlagen Rohbaulose in Vorbereitung"
+      },
+      "purpose_code": "for_tender",
+      "cover_note": {
+        "en": "Draft bill of quantities (GAEB) and contract conditions for the shoring and shell lots; the issue waits for the decision of the supervisory board.",
+        "de": "Entwurf des Leistungsverzeichnisses (GAEB) und der Vertragsbedingungen für die Verbau- und Rohbaulose; die Versendung wartet auf den Beschluss des Aufsichtsrats."
+      },
+      "recipients": [
+        {
+          "name": {
+            "en": "Procurement office of the housing company",
+            "de": "Einkauf der Wohnungsbaugesellschaft"
+          },
+          "action_required": {
+            "en": "Review",
+            "de": "Prüfung"
+          }
+        }
+      ],
+      "items": [
+        {
+          "description": {
+            "en": "Draft bill of quantities, shoring and shell lots",
+            "de": "Entwurf Leistungsverzeichnis Verbau- und Rohbaulose"
+          }
+        },
+        {
+          "description": {
+            "en": "Draft contract conditions and schedule of the lots",
+            "de": "Entwurf Vertragsbedingungen und Terminplan der Lose"
+          }
+        }
+      ]
+    }
+  ]
+}

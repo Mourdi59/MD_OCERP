@@ -127,9 +127,9 @@ async def seed_permits_demo(session: AsyncSession, project_ids: Iterable[uuid.UU
     return totals
 
 
-def _early_start_conditions(owner: uuid.UUID) -> list[dict]:
+def _early_start_conditions(owner: uuid.UUID, overrides: dict[str, dict[str, str]] | None = None) -> list[dict]:
     """What every early start carries (rule 10): restore the site if the permit is refused, and give security."""
-    return [
+    conditions = [
         {
             "number": "1",
             "text": "If the building permit is refused, the site is restored to its previous condition.",
@@ -149,6 +149,7 @@ def _early_start_conditions(owner: uuid.UUID) -> list[dict]:
             "owner_user_id": owner,
         },
     ]
+    return apply_condition_overrides(conditions, overrides or {})
 
 
 def _pick(types: dict, *, category: str | None = None, scope: str | None = None, route: str | None = None):
@@ -161,6 +162,107 @@ def _pick(types: dict, *, category: str | None = None, scope: str | None = None,
             continue
         return t
     return None
+
+
+# What a story may replace, key by key. A key a story leaves out, or gets wrong, keeps this.
+_TEXT_DEFAULTS: dict[str, str] = {
+    "preliminary_title": "Preliminary decision on use and building envelope",
+    "building_title": "Main building permit",
+    "early_title": "Early start of excavation at own risk",
+    "road_title": "Road occupation for crane and site access",
+    "occupancy_title": "Occupancy approval",
+    "authority_name": "Local building authority",
+    "preliminary_reference": "PRE-0418",
+    "building_reference": "BP-0112",
+    "early_reference": "ES-0031",
+    "clock_stop_reason": "Authority asked for the revised drainage layout",
+    "clock_resume_reason": "Revised drainage layout delivered",
+    "evidence_note": "Tree protection fence along the northern boundary, photographed from the gate",
+}
+# Catalogue codes a story may name, with what the permit type has to be for the roadmap to work.
+_CODE_KEYS = ("preliminary", "building", "early_start", "road", "occupancy")
+_CONDITION_FIELDS = ("text", "topic", "evidence_required", "responsible_party")
+_EARLY_NUMBERS = ("1", "2")
+_CONDITION_NUMBERS = ("1", "2", "3", "4", "5")
+
+
+def _overrides(raw: object, numbers: tuple[str, ...], locale: str) -> dict[str, dict[str, str]]:
+    """Per-number field overrides of a condition list that carry usable values; the rest is dropped."""
+    from app.modules.permits.conditions import TOPICS
+    from app.modules.project_governance.public import story_text
+
+    out: dict[str, dict[str, str]] = {}
+    if not isinstance(raw, dict):
+        return out
+    for number, fields in raw.items():
+        if number not in numbers or not isinstance(fields, dict):
+            logger.info("permits demo story: condition %r not usable, keeping the default", number)
+            continue
+        kept: dict[str, str] = {}
+        for key in _CONDITION_FIELDS:
+            if key not in fields:
+                continue
+            value = story_text(fields[key], locale)
+            if value and (key != "topic" or value in TOPICS):
+                kept[key] = value
+            else:
+                logger.info("permits demo story: condition %s field %s not usable, keeping the default", number, key)
+        if kept:
+            out[number] = kept
+    return out
+
+
+def resolve_permit_content(story: dict | None, locale: str) -> dict:
+    """Texts, codes and condition overrides of a project: today's defaults with the story applied on top.
+
+    Text keys are those of ``_TEXT_DEFAULTS``. ``codes`` names catalogue permit types by the keys
+    in ``_CODE_KEYS``; ``conditions`` and ``early_conditions`` map a condition number to a subset of
+    ``text``, ``topic``, ``evidence_required`` and ``responsible_party``. Kind, trigger and owner of
+    a condition stay in code. An unusable value keeps the default for that key.
+    """
+    from app.modules.project_governance.public import story_text
+
+    out: dict = {**_TEXT_DEFAULTS, "codes": {}, "conditions": {}, "early_conditions": {}}
+    if not isinstance(story, dict) or not story:
+        return out
+    for key in _TEXT_DEFAULTS:
+        if key in story:
+            text = story_text(story[key], locale)
+            if text:
+                out[key] = text
+            else:
+                logger.info("permits demo story: %s not usable, keeping the default", key)
+    codes = story.get("codes")
+    if isinstance(codes, dict):
+        out["codes"] = {k: v for k, v in codes.items() if k in _CODE_KEYS and isinstance(v, str) and v}
+    out["conditions"] = _overrides(story.get("conditions"), _CONDITION_NUMBERS, locale)
+    out["early_conditions"] = _overrides(story.get("early_conditions"), _EARLY_NUMBERS, locale)
+    return out
+
+
+def apply_condition_overrides(conditions: list[dict], overrides: dict[str, dict[str, str]]) -> list[dict]:
+    """The conditions with the story's text, topic, evidence and party applied by condition number."""
+    out = []
+    for condition in conditions:
+        merged = {**condition, **overrides.get(condition["number"], {})}
+        # An information condition has no party to answer to and nothing to prove.
+        if merged.get("kind") == "information":
+            merged.pop("evidence_required", None)
+            merged.pop("responsible_party", None)
+        out.append(merged)
+    return out
+
+
+def pick_by_story(types: dict, codes: dict[str, str], key: str, found, *, ok):
+    """The permit type the story names for ``key`` when the catalogue has it and ``ok`` accepts it, else ``found``."""
+    code = codes.get(key)
+    if code is None:
+        return found
+    chosen = types.get(code)
+    if chosen is not None and ok(chosen):
+        return chosen
+    logger.info("permits demo story: permit type %r not usable as %s, keeping the default", code, key)
+    return found
 
 
 async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]:
@@ -176,6 +278,14 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
     types = await svc._types(roadmap)
     today = datetime.now(UTC).date()
     story = await _story(session, pid)
+    from app.core.demo_marker import demo_id_of
+    from app.modules.project_governance.public import demo_module_story
+
+    content = resolve_permit_content(
+        demo_module_story(demo_id_of(getattr(project, "metadata_", None)), "permits"),
+        getattr(project, "locale", None) or "en",
+    )
+    codes = content["codes"]
     fence_owner = await _second_person(session, pid, owner) if story is _BEFORE_CONSTRUCTION else owner
 
     def ago(days: int) -> date:
@@ -195,6 +305,21 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
     )
     road = _pick(types, category="traffic_road")
     occupancy = _pick(types, category="occupancy")
+    prelim = pick_by_story(types, codes, "preliminary", prelim, ok=lambda t: t.scope == "preliminary")
+    building = pick_by_story(
+        types, codes, "building", building, ok=lambda t: t.scope == "full" and "full_permit" in t.triggered_by_route
+    )
+    early = pick_by_story(
+        types,
+        codes,
+        "early_start",
+        early,
+        ok=lambda t: (
+            t.scope == "early_start" and building is not None and building.code in {r.code for r in t.requires}
+        ),
+    )
+    road = pick_by_story(types, codes, "road", road, ok=lambda t: t.category == "traffic_road")
+    occupancy = pick_by_story(types, codes, "occupancy", occupancy, ok=lambda t: t.category == "occupancy")
     if building is None:
         return {"requirements": 0, "conditions": 0}
 
@@ -204,10 +329,10 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
         )
 
     made = []
-    r_pre = await req(prelim, "Preliminary decision on use and building envelope") if prelim else None
+    r_pre = await req(prelim, content["preliminary_title"]) if prelim else None
     r_bld = await req(
         building,
-        "Main building permit",
+        content["building_title"],
         planned_submit_date=ago(story.building_filed + 10),
         needed_by_date=today + timedelta(days=story.start_in),
     )
@@ -215,23 +340,23 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
     if r_pre is not None:
         await svc.set_dependencies(pid, r_bld.id, [{"depends_on_id": r_pre.id, "on": "granted"}], actor_id=owner)
     r_early = (
-        await req(
-            early, "Early start of excavation at own risk", needed_by_date=today + timedelta(days=story.early_needed_in)
-        )
+        await req(early, content["early_title"], needed_by_date=today + timedelta(days=story.early_needed_in))
         if early
         else None
     )
     r_road = (
         await req(
             road,
-            "Road occupation for crane and site access",
+            content["road_title"],
             needed_by_date=today + timedelta(days=story.road_needed_in),
         )
         if road
         else None
     )
     r_occ = (
-        await req(occupancy, "Occupancy approval", needed_by_date=today + timedelta(days=story.occupancy_needed_in))
+        await req(
+            occupancy, content["occupancy_title"], needed_by_date=today + timedelta(days=story.occupancy_needed_in)
+        )
         if occupancy
         else None
     )
@@ -242,7 +367,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
     async def file(r, submitted: date, ref: str) -> object:
         app = await svc.create_application(
             pid,
-            {"requirement_id": r.id, "authority_name": "Local building authority", "authority_reference": ref},
+            {"requirement_id": r.id, "authority_name": content["authority_name"], "authority_reference": ref},
             actor_id=owner,
         )
         await svc.transition_application(
@@ -254,18 +379,23 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
         return app
 
     if r_pre is not None:
-        a = await file(r_pre, ago(story.prelim_filed), "PRE-0418")
+        a = await file(r_pre, ago(story.prelim_filed), content["preliminary_reference"])
         await svc.record_decision(
             pid,
             a.id,
-            {"outcome": "granted", "decision_date": ago(story.prelim_granted), "reference": "PRE-0418"},
+            {
+                "outcome": "granted",
+                "decision_date": ago(story.prelim_granted),
+                "reference": content["preliminary_reference"],
+            },
             actor_id=owner,
             today=today,
         )
-    a_bld = await file(r_bld, ago(story.building_filed), "BP-0112")
+    bp_ref = content["building_reference"]
+    a_bld = await file(r_bld, ago(story.building_filed), bp_ref)
     for kind, days, reason in (
-        ("stop", story.clock_stopped, "Authority asked for the revised drainage layout"),
-        ("resume", story.clock_resumed, "Revised drainage layout delivered"),
+        ("stop", story.clock_stopped, content["clock_stop_reason"]),
+        ("resume", story.clock_resumed, content["clock_resume_reason"]),
     ):
         await svc.add_clock_event(
             pid, a_bld.id, {"kind": kind, "at": today - timedelta(days=days), "reason": reason}, actor_id=owner
@@ -273,7 +403,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
     if r_early is not None and story.early_granted is not None:
         # Filed while the main application was pending and granted well before it: the site was
         # cleared and excavated at the owner's risk until the building permit arrived.
-        a = await file(r_early, ago(story.early_filed), "ES-0031")
+        a = await file(r_early, ago(story.early_filed), content["early_reference"])
         await svc.record_decision(
             pid,
             a.id,
@@ -281,8 +411,8 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
                 "outcome": "granted_with_conditions",
                 "decision_date": ago(story.early_granted),
                 "served_date": ago(story.early_granted - 2),
-                "reference": "ES-0031",
-                "conditions": _early_start_conditions(owner),
+                "reference": content["early_reference"],
+                "conditions": _early_start_conditions(owner, content["early_conditions"]),
             },
             actor_id=owner,
             today=today,
@@ -333,6 +463,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             "topic": "admin",
         },
     ]
+    conditions = apply_condition_overrides(conditions, content["conditions"])
     granted = await svc.record_decision(
         pid,
         a_bld.id,
@@ -340,7 +471,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             "outcome": "granted_with_conditions",
             "decision_date": ago(story.building_granted),
             "served_date": ago(story.building_served),
-            "reference": "BP-0112",
+            "reference": bp_ref,
             "conditions": conditions,
         },
         actor_id=owner,
@@ -355,7 +486,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
     await svc.add_evidence(
         pid,
         by_number["3"].id,
-        {"kind": "photo", "note": "Tree protection fence along the northern boundary, photographed from the gate"},
+        {"kind": "photo", "note": content["evidence_note"]},
         actor_id=fence_owner,
         can_manage=fence_is_owners,
     )
@@ -368,8 +499,8 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             "kind": "discharge_of_conditions",
             "parent_permit_id": permit.id,
             "discharges_condition_ids": [by_number["1"].id],
-            "authority_name": "Local building authority",
-            "authority_reference": "BP-0112/D1",
+            "authority_name": content["authority_name"],
+            "authority_reference": f"{bp_ref}/D1",
         },
         actor_id=owner,
     )
@@ -384,7 +515,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
         {
             "outcome": "granted",
             "decision_date": ago(story.discharge_decided),
-            "reference": "BP-0112/D1",
+            "reference": f"{bp_ref}/D1",
             "discharged_condition_ids": [by_number["1"].id],
         },
         actor_id=owner,
@@ -393,7 +524,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
     if r_early is not None and story.early_granted is None:
         # Applied for so that excavation can begin while the last before-start condition is being
         # cleared; the authority has it under review.
-        a = await file(r_early, ago(story.early_filed), "ES-0031")
+        a = await file(r_early, ago(story.early_filed), content["early_reference"])
         await svc.transition_application(
             pid, a.id, "under_review", actor_id=owner, can_manage=True, today=ago(story.early_filed - 3)
         )

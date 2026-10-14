@@ -1,0 +1,322 @@
+{
+  "$note": "Design management of the Regensburg residential quarter as data, applied on top of the module seeder defaults key by key. The phases come from the pinned phase model; design stages follow the HOAI phases LP 1 to LP 9 in the wording. Structure (which report is open at the gate, four-eyes steps) stays in the seeder. No real firms or persons.",
+  "wbs": {
+    "top": {
+      "code": "1",
+      "name": {
+        "en": "Residential quarter Donaupark",
+        "de": "Wohnquartier Donaupark"
+      }
+    },
+    "children": [
+      {
+        "code": "1.1",
+        "name": {
+          "en": "Excavation pit, shoring and underground car park",
+          "de": "Baugrube, Verbau und Tiefgarage"
+        },
+        "kind": "system"
+      },
+      {
+        "code": "1.2",
+        "name": {
+          "en": "Reinforced concrete shells and masonry of the four buildings",
+          "de": "Stahlbetonrohbauten und Mauerwerk der vier Gebäude"
+        },
+        "kind": "system"
+      },
+      {
+        "code": "1.3",
+        "name": {
+          "en": "Thermal insulation facade, precast balconies and roofs with photovoltaic",
+          "de": "Wärmedämmverbundsystem, Balkon-Fertigteile und Dächer mit Photovoltaik"
+        },
+        "kind": "system"
+      },
+      {
+        "code": "1.4",
+        "name": {
+          "en": "Building services: district heating, apartment ventilation, lifts",
+          "de": "Technische Gebäudeausrüstung: Fernwärme, Wohnungslüftung, Aufzüge"
+        },
+        "kind": "system"
+      }
+    ],
+    "extra": [
+      {
+        "code": "2",
+        "name": {
+          "en": "Quarter square and playground",
+          "de": "Quartiersplatz und Spielplatz"
+        },
+        "kind": "location"
+      },
+      {
+        "code": "3",
+        "name": {
+          "en": "External works, bicycle rooms and charging infrastructure",
+          "de": "Außenanlagen, Fahrradräume und Ladeinfrastruktur"
+        },
+        "kind": "location"
+      }
+    ]
+  },
+  "roles": {
+    "owner": {
+      "title": {
+        "en": "Design manager of the housing company",
+        "de": "Planungsverantwortliche der Wohnungsbaugesellschaft"
+      }
+    },
+    "arch": {
+      "title": {
+        "en": "Lead architect (HOAI LP 1 to 8)",
+        "de": "Objektplanung Architektur (HOAI LP 1 bis 8)"
+      },
+      "originator": "ARC"
+    },
+    "struct": {
+      "title": {
+        "en": "Structural engineer for concrete and masonry",
+        "de": "Tragwerksplanung Stahlbeton und Mauerwerk"
+      },
+      "originator": "STR"
+    },
+    "mep": {
+      "title": {
+        "en": "Building services engineer (district heating, ventilation)",
+        "de": "Technische Ausrüstung (Fernwärme, Lüftung)"
+      },
+      "originator": "MEP"
+    },
+    "fire": {
+      "title": {
+        "en": "Fire protection engineer",
+        "de": "Brandschutzplanung"
+      },
+      "originator": "FSE"
+    },
+    "checker": {
+      "title": {
+        "en": "Approved inspector for structural stability",
+        "de": "Prüfsachverständiger für Standsicherheit"
+      },
+      "originator": "CHK"
+    }
+  },
+  "approval_points": {
+    "AP-001": {
+      "en": "Decision of the supervisory board on the preliminary design (HOAI LP 2)",
+      "de": "Beschluss des Aufsichtsrats zur Vorplanung (HOAI LP 2)"
+    },
+    "AP-002": {
+      "en": "Cost calculation to DIN 276 checked before the permit application (LP 3)",
+      "de": "Kostenberechnung nach DIN 276 vor dem Bauantrag geprüft (LP 3)"
+    },
+    "AP-003": {
+      "en": "Sign-off of apartment layouts and subsidy categories with the Regierung der Oberpfalz",
+      "de": "Freigabe der Wohnungsgrundrisse und Förderkategorien mit der Regierung der Oberpfalz"
+    }
+  },
+  "deliverables": {
+    "DL-001": {
+      "en": "Preliminary design plans and sections (LP 2)",
+      "de": "Vorentwurfspläne und Schnitte (LP 2)"
+    },
+    "DL-002": {
+      "en": "Structural concept for the white tank and the shells (LP 2)",
+      "de": "Tragwerkskonzept für weiße Wanne und Rohbauten (LP 2)"
+    },
+    "DL-003": {
+      "en": "Building permit drawings for the Bauordnungsamt (LP 4)",
+      "de": "Bauvorlagen für das Bauordnungsamt (LP 4)"
+    },
+    "DL-004": {
+      "en": "Building services layouts: district heating, ventilation, photovoltaic (LP 3 to 5)",
+      "de": "Planung der Technischen Ausrüstung: Fernwärme, Lüftung, Photovoltaik (LP 3 bis 5)"
+    }
+  },
+  "drawings": [
+    {
+      "en": "Ground floor plan with apartment mix and quarter square",
+      "de": "Grundriss Erdgeschoss mit Wohnungsmix und Quartiersplatz"
+    },
+    {
+      "en": "Section A-A through building B and the car park",
+      "de": "Schnitt A-A durch Haus B und die Tiefgarage"
+    },
+    {
+      "en": "Foundation layout of the white tank",
+      "de": "Gründungsplan der weißen Wanne"
+    },
+    {
+      "en": "Site plan for the building permit",
+      "de": "Lageplan für den Bauantrag"
+    },
+    {
+      "en": "Elevations with balconies and thermal insulation facade",
+      "de": "Ansichten mit Balkonen und Wärmedämmverbundsystem"
+    },
+    {
+      "en": "Ventilation ground floor",
+      "de": "Lüftung Erdgeschoss"
+    }
+  ],
+  "releases": {
+    "REL-001": {
+      "en": "Preliminary design issue (LP 2) for the supervisory board",
+      "de": "Planstand Vorentwurf (LP 2) für den Aufsichtsrat"
+    },
+    "REL-002": {
+      "en": "Building permit set for the Bauordnungsamt (LP 4)",
+      "de": "Bauvorlagen für das Bauordnungsamt (LP 4)"
+    }
+  },
+  "review": {
+    "title": {
+      "en": "End of preliminary design review (LP 2)",
+      "de": "Review am Ende der Vorplanung (LP 2)"
+    },
+    "comments": [
+      {
+        "en": "Bicycle rooms are too small for the number of apartments",
+        "de": "Fahrradräume sind für die Wohnungszahl zu klein"
+      },
+      {
+        "en": "Width of the stairwells to be checked against the escape route in the fire protection concept",
+        "de": "Breite der Treppenhäuser mit dem Rettungsweg im Brandschutzkonzept prüfen"
+      },
+      {
+        "en": "Level of the car park base slab differs from the groundwater level in the soil report",
+        "de": "Höhe der Tiefgaragen-Bodenplatte weicht vom Grundwasserstand im Baugrundgutachten ab"
+      }
+    ],
+    "answer": {
+      "en": "Bicycle rooms enlarged and the slab level lowered to match the groundwater report.",
+      "de": "Fahrradräume vergrößert und die Plattenhöhe an das Grundwassergutachten angepasst."
+    }
+  },
+  "reports": {
+    "overrides": {
+      "RPT-001": {
+        "title": {
+          "en": "Geotechnical report and groundwater survey Danube plain",
+          "de": "Baugrund- und Grundwassergutachten Donauniederung"
+        }
+      },
+      "RPT-002": {
+        "title": {
+          "en": "Fire protection concept, agreed with the approved fire protection inspector",
+          "de": "Brandschutzkonzept, mit dem Prüfsachverständigen abgestimmt"
+        }
+      },
+      "RPT-003": {
+        "title": {
+          "en": "Structural design of the white tank and the concrete shells",
+          "de": "Tragwerksplanung der weißen Wanne und der Stahlbetonrohbauten"
+        }
+      },
+      "RPT-004": {
+        "title": {
+          "en": "Structural proof check by the approved inspector",
+          "de": "Prüfung der Standsicherheitsnachweise durch den Prüfsachverständigen"
+        }
+      },
+      "RPT-005": {
+        "title": {
+          "en": "GEG energy proof for efficiency house 40 with district heating and photovoltaic",
+          "de": "GEG-Energienachweis für Effizienzhaus 40 mit Fernwärme und Photovoltaik"
+        }
+      }
+    },
+    "extra": [
+      {
+        "code": "RPT-006",
+        "kind": "contamination",
+        "phase": "early",
+        "author": "struct",
+        "status": "accepted",
+        "title": {
+          "en": "Contamination screening of the site",
+          "de": "Altlastenerkundung des Grundstücks"
+        }
+      },
+      {
+        "code": "RPT-007",
+        "kind": "uxo",
+        "phase": "early",
+        "author": "struct",
+        "status": "accepted",
+        "title": {
+          "en": "Explosive ordnance precheck of the site",
+          "de": "Kampfmittelvorprüfung des Grundstücks"
+        }
+      },
+      {
+        "code": "RPT-008",
+        "kind": "environmental",
+        "phase": "early",
+        "author": "arch",
+        "status": "accepted",
+        "title": {
+          "en": "Species protection assessment for reptiles and bats, and tree protection plan",
+          "de": "Artenschutzrechtliche Prüfung Reptilien und Fledermäuse, Baumschutzplan"
+        }
+      },
+      {
+        "code": "RPT-009",
+        "kind": "drainage",
+        "phase": "mid",
+        "author": "mep",
+        "status": "accepted",
+        "title": {
+          "en": "Stormwater retention and infiltration concept for the quarter",
+          "de": "Regenrückhalte- und Versickerungskonzept für das Quartier"
+        }
+      },
+      {
+        "code": "RPT-010",
+        "kind": "acoustics",
+        "phase": "mid",
+        "author": "arch",
+        "status": "in_progress",
+        "title": {
+          "en": "Sound insulation proof to DIN 4109 and noise protection against the railway line",
+          "de": "Schallschutznachweis nach DIN 4109 und Lärmschutz gegen die Bahnstrecke"
+        }
+      },
+      {
+        "code": "RPT-011",
+        "kind": "survey",
+        "phase": "mid",
+        "author": "mep",
+        "status": "commissioned",
+        "title": {
+          "en": "Groundwater model and concept for the groundwater lowering, coordinated with the Water Management Office",
+          "de": "Grundwassermodell und Konzept zur Grundwasserhaltung, mit dem Wasserwirtschaftsamt abgestimmt"
+        }
+      },
+      {
+        "code": "RPT-012",
+        "kind": "fire_proof_check",
+        "phase": "mid",
+        "author": "fire",
+        "status": "required",
+        "title": {
+          "en": "Check of the fire protection documents by the approved fire protection inspector",
+          "de": "Prüfung der Brandschutznachweise durch den Prüfsachverständigen für Brandschutz"
+        }
+      }
+    ]
+  },
+  "permit": {
+    "title": {
+      "en": "Building application under the BayBO",
+      "de": "Bauantrag nach BayBO"
+    },
+    "form": {
+      "en": "Application form and building documents for the Bauordnungsamt",
+      "de": "Antragsformular und Bauvorlagen für das Bauordnungsamt"
+    }
+  }
+}

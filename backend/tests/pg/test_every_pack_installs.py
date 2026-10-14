@@ -603,10 +603,11 @@ async def test_a_fresh_pack_install_tells_every_demo_project_by_its_owner_alone(
     assert logins == [], f"{slug}: this world is the one without the demo logins, found {logins}"
 
     projects = await _demo_projects(factory)
-    pack_project = seed_story.pack_demo_id(catalogue_packs.active_pack_demo())
+    pack_projects = seed_story.pack_demo_ids(catalogue_packs.active_pack_demo())
+    filmed_ids = [d for d in expected if d in pack_projects]
     for demo_id in expected:
         has = await _governance_of(factory, projects[demo_id].id)
-        if demo_id == pack_project:
+        if demo_id in filmed_ids:
             assert has["models"] == [], f"{slug}: the filmed project {demo_id} was told without its cast"
             continue
         assert len(has["models"]) == 1, f"{slug}: demo {demo_id} has no governance model"
@@ -616,11 +617,11 @@ async def test_a_fresh_pack_install_tells_every_demo_project_by_its_owner_alone(
         assert "decided" not in {g.status for g in has["gates"]}, demo_id
 
     loud, told = _governance_records(caplog)
-    filmed = [m for m in loud if "was planned at" in m] if pack_project in expected else []
-    assert len(filmed) == (1 if pack_project in expected else 0), loud
+    filmed = [m for m in loud if "was planned at" in m]
+    assert len(filmed) == len(filmed_ids), loud
     assert sorted(loud) == sorted(filmed), f"{slug}: the governance seed logged:\n" + "\n".join(loud[:40])
     quiet = [r for r in told if r.levelno == logging.INFO]
-    assert len(quiet) == len([d for d in expected if d != pack_project]), [r.getMessage() for r in told]
+    assert len(quiet) == len([d for d in expected if d not in filmed_ids]), [r.getMessage() for r in told]
     assert all("no_decider" in r.getMessage() for r in told), [r.getMessage() for r in told]
 
 
@@ -662,10 +663,10 @@ async def test_a_pack_install_beside_the_demo_logins_leaves_every_demo_project_a
     assert expected, f"{slug} installs no demos, so this test asks nothing"
 
     projects = await _demo_projects(factory)
-    pack_project = seed_story.pack_demo_id(catalogue_packs.active_pack_demo())
+    pack_projects = seed_story.pack_demo_ids(catalogue_packs.active_pack_demo())
     placed = 0
     for demo_id in expected:
-        planned = seed_story.planned_moment(demo_id, pack_project)
+        planned = seed_story.planned_moment(demo_id, pack_projects)
         has = await _governance_of(factory, projects[demo_id].id)
         assert len(has["models"]) == 1, f"{slug}: demo {demo_id} has no governance model (planned {planned})"
         if planned in ("execution", "near_handover"):
@@ -675,8 +676,111 @@ async def test_a_pack_install_beside_the_demo_logins_leaves_every_demo_project_a
         elif planned == "first_gate":
             decided = len(has["decisions"])
             assert decided == 1, f"{slug}: {demo_id} has {decided} gate decisions, the first-gate story takes one"
-    assert placed or pack_project in expected, f"{slug}: none of {expected} is a placed project, pick another pack"
+    assert placed or set(pack_projects) & set(expected), (
+        f"{slug}: none of {expected} is a placed project, pick another pack"
+    )
 
     loud, told = _governance_records(caplog)
     assert not loud, f"{slug}: the governance seed logged:\n" + "\n".join(loud[:40])
     assert not told, f"{slug}: placement fallbacks: {[r.getMessage() for r in told]}"
+
+
+# The tables behind the screens of the eleven areas, by module prefix. A filmed project of the
+# pack must have rows in each table that carries a project id, unless the table is listed here
+# with the reason it is empty on a healthy demo.
+_ELEVEN_MODULES = (
+    "project_governance",
+    "stakeholders",
+    "delivery_model",
+    "permits",
+    "plant_register",
+    "staffing",
+    "site_logistics",
+    "design_management",
+    "procurement_concept",
+    "commitment_release",
+    "quality_concept",
+    "transmittals",
+)
+_EMPTY_BY_DESIGN: dict[str, str] = {
+    # Written only when a delivery is scheduled on a granted oversize permit, which needs a running site.
+    "oe_site_logistics_permit_transport": "a site before its construction gate schedules no delivery",
+}
+
+
+@pytest.mark.timeout(1500)
+@pytest.mark.parametrize("path", ["modules_page", "apply"])
+@pytest.mark.parametrize("pack_dir", _shard(["eleven-areas-framework"]))
+async def test_every_screen_of_the_eleven_areas_has_rows_for_both_filmed_projects(
+    pack_dir: str, path: str, fresh_db, caplog
+) -> None:
+    """The video series films both projects: no table behind an area's screens may be empty.
+
+    The demo logins are put there first, as in the beside-the-logins test, so the governance
+    story is told in full. Every table of the twelve modules that carries a project id is counted
+    for each project; the failure lists all the empty ones at once.
+    """
+    from app.database import Base
+    from app.modules.project_governance import catalogue_packs, seed_story
+    from app.modules.users.models import User
+
+    caplog.set_level(logging.WARNING)
+    factory = fresh_db
+    async with factory() as s:
+        for email in _DEMO_LOGINS:
+            name = email.split("@")[0]
+            s.add(
+                User(
+                    id=uuid.uuid4(),
+                    email=email,
+                    hashed_password="x",
+                    full_name=name.title(),
+                    role=name,
+                    locale="en",
+                    is_active=True,
+                    metadata_={},
+                )
+            )
+        await s.commit()
+    slug = _load_manifest(pack_dir).slug
+    if path == "apply":
+        # The route the Modules page "apply" button and the API take: it must land every demo the pack pins.
+        from app.core.partner_pack.apply import apply_pack
+
+        applied = await apply_pack(slug, install_demo=True, app=None)
+        assert applied["applied"] is True
+        assert "demo_project_failed" not in applied["effects"], applied["effects"]
+        assert len(applied["effects"].get("demo_projects", [])) == 2, applied["effects"]
+    else:
+        done = await _stream_install(slug)
+        assert done["ok"], f"{slug}: install reported ok=False: {done['steps']}"
+    projects = await _demo_projects(factory)
+    filmed = seed_story.pack_demo_ids(catalogue_packs.active_pack_demo())
+    assert len(filmed) == 2 and all(d in projects for d in filmed), (filmed, sorted(projects))
+
+    tables = sorted(
+        (
+            t
+            for t in Base.metadata.sorted_tables
+            if "project_id" in t.c and any(t.name.startswith(f"oe_{m}_") for m in _ELEVEN_MODULES)
+        ),
+        key=lambda t: t.name,
+    )
+    assert len(tables) >= 40, f"only {len(tables)} tables found behind the eleven areas"
+    empty: dict[str, list[str]] = {}
+    async with factory() as s:
+        for demo_id in filmed:
+            pid = projects[demo_id].id
+            for table in tables:
+                if table.name in _EMPTY_BY_DESIGN:
+                    continue
+                count = (
+                    await s.execute(select(func.count()).select_from(table).where(table.c.project_id == pid))
+                ).scalar_one()
+                if not count:
+                    empty.setdefault(demo_id, []).append(table.name)
+    assert not empty, "tables with no rows for a filmed project:\n" + "\n".join(
+        f"{demo_id}: {', '.join(names)}" for demo_id, names in empty.items()
+    )
+    warned = _install_warnings(caplog)
+    assert not warned, warned[:20]

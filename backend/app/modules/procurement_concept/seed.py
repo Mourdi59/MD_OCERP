@@ -39,10 +39,12 @@ skipped, so a re-run never duplicates.
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -93,6 +95,206 @@ _FREE_NAMES = (
 )
 
 
+_SOUNDING_METHODS = ("survey", "meeting", "rfi", "notice")
+_CAPACITY_SIGNALS = ("ample", "adequate", "tight", "insufficient")
+_PRICE_SIGNALS = ("below_estimate", "in_line", "above_estimate", "unknown")
+
+
+def _story_str(value: Any, locale: str, *, limit: int = 500) -> str | None:
+    """A non-empty story text in the project's locale, else ``None`` (the default stays)."""
+    from app.modules.project_governance.public import story_text
+
+    if not isinstance(value, (str, dict)):
+        return None
+    text = story_text(value, locale)
+    return text.strip()[:limit] if isinstance(text, str) and text.strip() else None
+
+
+def _story_int(value: Any, low: int, high: int) -> int | None:
+    """An integer of the story within ``[low, high]``; ``None`` for anything else (bool included)."""
+    if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+        return None
+    return value
+
+
+def merge_package_story(
+    base: tuple[str, str, str, int],
+    entry: Any,
+    procedures: set[str],
+    locale: str,
+    previous: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Defaults of one package with a story entry applied key by key.
+
+    Args:
+        base: ``(base estimate, public procedure, private procedure, lead days)``.
+        entry: Story object for a kind or a package code; anything else is ignored.
+        procedures: Procedure codes of the catalogue; an unknown one keeps the default.
+        locale: Locale for ``{"en", "de"}`` texts.
+        previous: Result of an earlier merge (the kind entry) to build on instead of ``base``.
+
+    Returns:
+        Dict with ``value``, ``public``, ``private``, ``lead``, ``offset`` (days after the planning start, or
+        ``None``) and ``notes``.
+    """
+    out: dict[str, Any] = dict(
+        previous
+        or {"value": base[0], "public": base[1], "private": base[2], "lead": base[3], "offset": None, "notes": ""}
+    )
+    if not isinstance(entry, dict):
+        return out
+    raw = entry.get("value")
+    if isinstance(raw, (str, int)) and not isinstance(raw, bool):
+        try:
+            if Decimal(str(raw)) > 0:
+                out["value"] = str(raw)
+        except InvalidOperation:
+            logger.info("procurement_concept demo story: value %r ignored", raw)
+    for key, field in (("public_procedure", "public"), ("private_procedure", "private")):
+        code = entry.get(key)
+        if code is None:
+            continue
+        if isinstance(code, str) and code in procedures:
+            out[field] = code
+        else:
+            logger.info("procurement_concept demo story: procedure %r ignored", code)
+    lead = _story_int(entry.get("lead_days"), 0, 730)
+    if lead is not None:
+        out["lead"] = lead
+    offset = _story_int(entry.get("start_offset_days"), 0, 720)
+    if offset is not None:
+        out["offset"] = offset
+    notes = _story_str(entry.get("notes"), locale, limit=2000)
+    if notes:
+        out["notes"] = notes
+    return out
+
+
+def merge_names(default: tuple[str, ...], value: Any, locale: str) -> tuple[str, ...]:
+    """The story's list of texts, or ``default`` when it is not a non-empty list of texts."""
+    if not isinstance(value, list):
+        return default
+    names = tuple(t for t in (_story_str(v, locale, limit=255) for v in value) if t)
+    return names or default
+
+
+def merge_soundings(value: Any, locale: str) -> list[dict[str, Any]] | None:
+    """Valid sounding rows of the story, or ``None`` when the story gives none (the default three stay).
+
+    A row needs a trade, a ``days_ago`` and findings; an invalid vocabulary value falls back to its default.
+    ``package_kinds`` lists the package kinds covered; ``main`` adds the main works package.
+    """
+    if not isinstance(value, list):
+        return None
+    rows: list[dict[str, Any]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        trade = _story_str(item.get("trade"), locale, limit=120)
+        findings = _story_str(item.get("findings"), locale, limit=2000)
+        days = _story_int(item.get("days_ago"), 1, 720)
+        if not (trade and findings and days):
+            logger.info("procurement_concept demo story: incomplete sounding ignored")
+            continue
+        kinds = item.get("package_kinds")
+        method, capacity, price = item.get("method"), item.get("capacity_signal"), item.get("price_signal")
+        rows.append(
+            {
+                "trade": trade,
+                "findings": findings,
+                "days_ago": days,
+                "main": item.get("main") is True,
+                "package_kinds": [k for k in kinds if isinstance(k, str)] if isinstance(kinds, list) else [],
+                "method": method if method in _SOUNDING_METHODS else "meeting",
+                "capacity_signal": capacity if capacity in _CAPACITY_SIGNALS else "adequate",
+                "price_signal": price if price in _PRICE_SIGNALS else "unknown",
+                "lead_time_signal_days": _story_int(item.get("lead_time_signal_days"), 1, 1500),
+                "mitigation": _story_str(item.get("mitigation"), locale, limit=2000) or "",
+            }
+        )
+    return rows or None
+
+
+def merge_framework(value: Any, locale: str) -> dict[str, Any]:
+    """The framework agreement fields, the story's on top of the default supply framework."""
+    out: dict[str, Any] = {
+        "code": "FW-SUPPLY-01",
+        "title": "Reinforcement and precast supply framework",
+        "supplier_name": "Precast concrete supplier",
+        "scope": "Reinforcement steel, precast elements and delivery to site",
+        "package_kinds": ["supply", "supply_and_install"],
+        "lots": [{"code": "L1", "title": "Reinforcement"}, {"code": "L2", "title": "Precast"}],
+        "source_procedure_ref": "Open procedure, framework award 2025",
+    }
+    if not isinstance(value, dict):
+        return out
+    code = value.get("code")
+    if isinstance(code, str) and re.fullmatch(r"[A-Z0-9][A-Z0-9-]{1,31}", code):
+        out["code"] = code
+    for key, limit in (("title", 255), ("supplier_name", 255), ("scope", 2000), ("source_procedure_ref", 255)):
+        text = _story_str(value.get(key), locale, limit=limit)
+        if text:
+            out[key] = text
+    kinds = value.get("package_kinds")
+    if isinstance(kinds, list) and kinds and all(k in _DEFAULTS for k in kinds):
+        out["package_kinds"] = list(kinds)
+    lots = value.get("lots")
+    if isinstance(lots, list):
+        parsed = [
+            {"code": str(lot["code"])[:20], "title": t}
+            for lot in lots
+            if isinstance(lot, dict) and lot.get("code") and (t := _story_str(lot.get("title"), locale, limit=120))
+        ]
+        if parsed:
+            out["lots"] = parsed
+    return out
+
+
+def merge_prequal(value: Any, locale: str) -> dict[str, Any]:
+    """Name, pass mark and the three scored weights (they must add up to 100) of the default profile."""
+    out: dict[str, Any] = {"name": "Standard works prequalification", "pass_mark": "60", "weights": ["40", "35", "25"]}
+    if not isinstance(value, dict):
+        return out
+    name = _story_str(value.get("name"), locale, limit=255)
+    if name:
+        out["name"] = name
+    mark = _story_int(value.get("pass_mark"), 1, 100)
+    if mark is not None:
+        out["pass_mark"] = str(mark)
+    weights = value.get("weights")
+    if (
+        isinstance(weights, list)
+        and len(weights) == 3
+        and all(isinstance(w, int) and not isinstance(w, bool) and w > 0 for w in weights)
+        and sum(weights) == 100
+    ):
+        out["weights"] = [str(w) for w in weights]
+    elif weights is not None:
+        logger.info("procurement_concept demo story: prequal weights ignored")
+    return out
+
+
+def merge_reference(value: Any, locale: str) -> dict[str, str]:
+    """The reference project shown on every candidate, and the reason an excluded candidate gets."""
+    out = {
+        "project_name": "Four-storey school extension",
+        "client": "Municipal client",
+        "role": "Main contractor",
+        "value": "3100000",
+        "excluded_rationale": "Below the pass mark on similar projects and current workload",
+    }
+    if not isinstance(value, dict):
+        return out
+    for key in ("project_name", "client", "role", "excluded_rationale"):
+        text = _story_str(value.get(key), locale, limit=255)
+        if text:
+            out[key] = text
+    amount = value.get("value")
+    if isinstance(amount, (int, str)) and not isinstance(amount, bool) and str(amount).isdigit() and int(amount) > 0:
+        out["value"] = str(amount)
+    return out
+
+
 async def seed_procurement_concept_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
     """Seed the concept of every demo project in ``project_ids`` that has a package plan and no concept."""
     from app.core.demo_marker import demo_id_of
@@ -126,6 +328,7 @@ async def seed_procurement_concept_demo(session: AsyncSession, project_ids: Iter
 
 
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int] | None:
+    from app.core.demo_marker import demo_id_of
     from app.modules.procurement_concept import plan_source as plan
     from app.modules.procurement_concept.catalogue import register_kind
     from app.modules.procurement_concept.models import (
@@ -138,6 +341,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         ProcurementConcept,
         ProjectReference,
     )
+    from app.modules.project_governance.public import demo_module_story
     from app.modules.projects.models import Project
     from app.modules.subcontractors.models import Subcontractor
 
@@ -151,11 +355,25 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     if not currency:
         # No currency is ever assumed for an amount.
         return None
-    scale = _MAGNITUDE.get(currency, 1)
+    # The story of the active pack (if it names one for this project) is applied key by key on the defaults.
+    story = demo_module_story(demo_id_of(project.metadata_), "procurement_concept")
+    locale = getattr(project, "locale", None) or "en"
+    scale = _story_int(story.get("magnitude"), 1, 1_000_000) or _MAGNITUDE.get(currency, 1)
     _form, mod3_public = await plan.delivery_form(session, project_id)
     regime = _regime_for(getattr(project, "country_code", None), currency) if mod3_public else None
     public = regime is not None
     catalogue, jurisdiction, client_type = regime or _neutral_regime()
+    story_type = story.get("client_type")
+    if public and isinstance(story_type, str):
+        juris = next((j for j in catalogue.jurisdictions if j.code == jurisdiction), None)
+        if juris is not None and story_type in juris.client_types:
+            client_type = story_type
+        else:
+            logger.info("procurement_concept demo story: client type %r ignored", story_type)
+    procedures = {p.code for p in catalogue.procedures}
+    by_kind = story.get("kinds") if isinstance(story.get("kinds"), dict) else {}
+    by_code = story.get("packages") if isinstance(story.get("packages"), dict) else {}
+    free_names = merge_names(_FREE_NAMES, story.get("free_names"), locale)
     today = datetime.now(UTC).date()
     release = await _advance_release(session, project_id)
     concept = ProcurementConcept(
@@ -177,13 +395,14 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     await session.flush()
 
     tenant = str(getattr(project, "owner_id", "") or "")
+    fw = merge_framework(story.get("framework"), locale)
     framework = None
     if tenant:
         framework = (
             (
                 await session.execute(
                     select(FrameworkAgreement).where(
-                        FrameworkAgreement.tenant_id == tenant, FrameworkAgreement.code == "FW-SUPPLY-01"
+                        FrameworkAgreement.tenant_id == tenant, FrameworkAgreement.code == fw["code"]
                     )
                 )
             )
@@ -193,18 +412,18 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         if framework is None:
             framework = FrameworkAgreement(
                 tenant_id=tenant,
-                code="FW-SUPPLY-01",
-                title="Reinforcement and precast supply framework",
-                supplier_name="Precast concrete supplier",
-                scope="Reinforcement steel, precast elements and delivery to site",
-                package_kinds=["supply", "supply_and_install"],
-                lots=[{"code": "L1", "title": "Reinforcement"}, {"code": "L2", "title": "Precast"}],
+                code=fw["code"],
+                title=fw["title"],
+                supplier_name=fw["supplier_name"],
+                scope=fw["scope"],
+                package_kinds=fw["package_kinds"],
+                lots=fw["lots"],
                 max_value=Decimal("2500000") * scale,
                 currency=currency,
                 start_date=(today - timedelta(days=200)).isoformat(),
                 end_date=(today + timedelta(days=900)).isoformat(),
                 call_off_mode="direct",
-                source_procedure_ref="Open procedure, framework award 2025",
+                source_procedure_ref=fw["source_procedure_ref"],
                 state="active",
             )
             session.add(framework)
@@ -224,7 +443,11 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     advance_done = False
     framework_used = False
     for i, cp in enumerate(cps):
-        value, pub_proc, priv_proc, lead = _DEFAULTS[cp.kind]
+        merged = merge_package_story(_DEFAULTS[cp.kind], by_kind.get(cp.kind), procedures, locale)
+        if cp.code in by_code:
+            # A package code names one package of the plan and wins over the kind it belongs to.
+            merged = merge_package_story(_DEFAULTS[cp.kind], by_code[cp.code], procedures, locale, previous=merged)
+        value, pub_proc, priv_proc, lead = merged["value"], merged["public"], merged["private"], merged["lead"]
         row = AwardPackage(
             id=cp.id,
             project_id=project_id,
@@ -238,6 +461,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             evaluation_weights={"price": "60", "quality": "40"}
             if cp.kind in ("design", "design_and_construction")
             else {},
+            notes=merged["notes"],
             lead_time_days=lead or None,
             # The designers were appointed before the works were planned: that award is a fact of the past.
             # Everything else is a plan with a procedure chosen, waiting for the gate.
@@ -251,29 +475,34 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             # Only with something that releases it already: an advance package nothing released would block
             # the demo concept.
             row.is_advance = True
-            row.advance_reason = "Long lead item: fabrication slot must be reserved before the main tender"
+            row.advance_reason = (
+                _story_str(story.get("advance_reason"), locale, limit=2000)
+                or "Long lead item: fabrication slot must be reserved before the main tender"
+            )
             row.advance_release_kind, row.advance_release_id = release[0], release[1]
             advance_done = True
         # Need date = start + procedure + lead time. A released advance package is the one that may start
         # before the release date; the others start a month or more after it, staggered.
         steps = catalogue.lead_time(row.procedure_code)
-        start = today + timedelta(days=10) if row.is_advance else plan_from + timedelta(days=30 + 45 * i)
+        offset = merged["offset"] if merged["offset"] is not None else 30 + 45 * i
+        start = today + timedelta(days=10) if row.is_advance else plan_from + timedelta(days=offset)
         row.need_date = (start + timedelta(days=(steps.total_days() if steps else 0) + lead)).isoformat()
         session.add(row)
         awards.append(row)
     await session.flush()
 
+    prequal = merge_prequal(story.get("prequal"), locale)
     profile = PrequalProfile(
         project_id=project_id,
-        name="Standard works prequalification",
+        name=prequal["name"],
         criteria=[
             {"code": "exclusion_grounds", "kind": "pass_fail", "weight": "0"},
             {"code": "insurance_cover", "kind": "pass_fail", "weight": "0"},
-            {"code": "similar_projects", "kind": "scored", "weight": "40"},
-            {"code": "technical_capacity", "kind": "scored", "weight": "35"},
-            {"code": "hse_record", "kind": "scored", "weight": "25"},
+            {"code": "similar_projects", "kind": "scored", "weight": prequal["weights"][0]},
+            {"code": "technical_capacity", "kind": "scored", "weight": prequal["weights"][1]},
+            {"code": "hse_record", "kind": "scored", "weight": prequal["weights"][2]},
         ],
-        pass_mark=Decimal("60"),
+        pass_mark=Decimal(prequal["pass_mark"]),
         validity_months=12,
     )
     session.add(profile)
@@ -297,6 +526,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         .all()
     )
     candidates = 0
+    reference = merge_reference(story.get("reference"), locale)
     scores = [("88", "82", "75"), ("74", "70", "80"), ("65", "72", "68"), ("55", "50", "45")]
     for n, sub in enumerate(subs):
         lst = "short" if n < 3 else "excluded"
@@ -306,7 +536,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             subcontractor_id=sub.id,
             source="own_list" if n % 2 == 0 else "market_sounding",
             list_kind=lst,
-            decision_rationale="" if lst == "short" else "Below the pass mark on similar projects and current workload",
+            decision_rationale="" if lst == "short" else reference["excluded_rationale"],
         )
         session.add(c)
         await session.flush()
@@ -330,57 +560,77 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         session.add(
             ProjectReference(
                 candidate_id=c.id,
-                project_name="Four-storey school extension",
-                client="Municipal client",
-                value=Decimal("3100000") * scale,
+                project_name=reference["project_name"],
+                client=reference["client"],
+                value=Decimal(reference["value"]) * scale,
                 currency=currency,
                 year=today.year - 2,
-                role="Main contractor",
+                role=reference["role"],
             )
         )
         candidates += 1
-    for name in _FREE_NAMES[len(subs) :]:
+    for name in free_names[len(subs) :]:
         session.add(
             BidderCandidate(project_id=project_id, package_id=main.id, free_name=name, source="market_sounding")
         )
         candidates += 1
 
-    soundings = [
-        MarketSounding(
-            project_id=project_id,
-            package_ids=[str(main.id)],
-            trade="Structural works",
-            held_on=(today - timedelta(days=110)).isoformat(),
-            method="meeting",
-            findings="Four regional contractors interested; two prefer a split into frame and finishes.",
-            capacity_signal="adequate",
-            price_signal="in_line",
-        ),
-        MarketSounding(
-            project_id=project_id,
-            package_ids=[
-                str(a.id) for a, c in zip(awards, cps, strict=True) if c.kind in ("supply", "supply_and_install")
-            ],
-            trade="Steel and precast supply",
-            held_on=(today - timedelta(days=70)).isoformat(),
-            method="rfi",
-            findings="Mill slots booked for nine months; prices rising.",
-            capacity_signal="tight",
-            price_signal="above_estimate",
-            lead_time_signal_days=150,
-            mitigation="Advance package to reserve the fabrication slot; framework call-off for reinforcement.",
-        ),
-        MarketSounding(
-            project_id=project_id,
-            package_ids=[],
-            trade="Mechanical services",
-            held_on=(today - timedelta(days=30)).isoformat(),
-            method="survey",
-            findings="Six installers responded, three with capacity from next spring.",
-            capacity_signal="ample",
-            price_signal="below_estimate",
-        ),
-    ]
+    supply_ids = [str(a.id) for a, c in zip(awards, cps, strict=True) if c.kind in ("supply", "supply_and_install")]
+    story_soundings = merge_soundings(story.get("soundings"), locale)
+    if story_soundings is None:
+        soundings = [
+            MarketSounding(
+                project_id=project_id,
+                package_ids=[str(main.id)],
+                trade="Structural works",
+                held_on=(today - timedelta(days=110)).isoformat(),
+                method="meeting",
+                findings="Four regional contractors interested; two prefer a split into frame and finishes.",
+                capacity_signal="adequate",
+                price_signal="in_line",
+            ),
+            MarketSounding(
+                project_id=project_id,
+                package_ids=supply_ids,
+                trade="Steel and precast supply",
+                held_on=(today - timedelta(days=70)).isoformat(),
+                method="rfi",
+                findings="Mill slots booked for nine months; prices rising.",
+                capacity_signal="tight",
+                price_signal="above_estimate",
+                lead_time_signal_days=150,
+                mitigation="Advance package to reserve the fabrication slot; framework call-off for reinforcement.",
+            ),
+            MarketSounding(
+                project_id=project_id,
+                package_ids=[],
+                trade="Mechanical services",
+                held_on=(today - timedelta(days=30)).isoformat(),
+                method="survey",
+                findings="Six installers responded, three with capacity from next spring.",
+                capacity_signal="ample",
+                price_signal="below_estimate",
+            ),
+        ]
+    else:
+        soundings = []
+        for row in story_soundings:
+            covered = [str(main.id)] if row["main"] else []
+            covered += [str(a.id) for a, c in zip(awards, cps, strict=True) if c.kind in row["package_kinds"]]
+            soundings.append(
+                MarketSounding(
+                    project_id=project_id,
+                    package_ids=list(dict.fromkeys(covered)),
+                    trade=row["trade"],
+                    held_on=(today - timedelta(days=row["days_ago"])).isoformat(),
+                    method=row["method"],
+                    findings=row["findings"],
+                    capacity_signal=row["capacity_signal"],
+                    price_signal=row["price_signal"],
+                    lead_time_signal_days=row["lead_time_signal_days"],
+                    mitigation=row["mitigation"],
+                )
+            )
     for s in soundings:
         session.add(s)
     await session.flush()

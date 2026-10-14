@@ -225,6 +225,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
         from app.modules.supplier_catalogs.seed import seed_supplier_catalogs
         from app.modules.takeoff.seed import seed_takeoff_demo
         from app.modules.temporary_works.seed import seed_temporary_works_demo
+        from app.modules.transmittals.seed import seed_transmittals_demo
         from app.modules.validation.seed import seed_validation_demo
         from app.modules.value.seed import seed_value_demo
         from app.modules.variations.models import Notice
@@ -417,6 +418,10 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> dict[str, Any]:
             # conditions, one under review. Links the schedule activities the
             # seeders above wrote. Guards itself per project on a roadmap.
             ("permits", None, lambda s: seed_permits_demo(s, _demo_pids)),
+            # Formal transmittals with their acknowledgements. Story-driven only: a
+            # project whose pack story names none gets none. Guards itself per
+            # project on an existing transmittal.
+            ("transmittals", None, lambda s: seed_transmittals_demo(s, _demo_pids)),
             # The design team, numbered drawings on CDE, the design schedule,
             # reviews, reports and the permit package along the phases of the
             # project's governance model. Guards itself on an existing setup.

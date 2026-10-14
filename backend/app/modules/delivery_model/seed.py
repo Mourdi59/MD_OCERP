@@ -40,6 +40,13 @@ item. The link is never written from here, so the two lists cannot disagree.
 Without the register, or where the register refuses, nothing is linked. The
 two items seeded here stay unlinked and show their own figures.
 
+A demo project of the active pack may bring its own story (``demo_module_story``)
+that replaces, key by key, the preferred forms, the rationales, the owner capability,
+the seeded risk categories, the ground-conditions rationale, the two owner-furnished
+items, the plant item the owner supplies and the award and start offsets. A key that
+is absent or malformed keeps its default, said at info; whether a form or a risk
+category exists is still asked of the pinned catalogue.
+
 Only projects carrying the demo marker are touched; a project whose model
 already compares forms is skipped, so a re-run never duplicates. A model that
 is pinned and still empty is filled on the catalogue it pins. Runs after the governance,
@@ -74,6 +81,26 @@ START = 190
 DEMO_PLANT_ITEM = "PL-002"
 DEMO_PLANT_ROUTE = "framework"
 
+OWNER_CAPABILITY: dict[str, Any] = {
+    "owner_has_design_team": False,
+    "owner_has_cm_capacity": False,
+    "public_client": False,
+    "funding_source": "equity and bank loan",
+}
+GROUND_RATIONALE = "Shared on a geotechnical baseline report: the owner carries ground worse than the baseline."
+
+# The two owner-furnished items: (code, description, kind, installed by, lead time days, route).
+OFI_FIRST: dict[str, Any] = {
+    "description": "Main low-voltage switchboard and transformer, owner's framework supplier",
+    "item_kind": "equipment",
+    "lead_time_days": 90,
+}
+OFI_SECOND: dict[str, Any] = {
+    "description": "Reception furniture from the owner's existing stock, installed by the owner",
+    "item_kind": "material",
+}
+_OFI_KINDS = frozenset({"equipment", "material", "design", "service", "utility"})
+
 RATIONALE_CHOSEN = (
     "Design and build scores highest: the owner has no in-house design team, wants one point of "
     "responsibility and a fixed price at award, and accepts less control over design detail."
@@ -84,22 +111,115 @@ RATIONALE_LEADING = (
 )
 
 
-def forms_to_compare(available: Iterable[str]) -> list[str]:
+def _text(value: Any, locale: str) -> str | None:
+    """A non-empty string out of a plain string or a language map, else None."""
+    from app.modules.project_governance.public import story_text
+
+    out = story_text(value, locale)
+    return out if isinstance(out, str) and out.strip() else None
+
+
+def _ofi_from_story(raw: Any, locale: str, *, lead: bool) -> dict[str, Any] | None:
+    """One owner-furnished item of a story: description, kind and (for the first) a lead time."""
+    if not isinstance(raw, dict):
+        return None
+    description = _text(raw.get("description"), locale)
+    if description is None or raw.get("item_kind") not in _OFI_KINDS:
+        return None
+    out: dict[str, Any] = {"description": description, "item_kind": raw["item_kind"]}
+    if lead:
+        days = raw.get("lead_time_days")
+        if not (isinstance(days, int) and not isinstance(days, bool) and days > 0):
+            return None
+        out["lead_time_days"] = days
+    return out
+
+
+def resolve_story(story: dict[str, Any] | None, locale: str = "en") -> dict[str, Any]:
+    """The validated overrides of a demo story; a key that is absent or malformed is left out.
+
+    Keys: ``forms`` (preferred form codes), ``rationales`` (form code to text, used for the form
+    that leads the comparison), ``owner_capability``, ``risks`` (category codes), ``ground_rationale``,
+    ``ofi_first``, ``ofi_second``, ``plant_item`` (code of the register item the owner supplies) and
+    ``award_days`` / ``start_days``. Codes of forms and risk categories are checked against the pinned
+    catalogue where they are used, not here.
+    """
+    out: dict[str, Any] = {}
+    if not story:
+        return out
+
+    def keep(key: str, value: Any) -> None:
+        if value is None:
+            logger.info("delivery_model demo story: key %r is malformed, the default is kept", key)
+        elif key in story:
+            out[key] = value
+
+    def codes(raw: Any) -> list[str] | None:
+        ok = isinstance(raw, list) and raw and all(isinstance(c, str) and c.strip() for c in raw)
+        return list(raw) if ok else None
+
+    def rationales(raw: Any) -> dict[str, str] | None:
+        if not (isinstance(raw, dict) and raw):
+            return None
+        texts = {k: _text(v, locale) for k, v in raw.items()}
+        return None if any(v is None for v in texts.values()) else texts  # type: ignore[return-value]
+
+    def capability(raw: Any) -> dict[str, Any] | None:
+        if not (isinstance(raw, dict) and set(raw) <= set(OWNER_CAPABILITY)):
+            return None
+        out = dict(raw)
+        for key, value in raw.items():
+            if key == "funding_source":
+                text = _text(value, locale)
+                if not (text and len(text) <= 120):
+                    return None
+                out[key] = text
+            elif not isinstance(value, bool):
+                return None
+        return {**OWNER_CAPABILITY, **out}
+
+    def day(raw: Any) -> int | None:
+        return raw if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 0 else None
+
+    if "forms" in story:
+        keep("forms", codes(story["forms"]))
+    if "rationales" in story:
+        keep("rationales", rationales(story["rationales"]))
+    if "owner_capability" in story:
+        keep("owner_capability", capability(story["owner_capability"]))
+    if "risks" in story:
+        keep("risks", codes(story["risks"]))
+    if "ground_rationale" in story:
+        keep("ground_rationale", _text(story["ground_rationale"], locale))
+    if "ofi_first" in story:
+        keep("ofi_first", _ofi_from_story(story["ofi_first"], locale, lead=True))
+    if "ofi_second" in story:
+        keep("ofi_second", _ofi_from_story(story["ofi_second"], locale, lead=False))
+    if "plant_item" in story:
+        value = story["plant_item"]
+        keep("plant_item", value if isinstance(value, str) and value.strip() else None)
+    for key in ("award_days", "start_days"):
+        if key in story:
+            keep(key, day(story[key]))
+    return out
+
+
+def forms_to_compare(available: Iterable[str], preferred: Iterable[str] = DEMO_FORMS) -> list[str]:
     """Up to three forms of the pinned catalogue: the preferred ones it has, then its own order."""
     have = list(available)
-    picked = [code for code in DEMO_FORMS if code in have]
+    picked = [code for code in preferred if code in have]
     picked += [code for code in have if code not in picked]
     return picked[:COMPARED]
 
 
-def item_dates(today: date, *, pre_construction: bool) -> dict[str, date]:
+def item_dates(today: date, *, pre_construction: bool, award: int = AWARD, start: int = START) -> dict[str, date]:
     """Dates of the seeded package and items for the story the project is in."""
     if pre_construction:
         return {
-            "package_need": today + timedelta(days=AWARD),
-            "switchboard_delivery": today + timedelta(days=START + 60),
-            "switchboard_need": today + timedelta(days=START + 70),
-            "furniture_need": today + timedelta(days=START + 300),
+            "package_need": today + timedelta(days=award),
+            "switchboard_delivery": today + timedelta(days=start + 60),
+            "switchboard_need": today + timedelta(days=start + 70),
+            "furniture_need": today + timedelta(days=start + 300),
         }
     return {
         "package_need": today + timedelta(days=120),
@@ -133,7 +253,9 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
     if not ids:
         return totals
     rows = (await session.execute(select(Project.id, Project.metadata_).where(Project.id.in_(ids)))).all()
-    for pid in [pid for pid, meta in rows if demo_id_of(meta)]:
+    for pid, demo_id in [(pid, demo_id_of(meta)) for pid, meta in rows]:
+        if not demo_id:
+            continue
         has = (
             await session.execute(select(DeliveryOption.id).where(DeliveryOption.project_id == pid).limit(1))
         ).scalar_one_or_none()
@@ -141,7 +263,7 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
             continue
         try:
             async with session.begin_nested():
-                counts = await _seed_project(session, pid)
+                counts = await _seed_project(session, pid, await _story_of(session, pid, demo_id))
         except Exception as exc:
             logger.error("delivery_model demo seed failed for %s and was rolled back", pid, exc_info=True)
             totals["failed"].append({"project_id": str(pid), "reason": type(exc).__name__})
@@ -154,6 +276,15 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
             totals[k] += v
     totals["ok"] = not totals["failed"] and not totals["no_decision"]
     return totals
+
+
+async def _story_of(session: AsyncSession, project_id: uuid.UUID, demo_id: str) -> dict[str, Any]:
+    """The validated story of this project in its own language, ``{}`` when it has none."""
+    from app.modules.project_governance.public import demo_module_story
+    from app.modules.projects.models import Project
+
+    project = await session.get(Project, project_id)
+    return resolve_story(demo_module_story(demo_id, "delivery_model"), getattr(project, "locale", None) or "en")
 
 
 async def link_demo_plant_items(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, Any]:
@@ -185,7 +316,8 @@ async def link_demo_plant_items(session: AsyncSession, project_ids: Iterable[uui
     for pid, owner, meta in rows:
         if not demo_id_of(meta):
             continue
-        reason = await _link_demo_plant_item(session, pid, owner)
+        story = await _story_of(session, pid, demo_id_of(meta) or "")
+        reason = await _link_demo_plant_item(session, pid, owner, story.get("plant_item", DEMO_PLANT_ITEM))
         if reason is None:
             item = next(i for i in await DeliveryModelRepository(session).ofis(pid) if i.plant_item_id is not None)
             if item.procurement_route == "none_yet":
@@ -199,7 +331,9 @@ async def link_demo_plant_items(session: AsyncSession, project_ids: Iterable[uui
     return out
 
 
-async def _link_demo_plant_item(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID) -> str | None:
+async def _link_demo_plant_item(
+    session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID, item_code: str = DEMO_PLANT_ITEM
+) -> str | None:
     """``None`` when the register recorded the owner-furnished route, else why nothing was asked or done."""
     from app.modules.delivery_model import plant
     from app.modules.delivery_model.repository import DeliveryModelRepository
@@ -209,7 +343,7 @@ async def _link_demo_plant_item(session: AsyncSession, project_id: uuid.UUID, ow
     repo = DeliveryModelRepository(session)
     if await repo.get_model(project_id) is None:
         return "delivery_model_missing"
-    plant_item_id = await plant.plant_item_id_by_code(session, project_id, DEMO_PLANT_ITEM)
+    plant_item_id = await plant.plant_item_id_by_code(session, project_id, item_code)
     dates = await plant.plant_item_dates(session, project_id, plant_item_id) if plant_item_id is not None else None
     if dates is None:
         return "plant_item_missing"
@@ -224,31 +358,30 @@ async def _link_demo_plant_item(session: AsyncSession, project_id: uuid.UUID, ow
     )
 
 
-async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, Any]:
+async def _seed_project(
+    session: AsyncSession, project_id: uuid.UUID, story: dict[str, Any] | None = None
+) -> dict[str, Any]:
     from app.modules.contracts.models import Contract
     from app.modules.delivery_model import hosting
     from app.modules.delivery_model.service import DeliveryModelService
     from app.modules.projects.models import Project
 
+    story = story or {}
     project = await session.get(Project, project_id)
     actor = project.owner_id
+    locale = getattr(project, "locale", None) or "en"
     svc = DeliveryModelService(session)
     model = await svc.get_model(project_id) or await svc.set_model(project_id, actor_id=actor, tenant_id=None)
     catalogue = await svc.catalogue_for(model)
     options = {}
-    for code in forms_to_compare(f.code for f in catalogue.forms):
+    for code in forms_to_compare((f.code for f in catalogue.forms), story.get("forms", DEMO_FORMS)):
         row = await svc.add_option(project_id, code, overrides={}, notes="", actor_id=actor)
         options[code] = row.id
     await svc.prefill_scores(project_id, actor)
     await svc.patch_model(
         project_id,
         actor_id=actor,
-        owner_capability={
-            "owner_has_design_team": False,
-            "owner_has_cm_capacity": False,
-            "public_client": False,
-            "funding_source": "equity and bank loan",
-        },
+        owner_capability=story.get("owner_capability", OWNER_CAPABILITY),
     )
     # Before a proposal the matrix and the plan follow the form leading the comparison, whichever it is.
     leading = await svc._leading_form(project_id)
@@ -262,15 +395,13 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
                 "party": "shared",
                 "basis": "ground_baseline",
                 "shares": {"owner": "60", "contractor": "40"},
-                "rationale": (
-                    "Shared on a geotechnical baseline report: the owner carries ground worse than the baseline."
-                ),
+                "rationale": story.get("ground_rationale", GROUND_RATIONALE),
             },
             actor,
         )
         await svc.confirm_allocations(project_id, ["ground_conditions"], actor)
-    seeded = [code for code in SEEDED_RISKS if catalogue.category(code) is not None]
-    risks = await svc.seed_risks(project_id, seeded, preview=False, actor_id=actor, locale="en") if seeded else []
+    seeded = [code for code in story.get("risks", SEEDED_RISKS) if catalogue.category(code) is not None]
+    risks = await svc.seed_risks(project_id, seeded, preview=False, actor_id=actor, locale=locale) if seeded else []
     packages = await svc.derive_packages(project_id, actor) if leading else []
     contract_id = (
         await session.execute(
@@ -281,21 +412,28 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     if contract_id is not None and db is not None:
         await svc.link_package(project_id, db.id, "contract", contract_id, actor)
     today = datetime.now(UTC).date()
-    dates = item_dates(today, pre_construction=await hosting.construction_not_released(session, project_id))
+    dates = item_dates(
+        today,
+        pre_construction=await hosting.construction_not_released(session, project_id),
+        award=story.get("award_days", AWARD),
+        start=story.get("start_days", START),
+    )
     if db is not None:
         await svc.update_package(project_id, db.id, {"need_date": dates["package_need"].isoformat()}, actor)
+    first = story.get("ofi_first", OFI_FIRST)
+    second = story.get("ofi_second", OFI_SECOND)
     # Every item gets a route: where procurement is released from the first phase a missing one is an error.
     switchboard = await svc.create_ofi(
         project_id,
         {
             "code": "OFI-01",
-            "description": "Main low-voltage switchboard and transformer, owner's framework supplier",
-            "item_kind": "equipment",
+            "description": first["description"],
+            "item_kind": first["item_kind"],
             "install_by": "package" if db else "owner",
             "package_id": db.id if db else None,
             "need_by_date": dates["switchboard_need"].isoformat(),
             "expected_delivery_date": dates["switchboard_delivery"].isoformat(),
-            "lead_time_days": 90,
+            "lead_time_days": first["lead_time_days"],
             "enquiry_date": today.isoformat(),
         },
         actor,
@@ -305,8 +443,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         project_id,
         {
             "code": "OFI-02",
-            "description": "Reception furniture from the owner's existing stock, installed by the owner",
-            "item_kind": "material",
+            "description": second["description"],
+            "item_kind": second["item_kind"],
             "install_by": "owner",
             "need_by_date": dates["furniture_need"].isoformat(),
         },
@@ -329,7 +467,8 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             await svc.propose(
                 project_id,
                 option_id=options[leading],
-                rationale=RATIONALE_CHOSEN if leading == CHOSEN else RATIONALE_LEADING,
+                rationale=story.get("rationales", {}).get(leading)
+                or (RATIONALE_CHOSEN if leading == CHOSEN else RATIONALE_LEADING),
                 owner_capability=None,
                 dispositions={},
                 actor_id=actor,

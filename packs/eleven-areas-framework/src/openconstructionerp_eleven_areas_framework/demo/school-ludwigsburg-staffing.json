@@ -1,0 +1,324 @@
+{
+  "positions": [
+    {
+      "role": "project_director",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "project_manager",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "design_manager",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "cost_manager",
+      "phase": "development",
+      "entry": -210,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "contract_manager",
+      "phase": "development",
+      "entry": -180,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "scheduler",
+      "phase": "development",
+      "entry": -150,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_manager",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "hse_manager",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_supervisor_civil",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "document_controller",
+      "phase": "execution",
+      "entry": 175,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "quality_manager",
+      "phase": "execution",
+      "entry": 190,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_supervisor_mep",
+      "phase": "execution",
+      "entry": 190,
+      "exit": 560,
+      "status": "recruiting"
+    },
+    {
+      "role": "commissioning_manager",
+      "phase": "execution",
+      "entry": 440,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_plant_manager",
+      "phase": "operation",
+      "entry": 470,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_shift_lead",
+      "phase": "operation",
+      "entry": 500,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_technician",
+      "phase": "operation",
+      "entry": 520,
+      "exit": null,
+      "status": "open"
+    }
+  ],
+  "mobilisation_in_days": 175,
+  "commissioning_in_days": 560,
+  "filled": [
+    "project_director",
+    "project_manager",
+    "design_manager",
+    "cost_manager",
+    "contract_manager",
+    "site_manager",
+    "hse_manager",
+    "site_supervisor_civil",
+    "document_controller"
+  ],
+  "expiring": [
+    {
+      "role": "site_supervisor_civil",
+      "kind": "work_permit",
+      "days": 20
+    },
+    {
+      "role": "hse_manager",
+      "kind": "safety_training",
+      "days": 45
+    },
+    {
+      "role": "site_manager",
+      "kind": "occupational_health_certificate",
+      "days": 80
+    }
+  ],
+  "missing": [
+    {
+      "role": "hse_manager",
+      "kind": "qualification"
+    }
+  ],
+  "waived": [
+    {
+      "role": "site_manager",
+      "kind": "professional_licence"
+    }
+  ],
+  "handovers": [
+    {
+      "from": "project_manager",
+      "to": "operator_plant_manager",
+      "overlap_days": 30,
+      "scope": {
+        "en": "Open items, commissioning sequence, training of the caretaker and the Mensa kitchen lead, and the handover plan for the summer-holiday move-in.",
+        "de": "Offene Punkte, Inbetriebnahmefolge, Einweisung von Hausmeister und Küchenleitung der Mensa sowie der Übergabeplan für den Einzug in den Sommerferien."
+      }
+    },
+    {
+      "from": "design_manager",
+      "to": "commissioning_manager",
+      "overlap_days": 20,
+      "scope": {
+        "en": "Design intent, acoustic and CO2-controlled ventilation test criteria, sports hall floor acceptance, as-built status.",
+        "de": "Planungsziele, Prüfkriterien für Raumakustik und CO2-geregelte Lüftung, Abnahme des Sporthallenbodens, Stand der Bestandsdokumentation."
+      }
+    }
+  ],
+  "waiver_note": {
+    "en": "Renewal filed with the registration body; confirmation of receipt is on file.",
+    "de": "Verlängerung bei der Registrierungsstelle beantragt; die Eingangsbestätigung liegt vor."
+  },
+  "home_place": {
+    "en": "Home city",
+    "de": "Heimatort"
+  },
+  "site_place": {
+    "en": "Site",
+    "de": "Baustelle Neckarweihingen"
+  },
+  "roster": [
+    {
+      "name": {
+        "en": "Dr. Birgit Neumann",
+        "de": "Dr. Birgit Neumann"
+      },
+      "company": {
+        "en": "Stadt Ludwigsburg, Hochbauamt",
+        "de": "Stadt Ludwigsburg, Hochbauamt"
+      },
+      "site_role": "project_director",
+      "allocation": 40
+    },
+    {
+      "name": {
+        "en": "Andreas Hellmuth",
+        "de": "Andreas Hellmuth"
+      },
+      "company": {
+        "en": "Stadt Ludwigsburg, Hochbauamt",
+        "de": "Stadt Ludwigsburg, Hochbauamt"
+      },
+      "site_role": "project_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Lena Wöhrle",
+        "de": "Lena Wöhrle"
+      },
+      "company": {
+        "en": "Architekten Wöhrle und Partner",
+        "de": "Architekten Wöhrle und Partner"
+      },
+      "site_role": "design_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Kerstin Albrecht",
+        "de": "Kerstin Albrecht"
+      },
+      "company": {
+        "en": "Stadt Ludwigsburg, Kämmerei",
+        "de": "Stadt Ludwigsburg, Kämmerei"
+      },
+      "site_role": "cost_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Oliver Seitz",
+        "de": "Oliver Seitz"
+      },
+      "company": {
+        "en": "Stadt Ludwigsburg, Rechtsamt",
+        "de": "Stadt Ludwigsburg, Rechtsamt"
+      },
+      "site_role": "contract_manager",
+      "allocation": 40
+    },
+    {
+      "name": {
+        "en": "Markus Brenner",
+        "de": "Markus Brenner"
+      },
+      "company": {
+        "en": "Bauüberwachung Neckarraum GmbH",
+        "de": "Bauüberwachung Neckarraum GmbH"
+      },
+      "site_role": "site_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Silke Frank",
+        "de": "Silke Frank"
+      },
+      "company": {
+        "en": "Bauüberwachung Neckarraum GmbH",
+        "de": "Bauüberwachung Neckarraum GmbH"
+      },
+      "site_role": "hse_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Jens Kaltenbach",
+        "de": "Jens Kaltenbach"
+      },
+      "company": {
+        "en": "Bauüberwachung Neckarraum GmbH",
+        "de": "Bauüberwachung Neckarraum GmbH"
+      },
+      "site_role": "site_supervisor_civil",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Nadine Roth",
+        "de": "Nadine Roth"
+      },
+      "company": {
+        "en": "Stadt Ludwigsburg, Hochbauamt",
+        "de": "Stadt Ludwigsburg, Hochbauamt"
+      },
+      "site_role": "document_controller",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Peter Gaiser",
+        "de": "Peter Gaiser"
+      },
+      "company": {
+        "en": "Prüfwerk Schulbau Ingenieure",
+        "de": "Prüfwerk Schulbau Ingenieure"
+      },
+      "site_role": "quality_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Hannah Schuler",
+        "de": "Hannah Schuler"
+      },
+      "company": {
+        "en": "Ingenieurbüro Schuler TGA",
+        "de": "Ingenieurbüro Schuler TGA"
+      },
+      "site_role": "site_supervisor_mep",
+      "allocation": 100
+    }
+  ]
+}

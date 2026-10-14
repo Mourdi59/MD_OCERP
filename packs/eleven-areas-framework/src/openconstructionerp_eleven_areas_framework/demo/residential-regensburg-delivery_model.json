@@ -1,0 +1,53 @@
+{
+  "$note": "Delivery model story of the Regensburg residential quarter: a municipal housing company weighing a general contractor against trade lots and a two-stage partnering form. plant_item names the register item the housing company supplies itself (PL-002, district heating substations). All names invented.",
+  "forms": [
+    "design_bid_build_single",
+    "design_bid_build_split",
+    "partnering_two_stage"
+  ],
+  "rationales": {
+    "design_bid_build_single": {
+      "en": "The general contractor option scores highest: one point of responsibility and a fixed price at award for four buildings built in one go, at the cost of a larger lot that is harder for local firms. The supervisory board decides one award instead of several.",
+      "de": "Die Generalunternehmervergabe liegt vorn: eine Verantwortung und ein Festpreis bei der Vergabe für vier Gebäude in einem Zug, dafür ein größeres Los, das für regionale Betriebe schwerer ist. Der Aufsichtsrat entscheidet eine Vergabe statt mehrerer."
+    },
+    "design_bid_build_split": {
+      "en": "Trade lots keep the control of the design and use local firms, but the interfaces between lots and the price risk stay with the housing company and have to be covered in the risk register.",
+      "de": "Fachlose erhalten die Planungshoheit und beteiligen regionale Betriebe, doch Schnittstellen zwischen den Losen und das Preisrisiko bleiben bei der Wohnungsbaugesellschaft und gehören ins Risikoregister."
+    },
+    "partnering_two_stage": {
+      "en": "Two-stage partnering scores highest: the contractor joins during design and the building sequence is planned together, but the subsidy conditions of the Regierung der Oberpfalz need a documented price basis before the second stage.",
+      "de": "Zweistufige Partnerschaft liegt vorn: Der Unternehmer steigt in der Planung ein und die Bauabfolge wird gemeinsam geplant, doch die Förderbedingungen der Regierung der Oberpfalz verlangen vor der zweiten Stufe eine dokumentierte Preisbasis."
+    }
+  },
+  "owner_capability": {
+    "owner_has_design_team": false,
+    "owner_has_cm_capacity": true,
+    "public_client": true,
+    "funding_source": "Eigenmittel und Förderdarlehen der Wohnraumförderung Bayern"
+  },
+  "risks": [
+    "ground_conditions",
+    "price_escalation",
+    "schedule_delay"
+  ],
+  "ground_rationale": {
+    "en": "Shared on a Baugrund baseline report: the housing company carries ground and groundwater conditions worse than the baseline, and the extra cost is reported to the Regierung der Oberpfalz as eligible only up to the approved budget.",
+    "de": "Geteilt auf Basis des Baugrundgutachtens: Die Wohnungsbaugesellschaft trägt schlechtere Boden- und Grundwasserverhältnisse als im Gutachten, und die Mehrkosten werden der Regierung der Oberpfalz nur bis zum bewilligten Budget als förderfähig gemeldet."
+  },
+  "ofi_first": {
+    "description": {
+      "en": "District heating substations from the framework agreement of the municipal utility, installed by the heating trade lot",
+      "de": "Fernwärme-Hausstationen aus dem Rahmenvertrag der Stadtwerke, eingebaut vom Los Heizung"
+    },
+    "item_kind": "equipment",
+    "lead_time_days": 120
+  },
+  "ofi_second": {
+    "description": {
+      "en": "Letterboxes, bell and intercom system supplied by the housing company and installed by the electrical trade lot",
+      "de": "Briefkasten-, Klingel- und Sprechanlage, gestellt von der Wohnungsbaugesellschaft und eingebaut vom Los Elektro"
+    },
+    "item_kind": "material"
+  },
+  "plant_item": "PL-002"
+}
