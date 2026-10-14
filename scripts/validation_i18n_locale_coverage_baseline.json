@@ -88,6 +88,10 @@
       "de",
       "en"
     ],
+    "backend/app/modules/economics/messages": [
+      "de",
+      "en"
+    ],
     "backend/app/modules/funding/messages": [
       "ar",
       "bg",
@@ -154,7 +158,7 @@
       "es",
       "ru"
     ],
-    "backend/app/modules/stakeholders/messages": [
+    "backend/app/modules/site_logistics/messages": [
       "de",
       "en"
     ],
@@ -162,7 +166,7 @@
       "de",
       "en"
     ],
-    "backend/app/modules/site_logistics/messages": [
+    "backend/app/modules/stakeholders/messages": [
       "de",
       "en"
     ],

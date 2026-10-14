@@ -19,7 +19,7 @@ manifest = ModuleManifest(
     # oe_project_governance owns the gate that approves the plan and the frame document that carries it;
     # oe_boq and oe_costmodel are where the estimate and the commitments are read from; oe_funding holds the
     # applications a grant or subsidy source can point at.
-    depends=["oe_users", "oe_projects", "oe_project_governance", "oe_boq", "oe_costmodel", "oe_funding"],
+    depends=["oe_users", "oe_projects", "oe_project_governance", "oe_boq", "oe_costmodel"],
     auto_install=True,
     enabled=True,
 )

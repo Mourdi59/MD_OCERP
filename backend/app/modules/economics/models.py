@@ -172,6 +172,10 @@ class Approval(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     approval_source: Mapped[str | None] = mapped_column(String(20), nullable=True)
     governance_ref_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
-    governance_document_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    governance_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_eco_approval_gov_document"),
+        nullable=True,
+    )
     four_eyes: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     approval_blocked_reason: Mapped[str] = mapped_column(String(64), nullable=False, default="", server_default="")
