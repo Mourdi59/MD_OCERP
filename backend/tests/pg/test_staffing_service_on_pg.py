@@ -44,6 +44,11 @@ from tests.pg.staffing_fixtures import (
 pytestmark = pytest.mark.asyncio
 
 
+def _flag(flag: dict) -> dict:
+    """A ``can`` flag without ``applies``: these tests are about whether and why, not about relevance."""
+    return {k: v for k, v in flag.items() if k != "applies"}
+
+
 @pytest_asyncio.fixture
 async def factory():
     from app.modules.staffing.evidence import register_gate_evidence
@@ -115,14 +120,14 @@ async def test_a_plan_with_no_frame_document_to_carry_it_cannot_be_submitted(fac
         await call(rowless, "submit", rowless.manager)
     assert (err.value.code, err.value.status_code) == ("frame_document_missing", 409)
     view = await call(rowless, "plan_view", Actor(rowless.manager, edit=True))
-    assert view["can"]["submit"] == {"allowed": False, "reason": "frame_document_missing"}
+    assert _flag(view["can"]["submit"]) == {"allowed": False, "reason": "frame_document_missing"}
 
     # The shipped model names the host by tag and the project has the row: the plan goes to review.
     hosted = await build_world(factory)
     await submittable_plan(hosted)
     view = await call(hosted, "plan_view", Actor(hosted.manager, edit=True))
-    assert view["can"]["submit"] == {"allowed": True, "reason": None}
-    assert view["can"]["return"] == {"allowed": False, "reason": "plan_not_in_review"}
+    assert _flag(view["can"]["submit"]) == {"allowed": True, "reason": None}
+    assert _flag(view["can"]["return"]) == {"allowed": False, "reason": "plan_not_in_review"}
     assert (await call(hosted, "plan_view", Actor(hosted.editor)))["can"]["submit"]["reason"] == (
         "edit_permission_required"
     )
@@ -131,7 +136,7 @@ async def test_a_plan_with_no_frame_document_to_carry_it_cannot_be_submitted(fac
     assert plan.status == "in_review" and plan.governance_document_id is not None
     view = await call(hosted, "plan_view", Actor(hosted.manager, edit=True))
     assert view["can"]["return"]["allowed"] is True
-    assert view["can"]["change_catalogue"] == {"allowed": False, "reason": "plan_in_review"}
+    assert _flag(view["can"]["change_catalogue"]) == {"allowed": False, "reason": "plan_in_review"}
 
 
 async def test_the_gate_decision_approves_the_submitted_plan_and_freezes_a_snapshot(factory, monkeypatch) -> None:

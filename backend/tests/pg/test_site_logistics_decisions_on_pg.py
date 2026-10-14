@@ -362,8 +362,8 @@ async def test_deleting_an_area_or_a_transport_unlinks_the_zone_and_the_slot(wor
     start, end = window(3, 9, 1)
     async with world.factory() as s:
         svc = LogisticsPlanService(s)
-        area = await svc.create_area(pid, {"area_kind": "storage", "name": "Yard"}, world.manager)
-        kept = await svc.create_area(pid, {"area_kind": "storage", "name": "Yard 2"}, world.manager)
+        area = await svc.create_area(pid, {"code": "Y1", "area_kind": "storage", "name": "Yard"}, world.manager)
+        kept = await svc.create_area(pid, {"code": "Y2", "area_kind": "storage", "name": "Yard 2"}, world.manager)
         zone = m.LaydownZone(project_id=pid, name="Laydown A", site_area_id=area.id)
         other = m.LaydownZone(project_id=pid, name="Laydown B", site_area_id=kept.id)
         gate = m.Gate(project_id=pid, name="North", open_time="07:00", close_time="18:00")

@@ -44,6 +44,11 @@ from tests.pg.staffing_fixtures import (
 pytestmark = pytest.mark.asyncio
 
 
+def _flag(flag: dict) -> dict:
+    """A ``can`` flag without ``applies``: these tests are about whether and why, not about relevance."""
+    return {k: v for k, v in flag.items() if k != "applies"}
+
+
 @pytest_asyncio.fixture
 async def factory():
     register_staffing_permissions()
@@ -141,9 +146,9 @@ async def test_what_a_gate_reads_needs_the_manage_permission_and_an_open_positio
     assert (await _row(w, StaffingPosition, pid)).key_role is False
 
     view = await call(w, "plan_view", hr(w.editor))
-    assert view["can"]["manage"] == {"allowed": False, "reason": "manage_permission_required"}
-    assert view["can"]["assign_owner"] == {"allowed": False, "reason": "owner_assignment_forbidden"}
-    assert (await call(w, "plan_view", admin(w)))["can"]["manage"] == {"allowed": True, "reason": None}
+    assert _flag(view["can"]["manage"]) == {"allowed": False, "reason": "manage_permission_required"}
+    assert _flag(view["can"]["assign_owner"]) == {"allowed": False, "reason": "owner_assignment_forbidden"}
+    assert _flag((await call(w, "plan_view", admin(w)))["can"]["manage"]) == {"allowed": True, "reason": None}
 
 
 # ── finding 14 ─────────────────────────────────────────────────────────────
@@ -357,6 +362,8 @@ async def test_evidence_follows_the_tags_and_reports_unfilled_key_roles_as_not_m
         "staffing_plan_submitted": "not_met",
         "staffing_no_errors": "met",
         "staffing_key_roles_filled": "not_met",
+        # Roles not asked at this gate and still vacant are named to the decider as a warning.
+        "staffing_key_roles_open": "warning",
     }
     ready = await call(w, "readiness", GATE)
     assert ready["key_roles_required"] is True and len(ready["key_role_findings"]) == 7

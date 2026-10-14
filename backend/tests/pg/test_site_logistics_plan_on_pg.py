@@ -196,7 +196,7 @@ async def test_heavy_transport_needs_a_granted_permit_covering_its_window(world:
         raw = (
             await s.execute(
                 sa.text("SELECT allowed_windows::text FROM oe_site_logistics_transport_permit WHERE id = :id"),
-                {"id": permit.id},
+                {"id": str(permit.id)},
             )
         ).scalar_one()
         assert json.loads(raw) == [{"weekdays": list(range(7)), "from": "21:00", "to": "05:00"}]

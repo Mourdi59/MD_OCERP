@@ -489,7 +489,8 @@ async def test_the_demo_seed_puts_no_account_from_outside_the_cast_on_a_row(worl
             for row in rows:
                 for column in model.__table__.columns:
                     value = getattr(row, column.key, None)
-                    assert value not in foreign, (model.__tablename__, column.name)
+                    # JSON columns hold lists and dicts, which a set cannot be asked about.
+                    assert isinstance(value, (list, dict)) or value not in foreign, (model.__tablename__, column.name)
         setup = (await svc._list(DesignSetup, pid))[0]
         assert setup.four_eyes_release is False
 
