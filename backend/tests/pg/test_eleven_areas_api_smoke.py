@@ -165,7 +165,9 @@ async def test_every_get_route_of_the_framework_modules_answers_both_demo_projec
                 if call.outcome == "5xx" and capture.last:
                     call.error = capture.last
                 if call.outcome in _FAILING:
-                    problems.append(f"{demo_id} {module} GET {route.path} -> {call.status} {call.outcome}: {call.error}")
+                    problems.append(
+                        f"{demo_id} {module} GET {route.path} -> {call.status} {call.outcome}: {call.error}"
+                    )
                     continue
                 answered[module] = answered.get(module, 0) + 1
                 if resp is not None and resp.status_code == 200 and "json" in resp.headers.get("content-type", ""):
@@ -239,9 +241,7 @@ async def test_every_export_returns_a_real_file(world: World) -> None:
                 domains[name] = ["pdf", "xlsx"]
             elif where == "path" and name == "register":
                 domains[f"path:{name}"] = list(REGISTERS)
-            elif where == "path":
-                skip = True
-            elif p.get("required"):
+            elif where == "path" or p.get("required"):
                 skip = True
         if skip:
             continue
