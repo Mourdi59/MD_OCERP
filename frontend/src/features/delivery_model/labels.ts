@@ -19,6 +19,8 @@ import type {
   InstallBy,
   LocaleTexts,
   ModelStatus,
+  ContractGroup,
+  ContractItemStatus,
   OfiKind,
   OfiLinkKind,
   OfiRoute,
@@ -147,6 +149,22 @@ export const OFI_KIND: Record<OfiKind, KeyText> = {
   utility: ['delivery_model.ui.ofi_kind.utility', 'Utility connection'],
 };
 
+export const CONTRACT_GROUP: Record<ContractGroup, KeyText> = {
+  contract_form: ['delivery_model.ui.contract_group.contract_form', 'Contract form'],
+  land_tenure: ['delivery_model.ui.contract_group.land_tenure', 'Land tenure'],
+  utility_contract: ['delivery_model.ui.contract_group.utility_contract', 'Utility contract'],
+  user_agreement: ['delivery_model.ui.contract_group.user_agreement', 'User agreement'],
+  partner_structure: ['delivery_model.ui.contract_group.partner_structure', 'Partner structure'],
+};
+
+export const CONTRACT_STATUS: Record<ContractItemStatus, KeyText> = {
+  draft: ['delivery_model.ui.contract_status.draft', 'Draft'],
+  negotiating: ['delivery_model.ui.contract_status.negotiating', 'In negotiation'],
+  agreed: ['delivery_model.ui.contract_status.agreed', 'Agreed'],
+  signed: ['delivery_model.ui.contract_status.signed', 'Signed'],
+  terminated: ['delivery_model.ui.contract_status.terminated', 'Terminated'],
+};
+
 export const OFI_ROUTE: Record<OfiRoute, KeyText> = {
   rfq: ['delivery_model.ui.ofi_route.rfq', 'Request for quotation'],
   purchase_order: ['delivery_model.ui.ofi_route.purchase_order', 'Purchase order'],
@@ -219,6 +237,12 @@ export const FINDING: Record<string, KeyText> = {
     'delivery_model.ui.finding.contract_type_inconsistent_with_form',
     'The linked contract has a type the chosen form does not use.',
   ],
+  contract_item_kind_unknown: ['delivery_model.ui.finding.contract_item_kind_unknown', 'The kind is not in the pinned catalogue.'],
+  contract_item_dates_invalid: ['delivery_model.ui.finding.contract_item_dates_invalid', 'The end date is before the start date.'],
+  contract_item_without_counterparty: ['delivery_model.ui.finding.contract_item_without_counterparty', 'Name the counterparty once the item is agreed.'],
+  contract_form_price_basis_inconsistent: ['delivery_model.ui.finding.contract_form_price_basis_inconsistent', 'The price basis is not one the chosen form allows.'],
+  partner_shares_not_100: ['delivery_model.ui.finding.partner_shares_not_100', 'The partner shares do not add up to 100 percent.'],
+  contract_group_missing: ['delivery_model.ui.finding.contract_group_missing', 'Nothing recorded for this part of the contract side.'],
   ofi_late_for_installer: ['delivery_model.ui.finding.ofi_late_for_installer', 'Arrives after the installer needs it.'],
   disposition_missing: ['delivery_model.ui.finding.disposition_missing', 'Say what happens to this package.'],
   form_mapping_unknown_target: [
@@ -287,6 +311,8 @@ export const ALL_KEY_MAPS: Record<string, Record<string, KeyText>> = {
   OFI_KIND,
   OFI_ROUTE,
   OFI_STATUS,
+  CONTRACT_GROUP,
+  CONTRACT_STATUS,
   INSTALL_BY,
   DISPOSITION,
   DESIGN_RESPONSIBILITY,

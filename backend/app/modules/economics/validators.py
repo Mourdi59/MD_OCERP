@@ -53,6 +53,10 @@ _RULES: dict[str, tuple[str, RuleCategory]] = {
     "source_without_tranches": ("Source Has Tranches", RuleCategory.COMPLETENESS),
     "grant_without_application": ("Grant Has Application", RuleCategory.COMPLETENESS),
     "grant_over_award": ("Grant Within Award", RuleCategory.CONSISTENCY),
+    "security_expired": ("Securities Valid", RuleCategory.CONSISTENCY),
+    "insurance_expired": ("Insurance Valid", RuleCategory.CONSISTENCY),
+    "tax_not_confirmed": ("Tax Treatment Confirmed", RuleCategory.COMPLETENESS),
+    "process_not_set_up": ("Processes Set Up", RuleCategory.COMPLETENESS),
 }
 
 

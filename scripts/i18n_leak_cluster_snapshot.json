@@ -1811,5 +1811,199 @@
     ],
     "key_count_at_seed": 3,
     "note": "Reviewed 2026-10-13 with the eleven project management modules: the members are words the listed languages write as in English (Status, Position, Investor, Code, Neutral, Regime, File, Project manager in Italian as cases.* already has it) or template-only strings, not an untranslated block."
+  },
+  {
+    "locale_set": [
+      "et"
+    ],
+    "key_count_at_seed": 6,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Number is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: design.catalogue.de_planschluessel.field.number, design.catalogue.iso19650_generic.field.number, design.catalogue.iso19650_uk_na.field.number, design.catalogue.simple_sequential.field.number, design.ui.drawings.number, permits.ui.condition.number."
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "fil",
+      "hr",
+      "id",
+      "nl",
+      "no",
+      "pl",
+      "pt-BR",
+      "sv"
+    ],
+    "key_count_at_seed": 5,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Status is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: commitment.export.col_status, design.ui.drawings.status, postcalc.qc.col_status, qualityConcept.expert.state, staffing.position.status."
+  },
+  {
+    "locale_set": [
+      "de",
+      "fil",
+      "fr"
+    ],
+    "key_count_at_seed": 5,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Phase is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: design.ui.field.phase, design.ui.wbs_kind.phase, quality_concept.export.col.phase, quality_concept.export.col_phase, staffing.position.phase."
+  },
+  {
+    "locale_set": [
+      "fil",
+      "fr",
+      "nl",
+      "ro"
+    ],
+    "key_count_at_seed": 4,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Concept, Contact is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: design.ui.team.contact, module_builder.target.contact, qualityConcept.tabs.concept, tasks.assignee_kind_contact."
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "fil",
+      "hr",
+      "id",
+      "nl",
+      "no",
+      "pl",
+      "sv"
+    ],
+    "key_count_at_seed": 4,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Status is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: delivery_model.ui.ofi.col_status, delivery_model.ui.packages.col_status, permits.ui.roadmap.col_state, runtime_module.status."
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "fil",
+      "fr",
+      "hr",
+      "id",
+      "no",
+      "pl",
+      "ro",
+      "sv",
+      "uz"
+    ],
+    "key_count_at_seed": 2,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Format is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: design.ui.issue.format, finance.einvoice.formatSection."
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "fil",
+      "fr",
+      "hr",
+      "id",
+      "no",
+      "pl",
+      "ro",
+      "sv"
+    ],
+    "key_count_at_seed": 1,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Format is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: stakeholders.ui.plan.format."
+  },
+  {
+    "locale_set": [
+      "fil",
+      "id",
+      "pl",
+      "ro",
+      "uz"
+    ],
+    "key_count_at_seed": 2,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Operator, operator is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: delivery_model.catalogue.neutral.party.operator, price_index.ri.operator_line."
+  },
+  {
+    "locale_set": [
+      "fil",
+      "id",
+      "pl",
+      "ro"
+    ],
+    "key_count_at_seed": 1,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Operator is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: plant.catalogue.party.operator."
+  },
+  {
+    "locale_set": [
+      "da",
+      "fil"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Reference, {{count}} overlap is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: qualityConcept.packages.ref, resources.overlap_count_n_one, site_logistics.plan.f.reference."
+  },
+  {
+    "locale_set": [
+      "fil",
+      "id",
+      "nl"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Spreadsheet, Spreadsheet (.xlsx) is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: delivery_model.ui.export.xlsx, permits.ui.export_xlsx, qualityConcept.export.xlsx."
+  },
+  {
+    "locale_set": [
+      "fil",
+      "id",
+      "ro"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: Operator is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: permits.enum.applicant_role.operator, stakeholders.catalogue.category.operator, stakeholders.catalogue.role.operator."
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "fil",
+      "no",
+      "pl",
+      "sv"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-14 with the translation of the eleven modules: System is the ordinary word in the listed languages, spelled the same as English, while the other locales carry their own word (checked values in ar, bg and bn among others). Keys: design.ui.wbs_kind.system, qualityConcept.stages.system, quality_concept.export.col_system."
+  },
+  {
+    "locale_set": [
+      "id",
+      "tr"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-14 with the second translation wave: No. and Ref is the ordinary word or abbreviation in the listed languages, spelled the same as English, while the other locales carry their own word (values read in ar, bg, bn and others). Keys: engineeringBrief.programme.code, interface_management.col_reference, permits.ui.conditions.number."
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "et",
+      "fil",
+      "fr",
+      "hr",
+      "hu",
+      "id",
+      "it",
+      "nl",
+      "no",
+      "pt",
+      "pt-BR",
+      "ro",
+      "sv",
+      "tr"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-14 with the second translation wave: Gate (the project stage-gate loanword) is the ordinary word or abbreviation in the listed languages, spelled the same as English, while the other locales carry their own word (values read in ar, bg, bn and others). Keys: commitment.item_form.gate, engineeringBrief.schedule.gate, engineering_brief.milestone_kind.gate."
+  },
+  {
+    "locale_set": [
+      "fil",
+      "fr",
+      "it",
+      "nl",
+      "ro"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Reviewed 2026-10-14 with the second translation wave: Concept is the ordinary word or abbreviation in the listed languages, spelled the same as English, while the other locales carry their own word (values read in ar, bg, bn and others). Keys: engineeringBrief.phase.concept, engineeringBrief.requirements.answered, engineeringBrief.tabs.concept."
   }
 ]

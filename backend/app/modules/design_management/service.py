@@ -30,6 +30,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_log import log_activity
+from app.core.demo_history import RECORDING_DEMO_HISTORY
 from app.core.events import publish_after_commit
 from app.core.fsm import FSMError
 from app.modules.design_management import fsm as dfsm
@@ -323,6 +324,9 @@ class DesignService:
 
     async def assert_not_binding(self, project_id: uuid.UUID) -> None:
         """Rule 23: once the design frame document is binding, changes go through a governance change request."""
+        if RECORDING_DEMO_HISTORY.get():
+            # The demo seed writes the history the frame was bound on, not a live change.
+            return
         refused = await self.binding_refusal(project_id)
         if refused is not None:
             raise refused
@@ -2802,6 +2806,11 @@ class DesignService:
         via_ready = permit.status == "assembling" and target == "submitted"
         if target not in dfsm.PERMIT_STATES:
             return conflict("invalid_transition", detail=target)
+        if target in self.PERMIT_DECISIONS and permit.review_cycle_id is not None:
+            # A state the cycle owns is refused as such before the edge is judged: the answer is where to read it.
+            gate = self.permit_decision_gate(permit, target, may_manage=may_manage)
+            if gate == "permit_state_read_from_cycle":
+                return conflict(gate)
         refused = None if via_ready else _edge(dfsm.PERMIT_FSM, permit, target)
         if refused is not None:
             return refused

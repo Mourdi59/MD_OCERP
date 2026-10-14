@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import uuid
 from contextlib import asynccontextmanager
+from decimal import Decimal
 
 import pytest
 import pytest_asyncio
@@ -71,11 +72,45 @@ async def test_a_stranger_from_another_tenant_cannot_read_edit_or_propose(world:
             await c.get(f"{p}/cost-frame"),
             await c.get(f"{p}/financing"),
             await c.get(f"{p}/readiness"),
+            await c.get(f"{p}/registers"),
+            await c.put(f"{p}/registers/tax", json={"vat_treatment": "exempt"}),
+            await c.post(f"{p}/registers/securities", json={"kind": "bid"}),
+            await c.get(f"{p}/export?what=financing&format=xlsx"),
             await c.post(f"{p}/cost-frame/lines", json={"code": "500", "amount": "1"}),
             await c.post(f"{p}/propose", json={"rationale": "x"}),
             await c.post(f"{p}/approve"),
         ]
     assert [r.status_code for r in responses] == [404] * len(responses)
+
+
+async def test_every_document_exports_as_pdf_and_xlsx_in_the_readers_language(world: World) -> None:
+    await fill(world)
+    p = f"{BASE}/projects/{world.project_id}"
+    async with client_as(world, world.manager, "manager") as c:
+        for what in ("frame", "case", "financing"):
+            pdf = await c.get(f"{p}/export?what={what}&format=pdf")
+            xlsx = await c.get(f"{p}/export?what={what}&format=xlsx")
+            assert pdf.status_code == 200, what
+            assert pdf.content.startswith(b"%PDF"), what
+            assert xlsx.status_code == 200, what
+            assert xlsx.content.startswith(b"PK"), what
+            assert pdf.headers["content-language"]
+            assert xlsx.headers["content-language"] == pdf.headers["content-language"]
+
+
+async def test_the_printed_figures_are_the_screens_figures(world: World) -> None:
+    from app.core.register_export import register_text_rows
+    from app.modules.economics import export as ex
+
+    await fill(world)
+    frame = await call(world, "cost_frame")
+    doc = ex.frame_document(frame, project_name="P", locale="de")
+    rows = register_text_rows(doc)
+    assert rows[0][2] == "Budget"
+    assert any("2.000.000,00" in cell for row in rows for cell in row)
+    financing = await call(world, "financing")
+    printed = ex.financing_document(financing, project_name="P", locale="en")
+    assert Decimal(financing["coverage"]["sources_total"]) == sum((Decimal(r[3]) for r in printed.rows), Decimal(0))
 
 
 async def test_an_editor_can_edit_but_not_propose_or_approve(world: World) -> None:
@@ -88,7 +123,7 @@ async def test_an_editor_can_edit_but_not_propose_or_approve(world: World) -> No
         seen = await c.get(f"{p}/plan")
     assert edited.status_code == 201
     assert [proposed.status_code, approved.status_code] == [403, 403]
-    assert seen.json()["can"] == {"edit": True, "manage": False}
+    assert seen.json()["can"] == {"edit": True, "manage": False, "records": True}
 
 
 async def test_money_is_a_decimal_string_and_a_float_is_refused(world: World) -> None:
@@ -121,3 +156,25 @@ async def test_another_projects_rows_are_404(world: World) -> None:
         )
     assert [patched.status_code, deleted.status_code, tranche.status_code] == [404, 404, 404]
     assert len((await call(other, "cost_frame"))["lines"]) == 2
+
+
+async def test_registers_of_another_project_are_404_and_a_viewer_cannot_write(world: World) -> None:
+    other = await build_world(world.factory, governance=False)
+    await call(other, "add_security", {"kind": "bid", "description": "Foreign bond"}, other.manager)
+    await call(other, "add_insurance", {"kind": "liability", "insurer": "Foreign"}, other.manager)
+    async with world.factory() as s:
+        from app.modules.economics.repository import EconomicsRepository
+
+        foreign_security = (await EconomicsRepository(s).securities(other.project_id))[0]
+        foreign_insurance = (await EconomicsRepository(s).insurances(other.project_id))[0]
+    p = f"{BASE}/projects/{world.project_id}"
+    async with client_as(world, world.manager, "manager") as c:
+        patched = await c.patch(f"{p}/registers/securities/{foreign_security.id}", json={"status": "released"})
+        deleted = await c.delete(f"{p}/registers/insurances/{foreign_insurance.id}")
+        bad_area = await c.put(f"{p}/registers/process/finance", json={"status": "set_up"})
+    assert [patched.status_code, deleted.status_code, bad_area.status_code] == [404, 404, 422]
+    assert len((await call(other, "registers"))["securities"]) == 1
+    async with client_as(world, world.manager, "viewer") as c:
+        read = await c.get(f"{p}/registers")
+        written = await c.put(f"{p}/registers/tax", json={"vat_treatment": "exempt"})
+    assert [read.status_code, written.status_code] == [200, 403]

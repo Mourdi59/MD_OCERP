@@ -53,6 +53,7 @@ from app.modules.delivery_model.catalogue import (
 from app.modules.delivery_model.errors import DeliveryModelError, conflict, not_found
 from app.modules.delivery_model.fsm import EDITABLE, MODEL_FSM, OFI_FSM, PACKAGE_FSM, effective_package_state
 from app.modules.delivery_model.models import (
+    ContractItem,
     ContractPackage,
     DecisionCriterion,
     DeliveryDecision,
@@ -1719,6 +1720,83 @@ class DeliveryModelService:
         await self.session.flush()
         await self._audit(actor_id, "delivery_ofi", ofi_id, "ofi_deleted")
 
+    # ── contract-side items (module 2) ─────────────────────────────────────
+
+    async def contract_item_views(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
+        model = await self.require_model(project_id)
+        catalogue = await self.catalogue_for(model)
+        rows = [_contract_item_view(i) for i in await self.repo.contract_items(project_id)]
+        findings = await self.contract_findings(project_id, rows=rows)
+        for r in rows:
+            r["kind_known"] = catalogue.contract_kind(r["group_code"], r["kind_code"]) is not None
+            r["findings"] = [f.as_dict() for f in findings if f.ref == r["code"]]
+        return rows
+
+    async def contract_findings(
+        self, project_id: uuid.UUID, rows: list[dict[str, Any]] | None = None
+    ) -> list[rules.Finding]:
+        model = await self.require_model(project_id)
+        catalogue = await self.catalogue_for(model)
+        form = await self._form_of(project_id, catalogue, model.selected_form_code)
+        items = (
+            rows if rows is not None else [_contract_item_view(i) for i in await self.repo.contract_items(project_id)]
+        )
+        return rules.contract_item_findings(
+            items,
+            [k.model_dump(mode="json") for k in catalogue.contract_kinds],
+            form,
+            procurement_released=bool(await self.procurement_released(project_id)),
+        )
+
+    async def _check_contract_kind(self, project_id: uuid.UUID, group: str, kind: str) -> None:
+        catalogue = await self.catalogue_for(await self.require_model(project_id))
+        # A catalogue without contract kinds (an older tenant draft) accepts any code; one with kinds is closed.
+        if catalogue.contract_kinds and catalogue.contract_kind(group, kind) is None:
+            raise DeliveryModelError("contract_kind_unknown", 422, detail=f"{group}:{kind}")
+
+    async def create_contract_item(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> ContractItem:
+        await self.require_model(project_id, lock=True)
+        if any(i.code == data["code"] for i in await self.repo.contract_items(project_id)):
+            raise conflict("contract_item_code_exists")
+        await self._check_package(project_id, data.get("package_id"))
+        await self._check_contract_kind(project_id, data["group_code"], data["kind_code"])
+        row = await self.repo.add(ContractItem(project_id=project_id, **data))
+        await self._audit(
+            actor_id, "delivery_contract_item", row.id, "contract_item_created", metadata={"code": row.code}
+        )
+        self._publish("contract_item.created", {"project_id": str(project_id), "item_id": str(row.id)})
+        return row
+
+    async def update_contract_item(
+        self, project_id: uuid.UUID, item_id: uuid.UUID, changes: dict[str, Any], actor_id: Any
+    ) -> ContractItem:
+        row = await self.repo.contract_item(project_id, item_id, lock=True)
+        if row is None:
+            raise not_found("contract_item_not_found")
+        await self._check_package(project_id, changes.get("package_id"))
+        if "kind_code" in changes:
+            await self._check_contract_kind(project_id, row.group_code, changes["kind_code"])
+        if changes.get("price_basis") is not None and row.group_code != "contract_form":
+            raise DeliveryModelError("price_basis_not_for_group", 422)
+        if changes.get("share_percent") is not None and row.group_code != "partner_structure":
+            raise DeliveryModelError("share_not_for_group", 422)
+        for key, value in changes.items():
+            setattr(row, key, value)
+        await self.session.flush()
+        await self._audit(actor_id, "delivery_contract_item", row.id, "contract_item_updated")
+        return row
+
+    async def delete_contract_item(self, project_id: uuid.UUID, item_id: uuid.UUID, actor_id: Any) -> None:
+        row = await self.repo.contract_item(project_id, item_id, lock=True)
+        if row is None:
+            raise not_found("contract_item_not_found")
+        if row.status == "signed":
+            # A signed agreement is terminated, never erased from the record.
+            raise DeliveryModelError("contract_item_signed", 409)
+        await self.session.delete(row)
+        await self.session.flush()
+        await self._audit(actor_id, "delivery_contract_item", item_id, "contract_item_deleted")
+
     async def set_ofi_route(
         self,
         project_id: uuid.UUID,
@@ -1790,9 +1868,29 @@ class DeliveryModelService:
             "allocations": await self._allocation_rows(project_id),
             "packages": packages,
             "ofis": await self.ofi_rows(project_id),
+            "contract_items": [_contract_item_view(i) for i in await self.repo.contract_items(project_id)],
             "procurement_released": bool(await self.procurement_released(project_id)),
             "decisions": await self.decision_views(project_id),
         }
+
+
+def _contract_item_view(i: ContractItem) -> dict[str, Any]:
+    return {
+        "id": str(i.id),
+        "code": i.code,
+        "group_code": i.group_code,
+        "kind_code": i.kind_code,
+        "title": i.title,
+        "counterparty": i.counterparty,
+        "package_id": _s(i.package_id),
+        "status": i.status,
+        "reference": i.reference,
+        "start_date": i.start_date,
+        "end_date": i.end_date,
+        "price_basis": i.price_basis,
+        "share_percent": i.share_percent,
+        "notes": i.notes,
+    }
 
 
 def _form_view(form: Any) -> dict[str, Any] | None:

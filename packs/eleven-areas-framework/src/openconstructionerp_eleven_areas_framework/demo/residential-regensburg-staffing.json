@@ -186,5 +186,254 @@
   "site_place": {
     "en": "Site Regensburg",
     "de": "Baustelle Regensburg"
-  }
+  },
+  "roster": [
+    {
+      "name": {
+        "en": "Dr. Katharina Lindner",
+        "de": "Dr. Katharina Lindner"
+      },
+      "company": {
+        "en": "Wohnungsbau Donaupark GmbH",
+        "de": "Wohnungsbau Donaupark GmbH"
+      },
+      "site_role": "project_director",
+      "allocation": 40
+    },
+    {
+      "name": {
+        "en": "Matthias Kreutzer",
+        "de": "Matthias Kreutzer"
+      },
+      "company": {
+        "en": "Wohnungsbau Donaupark GmbH",
+        "de": "Wohnungsbau Donaupark GmbH"
+      },
+      "site_role": "project_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Julia Hartmann",
+        "de": "Julia Hartmann"
+      },
+      "company": {
+        "en": "Architekturbüro Hartmann und Brandl",
+        "de": "Architekturbüro Hartmann und Brandl"
+      },
+      "site_role": "design_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Stefan Obermeier",
+        "de": "Stefan Obermeier"
+      },
+      "company": {
+        "en": "Wohnungsbau Donaupark GmbH",
+        "de": "Wohnungsbau Donaupark GmbH"
+      },
+      "site_role": "cost_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Monika Brunner",
+        "de": "Monika Brunner"
+      },
+      "company": {
+        "en": "Wohnungsbau Donaupark GmbH",
+        "de": "Wohnungsbau Donaupark GmbH"
+      },
+      "site_role": "contract_manager",
+      "allocation": 40
+    },
+    {
+      "name": {
+        "en": "Florian Wagenhuber",
+        "de": "Florian Wagenhuber"
+      },
+      "company": {
+        "en": "Bauleitung Oberpfalz GmbH",
+        "de": "Bauleitung Oberpfalz GmbH"
+      },
+      "site_role": "site_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Sabine Rottenwöhrer",
+        "de": "Sabine Rottenwöhrer"
+      },
+      "company": {
+        "en": "Bauleitung Oberpfalz GmbH",
+        "de": "Bauleitung Oberpfalz GmbH"
+      },
+      "site_role": "hse_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Thomas Kellermann",
+        "de": "Thomas Kellermann"
+      },
+      "company": {
+        "en": "Bauleitung Oberpfalz GmbH",
+        "de": "Bauleitung Oberpfalz GmbH"
+      },
+      "site_role": "site_supervisor_civil",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Anja Kiermeier",
+        "de": "Anja Kiermeier"
+      },
+      "company": {
+        "en": "Wohnungsbau Donaupark GmbH",
+        "de": "Wohnungsbau Donaupark GmbH"
+      },
+      "site_role": "document_controller",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Christoph Eibl",
+        "de": "Christoph Eibl"
+      },
+      "company": {
+        "en": "Bauleitung Oberpfalz GmbH",
+        "de": "Bauleitung Oberpfalz GmbH"
+      },
+      "site_role": "quality_manager",
+      "allocation": 100
+    },
+    {
+      "name": {
+        "en": "Verena Pledl",
+        "de": "Verena Pledl"
+      },
+      "company": {
+        "en": "Ingenieurbüro Pledl TGA",
+        "de": "Ingenieurbüro Pledl TGA"
+      },
+      "site_role": "site_supervisor_mep",
+      "allocation": 100
+    }
+  ],
+  "running_positions": [
+    {
+      "role": "project_director",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "project_manager",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "design_manager",
+      "phase": "development",
+      "entry": -240,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "cost_manager",
+      "phase": "development",
+      "entry": -210,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "contract_manager",
+      "phase": "development",
+      "entry": -180,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "scheduler",
+      "phase": "development",
+      "entry": -150,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_manager",
+      "phase": "execution",
+      "entry": -30,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "hse_manager",
+      "phase": "execution",
+      "entry": -30,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_supervisor_civil",
+      "phase": "execution",
+      "entry": -30,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "document_controller",
+      "phase": "execution",
+      "entry": -30,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "quality_manager",
+      "phase": "execution",
+      "entry": 30,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "site_supervisor_mep",
+      "phase": "execution",
+      "entry": 45,
+      "exit": 520,
+      "status": "recruiting"
+    },
+    {
+      "role": "commissioning_manager",
+      "phase": "execution",
+      "entry": 400,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_plant_manager",
+      "phase": "operation",
+      "entry": 430,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_shift_lead",
+      "phase": "operation",
+      "entry": 460,
+      "exit": null,
+      "status": "open"
+    },
+    {
+      "role": "operator_technician",
+      "phase": "operation",
+      "entry": 480,
+      "exit": null,
+      "status": "open"
+    }
+  ],
+  "running_commissioning_in_days": 500
 }

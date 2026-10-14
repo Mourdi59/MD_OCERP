@@ -336,6 +336,42 @@ async def test_reopening_with_gates_needs_a_change_request(world) -> None:
     assert await _code(call(world, "reopen", world.manager, "price rise")) == "change_request_required"
 
 
+REGISTER_OPEN = dict.fromkeys(
+    (
+        "economics_securities_in_place",
+        "economics_insurance_in_place",
+        "economics_tax_clarified",
+        "economics_receivables_payables_set",
+        "economics_administration_set",
+    ),
+    "not_met",
+)
+
+
+async def _fill_registers(world) -> None:
+    mgr = world.manager
+    await call(
+        world,
+        "add_security",
+        {
+            "kind": "performance",
+            "description": "Performance guarantee",
+            "status": "in_place",
+            "valid_until": "2099-12-31",
+        },
+        mgr,
+    )
+    await call(
+        world,
+        "add_insurance",
+        {"kind": "liability", "insurer": "Insurer", "status": "in_place", "period_to": "2099-12-31"},
+        mgr,
+    )
+    await call(world, "put_tax", {"vat_treatment": "standard", "input_tax_deduction": True, "confirm": True}, mgr)
+    for area in ("receivables", "payables", "administration"):
+        await call(world, "put_process", area, {"status": "set_up"}, mgr)
+
+
 async def test_the_gate_reads_the_plan_through_its_evidence_provider(world) -> None:
     doc = (await documents(world))[COMMERCIAL_DOC]
     attempt = GateAttempt(gate_id=uuid4(), gate_code=GATE, attempt_no=1)
@@ -343,6 +379,7 @@ async def test_the_gate_reads_the_plan_through_its_evidence_provider(world) -> N
     async with world.factory() as s:
         items = await plan_ready(s, world.project_id, attempt, area)
     assert {i.code: i.state for i in items} == {
+        **REGISTER_OPEN,
         "economics_proposed": "not_met",
         "economics_financing_covered": "not_met",
         "economics_no_errors": "not_met",
@@ -352,10 +389,15 @@ async def test_the_gate_reads_the_plan_through_its_evidence_provider(world) -> N
     async with world.factory() as s:
         items = await plan_ready(s, world.project_id, attempt, area)
     assert {i.code: i.state for i in items} == {
+        **REGISTER_OPEN,
         "economics_proposed": "met",
         "economics_financing_covered": "met",
         "economics_no_errors": "met",
     }
+    await _fill_registers(world)
+    async with world.factory() as s:
+        items = await plan_ready(s, world.project_id, attempt, area)
+    assert {i.code: i.state for i in items if i.code in REGISTER_OPEN} == dict.fromkeys(REGISTER_OPEN, "met")
     other = next(a for a in (await areas(world)).values() if a.id != doc.area_id)
     async with world.factory() as s:
         assert await plan_ready(s, world.project_id, attempt, other) == []
@@ -430,3 +472,70 @@ async def test_the_service_reads_money_as_exact_decimals(ungoverned) -> None:
     async with w.factory() as s:
         frame = await EconomicsService(s).cost_frame(w.project_id)
     assert frame["totals"]["lines"] == "0.30"
+
+
+# ── registers ────────────────────────────────────────────────────────────────
+
+
+async def test_registers_stay_editable_while_the_plan_is_proposed(world) -> None:
+    await fill(world)
+    await call(world, "propose", "ok", world.manager)
+    await _fill_registers(world)
+    regs = await call(world, "registers")
+    assert regs["state"] == dict.fromkeys(regs["state"], True)
+    assert regs["tax"]["confirmed_by_name"]
+    assert [p["area"] for p in regs["process"]] == ["receivables", "payables", "administration"]
+
+
+async def test_a_changed_tax_treatment_is_no_longer_confirmed(world) -> None:
+    await call(
+        world, "put_tax", {"vat_treatment": "standard", "input_tax_deduction": True, "confirm": True}, world.manager
+    )
+    await call(
+        world, "put_tax", {"vat_treatment": "exempt", "input_tax_deduction": False, "confirm": False}, world.manager
+    )
+    regs = await call(world, "registers")
+    assert regs["tax"]["confirmed"] is False and regs["tax"]["confirmed_by"] is None
+    assert "tax_not_confirmed" in [f["code"] for f in regs["findings"]]
+
+
+async def test_an_expired_security_is_flagged_and_a_period_must_run_forwards(world) -> None:
+    await call(
+        world,
+        "add_security",
+        {"kind": "bid", "description": "Old bond", "status": "in_place", "valid_until": "2020-01-01"},
+        world.manager,
+    )
+    regs = await call(world, "registers")
+    assert regs["securities"][0]["lapsed"] is True
+    assert "security_expired" in [f["code"] for f in regs["findings"]]
+    assert (
+        await _code(
+            call(
+                world,
+                "add_insurance",
+                {"kind": "liability", "insurer": "X", "period_from": "2026-05-01", "period_to": "2026-01-01"},
+                world.manager,
+            )
+        )
+        == "period_invalid"
+    )
+
+
+async def test_a_security_of_another_project_is_not_found(world) -> None:
+    from uuid import uuid4
+
+    assert (
+        await _code(call(world, "patch_security", uuid4(), {"status": "released"}, world.manager))
+        == "security_not_found"
+    )
+    assert await _code(call(world, "delete_insurance", uuid4(), world.manager)) == "insurance_not_found"
+
+
+async def test_the_approval_names_who_proposed_and_who_approved(world) -> None:
+    await fill(world)
+    await call(world, "propose", "ok", world.manager)
+    view = await call(world, "plan_view", actor_id=world.manager, can_edit=True, can_manage=True)
+    approval = view["approvals"][0]
+    assert approval["proposed_by_name"] and approval["approved_by_name"] == ""
+    assert view["can"]["records"] is True

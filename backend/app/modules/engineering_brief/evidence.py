@@ -79,6 +79,21 @@ def items(ready: dict[str, Any], link: tuple[str, str]) -> list[EvidenceItem]:
                 detail=", ".join(sorted({f"{e['code']}:{e['ref']}" for e in ready["errors"]})),
             )
         )
+    if ready["frame_required"]:
+        for code, key, (state, detail) in (
+            ("site_analysis_done", "site_analysis", ready["site_analysis"]),
+            ("suitability_studies_done", "suitability", ready["suitability"]),
+            ("requirements_specification_issued", "specification", ready["specification"]),
+        ):
+            out.append(
+                EvidenceItem(
+                    code=code,
+                    state=state,
+                    label_key=f"engineering_brief.evidence.{key}",
+                    link=link,
+                    detail=detail,
+                )
+            )
     out.append(
         EvidenceItem(
             code="brief_gate_milestone",

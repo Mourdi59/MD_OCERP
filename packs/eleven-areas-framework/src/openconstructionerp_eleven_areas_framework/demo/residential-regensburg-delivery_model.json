@@ -49,5 +49,134 @@
     },
     "item_kind": "material"
   },
-  "plant_item": "PL-002"
+  "plant_item": "PL-002",
+  "contract_items": [
+    {
+      "group": "contract_form",
+      "kinds": [
+        "design_build_contract",
+        "construction_contract"
+      ],
+      "code": "CF-01",
+      "title": {
+        "en": "General contractor agreement for the quarter, lump sum at award",
+        "de": "Generalunternehmervertrag Quartier, Pauschalpreis bei Vergabe"
+      },
+      "counterparty": {
+        "en": "General contractor, award pending",
+        "de": "Generalunternehmer, Vergabe steht aus"
+      },
+      "status": "negotiating",
+      "days": 165
+    },
+    {
+      "group": "land_tenure",
+      "kinds": [
+        "purchase",
+        "leasehold"
+      ],
+      "code": "LT-01",
+      "title": {
+        "en": "Purchase of the building plot with a priority notice",
+        "de": "Kauf des Baugrundstücks mit Auflassungsvormerkung"
+      },
+      "counterparty": {
+        "en": "Plot owner Regensburg Süd GmbH",
+        "de": "Grundstückseigentümer Regensburg Süd GmbH"
+      },
+      "status": "signed",
+      "days": -120
+    },
+    {
+      "group": "utility_contract",
+      "kinds": [
+        "power_connection",
+        "water_sewer_connection"
+      ],
+      "code": "UC-01",
+      "title": {
+        "en": "Power grid connection for 180 dwellings",
+        "de": "Netzanschluss Strom für 180 Wohneinheiten"
+      },
+      "counterparty": {
+        "en": "Regional grid operator",
+        "de": "Regionaler Netzbetreiber"
+      },
+      "status": "agreed",
+      "days": 30
+    },
+    {
+      "group": "utility_contract",
+      "kinds": [
+        "district_heating"
+      ],
+      "code": "UC-02",
+      "title": {
+        "en": "District heating connection of the quarter",
+        "de": "Fernwärmeanschluss des Quartiers"
+      },
+      "counterparty": {
+        "en": "Municipal utility of Regensburg",
+        "de": "Stadtwerke Regensburg"
+      },
+      "status": "negotiating",
+      "days": 60
+    },
+    {
+      "group": "user_agreement",
+      "kinds": [
+        "lease_to_user",
+        "service_level_agreement"
+      ],
+      "code": "UA-01",
+      "title": {
+        "en": "Commercial lease for the quarter garage with handover criteria",
+        "de": "Gewerbemietvertrag für die Quartiersgarage mit Übergabekriterien"
+      },
+      "counterparty": {
+        "en": "Parking operator Donau GmbH",
+        "de": "Parkraumbetreiber Donau GmbH"
+      },
+      "status": "draft",
+      "days": 190
+    },
+    {
+      "group": "partner_structure",
+      "kinds": [
+        "project_company",
+        "joint_venture"
+      ],
+      "code": "PS-01",
+      "title": {
+        "en": "Owner share of the project company",
+        "de": "Gesellschafteranteil des Bauherrn an der Projektgesellschaft"
+      },
+      "counterparty": {
+        "en": "Owner holding GmbH",
+        "de": "Bauherr Beteiligungs GmbH"
+      },
+      "status": "agreed",
+      "days": -90,
+      "share": "70"
+    },
+    {
+      "group": "partner_structure",
+      "kinds": [
+        "co_investment",
+        "consortium"
+      ],
+      "code": "PS-02",
+      "title": {
+        "en": "Co-investor share of the project company",
+        "de": "Gesellschafteranteil des Mitinvestors an der Projektgesellschaft"
+      },
+      "counterparty": {
+        "en": "Pension fund of eastern Bavaria",
+        "de": "Versorgungswerk Ostbayern"
+      },
+      "status": "agreed",
+      "days": -90,
+      "share": "30"
+    }
+  ]
 }

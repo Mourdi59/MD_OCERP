@@ -31,6 +31,8 @@ import uuid
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
+from collections.abc import Awaitable, Callable
+from functools import wraps
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,6 +47,7 @@ from app.modules.project_governance.catalogue_kinds import (
 from app.modules.project_governance.catalogue_packs import CataloguePin, demo_module_story
 from app.modules.project_governance.catalogue_store import default_catalogue_pin, resolve_catalogue
 from app.modules.project_governance.errors import GovernanceError
+from app.modules.project_governance.evidence import COLLECTION_MEMO
 from app.modules.project_governance.repository import GovernanceRepository
 from app.modules.project_governance.seed_story import text_of as story_text
 
@@ -118,6 +121,26 @@ def phases_enabling_in(catalogue: Any, capability: str) -> tuple[str, ...]:
     return tuple(p.code for p in catalogue.phases_enabling(capability))
 
 
+def _once_per_collection(fn: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+    """Within one evidence collection a repeated call with the same arguments is answered from memory.
+
+    Outside a collection nothing is remembered, so every other reader sees the live state.
+    """
+
+    @wraps(fn)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        memo = COLLECTION_MEMO.get()
+        if memo is None:
+            return await fn(*args, **kwargs)
+        key = (fn.__name__, *(id(a) if isinstance(a, AsyncSession) else a for a in args), tuple(sorted(kwargs.items())))
+        if key not in memo:
+            memo[key] = await fn(*args, **kwargs)
+        return memo[key]
+
+    return wrapper
+
+
+@_once_per_collection
 async def project_catalogue(session: AsyncSession, project_id: uuid.UUID) -> Catalogue | None:
     """The phase model a project pinned, or ``None`` when it pinned none."""
     model = await GovernanceRepository(session).get_model(project_id)
@@ -462,6 +485,7 @@ def document_views(catalogue: Any, rows: Any, areas: tuple[AreaView, ...]) -> tu
     )
 
 
+@_once_per_collection
 async def project_gates(session: AsyncSession, project_id: uuid.UUID) -> tuple[GateView, ...]:
     """The gates of the project's current phase model, in order; empty without a model.
 
@@ -476,6 +500,7 @@ async def project_gates(session: AsyncSession, project_id: uuid.UUID) -> tuple[G
     return gate_views(catalogue, rows, await GovernanceService(session).gate_target_dates(rows))
 
 
+@_once_per_collection
 async def project_areas(session: AsyncSession, project_id: uuid.UUID) -> tuple[AreaView, ...]:
     """The management areas of the project, in order; empty without a model.
 
@@ -487,6 +512,7 @@ async def project_areas(session: AsyncSession, project_id: uuid.UUID) -> tuple[A
     return area_views(catalogue, await GovernanceRepository(session).list_areas(project_id))
 
 
+@_once_per_collection
 async def project_documents(session: AsyncSession, project_id: uuid.UUID) -> tuple[DocumentView, ...]:
     """The frame documents of the project's live areas; empty without a model."""
     catalogue = await project_catalogue(session, project_id)

@@ -70,5 +70,11 @@
       "de": "Abruf der Reserve für Baugrund und Altlasten"
     },
     "amount": "320000"
+  },
+  "labels": {
+    "scenario": {
+      "en": "Stop today",
+      "de": "Stopp heute"
+    }
   }
 }

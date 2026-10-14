@@ -2,11 +2,12 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """economics - business case, cost frame and financing plan of a project.
 
-Six new tables, nothing existing touched, all project-scoped and CASCADE with
+Ten new tables, nothing existing touched, all project-scoped and CASCADE with
 the project: the plan (status, currency, classification standard, discount
 rate, horizon), the lines of the business case, the lines of the cost frame,
-the sources of finance with their tranches, and the approvals with the frozen
-snapshot they were judged on.
+the sources of finance with their tranches, the approvals with the frozen
+snapshot they were judged on, and four registers (securities, insurance, tax treatment,
+process set-up).
 
 Every constraint and index name is written out and matches the model. Every
 step is inspector-guarded, so a database whose tables ``create_all`` already
@@ -176,18 +177,85 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _ts("approved_at"),
             _str("approval_source", 20, None, nullable=True),
             _guid("governance_ref_id"),
-            _guid("governance_document_id"),
+            sa.Column(
+                "governance_document_id",
+                GUID(),
+                sa.ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_eco_approval_gov_document"),
+                nullable=True,
+            ),
             sa.Column("four_eyes", sa.Boolean(), nullable=False, server_default=sa.text("false")),
             _str("approval_blocked_reason", 64, ""),
             sa.UniqueConstraint("project_id", "number", name="uq_oe_eco_approval_number"),
         ],
         [("ix_oe_eco_approval_project", ["project_id", "number"])],
     ),
+    (
+        "oe_economics_security",
+        lambda: [
+            _project_fk("fk_oe_eco_security_project"),
+            _str("kind", 20, None),
+            _str("description", 255, ""),
+            _money("amount"),
+            _str("issuer", 255, ""),
+            _str("beneficiary", 255, ""),
+            _str("reference", 120, ""),
+            _str("valid_from", 40, None, nullable=True),
+            _str("valid_until", 40, None, nullable=True),
+            _str("status", 12, "requested"),
+            _int("sort_order", 0),
+            _text("notes"),
+        ],
+        [("ix_oe_eco_security_project", ["project_id", "sort_order"])],
+    ),
+    (
+        "oe_economics_insurance",
+        lambda: [
+            _project_fk("fk_oe_eco_insurance_project"),
+            _str("kind", 30, None),
+            _str("insurer", 255, ""),
+            _str("policy_number", 120, ""),
+            _money("sum_insured"),
+            _money("deductible"),
+            _str("period_from", 40, None, nullable=True),
+            _str("period_to", 40, None, nullable=True),
+            _str("status", 12, "requested"),
+            _int("sort_order", 0),
+            _text("notes"),
+        ],
+        [("ix_oe_eco_insurance_project", ["project_id", "sort_order"])],
+    ),
+    (
+        "oe_economics_tax",
+        lambda: [
+            _project_fk("fk_oe_eco_tax_project"),
+            _str("vat_treatment", 20, "standard"),
+            sa.Column("input_tax_deduction", sa.Boolean(), nullable=True),
+            _text("notes"),
+            _guid("confirmed_by"),
+            _ts("confirmed_at"),
+            sa.UniqueConstraint("project_id", name="uq_oe_eco_tax_project"),
+        ],
+        [],
+    ),
+    (
+        "oe_economics_process",
+        lambda: [
+            _project_fk("fk_oe_eco_process_project"),
+            _str("area", 20, None),
+            _text("description"),
+            _str("owner", 255, ""),
+            _str("status", 12, "open"),
+            _str("set_up_on", 40, None, nullable=True),
+            _text("notes"),
+            sa.UniqueConstraint("project_id", "area", name="uq_oe_eco_process_area"),
+        ],
+        [],
+    ),
 ]
 
 
 def upgrade() -> None:
-    """Create the six tables and their indexes, each only when it is missing."""
+    """Create the ten tables and their indexes, each only when it is missing."""
     bind = op.get_bind()
     for table, columns, indexes in _TABLES:
         if table not in sa.inspect(bind).get_table_names():
@@ -199,7 +267,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Drop the six tables, children before the parents they reference."""
+    """Drop the ten tables, children before the parents they reference."""
     bind = op.get_bind()
     for table, _columns, _indexes in reversed(_TABLES):
         if table in sa.inspect(bind).get_table_names():

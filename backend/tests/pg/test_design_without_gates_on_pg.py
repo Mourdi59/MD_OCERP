@@ -95,7 +95,7 @@ async def test_the_register_cannot_become_a_frame_document_without_a_model_and_s
         with pytest.raises(DesignError) as refused:
             await svc.generate_frame_document(
                 world.project_id,
-                "drawings",
+                "register",
                 actor_id=world.manager,
                 file_bytes=b"register",
                 file_name="register.pdf",

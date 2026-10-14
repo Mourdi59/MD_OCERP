@@ -211,6 +211,8 @@ def resolve_plan_content(story: dict | None, locale: str) -> dict[str, Any]:
         day_dba=Decimal("60"),
         night_dba=Decimal("45"),
         coordination=_DEFAULT_COORDINATION,
+        customs_before_gate=False,
+        complaints_before_gate=False,
     )
     if not isinstance(story, dict) or not story:
         return out
@@ -246,6 +248,10 @@ def resolve_plan_content(story: dict | None, locale: str) -> dict[str, Any]:
         value = story.get(key)
         if isinstance(value, int | float) and not isinstance(value, bool) and 0 < value < 120:
             out[key] = Decimal(str(value))
+
+    for key in ("customs_before_gate", "complaints_before_gate"):
+        if story.get(key) is True:
+            out[key] = True
 
     entries = story.get("coordination")
     if isinstance(entries, list) and entries:
@@ -618,12 +624,14 @@ async def _seed_rest(
     if not planned:
         await svc.transition_transport(pid, rebar.id, "scheduled", actor)
 
-    # Nothing is ordered before the gate, so there is no shipment to clear yet.
-    if not planned:
+    # Nothing is ordered before the gate, so there is no shipment to clear yet, unless the story
+    # tells a project that signed a supply order on a held slot ahead of it.
+    if not planned or content["customs_before_gate"]:
         await _seed_customs(session, svc, pid, content)
 
     # Complaints come with a running site; coordination with the authorities starts before it.
-    if not planned:
+    # A story may have the neighbours complain about the survey and clearing works already.
+    if not planned or content["complaints_before_gate"]:
         await _seed_complaints(svc, pid, today, content)
     for body, topic, outcome, days_ago, next_in in content["coordination"]:
         await svc.create_coordination(

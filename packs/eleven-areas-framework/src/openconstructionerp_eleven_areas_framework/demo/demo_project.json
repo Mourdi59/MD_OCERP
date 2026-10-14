@@ -97,7 +97,7 @@
             },
             "file_name": "m03-frame.pdf",
             "revisions": 2,
-            "state": "draft"
+            "state": "in_review"
           },
           {
             "doc_type": "m04_equipment_frame",
@@ -190,8 +190,8 @@
         ],
         "gate": {
           "code": "development_to_execution",
-          "target_in_days": 21,
-          "stop_at": "in_preparation",
+          "target_in_days": null,
+          "stop_at": "decided",
           "checks": [
             {
               "area": "m01_project_management",
@@ -213,11 +213,11 @@
             },
             {
               "area": "m03_engineering_scheduling",
-              "status": "not_assessed",
-              "rag": "",
+              "status": "ready",
+              "rag": "green",
               "note": {
-                "en": "",
-                "de": ""
+                "en": "Frame schedule and site planning are agreed. The brief for the engineering is binding.",
+                "de": "Rahmenterminplan und Baustellenplanung sind abgestimmt. Das technische Pflichtenheft ist verbindlich."
               }
             },
             {
@@ -293,47 +293,33 @@
               }
             }
           ],
-          "decision": null
+          "decision": {
+            "outcome": "go_with_conditions",
+            "rationale": {
+              "en": "The frame documents are in force and the building permit is granted. Two areas go ahead at risk with a named owner each; the commissioning manager is still to be appointed.",
+              "de": "Die Rahmendokumente gelten und die Baugenehmigung liegt vor. Zwei Bereiche gehen mit benanntem Verantwortlichen unter Vorbehalt in die Ausführung; die Inbetriebnahmeleitung ist noch zu besetzen."
+            },
+            "conditions": [
+              {
+                "area": "m05_personnel",
+                "text": {
+                  "en": "Commissioning manager appointed before the first factory test",
+                  "de": "Inbetriebnahmeleitung vor dem ersten Werksabnahmetest bestellt"
+                },
+                "owner": "owner",
+                "due_in_days": 180,
+                "severity": "essential"
+              }
+            ]
+          }
         }
       },
       "story": {
-        "$note": "Not seeded. What the film does by hand after the seed, and what a test asserts about the seeded state.",
-        "first_check_blockers": [
-          {
-            "area": "m03_engineering_scheduling",
-            "cause": "frame_document_not_submitted"
-          },
-          {
-            "area": "m02_contract_management",
-            "cause": "module_evidence",
-            "module": "oe_permits",
-            "what": "a condition due before the start is open"
-          },
-          {
-            "area": "m07_design_management",
-            "cause": "module_evidence",
-            "module": "oe_design_management",
-            "what": "required expert reports are not accepted (the design seeder leaves three open; which of them block depends on the phase they fall in)"
-          }
-        ],
-        "first_check_warnings": [
-          {
-            "area": "m09_commercial",
-            "module": "oe_commitment_release",
-            "what": "a planned long-lead supply is past its decision date"
-          },
-          {
-            "area": "m01_project_management",
-            "module": "oe_stakeholders",
-            "what": "a commitment due three days ago is agreed but not fulfilled"
-          }
-        ],
+        "$note": "Not seeded. Regensburg is told after its gate: the construction site runs.",
         "on_camera": [
-          "submit the area 3 frame document and confirm area 3 as ready",
-          "discharge the open permit condition with evidence, confirm area 2 as ready",
-          "take the open expert reports to accepted, confirm area 7 as ready",
-          "submit the gate",
-          "decide go_with_conditions as the manager login: one condition on m05_personnel, owner the project owner, due in 180 days, text 'Commissioning manager appointed before the first factory test'"
+          "open the gate record and read the decision with its conditions",
+          "show the conditions register: the commissioning manager condition and the at-risk areas with owners",
+          "walk the running site in logistics, permits and the plant register"
         ]
       },
       "demo_id": "eleven-areas-residential",
@@ -348,7 +334,8 @@
         "delivery_model": "demo/residential-regensburg-delivery_model.json",
         "commitment_release": "demo/residential-regensburg-commitment_release.json",
         "site_logistics": "demo/residential-regensburg-site_logistics.json",
-        "transmittals": "demo/residential-regensburg-transmittals.json"
+        "transmittals": "demo/residential-regensburg-transmittals.json",
+        "economics": "demo/residential-regensburg-economics.json"
       }
     },
     {
@@ -479,7 +466,7 @@
             },
             "file_name": "m06-frame-gs.pdf",
             "revisions": 1,
-            "state": "draft"
+            "state": "in_review"
           },
           {
             "doc_type": "m07_design_management_frame",
@@ -539,8 +526,8 @@
         ],
         "gate": {
           "code": "development_to_execution",
-          "target_in_days": 35,
-          "stop_at": "in_preparation",
+          "target_in_days": 12,
+          "stop_at": "in_review",
           "checks": [
             {
               "area": "m01_project_management",
@@ -589,11 +576,11 @@
             },
             {
               "area": "m06_logistics",
-              "status": "not_assessed",
-              "rag": "",
+              "status": "ready_with_risks",
+              "rag": "amber",
               "note": {
-                "en": "",
-                "de": ""
+                "en": "Site access and pupil routes are drawn. The separation plan for deliveries during school hours still needs the head teacher's sign-off.",
+                "de": "Baustellenzufahrt und Schulwege sind geplant. Der Trennungsplan für Lieferungen während der Schulzeit braucht noch die Freigabe der Schulleitung."
               }
             },
             {
@@ -646,11 +633,9 @@
         }
       },
       "story": {
-        "$note": "Not seeded. What the film does by hand after the seed.",
+        "$note": "Not seeded. The school gate is submitted and in review.",
         "on_camera": [
-          "submit the area 6 frame document and confirm area 6 as ready",
-          "take the open design reports to accepted and confirm area 7 as ready",
-          "submit the gate",
+          "open the gate in review and read the readiness of the eleven areas",
           "decide go_with_conditions as the manager login: one condition on m11_hse, owner the project owner, due in 120 days, text 'Separation plan for works beside the running school approved by the school management'"
         ]
       },
@@ -666,7 +651,8 @@
         "delivery_model": "demo/school-ludwigsburg-delivery_model.json",
         "commitment_release": "demo/school-ludwigsburg-commitment_release.json",
         "site_logistics": "demo/school-ludwigsburg-site_logistics.json",
-        "transmittals": "demo/school-ludwigsburg-transmittals.json"
+        "transmittals": "demo/school-ludwigsburg-transmittals.json",
+        "economics": "demo/school-ludwigsburg-economics.json"
       }
     }
   ]

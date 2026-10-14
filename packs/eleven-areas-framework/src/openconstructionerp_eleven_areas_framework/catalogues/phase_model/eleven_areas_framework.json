@@ -2531,7 +2531,7 @@
       "code": "site_analysis_done",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
-      "manual_only": true,
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.site_analysis_done",
       "labels": {
         "en": "Site analysis is complete",
@@ -2619,7 +2619,7 @@
       "code": "requirements_specification_issued",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
-      "manual_only": true,
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.requirements_specification_issued",
       "labels": {
         "en": "Requirements specification is issued",
@@ -2630,7 +2630,7 @@
       "code": "suitability_studies_done",
       "area": "m03_engineering_scheduling",
       "gate": "development_to_execution",
-      "manual_only": true,
+      "evidence_provider": "engineering_brief.brief_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m03_engineering_scheduling.suitability_studies_done",
       "labels": {
         "en": "Suitability studies and tests are complete",
@@ -2696,7 +2696,7 @@
       "code": "receivables_payables_process_set",
       "area": "m09_commercial",
       "gate": "development_to_execution",
-      "manual_only": true,
+      "evidence_provider": "economics.plan_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.receivables_payables_process_set",
       "labels": {
         "en": "Handling of receivables and payables is set up",
@@ -2707,7 +2707,7 @@
       "code": "securities_and_insurance_in_place",
       "area": "m09_commercial",
       "gate": "development_to_execution",
-      "manual_only": true,
+      "evidence_provider": "economics.plan_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.securities_and_insurance_in_place",
       "labels": {
         "en": "Securities and insurance are in place",
@@ -2718,7 +2718,7 @@
       "code": "tax_treatment_clarified",
       "area": "m09_commercial",
       "gate": "development_to_execution",
-      "manual_only": true,
+      "evidence_provider": "economics.plan_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.tax_treatment_clarified",
       "labels": {
         "en": "Tax treatment is clarified",
@@ -2729,7 +2729,7 @@
       "code": "administration_set_up",
       "area": "m09_commercial",
       "gate": "development_to_execution",
-      "manual_only": true,
+      "evidence_provider": "economics.plan_ready",
       "name_key": "governance.catalogue.eleven_areas_framework.criterion.m09_commercial.administration_set_up",
       "labels": {
         "en": "Commercial administration is set up",

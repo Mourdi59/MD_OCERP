@@ -107,3 +107,46 @@ async def test_gates_get_one_milestone_each_and_take_the_schedule_activity(facto
     gates = await call(w, "_gates")
     assert all(g["schedule_activity_id"] for g in gates if g["status"] != "decided")
     assert not [f for f in await call(w, "submission_findings") if f.code == "gate_without_milestone"]
+
+
+async def test_the_specification_is_issued_as_a_document_version_and_goes_stale_on_edit(factory) -> None:
+    from app.modules.documents.models import Document
+
+    w = await build_world(factory)
+    await complete_brief(w)
+    with pytest.raises(EngineeringBriefError) as early:
+        await call(w, "issue_specification", w.manager)
+    assert early.value.code == "brief_not_submitted"
+    await call(w, "submit", w.manager)
+    first = await call(w, "issue_specification", w.manager, "First", "de")
+    assert first.version_no == 1 and first.document_id
+    views = await call(w, "issue_views")
+    assert views["current"] and not views["stale"]
+    with pytest.raises(EngineeringBriefError) as same:
+        await call(w, "issue_specification", w.manager)
+    assert same.value.code == "specification_unchanged"
+    async with w.factory() as s:
+        doc = await s.get(Document, first.document_id)
+    assert doc.category == "specification" and doc.name.endswith(".pdf")
+
+
+async def test_a_study_needs_its_own_projects_document_and_backs_the_criterion(factory) -> None:
+    from app.modules.engineering_brief import rules
+
+    w = await build_world(factory)
+    with pytest.raises(EngineeringBriefError) as foreign:
+        await call(
+            w,
+            "create_study",
+            {"kind": "site_analysis", "title": "Site", "document_id": "00000000-0000-0000-0000-000000000001"},
+            w.manager,
+        )
+    assert foreign.value.code == "document_not_found"
+    row = await call(
+        w,
+        "create_study",
+        {"kind": "site_analysis", "title": "Site", "result": "ok", "conclusion": "suitable"},
+        w.manager,
+    )
+    views = await call(w, "study_views")
+    assert rules.study_state("site_analysis", views) == ("not_met", "study_without_document:" + row.code)

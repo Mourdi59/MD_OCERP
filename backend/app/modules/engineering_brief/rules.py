@@ -414,3 +414,38 @@ NOT_APPLICABLE = frozenset(
 def capability(reason: str | None, state_reason: str | None) -> dict[str, Any]:
     """One ``can`` flag: ``allowed``, the ``reason`` when not, and whether the action ``applies`` at all."""
     return {"allowed": reason is None, "reason": reason, "applies": state_reason not in NOT_APPLICABLE}
+
+
+# ── studies and the issued specification: what the gate criteria read ──────
+
+STUDY_KINDS = ("site_analysis", "suitability")
+STUDY_CONCLUSIONS = ("open", "suitable", "conditional", "unsuitable")
+
+
+def study_state(kind: str, studies: Iterable[Mapping[str, Any]]) -> tuple[str, str]:
+    """``(state, detail)`` of the studies of ``kind``: ``met`` when there is at least one, every one is concluded
+    and carries its report as a document; otherwise ``not_met`` with the reason in ``detail``."""
+    rows = [s for s in studies if s.get("kind") == kind]
+    if not rows:
+        return "not_met", "no_study"
+    open_ = sorted(
+        str(s["code"]) for s in rows if s.get("conclusion") == "open" or not str(s.get("result") or "").strip()
+    )
+    if open_:
+        return "not_met", "study_open:" + ",".join(open_)
+    undocumented = sorted(str(s["code"]) for s in rows if not s.get("document_id"))
+    if undocumented:
+        return "not_met", "study_without_document:" + ",".join(undocumented)
+    return "met", ""
+
+
+def specification_state(issues: Iterable[Mapping[str, Any]], current_hash: str) -> tuple[str, str]:
+    """``(state, detail)`` of the issued requirements specification: ``met`` when the latest issue carries the
+    requirements as they are now, ``not_met`` when nothing was issued or the requirements changed since."""
+    rows = sorted(issues, key=lambda i: int(i["version_no"]))
+    if not rows:
+        return "not_met", "not_issued"
+    latest = rows[-1]
+    if latest["requirements_hash"] != current_hash:
+        return "not_met", f"stale_since_v{latest['version_no']}"
+    return "met", f"v{latest['version_no']}"

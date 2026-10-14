@@ -49,7 +49,14 @@ from app.modules.engineering_brief.catalogue import (
 )
 from app.modules.engineering_brief.errors import EngineeringBriefError, conflict, forbidden, not_found
 from app.modules.engineering_brief.fsm import BRIEF_EDITABLE, BRIEF_FSM, CONCEPT_FSM
-from app.modules.engineering_brief.models import ConceptItem, EngineeringBrief, FrameMilestone, ProgrammeLine
+from app.modules.engineering_brief.models import (
+    ConceptItem,
+    EngineeringBrief,
+    FrameMilestone,
+    ProgrammeLine,
+    SpecificationIssue,
+    Study,
+)
 from app.modules.engineering_brief.repository import EngineeringBriefRepository
 from app.modules.project_governance import public as governance
 
@@ -1153,7 +1160,9 @@ class EngineeringBriefService:
         )
         return made
 
-    async def milestones_from_gates(self, project_id: uuid.UUID, actor_id: Any) -> list[FrameMilestone]:
+    async def milestones_from_gates(
+        self, project_id: uuid.UUID, actor_id: Any, locale: str = "en"
+    ) -> list[FrameMilestone]:
         """One gate milestone for every gate of the project that has none, dated like the gate."""
         brief = await self._open_for_edit(project_id, actor_id)
         catalogue = await self.catalogue_for(brief)
@@ -1170,13 +1179,18 @@ class EngineeringBriefService:
             # A tenant catalogue carries its own text; a shipped one an i18n key the client translates, so
             # the stored name falls back to the code and the screen shows the gate's label beside it.
             text = (g["label"] or {}).get("text") or {}
-            name = text.get("en") or next(iter(text.values()), None) or str(g["code"]).replace("_", " ")
+            name = (
+                text.get(locale)
+                or text.get("en")
+                or next(iter(text.values()), None)
+                or str(g["code"]).replace("_", " ")
+            )
             row = FrameMilestone(
                 project_id=project_id,
                 brief_id=brief.id,
                 code=_next_code("MS", [m.code for m in existing] + [m.code for m in made]),
                 kind_code=catalogue.gate_kind,
-                name=f"{translate('engineering_brief.gate_milestone_prefix')} {name}".strip(),
+                name=f"{translate('engineering_brief.gate_milestone_prefix', locale=locale)} {name}".strip(),
                 planned_date=g["target_date"],
                 gate_code=g["code"],
                 sort_order=len(existing) + len(made),
@@ -1328,6 +1342,187 @@ class EngineeringBriefService:
             "gates_decided": decided,
         }
 
+    # ── studies: site analysis and suitability, with the report in the documents module ──
+
+    def study_dict(self, s: Study) -> dict[str, Any]:
+        return json_safe(
+            {
+                "id": s.id,
+                "code": s.code,
+                "kind": s.kind,
+                "title": s.title,
+                "scope": s.scope,
+                "author": s.author,
+                "study_date": s.study_date,
+                "result": s.result,
+                "conclusion": s.conclusion,
+                "document_id": s.document_id,
+            }
+        )
+
+    async def _document(self, project_id: uuid.UUID, document_id: uuid.UUID) -> Any:
+        """The document of this project; one of another project is reported as absent."""
+        from app.modules.documents.models import Document
+
+        doc = await self.session.get(Document, document_id)
+        if doc is None or doc.project_id != project_id:
+            raise EngineeringBriefError("document_not_found", 422)
+        return doc
+
+    async def study_views(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
+        from app.modules.documents.models import Document
+
+        rows = await self.repo.studies(project_id)
+        ids = {s.document_id for s in rows if s.document_id}
+        names: dict[uuid.UUID, str] = {}
+        if ids:
+            found = await self.session.execute(select(Document.id, Document.name).where(Document.id.in_(ids)))
+            names = dict(found.all())
+        return [
+            {**self.study_dict(s), "document_name": names.get(s.document_id, "") if s.document_id else ""} for s in rows
+        ]
+
+    async def create_study(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> Study:
+        brief = await self.require_brief(project_id, lock=True)
+        if data.get("document_id"):
+            await self._document(project_id, data["document_id"])
+        existing = await self.repo.studies(project_id)
+        row = Study(
+            project_id=project_id,
+            brief_id=brief.id,
+            code=_next_code("STU", [s.code for s in existing]),
+            kind=data["kind"],
+            title=data["title"],
+            scope=data.get("scope", ""),
+            author=data.get("author", ""),
+            study_date=data.get("study_date"),
+            result=data.get("result", ""),
+            conclusion=data.get("conclusion", "open"),
+            document_id=data.get("document_id"),
+            sort_order=len(existing),
+        )
+        await self._insert(row, "study_code_taken")
+        await self._audit(actor_id, "engineering_brief_study", row.id, "study_added", metadata={"code": row.code})
+        return row
+
+    async def update_study(
+        self, project_id: uuid.UUID, study_id: uuid.UUID, changes: dict[str, Any], actor_id: Any
+    ) -> Study:
+        _refuse_nulls(changes, nullable=("study_date", "document_id"))
+        row = await self._child(Study, project_id, study_id, "study_not_found", lock=True)
+        if changes.get("document_id"):
+            await self._document(project_id, changes["document_id"])
+        for key, value in changes.items():
+            setattr(row, key, value)
+        await self.session.flush()
+        await self._audit(actor_id, "engineering_brief_study", row.id, "study_updated")
+        return row
+
+    async def delete_study(self, project_id: uuid.UUID, study_id: uuid.UUID, actor_id: Any) -> None:
+        row = await self._child(Study, project_id, study_id, "study_not_found", lock=True)
+        await self.repo.delete(row)
+        await self._audit(actor_id, "engineering_brief_study", study_id, "study_deleted")
+
+    # ── the issued requirements specification (Lastenheft) ──────────────────
+
+    def issue_dict(self, i: SpecificationIssue) -> dict[str, Any]:
+        return json_safe(
+            {
+                "id": i.id,
+                "version_no": i.version_no,
+                "title": i.title,
+                "issued_at": i.issued_at,
+                "issued_by": i.issued_by,
+                "document_id": i.document_id,
+                "requirements_hash": i.requirements_hash,
+                "requirement_count": i.requirement_count,
+                "note": i.note,
+            }
+        )
+
+    async def _current_requirements_hash(self, brief: EngineeringBrief) -> tuple[str, int]:
+        rows = [_requirement_dict(r) for r in await self._requirement_rows(brief)]
+        return requirements_hash(rows), len(rows)
+
+    async def issue_views(self, project_id: uuid.UUID) -> dict[str, Any]:
+        """The issues, newest first, and whether the latest one still matches the requirements."""
+        brief = await self.require_brief(project_id)
+        current, count = await self._current_requirements_hash(brief)
+        issues = [self.issue_dict(i) for i in await self.repo.issues(project_id)]
+        state, detail = rules.specification_state(issues, current)
+        return {
+            "items": issues,
+            "current": state == "met",
+            "stale": bool(issues) and state != "met",
+            "requirement_count": count,
+            "detail": detail,
+        }
+
+    async def issue_specification(
+        self, project_id: uuid.UUID, actor_id: Any, note: str = "", locale: str = "en"
+    ) -> SpecificationIssue:
+        """Render the requirements brief as a PDF into the documents module and record the issue.
+
+        Only a submitted brief can be issued, and only when the requirements changed since the last issue:
+        two issues of the same content would be two versions that differ in nothing. The second and later
+        issues are revisions of the first document, so the documents module keeps one chain.
+        """
+        from io import BytesIO
+
+        from starlette.datastructures import UploadFile
+
+        from app.modules.documents.service import DocumentService
+        from app.modules.engineering_brief import export as ex
+        from app.modules.engineering_brief.messages import translate
+
+        brief = await self.require_brief(project_id, lock=True)
+        if brief.status not in ("in_review", "approved", "binding"):
+            raise conflict("brief_not_submitted")
+        views = await self.requirement_views(project_id)
+        if not views:
+            raise EngineeringBriefError("no_requirements", 422)
+        current, count = await self._current_requirements_hash(brief)
+        previous = await self.repo.issues(project_id)
+        if previous and previous[0].requirements_hash == current:
+            raise conflict("specification_unchanged")
+        version_no = (previous[0].version_no + 1) if previous else 1
+        project = await self._project(project_id)
+        doc = ex.requirements_document(
+            views,
+            catalogue=await self.catalogue_for(brief),
+            project_name=getattr(project, "name", "") or "",
+            locale=locale,
+        )
+        doc.details.append((translate("engineering_brief.export.version", locale=locale), f"{version_no}"))
+        pdf = ex.render(doc, "pdf")
+        base = translate("engineering_brief.specification_filename", locale=locale)
+        upload = UploadFile(file=BytesIO(pdf), filename=f"{base}.pdf")
+        svc = DocumentService(self.session)
+        who = _s(_uid(actor_id)) or ""
+        first = next((i for i in reversed(previous) if i.document_id), None)
+        if first is not None:
+            document = await svc.upload_document_revision(first.document_id, upload, who, notes=note or None)
+        else:
+            document = await svc.upload_document(project_id, upload, "specification", who)
+        row = SpecificationIssue(
+            project_id=project_id,
+            brief_id=brief.id,
+            version_no=version_no,
+            title=f"{base} v{version_no}",
+            issued_at=_now(),
+            issued_by=_uid(actor_id),
+            document_id=document.id,
+            requirements_hash=current,
+            requirement_count=count,
+            note=note,
+        )
+        await self._insert(row, "specification_version_taken")
+        await self._audit(
+            actor_id, "engineering_brief", brief.id, "specification_issued", metadata={"version": version_no}
+        )
+        self._publish("specification.issued", {"project_id": str(project_id), "version": version_no})
+        return row
+
     # ── gate readiness and validation ──────────────────────────────────────
 
     async def readiness(self, project_id: uuid.UUID, gate_code: str) -> dict[str, Any]:
@@ -1341,6 +1536,9 @@ class EngineeringBriefService:
         inputs = await self._rule_inputs(brief)
         errors = [f for f in rules.submission_findings(**inputs) if f.severity == rules.ERROR]
         frame = await self._resolve_frame_document(project_id)
+        studies = [self.study_dict(s) for s in await self.repo.studies(project_id)]
+        issues = [self.issue_dict(i) for i in await self.repo.issues(project_id)]
+        current_hash, _count = await self._current_requirements_hash(brief)
         mine = [m for m in inputs["milestones"] if m["gate_code"] == gate_code]
         return {
             "in_use": True,
@@ -1353,6 +1551,9 @@ class EngineeringBriefService:
             "frame_required": frame is not None and gate_code in frame.required_at_gates,
             "gate_milestone": bool(mine),
             "gate_dated": bool(mine) and mine[0]["planned_date"] is not None,
+            "site_analysis": rules.study_state("site_analysis", studies),
+            "suitability": rules.study_state("suitability", studies),
+            "specification": rules.specification_state(issues, current_hash),
             "errors": [f.as_dict() for f in errors],
         }
 

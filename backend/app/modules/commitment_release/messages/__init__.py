@@ -24,6 +24,11 @@ def translate(key: str, locale: str = DEFAULT_LOCALE, **params: object) -> str:
     return _bundle.translate(key, locale=locale, **params)
 
 
+def label_texts(key: str | None, labels: dict[str, str] | None, locale: str = DEFAULT_LOCALE) -> dict[str, str] | None:
+    """The ``text`` of a ``{key, text}`` catalogue label for ``locale``; see ``MessageBundle.label_texts``."""
+    return _bundle.label_texts(key, labels, locale=locale)
+
+
 def is_key_present(key: str, locale: str = DEFAULT_LOCALE) -> bool:
     """Return ``True`` if ``key`` exists in ``locale`` without any fallback."""
     return _bundle.is_key_present(key, locale=locale)

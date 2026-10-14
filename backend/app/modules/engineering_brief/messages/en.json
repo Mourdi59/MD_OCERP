@@ -188,5 +188,16 @@
   "engineering_brief.verification.document_review": "Document review",
   "engineering_brief.verification.inspection": "Inspection",
   "engineering_brief.verification.model_check": "Model check",
-  "engineering_brief.verification.test": "Test"
+  "engineering_brief.verification.test": "Test",
+  "engineering_brief.errors.document_not_found": "The document does not exist in this project.",
+  "engineering_brief.errors.study_not_found": "The study does not exist.",
+  "engineering_brief.errors.study_code_taken": "Another request took this study number first. Try again.",
+  "engineering_brief.errors.brief_not_submitted": "Submit the brief first: only a submitted brief can be issued as a specification.",
+  "engineering_brief.errors.specification_unchanged": "The requirements have not changed since the last issue, so there is nothing new to issue.",
+  "engineering_brief.errors.specification_version_taken": "Another request issued this version first. Try again.",
+  "engineering_brief.evidence.site_analysis": "Site analysis: every study concluded and filed as a document",
+  "engineering_brief.evidence.suitability": "Suitability studies: every study concluded and filed as a document",
+  "engineering_brief.evidence.specification": "Requirements specification issued in its current version",
+  "engineering_brief.export.version": "Version",
+  "engineering_brief.specification_filename": "Requirements specification"
 }

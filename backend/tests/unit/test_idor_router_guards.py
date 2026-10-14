@@ -127,6 +127,12 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
     # Every project route of the module; the framework routes are tenant scoped, see _NOT_ROUTER_GATED.
     "stakeholders": [
         "list_gates",
+        "list_studies",
+        "create_study",
+        "update_study",
+        "delete_study",
+        "list_specification_issues",
+        "issue_specification",
         "list_requirements",
         "list_release_items",
         "get_settings",
@@ -213,6 +219,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
     ],
     # Every project route of the module; each awaits _economics_svc, which checks project access first.
     "economics": [
+        "export",
         "get_plan",
         "start_plan",
         "patch_plan",
@@ -239,6 +246,15 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "close_reopening",
         "readiness",
         "validation",
+        "get_registers",
+        "add_security",
+        "patch_security",
+        "delete_security",
+        "add_insurance",
+        "patch_insurance",
+        "delete_insurance",
+        "put_tax",
+        "put_process",
     ],
     # Every project route awaits _delivery_svc, which checks project access before it builds the service.
     "delivery_model": [

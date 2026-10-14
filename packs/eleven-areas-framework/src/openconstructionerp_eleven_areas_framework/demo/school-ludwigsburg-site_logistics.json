@@ -204,16 +204,16 @@
     "de": "Lagerfläche A Westwiese"
   },
   "dust_description": {
-    "en": "Dust on the windows of the existing school building and on parked cars after excavation.",
-    "de": "Staub auf den Fenstern des bestehenden Schulgebäudes und auf parkenden Autos nach dem Aushub."
+    "en": "Dust on the windows of the existing school building and on parked cars after the ordnance survey and the tree felling on the site.",
+    "de": "Staub auf den Fenstern des bestehenden Schulgebäudes und auf geparkten Autos nach der Kampfmittelsondierung und den Baumfällarbeiten auf dem Grundstück."
   },
   "dust_response": {
     "en": "Water spraying twice a day, wheel wash at the gate, school windows on the site side kept shut during earthworks.",
     "de": "Wasserbedüsung zweimal täglich, Reifenwäsche am Tor, Schulfenster auf der Baustellenseite bleiben während der Erdarbeiten geschlossen."
   },
   "noise_description": {
-    "en": "Reversing alarms before school start at the delivery gate, reported by the head teacher.",
-    "de": "Rückfahrwarner am Anlieftor vor Schulbeginn, von der Schulleiterin gemeldet."
+    "en": "Drilling rig of the ground investigation running before school start, reported by the head teacher.",
+    "de": "Bohrgerät der Baugrunduntersuchung läuft vor Unterrichtsbeginn, gemeldet von der Schulleitung."
   },
   "coordination": [
     {
@@ -350,5 +350,7 @@
   "customs_unit": {
     "en": "pieces",
     "de": "Stk"
-  }
+  },
+  "customs_before_gate": true,
+  "complaints_before_gate": true
 }

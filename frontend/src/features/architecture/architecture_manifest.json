@@ -84432,6 +84432,92 @@
             }
           ],
           "relationships": []
+        },
+        {
+          "class_name": "ContractItem",
+          "tablename": "oe_delivery_model_contract_item",
+          "docstring": "One contract-side agreement of the project, outside the package plan.\n\n``group_code`` says what it is (contract form, land tenure, utility contract, user agreement,\npartner structure); ``kind_code`` is the catalogue kind within the group. A contract form may name\nthe package it governs and its price basis; a partner structure carries the partner's share.",
+          "columns": [
+            {
+              "name": "code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "group_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "kind_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "counterparty",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "package_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "reference",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "start_date",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "end_date",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "price_basis",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "share_percent",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "notes",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            }
+          ],
+          "relationships": []
         }
       ],
       "routes": [
@@ -84660,6 +84746,28 @@
           "path": "/",
           "handler": "set_ofi_status",
           "request_schema": "OfiStatusIn"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "list_contract_items"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "handler": "create_contract_item",
+          "request_schema": "ContractItemIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/",
+          "handler": "update_contract_item",
+          "request_schema": "ContractItemPatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/",
+          "handler": "delete_contract_item"
         },
         {
           "method": "GET",
@@ -85350,6 +85458,126 @@
             {
               "name": "status",
               "type": "Literal['identified', 'route_set', 'ordered', 'delivered', 'handed_to_installer']"
+            }
+          ]
+        },
+        {
+          "class_name": "ContractItemIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "code",
+              "type": "str"
+            },
+            {
+              "name": "group_code",
+              "type": "ContractGroup"
+            },
+            {
+              "name": "kind_code",
+              "type": "str"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            },
+            {
+              "name": "counterparty",
+              "type": "str"
+            },
+            {
+              "name": "package_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "status",
+              "type": "ContractItemStatus",
+              "default": "'draft'"
+            },
+            {
+              "name": "reference",
+              "type": "str"
+            },
+            {
+              "name": "start_date",
+              "type": "str | None"
+            },
+            {
+              "name": "end_date",
+              "type": "str | None"
+            },
+            {
+              "name": "price_basis",
+              "type": "PriceBasis | None",
+              "default": "None"
+            },
+            {
+              "name": "share_percent",
+              "type": "str | None"
+            },
+            {
+              "name": "notes",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "ContractItemPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind_code",
+              "type": "str | None"
+            },
+            {
+              "name": "title",
+              "type": "str | None"
+            },
+            {
+              "name": "counterparty",
+              "type": "str | None"
+            },
+            {
+              "name": "package_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "status",
+              "type": "ContractItemStatus | None",
+              "default": "None"
+            },
+            {
+              "name": "reference",
+              "type": "str | None"
+            },
+            {
+              "name": "start_date",
+              "type": "str | None"
+            },
+            {
+              "name": "end_date",
+              "type": "str | None"
+            },
+            {
+              "name": "price_basis",
+              "type": "PriceBasis | None",
+              "default": "None"
+            },
+            {
+              "name": "share_percent",
+              "type": "str | None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
             }
           ]
         },
@@ -95019,6 +95247,7 @@
         "errors.py",
         "events.py",
         "evidence.py",
+        "export.py",
         "hosting.py",
         "manifest.py",
         "messages/__init__.py",
@@ -95046,8 +95275,7 @@
           "oe_projects",
           "oe_project_governance",
           "oe_boq",
-          "oe_costmodel",
-          "oe_funding"
+          "oe_costmodel"
         ],
         "auto_install": true,
         "enabled": true
@@ -95404,7 +95632,9 @@
               "name": "governance_document_id",
               "annotation": "Mapped[uuid.UUID | None]",
               "sql_type": "GUID",
-              "nullable": true
+              "nullable": true,
+              "is_fk": true,
+              "fk_target": "oe_governance_document.id"
             },
             {
               "name": "four_eyes",
@@ -95564,6 +95794,12 @@
           "method": "GET",
           "path": "/",
           "handler": "validation"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "export",
+          "request_schema": "Literal['frame', 'case', 'financing']"
         }
       ],
       "schemas": [
@@ -95939,7 +96175,8 @@
         "costmodel",
         "funding",
         "project_governance",
-        "projects"
+        "projects",
+        "teams"
       ]
     },
     {
@@ -97895,6 +98132,130 @@
             }
           ],
           "relationships": []
+        },
+        {
+          "class_name": "Study",
+          "tablename": "oe_engbrief_study",
+          "docstring": "A tracked study that backs a gate criterion: a site analysis or a suitability study.",
+          "columns": [
+            {
+              "name": "code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "scope",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "author",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "study_date",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "result",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "conclusion",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "SpecificationIssue",
+          "tablename": "oe_engbrief_issue",
+          "docstring": "One issue of the requirements specification: a numbered version of the brief as a document.",
+          "columns": [
+            {
+              "name": "version_no",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "issued_at",
+              "annotation": "Mapped[datetime]",
+              "sql_type": "DateTime",
+              "nullable": false
+            },
+            {
+              "name": "issued_by",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "requirements_hash",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "requirement_count",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "note",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            }
+          ],
+          "relationships": []
         }
       ],
       "routes": [
@@ -98066,6 +98427,39 @@
           "method": "DELETE",
           "path": "/projects/{project_id}/milestones/{milestone_id}",
           "handler": "delete_milestone"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/studies",
+          "handler": "list_studies"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/studies",
+          "handler": "create_study",
+          "request_schema": "StudyIn"
+        },
+        {
+          "method": "PATCH",
+          "path": "/projects/{project_id}/studies/{study_id}",
+          "handler": "update_study",
+          "request_schema": "StudyPatch"
+        },
+        {
+          "method": "DELETE",
+          "path": "/projects/{project_id}/studies/{study_id}",
+          "handler": "delete_study"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/specification",
+          "handler": "list_specification_issues"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/specification/issue",
+          "handler": "issue_specification",
+          "request_schema": "IssueIn"
         },
         {
           "method": "GET",
@@ -98595,9 +98989,112 @@
               "type": "list[str] | None"
             }
           ]
+        },
+        {
+          "class_name": "StudyIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind",
+              "type": "STUDY_KIND"
+            },
+            {
+              "name": "title",
+              "type": "str"
+            },
+            {
+              "name": "scope",
+              "type": "str"
+            },
+            {
+              "name": "author",
+              "type": "str"
+            },
+            {
+              "name": "study_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "result",
+              "type": "str"
+            },
+            {
+              "name": "conclusion",
+              "type": "STUDY_CONCLUSION",
+              "default": "'open'"
+            },
+            {
+              "name": "document_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "StudyPatch",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kind",
+              "type": "STUDY_KIND | None",
+              "default": "None"
+            },
+            {
+              "name": "title",
+              "type": "str | None"
+            },
+            {
+              "name": "scope",
+              "type": "str | None"
+            },
+            {
+              "name": "author",
+              "type": "str | None"
+            },
+            {
+              "name": "study_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "result",
+              "type": "str | None"
+            },
+            {
+              "name": "conclusion",
+              "type": "STUDY_CONCLUSION | None",
+              "default": "None"
+            },
+            {
+              "name": "document_id",
+              "type": "uuid.UUID | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "IssueIn",
+          "bases": [
+            "_In"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "note",
+              "type": "str"
+            }
+          ]
         }
       ],
       "import_dependencies": [
+        "documents",
         "permits",
         "project_governance",
         "projects",
@@ -166224,6 +166721,7 @@
         "messages/__init__.py",
         "models.py",
         "permissions.py",
+        "permit_conditions.py",
         "plan_source.py",
         "router.py",
         "schemas.py",
@@ -166990,6 +167488,11 @@
           "path": "/projects/{project_id}/packages",
           "handler": "list_packages",
           "request_schema": "date | None"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/permit-conditions",
+          "handler": "list_permit_conditions"
         },
         {
           "method": "GET",
@@ -168043,6 +168546,7 @@
       "import_dependencies": [
         "bid_management",
         "boq",
+        "permits",
         "procurement",
         "project_governance",
         "projects",
@@ -193800,6 +194304,7 @@
         "messages/__init__.py",
         "models.py",
         "permissions.py",
+        "permit_conditions.py",
         "references.py",
         "repository.py",
         "router.py",
@@ -194926,6 +195431,11 @@
           "method": "GET",
           "path": "/",
           "handler": "list_requirements"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "list_permit_conditions"
         },
         {
           "method": "POST",
@@ -196445,6 +196955,7 @@
         "defects_liability",
         "inspections",
         "ncr",
+        "permits",
         "project_governance",
         "projects",
         "qms",
@@ -208032,6 +208543,7 @@
         "contingency.py",
         "escalation.py",
         "events.py",
+        "evidence.py",
         "intl.py",
         "manifest.py",
         "models.py",
@@ -209250,6 +209762,7 @@
       "import_dependencies": [
         "commitment_release",
         "finance",
+        "project_governance",
         "projects"
       ]
     },
@@ -265091,10 +265604,10 @@
     },
     {
       "name": "delivery_model",
-      "ts_files": 24,
+      "ts_files": 26,
       "css_files": 0,
-      "test_files": 3,
-      "total_files": 24
+      "test_files": 4,
+      "total_files": 26
     },
     {
       "name": "design-options",
@@ -265133,10 +265646,10 @@
     },
     {
       "name": "economics",
-      "ts_files": 10,
+      "ts_files": 11,
       "css_files": 0,
       "test_files": 1,
-      "total_files": 10
+      "total_files": 11
     },
     {
       "name": "einvoice-clearance",
@@ -265147,10 +265660,10 @@
     },
     {
       "name": "engineering_brief",
-      "ts_files": 15,
+      "ts_files": 17,
       "css_files": 0,
       "test_files": 2,
-      "total_files": 15
+      "total_files": 17
     },
     {
       "name": "enterprise-workflows",
@@ -265665,10 +266178,10 @@
     },
     {
       "name": "procurement_concept",
-      "ts_files": 23,
+      "ts_files": 24,
       "css_files": 0,
       "test_files": 3,
-      "total_files": 23
+      "total_files": 24
     },
     {
       "name": "progress",
@@ -265735,10 +266248,10 @@
     },
     {
       "name": "quality_concept",
-      "ts_files": 26,
+      "ts_files": 27,
       "css_files": 0,
       "test_files": 3,
-      "total_files": 26
+      "total_files": 27
     },
     {
       "name": "quantities",
@@ -266682,6 +267195,7 @@
       "funding",
       "project_governance",
       "projects",
+      "teams",
       "users"
     ],
     "einvoice": [],
@@ -266691,6 +267205,7 @@
       "projects"
     ],
     "engineering_brief": [
+      "documents",
       "permits",
       "project_governance",
       "projects",
@@ -267171,6 +267686,7 @@
     "procurement_concept": [
       "bid_management",
       "boq",
+      "permits",
       "procurement",
       "project_governance",
       "projects",
@@ -267282,6 +267798,7 @@
       "defects_liability",
       "inspections",
       "ncr",
+      "permits",
       "project_governance",
       "projects",
       "qms",
@@ -267379,6 +267896,7 @@
     "risk": [
       "commitment_release",
       "finance",
+      "project_governance",
       "projects"
     ],
     "rom_estimate": [
@@ -267628,14 +268146,14 @@
   "statistics": {
     "backend_modules": 210,
     "modules_with_manifests": 208,
-    "total_models": 756,
-    "total_columns": 8819,
+    "total_models": 759,
+    "total_columns": 8850,
     "total_relationships": 236,
-    "total_routes": 4488,
-    "total_schemas": 3944,
-    "total_python_files": 2653,
+    "total_routes": 4501,
+    "total_schemas": 3949,
+    "total_python_files": 2657,
     "frontend_features": 207,
-    "frontend_ts_files": 3416,
+    "frontend_ts_files": 3423,
     "frontend_backend_mapped": 186
   },
   "frontend_backend_mapping": {

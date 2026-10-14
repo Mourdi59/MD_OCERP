@@ -6,11 +6,14 @@
 import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { fetchDocuments } from '@/features/documents/api';
+
 import {
   briefErrorCode,
   briefKeys,
   getBrief,
   getPinnedCatalogue,
+  getSpecification,
   listBriefFindings,
   listCatalogues,
   listConcepts,
@@ -18,6 +21,7 @@ import {
   listMilestones,
   listProgramme,
   listRequirements,
+  listStudies,
 } from './api';
 
 /** The brief, or null when the project has none yet (404 `brief_missing`), which is an empty state and not an error. */
@@ -105,6 +109,34 @@ export function useMilestones(projectId: string, enabled: boolean) {
   return useQuery({
     queryKey: briefKeys.milestones(projectId),
     queryFn: () => listMilestones(projectId).then((page) => page.items),
+    enabled: enabled && !!projectId,
+    retry: false,
+  });
+}
+
+export function useStudies(projectId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: briefKeys.studies(projectId),
+    queryFn: () => listStudies(projectId).then((page) => page.items),
+    enabled: enabled && !!projectId,
+    retry: false,
+  });
+}
+
+export function useSpecification(projectId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: briefKeys.specification(projectId),
+    queryFn: () => getSpecification(projectId),
+    enabled: enabled && !!projectId,
+    retry: false,
+  });
+}
+
+/** The project's documents as a pick list: the study report and the issued specification live there. */
+export function useProjectDocuments(projectId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['engineering-brief', projectId, 'documents'],
+    queryFn: () => fetchDocuments(projectId).then((page) => page.items),
     enabled: enabled && !!projectId,
     retry: false,
   });

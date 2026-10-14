@@ -4,7 +4,7 @@
 // Shapes the engineering brief tests hand to the screens, written as the
 // server sends them.
 
-import type { Brief, BriefCatalogue, Can, ConceptItem, Milestone, ProgrammeLine, Requirement } from '../api';
+import type { Brief, BriefCatalogue, Can, ConceptItem, Milestone, ProgrammeLine, Requirement, SpecificationState, Study } from '../api';
 
 export const yes: Can = { allowed: true, reason: null, applies: true };
 export const no = (reason: string, applies = true): Can => ({ allowed: false, reason, applies });
@@ -117,6 +117,45 @@ export function milestone(over: Partial<Milestone> = {}): Milestone {
     permit_state: null,
     published: false,
     findings: [],
+    ...over,
+  };
+}
+
+export function study(over: Partial<Study> = {}): Study {
+  return {
+    id: 's1',
+    code: 'S-1',
+    kind: 'site_analysis',
+    title: 'Soil survey',
+    scope: '',
+    author: 'Geo Office',
+    study_date: '2026-03-01',
+    result: 'Bearing capacity sufficient.',
+    conclusion: 'suitable',
+    document_id: 'd1',
+    document_name: 'Soil report.pdf',
+    ...over,
+  };
+}
+
+export function specification(over: Partial<SpecificationState> = {}): SpecificationState {
+  const issue = (version_no: number, issued_at: string) => ({
+    id: `i${version_no}`,
+    version_no,
+    title: 'Requirements specification',
+    issued_at,
+    issued_by: null,
+    document_id: `doc${version_no}`,
+    requirements_hash: `h${version_no}`,
+    requirement_count: 1,
+    note: '',
+  });
+  return {
+    items: [issue(2, '2026-05-02T10:00:00Z'), issue(1, '2026-04-01T10:00:00Z')],
+    current: true,
+    stale: false,
+    requirement_count: 1,
+    detail: '',
     ...over,
   };
 }

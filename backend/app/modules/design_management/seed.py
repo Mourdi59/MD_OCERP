@@ -96,6 +96,11 @@ def default_plan() -> dict[str, Any]:
         "report_status": {},
         "extra_reports": (),
         "permit": {"title": "Building permit application", "form": "Application form"},
+        "route_names": {
+            "design_approval_point": "Design approval point sign-off",
+            "design_release": "Design release sign-off",
+        },
+        "first_issue": "first issue",
     }
 
 
@@ -275,6 +280,8 @@ def resolve_story(story: dict[str, Any], locale: str, *, report_kinds: set[str])
         }
     plan["reports"], plan["extra_reports"] = _merge_reports(story.get("reports"), report_kinds, locale)
     plan["report_status"] = _report_statuses(story.get("reports"))
+    plan["route_names"] = _titles(plan["route_names"], story.get("route_names"), locale)
+    plan["first_issue"] = _txt(story.get("first_issue"), locale) or plan["first_issue"]
     permit = story.get("permit")
     if isinstance(permit, dict):
         plan["permit"] = {
@@ -373,16 +380,18 @@ async def _second_person(session: AsyncSession, owner_id: uuid.UUID) -> uuid.UUI
     return cost if cost is not None and cost != owner_id else None
 
 
-async def _routes(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID, second: uuid.UUID) -> None:
+async def _routes(
+    session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID, second: uuid.UUID, names: dict[str, str]
+) -> None:
     """One approval route per design target kind, each decided by the person who did not prepare."""
     from app.modules.approval_routes.schemas import RouteCreate, StepCreate
     from app.modules.approval_routes.service import ApprovalRouteService
 
     for kind, name, approver in (
         # The demo user submits approval points, so the second person decides them.
-        ("design_approval_point", "Design approval point sign-off", second),
+        ("design_approval_point", names["design_approval_point"], second),
         # The second person prepares the release, so the demo user approves and issues it.
-        ("design_release", "Design release sign-off", owner),
+        ("design_release", names["design_release"], owner),
     ):
         await ApprovalRouteService(session).create_route(
             RouteCreate(
@@ -550,7 +559,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         )
         rev = await cde.create_revision(
             container.id,
-            RevisionCreate(file_name=f"{container.container_code}.pdf", change_summary="first issue"),
+            RevisionCreate(file_name=f"{container.container_code}.pdf", change_summary=plan["first_issue"]),
             user_id=str(actor),
         )
         c = await session.get(DocumentContainer, container.id)
@@ -581,7 +590,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
     second = await _second_person(session, actor)
     if second is not None:
         # Prepared and marked ready by the second person: the demo user approves it and issues it.
-        await _routes(session, project_id, actor, second)
+        await _routes(session, project_id, actor, second, plan["route_names"])
         concept = await svc.create_release(
             project_id,
             {"code": "REL-001", "title": plan["releases"]["REL-001"], "revision_ids": shared[:3]},

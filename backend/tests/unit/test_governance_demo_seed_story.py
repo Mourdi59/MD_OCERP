@@ -515,7 +515,10 @@ def test_every_project_of_the_shipped_pack_file_is_a_valid_story_on_the_pack_mod
         assert version == model.version
         for locale in ("en", "de"):
             told = story.pack_story(entry, model, locale)
-            assert told.stop_at == "in_preparation"
+            # Regensburg is told after its gate, the school with its gate submitted and in review.
+            assert told.stop_at == {"residential-regensburg": "decided", "school-ludwigsburg": "in_review"}[demo_id]
+            assert (told.decision is not None) == (told.stop_at == "decided")
+            assert all(c.status != "not_assessed" for c in told.checks), demo_id
             assert all(d.title for d in told.documents), (demo_id, locale)
             assert all(c.note for c in told.checks if c.status != "not_assessed"), (demo_id, locale)
 

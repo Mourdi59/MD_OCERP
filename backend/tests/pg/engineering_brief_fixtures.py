@@ -10,6 +10,7 @@ test starts from a submittable brief and breaks one thing.
 
 from __future__ import annotations
 
+import uuid
 from datetime import date, timedelta
 from typing import Any
 
@@ -125,4 +126,10 @@ async def complete_brief(w: World, *, with_gates: bool = False) -> None:
         await svc.milestones_from_catalogue(w.project_id, None, w.manager)
         if with_gates:
             await svc.milestones_from_gates(w.project_id, w.manager)
+            # The shipped model gives its gates no target date; a gate milestone is dated before publishing.
+            day = OPERATION_PROOF - timedelta(days=700)
+            for row in await svc.milestone_views(w.project_id):
+                if row["gate_code"] and row["planned_date"] is None:
+                    day += timedelta(days=60)
+                    await svc.update_milestone(w.project_id, uuid.UUID(row["id"]), {"planned_date": day}, w.manager)
         await s.commit()

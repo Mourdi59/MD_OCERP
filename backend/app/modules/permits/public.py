@@ -8,6 +8,7 @@ answers for one project the caller has already checked access to.
 
 * ``start_readiness``   -- site_prep's computed item in ``permits_consents`` (rule 20)
 * ``closeout_entries``  -- the generated closeout slot ``permits_and_conditions`` (rule 21)
+* ``list_conditions``   -- every confirmed condition of the project's permits, consolidated (module 2 -> 4, 10, 3)
 * ``requirement_state`` -- commitment_release precondition kind ``permit`` (rule 22)
 * ``register_applicant_resolver`` -- delivery_model's allocation answers the default applicant (rule 2)
 * ``register_link_resolver`` -- the owner of a linked record kind (``delivery_model``, ...) proves that an id
@@ -31,6 +32,7 @@ from app.modules.permits.service import (
 
 __all__ = [
     "closeout_entries",
+    "list_conditions",
     "register_applicant_resolver",
     "register_link_resolver",
     "requirement_state",
@@ -79,4 +81,39 @@ async def closeout_entries(session: AsyncSession, project_id: uuid.UUID) -> list
                 ],
             }
         )
+    return out
+
+
+async def list_conditions(
+    session: AsyncSession, project_id: uuid.UUID, *, open_only: bool = False
+) -> list[dict[str, Any]]:
+    """Every confirmed, live condition of the project, one row each, with the permit it comes from.
+
+    A row carries the source permit (``permit_id``, ``permit_reference``, ``permit_type_code``), the condition
+    text and legal ``kind``, ``trigger``, ``due_date``, ``topic``, the responsible area (``responsible_party``,
+    ``owner_user_id``) and its ``state``. Proposals not yet confirmed and superseded conditions never appear.
+    ``open_only`` keeps the states that still demand something of the project. Rows are ordered by permit, number.
+    """
+    from app.modules.permits import conditions as cnd
+    from app.modules.permits.service import PermitService, condition_out
+
+    svc = PermitService(session)
+    permits = {p.id: p for p in await svc.repo.list_permits(project_id)}
+    out: list[dict[str, Any]] = []
+    for c in await svc.repo.list_conditions(project_id):
+        permit = permits.get(c.permit_id)
+        if permit is None or not c.confirmed or c.status == "superseded":
+            continue
+        if open_only and c.status not in cnd.OPEN_STATES:
+            continue
+        out.append(
+            {
+                **condition_out(c),
+                "permit_reference": permit.reference,
+                "permit_type_code": permit.permit_type_code,
+                "permit_status": permit.status,
+                "open": c.status in cnd.OPEN_STATES,
+            }
+        )
+    out.sort(key=lambda r: (r["permit_reference"], r["number"]))
     return out

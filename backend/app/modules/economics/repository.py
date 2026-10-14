@@ -10,7 +10,18 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.economics.models import Approval, EconomicsPlan, FlowLine, FrameLine, FundingSource, Tranche
+from app.modules.economics.models import (
+    Approval,
+    EconomicsPlan,
+    FlowLine,
+    FrameLine,
+    FundingSource,
+    Insurance,
+    ProcessSetup,
+    Security,
+    TaxTreatment,
+    Tranche,
+)
 
 
 class EconomicsRepository:
@@ -74,3 +85,22 @@ class EconomicsRepository:
     async def next_sort(self, model: type, project_id: uuid.UUID) -> int:
         stmt = select(func.coalesce(func.max(model.sort_order), 0)).where(model.project_id == project_id)
         return int((await self.session.execute(stmt)).scalar_one()) + 10
+
+    async def securities(self, project_id: uuid.UUID) -> list[Security]:
+        return await self._list(Security, project_id, Security.sort_order, Security.created_at)
+
+    async def security(self, project_id: uuid.UUID, row_id: uuid.UUID) -> Security | None:
+        return await self._child(Security, project_id, row_id)
+
+    async def insurances(self, project_id: uuid.UUID) -> list[Insurance]:
+        return await self._list(Insurance, project_id, Insurance.sort_order, Insurance.created_at)
+
+    async def insurance(self, project_id: uuid.UUID, row_id: uuid.UUID) -> Insurance | None:
+        return await self._child(Insurance, project_id, row_id)
+
+    async def tax(self, project_id: uuid.UUID) -> TaxTreatment | None:
+        stmt = select(TaxTreatment).where(TaxTreatment.project_id == project_id)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def processes(self, project_id: uuid.UUID) -> list[ProcessSetup]:
+        return await self._list(ProcessSetup, project_id, ProcessSetup.area)
