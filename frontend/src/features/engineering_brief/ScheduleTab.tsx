@@ -284,7 +284,7 @@ function BackplanDialog({
         </p>
       ) : (
         <div className="space-y-2">
-          <div className="overflow-x-auto rounded-lg border border-border-light">
+          <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
             <table className="w-full text-sm" data-testid="brief-backplan-table">
               <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
                 <tr>
@@ -417,7 +417,7 @@ export function ScheduleTab({
           })}
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border-light">
+        <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
           <table className="w-full text-sm" data-testid="brief-milestone-table">
             <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
               <tr>

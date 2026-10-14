@@ -215,7 +215,7 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
         <p className="text-sm text-content-secondary">{tx(t, 'readiness.export_lead')}</p>
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {REGISTERS.map((register) => (
-            <li key={register} className="flex items-center justify-between gap-2 rounded-lg border border-border-light p-2">
+            <li key={register} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface-elevated shadow-xs p-2">
               <span className="text-sm text-content-primary">{tx(t, `register.${register}`)}</span>
               <span className="flex gap-1">
                 {(['pdf', 'xlsx'] as const).map((format) => (

@@ -257,7 +257,7 @@ export function PackagePlanPanel({ projectId, model, packages, consistency, cata
           {t('delivery_model.ui.packages.none_in_filter', { defaultValue: 'No package of the plan has this duty.' })}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border-light">
+        <div className="overflow-x-auto rounded-xl border border-border bg-surface-elevated shadow-xs">
           <table className="w-full min-w-[860px] text-sm" data-testid="package-table">
             <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
               <tr>

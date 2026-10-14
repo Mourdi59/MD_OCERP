@@ -18,7 +18,7 @@ export function PermitLotRequirementsSection({ projectId }: { projectId: string 
   if (!data || !data.available || data.items.length === 0) return null;
 
   return (
-    <section className="rounded-lg border border-border-light p-4" data-testid="permit-lot-requirements">
+    <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="permit-lot-requirements">
       <h3 className="text-sm font-semibold text-content-primary">
         {t('procurement_concept.ui.permit_conditions.title', { defaultValue: 'Permit conditions for every lot' })}
       </h3>

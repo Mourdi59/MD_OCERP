@@ -11,6 +11,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { CalendarClock, Compass, Grid3x3, Handshake, Network, Settings2, Users } from 'lucide-react';
 
@@ -60,6 +61,7 @@ const SECTION_TAB: Record<string, Tab> = {
 export function StakeholdersPage() {
   const { t } = useTranslation();
   const { projectId = '', section = '' } = useParams<{ projectId: string; section: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const labels = useLabelContext();
   const personName = usePeopleNames(projectId);
@@ -99,7 +101,7 @@ export function StakeholdersPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('stakeholders.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName || t('stakeholders.ui.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('stakeholders.ui.title', { defaultValue: 'Stakeholders' }) },
         ]}
       />

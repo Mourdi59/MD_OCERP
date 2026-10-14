@@ -47,7 +47,7 @@ export function ScopedMandates({ labels, rows, decisionTypes, columns, columnNam
   if (!onChange) {
     if (rows.length === 0) return null;
     return (
-      <section className="space-y-2 rounded-lg border border-border-light p-3" data-testid="scoped-mandates">
+      <section className="space-y-2 rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="scoped-mandates">
         {title}
         <ul className="space-y-1 text-sm">
           {rows.map((r, i) => (
@@ -73,7 +73,7 @@ export function ScopedMandates({ labels, rows, decisionTypes, columns, columnNam
   const first = columns[0];
 
   return (
-    <section className="space-y-2 rounded-lg border border-border-light p-3" data-testid="scoped-mandates">
+    <section className="space-y-2 rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="scoped-mandates">
       {title}
       {rows.length === 0 && (
         <p className="text-xs text-content-tertiary" data-testid="scoped-empty">
@@ -81,7 +81,7 @@ export function ScopedMandates({ labels, rows, decisionTypes, columns, columnNam
         </p>
       )}
       {rows.map((r, i) => (
-        <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border border-border-light p-2" data-testid="scoped-edit-row">
+        <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border border-border-light bg-surface-elevated p-2" data-testid="scoped-edit-row">
           <label className="flex min-w-[10rem] flex-1 flex-col gap-1 text-xs text-content-secondary">
             {t('stakeholders.ui.mandate.col_decision', { defaultValue: 'Decision' })}
             <select

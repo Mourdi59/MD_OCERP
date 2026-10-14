@@ -152,7 +152,7 @@ export function ReviewsPanel({ ctx }: { ctx: DesignContext }) {
           {(reviews.data ?? []).map((review) => {
             const expanded = open === review.id;
             return (
-              <li key={review.id} className="rounded-lg border border-border-light p-3" data-testid="review-row">
+              <li key={review.id} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="review-row">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs text-content-tertiary">{review.code}</span>
                   <span className="font-medium text-content-primary">{review.title}</span>

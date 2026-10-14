@@ -63,7 +63,7 @@ export function BusinessCasePanel({
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
         <table className="w-full text-sm">
           <thead className="bg-surface-secondary text-left text-xs text-content-secondary">
             <tr>

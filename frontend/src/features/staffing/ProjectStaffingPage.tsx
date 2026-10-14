@@ -11,6 +11,7 @@
 
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CalendarClock, ClipboardList, Compass, FolderLock, Network, ShieldCheck, Timer, Users } from 'lucide-react';
 
@@ -49,6 +50,7 @@ const TABS: Tab[] = ['plan', 'org_chart', 'people', 'compliance', 'upcoming', 'p
 export function ProjectStaffingPage() {
   const { t } = useTranslation();
   const { projectId = '', fileId } = useParams<{ projectId: string; fileId?: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const labels = useLabelContext();
@@ -79,7 +81,7 @@ export function ProjectStaffingPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('staffing.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName || t('staffing.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           ...(fileId
             ? [{ label: title, to: `${base}?tab=people` }, { label: t('staffing.file.title', { defaultValue: 'Personnel file' }) }]
             : [{ label: title }]),

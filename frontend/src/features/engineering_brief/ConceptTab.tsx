@@ -147,7 +147,7 @@ function ConceptDialog({
           {requirements.length === 0 ? (
             <p className="text-sm text-content-secondary">{t('engineeringBrief.concept.no_requirements', { defaultValue: 'There are no requirements to link yet.' })}</p>
           ) : (
-            <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-border-light p-2">
+            <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-border-light bg-surface-elevated p-2">
               {requirements.map((r) => (
                 <li key={r.id}>
                   <label className="flex items-start gap-2 text-sm text-content-primary">
@@ -237,7 +237,7 @@ export function ConceptTab({
               {items
                 .filter((i) => i.topic_code === code)
                 .map((i) => (
-                  <li key={i.id} className="rounded-lg border border-border-light bg-surface-primary p-3" data-testid="brief-concept-row">
+                  <li key={i.id} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="brief-concept-row">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-content-primary">

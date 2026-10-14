@@ -431,7 +431,7 @@ export function PackageDialog({
             </label>
           )}
           {draft.evaluation_method === 'best_value' && (
-            <fieldset className="mt-3 rounded-lg border border-border-light p-3" data-testid="award-criteria">
+            <fieldset className="mt-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="award-criteria">
               <legend className="px-1 text-xs font-medium text-content-secondary">
                 {t('procurement_concept.ui.package.criteria_title', { defaultValue: 'Award criteria and their weights' })}
               </legend>

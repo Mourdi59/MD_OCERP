@@ -89,7 +89,7 @@ type InlineAction = 'withdraw' | 'hold' | 'resume' | 'defer' | null;
 
 function Figure({ label, children, hint }: { label: string; children: ReactNode; hint?: ReactNode }) {
   return (
-    <div className="rounded-lg border border-border-light p-3">
+    <div className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3">
       <dt className="text-xs text-content-tertiary">{label}</dt>
       <dd className="mt-0.5 text-base font-semibold tabular-nums text-content-primary">{children}</dd>
       {hint && <p className="mt-0.5 text-xs text-content-tertiary">{hint}</p>}
@@ -194,7 +194,7 @@ export function ReleaseHistory({
   }
   const unknownPerson = t('commitment.unknown_person', { defaultValue: 'Project member' });
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
       <table className="w-full text-sm" data-testid="history-table">
         <thead>
           <tr className="border-b border-border-light text-left text-xs text-content-tertiary">

@@ -165,7 +165,7 @@ export function LinkList({ projectId, item, editVerdict, onChanged }: LinkListPr
             <li
               key={link.link_id}
               data-testid="link-row"
-              className="flex flex-wrap items-start gap-3 rounded-lg border border-border-light p-2.5 text-sm"
+              className="flex flex-wrap items-start gap-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-2.5 text-sm"
             >
               <div className="min-w-0 flex-1">
                 <p className="text-content-primary" data-testid="link-name">

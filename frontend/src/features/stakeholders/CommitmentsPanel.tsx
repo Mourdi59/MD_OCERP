@@ -195,7 +195,7 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events, fo
             <li
               key={c.id}
               ref={c.id === focusId ? focusRef : undefined}
-              className={clsx('rounded-lg border border-border-light p-3', c.id === focusId && FOCUS_CLASS)}
+              className={clsx('rounded-lg border border-border-light bg-surface-elevated shadow-xs p-3', c.id === focusId && FOCUS_CLASS)}
               data-testid="commitment-entry"
               data-status={c.status}
               data-focused={c.id === focusId || undefined}

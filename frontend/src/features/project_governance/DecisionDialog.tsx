@@ -301,7 +301,7 @@ export function DecisionDialog({
         )}
 
         {missingDocuments.length > 0 && (
-          <div className="rounded-lg border border-border-light p-3" data-testid="missing-documents">
+          <div className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="missing-documents">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-content-primary">
               <FileWarning size={15} className="text-[#b45309]" aria-hidden />
               {t('governance.project.decision.missing_documents', { defaultValue: 'Required documents not ready' })}
@@ -361,7 +361,7 @@ export function DecisionDialog({
               </Button>
             </div>
             {draft.conditions.map((c, idx) => (
-              <div key={c.rowId} data-testid="condition-row" className="rounded-lg border border-border-light p-3">
+              <div key={c.rowId} data-testid="condition-row" className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3">
                 <ConditionFields
                   projectId={projectId}
                   value={c}
@@ -387,7 +387,7 @@ export function DecisionDialog({
               </div>
             ))}
             {riskAreas.length > 0 && (
-              <fieldset className="rounded-lg border border-border-light p-3">
+              <fieldset className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3">
                 <legend className="px-1 text-xs font-semibold text-content-secondary">
                   {t('governance.project.decision.proceed_at_risk', {
                     defaultValue: 'Proceed at risk (only areas whose readiness blocks)',
@@ -456,7 +456,7 @@ export function DecisionDialog({
         )}
 
         {naAreas.length > 0 && (
-          <fieldset className="rounded-lg border border-border-light p-3">
+          <fieldset className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3">
             <legend className="px-1 text-xs font-semibold text-content-secondary">
               {t('governance.project.decision.accept_na', {
                 defaultValue: 'Accept as not applicable',

@@ -199,7 +199,7 @@ export function StakeholderDetail({ screen, stakeholder, stakeholders, onBack }:
                 scoreText(t as TFn, nameOf(labels, method?.dimensions ?? [], code), value),
               );
               return (
-                <li key={a.id} className="rounded-lg border border-border-light p-3" data-testid="assessment-entry">
+                <li key={a.id} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="assessment-entry">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-content-tertiary">
                     <span className="text-sm font-medium text-content-primary">
                       {a.classification ? nameOf(labels, method?.classes ?? [], a.classification) : t('stakeholders.ui.unclassified', { defaultValue: 'Unclassified' })}
@@ -286,7 +286,7 @@ function scoreText(t: TFn, name: string, value: number | boolean): string {
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-border-light p-3">
+    <div className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3">
       <dt className="text-xs text-content-tertiary">{label}</dt>
       <dd className="mt-0.5 text-sm font-medium text-content-primary">{children}</dd>
     </div>

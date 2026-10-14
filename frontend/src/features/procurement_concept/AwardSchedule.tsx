@@ -105,7 +105,7 @@ export function AwardSchedule({ projectId, concept, schedule, labels, onGoToPack
           })}
         </p>
       )}
-      <div className="overflow-x-auto rounded-lg border border-border-light">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
         <table className="w-full text-left text-sm" data-testid="schedule-table">
           <thead className="bg-surface-secondary text-xs text-content-tertiary">
             <tr>

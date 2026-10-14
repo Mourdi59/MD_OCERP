@@ -82,7 +82,7 @@ function FactsForm({ projectId, frame, catalogue, write, canEdit }: Pick<Props, 
     />
   );
   return (
-    <section className="rounded-lg border border-border-light p-4" data-testid="facts-form">
+    <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="facts-form">
       <h2 className="text-sm font-semibold text-content-primary">{t('hseFrame.facts.title', { defaultValue: 'Project facts' })}</h2>
       <p className="mb-3 text-sm text-content-secondary">
         {t('hseFrame.facts.hint', {
@@ -207,7 +207,7 @@ function DutyList({ duties }: { duties: Duties | null }) {
     ['hazardous_work', t('hseFrame.duty.hazardous_work', { defaultValue: 'Particularly hazardous works' })],
   ];
   return (
-    <section className="rounded-lg border border-border-light p-4" data-testid="duty-list">
+    <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="duty-list">
       <h2 className="text-sm font-semibold text-content-primary">{t('hseFrame.duty.title', { defaultValue: 'Duties from the facts' })}</h2>
       <ul className="mt-2 space-y-1">
         {rows.map(([key, label]) => {
@@ -229,7 +229,7 @@ function DutyList({ duties }: { duties: Duties | null }) {
 function ReadinessList({ readiness }: { readiness: Readiness | undefined }) {
   const { t } = useTranslation();
   return (
-    <section className="rounded-lg border border-border-light p-4" data-testid="readiness-list">
+    <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="readiness-list">
       <h2 className="text-sm font-semibold text-content-primary">{t('hseFrame.readiness.title', { defaultValue: 'Gate readiness' })}</h2>
       <ul className="mt-2 space-y-1">
         {(readiness?.items ?? []).map((item) => {
@@ -264,7 +264,7 @@ function SummaryList({ summary }: { summary: Summary | undefined }) {
     ['conditions_overdue', summary.permit_conditions_hse_overdue, t('hseFrame.summary.conditions_overdue', { defaultValue: 'Overdue permit conditions' })],
   ];
   return (
-    <section className="rounded-lg border border-border-light p-4" data-testid="summary-list">
+    <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="summary-list">
       <h2 className="text-sm font-semibold text-content-primary">{t('hseFrame.summary.title', { defaultValue: 'From the neighbouring modules' })}</h2>
       <p className="mb-2 text-sm text-content-secondary">
         {t('hseFrame.summary.hint', { defaultValue: 'Read now from safety, HSE advanced, inspections and permits. The records stay where they are kept.' })}

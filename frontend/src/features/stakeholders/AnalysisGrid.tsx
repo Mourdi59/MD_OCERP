@@ -118,7 +118,7 @@ export function AnalysisGrid({ screen, method, onMethod, onOpen }: AnalysisGridP
       )}
 
       {unplaced.length > 0 && (
-        <section className="rounded-lg border border-border-light p-3" data-testid="grid-unplaced">
+        <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="grid-unplaced">
           <h3 className="text-xs font-semibold text-content-secondary">
             {t('stakeholders.ui.grid.unplaced', { defaultValue: 'Not assessed under this method' })}
           </h3>
@@ -212,7 +212,7 @@ function ByClass({ grid, items, screen, chip }: ViewProps) {
       {codes.map((code) => {
         const here = items.filter((i) => i.classification === code);
         return (
-          <section key={code} className="rounded-lg border border-border-light p-3" data-testid="grid-class">
+          <section key={code} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="grid-class">
             <h3 className="flex items-center justify-between text-sm font-medium text-content-primary">
               {code ? nameOf(labels, grid.classes, code) : t('stakeholders.ui.unclassified', { defaultValue: 'Unclassified' })}
               <span className="text-xs font-normal text-content-tertiary">{here.length}</span>
