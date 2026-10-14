@@ -132698,6 +132698,7 @@
         "catalogue.py",
         "errors.py",
         "evidence.py",
+        "export.py",
         "hosting.py",
         "links.py",
         "manifest.py",
@@ -133215,7 +133216,8 @@
         {
           "method": "POST",
           "path": "/",
-          "handler": "reopen_frame"
+          "handler": "revise_frame",
+          "request_schema": "s.ReviewDecision | None"
         },
         {
           "method": "GET",
@@ -133318,6 +133320,13 @@
           "path": "/",
           "handler": "validation",
           "request_schema": "date | None"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "export",
+          "response_model": "None",
+          "request_schema": "Literal['register', 'roles']"
         }
       ],
       "schemas": [
@@ -138120,6 +138129,7 @@
       "import_dependencies": [
         "bim_hub",
         "contacts",
+        "project_governance",
         "projects",
         "rfi",
         "subcontractors"
@@ -170079,6 +170089,7 @@
         "router.py",
         "schemas.py",
         "seed.py",
+        "seed_people.py",
         "seed_story.py",
         "service.py",
         "validators.py"
@@ -266990,10 +267001,10 @@
     },
     {
       "name": "hse_frame",
-      "ts_files": 9,
+      "ts_files": 11,
       "css_files": 0,
       "test_files": 1,
-      "total_files": 9
+      "total_files": 11
     },
     {
       "name": "inbound",
@@ -267536,10 +267547,10 @@
     },
     {
       "name": "site-logistics",
-      "ts_files": 33,
+      "ts_files": 34,
       "css_files": 0,
-      "test_files": 6,
-      "total_files": 33
+      "test_files": 7,
+      "total_files": 34
     },
     {
       "name": "site-prep",
@@ -268543,6 +268554,7 @@
     "interface_management": [
       "bim_hub",
       "contacts",
+      "project_governance",
       "projects",
       "rfi",
       "subcontractors"
@@ -269266,11 +269278,11 @@
     "total_models": 767,
     "total_columns": 8923,
     "total_relationships": 236,
-    "total_routes": 4527,
+    "total_routes": 4528,
     "total_schemas": 3961,
-    "total_python_files": 2676,
+    "total_python_files": 2678,
     "frontend_features": 208,
-    "frontend_ts_files": 3433,
+    "frontend_ts_files": 3436,
     "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
