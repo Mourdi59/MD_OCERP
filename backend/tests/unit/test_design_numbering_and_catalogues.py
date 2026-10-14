@@ -143,7 +143,7 @@ async def _first_setup(monkeypatch, country: str | None, pin) -> tuple[object, l
 
     asked: list[tuple] = []
 
-    def port(kind, country_code):
+    def port(kind, country_code, subdivision_code=None):
         asked.append((kind, country_code))
         return pin if kind == NUMBERING_KIND else None
 

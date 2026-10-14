@@ -139,7 +139,7 @@ export function ItemDialog({
       <div className="space-y-4">
         {save.isError && <RefusalBox message={refusalText(t, save.error)} />}
 
-        <div className="grid gap-3 sm:grid-cols-[1fr_3fr]">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]">
           <Field id="item-code" label={t('commitment.item_form.code', { defaultValue: 'Code' })} required={!item}>
             <input
               id="item-code"
@@ -230,7 +230,7 @@ export function ItemDialog({
         </div>
 
         {amountEditable ? (
-          <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <Field
               id="item-amount"
               label={t('commitment.item_form.planned_amount', { defaultValue: 'Planned amount (estimate)' })}

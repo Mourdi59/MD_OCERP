@@ -242,7 +242,7 @@ def test_without_an_answer_of_the_port_every_country_gets_the_neutral_framework(
 
     asked: list[tuple[str, str | None]] = []
 
-    def no_opinion(kind, country_code=None):
+    def no_opinion(kind, country_code=None, subdivision_code=None):
         asked.append((kind, country_code))
 
     monkeypatch.setattr(public, "default_catalogue_pin", no_opinion)
@@ -251,7 +251,9 @@ def test_without_an_answer_of_the_port_every_country_gets_the_neutral_framework(
     assert asked == [(FRAMEWORK_KIND, c) for c in ("de", "GB", "FR", None)]
 
     monkeypatch.setattr(
-        public, "default_catalogue_pin", lambda kind, country_code=None: public.CataloguePin("pack", "acme_people", 3)
+        public,
+        "default_catalogue_pin",
+        lambda kind, country_code=None, subdivision_code=None: public.CataloguePin("pack", "acme_people", 3),
     )
     assert default_framework_pin("de") == ("pack", "acme_people", 3)
 

@@ -13,7 +13,7 @@
 // carries the currency. Every list is read one page deep (100 rows); a list
 // that may hold more says so, and the picker tells the reader.
 
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, type Page } from '@/shared/lib/api';
 
 import type { LinkKind } from './api';
 
@@ -73,7 +73,7 @@ interface Source {
 
 export const SOURCES: Record<ListedKind, Source> = {
   contract: {
-    read: (id) => apiGet<unknown>(`/v1/contracts/contracts/?project_id=${id}&limit=${PAGE_SIZE}`),
+    read: (id) => apiGet<Page<Row>>(`/v1/contracts/contracts/?project_id=${id}&limit=${PAGE_SIZE}`),
     number: 'code',
     name: ['title'],
     currency: 'currency',
@@ -92,7 +92,7 @@ export const SOURCES: Record<ListedKind, Source> = {
     currency: 'currency',
   },
   variation_order: {
-    read: (id) => apiGet<unknown>(`/v1/variations/variation-orders/?project_id=${id}&limit=${PAGE_SIZE}`),
+    read: (id) => apiGet<Page<Row>>(`/v1/variations/variation-orders/?project_id=${id}&limit=${PAGE_SIZE}`),
     number: 'code',
     name: ['title'],
     currency: 'currency',

@@ -47470,6 +47470,7 @@ const resource = {
     "qualityConcept.stages.depends": "Systems it depends on",
     "qualityConcept.stages.depends_body": "If one of these systems is tested again, the release of this stage is marked as outdated.",
     "qualityConcept.stages.depends_none": "There is no other system in the project.",
+    "qualityConcept.stages.cell_label": "{{system}}, {{stage}}: {{state}}",
     "qualityConcept.stages.detail_title": "{{system}}: {{stage}}",
     "qualityConcept.stages.edit_title": "Edit stage",
     "qualityConcept.stages.empty_body": "Stages are the steps every technical system passes before handover, from the factory test to the proof of operation. Start from the stages the catalogue proposes and adjust them to the project.",

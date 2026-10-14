@@ -312,7 +312,7 @@ export function ItemDialog({ open, onClose, projectId, item, catalogue, labels, 
             </p>
           )}
           {draft.performance.map((row, index) => (
-            <div key={index} className="grid gap-2 sm:grid-cols-[2fr_1fr_1fr_auto]" data-testid="performance-row">
+            <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]" data-testid="performance-row">
               <input
                 aria-label={t('plant.item.requirement_name', { defaultValue: 'Requirement' })}
                 placeholder={t('plant.item.requirement_name', { defaultValue: 'Requirement' })}

@@ -383,7 +383,9 @@ def test_a_country_gets_the_shipped_staffing_catalogue_that_claims_it_through_th
 
     register_kinds()
     # No pack opinion: the answer comes from the shipped files alone.
-    monkeypatch.setattr(catalogue_packs, "pack_default_candidates", lambda kind, country=None: ())
+    monkeypatch.setattr(
+        catalogue_packs, "pack_default_candidates", lambda kind, country=None, subdivision_code=None: ()
+    )
     for country, expected in (("DE", "de"), ("gb", "uk"), ("US", "us")):
         pin = governance.default_catalogue_pin(STAFFING_MODEL_KIND, country)
         assert (pin.source, pin.catalogue_id) == ("shipped", expected)

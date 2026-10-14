@@ -218,6 +218,15 @@ AFFECTIVE_TERMS: tuple[str, ...] = (
 #: that is not here fails, which is the point.
 CLEARED_BY_READING: dict[tuple[str, str, str], str] = {
     (
+        "backend/app/modules/permits/service.py",
+        "extract_conditions",
+        "extraction.system_prompt()",
+    ): (
+        "system_prompt() in permits/extraction.py returns one fixed instruction. The only "
+        "interpolated parts are the allowed values read off the ConditionKind and Topic Literal "
+        "types and the SIMPLE_TRIGGERS tuple, so no user or document text reaches the instruction."
+    ),
+    (
         "backend/app/modules/erp_chat/service.py",
         "_call_fallback",
         "self._system_prompt_no_tools",

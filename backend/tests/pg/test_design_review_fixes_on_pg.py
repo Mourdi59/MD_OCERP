@@ -447,7 +447,7 @@ async def _pin_default_model(s: AsyncSession, pid: uuid.UUID, owner: uuid.UUID) 
 def _cost_login() -> str:
     from app.core.demo_cast import CAST
 
-    return next(part.demo_login for part in CAST if part.word == "cost")
+    return CAST["cost"]
 
 
 async def test_the_demo_seed_puts_no_account_from_outside_the_cast_on_a_row(world: DesignWorld, caplog) -> None:
@@ -464,7 +464,7 @@ async def test_the_demo_seed_puts_no_account_from_outside_the_cast_on_a_row(worl
         owner, stranger, real = await add_user(s, "admin"), await add_user(s, "manager"), await add_user(s, "manager")
         (await s.get(User, owner)).email = SHOWCASE_OWNER_EMAIL
         # The account the old lookup picked: any demo login that is not the owner. No cast part plays here.
-        outside = sorted(DEMO_ACCOUNT_EMAILS - {SHOWCASE_OWNER_EMAIL} - {p.demo_login for p in CAST})
+        outside = sorted(DEMO_ACCOUNT_EMAILS - {SHOWCASE_OWNER_EMAIL} - set(CAST.values()))
         if outside:
             (await s.get(User, stranger)).email = outside[0]
         pid = await add_project(s, owner, [])
@@ -588,6 +588,9 @@ async def test_a_frame_document_follows_the_governance_write_rule(world: DesignW
     from app.modules.project_governance.errors import GovernanceError
 
     async with world.factory() as s:
+        before = (
+            await s.execute(select(DocumentContainer.id).where(DocumentContainer.project_id == world.project_id))
+        ).all()
         with pytest.raises(GovernanceError) as refused:
             await DesignService(s).generate_frame_document(
                 world.project_id, "register", actor_id=world.editor, file_bytes=b"%PDF-1.7 r", file_name="r.pdf"
@@ -597,7 +600,7 @@ async def test_a_frame_document_follows_the_governance_write_rule(world: DesignW
         left = (
             await s.execute(select(DocumentContainer.id).where(DocumentContainer.project_id == world.project_id))
         ).all()
-        assert left == [], "a refused request leaves no container behind"
+        assert sorted(left) == sorted(before), "a refused request leaves no container behind"
 
 
 # ── demo seed: one moment before construction, read from the project's state ──

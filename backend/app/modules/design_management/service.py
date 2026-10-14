@@ -2802,6 +2802,11 @@ class DesignService:
         via_ready = permit.status == "assembling" and target == "submitted"
         if target not in dfsm.PERMIT_STATES:
             return conflict("invalid_transition", detail=target)
+        if target in self.PERMIT_DECISIONS and permit.review_cycle_id is not None:
+            # A state the cycle owns is refused as such before the edge is judged: the answer is where to read it.
+            gate = self.permit_decision_gate(permit, target, may_manage=may_manage)
+            if gate == "permit_state_read_from_cycle":
+                return conflict(gate)
         refused = None if via_ready else _edge(dfsm.PERMIT_FSM, permit, target)
         if refused is not None:
             return refused

@@ -291,6 +291,12 @@ export function StagesPanel(props: PanelProps) {
                             <button
                               type="button"
                               aria-pressed={selected === p.id}
+                              aria-label={t('qualityConcept.stages.cell_label', {
+                                defaultValue: '{{system}}, {{stage}}: {{state}}',
+                                system: sys.name,
+                                stage: stageName(s),
+                                state: vocab(t as TFn, STAGE_STATE, p.computed_state),
+                              })}
                               onClick={() => setSelected(selected === p.id ? null : p.id)}
                               className={clsx('rounded-md p-0.5', selected === p.id && 'ring-2 ring-oe-blue')}
                               data-testid="matrix-cell"

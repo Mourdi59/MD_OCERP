@@ -52615,7 +52615,7 @@ const resource = {
     "delivery_model.ui.packages.action.close": "Clore",
     "delivery_model.ui.packages.action.reopen": "Remettre dans le plan",
     "delivery_model.ui.packages.add": "Ajouter un lot",
-    "delivery_model.ui.packages.boq_ref": "Référence du BOQ",
+    "delivery_model.ui.packages.boq_ref": "Référence du DQE",
     "delivery_model.ui.packages.code": "Code",
     "delivery_model.ui.packages.col_contract": "Contrat avec",
     "delivery_model.ui.packages.col_duties": "Fait",
