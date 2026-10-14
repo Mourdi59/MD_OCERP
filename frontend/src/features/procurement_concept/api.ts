@@ -682,6 +682,7 @@ export const procurementKeys = {
   soundings: (projectId: string) => ['procurement-concept', projectId, 'soundings'] as const,
   schedule: (projectId: string) => ['procurement-concept', projectId, 'schedule'] as const,
   projectFrameworks: (projectId: string) => ['procurement-concept', projectId, 'frameworks'] as const,
+  permitConditions: (projectId: string) => ['procurement-concept', projectId, 'permit-conditions'] as const,
   gates: (projectId: string) => ['procurement-concept', projectId, 'gates'] as const,
   advanceReleases: (projectId: string) => ['procurement-concept', projectId, 'advance-releases'] as const,
   tenderPackages: (projectId: string) => ['procurement-concept', projectId, 'tender-packages'] as const,
@@ -921,3 +922,28 @@ export function setFrameworkState(frameworkId: string, target: FrameworkTarget):
 export function getLedger(frameworkId: string): Promise<FrameworkLedger> {
   return apiGet<FrameworkLedger>(`/v1/procurement-concept/frameworks/${frameworkId}/ledger`);
 }
+
+export interface PermitLotRequirement {
+  condition_id: string;
+  permit_id: string;
+  permit_reference: string;
+  number: string;
+  requirement: string;
+  trigger: string;
+  due_date: string | null;
+  topic: string;
+  responsible_party: string;
+  evidence_required: string;
+  for_tender_documents: boolean;
+}
+
+export interface PermitLotRequirements {
+  available: boolean;
+  reason: string;
+  items: PermitLotRequirement[];
+  tender_count: number;
+}
+
+/** Permit conditions of module 2 that every open lot inherits as a requirement. */
+export const getPermitLotRequirements = (projectId: string) =>
+  apiGet<PermitLotRequirements>(`/v1/procurement-concept/projects/${projectId}/permit-conditions`);

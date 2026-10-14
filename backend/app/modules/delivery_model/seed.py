@@ -135,6 +135,103 @@ def _ofi_from_story(raw: Any, locale: str, *, lead: bool) -> dict[str, Any] | No
     return out
 
 
+_CONTRACT_GROUPS = ("contract_form", "land_tenure", "utility_contract", "user_agreement", "partner_structure")
+_CONTRACT_STATUS = ("draft", "negotiating", "agreed", "signed", "terminated")
+
+# English defaults for a demo project whose pack brings no story: (group, preferred kinds in order, code, title,
+# counterparty, status, days from the seed day to the start, share). A story replaces the whole list.
+DEMO_CONTRACT_ITEMS: tuple[dict[str, Any], ...] = (
+    {
+        "group": "contract_form",
+        "kinds": ["design_build_contract", "construction_contract"],
+        "code": "CF-01",
+        "title": "Main works contract, lump sum at award",
+        "counterparty": "General contractor, to be awarded",
+        "status": "negotiating",
+        "days": AWARD,
+    },
+    {
+        "group": "land_tenure",
+        "kinds": ["leasehold", "purchase"],
+        "code": "LT-01",
+        "title": "Site held on a long leasehold from the municipality",
+        "counterparty": "Municipality",
+        "status": "signed",
+        "days": -120,
+    },
+    {
+        "group": "utility_contract",
+        "kinds": ["power_connection", "water_sewer_connection"],
+        "code": "UC-01",
+        "title": "Medium voltage connection of the new building",
+        "counterparty": "Regional grid operator",
+        "status": "agreed",
+        "days": 30,
+    },
+    {
+        "group": "user_agreement",
+        "kinds": ["lease_to_user", "service_level_agreement"],
+        "code": "UA-01",
+        "title": "Lease with the future operator, handover criteria attached",
+        "counterparty": "Future operator",
+        "status": "draft",
+        "days": START,
+    },
+    {
+        "group": "partner_structure",
+        "kinds": ["project_company", "joint_venture"],
+        "code": "PS-01",
+        "title": "Owner share of the project company",
+        "counterparty": "Owner holding",
+        "status": "agreed",
+        "days": -90,
+        "share": "70",
+    },
+    {
+        "group": "partner_structure",
+        "kinds": ["co_investment", "consortium"],
+        "code": "PS-02",
+        "title": "Co-investor share of the project company",
+        "counterparty": "Co-investor",
+        "status": "agreed",
+        "days": -90,
+        "share": "30",
+    },
+)
+
+
+def _contract_items_from_story(raw: Any, locale: str) -> list[dict[str, Any]] | None:
+    """The contract-side items of a story; one malformed entry makes the whole list fall back to the default."""
+    if not isinstance(raw, list) or not raw:
+        return None
+    out: list[dict[str, Any]] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            return None
+        title, counterparty = _text(entry.get("title"), locale), _text(entry.get("counterparty"), locale)
+        kinds, code, days = entry.get("kinds"), entry.get("code"), entry.get("days")
+        share = entry.get("share")
+        ok = (
+            entry.get("group") in _CONTRACT_GROUPS
+            and entry.get("status") in _CONTRACT_STATUS
+            and title is not None
+            and counterparty is not None
+            and isinstance(code, str)
+            and code.strip()
+            and isinstance(kinds, list)
+            and kinds
+            and all(isinstance(k, str) for k in kinds)
+            and isinstance(days, int)
+            and not isinstance(days, bool)
+            and (share is None or isinstance(share, str))
+        )
+        if not ok:
+            return None
+        item = {**entry, "title": title, "counterparty": counterparty}
+        out.append(item)
+    return out
+
+
 def resolve_story(story: dict[str, Any] | None, locale: str = "en") -> dict[str, Any]:
     """The validated overrides of a demo story; a key that is absent or malformed is left out.
 
@@ -195,6 +292,8 @@ def resolve_story(story: dict[str, Any] | None, locale: str = "en") -> dict[str,
         keep("ofi_first", _ofi_from_story(story["ofi_first"], locale, lead=True))
     if "ofi_second" in story:
         keep("ofi_second", _ofi_from_story(story["ofi_second"], locale, lead=False))
+    if "contract_items" in story:
+        keep("contract_items", _contract_items_from_story(story["contract_items"], locale))
     if "plant_item" in story:
         value = story["plant_item"]
         keep("plant_item", value if isinstance(value, str) and value.strip() else None)
@@ -244,6 +343,7 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
         "packages": 0,
         "risks": 0,
         "ofis": 0,
+        "contract_items": 0,
         "decisions": 0,
         "no_decision": [],
         "failed": [],
@@ -358,6 +458,43 @@ async def _link_demo_plant_item(
     )
 
 
+async def _seed_contract_items(
+    svc: Any,
+    project_id: uuid.UUID,
+    catalogue: Any,
+    package: Any,
+    today: date,
+    actor: Any,
+    items: Iterable[dict[str, Any]],
+) -> int:
+    """The contract-side items of the demo project; the pinned catalogue decides which kinds exist."""
+    model = await svc.require_model(project_id)
+    form = catalogue.form(model.selected_form_code) if model.selected_form_code else None
+    made = 0
+    for spec in items:
+        group = spec["group"]
+        kind = next((k for k in spec["kinds"] if catalogue.contract_kind(group, k) is not None), None)
+        if kind is None:
+            continue
+        data: dict[str, Any] = {
+            "code": spec["code"],
+            "group_code": group,
+            "kind_code": kind,
+            "title": spec["title"],
+            "counterparty": spec["counterparty"],
+            "status": spec["status"],
+            "start_date": (today + timedelta(days=spec["days"])).isoformat(),
+        }
+        if group == "contract_form":
+            data["package_id"] = package.id if package else None
+            data["price_basis"] = form.price_basis_at_award if form else "lump_sum"
+        if spec.get("share") is not None:
+            data["share_percent"] = spec["share"]
+        await svc.create_contract_item(project_id, data, actor)
+        made += 1
+    return made
+
+
 async def _seed_project(
     session: AsyncSession, project_id: uuid.UUID, story: dict[str, Any] | None = None
 ) -> dict[str, Any]:
@@ -453,6 +590,9 @@ async def _seed_project(
     await svc.set_ofi_route(
         project_id, furniture.id, route="existing_stock", link_kind=None, link_id=None, actor_id=actor
     )
+    contract_items = await _seed_contract_items(
+        svc, project_id, catalogue, db, today, actor, story.get("contract_items", DEMO_CONTRACT_ITEMS)
+    )
     # Proposed last, so the decision record carries the allocations and the package plan it was made with.
     decisions, reason = 0, ""
     if leading is None or len(options) < 2:
@@ -481,6 +621,7 @@ async def _seed_project(
         "packages": len(packages),
         "risks": len([r for r in risks if r.get("risk_id")]),
         "ofis": 2,
+        "contract_items": contract_items,
         "decisions": decisions,
         "no_decision_reason": reason,
     }

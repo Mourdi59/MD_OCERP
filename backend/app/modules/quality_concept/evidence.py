@@ -136,6 +136,30 @@ async def gate_detail(session: Any, project_id: uuid.UUID) -> str | None:
     )
 
 
+async def permit_condition_items(session: Any, project_id: uuid.UUID, link: tuple[str, str]) -> list[EvidenceItem]:
+    """One item: every permit condition that must be proven before the start of construction is proven.
+
+    Nothing is asked when ``permits`` is not installed or holds no such condition.
+    """
+    from app.modules.quality_concept import permit_conditions
+
+    found = await permit_conditions.load(session, project_id)
+    if not found["available"]:
+        return []
+    blocking = [i for i in found["items"] if i["blocks_start"]]
+    if not any(i["trigger"] == "before_start" for i in found["items"]):
+        return []
+    return [
+        EvidenceItem(
+            code="quality_concept.permit_conditions_proven",
+            state="not_met" if blocking else "met",
+            label_key="quality_concept.evidence.permit_conditions_proven",
+            link=link,
+            detail=", ".join(f"{i['permit_reference']}/{i['number']}" for i in blocking),
+        )
+    ]
+
+
 async def quality_readiness(session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any) -> list[EvidenceItem]:
     from app.modules.project_governance import public
     from app.modules.quality_concept.service import QualityConceptService
@@ -160,7 +184,8 @@ async def quality_readiness(session: Any, project_id: uuid.UUID, attempt: GateAt
     if not await svc._frame_documents(project_id):
         # The model hosts quality, but this project was pinned before the document type existed.
         return [_unknown("quality_frame_document_missing", link)]
-    return readiness_items(await svc.readiness(project_id, datetime.now(UTC).date()), link)
+    items = readiness_items(await svc.readiness(project_id, datetime.now(UTC).date()), link)
+    return [*items, *await permit_condition_items(session, project_id, link)]
 
 
 def register_gate_evidence() -> None:

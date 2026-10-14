@@ -36,6 +36,7 @@ import { ExportButtons } from './ExportButtons';
 import { useAcceptanceUnits, useCoverage, useProofs, useQcWrite, useStageMatrix } from './hooks';
 import { ClosedReasons, SharedReasons } from './ClosedReasons';
 import { OptionPicker } from './OptionPicker';
+import { PermitConditionsSection } from './PermitConditionsSection';
 import { DELIVERER_ROLE, PROOF_ACTION, PROOF_STATE, REQUIRED_BY_KIND, gate, nameIn, vocab, type TFn } from './labels';
 import { packageName, type PanelProps } from './panel';
 import {
@@ -262,6 +263,8 @@ export function ProofsPanel(props: PanelProps) {
         </ul>
         <FindingList findings={coverage.data?.findings ?? []} className="mt-3" />
       </Section>
+
+      <PermitConditionsSection projectId={projectId} />
 
       {[...groups.entries()].map(([ref, list]) => (
         <Section

@@ -269,6 +269,65 @@ class OfiStatusIn(_In):
     status: Literal["identified", "route_set", "ordered", "delivered", "handed_to_installer"]
 
 
+ContractGroup = Literal["contract_form", "land_tenure", "utility_contract", "user_agreement", "partner_structure"]
+ContractItemStatus = Literal["draft", "negotiating", "agreed", "signed", "terminated"]
+_DAY = r"^\d{4}-\d{2}-\d{2}$"
+_PERCENT = r"^(100(\.0{1,4})?|\d{1,2}(\.\d{1,4})?)$"
+
+
+class ContractItemIn(_In):
+    code: str = Field(pattern=_PKG_CODE, max_length=64)
+    group_code: ContractGroup
+    kind_code: str = Field(pattern=_CODE, max_length=64)
+    title: str = Field(default="", max_length=500)
+    counterparty: str = Field(default="", max_length=255)
+    package_id: uuid.UUID | None = None
+    status: ContractItemStatus = "draft"
+    reference: str = Field(default="", max_length=120)
+    start_date: str | None = Field(default=None, pattern=_DAY)
+    end_date: str | None = Field(default=None, pattern=_DAY)
+    price_basis: PriceBasis | None = None
+    share_percent: str | None = Field(default=None, pattern=_PERCENT)
+    notes: str = Field(default="", max_length=5000)
+
+    @field_validator("share_percent", mode="before")
+    @classmethod
+    def _share_not_float(cls, value: Any) -> Any:
+        return _no_float(value)
+
+    @model_validator(mode="after")
+    def _group_fields(self) -> ContractItemIn:
+        if self.price_basis is not None and self.group_code != "contract_form":
+            raise ValueError("price_basis belongs to a contract form")
+        if self.share_percent is not None and self.group_code != "partner_structure":
+            raise ValueError("share_percent belongs to a partner structure")
+        return self
+
+
+class ContractItemPatch(_In):
+    kind_code: str | None = Field(default=None, pattern=_CODE, max_length=64)
+    title: str | None = Field(default=None, max_length=500)
+    counterparty: str | None = Field(default=None, max_length=255)
+    package_id: uuid.UUID | None = None
+    status: ContractItemStatus | None = None
+    reference: str | None = Field(default=None, max_length=120)
+    start_date: str | None = Field(default=None, pattern=_DAY)
+    end_date: str | None = Field(default=None, pattern=_DAY)
+    price_basis: PriceBasis | None = None
+    share_percent: str | None = Field(default=None, pattern=_PERCENT)
+    notes: str | None = Field(default=None, max_length=5000)
+
+    @field_validator("share_percent", mode="before")
+    @classmethod
+    def _share_not_float(cls, value: Any) -> Any:
+        return _no_float(value)
+
+    @model_validator(mode="after")
+    def _no_nulls(self) -> ContractItemPatch:
+        _refuse_nulls(self, ("package_id", "start_date", "end_date", "price_basis", "share_percent"))
+        return self
+
+
 class FindingOut(BaseModel):
     rule_id: str
     passed: bool
