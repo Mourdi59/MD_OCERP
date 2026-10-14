@@ -40,7 +40,10 @@ _MODULES = (
     "commitment_release",
     "site_logistics",
     "transmittals",
+    "economics",
 )
+# Registered in the demo project but written in German only: the brief is the German requirements specification itself.
+_GERMAN_ONLY = ("engineering_brief",)
 _CATALOGUES = [
     _ROOT / "backend/app/modules/permits/catalogues/permit_type/de.json",
     _ROOT / "backend/app/modules/permits/catalogues/permit_type/de_by.json",
@@ -50,6 +53,10 @@ _CATALOGUES = [
 ]
 # Free-text keys whose plain strings are data (codes, references, numbers), not screen text.
 _DATA_KEYS = {
+    # Names of invented firms: a party is named the same in every language.
+    "issuer",
+    "beneficiary",
+    "insurer",
     "code",
     "kind",
     "class",
@@ -166,7 +173,7 @@ def _texts(node: Any, path: tuple[str, ...] = ()):
 def test_every_module_has_a_file_registered_in_the_demo_project() -> None:
     demo = json.loads((_DEMO / "demo_project.json").read_text(encoding="utf-8"))
     entry = next(p for p in demo["projects"] if p["project"]["demo_template_id"] == "residential-regensburg")
-    assert set(entry["module_files"]) == set(_MODULES)
+    assert set(entry["module_files"]) == set(_MODULES) | set(_GERMAN_ONLY)
     for module, relative in entry["module_files"].items():
         assert relative == f"demo/residential-regensburg-{module}.json"
         assert (_DEMO.parent / relative).is_file()

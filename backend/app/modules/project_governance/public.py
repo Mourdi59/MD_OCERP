@@ -143,7 +143,11 @@ def _once_per_collection(fn: Callable[..., Awaitable[Any]]) -> Callable[..., Awa
         memo = COLLECTION_MEMO.get()
         if memo is None:
             return await fn(*args, **kwargs)
-        key = (fn.__name__, *(_memo_part(a) for a in args), tuple(sorted((k, _memo_part(v)) for k, v in kwargs.items())))
+        key = (
+            fn.__name__,
+            *(_memo_part(a) for a in args),
+            tuple(sorted((k, _memo_part(v)) for k, v in kwargs.items())),
+        )
         if key not in memo:
             memo[key] = await fn(*args, **kwargs)
         return memo[key]
