@@ -142,6 +142,7 @@ async def purge_project_children_without_cascade(
 
     from sqlalchemy import String as SAString
     from sqlalchemy import delete as sa_delete
+    from sqlalchemy import select as sa_select
 
     from app.database import Base
 
@@ -164,6 +165,15 @@ async def purge_project_children_without_cascade(
         logger.debug("Module model discovery failed during purge", exc_info=True)
 
     id_strs = [str(p) for p in project_ids]
+    try:
+        from app.modules.approval_routes.models import Instance, Route
+
+        # A running approval carries no project column of its own, only a RESTRICT link to its route, so the
+        # sweep below would delete the route out from under it. Its step states go by the cascade.
+        routes = sa_select(Route.id).where(Route.project_id.in_(project_ids))
+        await session.execute(sa_delete(Instance).where(Instance.route_id.in_(routes)))
+    except ImportError:
+        logger.debug("approval_routes models unavailable - skipping approval instance purge")
     for table in reversed(Base.metadata.sorted_tables):
         if table.name == Project.__tablename__:
             continue
