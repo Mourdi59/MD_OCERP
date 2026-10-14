@@ -64,7 +64,6 @@
   "projects.group_": "closed family, English default reads correctly, translation job",
   "property_dev.doc_templates.types.": "open: the key takes template.doc_type, and the branch is guarded by !is_custom so tenant-authored slugs never reach it, but the built-in set arrives from the API rather than any frontend constant. doc_type is declared three times with three extents that disagree: _VALID_DOC_TYPES (frozenset of 6) in property_dev/service.py, _VALID_DOC_TYPES_HTTP (set of 12) in property_dev/router.py, and _DOC_TYPE_PRESETS (18) whose own comment says it is not a constraint. Name a producer once those agree. The default is the template title and is already English",
   "qms.audit_type_label.": "closed family, English default reads correctly, translation job",
-  "qms.category_label.": "closed family, English default reads correctly, translation job",
   "qms.severity_level.": "closed family, English default reads correctly, translation job",
   "qms.signer_role.": "closed family, English default reads correctly, translation job",
   "quantities.kind_": "no bounded member set found in any producer",

@@ -385,7 +385,7 @@ class LogisticsPlanService:
                     entity_id=str(entity_id),
                     body_key=f"notifications.site_logistics.{kind}.body",
                     body_context=safe,
-                    action_url=f"/projects/{safe.get('project_id')}/logistics",
+                    action_url=f"/projects/{safe.get('project_id')}/site-logistics",
                     metadata=safe,
                 )
         except Exception:

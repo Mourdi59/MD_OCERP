@@ -572,7 +572,7 @@ async def test_an_installation_without_the_demo_logins_tells_the_one_person_stor
         assert foreign not in people and people == {owner}
 
 
-async def test_the_filmed_project_without_the_demo_logins_is_left_untouched_and_fails_the_result(
+async def test_the_filmed_project_without_the_demo_logins_is_left_untouched_and_the_run_stays_quiet(
     factory, active_pack, caplog: pytest.LogCaptureFixture
 ) -> None:
     estate = await _estate(factory, "office-frankfurt", "office-london", owner_only=True)
@@ -583,14 +583,15 @@ async def test_the_filmed_project_without_the_demo_logins_is_left_untouched_and_
         "office-london": ("first_gate", "owner_only", "no_decider"),
     }
     assert sorted((r["demo_id"], r["loud"]) for r in result["fallbacks"]) == [
-        ("office-frankfurt", True),
+        ("office-frankfurt", False),
         ("office-london", False),
     ]
-    assert (result["projects"], result["ok"]) == (1, False)
+    # An installation without the demo logins is a legal state (ruling of 2026-10-13): quiet, and the run still passes.
+    assert (result["projects"], result["ok"]) == (1, True)
     # The pack's story is told on the pack's model or not at all.
     assert (await _written(factory, estate["office-frankfurt"]))["model"] is None
     errors = [m for m in (r.getMessage() for r in caplog.records if r.levelno >= logging.ERROR) if "planned at" in m]
-    assert len(errors) == 1 and "office-frankfurt" in errors[0]
+    assert errors == []
 
 
 async def test_the_cast_is_the_demo_logins_where_the_installation_has_them(factory) -> None:

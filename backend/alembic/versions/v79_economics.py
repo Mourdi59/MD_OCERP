@@ -29,7 +29,7 @@ from app.core.db_types import MoneyType
 from app.database import GUID
 
 revision: str = "v79_economics"
-down_revision: str | Sequence[str] | None = "v78_site_logistics_ext"
+down_revision: str | Sequence[str] | None = "v79_engineering_brief"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

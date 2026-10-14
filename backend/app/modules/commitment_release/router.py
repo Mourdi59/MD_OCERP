@@ -38,7 +38,7 @@ from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermissio
 from app.modules.commitment_release import evaluator as ev
 from app.modules.commitment_release.catalogue import ABORT_BASIS_KIND, AUTHORITY_SCHEDULE_KIND, parse_amount
 from app.modules.commitment_release.errors import CommitmentError
-from app.modules.commitment_release.messages import translate
+from app.modules.commitment_release.messages import label_texts, translate
 from app.modules.commitment_release.schemas import (
     AbortIn,
     AbortTermsOut,
@@ -325,10 +325,11 @@ async def _matrix_out(svc: CommitmentService, matrix: Any) -> MatrixOut:
     out.base_currency = (project.currency or "").upper()
     out.schedule_currency = svc.schedule_currency(schedule, project)
     states = await svc.route_states(matrix)
+    locale = get_locale() or "en"
     out.tiers = [
         {
             "code": t.code,
-            "name": {"key": t.name_key or None, "text": t.labels},
+            "name": {"key": t.name_key or None, "text": label_texts(t.name_key, t.labels, locale)},
             "approver": t.approver.model_dump(),
             "steps_mode": t.steps_mode,
             "four_eyes": t.four_eyes,
@@ -338,10 +339,15 @@ async def _matrix_out(svc: CommitmentService, matrix: Any) -> MatrixOut:
         for t in schedule.tiers
     ]
     out.commitment_types = [
-        {"code": t.code, "name": {"key": t.name_key or None, "text": t.labels}} for t in schedule.commitment_types
+        {"code": t.code, "name": {"key": t.name_key or None, "text": label_texts(t.name_key, t.labels, locale)}}
+        for t in schedule.commitment_types
     ]
     out.novelty_flags = [
-        {"code": f.code, "name": {"key": f.name_key or None, "text": f.labels}, "min_tier": f.min_tier}
+        {
+            "code": f.code,
+            "name": {"key": f.name_key or None, "text": label_texts(f.name_key, f.labels, locale)},
+            "min_tier": f.min_tier,
+        }
         for f in schedule.novelty_flags
     ]
     return out

@@ -37,6 +37,12 @@
           "source": "pack",
           "id": "eleven_areas_framework_de",
           "version": 1
+        },
+        {
+          "kind": "hse_frame",
+          "source": "pack",
+          "id": "eleven_areas_framework_de_by",
+          "version": 1
         }
       ],
       "governance": {
@@ -366,6 +372,12 @@
           "kind": "site_logistics",
           "source": "pack",
           "id": "eleven_areas_framework_de",
+          "version": 1
+        },
+        {
+          "kind": "hse_frame",
+          "source": "pack",
+          "id": "eleven_areas_framework_de_by",
           "version": 1
         }
       ],

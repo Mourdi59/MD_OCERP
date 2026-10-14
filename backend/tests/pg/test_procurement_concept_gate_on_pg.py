@@ -231,6 +231,7 @@ async def _demo_project(w: World, *, currency: str, country: str, public: bool) 
             sa.insert(plan.MODEL_TABLE).values(
                 id=uuid.uuid4(),
                 project_id=pid,
+                catalogue_id="neutral",
                 selected_form_code="design_bid_build_split",
                 status="approved",
                 owner_capability={"public_client": public},

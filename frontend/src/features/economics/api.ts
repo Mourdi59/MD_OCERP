@@ -256,14 +256,12 @@ export const economicsKeys = {
   registers: (pid: string) => ['economics', pid, 'registers'] as const,
 };
 
-const base = (pid: string) => `/v1/economics/projects/${pid}`;
-
-export const getPlan = (pid: string) => apiGet<PlanView>(`${base(pid)}/plan`);
-export const startPlan = (pid: string) => apiPut<PlanView>(`${base(pid)}/plan`, {});
-export const patchPlan = (pid: string, body: Record<string, unknown>) => apiPatch<PlanView>(`${base(pid)}/plan`, body);
-export const getBusinessCase = (pid: string) => apiGet<BusinessCase>(`${base(pid)}/business-case`);
-export const getCostFrame = (pid: string) => apiGet<CostFrame>(`${base(pid)}/cost-frame`);
-export const getFinancing = (pid: string) => apiGet<Financing>(`${base(pid)}/financing`);
+export const getPlan = (pid: string) => apiGet<PlanView>(`/v1/economics/projects/${pid}/plan`);
+export const startPlan = (pid: string) => apiPut<PlanView>(`/v1/economics/projects/${pid}/plan`, {});
+export const patchPlan = (pid: string, body: Record<string, unknown>) => apiPatch<PlanView>(`/v1/economics/projects/${pid}/plan`, body);
+export const getBusinessCase = (pid: string) => apiGet<BusinessCase>(`/v1/economics/projects/${pid}/business-case`);
+export const getCostFrame = (pid: string) => apiGet<CostFrame>(`/v1/economics/projects/${pid}/cost-frame`);
+export const getFinancing = (pid: string) => apiGet<Financing>(`/v1/economics/projects/${pid}/financing`);
 
 export const getRegisters = (pid: string) => apiGet<Registers>(`${base(pid)}/registers`);
 export const addSecurity = (pid: string, body: Record<string, unknown>) =>
@@ -281,27 +279,27 @@ export const putProcess = (pid: string, area: ProcessArea, body: Record<string, 
   apiPut<Registers>(`${base(pid)}/registers/process/${area}`, body);
 
 export const addFlowLine = (pid: string, body: Record<string, unknown>) =>
-  apiPost<unknown>(`${base(pid)}/business-case/lines`, body);
-export const deleteFlowLine = (pid: string, id: string) => apiDelete(`${base(pid)}/business-case/lines/${id}`);
+  apiPost<unknown>(`/v1/economics/projects/${pid}/business-case/lines`, body);
+export const deleteFlowLine = (pid: string, id: string) => apiDelete(`/v1/economics/projects/${pid}/business-case/lines/${id}`);
 
 export const addFrameLine = (pid: string, body: Record<string, unknown>) =>
-  apiPost<unknown>(`${base(pid)}/cost-frame/lines`, body);
+  apiPost<unknown>(`/v1/economics/projects/${pid}/cost-frame/lines`, body);
 export const patchFrameLine = (pid: string, id: string, body: Record<string, unknown>) =>
-  apiPatch<unknown>(`${base(pid)}/cost-frame/lines/${id}`, body);
-export const deleteFrameLine = (pid: string, id: string) => apiDelete(`${base(pid)}/cost-frame/lines/${id}`);
+  apiPatch<unknown>(`/v1/economics/projects/${pid}/cost-frame/lines/${id}`, body);
+export const deleteFrameLine = (pid: string, id: string) => apiDelete(`/v1/economics/projects/${pid}/cost-frame/lines/${id}`);
 export const generateFrame = (pid: string, body: { depth: number; amounts: 'estimate' | 'zero'; replace: boolean }) =>
-  apiPost<unknown>(`${base(pid)}/cost-frame/generate`, body);
+  apiPost<unknown>(`/v1/economics/projects/${pid}/cost-frame/generate`, body);
 
 export const addSource = (pid: string, body: Record<string, unknown>) =>
-  apiPost<unknown>(`${base(pid)}/financing/sources`, body);
-export const deleteSource = (pid: string, id: string) => apiDelete(`${base(pid)}/financing/sources/${id}`);
+  apiPost<unknown>(`/v1/economics/projects/${pid}/financing/sources`, body);
+export const deleteSource = (pid: string, id: string) => apiDelete(`/v1/economics/projects/${pid}/financing/sources/${id}`);
 export const addTranche = (pid: string, sourceId: string, body: Record<string, unknown>) =>
-  apiPost<unknown>(`${base(pid)}/financing/sources/${sourceId}/tranches`, body);
-export const deleteTranche = (pid: string, id: string) => apiDelete(`${base(pid)}/financing/tranches/${id}`);
+  apiPost<unknown>(`/v1/economics/projects/${pid}/financing/sources/${sourceId}/tranches`, body);
+export const deleteTranche = (pid: string, id: string) => apiDelete(`/v1/economics/projects/${pid}/financing/tranches/${id}`);
 
 export type Lifecycle = 'propose' | 'withdraw' | 'approve' | 'reopen' | 'reopen/close';
 export const runLifecycle = (pid: string, action: Lifecycle, body: Record<string, unknown> = {}) =>
-  apiPost<PlanView>(`${base(pid)}/${action}`, body);
+  apiPost<PlanView>(`/v1/economics/projects/${pid}/${action}`, body);
 
 export type ExportWhat = 'frame' | 'case' | 'financing';
 export type ExportFormat = 'pdf' | 'xlsx';

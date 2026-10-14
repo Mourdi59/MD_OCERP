@@ -22,6 +22,7 @@ import {
   listCandidates,
   listCatalogues,
   listCertifications,
+  getPermitConditionChecks,
   listExpertReports,
   listLinks,
   listOptions,
@@ -172,6 +173,14 @@ export function useExpertReports(projectId: string, enabled = true) {
   return useQuery({
     queryKey: qcKeys.expertReports(projectId),
     queryFn: () => listExpertReports(projectId).then((p) => p.items),
+    enabled: !!projectId && enabled,
+  });
+}
+
+export function usePermitConditionChecks(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: qcKeys.permitConditions(projectId),
+    queryFn: () => getPermitConditionChecks(projectId),
     enabled: !!projectId && enabled,
   });
 }

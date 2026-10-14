@@ -1,0 +1,30 @@
+{
+  "id": "de_bw",
+  "version": 1,
+  "name_key": "hse_frame.catalogue.de_bw",
+  "labels": {
+    "en": "HSE frame, Baden-Wuerttemberg",
+    "de": "HSE-Rahmen, Baden-Württemberg"
+  },
+  "jurisdiction": "DE-BW",
+  "jurisdiction_countries": [],
+  "extends": "de",
+  "review_status": "unconfirmed",
+  "templates": [
+    {
+      "code": "archaeology_clearance",
+      "topic": "site_clearance",
+      "labels": {
+        "en": "Ground heritage clearance under the Baden-Wuerttemberg heritage act is on file",
+        "de": "Freigabe zu Bodendenkmälern nach dem Denkmalschutzgesetz Baden-Württemberg liegt vor"
+      },
+      "audience": [
+        "owner"
+      ],
+      "obligation": "mandatory",
+      "legal_basis": "DSchG BW §§ 20, 21",
+      "source_url": "https://www.landesrecht-bw.de/",
+      "review_status": "unconfirmed"
+    }
+  ]
+}

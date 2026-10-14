@@ -769,6 +769,14 @@ const HARDCODED_LOCALE_ALLOWED: readonly { file: string; snippet: string; why: s
       'CLDR currency digits do not vary by locale, so the tag is a constant here ' +
       'in the same way `2` is.',
   },
+  {
+    file: 'features/site-logistics/plan/siteTime.ts',
+    snippet: "const format = new Intl.DateTimeFormat('en-US', {",
+    why:
+      'Clock arithmetic, not a rendering. It reads numeric parts of the wall clock in the site zone ' +
+      'and converts them back to a number; a fixed Latin-digit locale keeps the parts parseable ' +
+      'whatever the reader prefers. Nothing it produces reaches a screen.',
+  },
 ];
 
 function isAllowedLocaleProbe(file: string, source: string, index: number): boolean {

@@ -75,6 +75,9 @@ const NotificationsPage = lazy(() =>
 const QualityConceptPage = lazy(() =>
   import('@/features/quality_concept').then((m) => ({ default: m.QualityConceptPage }))
 );
+const HseFramePage = lazy(() =>
+  import('@/features/hse_frame').then((m) => ({ default: m.HseFramePage }))
+);
 const FundingPage = lazy(() =>
   import('@/features/funding/FundingPage').then((m) => ({ default: m.FundingPage }))
 );
@@ -194,6 +197,9 @@ const CredentialsPage = lazy(() =>
 );
 const ProjectStaffingPage = lazy(() =>
   import('@/features/staffing/ProjectStaffingPage').then((m) => ({ default: m.ProjectStaffingPage }))
+);
+const EngineeringBriefPage = lazy(() =>
+  import('@/features/engineering_brief/EngineeringBriefPage').then((m) => ({ default: m.EngineeringBriefPage }))
 );
 const ModuleBuilderPage = lazy(() =>
   import('@/features/module-builder/ModuleBuilderPage').then((m) => ({ default: m.ModuleBuilderPage }))
@@ -1310,6 +1316,7 @@ export default function App() {
         <Route path="/projects/new" element={<P title="New Project"><CreateProjectPage /></P>} />
         <Route path="/projects/:projectId" element={<P title="Project"><ProjectDetailPage /></P>} />
         <Route path="/projects/:projectId/quality-concept" element={<P title="Quality concept"><QualityConceptPage /></P>} />
+        <Route path="/projects/:projectId/hse-frame" element={<P title="HSE frame"><HseFramePage /></P>} />
         <Route path="/projects/:projectId/settings" element={<P title="Project Settings"><ProjectSettingsPage /></P>} />
         <Route path="/projects/:projectId/timeline" element={<P title="Project Timeline"><TimelinePage /></P>} />
         <Route path="/projects/:projectId/boq/new" element={<P title="New BOQ"><CreateBOQPage /></P>} />
@@ -1445,6 +1452,7 @@ export default function App() {
         <Route path="/projects/:projectId/permits" element={<P title="Permits"><PermitsPage /></P>} />
         <Route path="/projects/:projectId/staffing" element={<P title="Staffing"><ProjectStaffingPage /></P>} />
         <Route path="/projects/:projectId/staffing/files/:fileId" element={<P title="Staffing"><ProjectStaffingPage /></P>} />
+        <Route path="/projects/:projectId/engineering-brief" element={<P title="Engineering brief"><EngineeringBriefPage /></P>} />
 
         {/* The register of modules built here, and the screen each one renders
             on. `:moduleKey` is the module's key, not its URL: the loader owns

@@ -261,7 +261,7 @@ export function AbortTermsDialog({ open, onClose, projectId, item, terms, bases,
               <div
                 key={s.rowId}
                 data-testid="abort-step-row"
-                className="grid gap-2 rounded-lg border border-border-light p-3 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]"
+                className="grid gap-2 rounded-lg border border-border-light p-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
               >
                 <input
                   aria-label={t('commitment.abort_form.step_name', { defaultValue: 'Step, for example fabrication started' })}
@@ -360,7 +360,7 @@ export function AbortTermsDialog({ open, onClose, projectId, item, terms, bases,
           </div>
         </fieldset>
 
-        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_3fr]">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,3fr)]">
           <Field id="abort-progress" label={t('commitment.abort_form.progress', { defaultValue: 'Work done so far, %' })}>
             <input
               id="abort-progress"

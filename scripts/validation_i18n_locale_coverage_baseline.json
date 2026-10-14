@@ -92,6 +92,10 @@
       "de",
       "en"
     ],
+    "backend/app/modules/engineering_brief/messages": [
+      "de",
+      "en"
+    ],
     "backend/app/modules/funding/messages": [
       "ar",
       "bg",
@@ -131,6 +135,10 @@
       "uz",
       "vi",
       "zh"
+    ],
+    "backend/app/modules/hse_frame/messages": [
+      "de",
+      "en"
     ],
     "backend/app/modules/permits/messages": [
       "de",

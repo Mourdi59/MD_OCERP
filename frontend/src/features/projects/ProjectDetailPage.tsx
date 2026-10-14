@@ -41,6 +41,7 @@ import {
   Handshake,
   Factory,
   UsersRound,
+  FileText,
   Flag,
   Receipt,
   Stamp,
@@ -1888,6 +1889,15 @@ export function ProjectDetailPage() {
         <Button
           variant="ghost"
           size="sm"
+          icon={<FileText size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/engineering-brief`)}
+          data-testid="project-engineering-brief-link"
+        >
+          {t('engineeringBrief.title', { defaultValue: 'Engineering brief' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           icon={<Flag size={14} />}
           onClick={() => navigate(`/projects/${project.id}/governance`)}
           data-testid="project-governance-link"
@@ -1911,6 +1921,15 @@ export function ProjectDetailPage() {
           data-testid="quality-concept-link"
         >
           {t('qualityConcept.title', { defaultValue: 'Quality concept' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<HardHat size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/hse-frame`)}
+          data-testid="hse-frame-link"
+        >
+          {t('hseFrame.title', { defaultValue: 'Health, safety and environment' })}
         </Button>
         <Button
           variant={customizing ? 'primary' : 'ghost'}

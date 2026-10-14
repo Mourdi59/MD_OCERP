@@ -12,3 +12,6 @@ async def on_startup() -> None:
     from app.modules.risk.permissions import register_risk_permissions
 
     register_risk_permissions()
+    from app.modules.risk.evidence import register_gate_evidence
+
+    register_gate_evidence()

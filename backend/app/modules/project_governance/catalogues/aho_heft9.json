@@ -197,7 +197,9 @@
       "hosts": [
         "design",
         "quality",
-        "permits"
+        "permits",
+        "engineering_brief",
+        "hse"
       ]
     }
   ]

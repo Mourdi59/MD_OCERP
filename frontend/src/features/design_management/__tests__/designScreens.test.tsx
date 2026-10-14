@@ -19,6 +19,7 @@ vi.mock('../api', async (importOriginal) => {
   return {
     ...actual,
     createRole: vi.fn(),
+    createDeliverable: vi.fn(),
     listApprovalPoints: vi.fn(),
     listUnresolvedWbs: vi.fn(),
     listPermits: vi.fn(),
