@@ -7,10 +7,8 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2 } from 'lucide-react';
-
 import { addSource, addTranche, deleteSource, deleteTranche, type Financing, type SourceKind } from './api';
-import { AddRow, Field, cleanDecimal, inputClass, isDecimal, useMoney } from './EconomicsBits';
+import { AddRow, ConfirmDelete, Field, cleanDecimal, inputClass, isDecimal, useMoney } from './EconomicsBits';
 import { useEconomicsAction } from './hooks';
 import { SOURCE_KIND } from './labels';
 
@@ -101,14 +99,15 @@ export function FinancingPanel({
                 <span>{money(source.amount)}</span>
                 {source.share_pct !== null && <span className="text-xs text-content-secondary">{plain(source.share_pct, 1)} %</span>}
                 {editable && (
-                  <button
-                    type="button"
-                    aria-label={t('economics.financing.delete_source', { defaultValue: 'Delete the source' })}
-                    className="text-content-tertiary hover:text-semantic-error"
-                    onClick={() => removeSource(source.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <ConfirmDelete
+                    label={t('economics.financing.delete_source', { defaultValue: 'Delete the source' })}
+                    title={t('economics.confirm.title', { defaultValue: 'Delete this entry?' })}
+                    message={t('economics.confirm.source', {
+                      defaultValue: 'The source {{name}} is removed with all its tranches.',
+                      name: source.name,
+                    })}
+                    onConfirm={() => removeSource(source.id)}
+                  />
                 )}
               </div>
             </div>
@@ -129,14 +128,15 @@ export function FinancingPanel({
                   <span className="tabular-nums">{money(tr.amount)}</span>
                   <span className="text-xs text-content-secondary">{tr.condition}</span>
                   {editable && tr.status !== 'drawn' ? (
-                    <button
-                      type="button"
-                      aria-label={t('economics.financing.delete_tranche', { defaultValue: 'Delete the tranche' })}
-                      className="text-content-tertiary hover:text-semantic-error"
-                      onClick={() => removeTranche(tr.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <ConfirmDelete
+                      label={t('economics.financing.delete_tranche', { defaultValue: 'Delete the tranche' })}
+                      title={t('economics.confirm.title', { defaultValue: 'Delete this entry?' })}
+                      message={t('economics.confirm.tranche', {
+                        defaultValue: 'The tranche due on {{name}} is removed.',
+                        name: tr.due_on,
+                      })}
+                      onConfirm={() => removeTranche(tr.id)}
+                    />
                   ) : (
                     <span className="w-4" />
                   )}

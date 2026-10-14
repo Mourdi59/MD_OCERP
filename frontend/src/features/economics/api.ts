@@ -55,7 +55,26 @@ export interface PlanView {
   editable?: boolean;
   blocks?: Record<string, string | null>;
   readiness?: Readiness;
-  can: { edit: boolean; manage: boolean };
+  approvals?: Approval[];
+  /** `edit` is false while the plan is proposed or approved; `records` is the raw right to edit the registers. */
+  can: { edit: boolean; manage: boolean; records?: boolean };
+}
+
+export interface Approval {
+  id: string;
+  number: number;
+  status: string;
+  rationale: string;
+  proposed_by: string | null;
+  proposed_by_name: string;
+  proposed_at: string | null;
+  approved_by: string | null;
+  approved_by_name: string;
+  approved_at: string | null;
+  /** `gate` = the governance gate decided, `hand` = a manager approved. */
+  approval_source: string | null;
+  four_eyes: boolean;
+  blocked_reason: string | null;
 }
 
 export interface FlowLine {
@@ -123,6 +142,8 @@ export interface CostFrame {
     unassigned_count: number;
     markups: string;
     estimate: string;
+    /** The frame minus the estimate: what rounding and contingency hold back. Negative when the estimate is above. */
+    reserve: string;
     variance: string;
     variance_pct: string | null;
     committed: string | null;
@@ -162,12 +183,77 @@ export interface Financing {
   sources: Source[];
 }
 
+export type SecurityKind = 'performance' | 'warranty' | 'advance_payment' | 'bid' | 'other';
+export type SecurityStatus = 'requested' | 'in_place' | 'released' | 'expired';
+export type InsuranceKind = 'builders_all_risk' | 'liability' | 'professional_indemnity' | 'other';
+export type InsuranceStatus = 'requested' | 'in_place' | 'expired';
+export type VatTreatment = 'standard' | 'reverse_charge' | 'exempt' | 'mixed' | 'other';
+export type ProcessArea = 'receivables' | 'payables' | 'administration';
+
+export interface Security {
+  id: string;
+  kind: SecurityKind;
+  description: string;
+  amount: string;
+  issuer: string;
+  beneficiary: string;
+  reference: string;
+  valid_from: string | null;
+  valid_until: string | null;
+  status: SecurityStatus;
+  lapsed: boolean;
+  notes: string;
+}
+
+export interface Insurance {
+  id: string;
+  kind: InsuranceKind;
+  insurer: string;
+  policy_number: string;
+  sum_insured: string;
+  deductible: string;
+  period_from: string | null;
+  period_to: string | null;
+  status: InsuranceStatus;
+  lapsed: boolean;
+  notes: string;
+}
+
+export interface TaxTreatment {
+  vat_treatment: VatTreatment;
+  input_tax_deduction: boolean | null;
+  notes: string;
+  confirmed: boolean;
+  confirmed_by: string | null;
+  confirmed_by_name: string;
+  confirmed_at: string | null;
+}
+
+export interface ProcessRow {
+  area: ProcessArea;
+  description: string;
+  owner: string;
+  status: 'open' | 'set_up';
+  set_up_on: string | null;
+  notes: string;
+}
+
+export interface Registers {
+  securities: Security[];
+  insurances: Insurance[];
+  tax: TaxTreatment | null;
+  process: ProcessRow[];
+  state: Record<'securities' | 'insurance' | 'tax' | 'receivables_payables' | 'administration', boolean>;
+  findings: Finding[];
+}
+
 export const economicsKeys = {
   all: (pid: string) => ['economics', pid] as const,
   plan: (pid: string) => ['economics', pid, 'plan'] as const,
   businessCase: (pid: string) => ['economics', pid, 'business-case'] as const,
   costFrame: (pid: string) => ['economics', pid, 'cost-frame'] as const,
   financing: (pid: string) => ['economics', pid, 'financing'] as const,
+  registers: (pid: string) => ['economics', pid, 'registers'] as const,
 };
 
 export const getPlan = (pid: string) => apiGet<PlanView>(`/v1/economics/projects/${pid}/plan`);
@@ -176,6 +262,21 @@ export const patchPlan = (pid: string, body: Record<string, unknown>) => apiPatc
 export const getBusinessCase = (pid: string) => apiGet<BusinessCase>(`/v1/economics/projects/${pid}/business-case`);
 export const getCostFrame = (pid: string) => apiGet<CostFrame>(`/v1/economics/projects/${pid}/cost-frame`);
 export const getFinancing = (pid: string) => apiGet<Financing>(`/v1/economics/projects/${pid}/financing`);
+
+export const getRegisters = (pid: string) => apiGet<Registers>(`/v1/economics/projects/${pid}/registers`);
+export const addSecurity = (pid: string, body: Record<string, unknown>) =>
+  apiPost<Registers>(`/v1/economics/projects/${pid}/registers/securities`, body);
+export const patchSecurity = (pid: string, id: string, body: Record<string, unknown>) =>
+  apiPatch<Registers>(`/v1/economics/projects/${pid}/registers/securities/${id}`, body);
+export const deleteSecurity = (pid: string, id: string) => apiDelete(`/v1/economics/projects/${pid}/registers/securities/${id}`);
+export const addInsurance = (pid: string, body: Record<string, unknown>) =>
+  apiPost<Registers>(`/v1/economics/projects/${pid}/registers/insurances`, body);
+export const patchInsurance = (pid: string, id: string, body: Record<string, unknown>) =>
+  apiPatch<Registers>(`/v1/economics/projects/${pid}/registers/insurances/${id}`, body);
+export const deleteInsurance = (pid: string, id: string) => apiDelete(`/v1/economics/projects/${pid}/registers/insurances/${id}`);
+export const putTax = (pid: string, body: Record<string, unknown>) => apiPut<Registers>(`/v1/economics/projects/${pid}/registers/tax`, body);
+export const putProcess = (pid: string, area: ProcessArea, body: Record<string, unknown>) =>
+  apiPut<Registers>(`/v1/economics/projects/${pid}/registers/process/${area}`, body);
 
 export const addFlowLine = (pid: string, body: Record<string, unknown>) =>
   apiPost<unknown>(`/v1/economics/projects/${pid}/business-case/lines`, body);

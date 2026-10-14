@@ -140,3 +140,80 @@ class ProposeIn(_In):
 
 class ReopenIn(_In):
     reason: str = Field(default="", max_length=2000)
+
+
+SecurityKind = Literal["performance", "warranty", "advance_payment", "bid", "other"]
+SecurityStatus = Literal["requested", "in_place", "released", "expired"]
+InsuranceKind = Literal["builders_all_risk", "liability", "professional_indemnity", "other"]
+InsuranceStatus = Literal["requested", "in_place", "expired"]
+VatTreatment = Literal["standard", "reverse_charge", "exempt", "mixed", "other"]
+ProcessArea = Literal["receivables", "payables", "administration"]
+ProcessStatus = Literal["open", "set_up"]
+_DAY = r"^\d{4}-\d{2}-\d{2}$"
+
+
+class SecurityIn(_In):
+    kind: SecurityKind
+    description: str = Field(default="", max_length=255)
+    amount: Money = Decimal("0")
+    issuer: str = Field(default="", max_length=255)
+    beneficiary: str = Field(default="", max_length=255)
+    reference: str = Field(default="", max_length=120)
+    valid_from: str | None = Field(default=None, pattern=_DAY)
+    valid_until: str | None = Field(default=None, pattern=_DAY)
+    status: SecurityStatus = "requested"
+    notes: str = Field(default="", max_length=2000)
+
+
+class SecurityPatch(_In):
+    kind: SecurityKind | None = None
+    description: str | None = Field(default=None, max_length=255)
+    amount: Money | None = None
+    issuer: str | None = Field(default=None, max_length=255)
+    beneficiary: str | None = Field(default=None, max_length=255)
+    reference: str | None = Field(default=None, max_length=120)
+    valid_from: str | None = Field(default=None, pattern=_DAY)
+    valid_until: str | None = Field(default=None, pattern=_DAY)
+    status: SecurityStatus | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class InsuranceIn(_In):
+    kind: InsuranceKind
+    insurer: str = Field(default="", max_length=255)
+    policy_number: str = Field(default="", max_length=120)
+    sum_insured: Money = Decimal("0")
+    deductible: Money = Decimal("0")
+    period_from: str | None = Field(default=None, pattern=_DAY)
+    period_to: str | None = Field(default=None, pattern=_DAY)
+    status: InsuranceStatus = "requested"
+    notes: str = Field(default="", max_length=2000)
+
+
+class InsurancePatch(_In):
+    kind: InsuranceKind | None = None
+    insurer: str | None = Field(default=None, max_length=255)
+    policy_number: str | None = Field(default=None, max_length=120)
+    sum_insured: Money | None = None
+    deductible: Money | None = None
+    period_from: str | None = Field(default=None, pattern=_DAY)
+    period_to: str | None = Field(default=None, pattern=_DAY)
+    status: InsuranceStatus | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class TaxIn(_In):
+    """The tax treatment; ``confirm`` stamps the caller and the moment as the confirmation."""
+
+    vat_treatment: VatTreatment = "standard"
+    input_tax_deduction: bool | None = None
+    notes: str = Field(default="", max_length=2000)
+    confirm: bool = False
+
+
+class ProcessIn(_In):
+    description: str = Field(default="", max_length=2000)
+    owner: str = Field(default="", max_length=255)
+    status: ProcessStatus = "open"
+    set_up_on: str | None = Field(default=None, pattern=_DAY)
+    notes: str = Field(default="", max_length=2000)

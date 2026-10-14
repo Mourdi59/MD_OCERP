@@ -7,13 +7,13 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, Wand2 } from 'lucide-react';
+import { Wand2 } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
 
 import { addFrameLine, deleteFrameLine, generateFrame, patchPlan, type CostFrame } from './api';
-import { AddRow, Field, cleanDecimal, inputClass, isDecimal, isNegative, orDash, useMoney } from './EconomicsBits';
+import { AddRow, ConfirmDelete, Field, cleanDecimal, inputClass, isDecimal, isNegative, orDash, useMoney } from './EconomicsBits';
 import { useEconomicsAction } from './hooks';
 
 export function CostFramePanel({
@@ -103,14 +103,15 @@ export function CostFramePanel({
                   </td>
                   <td className="px-3 py-2 text-right">
                     {editable && (
-                      <button
-                        type="button"
-                        aria-label={t('economics.frame.delete', { defaultValue: 'Delete the line' })}
-                        className="text-content-tertiary hover:text-semantic-error"
-                        onClick={() => remove(row.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <ConfirmDelete
+                        label={t('economics.frame.delete', { defaultValue: 'Delete the line' })}
+                        title={t('economics.confirm.title', { defaultValue: 'Delete this entry?' })}
+                        message={t('economics.confirm.frame_line', {
+                          defaultValue: 'The frame line {{name}} is removed from the cost frame.',
+                          name: row.code,
+                        })}
+                        onConfirm={() => remove(row.id)}
+                      />
                     )}
                   </td>
                 </tr>
@@ -139,6 +140,41 @@ export function CostFramePanel({
             </tfoot>
           </table>
         </div>
+      )}
+
+      {frame.lines.length > 0 && (
+        <dl
+          className="grid grid-cols-1 gap-3 rounded-lg border border-border p-3 text-sm md:grid-cols-3"
+          data-testid="economics-reconciliation"
+        >
+          <div>
+            <dt className="text-xs text-content-secondary">
+              {t('economics.frame.estimate_with_markups', { defaultValue: 'Estimate including markups' })}
+            </dt>
+            <dd className="text-lg font-semibold tabular-nums">{money(totals.estimate)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-content-secondary">
+              {t('economics.frame.reserve', { defaultValue: 'Reserve for rounding and contingency' })}
+            </dt>
+            <dd
+              className={
+                isNegative(totals.reserve)
+                  ? 'text-lg font-semibold tabular-nums text-semantic-error'
+                  : 'text-lg font-semibold tabular-nums'
+              }
+              data-testid="economics-reserve"
+            >
+              {money(totals.reserve)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-content-secondary">
+              {t('economics.frame.frame_total', { defaultValue: 'Cost frame' })}
+            </dt>
+            <dd className="text-lg font-semibold tabular-nums">{money(totals.frame)}</dd>
+          </div>
+        </dl>
       )}
 
       {totals.unassigned_count > 0 && (

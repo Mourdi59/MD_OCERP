@@ -20,6 +20,13 @@ Payload::
       "financing": {
         "requirement", "coverage": {"shortfall", "surplus", "sources_total"},
         "sources": [{"id", "name", "kind", "amount", "tranche_total", "tranche_count", "award"}]
+      },
+      "registers": {
+        "today": "YYYY-MM-DD",
+        "securities": [{"id", "description", "status", "valid_until"}],
+        "insurances": [{"id", "label", "status", "period_to"}],
+        "tax": {"confirmed", "input_tax_deduction"} | None,
+        "process": [{"area", "status"}]
       }
     }
 
@@ -64,7 +71,13 @@ CODES: dict[str, str] = {
     "grant_over_award": WARNING,
     "grant_without_application": WARNING,
     "investment_below_frame": WARNING,
+    "security_expired": WARNING,
+    "insurance_expired": WARNING,
+    "tax_not_confirmed": WARNING,
+    "process_not_set_up": WARNING,
 }
+
+PROCESS_AREAS = ("receivables", "payables", "administration")
 
 
 @dataclass(frozen=True)
@@ -178,8 +191,62 @@ def financing_findings(payload: dict[str, Any]) -> list[Finding]:
     return out
 
 
+def lapsed(row: dict[str, Any], end_key: str, today: str) -> bool:
+    end = row.get(end_key)
+    return row.get("status") == "expired" or (row.get("status") == "in_place" and bool(end) and str(end) < today)
+
+
+def register_findings(payload: dict[str, Any]) -> list[Finding]:
+    """Securities, insurance, tax treatment and process set-up. A payload without registers has none."""
+    reg = payload.get("registers")
+    if not reg:
+        return []
+    today = str(reg.get("today") or "")
+    out: list[Finding] = []
+    for sec in reg.get("securities") or []:
+        if lapsed(sec, "valid_until", today):
+            out.append(
+                _f("security_expired", sec.get("description") or sec["id"], valid_until=str(sec.get("valid_until")))
+            )
+    for ins in reg.get("insurances") or []:
+        if lapsed(ins, "period_to", today):
+            out.append(_f("insurance_expired", ins.get("label") or ins["id"], period_to=str(ins.get("period_to"))))
+    tax = reg.get("tax")
+    if not tax or not tax.get("confirmed") or tax.get("input_tax_deduction") is None:
+        out.append(_f("tax_not_confirmed"))
+    done = {p["area"] for p in reg.get("process") or [] if p.get("status") == "set_up"}
+    out.extend(_f("process_not_set_up", area) for area in PROCESS_AREAS if area not in done)
+    return out
+
+
+def register_state(payload: dict[str, Any]) -> dict[str, bool]:
+    """The five register questions a gate asks, as booleans. The evidence reads this and nothing else."""
+    reg = payload.get("registers") or {}
+    today = str(reg.get("today") or "")
+    securities = reg.get("securities") or []
+    insurances = reg.get("insurances") or []
+    tax = reg.get("tax")
+    done = {p["area"] for p in reg.get("process") or [] if p.get("status") == "set_up"}
+    return {
+        "securities": bool(securities)
+        and all(
+            s.get("status") in ("in_place", "released") and not lapsed(s, "valid_until", today) for s in securities
+        ),
+        "insurance": bool(insurances)
+        and all(i.get("status") == "in_place" and not lapsed(i, "period_to", today) for i in insurances),
+        "tax": bool(tax and tax.get("confirmed") and tax.get("input_tax_deduction") is not None),
+        "receivables_payables": {"receivables", "payables"} <= done,
+        "administration": "administration" in done,
+    }
+
+
 def all_findings(payload: dict[str, Any]) -> list[Finding]:
-    return [*business_case_findings(payload), *cost_frame_findings(payload), *financing_findings(payload)]
+    return [
+        *business_case_findings(payload),
+        *cost_frame_findings(payload),
+        *financing_findings(payload),
+        *register_findings(payload),
+    ]
 
 
 def errors(findings: list[Finding]) -> list[Finding]:

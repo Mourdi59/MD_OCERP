@@ -45,6 +45,7 @@ from app.modules.economics.calc import FlowLine as FlowInput
 from app.modules.economics.classification import normalise, overlaps, truncate
 from app.modules.economics.errors import EconomicsError, conflict, not_found
 from app.modules.economics.models import Approval, EconomicsPlan, FlowLine, FrameLine, FundingSource, Tranche
+from app.modules.economics.registers import RegistersMixin
 from app.modules.economics.repository import EconomicsRepository
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,7 @@ def snapshot_hash(snapshot: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(snapshot, sort_keys=True, default=str).encode()).hexdigest()
 
 
-class EconomicsService:
+class EconomicsService(RegistersMixin):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.repo = EconomicsRepository(session)
@@ -529,6 +530,7 @@ class EconomicsService:
                 "unassigned_count": n["unassigned_count"],
                 "markups": money(n["markups_total"]),
                 "estimate": money(n["estimate_total"]),
+                "reserve": money(n["frame_total"] - n["estimate_total"]),
                 "variance": money(n["variance_total"]),
                 "variance_pct": ratio(n["variance_total_pct"]),
                 "committed": money(n["committed_total"]),
@@ -757,6 +759,7 @@ class EconomicsService:
                     for s, mine, award in fin["rows"]
                 ],
             },
+            "registers": await self.register_payload(project_id),
         }
 
     async def findings(self, project_id: uuid.UUID) -> list[rules.Finding]:
@@ -1184,15 +1187,17 @@ class EconomicsService:
 
     # ── plan view ──────────────────────────────────────────────────────────
 
-    def _approval_view(self, a: Approval) -> dict[str, Any]:
+    def _approval_view(self, a: Approval, names: dict[str, str]) -> dict[str, Any]:
         return {
             "id": str(a.id),
             "number": a.number,
             "status": a.status,
             "rationale": a.rationale,
             "proposed_by": _s(a.proposed_by),
+            "proposed_by_name": names.get(_s(a.proposed_by) or "", ""),
             "proposed_at": a.proposed_at.isoformat() if a.proposed_at else None,
             "approved_by": _s(a.approved_by),
+            "approved_by_name": names.get(_s(a.approved_by) or "", ""),
             "approved_at": a.approved_at.isoformat() if a.approved_at else None,
             "approval_source": a.approval_source,
             "four_eyes": a.four_eyes,
@@ -1216,6 +1221,8 @@ class EconomicsService:
         if gates:
             doc, carrier_reason = await hosting.carrier_document(self.session, project_id)
             carrier_reason = None if doc is not None else carrier_reason
+        approvals = await self.repo.approvals(project_id)
+        names = await self._names({u for a in approvals for u in (a.proposed_by, a.approved_by) if u})
         return {
             "exists": True,
             "id": str(plan.id),
@@ -1233,6 +1240,6 @@ class EconomicsService:
             "editable": plan.status in EDITABLE,
             "blocks": blocks,
             "readiness": ready,
-            "approvals": [self._approval_view(a) for a in await self.repo.approvals(project_id)],
-            "can": {"edit": can_edit and plan.status in EDITABLE, "manage": can_manage},
+            "approvals": [self._approval_view(a, names) for a in approvals],
+            "can": {"edit": can_edit and plan.status in EDITABLE, "manage": can_manage, "records": can_edit},
         }

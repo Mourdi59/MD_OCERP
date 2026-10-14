@@ -8,10 +8,8 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2 } from 'lucide-react';
-
 import { addFlowLine, deleteFlowLine, patchPlan, type BusinessCase, type FlowKind } from './api';
-import { AddRow, Field, cleanDecimal, inputClass, isDecimal, isNegative, orDash, useMoney } from './EconomicsBits';
+import { AddRow, ConfirmDelete, Field, cleanDecimal, inputClass, isDecimal, isNegative, orDash, useMoney } from './EconomicsBits';
 import { useEconomicsAction } from './hooks';
 import { FLOW_KIND } from './labels';
 
@@ -103,14 +101,15 @@ export function BusinessCasePanel({
                 <td className="px-3 py-2 text-right tabular-nums">{plain(line.escalation_pct, 1)} %</td>
                 <td className="px-3 py-2 text-right">
                   {editable && (
-                    <button
-                      type="button"
-                      aria-label={t('economics.case.delete', { defaultValue: 'Delete the line' })}
-                      className="text-content-tertiary hover:text-semantic-error"
-                      onClick={() => remove(line.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <ConfirmDelete
+                      label={t('economics.case.delete', { defaultValue: 'Delete the line' })}
+                      title={t('economics.confirm.title', { defaultValue: 'Delete this entry?' })}
+                      message={t('economics.confirm.flow_line', {
+                        defaultValue: 'The line {{name}} is removed from the business case.',
+                        name: line.label,
+                      })}
+                      onConfirm={() => remove(line.id)}
+                    />
                   )}
                 </td>
               </tr>

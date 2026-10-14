@@ -35,11 +35,18 @@ from app.modules.economics.schemas import (
     FrameGenerateIn,
     FrameLineIn,
     FrameLinePatch,
+    InsuranceIn,
+    InsurancePatch,
     PlanPatch,
+    ProcessArea,
+    ProcessIn,
     ProposeIn,
     ReopenIn,
+    SecurityIn,
+    SecurityPatch,
     SourceIn,
     SourcePatch,
+    TaxIn,
     TrancheIn,
     TranchePatch,
 )
@@ -395,3 +402,82 @@ async def export(
             "Content-Language": locale,
         },
     )
+
+
+# ── registers: securities, insurance, tax treatment, process set-up ────────
+
+
+@router.get(_P + "/registers", dependencies=[READ])
+async def get_registers(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    svc = await _economics_svc(project_id, user_id, session)
+    return await _run(svc.registers(project_id))
+
+
+@router.post(_P + "/registers/securities", status_code=201, dependencies=[EDIT])
+async def add_security(
+    project_id: uuid.UUID, body: SecurityIn, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    svc = await _economics_svc(project_id, user_id, session)
+    await _run(svc.add_security(project_id, body.model_dump(), _uid(user_id)))
+    return await _run(svc.registers(project_id))
+
+
+@router.patch(_P + "/registers/securities/{row_id}", dependencies=[EDIT])
+async def patch_security(
+    project_id: uuid.UUID, row_id: uuid.UUID, body: SecurityPatch, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    svc = await _economics_svc(project_id, user_id, session)
+    await _run(svc.patch_security(project_id, row_id, body.model_dump(exclude_unset=True), _uid(user_id)))
+    return await _run(svc.registers(project_id))
+
+
+@router.delete(_P + "/registers/securities/{row_id}", dependencies=[EDIT])
+async def delete_security(
+    project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    svc = await _economics_svc(project_id, user_id, session)
+    await _run(svc.delete_security(project_id, row_id, _uid(user_id)))
+    return await _run(svc.registers(project_id))
+
+
+@router.post(_P + "/registers/insurances", status_code=201, dependencies=[EDIT])
+async def add_insurance(
+    project_id: uuid.UUID, body: InsuranceIn, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    svc = await _economics_svc(project_id, user_id, session)
+    await _run(svc.add_insurance(project_id, body.model_dump(), _uid(user_id)))
+    return await _run(svc.registers(project_id))
+
+
+@router.patch(_P + "/registers/insurances/{row_id}", dependencies=[EDIT])
+async def patch_insurance(
+    project_id: uuid.UUID, row_id: uuid.UUID, body: InsurancePatch, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    svc = await _economics_svc(project_id, user_id, session)
+    await _run(svc.patch_insurance(project_id, row_id, body.model_dump(exclude_unset=True), _uid(user_id)))
+    return await _run(svc.registers(project_id))
+
+
+@router.delete(_P + "/registers/insurances/{row_id}", dependencies=[EDIT])
+async def delete_insurance(
+    project_id: uuid.UUID, row_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    svc = await _economics_svc(project_id, user_id, session)
+    await _run(svc.delete_insurance(project_id, row_id, _uid(user_id)))
+    return await _run(svc.registers(project_id))
+
+
+@router.put(_P + "/registers/tax", dependencies=[EDIT])
+async def put_tax(project_id: uuid.UUID, body: TaxIn, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    svc = await _economics_svc(project_id, user_id, session)
+    await _run(svc.put_tax(project_id, body.model_dump(), _uid(user_id)))
+    return await _run(svc.registers(project_id))
+
+
+@router.put(_P + "/registers/process/{area}", dependencies=[EDIT])
+async def put_process(
+    project_id: uuid.UUID, area: ProcessArea, body: ProcessIn, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    svc = await _economics_svc(project_id, user_id, session)
+    await _run(svc.put_process(project_id, area, body.model_dump(), _uid(user_id)))
+    return await _run(svc.registers(project_id))

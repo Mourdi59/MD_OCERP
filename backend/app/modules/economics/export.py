@@ -80,6 +80,13 @@ def frame_document(view: dict[str, Any], *, project_name: str, locale: str) -> R
         (_t("project", locale), project_name),
         (_t("currency", locale), view["currency"]),
     ]
+    if rows:
+        # The numbers reconcile in print as on screen: estimate plus reserve is the frame.
+        details += [
+            (_t("estimate_with_markups", locale), format(_d(totals["estimate"]), "f")),
+            (_t("reserve", locale), format(_d(totals["reserve"]), "f")),
+            (_t("frame_total", locale), format(_d(totals["frame"]), "f")),
+        ]
     return _doc(_t("frame_title", locale), columns, rows, details, locale, view["currency"], totals=True)
 
 
