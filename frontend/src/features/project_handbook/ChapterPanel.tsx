@@ -101,7 +101,7 @@ function LinkedSourceBlock({ source, projectId }: { source: LinkedSource; projec
     grouped.set(row.group, list);
   }
   return (
-    <section className="rounded-lg border border-border bg-surface-elevated shadow-xs" data-testid={`handbook-source-${source.source}`}>
+    <section className="rounded-lg border border-border bg-surface-elevated shadow-sm" data-testid={`handbook-source-${source.source}`}>
       <header className="flex items-center justify-between gap-2 border-b border-border-light px-3 py-2">
         <h4 className="text-sm font-medium text-content-primary">
           {sourceTitle(tf, source.source)}
@@ -275,7 +275,7 @@ export function ChapterPanel({
         </div>
       </header>
 
-      <dl className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface-elevated shadow-xs px-4 py-3 md:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface-elevated shadow-sm px-4 py-3 md:grid-cols-4">
         <Fact label={t('projectHandbook.owner', { defaultValue: 'Owner' })}>
           <OwnerControl projectId={projectId} chapter={chapter} canChange={editable} onChanged={done} />
         </Fact>

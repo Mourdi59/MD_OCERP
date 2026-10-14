@@ -35,7 +35,7 @@ function ChapterList({ chapters, active, onPick }: { chapters: Chapter[]; active
   const { t } = useTranslation();
   const tf = t as TFn;
   return (
-    <ol className="divide-y divide-border-light overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-xs" data-testid="handbook-chapter-list">
+    <ol className="divide-y divide-border-light overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-sm" data-testid="handbook-chapter-list">
       {chapters.map((c, i) => (
         <li key={c.code}>
           <button
@@ -81,7 +81,7 @@ function Head({ handbook, findings }: { handbook: Handbook; findings: Finding[] 
   const open = handbook.counts.required - handbook.counts.required_approved;
   const errors = findings.filter((f) => f.severity === 'error');
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-xs px-4 py-3" data-testid="handbook-head">
+    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm px-4 py-3" data-testid="handbook-head">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-content-primary">{handbook.title}</h2>

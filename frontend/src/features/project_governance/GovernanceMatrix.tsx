@@ -186,7 +186,7 @@ export function GovernanceMatrix({
         labels={labels}
         onOpen={onOpenGate}
       />
-      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
         <table className="w-full min-w-[720px] border-collapse text-left" data-testid="governance-matrix">
           <thead>
             <tr className="bg-surface-secondary">

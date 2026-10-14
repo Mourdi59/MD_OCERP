@@ -47,7 +47,7 @@ export function DeliveryLimitsMatrix({ matrix, catalogue, labels, onOpen }: Deli
           defaultValue: 'One party per step. A red cell is a step nobody carries yet. Open an item to fill its row.',
         })}
       </p>
-      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-xs">
+      <div className="overflow-x-auto rounded-lg border border-border bg-surface-elevated shadow-sm">
         <table className="w-full min-w-[60rem] text-left text-xs">
           <thead className="bg-surface-secondary text-content-secondary">
             <tr>

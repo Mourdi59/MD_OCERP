@@ -145,7 +145,7 @@ export function Section({
   testId?: string;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid={testId}>
+    <section className="rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid={testId}>
       <div className="mb-3 flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold text-content-primary">{title}</h2>

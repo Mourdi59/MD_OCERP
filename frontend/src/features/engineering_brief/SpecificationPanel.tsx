@@ -99,7 +99,7 @@ export function SpecificationPanel({
         : '';
 
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-4" data-testid="brief-spec">
+    <section className="space-y-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-4" data-testid="brief-spec">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="space-y-1">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-content-primary">

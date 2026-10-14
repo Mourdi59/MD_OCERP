@@ -231,7 +231,7 @@ export function IssuePanel({ ctx }: { ctx: DesignContext }) {
       {hasRows(releases) && (
         <ul className="space-y-2" data-testid="releases-list">
           {(releases.data ?? []).map((release) => (
-            <li key={release.id} className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3" data-testid="release-row">
+            <li key={release.id} className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="release-row">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs text-content-tertiary">{release.code}</span>
                 <span className="font-medium text-content-primary">{release.title}</span>

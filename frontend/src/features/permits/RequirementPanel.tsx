@@ -185,7 +185,7 @@ export function RequirementPanel({
         </p>
       )}
 
-      <dl className="grid gap-4 rounded-lg border border-border bg-surface-elevated shadow-xs p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="grid gap-4 rounded-lg border border-border bg-surface-elevated shadow-sm p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Fact label={t('permits.ui.requirement.applicant_role', { defaultValue: 'Who applies' })}>
           {vocab(t, APPLICANT_ROLE, r.applicant_role)}
           {r.applicant_party && <span className="block text-xs text-content-tertiary">{r.applicant_party}</span>}
@@ -275,7 +275,7 @@ export function RequirementPanel({
           <h3 className="text-sm font-semibold text-content-primary">{t('permits.ui.requirement.permits', { defaultValue: 'Permits granted' })}</h3>
           <ul className="space-y-1.5">
             {ownPermits.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface-elevated shadow-xs p-3 text-sm">
+              <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface-elevated shadow-sm p-3 text-sm">
                 <span className="font-medium text-content-primary">{p.reference || type}</span>
                 <ToneBadge tone={PERMIT_TONE[p.state]}>{vocab(t, PERMIT_STATE, p.state)}</ToneBadge>
                 {p.valid_until && (

@@ -119,7 +119,7 @@ export function ReopenDialog({
           )}
         </div>
 
-        <div className="rounded-lg border border-border bg-surface-elevated shadow-xs p-3 text-sm" data-testid="reopen-rewind" data-rewind={rewind ? 'forced' : 'none'}>
+        <div className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3 text-sm" data-testid="reopen-rewind" data-rewind={rewind ? 'forced' : 'none'}>
           <p className="font-medium text-content-primary">
             {rewind
               ? t('governance.project.reopen.rewind_forced', {
