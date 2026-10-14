@@ -98,14 +98,6 @@ async def _second_person(session: AsyncSession, pid: uuid.UUID, owner: uuid.UUID
     return (await session.execute(stmt)).scalar_one_or_none() or owner
 
 
-async def _frame_is_binding(session: AsyncSession, pid: uuid.UUID) -> bool:
-    """Whether the governance frame document that hosts the roadmap is already binding."""
-    from app.modules.permits.service import PermitService, _binding_status
-
-    doc = await PermitService(session)._roadmap_document(pid)
-    return _binding_status(doc) == "agreed"
-
-
 async def seed_permits_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
     """Seed the roadmap of every demo project in ``project_ids`` that has none. The caller commits."""
     from app.core.demo_marker import demo_id_of
@@ -122,11 +114,6 @@ async def seed_permits_demo(session: AsyncSession, project_ids: Iterable[uuid.UU
             await session.execute(select(PermitRoadmap.id).where(PermitRoadmap.project_id == pid))
         ).scalar_one_or_none()
         if has is not None:
-            continue
-        if await _frame_is_binding(session, pid):
-            # Rule 18: a binding frame takes structural changes only through a change request,
-            # and a demo seed has none to spend. The story belongs before the frame binds.
-            logger.info("permits demo seed: frame of %s is already binding, left alone", pid)
             continue
         try:
             async with session.begin_nested():

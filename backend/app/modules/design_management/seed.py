@@ -288,7 +288,6 @@ async def seed_design_management_demo(session: AsyncSession, project_ids: Iterab
     """Seed every demo project in ``project_ids`` that has no design setup. The caller commits."""
     from app.core.demo_marker import demo_id_of
     from app.modules.design_management.models import DesignSetup
-    from app.modules.design_management.service import DesignService
     from app.modules.project_governance.public import project_catalogue
     from app.modules.projects.models import Project
 
@@ -304,11 +303,6 @@ async def seed_design_management_demo(session: AsyncSession, project_ids: Iterab
         if await project_catalogue(session, pid) is None:
             # Design phases are the phases of the pinned model; without one there is nothing to schedule along.
             logger.info("design_management demo seed: project %s has no phase model, left alone", pid)
-            continue
-        if await DesignService(session).binding_refusal(pid) is not None:
-            # Rule 23: a binding design frame takes changes only through a change request, and a
-            # demo seed has none to spend. The story belongs before the frame binds.
-            logger.info("design_management demo seed: frame of %s is already binding, left alone", pid)
             continue
         # No blanket except: a seed that cannot finish is a defect to see, not a project to skip
         # quietly. The savepoint keeps a half-seeded project out; the caller logs and reports.

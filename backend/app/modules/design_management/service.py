@@ -30,6 +30,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_log import log_activity
+from app.core.demo_history import RECORDING_DEMO_HISTORY
 from app.core.events import publish_after_commit
 from app.core.fsm import FSMError
 from app.modules.design_management import fsm as dfsm
@@ -323,6 +324,9 @@ class DesignService:
 
     async def assert_not_binding(self, project_id: uuid.UUID) -> None:
         """Rule 23: once the design frame document is binding, changes go through a governance change request."""
+        if RECORDING_DEMO_HISTORY.get():
+            # The demo seed writes the history the frame was bound on, not a live change.
+            return
         refused = await self.binding_refusal(project_id)
         if refused is not None:
             raise refused
