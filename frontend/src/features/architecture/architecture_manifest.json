@@ -11893,6 +11893,7 @@
         "kpis.py",
         "manifest.py",
         "models.py",
+        "performance.py",
         "permissions.py",
         "report_builder.py",
         "repository.py",
@@ -12619,6 +12620,19 @@
           "handler": "kpi_spec_catalog"
         },
         {
+          "method": "GET",
+          "path": "/performance/presets",
+          "handler": "performance_presets",
+          "response_model": "list[PerformancePreset]"
+        },
+        {
+          "method": "POST",
+          "path": "/performance/benchmark",
+          "handler": "performance_benchmark",
+          "response_model": "PerformanceBenchmarkResponse",
+          "request_schema": "PerformanceBenchmarkRequest"
+        },
+        {
           "method": "POST",
           "path": "/kpis",
           "handler": "create_kpi",
@@ -13027,7 +13041,7 @@
             },
             {
               "name": "value",
-              "type": "Decimal"
+              "type": "Decimal | None"
             },
             {
               "name": "unit",
@@ -13037,6 +13051,11 @@
               "name": "source_record_count",
               "type": "int",
               "default": "0"
+            },
+            {
+              "name": "unavailable_reason",
+              "type": "str | None",
+              "default": "None"
             },
             {
               "name": "computed_at",
@@ -14402,6 +14421,238 @@
               "default": "None"
             }
           ]
+        },
+        {
+          "class_name": "PerformanceBenchmarkRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One KPI, read per project over a cohort.\n\nExactly one of ``kpi`` (a preset id or a stored custom KPI code) and\n``spec`` (a whitelisted spec, validated like ``POST /kpis``). An empty\n``project_ids`` means every project the caller can open.",
+          "fields": [
+            {
+              "name": "project_ids",
+              "type": "list[UUID]"
+            },
+            {
+              "name": "kpi",
+              "type": "str | None"
+            },
+            {
+              "name": "spec",
+              "type": "dict[str, Any] | None",
+              "default": "None"
+            },
+            {
+              "name": "period_start",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "period_end",
+              "type": "date | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "PerformanceProjectRow",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "value",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "numerator",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "denominator",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "records",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "unavailable_reason",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "PerformanceBenchmarkFigures",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "weighted",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "weighted_unavailable_reason",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "median",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "p25",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "p75",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "min",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "max",
+              "type": "Decimal | None"
+            }
+          ]
+        },
+        {
+          "class_name": "PerformanceEvidence",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "projects_with_data",
+              "type": "int"
+            },
+            {
+              "name": "projects_with_value",
+              "type": "int"
+            },
+            {
+              "name": "records",
+              "type": "int"
+            }
+          ]
+        },
+        {
+          "class_name": "PerformanceGroup",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "key",
+              "type": "str"
+            },
+            {
+              "name": "dimensions",
+              "type": "dict[str, str | None]"
+            },
+            {
+              "name": "rows",
+              "type": "list[PerformanceProjectRow]"
+            },
+            {
+              "name": "benchmark",
+              "type": "PerformanceBenchmarkFigures"
+            },
+            {
+              "name": "evidence",
+              "type": "PerformanceEvidence"
+            },
+            {
+              "name": "coverage",
+              "type": "Decimal"
+            }
+          ]
+        },
+        {
+          "class_name": "PerformanceProjectLabel",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "currency",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "PerformanceBenchmarkResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "kpi",
+              "type": "str | None"
+            },
+            {
+              "name": "spec",
+              "type": "dict[str, Any]"
+            },
+            {
+              "name": "aggregation",
+              "type": "str"
+            },
+            {
+              "name": "projects_selected",
+              "type": "int"
+            },
+            {
+              "name": "projects",
+              "type": "list[PerformanceProjectLabel]"
+            },
+            {
+              "name": "groups",
+              "type": "list[PerformanceGroup]"
+            }
+          ]
+        },
+        {
+          "class_name": "PerformancePreset",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "key",
+              "type": "str"
+            },
+            {
+              "name": "spec",
+              "type": "dict[str, Any]"
+            }
+          ]
         }
       ],
       "import_dependencies": [
@@ -14412,10 +14663,12 @@
         "costmodel",
         "costs",
         "equipment",
+        "field_time",
         "finance",
         "inspections",
         "ncr",
         "procurement",
+        "progress",
         "projects",
         "punchlist",
         "rfi",
@@ -107560,6 +107813,7 @@
       "module_category": "business",
       "files": [
         "__init__.py",
+        "counted.py",
         "events.py",
         "field_time_math.py",
         "manifest.py",
@@ -169199,6 +169453,7 @@
       "module_category": "core",
       "files": [
         "__init__.py",
+        "installed.py",
         "manifest.py",
         "models.py",
         "permissions.py",
@@ -266364,10 +266619,10 @@
     },
     {
       "name": "analytics",
-      "ts_files": 2,
+      "ts_files": 5,
       "css_files": 0,
-      "test_files": 0,
-      "total_files": 2
+      "test_files": 1,
+      "total_files": 5
     },
     {
       "name": "approval-routes",
@@ -267860,10 +268115,12 @@
       "costmodel",
       "costs",
       "equipment",
+      "field_time",
       "finance",
       "inspections",
       "ncr",
       "procurement",
+      "progress",
       "projects",
       "punchlist",
       "rfi",
@@ -269304,11 +269561,11 @@
     "total_models": 767,
     "total_columns": 8923,
     "total_relationships": 236,
-    "total_routes": 4528,
-    "total_schemas": 3961,
-    "total_python_files": 2679,
+    "total_routes": 4530,
+    "total_schemas": 3969,
+    "total_python_files": 2682,
     "frontend_features": 208,
-    "frontend_ts_files": 3442,
+    "frontend_ts_files": 3445,
     "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
