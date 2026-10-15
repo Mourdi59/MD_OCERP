@@ -67,16 +67,14 @@ export interface PerformanceBenchmarkRequest {
   project_ids: string[];
 }
 
-const BASE = '/v1/bi-dashboards/performance';
-
 export function fetchPerformancePresets(): Promise<PerformancePreset[]> {
-  return apiGet<PerformancePreset[]>(`${BASE}/presets`);
+  return apiGet<PerformancePreset[]>('/v1/bi-dashboards/performance/presets');
 }
 
 export function fetchPerformanceBenchmark(
   body: PerformanceBenchmarkRequest,
 ): Promise<PerformanceBenchmarkResponse> {
-  return apiPost<PerformanceBenchmarkResponse, PerformanceBenchmarkRequest>(`${BASE}/benchmark`, body);
+  return apiPost<PerformanceBenchmarkResponse, PerformanceBenchmarkRequest>('/v1/bi-dashboards/performance/benchmark', body);
 }
 
 /* ── Pure helpers ─────────────────────────────────────────────────────── */
