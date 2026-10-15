@@ -14,6 +14,7 @@ Endpoints:
     POST   /{id}/acknowledge           - Record the supplier confirmation
     GET    /{id}/export/pdf/           - Printable PDF of one PO (export_routes.py)
     GET    /goods-receipts/{id}/export/pdf/ - Printable PDF of one GR (export_routes.py)
+    *      /requisitions/...           - Material requisitions (see requisition_router)
 
 NOTE: Fixed-path routes (/goods-receipts) are registered BEFORE the parametric
 /{po_id} route so that FastAPI does not try to parse "goods-receipts" as a UUID.
@@ -39,6 +40,7 @@ from app.modules.contacts.models import Contact
 from app.modules.procurement.cost_spine import positions_for_cost_lines
 from app.modules.procurement.models import PurchaseOrder
 from app.modules.procurement.repository import PurchaseOrderRepository
+from app.modules.procurement.requisition_router import router as requisition_router
 from app.modules.procurement.schemas import (
     CommittedByPositionListResponse,
     CommittedByPositionRow,
@@ -70,6 +72,10 @@ router = APIRouter(tags=["procurement"])
 from app.modules.procurement.export_routes import export_router  # noqa: E402
 
 router.include_router(export_router)
+
+# Material requisitions. Included first so ``/requisitions/...`` is matched
+# before the parametric ``/{po_id}`` routes below would try it as an order id.
+router.include_router(requisition_router, prefix="/requisitions")
 
 
 def _get_service(session: SessionDep) -> ProcurementService:
