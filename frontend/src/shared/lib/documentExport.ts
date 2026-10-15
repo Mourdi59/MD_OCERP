@@ -32,6 +32,13 @@ export const REGISTER_DOCUMENT_LOCALES: readonly string[] = ['en', 'tr'];
 export const DIARY_DOCUMENT_LOCALES: readonly string[] = ['en', 'de', 'tr'];
 
 /**
+ * Languages of the purchase order, goods receipt, invoice and payment forms
+ * (`SUPPORTED_PDF_LOCALES` in `backend/app/modules/procurement/pdf_translations.py`
+ * and `backend/app/modules/finance/pdf_translations.py`).
+ */
+export const PURCHASING_DOCUMENT_LOCALES: readonly string[] = ['en', 'de', 'ru'];
+
+/**
  * Each language under its own name, which is how a reader looks for it in a
  * list. These are data, like the names in the language picker, and are not
  * translated.
@@ -39,6 +46,7 @@ export const DIARY_DOCUMENT_LOCALES: readonly string[] = ['en', 'de', 'tr'];
 const LOCALE_ENDONYMS: Record<string, string> = {
   en: 'English',
   de: 'Deutsch',
+  ru: 'Русский',
   tr: 'Türkçe',
 };
 

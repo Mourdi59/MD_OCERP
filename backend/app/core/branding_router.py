@@ -31,6 +31,9 @@ of the login page. These endpoints persist it once on the server:
                                  that type's override.
     DELETE /api/v1/document-appearance/types/{doc_type}/ - admin only. Drop it;
                                  the type follows the workspace look again.
+    PUT    /api/v1/document-appearance/types/{doc_type}/sections/ - admin
+                                 only. Replace the sections the type leaves
+                                 out of its documents.
     GET    /api/v1/document-appearance/types/{doc_type}/sample.pdf - any
                                  signed-in user. The sample page with that
                                  type's look.
@@ -73,12 +76,14 @@ from app.core.pdf_appearance import (
     USER_PAPER,
     DocumentType,
     read_appearance,
+    read_hidden_sections,
     read_overrides,
     reset_appearance,
     reset_override,
     resolve_appearance,
     sanitise_override,
     write_appearance,
+    write_hidden_sections,
     write_override,
 )
 from app.dependencies import RequireRole, get_current_user_payload
@@ -355,6 +360,10 @@ class DocumentTypeResponse(BaseModel):
     the workspace look. ``effective`` is the complete look the type's documents
     are drawn with, the workspace look with ``override`` laid over it, so the
     settings page can show an inherited value without computing it.
+
+    ``sections`` lists the parts of the document a workspace may leave out and
+    ``hidden_sections`` the ones it does; both are empty for a type that
+    prints a fixed form.
     """
 
     key: str
@@ -363,6 +372,16 @@ class DocumentTypeResponse(BaseModel):
     fields: list[str]
     override: dict[str, Any]
     effective: DocumentAppearanceResponse
+    sections: list[str] = Field(default_factory=list)
+    hidden_sections: list[str] = Field(default_factory=list)
+
+
+class DocumentTypeSectionsUpdate(BaseModel):
+    """Admin payload for the sections a type leaves out. Replaces what is stored."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    hidden: list[str] = Field(default_factory=list, max_length=32)
 
 
 class DocumentTypeOverrideUpdate(DocumentAppearanceUpdate):
@@ -468,6 +487,8 @@ def _document_type_response(kind: DocumentType) -> DocumentTypeResponse:
         fields=list(kind.fields),
         override=read_overrides().get(kind.key, {}),
         effective=DocumentAppearanceResponse(**resolve_appearance(kind.key)),
+        sections=list(kind.sections),
+        hidden_sections=read_hidden_sections(kind.key),
     )
 
 
@@ -526,6 +547,42 @@ async def delete_document_type_override(doc_type: str) -> DocumentTypeResponse:
     """Admin: drop one type's override, so it follows the workspace look again."""
     kind = _configurable_type(doc_type)
     reset_override(kind.key)
+    return _document_type_response(kind)
+
+
+@router.put(
+    "/document-appearance/types/{doc_type}/sections/",
+    response_model=DocumentTypeResponse,
+    dependencies=[Depends(RequireRole("admin"))],
+)
+@router.put(
+    "/document-appearance/types/{doc_type}/sections",
+    response_model=DocumentTypeResponse,
+    include_in_schema=False,
+    dependencies=[Depends(RequireRole("admin"))],
+)
+async def put_document_type_sections(doc_type: str, body: DocumentTypeSectionsUpdate) -> DocumentTypeResponse:
+    """Admin: replace the sections one type leaves out. An empty list prints them all.
+
+    A section the type does not have is refused rather than dropped, for the
+    reason :func:`_refuse_an_unusable_override` gives: a 200 for a switch that
+    changes no document tells the admin something false.
+    """
+    kind = _configurable_type(doc_type)
+    unknown = [name for name in body.hidden if name not in kind.sections]
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "invalid_document_type_sections",
+                "document_type": kind.key,
+                "sections": unknown,
+                "message": f"{kind.label} documents have no section {', '.join(unknown)}."
+                + (f" They have: {', '.join(kind.sections)}." if kind.sections else " They have none to hide."),
+                "allowed_sections": list(kind.sections),
+            },
+        )
+    write_hidden_sections(kind.key, body.hidden)
     return _document_type_response(kind)
 
 

@@ -59,6 +59,14 @@ export interface DocumentTypeEntry {
   override: DocumentTypeOverride;
   /** The complete look the type prints with: the workspace look with `override` laid over it. */
   effective: DocumentAppearance;
+  /**
+   * The parts of the document a workspace may leave out (line items, notes,
+   * signatures...). Empty for a type that prints a fixed form. Older servers
+   * omit the field.
+   */
+  sections?: string[];
+  /** The sections this workspace leaves out. Every other one prints. */
+  hidden_sections?: string[];
 }
 
 export const DOCUMENT_TYPES_KEY = ['document-appearance', 'types'] as const;
@@ -84,6 +92,18 @@ export function saveDocumentTypeOverride(
   override: DocumentTypeOverride,
 ): Promise<DocumentTypeEntry> {
   return apiPut<DocumentTypeEntry>(`/v1/document-appearance/types/${encodeURIComponent(key)}/`, override);
+}
+
+/**
+ * Replace the sections a type leaves out of its documents. Admin only.
+ *
+ * Replace, not merge: a section not named here prints. The server refuses a
+ * section the type does not have rather than storing a switch that does nothing.
+ */
+export function saveDocumentTypeSections(key: string, hidden: string[]): Promise<DocumentTypeEntry> {
+  return apiPut<DocumentTypeEntry>(`/v1/document-appearance/types/${encodeURIComponent(key)}/sections/`, {
+    hidden,
+  });
 }
 
 /** Drop what a type pins, so it follows the workspace look again. Admin only. */

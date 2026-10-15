@@ -7,6 +7,8 @@ Endpoints:
     POST   /                    - Create invoice (auth required)
     GET    /invoices/export      - Export invoices as Excel
     GET    /invoices/{id}/br-pdf - Brazilian-styled invoice PDF (RPS layout)
+    GET    /invoices/{id}/export/pdf/ - Printable PDF of one invoice
+    GET    /payments/{id}/export/pdf/ - Printable PDF of one payment
     GET    /payments             - List payments
     POST   /payments             - Create payment (auth required)
     GET    /budgets              - List budgets
@@ -48,7 +50,16 @@ from app.core.file_signature import (
 from app.core.file_signature import (
     require as require_signature,
 )
+from app.core.party_names import resolve_party_names
+from app.core.pdf_appearance import resolve_sections
 from app.core.rate_limiter import approval_limiter
+from app.core.register_context import (
+    AcceptLanguageHeader,
+    LocaleQuery,
+    generated_now,
+    load_project_header,
+    record_download,
+)
 from app.core.upload_guards import reject_if_xlsx_bomb
 from app.dependencies import (
     CurrentUserId,
@@ -711,6 +722,83 @@ async def export_invoice_br_pdf(
             "Content-Language": "pt-BR",
         },
     )
+
+
+# ── Printable invoice and payment record (#514) ─────────────────────────────
+#
+# The record forms of app.modules.finance.pdf_export, in the reader's language
+# (``?locale=``, then Accept-Language, then English) with the sections the
+# workspace chose for each document type. Access is the detail route's:
+# ``finance.read`` and access to the invoice's project.
+
+
+@router.get("/invoices/{invoice_id}/export/pdf/", summary="Export invoice as a printable PDF")
+async def export_invoice_pdf(
+    invoice_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId = None,  # type: ignore[assignment]
+    locale: LocaleQuery = None,
+    accept_language: AcceptLanguageHeader = None,
+    _perm: None = Depends(RequirePermission("finance.read")),
+    service: FinanceService = Depends(_get_service),
+) -> StreamingResponse:
+    """Download one invoice as a printable PDF form with its lines, totals and payments."""
+    from app.modules.finance.pdf_export import invoice_record
+    from app.modules.finance.pdf_translations import invoice_pdf_filename, resolve_pdf_locale, tr
+
+    await _require_invoice_access(session, invoice_id, user_id)
+    invoice = await service.get_invoice(invoice_id)
+    doc_locale = resolve_pdf_locale(locale, accept_language)
+    project = await load_project_header(session, invoice.project_id)
+    po_number = None
+    if invoice.purchase_order_id is not None:
+        from app.modules.procurement.models import PurchaseOrder
+
+        po_number = (
+            await session.execute(select(PurchaseOrder.po_number).where(PurchaseOrder.id == invoice.purchase_order_id))
+        ).scalar_one_or_none()
+    document = invoice_record(
+        invoice,
+        project=project,
+        people=await resolve_party_names(session, [invoice.contact_id, invoice.created_by]),
+        purchase_order_number=po_number,
+        sections=resolve_sections("invoice"),
+        locale=doc_locale,
+        generated=generated_now(tr(doc_locale, "datetime_format"), project),
+    )
+    return await record_download(document, invoice_pdf_filename(invoice.invoice_number), doc_locale)
+
+
+@router.get("/payments/{payment_id}/export/pdf/", summary="Export payment as a printable PDF")
+async def export_payment_pdf(
+    payment_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId = None,  # type: ignore[assignment]
+    locale: LocaleQuery = None,
+    accept_language: AcceptLanguageHeader = None,
+    _perm: None = Depends(RequirePermission("finance.read")),
+) -> StreamingResponse:
+    """Download the record of one payment, with the invoice it settles, as a PDF form."""
+    from app.modules.finance.pdf_export import payment_record
+    from app.modules.finance.pdf_translations import payment_pdf_filename, resolve_pdf_locale, tr
+
+    payment = await session.get(Payment, payment_id)
+    if payment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payment {payment_id} not found")
+    invoice = await _require_invoice_access(session, payment.invoice_id, user_id)
+    doc_locale = resolve_pdf_locale(locale, accept_language)
+    project = await load_project_header(session, invoice.project_id)
+    document = payment_record(
+        payment,
+        invoice=invoice,
+        project=project,
+        people=await resolve_party_names(session, [invoice.contact_id]),
+        sections=resolve_sections("payment"),
+        locale=doc_locale,
+        generated=generated_now(tr(doc_locale, "datetime_format"), project),
+    )
+    filename = payment_pdf_filename(invoice.invoice_number, payment.payment_date)
+    return await record_download(document, filename, doc_locale)
 
 
 @router.get(

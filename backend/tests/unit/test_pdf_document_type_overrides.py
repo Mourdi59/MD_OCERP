@@ -48,6 +48,7 @@ from app.core.pdf_appearance import (
     write_appearance,
     write_override,
 )
+from tests.unit import _record_pdf_samples as record_pdf_samples
 
 LEGAL_NAME = "Bau GmbH Müller"
 FIXED_NOW = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
@@ -373,6 +374,11 @@ RENDERERS: dict[str, Callable[[], bytes]] = {
     "transmittal": _transmittal,
     "meeting_minutes": _meeting_minutes,
     "daily_report": _daily_report,
+    # The record forms of app.core.register_export.build_record_pdf.
+    "purchase_order": record_pdf_samples.render_purchase_order,
+    "goods_receipt": record_pdf_samples.render_goods_receipt,
+    "invoice": record_pdf_samples.render_invoice,
+    "payment": record_pdf_samples.render_payment,
 }
 
 
@@ -386,6 +392,7 @@ def workspace_only_reads(monkeypatch: pytest.MonkeyPatch) -> None:
     import at module level, and ``app.core.pdf_branding`` itself for the ones
     that import inside the function.
     """
+    import app.core.register_export as register_export
     import app.modules.closeout.cover_pdf as cover_pdf
     import app.modules.contracts.aia_pdf as aia_pdf
     import app.modules.daily_diary.pdf_export as diary_pdf
@@ -400,9 +407,9 @@ def workspace_only_reads(monkeypatch: pytest.MonkeyPatch) -> None:
     def workspace_appearance(doc_type: str | None = None) -> dict[str, Any]:
         return appearance()
 
-    for module in (pdf_branding, rfi_pdf, aia_pdf, cover_pdf, diary_pdf):
+    for module in (pdf_branding, rfi_pdf, aia_pdf, cover_pdf, diary_pdf, register_export):
         monkeypatch.setattr(module, "branded_letterhead", workspace_letterhead)
-    for module in (pdf_branding, rfi_pdf, diary_pdf):
+    for module in (pdf_branding, rfi_pdf, diary_pdf, register_export):
         monkeypatch.setattr(module, "branded_appearance", workspace_appearance)
 
 
@@ -482,7 +489,7 @@ def test_the_overrides_map_drops_unknown_types_and_empty_entries() -> None:
     clean = sanitise_overrides(
         {
             "rfi": {"show_letterhead": False},
-            "invoice": {"show_letterhead": False},
+            "quotation": {"show_letterhead": False},
             "punch_list": {"page_size": "A4"},
             "transmittal": "not a dict",
         }
@@ -572,7 +579,7 @@ def test_without_overrides_the_file_is_what_it_always_was(data_dir: Path) -> Non
 
 
 def test_writing_to_an_unknown_type_stores_nothing(data_dir: Path) -> None:
-    assert write_override("invoice", {"show_letterhead": False}, data_dir) == {}
+    assert write_override("quotation", {"show_letterhead": False}, data_dir) == {}
     assert write_override("submittal", {"show_letterhead": False}, data_dir) == {}
     assert read_overrides(data_dir) == {}
     assert not appearance_path(data_dir).exists()
@@ -582,7 +589,7 @@ def test_a_hand_edited_file_is_cleaned_on_read_and_never_raises(data_dir: Path) 
     appearance_path(data_dir).write_text(
         '{"margin_mm": NaN, "base_font_size": Infinity, "accent_color": "#010203", "overrides": '
         '{"rfi": {"show_letterhead": false, "page_size": "LETTER", "accent_color": "red"},'
-        ' "invoice": {"show_letterhead": false}, "punch_list": []}}',
+        ' "quotation": {"show_letterhead": false}, "punch_list": []}}',
         encoding="utf-8",
     )
     assert read_appearance(data_dir)["margin_mm"] == DEFAULT_APPEARANCE["margin_mm"]
@@ -594,7 +601,7 @@ def test_a_hand_edited_file_is_cleaned_on_read_and_never_raises(data_dir: Path) 
 
 def test_an_unknown_type_resolves_to_the_workspace_look(data_dir: Path) -> None:
     write_appearance(WORKSPACE, data_dir)
-    assert resolve_appearance("invoice", data_dir) == read_appearance(data_dir)
+    assert resolve_appearance("quotation", data_dir) == read_appearance(data_dir)
 
 
 def test_the_resolved_look_cannot_mutate_the_cache(data_dir: Path) -> None:
@@ -947,7 +954,7 @@ def test_an_unknown_field_name_is_refused(data_dir: Path) -> None:
 def test_unknown_and_reserved_types_are_refused(data_dir: Path) -> None:
     client = _client("admin")
 
-    unknown = client.put("/api/v1/document-appearance/types/invoice/", json={"show_letterhead": False})
+    unknown = client.put("/api/v1/document-appearance/types/quotation/", json={"show_letterhead": False})
     assert unknown.status_code == 404
     assert unknown.json()["detail"]["error"] == "unknown_document_type"
     assert unknown.json()["detail"]["known_types"] == CONFIGURABLE

@@ -91,6 +91,9 @@ import { InvoiceInboxTab } from './InvoiceInboxTab';
 import { StatementsTab } from './StatementsTab';
 import { RetentionLedgerTab } from './RetentionLedgerTab';
 import { EInvoiceModal } from './EInvoiceModal';
+import { downloadInvoicePdf, downloadPaymentPdf } from './api';
+import { PURCHASING_DOCUMENT_LOCALES } from '@/shared/lib/documentExport';
+import { RecordPdfButton } from '@/shared/ui/RegisterExport';
 import { financeGuide } from './financeGuide';
 import { DEFAULT_FINANCE_TAB, isFinanceTab, type FinanceTab } from './financeTabs';
 import { UnlinkedTwinBanner } from '@/features/subcontractors/UnlinkedTwinBanner';
@@ -2745,6 +2748,11 @@ export function InvoicesTab({ projectId }: { projectId: string }) {
                               <FileCode2 size={14} />
                             </button>
                           )}
+                          <RecordPdfButton
+                            download={(locale) => downloadInvoicePdf(inv.id, locale, inv.invoice_number)}
+                            locales={PURCHASING_DOCUMENT_LOCALES}
+                            testId={`invoice-pdf-${inv.id}`}
+                          />
                           {inv.status === 'draft' && (
                             <Button
                               variant="secondary"
@@ -2858,6 +2866,11 @@ export function InvoicesTab({ projectId }: { projectId: string }) {
                           <FileCode2 size={14} />
                         </button>
                       )}
+                      <RecordPdfButton
+                        download={(locale) => downloadInvoicePdf(inv.id, locale, inv.invoice_number)}
+                        locales={PURCHASING_DOCUMENT_LOCALES}
+                        testId={`invoice-card-pdf-${inv.id}`}
+                      />
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-xs text-content-tertiary">
@@ -3449,6 +3462,9 @@ function PaymentsTab({
               <th className="px-4 py-3 text-center font-medium text-content-tertiary">
                 {t('common.status', { defaultValue: 'Status' })}
               </th>
+              <th className="px-4 py-3 text-right font-medium text-content-tertiary">
+                {t('common.actions', { defaultValue: 'Actions' })}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -3482,6 +3498,13 @@ function PaymentsTab({
                     );
                   })()}
                 </td>
+                <td className="px-4 py-3 text-right">
+                  <RecordPdfButton
+                    download={(locale) => downloadPaymentPdf(p.id, locale)}
+                    locales={PURCHASING_DOCUMENT_LOCALES}
+                    testId={`payment-pdf-${p.id}`}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -3494,7 +3517,7 @@ function PaymentsTab({
                 <td className="px-4 py-3 text-right">
                   <MultiCurrencyTotal items={paymentTotals.total} variant="inline" />
                 </td>
-                <td colSpan={2} />
+                <td colSpan={3} />
               </tr>
             </tfoot>
           )}

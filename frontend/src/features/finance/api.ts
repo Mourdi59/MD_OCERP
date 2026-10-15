@@ -9,6 +9,7 @@
  */
 
 import { apiGet, apiPatch, apiPut } from '@/shared/lib/api';
+import { downloadRecordPdf } from '@/shared/lib/documentExport';
 
 /* ── Retention / withholding ledger ───────────────────────────────────── */
 
@@ -253,4 +254,23 @@ export function patchInvoiceMetadata(
     `/v1/finance/${encodeURIComponent(invoiceId)}`,
     { metadata },
   );
+}
+
+/* ── Printable documents ──────────────────────────────────────────────── */
+
+/**
+ * Download the printable form of one invoice (GET /invoices/{id}/export/pdf/),
+ * with the sections the workspace's document settings keep.
+ */
+export function downloadInvoicePdf(id: string, locale: string, invoiceNumber?: string): Promise<void> {
+  return downloadRecordPdf(
+    `/v1/finance/invoices/${encodeURIComponent(id)}/export/pdf/`,
+    locale,
+    invoiceNumber || 'invoice',
+  );
+}
+
+/** Download the printable record of one payment (GET /payments/{id}/export/pdf/). */
+export function downloadPaymentPdf(id: string, locale: string): Promise<void> {
+  return downloadRecordPdf(`/v1/finance/payments/${encodeURIComponent(id)}/export/pdf/`, locale, 'payment');
 }

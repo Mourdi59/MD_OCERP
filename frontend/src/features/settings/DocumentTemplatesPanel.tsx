@@ -21,6 +21,11 @@
  *
  * Each row's sample PDF is drawn from the saved settings on the sheet that
  * document prints on, so what it shows is what prints.
+ *
+ * A type whose generator prints optional parts (the purchase order's notes,
+ * the invoice's payment history...) also lists those parts, each with a switch.
+ * They are saved on their own, because they say what the document contains
+ * rather than how it looks.
  */
 
 import { useEffect, useId, useMemo, useState } from 'react';
@@ -48,6 +53,7 @@ import {
   isDocumentTypeField,
   resetDocumentTypeOverride,
   saveDocumentTypeOverride,
+  saveDocumentTypeSections,
   type DocumentTypeEntry,
   type DocumentTypeField,
   type DocumentTypeOverride,
@@ -380,6 +386,10 @@ function DocumentTypeRow({ entry, workspace, options, letterhead, canEdit }: Doc
             })}
           </div>
 
+          {(entry.sections?.length ?? 0) > 0 && (
+            <SectionsEditor entry={entry} canEdit={canEdit} onStored={store} />
+          )}
+
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
             {canEdit && (
               <>
@@ -430,6 +440,101 @@ function DocumentTypeRow({ entry, workspace, options, letterhead, canEdit }: Doc
         </div>
       )}
     </li>
+  );
+}
+
+/* ── Sections ────────────────────────────────────────────────────────── */
+
+interface SectionsEditorProps {
+  entry: DocumentTypeEntry;
+  canEdit: boolean;
+  onStored: (stored: DocumentTypeEntry) => void;
+}
+
+function sameSections(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((s) => b.includes(s));
+}
+
+function SectionsEditor({ entry, canEdit, onStored }: SectionsEditorProps) {
+  const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
+  const sections = entry.sections ?? [];
+  const stored = useMemo(() => entry.hidden_sections ?? [], [entry.hidden_sections]);
+
+  // The draft is the set of sections left out; everything else prints.
+  const [hidden, setHidden] = useState<string[]>(stored);
+  useEffect(() => {
+    setHidden(stored);
+  }, [stored]);
+  const dirty = !sameSections(hidden, stored);
+
+  const saveM = useMutation({
+    mutationFn: () => saveDocumentTypeSections(entry.key, hidden),
+    onSuccess: (next) => {
+      onStored(next);
+      addToast({
+        type: 'success',
+        title: t('settings.document_templates.sections_saved', {
+          defaultValue: 'Saved. New documents of this kind include only the sections switched on.',
+        }),
+      });
+    },
+    onError: (e) =>
+      addToast({
+        type: 'error',
+        title: t('settings.document_templates.sections_save_failed', {
+          defaultValue: 'Could not save the sections of this document',
+        }),
+        message: getErrorMessage(e),
+      }),
+  });
+
+  const sectionLabel = (section: string) =>
+    t(`settings.document_templates.sections.${section}`, { defaultValue: section.replace(/_/g, ' ') });
+
+  return (
+    <div className="mt-4 border-t border-border pt-3" data-testid={`doc-type-sections-${entry.key}`}>
+      <h3 className="text-xs font-semibold text-content-primary">
+        {t('settings.document_templates.sections_title', { defaultValue: 'What the document includes' })}
+      </h3>
+      <p className="mt-0.5 text-[11px] text-content-tertiary">
+        {t('settings.document_templates.sections_hint', {
+          defaultValue: 'Switch a section off to leave it out of every new document of this kind.',
+        })}
+      </p>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        {sections.map((section) => {
+          const shown = !hidden.includes(section);
+          return (
+            <div key={section} data-testid={`doc-type-section-${entry.key}-${section}`}>
+              <Toggle
+                size="sm"
+                checked={shown}
+                disabled={!canEdit || saveM.isPending}
+                onChange={(next) =>
+                  setHidden((prev) => (next ? prev.filter((s) => s !== section) : [...prev, section]))
+                }
+                label={sectionLabel(section)}
+              />
+            </div>
+          );
+        })}
+      </div>
+      {canEdit && (
+        <div className="mt-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={saveM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            disabled={!dirty || saveM.isPending}
+            onClick={() => saveM.mutate()}
+            data-testid={`doc-type-sections-save-${entry.key}`}
+          >
+            {t('settings.document_templates.sections_save', { defaultValue: 'Save sections' })}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 

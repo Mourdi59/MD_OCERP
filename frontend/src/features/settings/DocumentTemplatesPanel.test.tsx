@@ -31,6 +31,7 @@ vi.mock('./documentTemplates', async () => {
     getDocumentTypes: vi.fn(),
     saveDocumentTypeOverride: vi.fn(),
     resetDocumentTypeOverride: vi.fn(),
+    saveDocumentTypeSections: vi.fn(),
     fetchDocumentTypeSamplePdf: vi.fn(),
   };
 });
@@ -57,6 +58,7 @@ const getTypesMock = vi.mocked(templatesApi.getDocumentTypes);
 const saveMock = vi.mocked(templatesApi.saveDocumentTypeOverride);
 const resetMock = vi.mocked(templatesApi.resetDocumentTypeOverride);
 const sampleMock = vi.mocked(templatesApi.fetchDocumentTypeSamplePdf);
+const sectionsMock = vi.mocked(templatesApi.saveDocumentTypeSections);
 
 const WORKSPACE: appearanceApi.DocumentAppearance = {
   accent_color: '#1a1a2e',
@@ -98,6 +100,17 @@ const PUNCH_LIST: templatesApi.DocumentTypeEntry = {
   fields: ['show_letterhead', 'logo_align', 'accent_color', 'watermark'],
   override: {},
   effective: WORKSPACE,
+};
+
+const PURCHASE_ORDER: templatesApi.DocumentTypeEntry = {
+  key: 'purchase_order',
+  label: 'Purchase order',
+  label_key: 'settings.document_templates.types.purchase_order',
+  fields: ['show_letterhead'],
+  override: {},
+  effective: WORKSPACE,
+  sections: ['line_items', 'notes', 'signatures'],
+  hidden_sections: ['signatures'],
 };
 
 function renderPanel() {
@@ -145,6 +158,38 @@ describe('DocumentTemplatesPanel', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('lists the sections a document carries and saves the ones switched off', async () => {
+    getTypesMock.mockResolvedValue([RFI, PURCHASE_ORDER]);
+    sectionsMock.mockResolvedValue({ ...PURCHASE_ORDER, hidden_sections: ['notes', 'signatures'] });
+    renderPanel();
+    await openRow('purchase_order');
+
+    const notes = within(screen.getByTestId('doc-type-section-purchase_order-notes')).getByRole('switch');
+    const signatures = within(screen.getByTestId('doc-type-section-purchase_order-signatures')).getByRole('switch');
+    expect(notes).toHaveAttribute('aria-checked', 'true');
+    expect(signatures).toHaveAttribute('aria-checked', 'false');
+
+    const save = screen.getByTestId('doc-type-sections-save-purchase_order');
+    expect(save).toBeDisabled();
+    fireEvent.click(notes);
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+
+    await waitFor(() => expect(sectionsMock).toHaveBeenCalledTimes(1));
+    const [key, hidden] = sectionsMock.mock.calls[0]!;
+    expect(key).toBe('purchase_order');
+    expect([...hidden].sort()).toEqual(['notes', 'signatures']);
+    await waitFor(() => expect(save).toBeDisabled());
+    // The look's own save is untouched by a sections change.
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it('shows no sections block for a type that prints a fixed form', async () => {
+    renderPanel();
+    await openRow('rfi');
+    expect(screen.queryByTestId('doc-type-sections-rfi')).toBeNull();
   });
 
   it('names each type and says whether it has a look of its own', async () => {

@@ -115300,6 +115300,8 @@
         "invoice_capture_service.py",
         "manifest.py",
         "models.py",
+        "pdf_export.py",
+        "pdf_translations.py",
         "permissions.py",
         "po_link.py",
         "repairs.py",
@@ -116010,6 +116012,18 @@
           "path": "/invoices/{invoice_id}/br-pdf/",
           "handler": "export_invoice_br_pdf",
           "request_schema": "None"
+        },
+        {
+          "method": "GET",
+          "path": "/invoices/{invoice_id}/export/pdf/",
+          "handler": "export_invoice_pdf",
+          "request_schema": "AcceptLanguageHeader"
+        },
+        {
+          "method": "GET",
+          "path": "/payments/{payment_id}/export/pdf/",
+          "handler": "export_payment_pdf",
+          "request_schema": "AcceptLanguageHeader"
         },
         {
           "method": "GET",
@@ -165552,10 +165566,13 @@
         "__init__.py",
         "cost_spine.py",
         "events.py",
+        "export_routes.py",
         "intl.py",
         "manifest.py",
         "models.py",
         "otif.py",
+        "pdf_export.py",
+        "pdf_translations.py",
         "permissions.py",
         "repository.py",
         "rfq_award.py",
@@ -269561,9 +269578,9 @@
     "total_models": 767,
     "total_columns": 8923,
     "total_relationships": 236,
-    "total_routes": 4530,
+    "total_routes": 4532,
     "total_schemas": 3969,
-    "total_python_files": 2682,
+    "total_python_files": 2687,
     "frontend_features": 208,
     "frontend_ts_files": 3445,
     "frontend_backend_mapped": 187

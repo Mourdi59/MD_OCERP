@@ -47,7 +47,14 @@ import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useActiveProjectId } from '@/shared/hooks/useActiveProjectId';
 import { invalidateFinanceFigures } from '@/features/finance/financeQueryKeys';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { getPOMatchStatus, type POLineMatchTag } from './api';
+import {
+  downloadGoodsReceiptPdf,
+  downloadPurchaseOrderPdf,
+  getPOMatchStatus,
+  type POLineMatchTag,
+} from './api';
+import { PURCHASING_DOCUMENT_LOCALES } from '@/shared/lib/documentExport';
+import { RecordPdfButton } from '@/shared/ui/RegisterExport';
 import { PORemovalDialog, removalVerbFor } from './PORemovalDialog';
 import { procurementGuide } from './procurementGuide';
 import { SupplierScorecardModal } from './SupplierScorecardModal';
@@ -1793,8 +1800,16 @@ function PurchaseOrdersTab({
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {isManager && (
                   <div className="flex items-center justify-end gap-1 flex-wrap">
+                    {/* The printed order, for every reader of the register; the
+                        workflow actions beside it stay manager-only. */}
+                    <RecordPdfButton
+                      download={(locale) => downloadPurchaseOrderPdf(po.id, locale, po.po_number)}
+                      locales={PURCHASING_DOCUMENT_LOCALES}
+                      testId={`po-pdf-${po.id}`}
+                    />
+                  {isManager && (
+                  <>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1953,8 +1968,9 @@ function PurchaseOrdersTab({
                         </Button>
                       );
                     })()}
-                  </div>
+                  </>
                   )}
+                  </div>
                 </td>
               </tr>
               );
@@ -2234,17 +2250,15 @@ function GoodsReceiptsTab({
               <th className="px-4 py-3 text-center font-medium text-content-tertiary">
                 {t('common.status', { defaultValue: 'Status' })}
               </th>
-              {canReceive && (
-                <th className="px-4 py-3 text-right font-medium text-content-tertiary">
-                  {t('common.actions', { defaultValue: 'Actions' })}
-                </th>
-              )}
+              <th className="px-4 py-3 text-right font-medium text-content-tertiary">
+                {t('common.actions', { defaultValue: 'Actions' })}
+              </th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={canReceive ? 6 : 5} className="px-4 py-8 text-center text-sm text-content-tertiary">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-content-tertiary">
                   {t('procurement.no_gr_match', { defaultValue: 'No matching goods receipts' })}
                 </td>
               </tr>
@@ -2287,13 +2301,20 @@ function GoodsReceiptsTab({
                     })}
                   </Badge>
                 </td>
-                {canReceive && (
-                  <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <RecordPdfButton
+                      download={(locale) =>
+                        downloadGoodsReceiptPdf(gr.id, locale, gr.gr_reference || gr.po_number || undefined)
+                      }
+                      locales={PURCHASING_DOCUMENT_LOCALES}
+                      testId={`gr-pdf-${gr.id}`}
+                    />
                     {/* A draft goods receipt is awaiting confirmation - the
                         load-bearing step that rolls the PO up and moves the
                         budget from committed to actual. Already-confirmed
                         receipts show nothing actionable. */}
-                    {gr.status === 'draft' ? (
+                    {canReceive && gr.status === 'draft' && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -2313,11 +2334,9 @@ function GoodsReceiptsTab({
                         )}
                         {t('procurement.gr_confirm_short', { defaultValue: 'Confirm' })}
                       </Button>
-                    ) : (
-                      <span className="text-content-tertiary text-xs">-</span>
                     )}
-                  </td>
-                )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

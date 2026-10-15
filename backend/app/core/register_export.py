@@ -94,6 +94,7 @@ from app.core.regional_format import COUNTRY_DEFAULTS, NumberStyle, date_format_
 
 __all__ = [
     "EMPTY",
+    "FORM_FURNITURE",
     "FURNITURE",
     "DocumentCatalogue",
     "ProjectHeader",
@@ -110,6 +111,7 @@ __all__ = [
     "export_filename",
     "format_amount",
     "format_count",
+    "format_quantity",
     "format_stored_date",
     "grid_rows",
     "parse_stored_date",
@@ -282,6 +284,71 @@ FURNITURE: dict[str, dict[str, str]] = {
 }
 
 
+# Page furniture for record forms that print in a language the registers do
+# not. It is kept out of :data:`FURNITURE` on purpose: other forms read
+# membership of that table as "the registers print in this language" and
+# switch to the registers' page phrase and date rules when it holds, so a
+# language added there changes documents that never asked for it. A
+# catalogue opts in by passing this table as its ``furniture``.
+FORM_FURNITURE: dict[str, dict[str, str]] = {
+    "de": {
+        "project": "Projekt",
+        "project_no": "Projekt-Nr.",
+        "generated_on": "Erstellt am",
+        "records": "Einträge",
+        "currency": "Währung",
+        "status": "Status",
+        "name": "Name",
+        "signature": "Unterschrift",
+        "date": "Datum",
+        "signatures": "Unterschriften",
+        "yes": "Ja",
+        "no": "Nein",
+        "days_one": "{n} Tag",
+        "days_other": "{n} Tage",
+        "empty_register": "Keine Einträge.",
+        "total": "Summe",
+        "signer_title": "Funktion",
+        "sig_prepared_by": "Erstellt von",
+        "sig_checked_by": "Geprüft von",
+        "sig_approved_by": "Freigegeben von",
+        "footer_generated": "Erstellt {timestamp}",
+        "footer_page": "Seite {page} von {total}",
+        "date_format": "%d.%m.%Y",
+        "datetime_format": "%d.%m.%Y %H:%M UTC",
+    },
+    # The Russian strings avoid past tense verbs, which would force a
+    # grammatical gender onto whoever prepared or approved the document, and
+    # write days with the abbreviation every numeral takes.
+    "ru": {
+        "project": "Проект",
+        "project_no": "№ проекта",
+        "generated_on": "Дата формирования",
+        "records": "Записей",
+        "currency": "Валюта",
+        "status": "Статус",
+        "name": "ФИО",
+        "signature": "Подпись",
+        "date": "Дата",
+        "signatures": "Подписи",
+        "yes": "Да",
+        "no": "Нет",
+        "days_one": "{n} дн.",
+        "days_other": "{n} дн.",
+        "empty_register": "Записей нет.",
+        "total": "Итого",
+        "signer_title": "Должность",
+        "sig_prepared_by": "Подготовлено",
+        "sig_checked_by": "Проверено",
+        "sig_approved_by": "Утверждено",
+        "footer_generated": "Сформировано {timestamp}",
+        "footer_page": "Стр. {page} из {total}",
+        "date_format": "%d.%m.%Y",
+        "datetime_format": "%d.%m.%Y %H:%M UTC",
+    },
+}
+
+
 class DocumentCatalogue:
     """One module's printed strings, joined with the shared page furniture.
 
@@ -290,6 +357,9 @@ class DocumentCatalogue:
         labels: Named code tables (statuses, types), each keyed by language
             then by stored code.
         default: The fallback language; it must be in every table.
+        furniture: Page furniture for languages the shared table does not
+            have, such as :data:`FORM_FURNITURE`. The shared table wins for
+            a language both carry.
 
     Raises:
         ValueError: At construction, when a language is declared in one table
@@ -304,13 +374,15 @@ class DocumentCatalogue:
         labels: dict[str, dict[str, dict[str, str]]] | None = None,
         *,
         default: str = "en",
+        furniture: dict[str, dict[str, str]] | None = None,
     ) -> None:
         self.default = default
         self.labels = labels or {}
         self.supported: tuple[str, ...] = tuple(strings)
+        shared = {**(furniture or {}), **FURNITURE}
         problems: list[str] = []
         for locale in self.supported:
-            if locale not in FURNITURE:
+            if locale not in shared:
                 problems.append(f"{locale}: no page furniture")
             missing = set(strings[default]) - set(strings[locale])
             if missing:
@@ -325,7 +397,7 @@ class DocumentCatalogue:
                     problems.append(f"{locale}: label table {name!r} missing {sorted(missing)}")
         if problems:
             raise ValueError("incomplete document catalogue: " + "; ".join(problems))
-        self.strings = {locale: {**FURNITURE[locale], **strings[locale]} for locale in self.supported}
+        self.strings = {locale: {**shared[locale], **strings[locale]} for locale in self.supported}
 
     def normalize(self, value: str | None) -> str:
         """Reduce a locale-ish value to a language this catalogue has."""
@@ -591,6 +663,21 @@ def format_count(value: Any) -> str:
         return str(int(value))
     except (TypeError, ValueError):
         return str(value)
+
+
+def format_quantity(value: Any, style: NumberStyle, *, least: int = 0, most: int = 4) -> str:
+    """A quantity or a unit rate with the decimals it carries, between ``least`` and ``most``.
+
+    The stored digits are printed and trailing zeros beyond ``least`` dropped,
+    so 12.5 m3 prints as 12,5 rather than 12,50 and a rate of 98.765 keeps its
+    third decimal instead of being rounded to two on the page.
+    """
+    amount = _as_decimal(value)
+    if amount is None:
+        return EMPTY
+    exponent = amount.normalize().as_tuple().exponent
+    decimals = max(least, min(most, -exponent if isinstance(exponent, int) else least))
+    return format_number(amount, decimals, style)
 
 
 def xlsx_date_format(date_format: str) -> str:

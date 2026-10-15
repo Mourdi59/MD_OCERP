@@ -12,6 +12,8 @@ Endpoints:
     PATCH  /{id}                       - Update PO (auth required)
     POST   /{id}/issue                 - Issue PO (auth required)
     POST   /{id}/acknowledge           - Record the supplier confirmation
+    GET    /{id}/export/pdf/           - Printable PDF of one PO (export_routes.py)
+    GET    /goods-receipts/{id}/export/pdf/ - Printable PDF of one GR (export_routes.py)
 
 NOTE: Fixed-path routes (/goods-receipts) are registered BEFORE the parametric
 /{po_id} route so that FastAPI does not try to parse "goods-receipts" as a UUID.
@@ -62,6 +64,12 @@ from app.modules.procurement.schemas import (
 from app.modules.procurement.service import ProcurementService, _validate_3way_match
 
 router = APIRouter(tags=["procurement"])
+
+# Printable PDFs of one order and one receipt. Included first, like the change
+# order exports, so their paths are matched before the "/{po_id}" routes below.
+from app.modules.procurement.export_routes import export_router  # noqa: E402
+
+router.include_router(export_router)
 
 
 def _get_service(session: SessionDep) -> ProcurementService:

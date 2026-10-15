@@ -10,6 +10,7 @@
  */
 
 import { ApiError, apiDelete, apiGet, apiPost, type Page } from '@/shared/lib/api';
+import { downloadRecordPdf } from '@/shared/lib/documentExport';
 
 /* ── Removing a purchase order ────────────────────────────────────────── */
 
@@ -323,5 +324,28 @@ export function getRetainageReconciliation(options: {
   });
   return apiGet<RetainageReconciliationReport>(
     `/v1/reporting/po-retainage-reconciliation/?${params.toString()}`,
+  );
+}
+
+/* ── Printable documents ──────────────────────────────────────────────── */
+
+/**
+ * Download the printable form of one purchase order (GET /{id}/export/pdf/).
+ * The sections it carries are the workspace's document settings.
+ */
+export function downloadPurchaseOrderPdf(id: string, locale: string, poNumber?: string): Promise<void> {
+  return downloadRecordPdf(
+    `/v1/procurement/${encodeURIComponent(id)}/export/pdf/`,
+    locale,
+    poNumber || 'purchase-order',
+  );
+}
+
+/** Download the printable form of one goods receipt (GET /goods-receipts/{id}/export/pdf/). */
+export function downloadGoodsReceiptPdf(id: string, locale: string, reference?: string): Promise<void> {
+  return downloadRecordPdf(
+    `/v1/procurement/goods-receipts/${encodeURIComponent(id)}/export/pdf/`,
+    locale,
+    reference || 'goods-receipt',
   );
 }

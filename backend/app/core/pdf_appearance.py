@@ -65,6 +65,14 @@ as the workspace look with the type's override laid over it; with no override
 stored it returns exactly what :func:`read_appearance` does, so every document
 prints as it did before overrides existed.
 
+**Sections per document type.** A type whose generator prints optional parts
+(the purchase order's terms, the invoice's payment history, a signature
+block) lists them in :attr:`DocumentType.sections`, and a workspace may hide
+any of them. The hidden ones are stored in the same file under
+``hidden_sections``, apart from the look, because they say what a document
+contains rather than how it looks; :func:`resolve_sections` is what a
+generator asks. Every section prints until it is hidden.
+
 **Nothing here raises.** This mirrors the never-break contract of
 :mod:`app.core.pdf_branding` and :mod:`app.core.pdf_stamp`: an appearance that
 cannot be read, or that a hand edit filled with nonsense, falls back to the
@@ -288,6 +296,10 @@ class DocumentType:
             and the date when no footer line is saved. A generator whose footer
             carries only what the workspace saved sets this ``False`` so the
             settings sample shows the blank footer the document really prints.
+        sections: The parts of the document a workspace may leave out, in the
+            order the settings page offers them. Every one prints until it is
+            hidden, so a workspace that never opens the settings gets the whole
+            document. Empty for a type whose generator prints a fixed form.
     """
 
     key: str
@@ -296,6 +308,7 @@ class DocumentType:
     fields: tuple[str, ...]
     sheet: DocumentSheet | None = None
     default_footer_line: bool = True
+    sections: tuple[str, ...] = ()
 
     @property
     def configurable(self) -> bool:
@@ -312,8 +325,14 @@ class DocumentType:
 _LETTERHEAD_FIELDS = ("show_letterhead", "logo_align", "accent_color")
 
 #: Read only by a generator that draws a footer from the appearance: the RFI,
-#: the meeting minutes and the daily diary. The other four print no footer.
+#: the meeting minutes, the daily diary and the record forms of
+#: :func:`app.core.register_export.build_record_pdf`. The other four print no
+#: footer.
 _FOOTER_FIELDS = ("footer_text", "footer_color", "show_page_numbers")
+
+#: The sheet of :func:`app.core.register_export.build_record_pdf`: portrait A4,
+#: 20 mm at the sides and 18 mm top and bottom, an unpadded frame.
+_RECORD_FORM_SHEET = DocumentSheet("A4", False, (20.0, 20.0, 18.0, 18.0), 0.0)
 
 #: Every document type, wired or reserved. Page size, margins and body size
 #: are offered for none of them on purpose: each of these generators lays out
@@ -386,6 +405,40 @@ DOCUMENT_TYPES: dict[str, DocumentType] = {
             # app.modules.daily_diary.pdf_export: A4, a padded frame.
             DocumentSheet("A4", False, (20.0, 20.0, 22.0, 18.0), _SIMPLE_DOC_PADDING),
         ),
+        # The procurement and finance records, printed as record forms by
+        # app.modules.procurement.pdf_export and app.modules.finance.pdf_export.
+        DocumentType(
+            "purchase_order",
+            "Purchase order",
+            "settings.document_templates.types.purchase_order",
+            _LETTERHEAD_FIELDS + _FOOTER_FIELDS,
+            _RECORD_FORM_SHEET,
+            sections=("line_items", "totals", "terms", "supplier_confirmation", "notes", "signatures"),
+        ),
+        DocumentType(
+            "goods_receipt",
+            "Goods receipt",
+            "settings.document_templates.types.goods_receipt",
+            _LETTERHEAD_FIELDS + _FOOTER_FIELDS,
+            _RECORD_FORM_SHEET,
+            sections=("line_items", "rejections", "notes", "signatures"),
+        ),
+        DocumentType(
+            "invoice",
+            "Invoice",
+            "settings.document_templates.types.invoice",
+            _LETTERHEAD_FIELDS + _FOOTER_FIELDS,
+            _RECORD_FORM_SHEET,
+            sections=("line_items", "totals", "payments", "notes", "signatures"),
+        ),
+        DocumentType(
+            "payment",
+            "Payment",
+            "settings.document_templates.types.payment",
+            _LETTERHEAD_FIELDS + _FOOTER_FIELDS,
+            _RECORD_FORM_SHEET,
+            sections=("invoice", "withholding", "signatures"),
+        ),
     )
 }
 
@@ -429,6 +482,40 @@ def sanitise_overrides(data: Any) -> dict[str, dict[str, Any]]:
     return clean
 
 
+# -- Sections ------------------------------------------------------------------
+
+
+def sanitise_hidden_sections(doc_type: str, data: Any) -> list[str]:
+    """Coerce one type's hidden sections into the sections that type has.
+
+    A name the type does not offer is dropped, duplicates collapse, and the
+    result follows the order of :attr:`DocumentType.sections`, so the stored
+    file does not depend on the order the admin clicked in. An unknown type
+    yields ``[]``.
+    """
+    kind = DOCUMENT_TYPES.get(doc_type) if isinstance(doc_type, str) else None
+    if kind is None or not isinstance(data, list | tuple):
+        return []
+    named = {item for item in data if isinstance(item, str)}
+    return [section for section in kind.sections if section in named]
+
+
+def sanitise_hidden_map(data: Any) -> dict[str, list[str]]:
+    """Coerce a stored ``{doc_type: [hidden section, ...]}`` map, type by type.
+
+    Unknown types and empty lists are dropped; the result is ordered as
+    :data:`DOCUMENT_TYPES` is.
+    """
+    if not isinstance(data, dict):
+        return {}
+    clean: dict[str, list[str]] = {}
+    for key in DOCUMENT_TYPES:
+        hidden = sanitise_hidden_sections(key, data.get(key))
+        if hidden:
+            clean[key] = hidden
+    return clean
+
+
 #: Process-local cache of the parsed appearance, keyed by file path - the same
 #: arrangement :mod:`app.core.app_branding` uses, and for the same reason: a
 #: single export reads these values once per page for the header and again for
@@ -444,10 +531,13 @@ def sanitise_overrides(data: Any) -> dict[str, dict[str, Any]]:
 #: stale read is persisted and silently reverts whatever the shadowed save had
 #: changed.
 #:
-#: The entry holds both halves of the file, the workspace look and the per-type
-#: overrides, because both writers rewrite the whole file and each must carry
-#: the other's half through unchanged.
-_appearance_cache: dict[str, tuple[tuple[int, int], dict[str, Any], dict[str, dict[str, Any]]]] = {}
+#: The entry holds every part of the file, the workspace look, the per-type
+#: overrides and the per-type hidden sections, because every writer rewrites
+#: the whole file and each must carry the others' parts through unchanged.
+_Stored = tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, list[str]]]
+_appearance_cache: dict[
+    str, tuple[tuple[int, int], dict[str, Any], dict[str, dict[str, Any]], dict[str, list[str]]]
+] = {}
 
 
 def _forget_appearance(data_dir: Path | None) -> None:
@@ -464,8 +554,13 @@ def _copy_overrides(overrides: dict[str, dict[str, Any]]) -> dict[str, dict[str,
     return {key: dict(value) for key, value in overrides.items()}
 
 
-def _read_stored(data_dir: Path | None) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
-    """Return ``(workspace look, overrides)`` as stored, or defaults when none/corrupt.
+def _copy_hidden(hidden: dict[str, list[str]]) -> dict[str, list[str]]:
+    """A copy two levels deep, so no caller can mutate the cache through it."""
+    return {key: list(value) for key, value in hidden.items()}
+
+
+def _read_stored(data_dir: Path | None) -> _Stored:
+    """Return ``(workspace look, overrides, hidden sections)`` as stored, or defaults when none/corrupt.
 
     Fresh copies each call. Never raises: every failure path logs and falls
     back to the platform default with no overrides.
@@ -476,31 +571,32 @@ def _read_stored(data_dir: Path | None) -> tuple[dict[str, Any], dict[str, dict[
         info = path.stat()
     except FileNotFoundError:
         _appearance_cache.pop(key, None)
-        return dict(DEFAULT_APPEARANCE), {}
+        return dict(DEFAULT_APPEARANCE), {}, {}
     except OSError as exc:
         logger.warning("Could not stat document appearance at %s: %s", path, exc)
-        return dict(DEFAULT_APPEARANCE), {}
+        return dict(DEFAULT_APPEARANCE), {}, {}
     stamp = (info.st_mtime_ns, info.st_size)
     cached = _appearance_cache.get(key)
     if cached is not None and cached[0] == stamp:
-        return dict(cached[1]), _copy_overrides(cached[2])
+        return dict(cached[1]), _copy_overrides(cached[2]), _copy_hidden(cached[3])
     try:
         raw = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         _appearance_cache.pop(key, None)
-        return dict(DEFAULT_APPEARANCE), {}
+        return dict(DEFAULT_APPEARANCE), {}, {}
     except OSError as exc:
         logger.warning("Could not read document appearance at %s: %s", path, exc)
-        return dict(DEFAULT_APPEARANCE), {}
+        return dict(DEFAULT_APPEARANCE), {}, {}
     try:
         data = json.loads(raw)
     except ValueError:
         logger.warning("Ignoring corrupt document appearance file at %s", path)
-        return dict(DEFAULT_APPEARANCE), {}
+        return dict(DEFAULT_APPEARANCE), {}, {}
     clean = sanitise(data)
     overrides = sanitise_overrides(data.get("overrides")) if isinstance(data, dict) else {}
-    _appearance_cache[key] = (stamp, dict(clean), _copy_overrides(overrides))
-    return dict(clean), overrides
+    hidden = sanitise_hidden_map(data.get("hidden_sections")) if isinstance(data, dict) else {}
+    _appearance_cache[key] = (stamp, dict(clean), _copy_overrides(overrides), _copy_hidden(hidden))
+    return dict(clean), overrides, hidden
 
 
 def read_appearance(data_dir: Path | None = None) -> dict[str, Any]:
@@ -531,7 +627,7 @@ def resolve_appearance(doc_type: str | None, data_dir: Path | None = None) -> di
     warning, because it means a generator passed a key the registry does not
     have and its override could never apply. Never raises.
     """
-    appearance, overrides = _read_stored(data_dir)
+    appearance, overrides, _hidden = _read_stored(data_dir)
     if doc_type is None:
         return appearance
     if doc_type not in DOCUMENT_TYPES:
@@ -541,20 +637,29 @@ def resolve_appearance(doc_type: str | None, data_dir: Path | None = None) -> di
     return appearance
 
 
-def _store(workspace: dict[str, Any], overrides: dict[str, dict[str, Any]], data_dir: Path | None) -> None:
-    """Write both halves of the file, or remove it when neither says anything.
+def _store(
+    workspace: dict[str, Any],
+    overrides: dict[str, dict[str, Any]],
+    hidden: dict[str, list[str]],
+    data_dir: Path | None,
+) -> None:
+    """Write every part of the file, or remove it when none says anything.
 
     The workspace look is written only when it differs from the platform
     default, and then in full, as it always was; with no overrides the file is
     byte for byte what it was before overrides existed. A file that carries
     only overrides leaves the workspace fields out, so the workspace keeps
     following the platform default rather than freezing today's into the file.
-    Best effort: a failed write is logged, never raised.
+    Hidden sections are written under their own key, and only when a type
+    hides something, so the file of a workspace that hides nothing is what it
+    was before sections existed. Best effort: a failed write is logged, never raised.
     """
     path = appearance_path(data_dir)
     record: dict[str, Any] = dict(workspace) if workspace != DEFAULT_APPEARANCE else {}
     if overrides:
         record["overrides"] = overrides
+    if hidden:
+        record["hidden_sections"] = hidden
     try:
         if record:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -578,7 +683,8 @@ def write_appearance(payload: Any, data_dir: Path | None = None) -> dict[str, An
     keeps only the per-type overrides, which a workspace save never touches.
     """
     clean = sanitise(payload)
-    _store(clean, read_overrides(data_dir), data_dir)
+    _workspace, overrides, hidden = _read_stored(data_dir)
+    _store(clean, overrides, hidden, data_dir)
     return clean
 
 
@@ -589,7 +695,8 @@ def reset_appearance(data_dir: Path | None = None) -> dict[str, Any]:
     time, and resetting the workspace look is not a request to undo them. The
     file is removed when there are none.
     """
-    _store(dict(DEFAULT_APPEARANCE), read_overrides(data_dir), data_dir)
+    _workspace, overrides, hidden = _read_stored(data_dir)
+    _store(dict(DEFAULT_APPEARANCE), overrides, hidden, data_dir)
     return dict(DEFAULT_APPEARANCE)
 
 
@@ -604,18 +711,55 @@ def write_override(doc_type: str, payload: Any, data_dir: Path | None = None) ->
     clean = sanitise_override(doc_type, payload)
     if doc_type not in DOCUMENT_TYPES:
         return clean
-    workspace, overrides = _read_stored(data_dir)
+    workspace, overrides, hidden = _read_stored(data_dir)
     if clean:
         overrides[doc_type] = clean
     else:
         overrides.pop(doc_type, None)
-    _store(workspace, sanitise_overrides(overrides), data_dir)
+    _store(workspace, sanitise_overrides(overrides), hidden, data_dir)
     return clean
 
 
 def reset_override(doc_type: str, data_dir: Path | None = None) -> None:
     """Remove ``doc_type``'s override, so the type follows the workspace look again."""
     write_override(doc_type, {}, data_dir)
+
+
+def read_hidden_sections(doc_type: str, data_dir: Path | None = None) -> list[str]:
+    """Return the sections ``doc_type`` leaves out, in the type's order. Never raises."""
+    return list(_read_stored(data_dir)[2].get(doc_type, []))
+
+
+def resolve_sections(doc_type: str, data_dir: Path | None = None) -> dict[str, bool]:
+    """Return ``{section: printed}`` for every section ``doc_type`` offers.
+
+    What a generator asks before it draws a section. A section is printed
+    unless the workspace hid it, so an empty file prints the whole document.
+    Never raises; an unknown type has no sections.
+    """
+    kind = DOCUMENT_TYPES.get(doc_type)
+    if kind is None:
+        return {}
+    hidden = set(read_hidden_sections(doc_type, data_dir))
+    return {section: section not in hidden for section in kind.sections}
+
+
+def write_hidden_sections(doc_type: str, payload: Any, data_dir: Path | None = None) -> list[str]:
+    """Replace the sections ``doc_type`` leaves out; return what was stored.
+
+    Replaces rather than merges, like :func:`write_override`: a section left
+    out of ``payload`` prints again. An unknown type stores nothing.
+    """
+    clean = sanitise_hidden_sections(doc_type, payload)
+    if doc_type not in DOCUMENT_TYPES:
+        return clean
+    workspace, overrides, hidden = _read_stored(data_dir)
+    if clean:
+        hidden[doc_type] = clean
+    else:
+        hidden.pop(doc_type, None)
+    _store(workspace, overrides, sanitise_hidden_map(hidden), data_dir)
+    return clean
 
 
 def resolve_page_size(appearance: dict[str, Any] | None = None) -> tuple[float, float]:
