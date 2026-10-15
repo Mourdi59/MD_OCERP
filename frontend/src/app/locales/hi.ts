@@ -11779,7 +11779,7 @@ const resource = {
     "settings.ai_api_key": "API कुंजी",
     "settings.ai_connected": "कनेक्टेड",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, निर्माण अनुमान के लिए सर्वोत्तम",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, मल्टीमॉडल क्षमताएँ",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, मल्टीमॉडल क्षमताएँ",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, व्यापक रूप से समर्थित",
     "settings.ai_error": "कनेक्शन त्रुटि",
     "settings.ai_get_key": "API कुंजी प्राप्त करें",

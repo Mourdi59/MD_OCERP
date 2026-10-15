@@ -12152,7 +12152,7 @@ const resource = {
     "settings.ai_api_key": "Kunci API",
     "settings.ai_connected": "Terhubung",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, terbaik untuk estimasi konstruksi",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, kemampuan multimodal",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, kemampuan multimodal",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, didukung secara luas",
     "settings.ai_error": "Kesalahan koneksi",
     "settings.ai_get_key": "Dapatkan kunci API",

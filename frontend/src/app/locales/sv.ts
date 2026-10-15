@@ -14131,7 +14131,7 @@ const resource = {
     "settings.ai_api_key": "API-nyckel",
     "settings.ai_connected": "Ansluten",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, bäst för byggkalkylering",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, multimodala funktioner",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, multimodala funktioner",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, brett stöd",
     "settings.ai_error": "Anslutningsfel",
     "settings.ai_get_key": "Skaffa en API-nyckel",

@@ -12433,7 +12433,7 @@ const resource = {
     "settings.ai_api_key": "API Anahtarı",
     "settings.ai_connected": "Bağlandı",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, inşaat maliyet tahmini için en iyi",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, çok modlu yetenekler",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, çok modlu yetenekler",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, geniş destek",
     "settings.ai_error": "Bağlantı hatası",
     "settings.ai_get_key": "API anahtarı alın",

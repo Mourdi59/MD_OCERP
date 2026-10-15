@@ -11913,7 +11913,7 @@ const resource = {
     "settings.ai_api_key": "API klíč",
     "settings.ai_connected": "Připojeno",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, nejlepší pro stavební kalkulace",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, multimodální schopnosti",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, multimodální schopnosti",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, široce podporovaný",
     "settings.ai_error": "Chyba připojení",
     "settings.ai_get_key": "Získat API klíč",

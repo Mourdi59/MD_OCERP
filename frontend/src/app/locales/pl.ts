@@ -12216,7 +12216,7 @@ const resource = {
     "settings.ai_api_key": "Klucz API",
     "settings.ai_connected": "Połączony",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, najlepszy do kosztorysowania budowlanego",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, możliwości multimodalne",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, możliwości multimodalne",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, szeroko wspierany",
     "settings.ai_error": "Błąd połączenia",
     "settings.ai_get_key": "Uzyskaj klucz API",

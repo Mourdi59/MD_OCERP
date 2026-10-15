@@ -12357,7 +12357,7 @@ const resource = {
     "settings.ai_api_key": "Cheie API",
     "settings.ai_connected": "Conectat",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, recomandat pentru estimare în construcții",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, capacități multimodale",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, capacități multimodale",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, suport larg",
     "settings.ai_error": "Eroare de conexiune",
     "settings.ai_get_key": "Obțineți o cheie API",

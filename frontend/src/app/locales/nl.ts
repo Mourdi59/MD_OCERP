@@ -10534,7 +10534,7 @@ const resource = {
     "settings.ai_api_key": "API-sleutel",
     "settings.ai_connected": "Verbonden",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, beste voor bouwkostencalculatie",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, multimodale mogelijkheden",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, multimodale mogelijkheden",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, breed ondersteund",
     "settings.ai_error": "Verbindingsfout",
     "settings.ai_get_key": "API-sleutel ophalen",

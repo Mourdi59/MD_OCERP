@@ -15674,7 +15674,7 @@ const resource = {
     "settings.ai_api_key": "کلید API",
     "settings.ai_connected": "متصل",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus، بهترین برای برآورد ساخت‌وساز",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro، قابلیت‌های چندوجهی",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash، قابلیت‌های چندوجهی",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo، پشتیبانی گسترده",
     "settings.ai_error": "خطای اتصال",
     "settings.ai_get_key": "دریافت کلید API",

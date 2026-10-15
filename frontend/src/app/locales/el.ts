@@ -15757,7 +15757,7 @@ const resource = {
     "settings.ai_api_key": "Κλειδί API",
     "settings.ai_connected": "Συνδεδεμένο",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, ιδανικό για εκτίμηση κατασκευών",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, πολυτροπικές δυνατότητες",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, πολυτροπικές δυνατότητες",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, ευρέως υποστηριζόμενο",
     "settings.ai_error": "Σφάλμα σύνδεσης",
     "settings.ai_get_key": "Αποκτήστε κλειδί API",

@@ -11631,7 +11631,7 @@ const resource = {
     "settings.ai_api_key": "APIキー",
     "settings.ai_connected": "接続済み",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus、建設積算に最適",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro、マルチモーダル機能",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash、マルチモーダル機能",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo、幅広く対応",
     "settings.ai_error": "接続エラー",
     "settings.ai_get_key": "APIキーを取得",

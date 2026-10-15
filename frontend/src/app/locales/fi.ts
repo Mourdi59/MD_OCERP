@@ -11542,7 +11542,7 @@ const resource = {
     "settings.ai_api_key": "API-avain",
     "settings.ai_connected": "Yhdistetty",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, paras rakennuskustannuslaskentaan",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, multimodaaliset ominaisuudet",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, multimodaaliset ominaisuudet",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, laajasti tuettu",
     "settings.ai_error": "Yhteysvirhe",
     "settings.ai_get_key": "Hanki API-avain",

@@ -12152,7 +12152,7 @@ const resource = {
     "settings.ai_api_key": "Khóa API",
     "settings.ai_connected": "Đã kết nối",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, tốt nhất cho dự toán xây dựng",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, khả năng đa phương thức",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, khả năng đa phương thức",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, được hỗ trợ rộng rãi",
     "settings.ai_error": "Lỗi kết nối",
     "settings.ai_get_key": "Lấy khóa API",

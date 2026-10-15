@@ -12246,7 +12246,7 @@ const resource = {
     "settings.ai_api_key": "API Key",
     "settings.ai_connected": "เชื่อมต่อแล้ว",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus ดีที่สุดสำหรับการประมาณราคาก่อสร้าง",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro ความสามารถมัลติโมดัล",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash ความสามารถมัลติโมดัล",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo รองรับการใช้งานอย่างกว้างขวาง",
     "settings.ai_error": "ข้อผิดพลาดในการเชื่อมต่อ",
     "settings.ai_get_key": "รับ API key",

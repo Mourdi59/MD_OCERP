@@ -11649,7 +11649,7 @@ const resource = {
     "settings.ai_api_key": "API 키",
     "settings.ai_connected": "연결됨",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, 건설 적산에 최적",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, 멀티모달 기능",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, 멀티모달 기능",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, 폭넓은 지원",
     "settings.ai_error": "연결 오류",
     "settings.ai_get_key": "API 키 받기",

@@ -9602,7 +9602,7 @@ const resource = {
     "settings.ai_api_key": "API Key",
     "settings.ai_connected": "Connected",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, best for construction estimation",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, multimodal capabilities",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, multimodal capabilities",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, widely supported",
     "settings.ai_error": "Connection error",
     "settings.ai_get_key": "Get an API key",

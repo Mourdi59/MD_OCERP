@@ -11641,7 +11641,7 @@ const resource = {
     "settings.ai_api_key": "API-Schlüssel",
     "settings.ai_connected": "Verbunden",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, am besten für Baukalkulation",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, multimodale Fähigkeiten",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, multimodale Fähigkeiten",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, weit verbreitet",
     "settings.ai_error": "Verbindungsfehler",
     "settings.ai_get_key": "API-Schlüssel erhalten",

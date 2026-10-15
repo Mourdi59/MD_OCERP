@@ -10430,7 +10430,7 @@ const resource = {
     "settings.ai_api_key": "API-kulcs",
     "settings.ai_connected": "Kapcsolódva",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, a legjobb építési költségbecsléshez",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, multimodális képességek",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, multimodális képességek",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, széles körben támogatott",
     "settings.ai_error": "Kapcsolódási hiba",
     "settings.ai_get_key": "Szerezzen API-kulcsot",

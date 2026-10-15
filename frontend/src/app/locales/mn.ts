@@ -16122,7 +16122,7 @@ const resource = {
     "settings.ai_api_key": "API түлхүүр",
     "settings.ai_connected": "Холбогдсон",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, хамгийн сайн -д зориулсан барилгын тооцоолол",
-    "settings.ai_desc_gemini": "Gemini 1.5 PRO, олон төрлийн боломжтой",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, олон төрлийн боломжтой",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, өргөн дэмжигдсэн",
     "settings.ai_error": "Холболтын алдаа",
     "settings.ai_get_key": "API түлхүүр авах",

@@ -12134,7 +12134,7 @@ const resource = {
     "settings.ai_api_key": "API kalit",
     "settings.ai_connected": "Ulangan",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, qurilish smetasi uchun eng yaxshisi",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, multimodal imkoniyatlar",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, multimodal imkoniyatlar",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, keng qoʻllab-quvvatlanadi",
     "settings.ai_error": "Ulanish xatosi",
     "settings.ai_get_key": "API kalit olish",

@@ -15708,7 +15708,7 @@ const resource = {
     "settings.ai_api_key": "API Кілті",
     "settings.ai_connected": "Қосылған",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, құрылыс сметалау үшін ең жақсысы",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, мультимодалды мүмкіндіктер",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, мультимодалды мүмкіндіктер",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, кеңінен қолдау көрсетіледі",
     "settings.ai_error": "Байланыс қатесі",
     "settings.ai_get_key": "API кілтін алу",

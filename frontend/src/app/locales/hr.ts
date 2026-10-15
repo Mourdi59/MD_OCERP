@@ -12202,7 +12202,7 @@ const resource = {
     "settings.ai_api_key": "API ključ",
     "settings.ai_connected": "Spojeno",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus - najbolji za kalkulaciju troškova gradnje",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro - multimodalne mogućnosti",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash - multimodalne mogućnosti",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo - široka podrška",
     "settings.ai_error": "Greška veze",
     "settings.ai_get_key": "Nabavite API ključ",

@@ -15368,7 +15368,7 @@ const resource = {
     "settings.ai_api_key": "Susi ng API",
     "settings.ai_connected": "Nakakonekta",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, pinakamainam para sa construction estimation",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, may multimodal capabilities",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, may multimodal capabilities",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, malawakang suportado",
     "settings.ai_error": "Error sa koneksyon",
     "settings.ai_get_key": "Kumuha ng API key",

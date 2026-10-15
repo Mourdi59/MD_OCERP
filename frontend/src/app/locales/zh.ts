@@ -11668,7 +11668,7 @@ const resource = {
     "settings.ai_api_key": "API 密钥",
     "settings.ai_connected": "已连接",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus--最适合工程造价估算",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro--多模态能力",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash--多模态能力",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo--广泛支持",
     "settings.ai_error": "连接错误",
     "settings.ai_get_key": "获取 API 密钥",

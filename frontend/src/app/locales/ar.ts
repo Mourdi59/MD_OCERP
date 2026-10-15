@@ -17135,7 +17135,7 @@ const resource = {
     "settings.ai_api_key": "مفتاح API",
     "settings.ai_connected": "متصل",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus، الأفضل لتقدير تكاليف البناء",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro، إمكانيات متعددة الوسائط",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash، إمكانيات متعددة الوسائط",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo، مدعوم على نطاق واسع",
     "settings.ai_error": "خطأ في الاتصال",
     "settings.ai_get_key": "احصل على مفتاح API",

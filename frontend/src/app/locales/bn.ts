@@ -15410,7 +15410,7 @@ const resource = {
     "settings.ai_api_key": "API কী",
     "settings.ai_connected": "সংযুক্ত",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, নির্মাণ এস্টিমেশনের জন্য সেরা",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, মাল্টিমোডাল ক্ষমতা",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, মাল্টিমোডাল ক্ষমতা",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, ব্যাপকভাবে সমর্থিত",
     "settings.ai_error": "সংযোগ ত্রুটি",
     "settings.ai_get_key": "একটি API কী নিন",

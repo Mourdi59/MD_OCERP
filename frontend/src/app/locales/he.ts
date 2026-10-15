@@ -15819,7 +15819,7 @@ const resource = {
     "settings.ai_api_key": "מפתח API",
     "settings.ai_connected": "מחובר",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, הטוב ביותר לאומדן בנייה",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, יכולות מולטימודליות",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, יכולות מולטימודליות",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, נתמך באופן נרחב",
     "settings.ai_error": "שגיאת חיבור",
     "settings.ai_get_key": "קבלת מפתח API",

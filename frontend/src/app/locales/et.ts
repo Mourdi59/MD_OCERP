@@ -16293,7 +16293,7 @@ const resource = {
     "settings.ai_api_key": "API võti",
     "settings.ai_connected": "Ühendatud",
     "settings.ai_desc_anthropic": "Claude 3.5 Sonnet / Opus, parim ehituse hinnastamiseks",
-    "settings.ai_desc_gemini": "Gemini 1.5 Pro, multimodaalsed võimalused",
+    "settings.ai_desc_gemini": "Gemini 2.5 Flash, multimodaalsed võimalused",
     "settings.ai_desc_openai": "GPT-4o / GPT-4 Turbo, laialdaselt toetatud",
     "settings.ai_error": "Ühenduse viga",
     "settings.ai_get_key": "Hangi API võti",
