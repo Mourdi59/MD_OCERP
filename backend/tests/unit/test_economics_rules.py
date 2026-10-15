@@ -199,3 +199,24 @@ def test_a_request_whose_start_lies_ahead_does_not_block_but_an_overdue_one_does
     assert rules.register_state(_registers(securities=[*base, overdue]))["securities"] is False
     only_requested = _registers(securities=[ahead])
     assert rules.register_state(only_requested)["securities"] is False
+
+
+def _frame_payload(**plan: object) -> dict:
+    return {
+        "plan": {"bill_count": 2, "bill_currency": "EUR", "currency": "EUR", **plan},
+        "frame": {"lines": [{"code": "300", "amount": "10", "estimate": "5"}], "committed_available": True},
+    }
+
+
+def test_several_bills_warn_until_the_owner_has_chosen_one() -> None:
+    codes = [f.code for f in rules.cost_frame_findings(_frame_payload())]
+    assert "several_bills" in codes
+    codes = [f.code for f in rules.cost_frame_findings(_frame_payload(bill_chosen=True))]
+    assert "several_bills" not in codes
+
+
+def test_a_process_finding_names_the_area_in_the_readers_language() -> None:
+    from app.modules.economics.messages import translate
+
+    assert translate("economics.process_area.administration", locale="de") == "Verwaltung"
+    assert translate("economics.process_area.administration", locale="en") == "Administration"

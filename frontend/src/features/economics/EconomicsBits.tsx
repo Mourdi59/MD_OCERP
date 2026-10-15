@@ -50,7 +50,10 @@ export const isNegative = (value: string | null | undefined): boolean => !!value
 /** What a finding says in the reader's language; an unknown code reads as its own words. */
 function findingText(t: (key: string, options?: Record<string, unknown>) => string, f: Finding): string {
   const entry = FINDING[f.code];
-  return entry ? t(entry[0], { defaultValue: entry[1], ref: f.ref }) : f.code.replace(/_/g, ' ');
+  if (!entry) return f.code.replace(/_/g, ' ');
+  // The ref of a process finding is the area token; the reader gets the area's name.
+  const ref = f.code === 'process_not_set_up' ? t(`economics.process.${f.ref}`, { defaultValue: f.ref }) : f.ref;
+  return t(entry[0], { defaultValue: entry[1], ref });
 }
 
 export function FindingList({ findings }: { findings: Finding[] }) {

@@ -451,9 +451,16 @@ async def _seed_project(
             "discount_rate_pct": D(profile.discount_pct),
             "horizon_years": profile.horizon,
             "markup_allowance": round_up(bill.markups_total),
+            # The owner names the bill the plan reads, so a project with several bills has no open question.
+            "boq_id": bill.boq_id,
         },
         owner,
     )
+    # Commitments need cost lines to sit under; a project without them is built the way the plan advises.
+    if not (await readings.read_commitments(session, pid)).available:
+        from app.modules.costmodel.service import CostSpineService
+
+        await CostSpineService(session).generate_from_boq(pid, bill.boq_id)
     frame = await service.generate_frame(pid, depth=1, amounts="estimate", replace=True, actor_id=owner)
     for line in frame:
         line.amount = round_up(line.amount)

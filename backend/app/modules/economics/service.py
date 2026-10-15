@@ -709,6 +709,7 @@ class EconomicsService(RegistersMixin):
                 "currency": plan.currency,
                 "bill_currency": bill.currency if bill else "",
                 "bill_count": bill.bill_count if bill else 0,
+                "bill_chosen": plan.boq_id is not None,
                 "discount_rate_pct": _s(plan.discount_rate_pct),
                 "horizon_years": plan.horizon_years,
             },

@@ -42,6 +42,12 @@ export function CostFramePanel({
   const setAllowanceAction = useEconomicsAction(projectId, (value: string) =>
     patchPlan(projectId, { markup_allowance: value }),
   );
+  // A line without a stored title of a DIN 276 project reads as the standard's own name for the group.
+  const groupName = (stored: string, lineCode: string): string =>
+    stored ||
+    (frame.classification_standard === 'din276'
+      ? t(`economics.din276.${lineCode.replace(/\s+/g, '')}`, { defaultValue: '' })
+      : '');
   const totals = frame.totals;
   const canAdd = code.trim() !== '' && (amount === '' || isDecimal(amount));
 
@@ -88,7 +94,7 @@ export function CostFramePanel({
               {frame.lines.map((row) => (
                 <tr key={row.id} className="border-t border-border">
                   <td className="px-3 py-2 font-mono text-xs">{row.code}</td>
-                  <td className="px-3 py-2">{row.title}</td>
+                  <td className="px-3 py-2">{groupName(row.title, row.code)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{money(row.amount)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{money(row.estimate)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{orDash(money(row.committed))}</td>

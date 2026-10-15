@@ -86,6 +86,11 @@ class _EconomicsRule(ValidationRule):
 
     def _result(self, locale: str, passed: bool, ref: str, severity: Severity, **params: Any) -> RuleResult:
         base = f"economics.rules.{self.code}"
+        shown = ref
+        if self.code == "process_not_set_up":
+            area_key = f"economics.process_area.{ref}"
+            area = translate(area_key, locale=locale)
+            shown = area if area != area_key else ref
         return RuleResult(
             rule_id=self.rule_id,
             rule_name=self.name,
@@ -94,7 +99,7 @@ class _EconomicsRule(ValidationRule):
             passed=passed,
             message=translate("economics.rules.ok", locale=locale)
             if passed
-            else translate(f"{base}.fail", locale=locale, ref=ref, **params),
+            else translate(f"{base}.fail", locale=locale, ref=shown, **params),
             element_ref=ref,
             suggestion=None if passed else translate(f"{base}.suggestion", locale=locale),
         )

@@ -10,7 +10,7 @@ implementation and the three surfaces cannot disagree.
 Payload::
 
     {
-      "plan": {"status", "currency", "bill_currency", "bill_count", "discount_rate_pct", "horizon_years"},
+      "plan": {"status", "currency", "bill_currency", "bill_count", "bill_chosen", "discount_rate_pct", "horizon_years"},
       "flow_lines": [{"id", "kind", "label", "source", "amount", "year_from", "year_to"}],
       "frame": {
         "lines": [{"id", "code", "amount", "estimate", "committed"}],
@@ -143,7 +143,7 @@ def cost_frame_findings(payload: dict[str, Any]) -> list[Finding]:
                 out.append(_f("frame_lines_overlap", a["code"], other=b["code"]))
     if plan.get("bill_count", 0) == 0:
         out.append(_f("no_bill"))
-    elif plan.get("bill_count", 0) > 1:
+    elif plan.get("bill_count", 0) > 1 and not plan.get("bill_chosen"):
         out.append(_f("several_bills", bills=plan["bill_count"]))
     bill_ccy, ccy = (plan.get("bill_currency") or ""), (plan.get("currency") or "")
     if bill_ccy and ccy and bill_ccy != ccy:
