@@ -90,6 +90,7 @@ import {
   type UpdateLaydownZonePayload,
 } from './api';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { localizedUnitCode } from '@/shared/lib/unitLabels';
 
 /* ── Constants & helpers ───────────────────────────────────────────────── */
@@ -970,7 +971,7 @@ export function DeliveryRow({
             {lines.map((line) => {
               const qty = Number(line.quantity);
               const qtyText = Number.isFinite(qty)
-                ? qty.toLocaleString(getIntlLocale(), { maximumFractionDigits: 4 })
+                ? qty.toLocaleString(getNumberLocale(), { maximumFractionDigits: 4 })
                 : String(line.quantity);
               const label = `${line.position_ordinal || line.description} · ${qtyText} ${localizedUnitCode(line.unit, i18n.language)}`.trim();
               if (!line.boq_position_id) {
