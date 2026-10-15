@@ -67,6 +67,13 @@ const UNRELEASED: ChangelogEntry | null = null;
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '18.6.2',
+    date: '2026-10-15',
+    tag: 'FIX',
+    summary:
+      'The owner\'s project control screens read in the reader\'s language: gate conditions, blockers and readiness evidence show names and words instead of codes, and the pack activation dialog uses the translated pack name.',
+  },
+  {
     version: '18.6.1',
     date: '2026-10-15',
     tag: 'FIX',

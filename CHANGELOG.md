@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
+## [18.6.2] - 2026-10-15
+
+### Fixed
+
+- The owner's project control screens read fully in the reader's language. Gate conditions, blockers and areas at risk show the area names instead of codes, readiness evidence for economics, the handbook, the brief and permits is described in words instead of raw status tokens, and the pack activation dialog uses the pack's translated name, Bauherren-Projektsteuerung in German.
+- The approval routes of the German demo project are named in German.
+
 ## [18.6.1] - 2026-10-15
 
 ### Added
