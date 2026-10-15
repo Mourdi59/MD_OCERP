@@ -207,8 +207,10 @@ def test_stakeholders() -> None:
         commitments = stakeholder_seed.merge_commitments(story, locale)
         assert len(commitments) == len(stakeholder_seed._COMMITMENTS)
         assert all(c[0] != d[0] for c, d in zip(commitments, stakeholder_seed._COMMITMENTS, strict=True))
-        # The beat stays in code: the third commitment fell due three days ago.
-        assert commitments[2][3] == stakeholder_seed._COMMITMENTS[2][3] == -3
+        # The generic register keeps its beat (the third commitment fell due three days ago); the filmed
+        # project's story moves that date three weeks ahead, so nothing reads as overdue on the seed day.
+        assert stakeholder_seed._COMMITMENTS[2][3] == -3
+        assert commitments[2][3] == 21
         for section, defaults in stakeholder_seed._TEXT_DEFAULTS.items():
             got = stakeholder_seed.merge_texts(story, section, locale)
             assert set(story[section]) <= set(got)

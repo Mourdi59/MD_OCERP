@@ -5101,7 +5101,7 @@ export function BOQEditorPage() {
       {/* ── Header bar ─────────────────────────────────────────────────── */}
       <div className="mb-4 space-y-2">
         <div className="flex items-center gap-3 min-w-0">
-          <BOQRenameTitle boqId={boqId} name={boq.name} locked={boq.is_locked || boq.status === 'final'} />
+          <BOQRenameTitle boqId={boqId} name={boq.name ?? ''}locked={boq.is_locked || boq.status === 'final'} />
           <Badge
             variant={
               boq.status === 'final' ? 'success' : boq.status === 'draft' ? 'blue' : 'neutral'
