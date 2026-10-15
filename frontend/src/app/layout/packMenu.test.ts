@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   applyPackMenu,
+  isFrameworkPackActive,
   isMenuMarker,
   PACK_FOCUS_CORE_ROUTES,
   packMarker,
@@ -82,5 +83,15 @@ describe('markers', () => {
     expect(isMenuMarker(packMarker(SLUG))).toBe(true);
     expect(isMenuMarker('/finance')).toBe(false);
     expect(visibleHiddenRoutes(['/finance', packMarker(SLUG), '/rfi'])).toEqual(['/finance', '/rfi']);
+  });
+});
+
+describe('isFrameworkPackActive', () => {
+  it('is true only for an active framework pack', () => {
+    expect(isFrameworkPackActive({ active: true, manifest: { slug: 'eleven-areas-framework' } })).toBe(true);
+    expect(isFrameworkPackActive({ active: false, manifest: { slug: 'eleven-areas-framework' } })).toBe(false);
+    expect(isFrameworkPackActive({ active: true, manifest: { slug: 'turkiye-mep' } })).toBe(false);
+    expect(isFrameworkPackActive({ active: true, manifest: null })).toBe(false);
+    expect(isFrameworkPackActive(undefined)).toBe(false);
   });
 });

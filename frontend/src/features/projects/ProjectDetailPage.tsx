@@ -90,6 +90,8 @@ import { useRecentStore } from '@/stores/useRecentStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useModuleStore } from '@/stores/useModuleStore';
+import { usePartnerPack } from '@/shared/hooks/usePartnerPack';
+import { isFrameworkPackActive } from '@/app/layout/packMenu';
 import { fmtList, fmtPercent, fmtFixed, formatDateValue } from '@/shared/lib/formatters';
 import { formatCurrency as formatMoney, toNum } from '@/shared/lib/money';
 
@@ -1455,6 +1457,10 @@ export function ProjectDetailPage() {
   // the module off the route does not exist and the button below would fall
   // through to the catch-all 404, so the button goes with it.
   const isCollaborationEnabled = useModuleStore((s) => s.isModuleEnabled('collaboration'));
+  // The project framework areas (governance, economics, quality and the rest) come with a framework
+  // pack. Without it the hub does not offer them; their routes stay live for deep links.
+  const { data: partnerPack } = usePartnerPack();
+  const frameworkPackActive = isFrameworkPackActive(partnerPack);
 
   const [importTarget, setImportTarget] = useState<{
     boqId: string;
@@ -1837,6 +1843,8 @@ export function ProjectDetailPage() {
           ]}
         />
         <div className="flex items-center gap-2">
+        {frameworkPackActive && (
+        <>
         <Button
           variant="ghost"
           size="sm"
@@ -1963,6 +1971,8 @@ export function ProjectDetailPage() {
         >
           {t('hseFrame.title', { defaultValue: 'Health, safety and environment' })}
         </Button>
+        </>
+        )}
         <Button
           variant={customizing ? 'primary' : 'ghost'}
           size="sm"

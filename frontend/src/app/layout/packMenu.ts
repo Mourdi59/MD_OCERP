@@ -43,6 +43,14 @@ export const PACK_FOCUS_CORE_ROUTES: readonly string[] = [
 
 const MARKER_PREFIX = 'pack:';
 
+/** True when the active pack is a framework pack whose modules the menu and the project hub offer. */
+export function isFrameworkPackActive(
+  pack: { active?: boolean; manifest?: { slug?: string | null } | null } | null | undefined,
+): boolean {
+  const slug = pack?.active ? pack.manifest?.slug : null;
+  return !!slug && MENU_HIDING_PACKS.includes(slug);
+}
+
 export function packMarker(slug: string): string {
   return `${MARKER_PREFIX}${slug}`;
 }
