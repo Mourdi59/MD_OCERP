@@ -163,6 +163,11 @@ class ActivityRepository:
 
         return activities, total
 
+    async def list_end_dates(self, schedule_id: uuid.UUID) -> list[str | None]:
+        """End dates of every activity in a schedule, unpaginated and unordered."""
+        rows = await self.session.execute(select(Activity.end_date).where(Activity.schedule_id == schedule_id))
+        return list(rows.scalars().all())
+
     async def create(self, activity: Activity) -> Activity:
         """Insert a new activity."""
         self.session.add(activity)

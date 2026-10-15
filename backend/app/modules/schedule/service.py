@@ -3233,14 +3233,13 @@ class ScheduleService:
         write that moves, adds or removes an activity calls this. A schedule
         without dated activities keeps the end it has.
         """
-        rows = await self.session.execute(select(Activity.end_date).where(Activity.schedule_id == schedule_id))
-        ends = [day for day in (_parse_day(value) for value in rows.scalars().all()) if day is not None]
+        values = await self.activity_repo.list_end_dates(schedule_id)
+        ends = [day for day in (_parse_day(value) for value in values) if day is not None]
         if not ends:
             return
-        latest = max(ends).isoformat()
-        current = await self.session.scalar(select(Schedule.end_date).where(Schedule.id == schedule_id))
-        if _parse_day(current) != max(ends):
-            await self.schedule_repo.update_fields(schedule_id, end_date=latest)
+        schedule = await self.schedule_repo.get_by_id(schedule_id)
+        if schedule is not None and _parse_day(schedule.end_date) != max(ends):
+            await self.schedule_repo.update_fields(schedule_id, end_date=max(ends).isoformat())
 
     async def _generation_calendar(
         self,

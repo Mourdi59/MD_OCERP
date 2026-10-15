@@ -142,6 +142,9 @@ class _StubActivityRepo:
     async def get_by_id(self, activity_id: uuid.UUID) -> Any:
         return self.rows.get(activity_id)
 
+    async def list_end_dates(self, schedule_id: uuid.UUID) -> list[Any]:
+        return [r.end_date for r in self.rows.values() if r.schedule_id == schedule_id]
+
     async def list_for_schedule(
         self,
         schedule_id: uuid.UUID,

@@ -60,6 +60,12 @@ class _StubScheduleRepo:
     async def get_by_id(self, schedule_id: uuid.UUID) -> Any:
         return self.rows.get(schedule_id)
 
+    async def update_fields(self, schedule_id: uuid.UUID, **kwargs: Any) -> None:
+        s = self.rows.get(schedule_id)
+        if s:
+            for k, v in kwargs.items():
+                setattr(s, k, v)
+
 
 class _StubActivityRepo:
     def __init__(self) -> None:
@@ -76,6 +82,9 @@ class _StubActivityRepo:
 
     async def get_by_id(self, activity_id: uuid.UUID) -> Any:
         return self.rows.get(activity_id)
+
+    async def list_end_dates(self, schedule_id: uuid.UUID) -> list[Any]:
+        return [r.end_date for r in self.rows.values() if r.schedule_id == schedule_id]
 
     async def list_for_schedule(
         self,

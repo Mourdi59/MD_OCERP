@@ -26,7 +26,7 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import func, select
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import app.database as app_database
@@ -253,7 +253,10 @@ async def _rows_in_every_table(factory, project_id: uuid.UUID) -> dict[str, int]
             column = table.c.get("project_id")
             if column is None:
                 continue
-            n = int((await s.execute(select(func.count()).select_from(table).where(column == project_id))).scalar_one())
+            # Some modules keep project_id as a 36-character string, not a UUID,
+            # so both sides are compared as text.
+            match = cast(column, String) == str(project_id)
+            n = int((await s.execute(select(func.count()).select_from(table).where(match))).scalar_one())
             if n:
                 found[table.name] = n
     return found
