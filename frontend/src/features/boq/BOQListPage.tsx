@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import {
-  Table, Table2, ArrowRight, Copy, Trash2, Plus,
+  Table, Table2, ArrowRight, Copy, Trash2, Plus, Pencil,
   Search, ArrowUpDown, ChevronDown, GitCompareArrows, X, Loader2,
   CalendarDays, LayoutGrid, List,
 } from 'lucide-react';
@@ -33,6 +33,7 @@ import { PresenceAvatars } from '@/modules/collaboration/components/PresenceAvat
 import { usePresenceStore } from '@/modules/collaboration/hooks/usePresence';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { CreateBOQModal } from './CreateBOQPage';
+import { BOQRenameDialog } from './BOQRenameDialog';
 import { projectFilterOptions } from './projectFilterOptions';
 
 interface Project {
@@ -490,6 +491,7 @@ export function BOQListPage() {
   }, [searchParams, navigate, setSearchParams]);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState(() => {
     try {
@@ -1318,6 +1320,14 @@ export function BOQListPage() {
                     <GitCompareArrows size={13} />
                   </button>
                   <button
+                    onClick={() => setRenameTarget({ id: boq.id, name: boq.name })}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-content-tertiary hover:text-oe-blue-text hover:bg-oe-blue-subtle transition-all"
+                    title={t('boq.rename', { defaultValue: 'Rename estimate' })}
+                    aria-label={t('boq.rename', { defaultValue: 'Rename estimate' })}
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
                     onClick={() => duplicateMutation.mutate(boq.id)}
                     disabled={duplicateMutation.isPending}
                     className="flex h-7 w-7 items-center justify-center rounded-md text-content-tertiary hover:text-oe-blue-text hover:bg-oe-blue-subtle transition-all disabled:opacity-40"
@@ -1465,6 +1475,14 @@ export function BOQListPage() {
                       </button>
 
                       <button
+                        onClick={(e) => { e.stopPropagation(); setRenameTarget({ id: boq.id, name: boq.name }); }}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-content-tertiary hover:text-oe-blue-text hover:bg-oe-blue-subtle transition-all"
+                        title={t('boq.rename', { defaultValue: 'Rename estimate' })}
+                        aria-label={t('boq.rename', { defaultValue: 'Rename estimate' })}
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
                         onClick={(e) => { e.stopPropagation(); duplicateMutation.mutate(boq.id); }}
                         disabled={duplicateMutation.isPending}
                         className="flex h-7 w-7 items-center justify-center rounded-md text-content-tertiary hover:text-oe-blue-text hover:bg-oe-blue-subtle transition-all disabled:opacity-40"
@@ -1588,6 +1606,14 @@ export function BOQListPage() {
         onClose={() => setCreateModalOpen(false)}
         defaultProjectId={createModalProjectId}
       />
+      {renameTarget && (
+        <BOQRenameDialog
+          key={renameTarget.id}
+          boqId={renameTarget.id}
+          name={renameTarget.name}
+          onClose={() => setRenameTarget(null)}
+        />
+      )}
     </div>
   );
 }

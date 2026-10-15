@@ -55,6 +55,7 @@ import { buildLinkFromModelUrl, buildQuantityRulesUrl } from '@/features/bim/qua
 import { AIChatPanel } from './AIChatPanel';
 import { importLanded, importToastText, type ImportToastResult } from './importToastText';
 import { editorErrorText } from './editorErrorText';
+import { BOQRenameTitle } from './BOQRenameTitle';
 import { carriesPriceList, saveImportedPriceList } from './saveImportedPriceList';
 import { importProgressText, isImportJob, waitForImportJob, type ImportProgress } from './importJob';
 import { alreadyImported, importFailureFromBody, importFailureText } from './importFailureText';
@@ -5100,7 +5101,7 @@ export function BOQEditorPage() {
       {/* ── Header bar ─────────────────────────────────────────────────── */}
       <div className="mb-4 space-y-2">
         <div className="flex items-center gap-3 min-w-0">
-          <h1 className="text-xl font-bold text-content-primary truncate">{boq.name}</h1>
+          <BOQRenameTitle boqId={boqId} name={boq.name} locked={boq.is_locked || boq.status === 'final'} />
           <Badge
             variant={
               boq.status === 'final' ? 'success' : boq.status === 'draft' ? 'blue' : 'neutral'

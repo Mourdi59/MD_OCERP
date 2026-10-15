@@ -1850,6 +1850,9 @@ export function fetchCategoryTree(
 export const boqApi = {
   /* BOQ CRUD */
   list: (projectId: string) => apiGet<BOQ[]>(`/v1/boq/boqs/?project_id=${projectId}`),
+  /** Rename an estimate or change its description. */
+  update: (boqId: string, data: { name?: string; description?: string }) =>
+    apiPatch<BOQ>(`/v1/boq/boqs/${boqId}`, data),
   /**
    * The bill register of several projects in one request, keyed by project id.
    * Each project's rows are what `GET /boqs/?project_id=` returns for it, with
