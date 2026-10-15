@@ -40,6 +40,7 @@ import {
   usePeopleNames,
   useViewer,
 } from './hooks';
+import { catalogueNames } from './labels';
 import { buildMatrix } from './matrix';
 
 type Tab = 'matrix' | 'conditions' | 'model';
@@ -50,7 +51,7 @@ export function ProjectGovernancePage() {
   const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const viewer = useViewer();
-  const labels = useLabelContext();
+  const baseLabels = useLabelContext();
   const personName = usePeopleNames(projectId);
   const invalidate = useInvalidateGovernance(projectId);
 
@@ -78,6 +79,21 @@ export function ProjectGovernancePage() {
     }
     setParams(p, { replace: false });
   };
+
+  // Rows that carry only a code (conditions, blockers, at-risk areas) are named from the labels
+  // the API sent with the model's phases, gates, areas and document types.
+  const labels = useMemo(
+    () => ({
+      ...baseLabels,
+      names: catalogueNames({
+        phase: modelQ.data?.phases,
+        gate: matrixQ.data?.gates,
+        area: areasQ.data,
+        doc: (areasQ.data ?? []).flatMap((a) => a.document_types ?? []),
+      }),
+    }),
+    [baseLabels, modelQ.data, matrixQ.data, areasQ.data],
+  );
 
   const matrix = useMemo(
     () =>

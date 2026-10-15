@@ -86,6 +86,7 @@ import {
   catalogueIdOf,
   catalogueName,
   errorText,
+  evidenceDetail,
   evidenceMark,
   evidenceText,
   refusalText,
@@ -291,7 +292,9 @@ function AreaReadiness({
                 ) : (
                   evidenceText(t, labels, e)
                 )}
-                {e.detail && <span className="text-content-tertiary"> - {e.detail}</span>}
+                {evidenceDetail(t, labels, e) && (
+                  <span className="text-content-tertiary"> - {evidenceDetail(t, labels, e)}</span>
+                )}
                 {e.blocking && e.state === 'not_met' && (
                   <span className="ml-1 font-medium text-semantic-error">
                     {t('governance.project.gate.evidence_blocking', { defaultValue: 'blocking' })}

@@ -34,7 +34,7 @@ import de from '@/app/locales/de';
 import { ApiError } from '@/shared/lib/api';
 import * as api from '../api';
 import { ProjectGovernancePage } from '../ProjectGovernancePage';
-import { ALL_KEY_MAPS, ERROR_TEXT } from '../labels';
+import { ALL_KEY_MAPS, ERROR_TEXT, EVIDENCE_DETAIL, EVIDENCE_STATE } from '../labels';
 import { DISABLED_REASON } from '../access';
 import { DECISION_PROBLEM } from '../decisionRules';
 import { AREA_KEY_MAPS } from '../AreaPanel';
@@ -228,5 +228,37 @@ describe('governance i18n keys', () => {
   it('does not overwrite the admin governance page keys', () => {
     expect(en.translation['governance.title']).toBe('Governance');
     expect([...used].every((k) => k.startsWith('governance.project.') || k.startsWith('governance.errors.') || k.startsWith('governance.evidence.'))).toBe(true);
+  });
+});
+
+describe('evidence keys of the modules', () => {
+  // The label keys the backend evidence providers send. Governance reads them through the API, so no
+  // call site names them; a key missing here renders the humanised code in English in every language.
+  const backend = join(__dirname, '..', '..', '..', '..', '..', 'backend', 'app', 'modules');
+  const labelKeys = new Set<string>();
+  for (const module of ['economics', 'project_handbook', 'engineering_brief']) {
+    const source = readFileSync(join(backend, module, 'evidence.py'), 'utf-8');
+    for (const m of source.matchAll(/"([a-z_]+\.evidence\.[a-z_.]+)"/g)) labelKeys.add(m[1]!);
+  }
+  for (const key of ['site_analysis', 'suitability', 'specification']) labelKeys.add(`engineering_brief.evidence.${key}`);
+  for (const key of ['roadmap', 'register', 'start', 'handover', 'permit_due_later']) labelKeys.add(`permits.evidence.${key}`);
+  for (const reason of ['no_area_hosts_permits', 'no_frame_document', 'no_phase_enables_tag']) {
+    labelKeys.add(`permits.evidence.unresolved.${reason}`);
+  }
+  const detailKeys = [
+    ...Object.values(EVIDENCE_DETAIL),
+    ...Object.values(EVIDENCE_STATE).flatMap((m) => Object.values(m)),
+  ].map(([key]) => key);
+
+  it('finds the keys it is meant to check', () => {
+    expect(labelKeys.size).toBeGreaterThan(25);
+    expect(labelKeys.has('economics.evidence.proposed')).toBe(true);
+  });
+
+  it.each([
+    ['en', en.translation],
+    ['de', de.translation],
+  ] as const)('every evidence label and detail key resolves in %s', (_lang, table) => {
+    expect([...labelKeys, ...detailKeys].filter((k) => !(k in table))).toEqual([]);
   });
 });

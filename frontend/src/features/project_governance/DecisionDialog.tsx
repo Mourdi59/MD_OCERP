@@ -46,6 +46,7 @@ import {
   OUTCOME_HINT,
   catalogueName,
   errorText,
+  evidenceDetail,
   evidenceMark,
   evidenceText,
   vocab,
@@ -448,7 +449,7 @@ export function DecisionDialog({
                     </span>
                     <span className="block text-xs text-content-tertiary">
                       {evidenceText(t, labels, item ?? ref)}
-                      {item?.detail ? ` - ${item.detail}` : ''}
+                      {item && evidenceDetail(t, labels, item) ? ` - ${evidenceDetail(t, labels, item)}` : ''}
                     </span>
                   </span>
                 </label>

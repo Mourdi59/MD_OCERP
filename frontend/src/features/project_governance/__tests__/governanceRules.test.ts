@@ -48,7 +48,15 @@ import {
 } from '../decisionRules';
 import { frameContainerCode } from '../documentFiles';
 import { buildMatrix } from '../matrix';
-import { catalogueIdOf, catalogueName, evidenceText, humanizeCode, type LabelContext } from '../labels';
+import {
+  catalogueIdOf,
+  catalogueName,
+  catalogueNames,
+  evidenceDetail,
+  evidenceText,
+  humanizeCode,
+  type LabelContext,
+} from '../labels';
 import { area, blocker, condition, detail, frameDocument, gate, gateDocument, matrixArea, matrixResponse, model } from './fixtures';
 
 const editor: Viewer = { userId: 'u-editor' };
@@ -628,6 +636,64 @@ describe('labels', () => {
         'governance.evidence.provider_failed',
       );
       expect(evidenceText((k) => k, ctx({}), { code: 'budget:no_answer' })).toBe('governance.evidence.no_answer');
+    });
+  });
+  it('names a code-only row from the labels the API sent with the model, whatever the catalogue id', () => {
+    // A pack catalogue's id need not match the namespace of its message keys.
+    const key = 'governance.catalogue.elf_module_framework.area.m02_contract_management';
+    const names = catalogueNames({ area: [{ code: 'm02_contract_management', name: { key, text: null } }] });
+    const c = { ...ctx({ [key]: '2 Vertragsmanagement' }), names };
+    expect(catalogueName(c, { kind: 'area', code: 'm02_contract_management', catalogueId: 'eleven_areas_framework' })).toBe(
+      '2 Vertragsmanagement',
+    );
+    expect(catalogueName(ctx({}), { kind: 'area', code: 'm02_contract_management', catalogueId: 'eleven_areas_framework' })).toBe(
+      'M02 contract management',
+    );
+  });
+  describe('the detail of an evidence item', () => {
+    const de: Record<string, string> = {
+      'governance.evidence.detail.open': 'Offen: {{items}}',
+      'governance.evidence.detail.open_count': 'Offen: {{count}}',
+      'governance.evidence.detail.folders': 'Ordner: {{count}}',
+      'governance.evidence.detail.state_blocking': '{{state}}, blockierende Befunde: {{count}}',
+      'permits.ui.readiness.at_risk': 'Mit Risiko',
+      'permits.ui.readiness_item.requirement_filed': '{{detail}}: eingereicht oder erteilt',
+      'permits.ui.readiness_item.permit_partial': '{{detail}}: nur teilweise erteilt',
+      'procurement_concept.concept_state.draft': 'Entwurf',
+      'economics.status.draft': 'Entwurf',
+      'economics.finding.no_sources': 'Keine Finanzierungsquelle erfasst.',
+    };
+    const t: LabelContext['t'] = (k, o) =>
+      (de[k] ?? String(o?.defaultValue ?? k)).replace(/\{\{(\w+)\}\}/g, (_m, name: string) => String(o?.[name] ?? ''));
+    const c: LabelContext = { t, language: 'de', exists: (k) => k in de };
+    const say = (provider: string, code: string, detail: string) => evidenceDetail(t, c, { provider, code, detail });
+
+    it('reads the open permit checks through the permit sentences, never as raw codes', () => {
+      expect(say('permits.roadmap_and_register', 'permits_roadmap:g1', 'requirement_filed:Bauantrag')).toBe(
+        'Offen: Bauantrag: eingereicht oder erteilt',
+      );
+      expect(
+        say('permits.start_and_handover', 'permits_start:g1', 'at_risk permit_partial:Teilbaugenehmigung, requirement_filed:A, B'),
+      ).toBe('Offen: Teilbaugenehmigung: nur teilweise erteilt (Mit Risiko); A, B: eingereicht oder erteilt');
+      expect(say('permits.start_and_handover', 'permits_unresolved:x:g1', 'no_frame_document')).toBe('');
+      expect(say('permits.start_and_handover', 'permits_due_later:g1:r1', 'Abbruchgenehmigung')).toBe('Abbruchgenehmigung');
+    });
+    it('reads the procurement concept state and its blocking count', () => {
+      expect(say('procurement_concept.concept_ready', 'procurement_concept_ready:g1', 'draft; blocking=0')).toBe(
+        'Entwurf, blockierende Befunde: 0',
+      );
+    });
+    it('reads plan states, findings and counts of economics and the handbook', () => {
+      expect(say('economics.plan_ready', 'economics_proposed', 'draft')).toBe('Entwurf');
+      expect(say('economics.plan_ready', 'economics_financing_covered', 'no_sources')).toBe('Keine Finanzierungsquelle erfasst.');
+      expect(say('project_handbook.handbook_ready', 'handbook_required_chapters_approved', 'commercial, contracts')).toBe(
+        'Offen: 2',
+      );
+      expect(say('project_handbook.handbook_ready', 'handbook_data_room_materialised', '12')).toBe('Ordner: 12');
+    });
+    it('drops a bare code and keeps free text', () => {
+      expect(say('engineering_brief.brief_ready', 'brief_gate_milestone', 'gate_without_milestone')).toBe('');
+      expect(say('site_logistics.ready', 'x', 'Kran 2, Tor Nord')).toBe('Kran 2, Tor Nord');
     });
   });
   it('never returns a raw key', () => {

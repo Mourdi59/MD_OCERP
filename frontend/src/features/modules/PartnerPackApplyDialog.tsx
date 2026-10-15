@@ -65,6 +65,7 @@ import {
 import { WideModal, Badge } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { packNameSlug } from '@/shared/lib/regionalPack';
 
 import { canInstallPacks, useApplyPreview, type PackCostBase } from './partnerPacks';
 import {
@@ -263,9 +264,16 @@ export function PartnerPackApplyDialog({
   open,
   onClose,
   slug,
-  partnerName,
+  partnerName: rawPartnerName,
 }: PartnerPackApplyDialogProps) {
   const { t } = useTranslation();
+  // The name the caller passes is the pack's own (English) one; the title,
+  // toast and result read the localized name of the pack when a locale has it.
+  // Written out inline: the computed-key gate recognises `modules.pp_name_*`
+  // only in this shape.
+  const partnerName = t(`modules.pp_name_${packNameSlug(slug)}`, {
+    defaultValue: rawPartnerName,
+  });
   const addToast = useToastStore((s) => s.addToast);
   const canInstall = canInstallPacks(useAuthStore((s) => s.userRole));
   const qc = useQueryClient();

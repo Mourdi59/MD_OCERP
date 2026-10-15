@@ -8,6 +8,7 @@
 // translator can find every key by grep.
 
 import { getErrorMessage } from '@/shared/lib/api';
+import { READINESS_ITEM as PERMIT_READINESS_ITEM } from '@/features/permits/labels';
 
 import { governanceErrorCode } from './api';
 import type {
@@ -30,6 +31,26 @@ export interface LabelContext {
   t: TFn;
   language: string;
   exists: (key: string) => boolean;
+  /**
+   * The labels the API sent for the project's own catalogue items, keyed
+   * `kind:code` (see `catalogueNames`). A row that carries only a code (a
+   * condition, a blocker, an at-risk area) is named from here, so a catalogue
+   * whose message keys do not follow its id still reads in the locale.
+   */
+  names?: ReadonlyMap<string, GovernanceLabel>;
+}
+
+/** Collect the labels the API sent for catalogue items, keyed `kind:code`, for `LabelContext.names`. */
+export function catalogueNames(
+  groups: Partial<Record<CatalogueItemKind, ReadonlyArray<{ code: string; name?: GovernanceLabel | null }>>>,
+): Map<string, GovernanceLabel> {
+  const out = new Map<string, GovernanceLabel>();
+  for (const [kind, items] of Object.entries(groups)) {
+    for (const item of items ?? []) {
+      if (item.name && (item.name.key || item.name.text)) out.set(`${kind}:${item.code}`, item.name);
+    }
+  }
+  return out;
 }
 
 export const GATE_STATUS: Record<GateStatus, KeyText> = {
@@ -146,7 +167,7 @@ export type CatalogueItemKind = 'phase' | 'gate' | 'area' | 'doc' | 'criterion';
 
 /**
  * The name of a catalogue item: the project's own override first, then the
- * label the API sent, then the catalogue key in the locale, then the code.
+ * label the API sent (with the item, or in `ctx.names`), then the catalogue key in the locale, then the code.
  *
  * The key guess tries the pinned catalogue and then `neutral`, because the
  * national phase models borrow their areas and documents from it.
@@ -162,7 +183,7 @@ export function catalogueName(
   },
 ): string {
   if (args.override && args.override.trim()) return args.override.trim();
-  const fromApi = fromLabel(args.label, ctx);
+  const fromApi = fromLabel(args.label, ctx) || fromLabel(ctx.names?.get(`${args.kind}:${args.code}`), ctx);
   if (fromApi) return fromApi;
   const catalogues = [args.catalogueId, 'neutral'].filter((c): c is string => !!c);
   for (const cat of catalogues) {
@@ -295,6 +316,112 @@ export function evidenceText(
   const filled = filledText(item.label, ctx);
   if (filled) return filled;
   return catalogueName(ctx, { kind: 'doc', code: item.code, label: item.label });
+}
+
+/** Words of the evidence details below, as key maps so the key test can enumerate them. */
+export const EVIDENCE_DETAIL = {
+  open: ['governance.evidence.detail.open', 'Open: {{items}}'],
+  openCount: ['governance.evidence.detail.open_count', 'Open: {{count}}'],
+  folders: ['governance.evidence.detail.folders', 'Folders: {{count}}'],
+  stateBlocking: ['governance.evidence.detail.state_blocking', '{{state}}, blocking findings: {{count}}'],
+  atRisk: ['permits.ui.readiness.at_risk', 'At risk'],
+} as const satisfies Record<string, KeyText>;
+
+/** Plan, brief and concept states a provider sends as its detail, per module. */
+export const EVIDENCE_STATE: Record<string, Record<string, KeyText>> = {
+  economics: {
+    draft: ['economics.status.draft', 'Draft'],
+    proposed: ['economics.status.proposed', 'In review'],
+    approved: ['economics.status.approved', 'Approved'],
+    reopened: ['economics.status.reopened', 'Reopened'],
+  },
+  procurement_concept: {
+    draft: ['procurement_concept.concept_state.draft', 'Draft'],
+    in_review: ['procurement_concept.concept_state.in_review', 'In review'],
+    approved: ['procurement_concept.concept_state.approved', 'Approved'],
+    binding: ['procurement_concept.concept_state.binding', 'Binding'],
+    reopened: ['procurement_concept.concept_state.reopened', 'Reopened'],
+  },
+};
+
+function keyed(t: TFn, entry: KeyText | undefined, fallback: string, options?: Record<string, unknown>): string {
+  return entry ? t(entry[0], { defaultValue: entry[1], ...options }) : fallback;
+}
+
+/** `code:ref, code:ref` findings as their sentences, the reference in brackets. */
+function findingList(t: TFn, ctx: LabelContext, module: string, detail: string): string {
+  return detail
+    .split(', ')
+    .map((part) => {
+      const at = part.indexOf(':');
+      const code = at < 0 ? part : part.slice(0, at);
+      const ref = at < 0 ? '' : part.slice(at + 1);
+      const key = [module, 'finding', code].join('.');
+      const text = ctx.exists(key) ? t(key) : humanizeCode(code);
+      return ref ? `${text} (${ref})` : text;
+    })
+    .join('; ');
+}
+
+/** `[at_risk ]code:detail, ...`: the open readiness checks of the permits module. */
+function permitItems(t: TFn, detail: string): string {
+  const items = detail
+    .split(/, (?=(?:at_risk )?[a-z_]+:)/)
+    .map((part) => {
+      const atRisk = part.startsWith('at_risk ');
+      const body = atRisk ? part.slice('at_risk '.length) : part;
+      const at = body.indexOf(':');
+      const code = at < 0 ? body : body.slice(0, at);
+      const value = at < 0 ? '' : body.slice(at + 1);
+      const text = keyed(t, PERMIT_READINESS_ITEM[code], value || humanizeCode(code), { detail: value });
+      return atRisk ? `${text} (${keyed(t, EVIDENCE_DETAIL.atRisk, '')})` : text;
+    })
+    .join('; ');
+  return keyed(t, EVIDENCE_DETAIL.open, items, { items });
+}
+
+/**
+ * The detail of one evidence item in the reader's language, or an empty string when it
+ * has nothing to add to the label.
+ *
+ * A provider writes its detail for the record (codes, states, counts), not for the
+ * screen, so it is read here per module. A bare code (a reason, a state nobody maps)
+ * is never shown: the label already says what it means. Free text (a permit title, a
+ * date) passes as it is.
+ */
+export function evidenceDetail(
+  t: TFn,
+  ctx: LabelContext,
+  item: Pick<EvidenceItem, 'code' | 'detail'> & Partial<Pick<EvidenceItem, 'provider' | 'label'>>,
+): string {
+  const detail = (item.detail ?? '').trim();
+  if (!detail) return '';
+  const module = (item.provider ?? '').split('.')[0] ?? '';
+  if (module === 'permits' && /^(?:at_risk )?[a-z_]+:/.test(detail)) return permitItems(t, detail);
+  const m = module === 'procurement_concept' ? /^([a-z_]+); blocking=(\d+)$/.exec(detail) : null;
+  if (m) {
+    const state = keyed(t, EVIDENCE_STATE.procurement_concept?.[m[1] ?? ''], humanizeCode(m[1] ?? ''));
+    return keyed(t, EVIDENCE_DETAIL.stateBlocking, state, { state, count: Number(m[2]) });
+  }
+  if (module === 'economics' || module === 'engineering_brief') {
+    if (item.code.endsWith('_proposed') || item.code.endsWith('_submitted')) {
+      return keyed(t, EVIDENCE_STATE[module]?.[detail], '');
+    }
+    if (item.code.endsWith('_no_errors') || item.code.endsWith('_financing_covered')) {
+      return findingList(t, ctx, module, detail);
+    }
+  }
+  if (module === 'project_handbook') {
+    if (item.code === 'handbook_required_chapters_approved') {
+      return keyed(t, EVIDENCE_DETAIL.openCount, '', { count: detail.split(', ').length });
+    }
+    if (item.code === 'handbook_data_room_materialised' && /^\d+$/.test(detail)) {
+      return keyed(t, EVIDENCE_DETAIL.folders, detail, { count: Number(detail) });
+    }
+  }
+  // The server filled the sentence with the values in it; the detail repeats them in English.
+  if (module === 'stakeholders' && filledText(item.label, ctx)) return '';
+  return /^[a-z][a-z0-9_]*$/.test(detail) ? '' : detail;
 }
 
 export function errorText(t: TFn, code: string, serverMessage?: string | null): string {
