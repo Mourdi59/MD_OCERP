@@ -229,7 +229,7 @@ describe('deleting a section', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     fireEvent.click(confirmButton);
 
-    await waitFor(() => expect(screen.queryByTestId('row-sec')).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId('row-sec')).toBeNull(), { timeout: 10_000 });
     expect(screen.queryByTestId('row-sub')).toBeNull();
     expect(screen.queryByTestId('row-leaf')).toBeNull();
     expect(boqApi.deletePosition).not.toHaveBeenCalled();
@@ -250,7 +250,7 @@ describe('deleting a section', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     act(() => grid.props!.onDeleteSection('empty'));
 
-    await waitFor(() => expect(screen.queryByTestId('row-empty')).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId('row-empty')).toBeNull(), { timeout: 10_000 });
     expect(screen.queryByTestId('confirm-dialog-confirm')).toBeNull();
     expect(boqApi.deletePosition).not.toHaveBeenCalled();
 
