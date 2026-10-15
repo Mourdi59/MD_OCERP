@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.modules.bi_dashboards.kpi_spec import KPI_SCOPES as _KPI_SCOPES
 
@@ -176,9 +176,12 @@ class KPIComputeRequest(BaseModel):
 
 class KPIComputeResponse(BaseModel):
     kpi_code: str
-    value: Decimal
+    # ``None`` only with ``unavailable_reason`` set: a ratio over a zero
+    # denominator or over several units has no value, and 0 would read as one.
+    value: Decimal | None
     unit: str
     source_record_count: int = 0
+    unavailable_reason: str | None = None
     computed_at: datetime
     breakdown: dict[str, Any] = Field(default_factory=dict)
     trend: list[dict[str, Any]] = Field(default_factory=list)
@@ -560,6 +563,97 @@ class ReportRunRead(BaseModel):
     error_message: str | None = None
 
 
+# ── Cross-project performance benchmark ────────────────────────────────
+
+
+class PerformanceBenchmarkRequest(BaseModel):
+    """One KPI, read per project over a cohort.
+
+    Exactly one of ``kpi`` (a preset id or a stored custom KPI code) and
+    ``spec`` (a whitelisted spec, validated like ``POST /kpis``). An empty
+    ``project_ids`` means every project the caller can open.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    project_ids: list[UUID] = Field(default_factory=list, max_length=500)
+    kpi: str | None = Field(default=None, min_length=1, max_length=100)
+    spec: dict[str, Any] | None = None
+    period_start: date | None = None
+    period_end: date | None = None
+
+    @field_validator("project_ids")
+    @classmethod
+    def _dedupe(cls, value: list[UUID]) -> list[UUID]:
+        return list(dict.fromkeys(value))
+
+    @model_validator(mode="after")
+    def _one_kpi(self) -> PerformanceBenchmarkRequest:
+        if (self.kpi is None) == (self.spec is None):
+            raise ValueError("name exactly one of 'kpi' or 'spec'")
+        if self.period_start and self.period_end and self.period_start > self.period_end:
+            raise ValueError("period_start must not be after period_end")
+        return self
+
+
+class PerformanceProjectRow(BaseModel):
+    project_id: UUID
+    value: Decimal | None
+    numerator: Decimal | None = None
+    denominator: Decimal | None = None
+    records: int = 0
+    unavailable_reason: str | None = None
+
+
+class PerformanceBenchmarkFigures(BaseModel):
+    #: Ratio of the summed numerators to the summed denominators for a ratio
+    #: or weighted average; record-weighted mean for an average; ``None``
+    #: with a reason for a sum, count, min or max.
+    weighted: Decimal | None
+    weighted_unavailable_reason: str | None = None
+    median: Decimal | None
+    p25: Decimal | None
+    p75: Decimal | None
+    min: Decimal | None
+    max: Decimal | None
+
+
+class PerformanceEvidence(BaseModel):
+    projects_with_data: int
+    projects_with_value: int
+    records: int
+
+
+class PerformanceGroup(BaseModel):
+    key: str
+    dimensions: dict[str, str | None]
+    rows: list[PerformanceProjectRow]
+    benchmark: PerformanceBenchmarkFigures
+    evidence: PerformanceEvidence
+    #: Projects with a value in this group over projects selected.
+    coverage: Decimal
+
+
+class PerformanceProjectLabel(BaseModel):
+    project_id: UUID
+    name: str
+    currency: str
+
+
+class PerformanceBenchmarkResponse(BaseModel):
+    kpi: str | None
+    spec: dict[str, Any]
+    aggregation: str
+    projects_selected: int
+    projects: list[PerformanceProjectLabel]
+    groups: list[PerformanceGroup]
+
+
+class PerformancePreset(BaseModel):
+    key: str
+    spec: dict[str, Any]
+
+
 __all__ = [
     "ALERT_CHANNELS",
     "ALERT_CONDITIONS",
@@ -586,6 +680,14 @@ __all__ = [
     "KPI_CATEGORIES",
     "KPI_UNITS",
     "OUTPUT_FORMATS",
+    "PerformanceBenchmarkFigures",
+    "PerformanceBenchmarkRequest",
+    "PerformanceBenchmarkResponse",
+    "PerformanceEvidence",
+    "PerformanceGroup",
+    "PerformancePreset",
+    "PerformanceProjectLabel",
+    "PerformanceProjectRow",
     "REPORT_FREQUENCIES",
     "REPORT_SCOPES",
     "ReportDefinitionCreate",

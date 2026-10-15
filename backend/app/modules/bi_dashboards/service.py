@@ -572,7 +572,9 @@ class BIDashboardsService:
             boq_id=boq_id,
         )
         now = _now()
-        if persist and result.source_record_count > 0:
+        # An unavailable reading is not a snapshot of anything; persisting
+        # its placeholder zero would draw a dip in the trend that never happened.
+        if persist and result.source_record_count > 0 and result.unavailable_reason is None:
             kv = KPIValue(
                 kpi_code=code,
                 project_id=project_id,
@@ -628,9 +630,10 @@ class BIDashboardsService:
 
         return KPIComputeResponse(
             kpi_code=code,
-            value=result.value,
+            value=None if result.unavailable_reason else result.value,
             unit=result.unit,
             source_record_count=result.source_record_count,
+            unavailable_reason=result.unavailable_reason,
             computed_at=now,
             breakdown=result.breakdown,
             trend=trend,

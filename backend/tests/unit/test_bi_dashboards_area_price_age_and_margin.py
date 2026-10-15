@@ -133,7 +133,7 @@ class TestANullableNumberIsNeverReadAsZero:
             if kind != KIND_NUMERIC:
                 continue
             bf = bound.fields[field_name]
-            if bf.nullable_source is not None:
+            if bf.nullable_source is not None or bf.null_safe:
                 continue
             if any(col.nullable for col in _columns_under(bf.expr)):
                 offenders.append(field_name)
@@ -288,13 +288,16 @@ class TestTheApiServesTheNewEntities:
         # what a picker offers and what a stored spec is validated against, so
         # an entity added in one place and not the other is not a missing
         # feature, it is a spec that validates today and cannot be computed
-        # tomorrow. Grew by ``schedule_activity`` for issue #453.
+        # tomorrow. Grew by ``schedule_activity`` for issue #453, and by
+        # ``field_time_line`` and ``position_progress`` for issue #492.
         served = {e["name"]: e for e in catalog_as_dict()}
         assert set(served) == {
             "boq",
             "boq_position",
             "boq_markup",
             "cost_item_usage",
+            "field_time_line",
+            "position_progress",
             "project",
             "schedule_activity",
         }

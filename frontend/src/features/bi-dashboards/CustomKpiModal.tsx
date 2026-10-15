@@ -138,6 +138,7 @@ export function CustomKpiModal({
   const [aggregation, setAggregation] = useState('');
   const [fieldName, setFieldName] = useState('');
   const [weightField, setWeightField] = useState('');
+  const [denominatorField, setDenominatorField] = useState('');
   const [groupBy, setGroupBy] = useState('');
   const [labelField, setLabelField] = useState('');
   const [filters, setFilters] = useState<FilterDraft[]>([]);
@@ -169,9 +170,12 @@ export function CustomKpiModal({
 
   const needsField = effectiveAggregation !== 'count' && effectiveAggregation !== '';
   const needsWeight = effectiveAggregation === 'weighted_avg';
+  // A ratio is a sum over a sum and comes back split by unit and currency on
+  // its own, so it takes a denominator and no further breakdown.
+  const isRatio = effectiveAggregation === 'ratio';
   // A label names the rows of a breakdown, so it needs rows: either a
   // grouping, or `top_by`, which returns the single highest row.
-  const canLabel = effectiveAggregation === 'top_by' || groupBy !== '';
+  const canLabel = effectiveAggregation === 'top_by' || (groupBy !== '' && !isRatio);
 
   const effectiveField = needsField
     ? numericFields.includes(fieldName)
@@ -182,6 +186,12 @@ export function CustomKpiModal({
     ? numericFields.includes(weightField)
       ? weightField
       : (numericFields[0] ?? '')
+    : '';
+  const denominatorChoices = numericFields.filter((f) => f !== effectiveField);
+  const effectiveDenominator = isRatio
+    ? denominatorChoices.includes(denominatorField)
+      ? denominatorField
+      : (denominatorChoices[0] ?? '')
     : '';
   // The field the server fills the label in with when the spec leaves it
   // out, because grouping by an id and reading back ids is nobody's
@@ -213,6 +223,7 @@ export function CustomKpiModal({
     max: t('bi.kpi_agg_max', { defaultValue: 'Highest' }),
     weighted_avg: t('bi.kpi_agg_weighted_avg', { defaultValue: 'Weighted average' }),
     top_by: t('bi.kpi_agg_top_by', { defaultValue: 'Largest single row' }),
+    ratio: t('bi.kpi_agg_ratio', { defaultValue: 'Ratio (sum over sum)' }),
   };
   const operatorLabels: Record<string, string> = {
     eq: t('bi.kpi_op_eq', { defaultValue: 'is' }),
@@ -290,7 +301,8 @@ export function CustomKpiModal({
     const built: KpiSpec = { entity: effectiveEntity, aggregation: effectiveAggregation };
     if (needsField && effectiveField) built.field = effectiveField;
     if (needsWeight && effectiveWeight) built.weight_field = effectiveWeight;
-    if (groupBy) built.group_by = groupBy;
+    if (isRatio && effectiveDenominator) built.denominator_field = effectiveDenominator;
+    if (groupBy && !isRatio) built.group_by = groupBy;
     if (canLabel && effectiveLabel) built.label_field = effectiveLabel;
     if (builtFilters.length > 0) built.filters = builtFilters;
     return built;
@@ -301,6 +313,8 @@ export function CustomKpiModal({
     effectiveField,
     needsWeight,
     effectiveWeight,
+    isRatio,
+    effectiveDenominator,
     groupBy,
     canLabel,
     effectiveLabel,
@@ -323,7 +337,8 @@ export function CustomKpiModal({
     effectiveEntity !== '' &&
     effectiveAggregation !== '' &&
     (!needsField || effectiveField !== '') &&
-    (!needsWeight || effectiveWeight !== '');
+    (!needsWeight || effectiveWeight !== '') &&
+    (!isRatio || effectiveDenominator !== '');
 
   const createMut = useMutation({
     mutationFn: () =>
@@ -621,6 +636,29 @@ export function CustomKpiModal({
                 </select>
               </WideModalField>
             )}
+            {isRatio && (
+              <WideModalField
+                label={t('bi.kpi_denominator_field', { defaultValue: 'Divided by' })}
+                required
+                hint={t('bi.kpi_denominator_field_hint', {
+                  defaultValue:
+                    'The sum of the field above over the sum of this one, split by unit and currency. A zero sum reads as unavailable, not 0.',
+                })}
+              >
+                <select
+                  value={effectiveDenominator}
+                  onChange={(e) => setDenominatorField(e.target.value)}
+                  className={inputCls}
+                >
+                  {denominatorChoices.map((f) => (
+                    <option key={f} value={f}>
+                      {humanizeToken(f)}
+                    </option>
+                  ))}
+                </select>
+              </WideModalField>
+            )}
+            {!isRatio && (
             <WideModalField
               label={t('bi.kpi_group_by', { defaultValue: 'Break down by' })}
               hint={t('bi.kpi_group_by_hint', {
@@ -642,6 +680,7 @@ export function CustomKpiModal({
                 ))}
               </select>
             </WideModalField>
+            )}
             {canLabel && (
               <WideModalField
                 label={t('bi.kpi_label_field', { defaultValue: 'Name each group by' })}

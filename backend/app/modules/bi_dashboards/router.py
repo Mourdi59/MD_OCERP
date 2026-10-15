@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -52,7 +53,7 @@ from app.dependencies import (
     accessible_project_ids,
     verify_project_access,
 )
-from app.modules.bi_dashboards import kpi_spec
+from app.modules.bi_dashboards import kpi_spec, performance
 from app.modules.bi_dashboards.alert_dsl import AlertExpressionError
 from app.modules.bi_dashboards.models import (
     AlertRule,
@@ -77,6 +78,14 @@ from app.modules.bi_dashboards.schemas import (
     KPIDefinitionCreate,
     KPIDefinitionRead,
     KPIHistoryResponse,
+    PerformanceBenchmarkFigures,
+    PerformanceBenchmarkRequest,
+    PerformanceBenchmarkResponse,
+    PerformanceEvidence,
+    PerformanceGroup,
+    PerformancePreset,
+    PerformanceProjectLabel,
+    PerformanceProjectRow,
     ReportDefinitionCreate,
     ReportDefinitionRead,
     ReportRunResponse,
@@ -355,6 +364,127 @@ async def kpi_spec_catalog() -> dict[str, Any]:
         "filter_operators": list(kpi_spec.FILTER_OPERATORS),
         "max_breakdown_groups": kpi_spec.MAX_BREAKDOWN_GROUPS,
     }
+
+
+@router.get(
+    "/performance/presets",
+    response_model=list[PerformancePreset],
+    dependencies=[Depends(RequirePermission("bi.kpi.read"))],
+)
+async def performance_presets() -> list[PerformancePreset]:
+    """The ready-made performance KPIs, each as the spec it evaluates.
+
+    The keys are stable and the UI names its labels after them; the spec is
+    served so a reader can see exactly what a preset measures.
+    """
+    return [PerformancePreset(key=key, spec=spec) for key, spec in performance.VALIDATED_PRESETS.items()]
+
+
+@router.post(
+    "/performance/benchmark",
+    response_model=PerformanceBenchmarkResponse,
+    dependencies=[Depends(RequirePermission("bi.kpi.read"))],
+)
+async def performance_benchmark(
+    payload: PerformanceBenchmarkRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+) -> PerformanceBenchmarkResponse:
+    """Read one KPI per project over a cohort and benchmark the cohort.
+
+    The cohort is the requested projects intersected with those the caller
+    can open (every such project when none is requested). A project outside
+    that set is dropped without a trace in the response, so naming a project
+    id here reveals nothing about it, not even whether it exists.
+
+    Each unit and currency the KPI spans is its own group, with per-project
+    values, the weighted benchmark (a ratio of sums for a ratio KPI), the
+    median and P25-P75 over projects, the evidence behind them, and coverage:
+    projects with a value over projects selected.
+
+    Args:
+        payload: Cohort, KPI and optional period.
+        user_id: The authenticated caller.
+        session: Database session.
+
+    Returns:
+        The benchmark, one group per unit/currency partition.
+    """
+    try:
+        spec = await performance.resolve_spec(session, kpi=payload.kpi, spec=payload.spec)
+    except kpi_spec.KPISpecError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=exc.as_dict(),
+        ) from exc
+    except performance.UnknownPerformanceKPI as exc:
+        raise _not_found(f"Unknown performance KPI: {exc.code}") from exc
+    if spec["aggregation"] == "top_by":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=kpi_spec.KPISpecError(
+                "spec.aggregation",
+                "'top_by' names a row, not a measure, so it has no per-project value to benchmark.",
+                value="top_by",
+            ).as_dict(),
+        )
+
+    accessible = await accessible_project_ids(session, user_id, live_only=True)
+    cohort = performance.resolve_cohort(payload.project_ids, accessible or set())
+    groups = await performance.benchmark(
+        session,
+        spec=spec,
+        cohort=cohort,
+        period_start=payload.period_start,
+        period_end=payload.period_end,
+    )
+    selected = len(cohort)
+    return PerformanceBenchmarkResponse(
+        kpi=payload.kpi,
+        spec=spec,
+        aggregation=spec["aggregation"],
+        projects_selected=selected,
+        projects=[PerformanceProjectLabel(**p) for p in await performance.project_labels(session, cohort)],
+        groups=[_performance_group(g, selected) for g in groups],
+    )
+
+
+def _performance_group(group: performance.BenchmarkGroup, selected: int) -> PerformanceGroup:
+    summary = group.summary or performance.summarise(group.readings, "")
+    return PerformanceGroup(
+        key=group.key,
+        dimensions=group.dimensions,
+        rows=[
+            PerformanceProjectRow(
+                project_id=r.project_id,
+                value=r.value,
+                numerator=r.numerator,
+                denominator=r.denominator,
+                records=r.records,
+                unavailable_reason=r.unavailable_reason,
+            )
+            for r in group.readings
+        ],
+        benchmark=PerformanceBenchmarkFigures(
+            weighted=summary.weighted,
+            weighted_unavailable_reason=summary.weighted_unavailable_reason,
+            median=summary.median,
+            p25=summary.p25,
+            p75=summary.p75,
+            min=summary.minimum,
+            max=summary.maximum,
+        ),
+        evidence=PerformanceEvidence(
+            projects_with_data=summary.projects_with_data,
+            projects_with_value=summary.projects_with_value,
+            records=summary.records,
+        ),
+        coverage=(
+            (Decimal(summary.projects_with_value) / Decimal(selected)).quantize(Decimal("0.0001"))
+            if selected
+            else Decimal("0")
+        ),
+    )
 
 
 @router.post(

@@ -38,6 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus, publish_after_commit
 from app.core.i18n import get_locale
+from app.core.stats import percentile
 from app.core.validation.messages import translate
 
 # ── CWICR variant snapshot helpers ───────────────────────────────────────
@@ -10436,11 +10437,8 @@ class BOQService:
         all_matches = await asyncio.gather(*[_search_one(i) for i in range(len(eligible))])
 
         def _percentile_val(data: list[float], pct: float) -> float:
-            idx = pct / 100.0 * (len(data) - 1)
-            lower = int(idx)
-            upper = min(lower + 1, len(data) - 1)
-            frac = idx - lower
-            return data[lower] + frac * (data[upper] - data[lower])
+            # Callers guarantee at least two rates, so this is never None here.
+            return float(percentile(data, pct) or 0.0)
 
         anomalies: list[dict[str, Any]] = []
 

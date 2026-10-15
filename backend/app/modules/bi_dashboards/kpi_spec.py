@@ -93,6 +93,14 @@ KPI_SCOPES: tuple[str, ...] = (SCOPE_PROJECT, SCOPE_ESTIMATE)
 
 #: Aggregations a custom KPI may ask for. Anything outside this tuple is
 #: rejected by name.
+#:
+#: ``ratio`` is ``sum(field) / sum(denominator_field)`` and deliberately not
+#: the average of per-row ratios. Two projects at 100 h over 50 m2 and 300 h
+#: over 200 m2 did 400 h over 250 m2, which is 1.60 h/m2; averaging their own
+#: 2.00 and 1.50 says 1.75 and weighs a small job the same as a job four
+#: times its size. It is also split by the dimensions its two fields carry
+#: (see ``CatalogEntity.dimensions``), so hours per m2 and hours per m3 are
+#: two readings, never one.
 AGGREGATIONS: tuple[str, ...] = (
     "count",
     "sum",
@@ -101,12 +109,23 @@ AGGREGATIONS: tuple[str, ...] = (
     "max",
     "weighted_avg",
     "top_by",
+    "ratio",
 )
+
+#: Why a reading has no value. A ratio whose denominator is zero or absent,
+#: or whose rows carry more than one unit, has no honest number, and ``0`` is
+#: the one dishonest number that looks like a measurement. These say which.
+UNAVAILABLE_NO_DATA = "no_data"
+UNAVAILABLE_ZERO_DENOMINATOR = "zero_denominator"
+UNAVAILABLE_MIXED_DIMENSIONS = "mixed_dimensions"
+
+#: Separator between the dimension values of one partition key, e.g. ``EUR|m2``.
+DIMENSION_KEY_SEPARATOR = "|"
 
 #: Aggregations that need a numeric ``field``. ``count`` is the one that
 #: must not carry one - counting a column and counting rows are different
 #: questions and silently answering the second is how a KPI lies.
-_FIELD_REQUIRED: frozenset[str] = frozenset({"sum", "avg", "min", "max", "weighted_avg", "top_by"})
+_FIELD_REQUIRED: frozenset[str] = frozenset({"sum", "avg", "min", "max", "weighted_avg", "top_by", "ratio"})
 
 #: Filter operators. ``in`` takes a list; ``is_null`` / ``not_null`` take
 #: no value; the ordering operators are numeric-only.
@@ -249,6 +268,16 @@ class CatalogEntity:
     #: the two - a promise here with no column there would be accepted at
     #: creation and unanswerable at compute time.
     narrows_to_estimate: bool = False
+    #: Numeric field -> the text fields naming what it is measured in.
+    #:
+    #: A quantity is in the position's unit and money is in a currency, and
+    #: summing either across rows that disagree adds metres to tonnes. A ratio
+    #: and every benchmark reading are partitioned by the dimensions of the
+    #: fields they read, so each unit or currency comes back as its own group.
+    #: There is no conversion: a group that cannot be compared is shown apart,
+    #: not translated into one that can. A field absent here is dimensionless
+    #: for this purpose (hours, percentages, counts).
+    dimensions: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
     def numeric_fields(self) -> list[str]:
         return sorted(n for n, k in self.fields.items() if k == KIND_NUMERIC)
@@ -299,6 +328,7 @@ class CatalogEntity:
             # cannot carry it, rather than offering it and letting the create
             # call refuse afterwards.
             "narrows_to_estimate": self.narrows_to_estimate,
+            "dimensions": {name: list(dims) for name, dims in sorted(self.dimensions.items())},
         }
 
 
@@ -348,6 +378,12 @@ ENTITY_CATALOG: dict[str, CatalogEntity] = {
             "node_type": KIND_TEXT,
         },
         display_name_for={"boq_id": "boq_name"},
+        dimensions={
+            "quantity": ("unit",),
+            "unit_rate": ("currency", "unit"),
+            "total": ("currency",),
+            "amount": ("currency",),
+        },
         # The only place a position says what KIND of work it is. `source`
         # is the nearest declared field and answers a different question,
         # how the row was entered. That column defaults to `manual` and
@@ -400,6 +436,7 @@ ENTITY_CATALOG: dict[str, CatalogEntity] = {
             "currency": KIND_TEXT,
             "parent_project_id": KIND_UUID,
         },
+        dimensions={"contract_value": ("currency",), "budget_estimate": ("currency",)},
         # One row per project, which is exactly what makes it useful and
         # exactly what stops it narrowing: an estimate does not have a
         # project's floor area, it has whatever part of the building it was
@@ -506,6 +543,7 @@ ENTITY_CATALOG: dict[str, CatalogEntity] = {
             "context": KIND_TEXT,
         },
         display_name_for={"cost_item_id": "cost_item_code"},
+        dimensions={"unit_rate_at_use": ("currency", "unit")},
         # The ledger records which PROJECT a rate was applied to and not which
         # bill it landed in, so "how old are the prices this estimate rests
         # on" cannot be answered from it today however the join is written.
@@ -513,6 +551,81 @@ ENTITY_CATALOG: dict[str, CatalogEntity] = {
         # answer is the project's, and serving that under an estimate's label
         # is the failure this flag exists to prevent.
         narrows_to_estimate=False,
+    ),
+    "field_time_line": CatalogEntity(
+        name="field_time_line",
+        source_module="oe_field_time",
+        description=(
+            "One labour or plant booking on a field timesheet, and only on a "
+            "timesheet whose hours are actuals: approved and not itself a "
+            "reversal. A corrected day therefore counts nothing, exactly as "
+            "post-calculation and position actuals count it. ``hours`` is the "
+            "booking; ``labour_hours`` and ``plant_hours`` are the same hours "
+            "split by kind, zero on the other kind, so one sum answers either "
+            "question. ``boq_position_id`` is the bill position the hours were "
+            "spent on, set only when somebody attributed them; filter it with "
+            "``not_null`` to read hours that can be held against an estimate "
+            "line. ``position_unit`` and ``position_description`` come from "
+            "that position and are unset on an unattributed line. The period "
+            "of a booking is its work date."
+        ),
+        fields={
+            "hours": KIND_NUMERIC,
+            "labour_hours": KIND_NUMERIC,
+            "plant_hours": KIND_NUMERIC,
+            "kind": KIND_TEXT,
+            "cost_code": KIND_TEXT,
+            "wbs": KIND_TEXT,
+            "is_daywork": KIND_BOOL,
+            "boq_position_id": KIND_UUID,
+            "position_unit": KIND_TEXT,
+            "position_description": KIND_TEXT,
+            "timesheet_reference": KIND_TEXT,
+        },
+        # A timesheet belongs to a project and a day, never to a bill: the
+        # position link is optional and soft, so there is no estimate to
+        # narrow to that every row would honestly have.
+        narrows_to_estimate=False,
+    ),
+    "position_progress": CatalogEntity(
+        name="position_progress",
+        source_module="oe_progress",
+        description=(
+            "One bill position with what the site has reported against it. "
+            "``installed_quantity`` is the planned quantity times the latest "
+            "reported percent complete, computed by the same function "
+            "post-calculation uses, and is unset on a position nobody has "
+            "reported on, so a ratio over it leaves that position out instead "
+            "of reading it as nothing built. ``labour_hours`` and "
+            "``plant_hours`` are the hours booked against the position on "
+            "approved, non-reversed timesheets that name it. "
+            "Hours per installed unit is the ratio of ``labour_hours`` to "
+            "``installed_quantity``, split by ``unit``. ``amount`` is the "
+            "estimate's money for the line in ``currency``."
+        ),
+        fields={
+            "planned_quantity": KIND_NUMERIC,
+            "percent_complete": KIND_NUMERIC,
+            "installed_quantity": KIND_NUMERIC,
+            "labour_hours": KIND_NUMERIC,
+            "plant_hours": KIND_NUMERIC,
+            "amount": KIND_NUMERIC,
+            "unit": KIND_TEXT,
+            "currency": KIND_TEXT,
+            "description": KIND_TEXT,
+            "ordinal": KIND_TEXT,
+            "node_type": KIND_TEXT,
+            "boq_id": KIND_UUID,
+            "boq_name": KIND_TEXT,
+        },
+        display_name_for={"boq_id": "boq_name"},
+        json_fields={"classification": KIND_TEXT},
+        dimensions={
+            "planned_quantity": ("unit",),
+            "installed_quantity": ("unit",),
+            "amount": ("currency",),
+        },
+        narrows_to_estimate=True,
     ),
 }
 
@@ -534,6 +647,11 @@ class BoundField:
     #: The raw column to test for NULL when the field is nullable. A
     #: derived expression over NOT NULL columns leaves this unset.
     nullable_source: Any | None = None
+    #: The expression reads a nullable column on purpose and never yields
+    #: NULL for an absent value: a CASE that splits a measure by which of
+    #: two nullable discriminators is set. Declared rather than inferred so
+    #: the null-source invariant test can tell this from an oversight.
+    null_safe: bool = False
 
 
 @dataclass(frozen=True)
@@ -559,6 +677,20 @@ class BoundEntity:
     #: single estimate - see ``narrows_to_estimate`` on the catalog entry,
     #: which the parity check holds to this.
     boq_column: Any | None = None
+    #: ``(target, onclause)`` pairs LEFT OUTER joined after ``joins``.
+    #:
+    #: For readings that may be absent on a row - the latest progress of a
+    #: position nobody has reported on, the hours of a position nobody booked
+    #: against - where an inner join would drop the row rather than leave the
+    #: field unset.
+    outer_joins: list[tuple[Any, Any]] = field(default_factory=list)
+    #: Predicates every query over this entity carries, whatever the spec
+    #: says. This is how an entity states which rows exist at all: a draft
+    #: timesheet is not a smaller actual, it is not an actual.
+    where: list[Any] = field(default_factory=list)
+    #: ``period_column`` is a calendar date rather than a timestamp, so the
+    #: period bounds are compared as dates.
+    period_is_date: bool = False
 
     def resolve_field(self, name: str) -> BoundField:
         """The bound field for a plain name or a ``<column>.<key>`` path.
@@ -851,6 +983,136 @@ def _bind_schedule_activity() -> BoundEntity:
     )
 
 
+def _bind_field_time_line() -> BoundEntity:
+    from sqlalchemy import case
+
+    from app.modules.boq.models import Position
+    from app.modules.field_time.counted import counted_timesheet_clause
+    from app.modules.field_time.models import FieldTimesheet, FieldTimesheetLine
+
+    # Labour XOR plant is a CHECK constraint on the line, so the two split
+    # columns partition ``hours`` exactly: their sum is the booking, and
+    # neither ever counts a line the other also counts.
+    labour = case((FieldTimesheetLine.resource_id.is_not(None), FieldTimesheetLine.hours), else_=0)
+    plant = case((FieldTimesheetLine.equipment_id.is_not(None), FieldTimesheetLine.hours), else_=0)
+    kind = case((FieldTimesheetLine.resource_id.is_not(None), literal("labour")), else_=literal("plant"))
+    return BoundEntity(
+        model=FieldTimesheetLine,
+        project_column=FieldTimesheet.project_id,
+        period_column=FieldTimesheet.date,
+        period_is_date=True,
+        joins=[(FieldTimesheet, FieldTimesheetLine.timesheet_id == FieldTimesheet.id)],
+        # The link is soft and optional, so the position is outer joined: an
+        # unattributed booking is still a booking and still counts toward the
+        # hours of its project.
+        outer_joins=[(Position, FieldTimesheetLine.boq_position_id == Position.id)],
+        where=[counted_timesheet_clause()],
+        fields={
+            # Numeric(18, 4), NOT NULL - no coercion and no null source.
+            "hours": BoundField(FieldTimesheetLine.hours, KIND_NUMERIC),
+            "labour_hours": BoundField(labour, KIND_NUMERIC, null_safe=True),
+            "plant_hours": BoundField(plant, KIND_NUMERIC, null_safe=True),
+            "kind": BoundField(kind, KIND_TEXT),
+            "cost_code": BoundField(FieldTimesheetLine.cost_code, KIND_TEXT),
+            "wbs": BoundField(FieldTimesheetLine.wbs, KIND_TEXT, nullable_source=FieldTimesheetLine.wbs),
+            "is_daywork": BoundField(FieldTimesheetLine.is_daywork, KIND_BOOL),
+            "boq_position_id": BoundField(
+                FieldTimesheetLine.boq_position_id,
+                KIND_UUID,
+                nullable_source=FieldTimesheetLine.boq_position_id,
+            ),
+            "position_unit": BoundField(Position.unit, KIND_TEXT, nullable_source=Position.unit),
+            "position_description": BoundField(
+                Position.description,
+                KIND_TEXT,
+                nullable_source=Position.description,
+            ),
+            "timesheet_reference": BoundField(FieldTimesheet.reference, KIND_TEXT),
+        },
+    )
+
+
+def _bind_position_progress() -> BoundEntity:
+    from sqlalchemy import case
+
+    from app.modules.boq.models import BOQ, Position
+    from app.modules.field_time.counted import counted_timesheet_clause
+    from app.modules.field_time.models import FieldTimesheet, FieldTimesheetLine
+    from app.modules.progress.installed import installed_quantity_expr, latest_percent_subquery
+    from app.modules.projects.models import Project
+
+    latest = latest_percent_subquery()
+    # Hours per position and project, pre-aggregated and outer joined, rather
+    # than a correlated subquery inside the measure: an aggregate over a
+    # subquery is not something every planner will take, and this shape reads
+    # the timesheet table once per query instead of once per position. The
+    # project is part of the key because the position link is soft: a line
+    # naming another project's position must not book hours onto it.
+    booked = (
+        select(
+            FieldTimesheetLine.boq_position_id.label("position_id"),
+            FieldTimesheet.project_id.label("project_id"),
+            func.sum(case((FieldTimesheetLine.resource_id.is_not(None), FieldTimesheetLine.hours), else_=0)).label(
+                "labour_hours"
+            ),
+            func.sum(case((FieldTimesheetLine.equipment_id.is_not(None), FieldTimesheetLine.hours), else_=0)).label(
+                "plant_hours"
+            ),
+        )
+        .join(FieldTimesheet, FieldTimesheetLine.timesheet_id == FieldTimesheet.id)
+        .where(counted_timesheet_clause(), FieldTimesheetLine.boq_position_id.is_not(None))
+        .group_by(FieldTimesheetLine.boq_position_id, FieldTimesheet.project_id)
+        .subquery("booked_hours")
+    )
+    return BoundEntity(
+        model=Position,
+        project_column=BOQ.project_id,
+        period_column=Position.created_at,
+        joins=[(BOQ, Position.boq_id == BOQ.id), (Project, BOQ.project_id == Project.id)],
+        outer_joins=[
+            (latest, (latest.c.boq_position_id == Position.id) & (latest.c.project_id == BOQ.project_id)),
+            (booked, (booked.c.position_id == Position.id) & (booked.c.project_id == BOQ.project_id)),
+        ],
+        boq_column=Position.boq_id,
+        fields={
+            "planned_quantity": BoundField(numeric_value(Position.quantity), KIND_NUMERIC),
+            "percent_complete": BoundField(
+                latest.c.percent_complete,
+                KIND_NUMERIC,
+                nullable_source=latest.c.percent_complete,
+            ),
+            "installed_quantity": BoundField(
+                installed_quantity_expr(Position.quantity, latest.c.percent_complete),
+                KIND_NUMERIC,
+                nullable_source=latest.c.percent_complete,
+            ),
+            # No booking is zero hours, not unknown hours: the timesheets are
+            # the complete record of what was booked, so a position absent
+            # from them had nothing booked.
+            "labour_hours": BoundField(func.coalesce(booked.c.labour_hours, 0), KIND_NUMERIC),
+            "plant_hours": BoundField(func.coalesce(booked.c.plant_hours, 0), KIND_NUMERIC),
+            "amount": BoundField(
+                numeric_value(Position.quantity) * numeric_value(Position.unit_rate),
+                KIND_NUMERIC,
+            ),
+            "unit": BoundField(Position.unit, KIND_TEXT),
+            "currency": BoundField(Project.currency, KIND_TEXT),
+            "description": BoundField(Position.description, KIND_TEXT),
+            "ordinal": BoundField(Position.ordinal, KIND_TEXT),
+            "node_type": BoundField(Position.node_type, KIND_TEXT, nullable_source=Position.node_type),
+            "boq_id": BoundField(Position.boq_id, KIND_UUID),
+            "boq_name": BoundField(BOQ.name, KIND_TEXT),
+        },
+        json_fields={
+            "classification": lambda key: BoundField(
+                Position.classification[key].as_string(),
+                KIND_TEXT,
+                nullable_source=Position.classification[key].as_string(),
+            ),
+        },
+    )
+
+
 _BINDERS: dict[str, Callable[[], BoundEntity]] = {
     "boq_position": _bind_boq_position,
     "boq": _bind_boq,
@@ -858,6 +1120,8 @@ _BINDERS: dict[str, Callable[[], BoundEntity]] = {
     "boq_markup": _bind_boq_markup,
     "cost_item_usage": _bind_cost_item_usage,
     "schedule_activity": _bind_schedule_activity,
+    "field_time_line": _bind_field_time_line,
+    "position_progress": _bind_position_progress,
 }
 
 
@@ -936,8 +1200,19 @@ def check_catalog_binding_parity() -> dict[str, dict[str, list[str]]]:
             if bound.boq_column is not None and not entry.narrows_to_estimate
             else []
         )
+        # A dimension names the text field a measure is partitioned by. One
+        # naming an undeclared field would fail at compute time on the first
+        # ratio over it, and one naming a numeric field would partition by
+        # amount - one group per distinct value, which is never a unit.
+        bad_dimension = sorted(
+            f"{measure}->{dim}"
+            for measure, dims in entry.dimensions.items()
+            for dim in dims
+            if entry.fields.get(measure) != KIND_NUMERIC or dim not in declared or entry.fields[dim] == KIND_NUMERIC
+        )
         diff = {
             "declared_only": sorted(declared - built),
+            "bad_dimension": bad_dimension,
             "bound_only": sorted(built - declared),
             "kind_mismatch": wrong_kind,
             "bad_display_name": bad_display_name,
@@ -1245,7 +1520,44 @@ def validate_spec(raw: Any) -> dict[str, Any]:
             value=weight,
         )
 
+    denominator = raw.get("denominator_field")
+    if aggregation == "ratio":
+        if denominator is None:
+            raise KPISpecError(
+                "spec.denominator_field",
+                "aggregation 'ratio' needs a numeric denominator field.",
+                allowed=entry.numeric_fields(),
+            )
+        denominator = _lookup_field(entry, denominator, "spec.denominator_field")
+        _require_numeric(entry, denominator, "spec.denominator_field")
+        if denominator == normalised["field"]:
+            # Always 1 wherever it is defined, so it measures nothing, and a
+            # tile reading 1.00 forever looks like a healthy KPI.
+            raise KPISpecError(
+                "spec.denominator_field",
+                "a ratio of a field to itself is always 1; name a different denominator.",
+                value=denominator,
+                allowed=[n for n in entry.numeric_fields() if n != normalised["field"]],
+            )
+        normalised["denominator_field"] = denominator
+    elif denominator is not None:
+        raise KPISpecError(
+            "spec.denominator_field",
+            f"aggregation '{aggregation}' takes no denominator field.",
+            value=denominator,
+        )
+
     group_by = raw.get("group_by")
+    if group_by is not None and aggregation == "ratio":
+        # A ratio already comes back one group per unit and currency it
+        # spans. A second grouping on top would need a two-level key nobody
+        # reads yet; refused rather than half-supported.
+        raise KPISpecError(
+            "spec.group_by",
+            "aggregation 'ratio' is already split by the units and currencies of its fields "
+            "and takes no further grouping.",
+            value=group_by,
+        )
     if group_by is not None:
         group_by = _lookup_field(entry, group_by, "spec.group_by")
         if entry.kind_of(group_by) == KIND_NUMERIC:
@@ -1318,9 +1630,51 @@ class SpecResult:
     152 KB formula registry, and the registry converts on the way out.
     """
 
-    value: Decimal = Decimal("0")
+    #: ``None`` only together with ``unavailable_reason``: a ratio with no
+    #: denominator, or spanning more than one unit, has no value to give.
+    value: Decimal | None = Decimal("0")
     source_record_count: int = 0
     breakdown: dict[str, Any] = field(default_factory=dict)
+    unavailable_reason: str | None = None
+
+
+def spec_dimensions(spec: dict[str, Any]) -> list[str]:
+    """The text fields a validated spec's readings are partitioned by.
+
+    The union of the declared dimensions of every measure the spec reads,
+    sorted so a partition key is spelled the same way on every call.
+    """
+    entry = ENTITY_CATALOG.get(str(spec.get("entity", "")))
+    if entry is None:
+        return []
+    dims: set[str] = set()
+    for key in ("field", "denominator_field", "weight_field"):
+        name = spec.get(key)
+        if name:
+            dims.update(entry.dimensions.get(name, ()))
+    return sorted(dims)
+
+
+def dimension_key(values: list[Any]) -> str:
+    """The partition key for one combination of dimension values."""
+    return DIMENSION_KEY_SEPARATOR.join(_group_key(v) for v in values)
+
+
+def ratio_value(numerator: Any, denominator: Any) -> tuple[Decimal | None, str | None]:
+    """``numerator / denominator``, or ``None`` and the reason there is none.
+
+    A zero or absent denominator is unavailable, never ``0``: no installed
+    quantity means the productivity is unknown, and a zero would rank the
+    job nobody measured as the most productive one in the portfolio.
+    """
+    from app.modules.bi_dashboards.kpis import _to_decimal
+
+    if denominator is None:
+        return None, UNAVAILABLE_NO_DATA
+    den = _to_decimal(denominator)
+    if den == 0:
+        return None, UNAVAILABLE_ZERO_DENOMINATOR
+    return _to_decimal(numerator) / den, None
 
 
 def _apply_filters(stmt: Any, bound: BoundEntity, filters: list[dict[str, Any]]) -> Any:
@@ -1376,6 +1730,10 @@ def _base_predicates(
 
     for target, onclause in bound.joins:
         stmt = stmt.join(target, onclause)
+    for target, onclause in bound.outer_joins:
+        stmt = stmt.outerjoin(target, onclause)
+    for predicate in bound.where:
+        stmt = stmt.where(predicate)
     if project_id is not None:
         stmt = stmt.where(bound.project_column == project_id)
     if boq_id is not None:
@@ -1396,17 +1754,30 @@ def _base_predicates(
     # Same portfolio narrowing every built-in formula gets. A custom KPI
     # is not allowed to be the one read that ignores it.
     stmt = _scope_portfolio(stmt, bound.project_column, project_id, allowed_project_ids)
-    if period_start is not None:
-        stmt = stmt.where(bound.period_column >= datetime.combine(period_start, time.min, tzinfo=UTC))
-    if period_end is not None:
-        stmt = stmt.where(bound.period_column < datetime.combine(period_end + timedelta(days=1), time.min, tzinfo=UTC))
+    if bound.period_is_date:
+        if period_start is not None:
+            stmt = stmt.where(bound.period_column >= period_start)
+        if period_end is not None:
+            stmt = stmt.where(bound.period_column <= period_end)
+    else:
+        if period_start is not None:
+            stmt = stmt.where(bound.period_column >= datetime.combine(period_start, time.min, tzinfo=UTC))
+        if period_end is not None:
+            stmt = stmt.where(
+                bound.period_column < datetime.combine(period_end + timedelta(days=1), time.min, tzinfo=UTC)
+            )
     stmt = _apply_filters(stmt, bound, spec.get("filters") or [])
     # A row whose measure is unset is not a zero-valued row. Leaving it in
     # would read an estimator's "not scored yet" as "scored zero", which is
     # the quiet wrong answer this whole module is built to avoid.
+    # A ratio's denominator gets the same treatment, and it is the case that
+    # matters most: a position nobody has reported progress on has no
+    # installed quantity, and keeping its hours while dropping its quantity
+    # would charge them to the positions that were measured.
     value_field = spec.get("field")
     weight_field = spec.get("weight_field")
-    for name in (value_field, weight_field):
+    denominator_field = spec.get("denominator_field")
+    for name in (value_field, weight_field, denominator_field):
         if name is None:
             continue
         src = bound.resolve_field(name).nullable_source
@@ -1432,6 +1803,9 @@ def _measures(bound: BoundEntity, spec: dict[str, Any]) -> list[Any]:
     if aggregation == "weighted_avg":
         weight = bound.resolve_field(spec["weight_field"]).expr
         return [func.sum(expr * weight), func.sum(weight)]
+    if aggregation == "ratio":
+        denominator = bound.resolve_field(spec["denominator_field"]).expr
+        return [func.sum(expr), func.sum(denominator)]
     # top_by is handled by its own window query
     return [func.max(expr)]
 
@@ -1545,6 +1919,160 @@ async def _evaluate_top_by(
     )
 
 
+async def _evaluate_ratio(
+    session: AsyncSession,
+    bound: BoundEntity,
+    spec: dict[str, Any],
+    *,
+    project_id: uuid.UUID | None,
+    period_start: _date | None,
+    period_end: _date | None,
+    allowed_project_ids: set[uuid.UUID] | None,
+    boq_id: uuid.UUID | None = None,
+) -> SpecResult:
+    """``sum(field) / sum(denominator_field)``, once per unit and currency.
+
+    The headline is a value only when every row shares one partition. Rows
+    in two units have two answers and no single one, so the headline is then
+    unavailable and each answer is in the breakdown under its own key.
+    """
+    from app.modules.bi_dashboards.kpis import _to_decimal
+
+    dims = spec_dimensions(spec)
+    dim_exprs = [bound.resolve_field(name).expr for name in dims]
+    stmt = select(*dim_exprs, *_measures(bound, spec), func.count()).select_from(bound.model)
+    stmt = _base_predicates(
+        stmt,
+        bound,
+        spec,
+        project_id=project_id,
+        period_start=period_start,
+        period_end=period_end,
+        allowed_project_ids=allowed_project_ids,
+        boq_id=boq_id,
+    )
+    if dim_exprs:
+        stmt = stmt.group_by(*dim_exprs).limit(MAX_BREAKDOWN_GROUPS)
+    rows = [list(row) for row in (await session.execute(stmt)).all()]
+    # Without dimensions the aggregate always returns one row, empty or not;
+    # a row that counted nothing is not a partition.
+    rows = [row for row in rows if int(row[-1] or 0) > 0]
+    if not rows:
+        return SpecResult(value=None, unavailable_reason=UNAVAILABLE_NO_DATA)
+
+    result = SpecResult(value=None, source_record_count=sum(int(row[-1]) for row in rows))
+    parts: list[tuple[Decimal | None, str | None]] = []
+    for row in rows:
+        dim_values, (numerator, denominator, records) = row[: len(dims)], row[len(dims) :]
+        value, reason = ratio_value(numerator, denominator)
+        parts.append((value, reason))
+        result.breakdown[dimension_key(dim_values)] = {
+            "dimensions": {name: (None if v is None else str(v)) for name, v in zip(dims, dim_values, strict=True)},
+            "value": None if value is None else str(value),
+            "numerator": str(_to_decimal(numerator)),
+            "denominator": str(_to_decimal(denominator)),
+            "records": int(records),
+            "unavailable_reason": reason,
+        }
+    if len(parts) > 1:
+        result.unavailable_reason = UNAVAILABLE_MIXED_DIMENSIONS
+    else:
+        result.value, result.unavailable_reason = parts[0]
+    return result
+
+
+@dataclass
+class ProjectReading:
+    """One project's reading of a spec, within one unit/currency partition."""
+
+    project_id: uuid.UUID
+    group_key: str
+    dimensions: dict[str, str | None]
+    value: Decimal | None
+    records: int
+    #: What the value is a quotient of, when it is one: the ratio's two sums,
+    #: or a weighted average's weighted sum and weight. A benchmark across
+    #: projects is these summed and divided again, never the values averaged.
+    numerator: Decimal | None = None
+    denominator: Decimal | None = None
+    unavailable_reason: str | None = None
+
+
+async def evaluate_spec_by_project(
+    spec: dict[str, Any],
+    session: AsyncSession,
+    *,
+    project_ids: set[uuid.UUID],
+    period_start: _date | None = None,
+    period_end: _date | None = None,
+) -> list[ProjectReading]:
+    """Run a validated spec once per project of a cohort.
+
+    ``project_ids`` is the scope and the only one: it goes through the same
+    portfolio narrowing every KPI read does, so an empty set reads nothing
+    rather than everything. The caller must already have intersected it
+    with what the user may see.
+
+    Readings are split by :func:`spec_dimensions` for every aggregation, not
+    only ``ratio``: a benchmark compares projects with each other, and a sum
+    of money in two currencies compared with a sum in one is the comparison
+    that must not happen.
+
+    Raises:
+        KPISpecError: The aggregation has no per-project reading to rank.
+    """
+    from app.modules.bi_dashboards.kpis import _to_decimal
+
+    aggregation = spec["aggregation"]
+    if aggregation == "top_by":
+        raise KPISpecError(
+            "spec.aggregation",
+            "'top_by' names a row, not a measure, so it has no per-project value to benchmark.",
+            value=aggregation,
+            allowed=[a for a in AGGREGATIONS if a != "top_by"],
+        )
+    bound = bind_entity(spec["entity"])
+    dims = spec_dimensions(spec)
+    dim_exprs = [bound.resolve_field(name).expr for name in dims]
+    stmt = select(bound.project_column, *dim_exprs, *_measures(bound, spec), func.count()).select_from(bound.model)
+    stmt = _base_predicates(
+        stmt,
+        bound,
+        spec,
+        project_id=None,
+        period_start=period_start,
+        period_end=period_end,
+        allowed_project_ids=project_ids,
+    )
+    stmt = stmt.group_by(bound.project_column, *dim_exprs)
+    readings: list[ProjectReading] = []
+    for raw in (await session.execute(stmt)).all():
+        row = list(raw)
+        records = int(row.pop() or 0)
+        if records == 0:
+            continue
+        pid = row.pop(0)
+        dim_values, measures = row[: len(dims)], row[len(dims) :]
+        reading = ProjectReading(
+            project_id=pid if isinstance(pid, uuid.UUID) else uuid.UUID(str(pid)),
+            group_key=dimension_key(dim_values),
+            dimensions={name: (None if v is None else str(v)) for name, v in zip(dims, dim_values, strict=True)},
+            value=None,
+            records=records,
+        )
+        if aggregation in ("ratio", "weighted_avg"):
+            reading.numerator = _to_decimal(measures[0])
+            reading.denominator = _to_decimal(measures[1])
+            reading.value, reading.unavailable_reason = ratio_value(measures[0], measures[1])
+        elif aggregation == "avg":
+            reading.value = _to_decimal(measures[0])
+            reading.denominator = Decimal(records)
+        else:
+            reading.value = _to_decimal(measures[0])
+        readings.append(reading)
+    return readings
+
+
 async def evaluate_spec(
     spec: dict[str, Any],
     session: AsyncSession,
@@ -1587,6 +2115,17 @@ async def evaluate_spec(
     """
     bound = bind_entity(spec["entity"])
     aggregation = spec["aggregation"]
+    if aggregation == "ratio":
+        return await _evaluate_ratio(
+            session,
+            bound,
+            spec,
+            project_id=project_id,
+            period_start=period_start,
+            period_end=period_end,
+            allowed_project_ids=allowed_project_ids,
+            boq_id=boq_id,
+        )
     if aggregation == "top_by":
         return await _evaluate_top_by(
             session,
@@ -1709,13 +2248,20 @@ __all__ = [
     "CatalogEntity",
     "KPISpecError",
     "LoadedSpec",
+    "ProjectReading",
     "SpecResult",
+    "UNAVAILABLE_MIXED_DIMENSIONS",
+    "UNAVAILABLE_NO_DATA",
+    "UNAVAILABLE_ZERO_DENOMINATOR",
     "bind_entity",
     "catalog_as_dict",
     "check_catalog_binding_parity",
     "entity_narrows_to_estimate",
     "evaluate_spec",
+    "evaluate_spec_by_project",
     "load_custom_spec",
+    "ratio_value",
+    "spec_dimensions",
     "source_modules_for",
     "validate_spec",
 ]

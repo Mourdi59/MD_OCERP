@@ -160,7 +160,7 @@ class TestAskingAnEntityWithoutAnEstimateIsRefused:
         assert "no estimate of its own" in str(excinfo.value)
         # And it names the entities that could have answered, so the author
         # is not left guessing which half of their spec to change.
-        assert excinfo.value.allowed == ["boq", "boq_markup", "boq_position"]
+        assert excinfo.value.allowed == ["boq", "boq_markup", "boq_position", "position_progress"]
 
     def test_an_entity_that_can_narrow_gets_the_predicate(self) -> None:
         from sqlalchemy import func

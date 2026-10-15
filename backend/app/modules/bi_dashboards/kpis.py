@@ -89,6 +89,11 @@ class KPIComputation:
     unit: str = "ratio"
     source_record_count: int = 0
     breakdown: dict[str, Any] = field(default_factory=dict)
+    #: Set when there is no value to give - a ratio with a zero or absent
+    #: denominator, or one spanning several units. ``value`` then stays at
+    #: its zero default for the callers that only read a number, and the
+    #: compute endpoint reports it as ``null`` with this reason.
+    unavailable_reason: str | None = None
 
 
 KPIFormula = Callable[..., Awaitable[KPIComputation]]
@@ -4017,10 +4022,11 @@ async def _compute_from_spec(
         logger.exception("compute: custom KPI %s spec evaluation failed", code)
         return KPIComputation(unit=unit)
     return KPIComputation(
-        value=result.value,
+        value=result.value if result.value is not None else Decimal("0"),
         unit=unit,
         source_record_count=result.source_record_count,
         breakdown=result.breakdown,
+        unavailable_reason=result.unavailable_reason,
     )
 
 

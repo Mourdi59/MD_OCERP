@@ -417,6 +417,7 @@ async def hours_by_position(
     if not position_ids:
         return {}
 
+    from app.modules.field_time.counted import counted_timesheet_clause
     from app.modules.field_time.models import FieldTimesheet, FieldTimesheetLine
 
     labour = func.sum(case((FieldTimesheetLine.resource_id.isnot(None), FieldTimesheetLine.hours), else_=0))
@@ -426,8 +427,7 @@ async def hours_by_position(
         .join(FieldTimesheet, FieldTimesheetLine.timesheet_id == FieldTimesheet.id)
         .where(
             FieldTimesheet.project_id == project_id,
-            FieldTimesheet.status == "approved",
-            FieldTimesheet.reverses_id.is_(None),
+            counted_timesheet_clause(),
             FieldTimesheetLine.boq_position_id.in_(position_ids),
         )
         .group_by(FieldTimesheetLine.boq_position_id)

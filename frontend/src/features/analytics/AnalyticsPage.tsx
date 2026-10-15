@@ -25,12 +25,14 @@ import {
   RefreshCw,
   Wallet,
 } from 'lucide-react';
-import { Breadcrumb, Button, Card, Badge, Skeleton, EmptyState, ModuleGuideButton } from '@/shared/ui';
+import { Breadcrumb, Button, Card, Badge, Skeleton, EmptyState, ModuleGuideButton, TabBar } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { analyticsGuide } from './analyticsGuide';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { compareNames } from '@/shared/lib/collator';
+import { PerformanceTab } from './PerformanceTab';
+import { downloadCsv } from './performance';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -95,6 +97,7 @@ interface AnalyticsOverview {
 }
 
 type SortField = 'name' | 'budget' | 'actual' | 'variance' | 'variance_pct' | 'cost_per_sqm';
+type AnalyticsTab = 'overview' | 'performance';
 type SortDir = 'asc' | 'desc';
 
 /* ── Component ────────────────────────────────────────────────────────── */
@@ -112,6 +115,7 @@ export function AnalyticsPage() {
   // the user pauses for 300ms instead of on every keystroke.
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(0);
+  const [tab, setTab] = useState<AnalyticsTab>('overview');
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
 
@@ -225,14 +229,7 @@ export function AnalyticsPage() {
       p.cost_per_sqm != null ? Number(p.cost_per_sqm).toFixed(0) : '',
       p.status,
     ].join(','));
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'analytics_export.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadCsv([headers.join(','), ...rows].join('\n'), 'analytics_export.csv');
   }, [sortedProjects, t]);
 
   // Find the max budget for bar chart scaling. Scale to the rows actually
@@ -374,15 +371,17 @@ export function AnalyticsPage() {
         actions={
           <div className="flex items-center gap-2">
             <ModuleGuideButton content={analyticsGuide} />
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Download size={14} />}
-              onClick={handleExportCSV}
-              disabled={!sortedProjects.length}
-            >
-              {t('analytics.export_csv', { defaultValue: 'Export CSV' })}
-            </Button>
+            {tab === 'overview' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Download size={14} />}
+                onClick={handleExportCSV}
+                disabled={!sortedProjects.length}
+              >
+                {t('analytics.export_csv', { defaultValue: 'Export CSV' })}
+              </Button>
+            )}
           </div>
         }
       />
@@ -418,6 +417,23 @@ export function AnalyticsPage() {
         })}
       </DismissibleInfo>
 
+      <TabBar<AnalyticsTab>
+        tabs={[
+          { id: 'overview', label: t('analytics.tab_overview', { defaultValue: 'Overview' }) },
+          { id: 'performance', label: t('analytics.tab_performance', { defaultValue: 'Performance' }) },
+        ]}
+        activeId={tab}
+        onChange={setTab}
+        ariaLabel={t('analytics.tabs_label', { defaultValue: 'Analytics views' })}
+        idPrefix="analytics"
+      />
+
+      {tab === 'performance' ? (
+        <div role="tabpanel" id="analytics-panel-performance" aria-labelledby="analytics-tab-performance">
+          <PerformanceTab projects={data.projects.map((p) => ({ id: p.id, name: p.name }))} />
+        </div>
+      ) : (
+      <div role="tabpanel" id="analytics-panel-overview" aria-labelledby="analytics-tab-overview" className="space-y-5">
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
@@ -870,6 +886,8 @@ export function AnalyticsPage() {
             </span>
           </div>
         </Card>
+      )}
+      </div>
       )}
     </div>
   );

@@ -437,6 +437,7 @@ export interface KpiSpec {
   field?: string;
   /** `weighted_avg` only. */
   weight_field?: string;
+  denominator_field?: string;
   /** Keys the breakdown. */
   group_by?: string;
   /** Names each group of the breakdown, so ids read as words. */

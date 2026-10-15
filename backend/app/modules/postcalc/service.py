@@ -673,11 +673,9 @@ def compute_project_postcalc(
 
 # ── Live data loader (async, DB-backed) ─────────────────────────────────────
 
-# Approved, non-reversal timesheets are the authoritative labour/plant actuals -
-# the exact filter the field-time module's own summary uses (an approved sheet
-# flips to "reversed" when undone, and its mirroring reversal carries reverses_id,
-# so both drop out and net to zero).
-_APPROVED = "approved"
+# Approved, non-reversal timesheets are the authoritative labour/plant actuals.
+# The rule lives in ``app.modules.field_time.counted`` so this report, position
+# actuals and the KPI catalog cannot disagree about which hours count.
 
 
 class PostCalcService:
@@ -925,6 +923,7 @@ class PostCalcService:
         actual cost silently - it reports ``None`` (unknown) instead.
         """
         try:
+            from app.modules.field_time.counted import is_counted_timesheet
             from app.modules.field_time.repository import FieldTimeRepository
 
             timesheets, _total = await FieldTimeRepository(self.session).list_for_project(project_id, limit=100000)
@@ -932,7 +931,7 @@ class PostCalcService:
             logger.debug("Field-time actuals unavailable for %s", project_id, exc_info=True)
             return {}
 
-        approved = [ts for ts in timesheets if ts.status == _APPROVED and ts.reverses_id is None]
+        approved = [ts for ts in timesheets if is_counted_timesheet(ts)]
         if not approved:
             return {}
 
@@ -1157,6 +1156,11 @@ class PostCalcService:
     ) -> dict[uuid.UUID, Decimal]:
         """Installed quantity per position = planned quantity * latest percent / 100.
 
+        Read through :func:`app.modules.progress.installed.installed_quantities`,
+        the one definition the KPI catalog's ``position_progress`` entity uses
+        too, so this report and a portfolio benchmark cannot disagree about how
+        much of a position was built.
+
         Best-effort: without the progress module (or with no readings yet) every
         installed quantity is zero, and the compute treats such lines as having no
         progress to compare rather than failing.
@@ -1165,16 +1169,9 @@ class PostCalcService:
         if not position_ids:
             return {}
         try:
-            from app.modules.progress.repository import ProgressRepository
+            from app.modules.progress.installed import installed_quantities
 
-            pct_by_pid = await ProgressRepository(self.session).latest_pct_for_positions(project_id, position_ids)
+            return await installed_quantities(self.session, project_id, position_ids)
         except Exception:
             logger.debug("Progress actuals unavailable for %s", project_id, exc_info=True)
             return {}
-
-        installed: dict[uuid.UUID, Decimal] = {}
-        planned_by_pid = {pos.id: _dec(pos.quantity) for pos in positions}
-        for pid, pct in pct_by_pid.items():
-            planned = planned_by_pid.get(pid, Decimal("0"))
-            installed[pid] = planned * _dec(pct) / _HUNDRED
-        return installed

@@ -38,6 +38,8 @@ import math
 import random
 from dataclasses import dataclass, field
 
+from app.core.stats import percentile
+
 __all__ = [
     "PositionInput",
     "DriverStat",
@@ -134,17 +136,9 @@ class CostRiskResult:
 
 
 def _percentile(sorted_data: list[float], pct: float) -> float:
-    """Linear-interpolation percentile of an ascending-sorted list."""
-    n = len(sorted_data)
-    if n == 0:
-        return 0.0
-    if n == 1:
-        return sorted_data[0]
-    idx = pct / 100.0 * (n - 1)
-    lower = int(idx)
-    upper = min(lower + 1, n - 1)
-    frac = idx - lower
-    return sorted_data[lower] + frac * (sorted_data[upper] - sorted_data[lower])
+    """Linear-interpolation percentile of an ascending-sorted list (0.0 when empty)."""
+    value = percentile(sorted_data, pct)
+    return 0.0 if value is None else value
 
 
 def _sample(rng: random.Random, low: float, mode: float, high: float, dist: str) -> float:

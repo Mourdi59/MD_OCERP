@@ -108,6 +108,12 @@ CANNOT_TRUNCATE: frozenset[str] = frozenset(
         # returns the whole PROFILES dict, so there is no query, no LIMIT and no
         # state in which it answers with part of the set.
         "einvoice/router.py::list_profiles",
+        # A fixed set of ready-made performance KPIs compiled into
+        # bi_dashboards/performance.py as PRESETS. It gains an entry when a
+        # developer adds a preset, never at runtime, and the route returns the
+        # whole dict with no query and no LIMIT. A short answer would hide a
+        # KPI from the picker rather than page it.
+        "bi_dashboards/router.py::performance_presets",
         # A fixed registry of record types an approval route may target. The
         # route returns sorted(APPROVABLE_ENTITIES), a set compiled into the
         # source that gains an entry only when a developer registers a new
