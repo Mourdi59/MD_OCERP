@@ -25,6 +25,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePartnerPack } from '@/shared/hooks/usePartnerPack';
 import { PackEmblem } from '@/shared/ui/PackEmblem';
+import { packNameSlug } from '@/shared/lib/regionalPack';
 import { useTranslation } from 'react-i18next';
 
 const SESSION_DISMISS_KEY = 'partner-pack:dismissed';
@@ -61,6 +62,12 @@ export function PartnerLogoBadge({ variant, className = '' }: PartnerLogoBadgePr
   if (packQ.isLoading || !packQ.data?.active || dismissed) return null;
 
   const m = packQ.data.manifest!;
+  // Same computed-key shape as the other pack surfaces (see regionalPack.ts):
+  // the manifest strings are English fallbacks, the locale files name the pack.
+  const packName = t(`modules.pp_name_${packNameSlug(m.slug)}`, { defaultValue: m.partner_name });
+  const packDesc = m.description
+    ? t(`modules.pp_desc_${packNameSlug(m.slug)}`, { defaultValue: m.description })
+    : '';
   // Brand colour (pack's primary). Only an exact 6-digit hex can synthesize the
   // alpha-tinted banner background; otherwise fall back to the app accent token
   // (a CSS var can't carry an alpha suffix).
@@ -84,7 +91,7 @@ export function PartnerLogoBadge({ variant, className = '' }: PartnerLogoBadgePr
           title={m.branding.powered_by_text}
         >
           <PackEmblem pack={m} size={20} />
-          <span className="max-w-[10rem] truncate font-medium">{m.partner_name}</span>
+          <span className="max-w-[10rem] truncate font-medium">{packName}</span>
         </Link>
         <button
           type="button"
@@ -112,13 +119,13 @@ export function PartnerLogoBadge({ variant, className = '' }: PartnerLogoBadgePr
       >
         <PackEmblem pack={m} size={44} />
         <div className="min-w-0 leading-tight">
-          <div className="text-sm font-semibold text-content-primary">{m.partner_name}</div>
+          <div className="text-sm font-semibold text-content-primary">{packName}</div>
           <div className="mt-0.5 text-2xs uppercase tracking-wide text-content-tertiary">
             {m.branding.powered_by_text}
           </div>
-          {m.description && (
+          {packDesc && (
             <div className="mt-0.5 max-w-2xl truncate text-xs text-content-secondary">
-              {m.description}
+              {packDesc}
             </div>
           )}
         </div>

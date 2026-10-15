@@ -9,6 +9,7 @@
 // to; nothing on this page names a country.
 
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { ClipboardList, HardHat, ListChecks, ShieldAlert, Users } from 'lucide-react';
 
@@ -41,6 +42,7 @@ export type HseTab = (typeof HSE_TABS)[number];
 export function HseFramePage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const canEdit = useHasPermission('hse_frame.edit');
   const canManage = useHasPermission('hse_frame.manage');
@@ -70,7 +72,7 @@ export function HseFramePage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('hseFrame.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName ?? t('hseFrame.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('hseFrame.title', { defaultValue: 'Health, safety and environment' }) },
         ]}
       />

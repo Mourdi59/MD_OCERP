@@ -1405,7 +1405,9 @@ function PartnerPackCard({
   const accent = pack.branding.accent_color ?? pack.branding.primary_color;
   // One line, not the whole paragraph: see packSummary for why the split is on
   // the colon rather than a CSS clamp.
-  const summary = packSummary(pack.description);
+  const summary = packSummary(
+    t(`modules.pp_desc_${packNameSlug(pack.slug)}`, { defaultValue: pack.description }),
+  );
 
   const packType = packTypeOf(pack);
   // Co-branding line stays a property of the ``partner`` type only.

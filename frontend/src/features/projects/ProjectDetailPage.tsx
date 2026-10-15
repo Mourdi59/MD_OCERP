@@ -539,7 +539,7 @@ function computeProjectHealth(
 const PHASE_STEPS = [
   { key: 'planning', match: ['planning', 'pre', 'feasibility'] },
   { key: 'design', match: ['design', 'concept', 'detailed'] },
-  { key: 'procurement', match: ['procurement', 'tender', 'bidding'] },
+  { key: 'procurement', match: ['procurement', 'tender', 'bidding', 'award'] },
   { key: 'construction', match: ['construction', 'execution', 'build'] },
   { key: 'closeout', match: ['closeout', 'handover', 'commission', 'turnover'] },
 ] as const;

@@ -10,6 +10,7 @@
 
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { CalendarClock, ClipboardList, FileText, FlaskConical, LayoutGrid, Ruler } from 'lucide-react';
 
@@ -46,6 +47,7 @@ const TABS: Tab[] = ['requirements', 'concept', 'programme', 'schedule', 'studie
 export function EngineeringBriefPage() {
   const { t, i18n } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const invalidate = useInvalidateBrief(projectId);
   const labels: LabelContext = { t: t as TFn, language: i18n?.language ?? 'en' };
@@ -71,7 +73,7 @@ export function EngineeringBriefPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('engineeringBrief.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName ?? t('engineeringBrief.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('engineeringBrief.title', { defaultValue: 'Engineering brief' }) },
         ]}
       />

@@ -318,7 +318,7 @@ export function RFIInboxWidget({ projectId }: { projectId: string }) {
                   {rfi.subject}
                 </span>
                 <Badge variant="warning" size="sm">
-                  {rfi.status}
+                  {t(`rfi.status_${rfi.status}`, { defaultValue: rfi.status })}
                 </Badge>
               </button>
             </li>

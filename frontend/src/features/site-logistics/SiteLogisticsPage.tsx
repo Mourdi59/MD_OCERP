@@ -90,6 +90,7 @@ import {
   type UpdateLaydownZonePayload,
 } from './api';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { localizedUnitCode } from '@/shared/lib/unitLabels';
 
 /* ── Constants & helpers ───────────────────────────────────────────────── */
 
@@ -942,7 +943,7 @@ export function DeliveryRow({
   onEdit: (d: DeliveryBooking) => void;
   onDelete: (d: DeliveryBooking) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   // The server says what may be done with this delivery, and why not.
   const can = delivery.can ?? {};
@@ -967,7 +968,11 @@ export function DeliveryRow({
         {lines.length > 0 && (
           <div className="mt-0.5 flex flex-wrap items-center gap-1">
             {lines.map((line) => {
-              const label = `${line.position_ordinal || line.description} · ${line.quantity} ${line.unit}`.trim();
+              const qty = Number(line.quantity);
+              const qtyText = Number.isFinite(qty)
+                ? qty.toLocaleString(getIntlLocale(), { maximumFractionDigits: 4 })
+                : String(line.quantity);
+              const label = `${line.position_ordinal || line.description} · ${qtyText} ${localizedUnitCode(line.unit, i18n.language)}`.trim();
               if (!line.boq_position_id) {
                 return (
                   <span

@@ -135,7 +135,9 @@ export function MarketPackPanel({ region, className = '' }: MarketPackPanelProps
   const name = t(`modules.pp_name_${packNameSlug(lead.slug)}`, {
     defaultValue: lead.partner_name,
   });
-  const summary = packSummary(lead.description);
+  const summary = packSummary(
+    t(`modules.pp_desc_${packNameSlug(lead.slug)}`, { defaultValue: lead.description }),
+  );
   const accent = lead.branding.accent_color ?? lead.branding.primary_color;
   const isApplied = applied !== null;
 

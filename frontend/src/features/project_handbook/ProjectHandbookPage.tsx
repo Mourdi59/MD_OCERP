@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, BookOpen, Download, FolderTree, Star } from 'lucide-react';
 
@@ -164,6 +165,7 @@ function CreateHandbook({ projectId, onDone }: { projectId: string; onDone: () =
 export function ProjectHandbookPage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const invalidate = useInvalidateHandbook(projectId);
 
@@ -179,7 +181,7 @@ export function ProjectHandbookPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('projectHandbook.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName ?? t('projectHandbook.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('projectHandbook.title', { defaultValue: 'Project handbook' }) },
         ]}
       />

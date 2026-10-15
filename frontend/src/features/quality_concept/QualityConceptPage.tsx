@@ -9,6 +9,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useProjectName } from '@/shared/hooks/useProjectName';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Award, Camera, CheckCircle2, CircleAlert, ClipboardCheck, Compass, FileCheck2, Handshake, Layers } from 'lucide-react';
 
@@ -135,6 +136,7 @@ function ReadinessStrip({ projectId }: { projectId: string }) {
 export function QualityConceptPage() {
   const { t } = useTranslation();
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const projectName = useProjectName(projectId);
   const [params, setParams] = useSearchParams();
   const labels = useLabelContext();
   const personName = usePeopleNames(projectId);
@@ -157,7 +159,7 @@ export function QualityConceptPage() {
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: t('qualityConcept.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
+          { label: projectName ?? t('qualityConcept.project', { defaultValue: 'Project' }), to: `/projects/${projectId}` },
           { label: t('qualityConcept.title', { defaultValue: 'Quality concept' }) },
         ]}
       />
