@@ -1,5 +1,5 @@
 {
-  "$schema_note": "Partial locale overlay of the eleven module project framework pack. Any key not listed here falls back to the bundled de locale.",
+  "$schema_note": "Partial locale overlay of the Owner's Project Control pack. Any key not listed here falls back to the bundled de locale.",
   "$locale": "de",
   "$pack": "eleven-areas-framework",
   "$version": "0.1.0",

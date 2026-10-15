@@ -2,8 +2,8 @@
   "id": "eleven_areas_framework_de_bw",
   "version": 1,
   "labels": {
-    "en": "Eleven module framework: HSE frame, Baden-Wuerttemberg",
-    "de": "Elf-Module-Rahmen: HSE-Rahmen, Baden-Württemberg"
+    "en": "Owner's Project Control: HSE frame, Baden-Wuerttemberg",
+    "de": "Bauherren-Projektsteuerung: HSE-Rahmen, Baden-Württemberg"
   },
   "jurisdiction": "DE-BW",
   "extends": "de_bw",

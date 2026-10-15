@@ -271,8 +271,8 @@ PACK_BODY = {
     "id": PACK_ID,
     "version": 1,
     "labels": {
-        "en": "Eleven module framework: site logistics, Germany",
-        "de": "Elf-Module-Rahmen: Baustellenlogistik, Deutschland",
+        "en": "Owner's Project Control: site logistics, Germany",
+        "de": "Bauherren-Projektsteuerung: Baustellenlogistik, Deutschland",
     },
     "jurisdiction": "DE",
     "extends": "de",

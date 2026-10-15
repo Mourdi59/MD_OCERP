@@ -2,8 +2,8 @@
   "id": "eleven_areas_framework_de_by",
   "version": 1,
   "labels": {
-    "en": "Eleven module framework: HSE frame, Bavaria",
-    "de": "Elf-Module-Rahmen: HSE-Rahmen, Bayern"
+    "en": "Owner's Project Control: HSE frame, Bavaria",
+    "de": "Bauherren-Projektsteuerung: HSE-Rahmen, Bayern"
   },
   "jurisdiction": "DE-BY",
   "extends": "de_by",

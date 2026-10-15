@@ -1,4 +1,4 @@
-"""Eleven module project framework pack for OpenConstructionERP.
+"""Owner's Project Control pack for OpenConstructionERP.
 
 Exposes ``MANIFEST`` for the ``openconstructionerp.packs`` entry-point.
 """

@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- A project framework of eleven areas, from governance and stakeholders through design, procurement, quality, safety and site logistics to economics and commitments. Each area is its own module with its own validation rules, and the eleven areas framework pack brings the catalogues, rule sets and a German project handbook that tie them together.
+- A project framework of eleven areas, from governance and stakeholders through design, procurement, quality, safety and site logistics to economics and commitments. Each area is its own module with its own validation rules, and the Owner's Project Control pack (Bauherren-Projektsteuerung) brings the catalogues, rule sets and a German project handbook that tie them together. A project offers these areas once the pack is activated; without it the project page stays as before.
 - Two German demo projects show the framework at work: a residential scheme in Regensburg and a school in Ludwigsburg, each with its own cast, budget, quality concept, logistics plan, permits and decisions dated from the day you install them.
 - Economics gives a project its cost frame by DIN 276 cost group, a business case with net present value, financing sources and the decisions that release commitments, checked against the bill it was cut from.
 - With a pack that focuses the menu, the sidebar shows the core screens and the pack's own modules first. Everything else is one click away under Edit menu, and what you show again stays shown after you sign in anew.

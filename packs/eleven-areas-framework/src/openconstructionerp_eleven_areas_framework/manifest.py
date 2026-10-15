@@ -1,4 +1,4 @@
-"""Manifest of the eleven module project framework pack.
+"""Manifest of the Owner's Project Control pack.
 
 The pack is data only: it selects the platform modules and ships catalogues
 for them. The fields are written here as literals because a pack in the source
@@ -17,7 +17,7 @@ from app.core.partner_pack.manifest import PartnerBranding, PartnerPackManifest
 
 MANIFEST = PartnerPackManifest(
     slug="eleven-areas-framework",
-    partner_name="Eleven module project framework",
+    partner_name="Owner's Project Control",
     partner_url=None,
     pack_version="0.1.0",
     pack_type="industry",

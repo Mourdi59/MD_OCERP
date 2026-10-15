@@ -2815,8 +2815,8 @@
     }
   ],
   "labels": {
-    "en": "Eleven module project framework",
-    "de": "Elf Module des Projektmanagements"
+    "en": "Owner's Project Control",
+    "de": "Bauherren-Projektsteuerung"
   },
   "description_labels": {
     "en": "Eleven management areas shared by development and execution, one frame document per area.",

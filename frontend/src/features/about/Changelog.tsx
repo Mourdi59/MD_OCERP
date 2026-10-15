@@ -71,7 +71,7 @@ const CHANGELOG: ChangelogEntry[] = [
     date: '2026-10-15',
     tag: 'NEW',
     summary:
-      'A project framework of eleven areas, from governance and design to quality, site logistics and economics, with two German demo projects in Regensburg and Ludwigsburg. A Turkiye pack for MEP contractors, a focused sidebar, estimates you can rename, and exact payment amounts.',
+      'Owner\'s Project Control, a pack of eleven areas from governance and design to quality, site logistics and economics, with two German demo projects in Regensburg and Ludwigsburg. A Turkiye pack for MEP contractors, a focused sidebar, estimates you can rename, and exact payment amounts.',
   },
   {
     version: '18.5.0',

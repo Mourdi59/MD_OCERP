@@ -1,4 +1,4 @@
-# Eleven module project framework pack
+# Owner's Project Control pack
 
 An owner-side project management framework as a pack: eleven management areas, two phases (project
 development and construction execution), one gate between them, and one frame document per area that is

@@ -31168,7 +31168,7 @@ const resource = {
     "governance.catalogue.elf_module_framework.folder.m11_hse.exec_hse_plan": "Plan HSE",
     "governance.catalogue.elf_module_framework.folder.m11_hse.exec_permits_to_work": "Permisos de trabajo (trabajos en caliente, etc.)",
     "governance.catalogue.elf_module_framework.folder.m11_hse.exec_risk_assessment": "Evaluación de riesgos",
-    "governance.catalogue.elf_module_framework.name": "Marco de proyecto de once módulos",
+    "governance.catalogue.elf_module_framework.name": "Control de proyecto del propietario",
     "governance.catalogue.elf_module_framework.phase.development": "Desarrollo del proyecto",
     "governance.catalogue.elf_module_framework.phase.execution": "Ejecución de la construcción",
     "governance.catalogue.hoai_lph.description": "Las nueve fases de servicios según el § 34 HOAI con los servicios básicos del anexo 10.1.",
@@ -44960,7 +44960,7 @@ const resource = {
     "modules.pp_name_us_california": "Paquete de Construcción de California",
     "modules.pp_name_us_costdata": "Paquete de Construcción de EE. UU.",
     "modules.pp_name_us_texas": "Paquete de Construcción de Texas",
-    "modules.pp_name_eleven_areas_framework": "Marco de proyecto de once módulos",
+    "modules.pp_name_eleven_areas_framework": "Control de proyecto del propietario",
     "modules.pp_name_turkey_tr_mep": "Paquete para Contratistas de Instalaciones de Turquía",
 
     // --- Property Development → Document appearance ---
@@ -49320,7 +49320,7 @@ const resource = {
     "stakeholders.catalogue.format.statutory_consultation_s42": "Consulta preceptiva a los organismos prescritos",
     "stakeholders.catalogue.format.steering_committee_briefing": "Informe al comité de dirección",
     "stakeholders.catalogue.framework.de_public_participation": "Alemania: participación pública",
-    "stakeholders.catalogue.framework.elf_module_framework": "Marco de once módulos: organización del proyecto",
+    "stakeholders.catalogue.framework.elf_module_framework": "Control de proyecto del propietario: organización del proyecto",
     "stakeholders.catalogue.framework.neutral": "Marco neutral de partes interesadas",
     "stakeholders.catalogue.framework.uk_planning_consultation": "Reino Unido: consulta de planeamiento",
     "stakeholders.catalogue.method.attitude": "Actitud",

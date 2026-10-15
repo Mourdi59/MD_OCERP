@@ -2,8 +2,8 @@
   "id": "eleven_areas_framework_de",
   "version": 1,
   "labels": {
-    "en": "Eleven module framework: HSE frame, Germany",
-    "de": "Elf-Module-Rahmen: HSE-Rahmen, Deutschland"
+    "en": "Owner's Project Control: HSE frame, Germany",
+    "de": "Bauherren-Projektsteuerung: HSE-Rahmen, Deutschland"
   },
   "jurisdiction": "DE",
   "extends": "de",
