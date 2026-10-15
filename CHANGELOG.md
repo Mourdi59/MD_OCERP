@@ -9,8 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [18.6.0] - 2026-10-15
+
 ### Added
 
+- A project framework of eleven areas, from governance and stakeholders through design, procurement, quality, safety and site logistics to economics and commitments. Each area is its own module with its own validation rules, and the eleven areas framework pack brings the catalogues, rule sets and a German project handbook that tie them together.
+- Two German demo projects show the framework at work: a residential scheme in Regensburg and a school in Ludwigsburg, each with its own cast, budget, quality concept, logistics plan, permits and decisions dated from the day you install them.
+- Economics gives a project its cost frame by DIN 276 cost group, a business case with net present value, financing sources and the decisions that release commitments, checked against the bill it was cut from.
+- With a pack that focuses the menu, the sidebar shows the core screens and the pack's own modules first. Everything else is one click away under Edit menu, and what you show again stays shown after you sign in anew.
+- An estimate can be renamed from the title in the BOQ editor or from its row in the list.
 - Administrators can see what stands between their database and strict tenant isolation at `GET /api/v1/admin/rls/readiness`: per table, how many rows carry no tenant and how many carry a user id as their tenant, and whether the isolation policy is installed. Row-level security stays off; the report only measures.
 - A Türkiye pack for MEP contractors. It keeps the menu to what a mechanical, electrical and plumbing contractor uses, adds a site records profile for a pilot on one project, and derives its taxes, classification and rules from the Türkiye pack.
 - Hakedis, the Turkish progress payment certificate. A progress claim or a subcontractor payment application in a Turkish project shows the works table and the lettered summary, computes KDV, KDV tevkifat, stopaj, damga vergisi and retention from dated statutory rates with their legal reference, and waits for a person wherever a category or an amount has to be chosen. It prints as PDF and Excel in Turkish or English, and a certified hakedis is frozen.
@@ -44,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Gemini card in the AI settings names the model the platform calls, Gemini 2.5 Flash, in every language.
+- Amounts on the economics cost frame are shown to the cent.
 - The Windows app can again be installed into a folder whose path has non-ASCII characters, in any script. The built-in database now runs from a copy of its programs in your local application data folder, so the installer no longer turns such a folder away.
 - The submitting organisation on a submittal accepts a company name of up to 255 characters. The column was 36 characters wide on PostgreSQL and refused a longer name; it is widened at startup, also on an installation that stamps revisions instead of running them.
 - A project now gets the validation rules of its own country when it is created, and printed registers no longer cut a number, a date or an amount in the middle.
