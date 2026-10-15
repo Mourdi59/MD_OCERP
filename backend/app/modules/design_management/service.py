@@ -2251,10 +2251,13 @@ class DesignService:
             issue_plan.append(entry)
             if not plan.revision_ids:
                 continue  # everything excluded for this recipient: recorded, nothing sent
+            # One transmittal per recipient: the recipient's name keeps the subjects apart in the list.
+            recipient_name = names.get(plan.recipient_key) or ""
+            subject = f"{row.code} {row.title}" + (f" - {recipient_name}" if recipient_name else "")
             tr = await svc.create_transmittal(
                 TransmittalCreate(
                     project_id=project_id,
-                    subject=f"{row.code} {row.title}"[:500],
+                    subject=subject[:500],
                     purpose_code=plan.purpose,
                     issued_date=today,
                     recipients=[RecipientCreate(**r) for r in people[plan.recipient_key]],

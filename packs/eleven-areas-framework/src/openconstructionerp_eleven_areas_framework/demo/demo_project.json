@@ -361,6 +361,7 @@
       "demo_id": "eleven-areas-residential",
       "module_files": {
         "stakeholders": "demo/residential-regensburg-stakeholders.json",
+        "documents": "demo/residential-regensburg-documents.json",
         "staffing": "demo/residential-regensburg-staffing.json",
         "engineering_brief": "demo/residential-regensburg-engineering_brief.json",
         "permits": "demo/residential-regensburg-permits.json",
@@ -780,6 +781,7 @@
       "demo_id": "eleven-areas-school",
       "module_files": {
         "stakeholders": "demo/school-ludwigsburg-stakeholders.json",
+        "documents": "demo/school-ludwigsburg-documents.json",
         "staffing": "demo/school-ludwigsburg-staffing.json",
         "engineering_brief": "demo/school-ludwigsburg-engineering_brief.json",
         "permits": "demo/school-ludwigsburg-permits.json",

@@ -39,11 +39,32 @@ _GATES: tuple[tuple[str, str, str, int, str], ...] = (
     ("South gate", "07:30", "16:00", 1, "Narrow approach, rigid vehicles only. No articulated deliveries."),
 )
 
+# The same gates for a project in German, used when a project has no story of its own.
+_GATES_DE: tuple[tuple[str, str, str, int, str], ...] = (
+    ("Nordtor", "07:00", "18:00", 2, "Haupteinfahrt für Fahrzeuge. Beim Rückwärtsfahren ist ein Einweiser im Dienst."),
+    ("Südtor", "07:30", "16:00", 1, "Enge Zufahrt, nur Starrfahrzeuge. Keine Anlieferung mit Sattelzügen."),
+)
+
 # (name, capacity description, usage note)
 _ZONES: tuple[tuple[str, str, str], ...] = (
     ("Laydown A - north", "420 m2 / 60 t", "Reinforcement and formwork. Keep the crane radius clear."),
     ("Laydown B - compound", "180 m2", "Packaged materials and small plant. Covered storage at the east end."),
 )
+
+_ZONES_DE: tuple[tuple[str, str, str], ...] = (
+    ("Lagerfläche A - Nord", "420 m2 / 60 t", "Bewehrung und Schalung. Den Schwenkbereich des Krans freihalten."),
+    (
+        "Lagerfläche B - Baustelleneinrichtung",
+        "180 m2",
+        "Verpackte Materialien und Kleingeräte. Überdachte Lagerung am Ostende.",
+    ),
+)
+
+_VEHICLES = ("Articulated flatbed", "Rigid 18t")
+_VEHICLES_DE = ("Sattelzug mit Pritsche", "Starrer Lkw 18 t")
+
+# The one free-text cargo of the default board, in the languages the defaults come in.
+_CARGO_DE = {"Site welfare unit exchange": "Austausch des Sanitärcontainers"}
 
 # (day offset from today, start hour, duration in hours, gate index, status,
 #  share of the position quantity this drop carries, free-text cargo for the
@@ -105,7 +126,10 @@ def resolve_site_content(
     """
     from app.modules.project_governance.public import story_text
 
-    gates, zones, vehicles = _GATES, _ZONES, ("Articulated flatbed", "Rigid 18t")
+    if (locale or "").lower().startswith("de"):
+        gates, zones, vehicles = _GATES_DE, _ZONES_DE, _VEHICLES_DE
+    else:
+        gates, zones, vehicles = _GATES, _ZONES, _VEHICLES
     if not isinstance(story, dict) or not story:
         return gates, zones, vehicles
 
@@ -212,7 +236,10 @@ async def seed_demo_site_logistics(
     site_gates, site_zones, vehicles = resolve_site_content(story, locale, rows)
     # Two texts of the board a story may word in its own language: the supplier used when the bill names none
     # and the cargo of the rejected booking.
-    fallback_supplier = story_text(story.get("fallback_supplier"), locale) or "Main Contractor"
+    german = (locale or "").lower().startswith("de")
+    fallback_supplier = story_text(story.get("fallback_supplier"), locale) or (
+        "Generalunternehmer" if german else "Main Contractor"
+    )
     rejected_cargo = story_text(story.get("rejected_cargo"), locale)
     names = [s for s in (suppliers or []) if s] or [fallback_supplier]
 
@@ -292,7 +319,9 @@ async def seed_demo_site_logistics(
                 gate_id=gates[gate_index % len(gates)].id,
                 supplier_name=names[index % len(names)],
                 vehicle_type=vehicles[0] if gate_index == 0 else vehicles[1],
-                materials_desc=(rejected_cargo or extra_cargo) if extra_cargo else extra_cargo,
+                materials_desc=(rejected_cargo or (_CARGO_DE.get(extra_cargo, extra_cargo) if german else extra_cargo))
+                if extra_cargo
+                else extra_cargo,
                 window_start=window_start,
                 window_end=window_end,
                 status=status,

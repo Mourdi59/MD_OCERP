@@ -1,0 +1,245 @@
+{
+  "$note": "Document register of the demo project in German. The register itself (files, bodies, categories) stays in the documents seeder; this file words the name, description and tags of each document by its key. All names invented.",
+  "documents": {
+    "ga-p01": {
+      "name": {
+        "en": "General arrangement - Level 00 (P.01.01).pdf",
+        "de": "Lageplan und Grundriss Ebene 00 (P.01.01).pdf"
+      },
+      "description": {
+        "en": "Preliminary general arrangement issued for coordination. Superseded.",
+        "de": "Vorabzug des Grundrisses zur Abstimmung herausgegeben. Überholt."
+      },
+      "tags": [
+        {
+          "en": "general arrangement",
+          "de": "Grundriss"
+        },
+        {
+          "en": "level 00",
+          "de": "Ebene 00"
+        },
+        {
+          "en": "superseded",
+          "de": "überholt"
+        }
+      ]
+    },
+    "ga-c01": {
+      "name": {
+        "en": "General arrangement - Level 00 (C.01).pdf",
+        "de": "Lageplan und Grundriss Ebene 00 (C.01).pdf"
+      },
+      "description": {
+        "en": "General arrangement approved for construction. Supersedes P.01.01.",
+        "de": "Grundriss zur Ausführung freigegeben. Ersetzt P.01.01."
+      },
+      "tags": [
+        {
+          "en": "general arrangement",
+          "de": "Grundriss"
+        },
+        {
+          "en": "level 00",
+          "de": "Ebene 00"
+        },
+        {
+          "en": "for construction",
+          "de": "zur Ausführung"
+        }
+      ]
+    },
+    "framing": {
+      "name": {
+        "en": "Structural framing plan.pdf",
+        "de": "Tragwerksplan Bauteilraster.pdf"
+      },
+      "description": {
+        "en": "Framing layout issued for coordination with the services model.",
+        "de": "Tragwerkslayout zur Abstimmung mit dem Haustechnikmodell herausgegeben."
+      },
+      "tags": [
+        {
+          "en": "structure",
+          "de": "Tragwerk"
+        },
+        {
+          "en": "framing",
+          "de": "Raster"
+        },
+        {
+          "en": "coordination",
+          "de": "Abstimmung"
+        }
+      ]
+    },
+    "spec-concrete": {
+      "name": {
+        "en": "Specification - Concrete works.pdf",
+        "de": "Leistungsbeschreibung - Betonarbeiten.pdf"
+      },
+      "description": {
+        "en": "Materials, tolerances and testing regime for in-situ concrete.",
+        "de": "Baustoffe, Toleranzen und Prüfumfang für Ortbeton."
+      },
+      "tags": [
+        {
+          "en": "specification",
+          "de": "Leistungsbeschreibung"
+        },
+        {
+          "en": "concrete",
+          "de": "Beton"
+        },
+        {
+          "en": "testing",
+          "de": "Prüfung"
+        }
+      ]
+    },
+    "spec-mep": {
+      "name": {
+        "en": "Specification - Mechanical and electrical installations.pdf",
+        "de": "Leistungsbeschreibung - Technische Gebäudeausrüstung.pdf"
+      },
+      "description": {
+        "en": "Performance requirements for the services installation. Work in progress.",
+        "de": "Leistungsanforderungen an die haustechnischen Anlagen. In Bearbeitung."
+      },
+      "tags": [
+        {
+          "en": "specification",
+          "de": "Leistungsbeschreibung"
+        },
+        {
+          "en": "mep",
+          "de": "TGA"
+        },
+        {
+          "en": "draft",
+          "de": "Entwurf"
+        }
+      ]
+    },
+    "contract-main": {
+      "name": {
+        "en": "Main contract - scope and conditions.pdf",
+        "de": "Bauvertrag - Leistungsumfang und Bedingungen.pdf"
+      },
+      "description": {
+        "en": "Executed main contract: scope, programme obligations and payment terms.",
+        "de": "Abgeschlossener Bauvertrag: Leistungsumfang, Terminpflichten und Zahlungsbedingungen."
+      },
+      "tags": [
+        {
+          "en": "contract",
+          "de": "Vertrag"
+        },
+        {
+          "en": "main",
+          "de": "Hauptvertrag"
+        },
+        {
+          "en": "executed",
+          "de": "abgeschlossen"
+        }
+      ]
+    },
+    "contract-groundworks": {
+      "name": {
+        "en": "Subcontract - groundworks package.pdf",
+        "de": "Nachunternehmervertrag - Erdarbeiten.pdf"
+      },
+      "description": {
+        "en": "Groundworks package subcontract issued for stage approval.",
+        "de": "Nachunternehmervertrag für das Erdbaupaket, zur Freigabe der Stufe herausgegeben."
+      },
+      "tags": [
+        {
+          "en": "contract",
+          "de": "Vertrag"
+        },
+        {
+          "en": "subcontract",
+          "de": "Nachunternehmer"
+        },
+        {
+          "en": "groundworks",
+          "de": "Erdarbeiten"
+        }
+      ]
+    },
+    "letter-instruction": {
+      "name": {
+        "en": "Site instruction 014 - revised door schedule.pdf",
+        "de": "Anordnung 014 - überarbeitete Türliste.pdf"
+      },
+      "description": {
+        "en": "Instruction issued to the contractor covering the revised door schedule.",
+        "de": "Anordnung an den Auftragnehmer zur überarbeiteten Türliste."
+      },
+      "tags": [
+        {
+          "en": "instruction",
+          "de": "Anordnung"
+        },
+        {
+          "en": "doors",
+          "de": "Türen"
+        },
+        {
+          "en": "issued",
+          "de": "herausgegeben"
+        }
+      ]
+    },
+    "letter-early-warning": {
+      "name": {
+        "en": "Early warning - late release of the facade design.pdf",
+        "de": "Behinderungsanzeige - verspätete Freigabe der Fassadenplanung.pdf"
+      },
+      "description": {
+        "en": "Early warning raised on the facade design release date.",
+        "de": "Anzeige zum Freigabetermin der Fassadenplanung."
+      },
+      "tags": [
+        {
+          "en": "early warning",
+          "de": "Behinderungsanzeige"
+        },
+        {
+          "en": "facade",
+          "de": "Fassade"
+        },
+        {
+          "en": "programme",
+          "de": "Terminplan"
+        }
+      ]
+    },
+    "method-facade": {
+      "name": {
+        "en": "Method statement - facade installation.pdf",
+        "de": "Montageanweisung - Fassadenmontage.pdf"
+      },
+      "description": {
+        "en": "Sequence, plant and controls for installing the facade panels.",
+        "de": "Ablauf, Geräte und Schutzmaßnahmen bei der Montage der Fassadenelemente."
+      },
+      "tags": [
+        {
+          "en": "method statement",
+          "de": "Montageanweisung"
+        },
+        {
+          "en": "facade",
+          "de": "Fassade"
+        },
+        {
+          "en": "safety",
+          "de": "Arbeitsschutz"
+        }
+      ]
+    }
+  }
+}

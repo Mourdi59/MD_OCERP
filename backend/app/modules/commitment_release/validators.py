@@ -44,6 +44,17 @@ def _locale(context: ValidationContext) -> str:
     return str(meta.get("locale") or "en")
 
 
+def _day(value: Any, locale: str) -> str:
+    """A stored ``YYYY-MM-DD`` day as the reader of ``locale`` writes it (German: ``DD.MM.YYYY``).
+
+    Other languages keep the ISO day, and anything that is not an ISO day is returned as stored.
+    """
+    text = str(value or "")
+    if locale.lower().startswith("de") and len(text) >= 10 and text[4] == "-" and text[7] == "-":
+        return f"{text[8:10]}.{text[5:7]}.{text[:4]}"
+    return text
+
+
 def _data(context: ValidationContext) -> dict[str, Any]:
     return context.data if isinstance(context.data, dict) else {}
 
@@ -166,7 +177,11 @@ class DecisionDateNotPassed(_CommitmentRule):
         loc = _locale(context)
         return [
             self._result(
-                loc, not i.get("decision_overdue"), i["code"], item=i["code"], date=i.get("latest_decision_date")
+                loc,
+                not i.get("decision_overdue"),
+                i["code"],
+                item=i["code"],
+                date=_day(i.get("latest_decision_date"), loc),
             )
             for i in self._items(context)
             if i.get("latest_decision_date")
@@ -188,7 +203,7 @@ class ReleaseInDate(_CommitmentRule):
                 not i.get("release_expired"),
                 i["code"],
                 item=i["code"],
-                date=", ".join(i.get("expired_release_dates") or []),
+                date=", ".join(_day(d, loc) for d in i.get("expired_release_dates") or []),
             )
             for i in self._items(context)
         ]

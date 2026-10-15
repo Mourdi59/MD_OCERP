@@ -40,9 +40,9 @@ from __future__ import annotations
 import logging
 import shutil
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -390,6 +390,31 @@ def _register_for(project_name: str) -> tuple[_DocSpec, ...]:
     return kept + _GERMAN_REVISION_CHAIN
 
 
+def _localized(spec: _DocSpec, story: dict[str, Any], locale: str) -> _DocSpec:
+    """The spec with the name, description and tags a demo story words in the project's language.
+
+    The story keys ``documents`` -> document key -> ``name`` / ``description`` (a text or a language map)
+    and ``tags`` (a list of texts or language maps). A key the story leaves out, or words badly, keeps
+    the register's default, so a project without a story reads exactly as before.
+    """
+    from app.modules.project_governance.public import story_text
+
+    rows = story.get("documents")
+    row = rows.get(spec.key) if isinstance(rows, dict) else None
+    if not isinstance(row, dict):
+        return spec
+    name = story_text(row.get("name"), locale)
+    description = story_text(row.get("description"), locale)
+    raw_tags = row.get("tags")
+    tags = [story_text(t, locale) for t in raw_tags] if isinstance(raw_tags, list) else []
+    return replace(
+        spec,
+        name=name or spec.name,
+        description=description or spec.description,
+        tags=tags if tags and all(tags) else spec.tags,
+    )
+
+
 def _safe_name(name: str) -> str:
     """A storage-safe filename, mirroring how an upload names its stored file."""
     return "".join(ch if (ch.isalnum() or ch in "-_.") else "-" for ch in name)
@@ -593,6 +618,8 @@ async def _seed_project(
     project_id: uuid.UUID,
     owner_id: uuid.UUID,
     project_name: str,
+    demo_id: str | None = None,
+    locale: str | None = None,
 ) -> dict[str, int]:
     """Write one project's document register, or top up its revision chain."""
     empty = {"projects": 0, "documents": 0, "bytes": 0, "retired": 0}
@@ -617,7 +644,15 @@ async def _seed_project(
     counts = {"projects": 1, "documents": 0, "bytes": 0, "retired": 0}
     by_key: dict[str, uuid.UUID] = {}
 
+    story: dict[str, Any] = {}
+    if demo_id:
+        from app.modules.project_governance.public import demo_module_story
+
+        story = demo_module_story(demo_id, "documents")
+
     for spec in specs:
+        if story:
+            spec = _localized(spec, story, locale or "en")
         if not _check_suitability(spec):
             continue
         stored = _store(project_id, spec)
@@ -693,15 +728,18 @@ async def seed_documents_demo(
     if not ids:
         return totals
 
+    from app.core.demo_marker import demo_id_of
     from app.modules.projects.models import Project
 
     rows = (
         await session.execute(
-            select(Project.id, Project.owner_id, Project.name, Project.metadata_).where(Project.id.in_(ids))
+            select(Project.id, Project.owner_id, Project.name, Project.metadata_, Project.locale).where(
+                Project.id.in_(ids)
+            )
         )
     ).all()
 
-    for project_id, owner_id, project_name, metadata in rows:
+    for project_id, owner_id, project_name, metadata, locale in rows:
         if not (metadata or {}).get("demo_id"):
             continue
         if owner_id is None:
@@ -711,7 +749,9 @@ async def seed_documents_demo(
             # the whole transaction, so one project that cannot be seeded would
             # otherwise take every later project down with it.
             async with session.begin_nested():
-                counts = await _seed_project(session, project_id, owner_id, project_name or "")
+                counts = await _seed_project(
+                    session, project_id, owner_id, project_name or "", demo_id_of(metadata) or None, locale
+                )
         except Exception:
             logger.warning("Documents demo seed skipped for project=%s (non-fatal)", project_id, exc_info=True)
             continue

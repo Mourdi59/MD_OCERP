@@ -90,7 +90,7 @@
     "checker": {
       "title": {
         "en": "Independent structural checker (Pruefingenieur)",
-        "de": "Pruefingenieur fuer Standsicherheit"
+        "de": "Prüfingenieur für Standsicherheit"
       },
       "originator": "CHK"
     }
@@ -198,7 +198,7 @@
       "RPT-002": {
         "title": {
           "en": "Fire protection concept, agreed with the Pruefsachverstaendiger",
-          "de": "Brandschutzkonzept, mit dem Pruefsachverstaendigen abgestimmt"
+          "de": "Brandschutzkonzept, mit dem Prüfsachverständigen abgestimmt"
         }
       },
       "RPT-003": {
@@ -210,13 +210,13 @@
       "RPT-004": {
         "title": {
           "en": "Structural proof check by the Pruefingenieur",
-          "de": "Pruefung der Standsicherheitsnachweise durch den Pruefingenieur"
+          "de": "Prüfung der Standsicherheitsnachweise durch den Prüfingenieur"
         }
       },
       "RPT-005": {
         "title": {
           "en": "GEG energy proof for heat pump, photovoltaic and timber frame facade",
-          "de": "GEG-Energienachweis fuer Waermepumpe, Photovoltaik und Holzrahmenfassade"
+          "de": "GEG-Energienachweis für Wärmepumpe, Photovoltaik und Holzrahmenfassade"
         }
       }
     },
@@ -229,7 +229,7 @@
         "status": "accepted",
         "title": {
           "en": "Contamination screening of the site",
-          "de": "Altlastenerkundung des Grundstuecks"
+          "de": "Altlastenerkundung des Grundstücks"
         }
       },
       {
@@ -240,7 +240,7 @@
         "status": "accepted",
         "title": {
           "en": "Explosive ordnance precheck of the site",
-          "de": "Kampfmittelvorpruefung des Grundstuecks"
+          "de": "Kampfmittelvorprüfung des Grundstücks"
         }
       },
       {
@@ -251,7 +251,7 @@
         "status": "accepted",
         "title": {
           "en": "Species protection assessment for bats and birds, and tree protection plan",
-          "de": "Artenschutzrechtliche Pruefung Fledermaeuse und Voegel, Baumschutzplan"
+          "de": "Artenschutzrechtliche Prüfung Fledermäuse und Vögel, Baumschutzplan"
         }
       },
       {
@@ -262,7 +262,7 @@
         "status": "accepted",
         "title": {
           "en": "Stormwater retention concept for the school yard",
-          "de": "Regenrueckhaltekonzept fuer den Schulhof"
+          "de": "Regenrückhaltekonzept für den Schulhof"
         }
       },
       {
@@ -295,7 +295,7 @@
         "status": "required",
         "title": {
           "en": "Check of the fire protection documents by the Pruefsachverstaendiger",
-          "de": "Pruefung der Brandschutznachweise durch den Pruefsachverstaendigen"
+          "de": "Prüfung der Brandschutznachweise durch den Prüfsachverständigen"
         }
       }
     ]
@@ -307,7 +307,7 @@
     },
     "form": {
       "en": "Application form and building documents for the Baurechtsamt",
-      "de": "Antragsformular und Bauvorlagen fuer das Baurechtsamt"
+      "de": "Antragsformular und Bauvorlagen für das Baurechtsamt"
     }
   },
   "route_names": {

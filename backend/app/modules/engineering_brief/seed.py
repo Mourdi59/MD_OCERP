@@ -86,7 +86,7 @@ _COMMON: tuple[_REQ, ...] = (
     ),
     (
         "energy_efficiency",
-        "Gebäudehuelle",
+        "Gebäudehülle",
         "Energiestandard",
         "equals",
         "{energy}",
