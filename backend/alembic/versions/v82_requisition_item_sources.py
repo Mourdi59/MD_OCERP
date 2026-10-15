@@ -12,8 +12,8 @@ index and no foreign key. It is the only identity two lines are merged on withou
 Every constraint and index name is written out and matches the models. Every step is inspector-guarded,
 so a database whose tables ``create_all`` already built reaches this revision and does nothing.
 
-Revision ID: v81_requisition_item_sources
-Revises: v80_project_handbook
+Revision ID: v82_requisition_item_sources
+Revises: v81_po_tax_rate
 Create Date: 2026-10-15
 """
 
@@ -26,8 +26,8 @@ from alembic import op
 
 from app.database import GUID
 
-revision: str = "v81_requisition_item_sources"
-down_revision: str | Sequence[str] | None = "v80_project_handbook"
+revision: str = "v82_requisition_item_sources"
+down_revision: str | Sequence[str] | None = "v81_po_tax_rate"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
