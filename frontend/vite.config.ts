@@ -13,6 +13,7 @@ import path from 'path';
 import { cpSync, existsSync, readFileSync, readdirSync, createReadStream, statSync } from 'fs';
 import type { Plugin } from 'vite';
 import { STATIC_ASSETS_CACHE, isStaticAssetRequest } from './src/pwa/staticAssetRoute';
+import { LOCALE_KEYS_CHUNK, isLocaleKeysId, localeKeyIndex } from './vite.locale-key-index';
 
 const cesiumSource = path.resolve(__dirname, 'node_modules/cesium/Build/Cesium');
 const cesiumDirs = ['Workers', 'ThirdParty', 'Assets', 'Widgets'] as const;
@@ -194,6 +195,7 @@ export default defineConfig({
     }),
     cesiumAssets(),
     pdfjsAssets(),
+    localeKeyIndex(__dirname),
     jsonLdSoftwareVersion(),
     // ── Mobile PWA — Slice 1 ────────────────────────────────────────────
     // Installable PWA with offline-app-shell + i18n bundle caching.
@@ -526,6 +528,8 @@ export default defineConfig({
           // ``globIgnores`` says must never happen again.
           const localeMatch = id.match(/[\\/]src[\\/]app[\\/]locales[\\/]([a-z]{2,3}(?:-[A-Z]{2})?)\.ts$/);
           if (localeMatch) return `i18n-${localeMatch[1]}`;
+          // The key list the packed catalogues share (vite.locale-key-index.ts).
+          if (isLocaleKeysId(id)) return LOCALE_KEYS_CHUNK;
           // Vite's module-preload helper (`__vitePreload`) is a virtual module
           // ("\0vite/preload-helper.js"). Left unassigned, Rollup folds it into
           // whichever vendor chunk shares its import signature (it landed in
