@@ -45768,6 +45768,7 @@
         "router.py",
         "schemas.py",
         "seed.py",
+        "seed_texts_de.py",
         "service.py",
         "validators.py"
       ],
@@ -46866,6 +46867,7 @@
         }
       ],
       "import_dependencies": [
+        "project_governance",
         "projects",
         "users"
       ]
@@ -91663,6 +91665,7 @@
         "bim_hub",
         "cde",
         "file_versions",
+        "project_governance",
         "projects",
         "takeoff",
         "teams",
@@ -172343,6 +172346,7 @@
         "projects",
         "requirements",
         "schedule",
+        "stakeholders",
         "teams",
         "users"
       ]
@@ -266458,10 +266462,10 @@
     },
     {
       "name": "boq",
-      "ts_files": 192,
+      "ts_files": 196,
       "css_files": 0,
-      "test_files": 105,
-      "total_files": 192
+      "test_files": 106,
+      "total_files": 196
     },
     {
       "name": "buyer-portal",
@@ -267354,10 +267358,10 @@
     },
     {
       "name": "projects",
-      "ts_files": 35,
+      "ts_files": 36,
       "css_files": 0,
-      "test_files": 14,
-      "total_files": 35
+      "test_files": 15,
+      "total_files": 36
     },
     {
       "name": "property-dev",
@@ -268065,6 +268069,7 @@
       "users"
     ],
     "commissioning": [
+      "project_governance",
       "projects",
       "users"
     ],
@@ -268305,6 +268310,7 @@
       "bim_hub",
       "cde",
       "file_versions",
+      "project_governance",
       "projects",
       "takeoff",
       "teams",
@@ -268851,6 +268857,7 @@
       "projects",
       "requirements",
       "schedule",
+      "stakeholders",
       "teams",
       "users"
     ],
@@ -269299,9 +269306,9 @@
     "total_relationships": 236,
     "total_routes": 4528,
     "total_schemas": 3961,
-    "total_python_files": 2678,
+    "total_python_files": 2679,
     "frontend_features": 208,
-    "frontend_ts_files": 3437,
+    "frontend_ts_files": 3442,
     "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
