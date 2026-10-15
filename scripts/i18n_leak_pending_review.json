@@ -123,6 +123,16 @@
     "n": 1,
     "reason": "Added in the commit that finished registering Estonian as a gated locale (i18n: finish registering Estonian where the gates look for it). Checked: this entry's differs_in set does not name 'et' specifically, so the commit's own framing is the only link to that locale, not something confirmed at the entry level. Not individually triaged key by key. Backfilled 2026-08-25 when reason/added_by became mandatory fields on this list; this is commit-level and group-level context recovered from git history and this file's own n/differs_in fields, not a fresh per-key content review."
   },
+  "analytics.perf.kpi_label": {
+    "added_by": "a8c4a2f4b (2026-10-15)",
+    "differs_in": [
+      "ar",
+      "de"
+    ],
+    "en_value": "KPI",
+    "n": 37,
+    "reason": "Column header of the performance benchmark. KPI is kept as written in most locales, while ar and de translate it, so it is not identical everywhere and cannot go on the allowlist. A reader of each language should decide which form the trade uses."
+  },
   "approvalRoutes.analytics_col_sla": {
     "added_by": "adb78c983 (2026-08-02)",
     "differs_in": [

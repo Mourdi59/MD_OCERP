@@ -39,6 +39,16 @@
     "note": "Portable Document Format abbreviation, identical in every script and locale",
     "reason_category": "abbreviation"
   },
+  "analytics.perf.p25": {
+    "en_value": "P25",
+    "note": "percentile abbreviation in the performance benchmark table header, written the same way in every locale that carries the key, including ru",
+    "reason_category": "abbreviation"
+  },
+  "analytics.perf.p75": {
+    "en_value": "P75",
+    "note": "percentile abbreviation in the performance benchmark table header, written the same way in every locale that carries the key, including ru",
+    "reason_category": "abbreviation"
+  },
   "app.name": {
     "en_value": "OpenConstructionERP",
     "note": "our own product name, never translated",
