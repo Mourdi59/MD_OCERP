@@ -395,6 +395,13 @@ async def test_the_project_of_the_pack_stops_where_its_demo_file_says(factory, a
     assert len(checks) == len(body["areas"]) - 1
     assert {c.note for c in checks} == {"In Ordnung"}
 
+    # The routes the seed pins carry German names on a German project, the English ones nowhere.
+    async with factory() as s:
+        from app.modules.approval_routes.models import Route
+
+        routes = set((await s.execute(select(Route.name).where(Route.project_id == pid))).scalars())
+    assert routes == set(seed._ROUTE_NAMES_DE.values())
+
 
 async def test_a_demo_file_that_breaks_a_rule_leaves_the_built_in_story(factory, active_pack) -> None:
     broken = _demo_file(_pack_body())

@@ -116,6 +116,13 @@ _WALK_TEXTS_DE = {
     _AT_RISK_RATIONALE: "Die Bereitschaft einzelner Bereiche ist noch offen. Das Gate wird mit Risiko passiert, jede Lücke hat eine verantwortliche Person.",
 }
 _WALK_CONDITION_TEXTS = (AT_RISK_CONDITION, _WALK_TEXTS_DE[AT_RISK_CONDITION])
+#: The names of the two routes the seed pins, and their German names for a German project.
+_GATE_ROUTE = "Gate decision"
+_CHANGE_ROUTE = "Frame document change"
+_ROUTE_NAMES_DE = {
+    _GATE_ROUTE: "Gate-Entscheidung",
+    _CHANGE_ROUTE: "Änderung eines Rahmendokuments",
+}
 _HANDOVER_TARGET_DAYS = 30
 
 
@@ -162,7 +169,7 @@ async def _ensure_route(session: AsyncSession, project_id: uuid.UUID, kind: str,
     from app.modules.approval_routes.service import ApprovalRouteService
 
     routes = ApprovalRouteService(session)
-    name = "Gate decision" if kind == "phase_gate" else "Frame document change"
+    name = _GATE_ROUTE if kind == "phase_gate" else _CHANGE_ROUTE
     existing = await routes.list_routes(project_id=project_id, target_kind=kind, include_inactive=False)
     for route in existing:
         if route.project_id == project_id and route.name == name:
@@ -655,10 +662,16 @@ async def _attempt(
 
 
 async def _localise_walk_texts(session: AsyncSession, project_id: uuid.UUID) -> None:
-    """Put the German texts over the English ones the walk wrote itself (at-risk condition and rationale)."""
+    """Put the German texts over the English ones the walk wrote itself (at-risk condition, rationale, routes)."""
     from sqlalchemy import update
 
+    from app.modules.approval_routes.models import Route
     from app.modules.project_governance.models import GovernanceDecision
+
+    for english, german in _ROUTE_NAMES_DE.items():
+        await session.execute(
+            update(Route).where(Route.project_id == project_id, Route.name == english).values(name=german)
+        )
 
     for english, german in _WALK_TEXTS_DE.items():
         await session.execute(
