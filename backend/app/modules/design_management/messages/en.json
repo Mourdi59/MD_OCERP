@@ -28,7 +28,33 @@
       "wip": "Work in progress"
     },
     "common": {
-      "ok": "OK"
+      "ok": "OK",
+      "module": {
+        "boq": "Bill of quantities",
+        "cvr": "Cost value reconciliation",
+        "design_management": "Design management",
+        "field_time": "Field time",
+        "fieldreports": "Field reports",
+        "finance": "Finance",
+        "inspections": "Inspections",
+        "procurement": "Procurement",
+        "schedule": "Schedule"
+      },
+      "phase": {
+        "approval": "Approval",
+        "award": "Award",
+        "brief": "Brief",
+        "concept": "Concept",
+        "construction": "Construction",
+        "design": "Design",
+        "detail": "Detail design",
+        "development": "Development",
+        "execution": "Execution",
+        "handover": "Handover",
+        "operation": "Operation",
+        "strategy": "Strategy",
+        "tender": "Tender"
+      }
     },
     "errors": {
       "answer_required": "An answer is required.",
