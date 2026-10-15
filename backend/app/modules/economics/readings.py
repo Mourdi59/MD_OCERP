@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from fastapi import HTTPException
@@ -26,6 +26,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.economics.calc import ZERO, Reading
 from app.modules.economics.errors import EconomicsError
+
+_CENT = Decimal("0.01")
 
 
 @dataclass
@@ -146,7 +148,13 @@ async def read_bill(
     calculated = _calculate_markup_amounts_scoped(
         reading.direct_cost, markups, positions, leaf_amount, escalation.factors
     )
-    reading.markups = [MarkupLine(m.name, m.category or "other", amount) for m, amount in calculated if m.is_active]
+    # Each markup line to the cent, as the bill editor shows it: the engine keeps every place a
+    # percentage produces, which printed as a three-decimal VAT line on the cost frame.
+    reading.markups = [
+        MarkupLine(m.name, m.category or "other", amount.quantize(_CENT, rounding=ROUND_HALF_UP))
+        for m, amount in calculated
+        if m.is_active
+    ]
     return reading
 
 
