@@ -1,0 +1,137 @@
+{
+  "$note": "Commissionable systems of the Regensburg residential quarter as data, read by the commissioning demo seeder. Each entry names the system type of the neutral catalogue; the checks come from that type. No real firms or persons.",
+  "systems": [
+    {
+      "type": "mechanical",
+      "tag": "HST-01",
+      "name": {
+        "en": "District heating substation, house A",
+        "de": "Fernwärme-Hausstation Haus A"
+      },
+      "location": {
+        "en": "Technical room house A, basement",
+        "de": "Technikraum Haus A, Untergeschoss"
+      }
+    },
+    {
+      "type": "hvac",
+      "tag": "LÜ-01",
+      "name": {
+        "en": "Apartment ventilation, house A (DIN 1946-6)",
+        "de": "Wohnungslüftung Haus A (DIN 1946-6)"
+      },
+      "location": {
+        "en": "Roof plant area house A",
+        "de": "Technikzentrale Dach Haus A"
+      }
+    },
+    {
+      "type": "electrical",
+      "tag": "NSHV-01",
+      "name": {
+        "en": "Main low-voltage distribution",
+        "de": "Elektro-Hauptverteilung Niederspannung"
+      },
+      "location": {
+        "en": "Electrical room, car park level",
+        "de": "Elektroraum Tiefgarage"
+      }
+    },
+    {
+      "type": "hvac",
+      "tag": "LÜ-02",
+      "name": {
+        "en": "Car park ventilation with CO warning system",
+        "de": "Lüftung Tiefgarage mit CO-Warnanlage"
+      },
+      "location": {
+        "en": "Car park, plant room",
+        "de": "Tiefgarage, Lüftungszentrale"
+      }
+    },
+    {
+      "type": "mechanical",
+      "tag": "HST-02",
+      "name": {
+        "en": "District heating substation, house B",
+        "de": "Fernwärme-Hausstation Haus B"
+      },
+      "location": {
+        "en": "Technical room house B, basement",
+        "de": "Technikraum Haus B, Untergeschoss"
+      }
+    },
+    {
+      "type": "elevator",
+      "tag": "AUF-01",
+      "name": {
+        "en": "Passenger lift, house A",
+        "de": "Personenaufzug Haus A"
+      },
+      "location": {
+        "en": "Staircase core house A",
+        "de": "Treppenhauskern Haus A"
+      }
+    },
+    {
+      "type": "fire",
+      "tag": "RWA-01",
+      "name": {
+        "en": "Smoke and heat extraction, staircases",
+        "de": "Rauch- und Wärmeabzug Treppenhäuser"
+      },
+      "location": {
+        "en": "Staircases houses A to C",
+        "de": "Treppenhäuser Haus A bis C"
+      }
+    },
+    {
+      "type": "plumbing",
+      "tag": "TWA-01",
+      "name": {
+        "en": "Drinking water installation, house A",
+        "de": "Trinkwasseranlage Haus A"
+      },
+      "location": {
+        "en": "Basement, riser house A",
+        "de": "Untergeschoss, Steigstrang Haus A"
+      }
+    },
+    {
+      "type": "mechanical",
+      "tag": "HST-03",
+      "name": {
+        "en": "District heating substation, house C",
+        "de": "Fernwärme-Hausstation Haus C"
+      },
+      "location": {
+        "en": "Technical room house C, basement",
+        "de": "Technikraum Haus C, Untergeschoss"
+      }
+    },
+    {
+      "type": "elevator",
+      "tag": "AUF-02",
+      "name": {
+        "en": "Passenger lift, house B",
+        "de": "Personenaufzug Haus B"
+      },
+      "location": {
+        "en": "Staircase core house B",
+        "de": "Treppenhauskern Haus B"
+      }
+    },
+    {
+      "type": "controls",
+      "tag": "GA-01",
+      "name": {
+        "en": "Building automation, heating centre",
+        "de": "Gebäudeautomation Heizungszentrale"
+      },
+      "location": {
+        "en": "Technical room house A, basement",
+        "de": "Technikraum Haus A, Untergeschoss"
+      }
+    }
+  ]
+}
