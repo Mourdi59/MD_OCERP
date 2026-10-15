@@ -179,12 +179,26 @@ Short, practical videos, most of them from the [OpenConstruction Academy](https:
 </tr>
 </table>
 
-**More series on the channel**
+**Playlists by country and language**
 
-- German, the Landshut learning project from start to finish: [Projekt und Verantwortung klären](https://www.youtube.com/watch?v=IM9hK6kCZCs) (7:18) · [Dokumente und Entscheidungen sichern](https://www.youtube.com/watch?v=LP-CZOhu6OA) (6:00), plus the German videos above.
-- French, Québec: [Démarrer avec OpenConstructionERP en français](https://www.youtube.com/watch?v=CMuMMej0zwM) (3:46) · [Estimer un projet de construction](https://www.youtube.com/watch?v=7eT4lg1ggQY) (4:18) · [Soumissions et BSDQ](https://www.youtube.com/watch?v=gmg2h1JcuGI) (4:31) · [Facturation, retenue et hypothèque légale](https://www.youtube.com/watch?v=4LTXS0QEkzY) (4:37) · [Réception des travaux et déficiences](https://www.youtube.com/watch?v=IWjtAujWPAA) (3:44)
-- French, site management: [Budget de chantier : justifier chaque coût](https://www.youtube.com/watch?v=L1DUikMF04Y) (5:06) · [Achats et stock : suivre les quantités](https://www.youtube.com/watch?v=ZXbWsG_Syuo) (4:37) · [Chantier : suivre les heures et le matériel](https://www.youtube.com/watch?v=5utorRM1fhY) (5:23) · [Facture et paiement : comprendre le solde](https://www.youtube.com/watch?v=ViuB-ONl5Lk) (5:39)
-- Talk: [The uberization of construction (ETH Zürich)](https://www.youtube.com/watch?v=R_PQQHXY-rQ) (14:22)
+Each series follows one construction project in one country, in that country's language, with its own contracts, standards and payment rules.
+
+| | Series | Language | Videos | What it covers |
+|:-:|---|---|:-:|---|
+| 🇺🇸 | [Builder's Playbook USA](https://www.youtube.com/playlist?list=PLWgzwe9nHkSc) | English | 10 | Install, estimate, bid leveling, budget vs actual, schedule, subcontractors, site log, KPIs |
+| 🇬🇧 | [Builder's Playbook UK](https://www.youtube.com/playlist?list=PLTRtkYLR23qM) | English | 6 | NRM 2 tender, subcontractor bids, JCT interim payments, pay less notice, CIS and VAT reverse charge, variations |
+| 🇨🇦 | [Builder's Playbook Canada](https://www.youtube.com/playlist?list=PLPZV4i5ViBm8) | English | 6 | Pricing, tendering, CCDC 2 progress draw, prompt payment, change orders, substantial performance |
+| ⚜️ | [Builder's Playbook Québec](https://www.youtube.com/playlist?list=PLey59QidNON0) | Français, English | 5 | Getting started, estimating, BSDQ bids, billing and legal hypothec, handover |
+| 🇫🇷 | [OpenConstructionERP en français, gérer un chantier](https://www.youtube.com/playlist?list=PLEhAODe5YAXM) | Français | 4 | Budget, purchasing and stock, site hours and equipment, invoice and payment |
+| 🇩🇪 | [OpenConstructionERP auf Deutsch, Projekt Landshut](https://www.youtube.com/playlist?list=PLKN9p-CuMMkE) | Deutsch | 12 | Projektstart, Planmanagement, Mengen, BIM, LV, Einheitspreise, GAEB, Vergabe, Bauablauf, Material, Kostenbasis |
+| 🇩🇪 | [Kosten nach DIN 276](https://www.youtube.com/watch?v=9qsR7e77by0) | Deutsch | 8 | Kostenrahmen, Kostenschätzung, Kostenberechnung, LV und GAEB, Vergabe, Baustart, Nachträge, Abnahme und Schlussrechnung |
+| 🇪🇸 | [Builder's Playbook España](https://www.youtube.com/playlist?list=PLHgtnDPr3Rjg) | Español | 8 | Certificaciones, oferta desde BC3, comparativo, precios contradictorios, cierre mensual, recepción, retención, partes de obra |
+| 🇮🇹 | [Builder's Playbook Italia](https://www.youtube.com/playlist?list=PLObqqyP8chDs) | Italiano | 7 | Computo metrico, ribasso, subappalto, giornale di cantiere, SAL, conto finale, collaudo |
+| 🇧🇬 | [Builder's Playbook България](https://www.youtube.com/playlist?list=PLfSvz7emI6lQ) | Български | 9 | Акт 19, КСС, анализ на цена, договор и график, подизпълнители, заменителна таблица, окончателен акт, паричен поток, дневник |
+| 🇭🇷 | [Builder's Playbook Hrvatska](https://www.youtube.com/playlist?list=PLP4TpwP1yVyI) | Hrvatski | 5 | Ugovoreni troškovnik, ulazni računi, podizvođači, privremena situacija, višak radova |
+| 🇨🇳 | [Builder's Playbook 中国](https://www.youtube.com/playlist?list=PLOCZ6EOWyC_A) | 中文 | 8 | 工程量清单报价, 预付款, 暂估价招标, 进度款, 签证变更, 材料调差, 成本核算, 结算审计 |
+
+Also on the channel: [The uberization of construction (ETH Zürich)](https://www.youtube.com/watch?v=R_PQQHXY-rQ) (14:22), a talk on where construction software is heading.
 
 **[Browse every video on the OpenConstruction Academy channel](https://www.youtube.com/channel/UCQ3IWLMLnBFwNeG5VBxXQ5Q/videos)**
 
