@@ -124,7 +124,10 @@
         "en": "reverberation time (DIN 18041, room group A)",
         "de": "Nachhallzeit (DIN 18041, Raumgruppe A)"
       },
-      "value": "0.6",
+      "value": {
+        "en": "0.6",
+        "de": "0,6"
+      },
       "unit": "s",
       "source": {
         "en": "Room acoustics concept 2.1",
@@ -141,7 +144,10 @@
         "en": "reverberation time",
         "de": "Nachhallzeit"
       },
-      "value": "<= 1.8",
+      "value": {
+        "en": "<= 1.8",
+        "de": "≤ 1,8"
+      },
       "unit": "s",
       "source": {
         "en": "Room acoustics concept 3.4",
@@ -158,7 +164,10 @@
         "en": "ventilation: CO2 concentration, demand controlled",
         "de": "Lüftung: CO2-Konzentration, bedarfsgeregelt"
       },
-      "value": "<= 1000",
+      "value": {
+        "en": "<= 1000",
+        "de": "≤ 1000"
+      },
       "unit": "ppm",
       "source": {
         "en": "Ventilation concept 4.2",
@@ -195,7 +204,10 @@
         "en": "air permeability n50",
         "de": "Luftdurchlässigkeit n50"
       },
-      "value": "<= 1.0",
+      "value": {
+        "en": "<= 1.0",
+        "de": "≤ 1,0"
+      },
       "unit": "1/h",
       "source": {
         "en": "GEG energy proof 2.3",
@@ -212,7 +224,10 @@
         "en": "shock absorption (DIN 18032-2)",
         "de": "Kraftabbau (DIN 18032-2)"
       },
-      "value": ">= 53",
+      "value": {
+        "en": ">= 53",
+        "de": "≥ 53"
+      },
       "unit": "%",
       "source": {
         "en": "Sports hall specification 1.5",

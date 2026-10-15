@@ -95,7 +95,7 @@ async def test_the_plan_seed_fills_every_screen_for_both_stories() -> None:
             stages = {x.code: x.state for x in await _rows(s, m.ExpansionStage, running)}
             assert stages == {"stage_1": "active", "stage_2": "planned"}
             media = {x.media_kind: x.state for x in await _rows(s, m.MediaConnection, running)}
-            assert media == {"power": "connected", "water": "requested"}
+            assert media == {"power": "connected", "water": "connected"}
             transports = await _rows(s, m.Transport, running)
             heavy = next(t for t in transports if t.transport_kind == "heavy_oversize")
             assert heavy.state == "scheduled"

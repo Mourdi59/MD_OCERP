@@ -125,7 +125,10 @@
         "en": "airborne sound insulation R'w (DIN 4109 increased level)",
         "de": "Luftschalldämmung R'w (DIN 4109, erhöhter Schallschutz)"
       },
-      "value": ">= 56",
+      "value": {
+        "en": ">= 56",
+        "de": "≥ 56"
+      },
       "unit": "dB",
       "source": {
         "en": "Sound insulation proof 2.1",
@@ -142,7 +145,10 @@
         "en": "impact sound level L'n,w",
         "de": "Trittschallpegel L'n,w"
       },
-      "value": "<= 46",
+      "value": {
+        "en": "<= 46",
+        "de": "≤ 46"
+      },
       "unit": "dB",
       "source": {
         "en": "Sound insulation proof 2.4",
@@ -199,7 +205,10 @@
         "en": "air permeability n50",
         "de": "Luftdurchlässigkeit n50"
       },
-      "value": "<= 0.6",
+      "value": {
+        "en": "<= 0.6",
+        "de": "≤ 0,6"
+      },
       "unit": "1/h",
       "source": {
         "en": "GEG energy proof, efficiency house 40, 2.3",
@@ -216,7 +225,10 @@
         "en": "crack width, watertight concrete",
         "de": "Rissbreite, wasserundurchlässiger Beton"
       },
-      "value": "<= 0.20",
+      "value": {
+        "en": "<= 0.20",
+        "de": "≤ 0,20"
+      },
       "unit": "mm",
       "source": {
         "en": "Concrete specification, white tank 1.5",

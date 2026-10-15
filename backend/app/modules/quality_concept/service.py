@@ -1144,7 +1144,11 @@ class QualityConceptService:
             bucket = packages[p.package_ref or ""]
             bucket["total"] += 1
             bucket[state] += 1
-            findings += list(delivery[p.id].findings)
+            # The proof title reads better than its id in the message a finding turns into.
+            findings += [
+                dataclasses.replace(f, params={**f.params, "label": p.title}) if p.title else f
+                for f in delivery[p.id].findings
+            ]
         return {
             "packages": [
                 {"package_ref": ref or None, **dict(counts), "done": sum(counts[s] for s in _DONE_PROOF)}

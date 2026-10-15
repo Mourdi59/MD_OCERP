@@ -278,7 +278,7 @@ export function DeliveryModelPage() {
     );
   }
 
-  const catalogueSummaryName = catalogue ? catalogueText(labels, { key: catalogue.name_key, code: catalogue.id }) : '';
+  const catalogueSummaryName = catalogue ? catalogueText(labels, { key: catalogue.name_key, texts: catalogue.labels, code: catalogue.id }) : '';
 
   return (
     <div className="space-y-5 animate-fade-in bg-surface-page rounded-2xl p-4 sm:p-5" data-testid="delivery-model-page">

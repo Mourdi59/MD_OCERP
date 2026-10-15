@@ -44,6 +44,8 @@ class _QcRule(ValidationRule):
     source: tuple[str, tuple[str, ...]] = ("", ())
 
     def _result(self, locale: str, passed: bool, ref: str, **params: Any) -> RuleResult:
+        # A finding may carry a human label (a proof title) to show in place of its raw id.
+        shown = str(params.pop("label", "") or "") or ref
         base = f"quality_concept.rules.{self.key}"
         return RuleResult(
             rule_id=self.rule_id,
@@ -53,7 +55,7 @@ class _QcRule(ValidationRule):
             passed=passed,
             message=translate("quality_concept.common.ok", locale=locale)
             if passed
-            else translate(f"{base}.fail", locale=locale, ref=ref, **{k: str(v) for k, v in params.items()}),
+            else translate(f"{base}.fail", locale=locale, ref=shown, **{k: str(v) for k, v in params.items()}),
             element_ref=ref or None,
             suggestion=None if passed else translate(f"{base}.suggestion", locale=locale),
         )
@@ -70,7 +72,7 @@ class _QcRule(ValidationRule):
         hits = self.findings(context)
         if not hits:
             return [self._result(loc, True, "")]
-        return [self._result(loc, False, ref) for ref, _params in hits]
+        return [self._result(loc, False, ref, label=params.get("label", "")) for ref, params in hits]
 
 
 def _rule(

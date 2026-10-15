@@ -114,6 +114,7 @@ export interface DeliveryCatalogue {
   version: number;
   contract_kinds?: ContractKind[];
   name_key?: string | null;
+  labels?: LocaleTexts | null;
   review_status?: ReviewStatus;
   forms: DeliveryForm[];
   parties: CatalogueParty[];

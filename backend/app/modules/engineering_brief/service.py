@@ -1176,6 +1176,7 @@ class EngineeringBriefService:
                 continue
             from app.modules.engineering_brief.messages import translate
 
+            prefix = translate("engineering_brief.gate_milestone_prefix", locale=locale)
             # A tenant catalogue carries its own text; a shipped one an i18n key the client translates, so
             # the stored name falls back to the code and the screen shows the gate's label beside it.
             text = (g["label"] or {}).get("text") or {}
@@ -1190,7 +1191,7 @@ class EngineeringBriefService:
                 brief_id=brief.id,
                 code=_next_code("MS", [m.code for m in existing] + [m.code for m in made]),
                 kind_code=catalogue.gate_kind,
-                name=f"{translate('engineering_brief.gate_milestone_prefix', locale=locale)} {name}".strip(),
+                name=name if name.startswith(prefix) else f"{prefix} {name}".strip(),
                 planned_date=g["target_date"],
                 gate_code=g["code"],
                 sort_order=len(existing) + len(made),

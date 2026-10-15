@@ -419,13 +419,17 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             "media_kind": "water",
             "provider_name": content["water_provider"],
             "connection_point": content["water_connection_point"],
+            # A running site has its water contracted (12 m3/h covers the 6 m3/h peak with room);
+            # a site still being planned has only asked for it.
+            **({} if planned else {"contracted_capacity": Decimal("12")}),
             "application_ref": "WAT-014",
-            "applied_on": today - timedelta(days=10),
-            "promised_on": today + timedelta(days=30),
+            "applied_on": today - timedelta(days=10 if planned else 45),
+            "promised_on": today + timedelta(days=30) if planned else today - timedelta(days=15),
         },
         actor,
     )
-    await svc.transition_media(pid, water.id, "requested", actor)
+    for target in ("requested",) if planned else ("requested", "offered", "contracted", "connected"):
+        await svc.transition_media(pid, water.id, target, actor)
     await svc.create_demand(
         pid,
         water.id,

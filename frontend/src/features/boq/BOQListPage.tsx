@@ -1403,7 +1403,7 @@ export function BOQListPage() {
                   falls above the rule and reads as deliberate. */}
               <div className="mt-auto border-t border-border-light px-4 pb-2 pt-3">
                 <div className="text-xl font-bold leading-none text-content-primary tabular-nums">
-                  {currencyFmt.format(boq.grandTotal)}
+                  {currencyFmt.format(boq.grandTotal)}{' '}
                   <span className="ml-1 text-xs font-medium text-content-tertiary">{boq.currency}</span>
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs text-content-tertiary">

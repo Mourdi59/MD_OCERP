@@ -1477,16 +1477,22 @@ const RFIRow = React.memo(function RFIRow({
           </span>
         )}
 
-        {/* Ball in Court — visual side badge */}
-        <span
-          className={clsx(
-            'hidden md:inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-semibold w-28 justify-center shrink-0',
-            bicCfg.cls,
-          )}
-          title={t(bicCfg.key, { defaultValue: bicCfg.fallback })}
-        >
-          {t(bicCfg.key, { defaultValue: bicCfg.fallback })}
-        </span>
+        {/* Ball in Court — visual side badge. An answered or closed RFI has no
+            court to name and the status badge already says so, so the column
+            stays empty rather than repeating the status. */}
+        {bicSide === 'you' || bicSide === 'them' ? (
+          <span
+            className={clsx(
+              'hidden md:inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-semibold w-28 justify-center shrink-0',
+              bicCfg.cls,
+            )}
+            title={t(bicCfg.key, { defaultValue: bicCfg.fallback })}
+          >
+            {t(bicCfg.key, { defaultValue: bicCfg.fallback })}
+          </span>
+        ) : (
+          <span className="hidden md:inline-block w-28 shrink-0" aria-hidden="true" />
+        )}
 
         {/* Days Open + overdue pill */}
         <span
@@ -2601,16 +2607,18 @@ export function RFIPage() {
                         {t(`rfi.status_${rfi.status}`, { defaultValue: RFI_STATUS_LABELS[rfi.status] ?? rfi.status })}
                       </Badge>
                     </div>
-                    <div className="mb-2">
-                      <span
-                        className={clsx(
-                          'inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-semibold',
-                          bicCfg.cls,
-                        )}
-                      >
-                        {t(bicCfg.key, { defaultValue: bicCfg.fallback })}
-                      </span>
-                    </div>
+                    {(bicSide === 'you' || bicSide === 'them') && (
+                      <div className="mb-2">
+                        <span
+                          className={clsx(
+                            'inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-semibold',
+                            bicCfg.cls,
+                          )}
+                        >
+                          {t(bicCfg.key, { defaultValue: bicCfg.fallback })}
+                        </span>
+                      </div>
+                    )}
                     <div className="text-xs text-content-tertiary space-y-1">
                       {/* The ball-in-court party is already conveyed by the
                           "With you / With them" side badge above; rendering the

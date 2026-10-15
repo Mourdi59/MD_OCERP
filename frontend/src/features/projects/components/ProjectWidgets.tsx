@@ -31,6 +31,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -440,7 +441,10 @@ interface DiaryItem {
   narrative?: string | null;
 }
 
-function formatWeatherSummary(w: DiaryWeatherSummary | undefined): string | null {
+function formatWeatherSummary(
+  w: DiaryWeatherSummary | undefined,
+  t?: TFunction,
+): string | null {
   if (w == null) return null;
   if (typeof w === 'string') return w.length > 0 ? w : null;
   if (typeof w !== 'object') return String(w);
@@ -449,7 +453,10 @@ function formatWeatherSummary(w: DiaryWeatherSummary | undefined): string | null
     return obj.summary;
   }
   const parts: string[] = [];
-  if (typeof obj.conditions === 'string') parts.push(obj.conditions);
+  if (typeof obj.conditions === 'string') {
+    const key = obj.conditions.trim().toLowerCase().replace(/[\s-]+/g, '_');
+    parts.push(t && key ? t(`weather.${key}`, { defaultValue: obj.conditions }) : obj.conditions);
+  }
   if (typeof obj.temp_c === 'number') parts.push(`${obj.temp_c}°C`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -501,12 +508,12 @@ export function DailyDiaryWidget({ projectId }: { projectId: string }) {
                 variant={latest.status === 'closed' ? 'success' : 'neutral'}
                 size="sm"
               >
-                {latest.status}
+                {t(`daily_diary.status.${latest.status}`, { defaultValue: latest.status })}
               </Badge>
             )}
           </div>
           {(() => {
-            const w = formatWeatherSummary(latest.weather_summary);
+            const w = formatWeatherSummary(latest.weather_summary, t);
             return w ? (
               <p className="text-xs text-content-tertiary truncate">{w}</p>
             ) : null;
