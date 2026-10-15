@@ -61,7 +61,7 @@ def upgrade() -> None:
                 sa.ForeignKey(
                     f"{_ITEM_TABLE}.id",
                     ondelete="CASCADE",
-                    name="fk_oe_procurement_req_item_source_item_id_oe_procurement_req_item",
+                    name="fk_oe_procurement_req_item_source_item_id",
                 ),
                 nullable=False,
             ),
