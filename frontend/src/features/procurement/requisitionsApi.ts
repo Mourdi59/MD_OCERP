@@ -125,36 +125,34 @@ export interface RequisitionRuleError {
 
 /* ── Calls ──────────────────────────────────────────────────────────────── */
 
-const BASE = '/v1/procurement/requisitions';
-
 export function listRequisitions(projectId: string, status?: RequisitionStatus | ''): Promise<RequisitionPage> {
   const qs = new URLSearchParams({ project_id: projectId, limit: '100' });
   if (status) qs.set('status', status);
-  return apiGet<RequisitionPage>(`${BASE}/?${qs.toString()}`);
+  return apiGet<RequisitionPage>(`/v1/procurement/requisitions/?${qs.toString()}`);
 }
 
 export function getRequisition(id: string): Promise<Requisition> {
-  return apiGet<Requisition>(`${BASE}/${encodeURIComponent(id)}`);
+  return apiGet<Requisition>(`/v1/procurement/requisitions/${encodeURIComponent(id)}`);
 }
 
 export function createRequisition(body: RequisitionCreateBody): Promise<Requisition> {
-  return apiPost<Requisition, RequisitionCreateBody>(`${BASE}/`, body);
+  return apiPost<Requisition, RequisitionCreateBody>(`/v1/procurement/requisitions/`, body);
 }
 
 export function updateRequisition(id: string, body: RequisitionUpdateBody): Promise<Requisition> {
-  return apiPatch<Requisition, RequisitionUpdateBody>(`${BASE}/${encodeURIComponent(id)}`, body);
+  return apiPatch<Requisition, RequisitionUpdateBody>(`/v1/procurement/requisitions/${encodeURIComponent(id)}`, body);
 }
 
 export function submitRequisition(id: string): Promise<Requisition> {
-  return apiPost<Requisition>(`${BASE}/${encodeURIComponent(id)}/submit`, {});
+  return apiPost<Requisition>(`/v1/procurement/requisitions/${encodeURIComponent(id)}/submit`, {});
 }
 
 export function withdrawRequisition(id: string): Promise<Requisition> {
-  return apiPost<Requisition>(`${BASE}/${encodeURIComponent(id)}/withdraw`, {});
+  return apiPost<Requisition>(`/v1/procurement/requisitions/${encodeURIComponent(id)}/withdraw`, {});
 }
 
 export function cancelRequisition(id: string, reason?: string): Promise<Requisition> {
-  return apiPost<Requisition>(`${BASE}/${encodeURIComponent(id)}/cancel`, { reason: reason || null });
+  return apiPost<Requisition>(`/v1/procurement/requisitions/${encodeURIComponent(id)}/cancel`, { reason: reason || null });
 }
 
 /** Pull the rule failures out of a refused submit, or an empty list. */
