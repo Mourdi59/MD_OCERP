@@ -125,7 +125,12 @@ jobs:
           # `python -c "import zipfile,collections;..."` over the wheel usually
           # shows one directory that doubled. Raising the limit past 100 MiB
           # cannot work at all, so the headroom is the whole point of it.
-          LIMIT_MIB = 95
+          # 18.6.0 (2026-10-15): the wheel reached 99.4 MiB, mostly the 43 bundled
+          # locale chunks of about 1.2 MiB each after the framework areas added
+          # their keys. Level 9 recompression saves only 0.6 MiB. The founder
+          # chose to publish 18.6.0 against the hard cap and shrink the wheel
+          # before 18.6.1, so this budget is temporary and goes back to 95.
+          LIMIT_MIB = 99.7
           HARD_CAP_MIB = 100
 
           whl = sorted(glob.glob("dist/*.whl"))
