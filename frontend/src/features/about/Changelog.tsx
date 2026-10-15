@@ -67,6 +67,13 @@ const UNRELEASED: ChangelogEntry | null = null;
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '18.6.1',
+    date: '2026-10-15',
+    tag: 'FIX',
+    summary:
+      'Purchase orders, goods receipts, invoices and payments print as PDF, orders take the project VAT rate, and material requisitions can be drafted from the bill and submitted for approval. Analytics compares a KPI across projects, and schedule calendars, project languages and the owner\'s project control demos are fixed.',
+  },
+  {
     version: '18.6.0',
     date: '2026-10-15',
     tag: 'NEW',

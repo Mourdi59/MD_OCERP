@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
+## [18.6.1] - 2026-10-15
+
+### Added
+
+- Purchase orders, goods receipts, invoices and payments print as PDF forms from their rows in Procurement and Finance, in English, German or Russian, with the company letterhead from the document settings. Each form has its own switches in Settings to leave out sections such as line items, terms or the signature block.
+- A purchase order carries a VAT rate. A new order starts on the project's default VAT rate from Project Settings, a rate typed on the order wins, and orders written before this release keep exactly the figures they had. Invoice lines without a rate take the project default too.
+- Material requisitions can be listed, edited in draft, submitted, withdrawn and cancelled from Procurement. Each line keeps the BOQ positions and resources its quantity came from, and a submitted requisition is checked first: a line needs a positive quantity, the unit of its BOQ source and a needed-by date that has not passed. A requisition can be drafted from the buy list in the resource summary.
+- Analytics has a Performance tab that compares one KPI across the projects you pick, side by side. Ratios are summed before they are divided, so two projects at 100 h over 50 m2 and 300 h over 200 m2 read 1.60 h/m2, and a missing denominator says why instead of showing 0.
+
+### Fixed
+
+- Picking a calendar on a schedule activity now recounts its working days on that calendar. Clear all activities works only on a draft schedule, and the schedule's end date follows its latest activity.
+- A project can use every interface language, Ukrainian, Bulgarian, Romanian, Greek and Hebrew among them, and an address in Ukraine or Hungary fills the region and the currency.
+- The owner's project control demos tell one story: roles go to the people the roster names for them, and commitments show under their cost groups in the cost frame.
+- HSE readiness lists its roles in the reader's language.
+
+### Changed
+
+- The Python package is about a fifth smaller, because the language catalogues now share one list of keys.
+
 ## [18.6.0] - 2026-10-15
 
 ### Added
