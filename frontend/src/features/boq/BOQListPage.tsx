@@ -1020,7 +1020,8 @@ export function BOQListPage() {
             ) : stats.multiCurrency ? (
               <div className="mt-1 text-lg font-semibold text-content-primary tabular-nums">
                 {compactMoney(stats.totalsByCurrency[0]!.total)}
-                <span className="ml-1 text-xs font-medium text-content-tertiary">
+                {' '}
+                <span className="text-xs font-medium text-content-tertiary">
                   {stats.totalsByCurrency[0]!.currency}
                 </span>
                 <span className="ml-1 text-2xs font-medium text-content-tertiary">
@@ -1033,7 +1034,8 @@ export function BOQListPage() {
             ) : (
               <div className="mt-1 text-lg font-semibold text-content-primary tabular-nums">
                 {compactMoney(stats.totalsByCurrency[0]!.total)}
-                <span className="ml-1 text-xs font-medium text-content-tertiary">
+                {' '}
+                <span className="text-xs font-medium text-content-tertiary">
                   {stats.totalsByCurrency[0]!.currency}
                 </span>
               </div>
