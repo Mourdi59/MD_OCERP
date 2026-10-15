@@ -30,4 +30,10 @@ GERMAN_SHOWCASE_DEMO_IDS: frozenset[str] = frozenset(
     }
 )
 
-__all__ = ["GERMAN_SHOWCASE_DEMO_IDS"]
+#: Demo projects whose field diary is the German hand-authored one, though their other registers are
+#: told by a pack. The two pack projects are filmed in German, and the generic English diary
+#: ("Day shift record", "Overcast") has no place in them. Kept apart from the set above because
+#: that one also switches the variations and contracts seeders, which these projects do not use.
+GERMAN_DIARY_DEMO_IDS: frozenset[str] = GERMAN_SHOWCASE_DEMO_IDS | {"residential-regensburg", "school-ludwigsburg"}
+
+__all__ = ["GERMAN_DIARY_DEMO_IDS", "GERMAN_SHOWCASE_DEMO_IDS"]

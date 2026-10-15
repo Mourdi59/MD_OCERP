@@ -265,7 +265,8 @@
       "verification": {
         "en": "Signage plan approved by the road traffic authority of the city",
         "de": "Beschilderungsplan von der Straßenverkehrsbehörde der Stadt genehmigt"
-      }
+      },
+      "due_days": 21
     },
     {
       "text": {

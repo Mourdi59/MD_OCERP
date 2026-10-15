@@ -28,7 +28,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.calendar import is_working_day
-from app.core.demo_showcase import GERMAN_SHOWCASE_DEMO_IDS
+from app.core.demo_showcase import GERMAN_DIARY_DEMO_IDS
 from app.modules.daily_diary.models import (
     DailyDiary,
     DiaryArchiveSignature,
@@ -530,6 +530,8 @@ _SHOWCASE_LAND: dict[str, str] = {
     "retail-market-heidelberg": "BW",
     "retail-market-karlsruhe": "BW",
     "retail-market-heilbronn": "BW",
+    "residential-regensburg": "BY",
+    "school-ludwigsburg": "BW",
 }
 
 #: ``(code, German label, the header sentence the site writes)``. The code is
@@ -627,7 +629,7 @@ def _extra_closed_days(land: str, years: Iterable[int]) -> frozenset[date]:
 
     ``app.core.calendar`` carries the holidays common to all sixteen Länder.
     Two things sit on top of it. The Land adds its own statutory holidays,
-    and the showcase spans Hesse and Baden-Württemberg. Heiligabend and
+    and the showcase spans Hesse, Baden-Württemberg and Bavaria. Heiligabend and
     Silvester are not statutory anywhere, but a site that books a full crew
     on 24 December is a document nobody believes, so they are treated as
     closed here as well.
@@ -637,7 +639,7 @@ def _extra_closed_days(land: str, years: Iterable[int]) -> frozenset[date]:
         fronleichnam = easter(year) + timedelta(days=60)
         if land == "HE":
             out.add(fronleichnam)
-        elif land == "BW":
+        elif land in ("BW", "BY"):
             out.add(date(year, 1, 6))  # Heilige Drei Könige
             out.add(fronleichnam)
             out.add(date(year, 11, 1))  # Allerheiligen
@@ -677,7 +679,7 @@ async def _without_german_showcase(
     showcase: set[uuid.UUID] = set()
     for pid, meta in rows.all():
         demo_id = str(meta.get("demo_id") or "").strip() if isinstance(meta, dict) else ""
-        if demo_id in GERMAN_SHOWCASE_DEMO_IDS:
+        if demo_id in GERMAN_DIARY_DEMO_IDS:
             showcase.add(pid)
     return [pid for pid in project_ids if pid not in showcase]
 
@@ -715,7 +717,7 @@ async def seed_daily_diary_showcase_de(
     """Hand-authored German Bautagebuch for the German showcase projects.
 
     For every demo project whose ``demo_id`` is in
-    :data:`~app.core.demo_showcase.GERMAN_SHOWCASE_DEMO_IDS`, writes thirty
+    :data:`~app.core.demo_showcase.GERMAN_DIARY_DEMO_IDS`, writes thirty
     consecutive German working days ending today: German entry text, weather
     the site would have had for the month, four entries a day, photos taken
     from the project's own committed site photography, and a status ladder
@@ -767,7 +769,7 @@ async def seed_daily_diary_showcase_de(
     targets: list[tuple[uuid.UUID, str, uuid.UUID | None]] = []
     for pid, meta, owner_id in rows.all():
         demo_id = str(meta.get("demo_id") or "").strip() if isinstance(meta, dict) else ""
-        if demo_id in GERMAN_SHOWCASE_DEMO_IDS:
+        if demo_id in GERMAN_DIARY_DEMO_IDS:
             targets.append((pid, demo_id, owner_id))
     if not targets:
         return counts

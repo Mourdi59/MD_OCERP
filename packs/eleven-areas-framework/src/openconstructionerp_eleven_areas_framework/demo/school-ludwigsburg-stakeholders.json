@@ -264,7 +264,8 @@
       "verification": {
         "en": "Signage plan approved by the road authority and agreed with the Elternbeirat",
         "de": "Beschilderungsplan von der Straßenverkehrsbehörde genehmigt und mit dem Elternbeirat abgestimmt"
-      }
+      },
+      "due_days": 21
     },
     {
       "text": {

@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.demo_accounts import SHOWCASE_OWNER_EMAIL
 from app.core.demo_resource_names import resource_name
-from app.core.demo_showcase import GERMAN_SHOWCASE_DEMO_IDS
+from app.core.demo_showcase import GERMAN_DIARY_DEMO_IDS
 from app.core.demo_tender_scopes import (
     OPEN_STATUSES,
     PENDING_INVITEE,
@@ -5616,18 +5616,28 @@ def _generate_module_data(
         code, trade, item = trades[i % len(trades)] if trades else ("", "General works", "")
         firm = firms[i % len(firms)][0]
         answered = i % 2 == 0
+        # A German template gets its RFIs worded in German, as its cost-plan suffix is.
+        if (template.locale or "").lower().startswith("de"):
+            subject = f"{trade} - Klärung zu {item or 'Leistungsumfang'}"
+            question = (
+                f"Bitte das Detail zu '{item or trade}' in Abschnitt {code or trade} klären. "
+                f"Abstimmung mit {firm} vor der Vergabe erforderlich."
+            )
+            response = f"Vorgehen für {trade} bestätigt. Überarbeitetes Detail an {firm} übermittelt."
+        else:
+            subject = f"{trade} - clarification on {item or 'scope'}"
+            question = (
+                f"Please clarify the detail for '{item or trade}' in section {code or trade}. "
+                f"Coordination required with {firm} before procurement."
+            )
+            response = f"Confirmed approach for {trade}. Revised detail issued to {firm}."
         rfis.append(
             {
                 "rfi_number": f"RFI-{i + 1:03d}",
-                "subject": f"{trade} - clarification on {item or 'scope'}",
-                "question": (
-                    f"Please clarify the detail for '{item or trade}' in section {code or trade}. "
-                    f"Coordination required with {firm} before procurement."
-                ),
+                "subject": subject,
+                "question": question,
                 "status": "answered" if answered else "open",
-                "official_response": (
-                    f"Confirmed approach for {trade}. Revised detail issued to {firm}." if answered else None
-                ),
+                "official_response": response if answered else None,
                 "cost_impact": i % 3 == 0,
                 "cost_impact_value": "12000" if i % 3 == 0 else None,
                 "schedule_impact": i % 4 == 0,
@@ -11468,7 +11478,7 @@ async def _seed_module_data(
         # English, calendar-blind and empty, and writing them here would both
         # lose that register and collide with it on
         # (project_id, diary_date), which is unique.
-        dd_list = [] if demo_id in GERMAN_SHOWCASE_DEMO_IDS else generated.get("daily_diary", [])
+        dd_list = [] if demo_id in GERMAN_DIARY_DEMO_IDS else generated.get("daily_diary", [])
         for d in dd_list:
             session.add(
                 DailyDiary(
@@ -12438,13 +12448,18 @@ async def install_demo_project(
     # in the template's own language: a German cost plan gets "(Budgetstand)"
     # rather than an English tail one dash away from its sibling's name.
     budget_boq_id = _id()
-    budget_suffix = "(Budgetstand)" if (template.locale or "").lower().startswith("de") else "- Budget"
+    german_template = (template.locale or "").lower().startswith("de")
+    budget_suffix = "(Budgetstand)" if german_template else "- Budget"
     budget_boq_name = template.budget_boq_name or f"{template.boq_name} {budget_suffix}"
     budget_boq = BOQ(
         id=budget_boq_id,
         project_id=project.id,
         name=budget_boq_name,
-        description=f"Budget-level estimate for {template.project_name}",
+        description=(
+            f"Kostenschätzung auf Budgetebene für {template.project_name}"
+            if german_template
+            else f"Budget-level estimate for {template.project_name}"
+        ),
         # "final", not "approved". The seeder writes this column directly and
         # so is the one writer that never meets ``BOQUpdate``'s pattern, which
         # permits draft / final / archived. "approved" was a fourth spelling

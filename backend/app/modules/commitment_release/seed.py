@@ -190,7 +190,15 @@ async def seed_commitment_release_demo(session: AsyncSession, project_ids: Itera
     from app.modules.commitment_release.models import CommitmentMatrix
     from app.modules.projects.models import Project
 
-    totals = {"projects": 0, "items": 0, "links": 0, "releases": 0, "scenarios": 0, "releases_skipped_no_rate": 0}
+    totals = {
+        "projects": 0,
+        "items": 0,
+        "links": 0,
+        "releases": 0,
+        "scenarios": 0,
+        "releases_skipped_no_rate": 0,
+        "cost_lines_linked": 0,
+    }
     ids = list(project_ids)
     if not ids:
         return totals
@@ -205,6 +213,7 @@ async def seed_commitment_release_demo(session: AsyncSession, project_ids: Itera
         try:
             async with session.begin_nested():
                 counts = await _seed_project(session, pid)
+                counts["cost_lines_linked"] = await _link_cost_lines(session, pid)
         except Exception:
             logger.warning("commitment_release demo seed skipped for %s", pid, exc_info=True)
             continue
@@ -213,6 +222,45 @@ async def seed_commitment_release_demo(session: AsyncSession, project_ids: Itera
             # A count the story adds later must not undo a project that was seeded.
             totals[k] = totals.get(k, 0) + v
     return totals
+
+
+async def _link_cost_lines(session: AsyncSession, project_id: uuid.UUID) -> int:
+    """Give every seeded item without one a cost line of the project's own cost spine.
+
+    An item with no cost line trips ``item_has_cost_code`` once per item, so a demo project opens with a
+    wall of identical findings. The cost lines come from the project's bill; they are handed out largest
+    estimate first, one per item in code order, and a project without cost lines is left alone (the
+    findings are then true). Returns how many items were linked.
+    """
+    from app.modules.commitment_release.models import CommitmentItem
+    from app.modules.costmodel.models import CostLine
+
+    items = (
+        (
+            await session.execute(
+                select(CommitmentItem)
+                .where(CommitmentItem.project_id == project_id, CommitmentItem.cost_line_id.is_(None))
+                .order_by(CommitmentItem.code)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not items:
+        return 0
+    lines = (await session.execute(select(CostLine).where(CostLine.project_id == project_id))).scalars().all()
+
+    def _estimate(line: CostLine) -> Decimal:
+        try:
+            return Decimal(str(line.estimate_amount or "0"))
+        except InvalidOperation:
+            return Decimal(0)
+
+    ranked = sorted(lines, key=lambda line: (-_estimate(line), line.code))
+    for item, line in zip(items, ranked, strict=False):
+        item.cost_line_id = line.id
+    await session.flush()
+    return min(len(items), len(ranked))
 
 
 async def _team_member(session: AsyncSession, project_id: uuid.UUID, exclude: uuid.UUID | None) -> uuid.UUID | None:

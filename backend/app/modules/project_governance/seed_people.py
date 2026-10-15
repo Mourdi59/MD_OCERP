@@ -133,6 +133,30 @@ async def _roster_line(
     )
 
 
+async def _stakeholder_relationship_owners(
+    session: AsyncSession, project_id: uuid.UUID, areas: dict[str, Any], people_ids: set[uuid.UUID]
+) -> None:
+    """Let the person who owns the stakeholder area also own the relationships of the register.
+
+    The stakeholder register is seeded with the demo logins as relationship owners, which shows the
+    placeholder names of those accounts on a filmed page. Rows already held by a demo person stay.
+    A project whose model hosts no stakeholder area, or an install without the module, is left alone.
+    """
+    from app.modules.project_governance.public import host_for
+
+    host = await host_for(session, project_id, "stakeholders")
+    area = areas.get(host.area_code) if host is not None else None
+    if area is None or area.owner_user_id is None:
+        return
+    try:
+        from app.modules.stakeholders.models import Stakeholder
+    except ImportError:
+        return
+    for row in (await session.execute(select(Stakeholder).where(Stakeholder.project_id == project_id))).scalars():
+        if row.relationship_owner_user_id is not None and row.relationship_owner_user_id not in people_ids:
+            row.relationship_owner_user_id = area.owner_user_id
+
+
 async def assign_demo_people(session: AsyncSession, project_ids: list[uuid.UUID]) -> dict[str, int]:
     """Give each area of a pack demo project its own named owner. The caller commits. Run AFTER the module seeders.
 
@@ -165,6 +189,7 @@ async def assign_demo_people(session: AsyncSession, project_ids: list[uuid.UUID]
             ).scalars()
         }
         done = 0
+        people_ids: set[uuid.UUID] = set()
         for person in people:
             area = areas.get(person["area"])
             if area is None:
@@ -173,6 +198,7 @@ async def assign_demo_people(session: AsyncSession, project_ids: list[uuid.UUID]
                 )
                 continue
             user_id = await _person_user(session, person, locale)
+            people_ids.add(user_id)
             await _roster_line(session, project_id, person, user_id)
             before = area.owner_user_id
             area.owner_user_id = user_id
@@ -198,6 +224,8 @@ async def assign_demo_people(session: AsyncSession, project_ids: list[uuid.UUID]
             ).scalars():
                 chapter.owner_id = user_id
             done += 1
+        if done:
+            await _stakeholder_relationship_owners(session, project_id, areas, people_ids)
         await session.flush()
         if done:
             totals["projects"] += 1
