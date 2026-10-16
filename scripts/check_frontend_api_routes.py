@@ -93,7 +93,9 @@ HELPER_METHODS = {
     "apiDelete": "DELETE",
 }
 # Callees that send the URL exactly as given, without request()'s "/api".
-RAW_URL_CALLEES = frozenset({"fetch", "fetchWithAuth", "downloadWithAuth", "window.open", "EventSource", "WebSocket", "href", "src"})
+RAW_URL_CALLEES = frozenset(
+    {"fetch", "fetchWithAuth", "downloadWithAuth", "window.open", "EventSource", "WebSocket", "href", "src"}
+)
 # Of those, the ones the browser requests on its own: no code runs to add an
 # Authorization header, so a route that reads only the bearer header answers
 # 401 to every user. Verdict AUTH.
