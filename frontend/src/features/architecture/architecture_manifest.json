@@ -178629,6 +178629,7 @@
       "module_category": "business",
       "files": [
         "__init__.py",
+        "access.py",
         "analytics_service.py",
         "bulk_operations.py",
         "document_templates.py",
@@ -191478,7 +191479,8 @@
         "documents",
         "notifications",
         "portal",
-        "projects"
+        "projects",
+        "teams"
       ]
     },
     {
@@ -269787,6 +269789,7 @@
       "notifications",
       "portal",
       "projects",
+      "teams",
       "users"
     ],
     "punchlist": [
@@ -270166,7 +270169,7 @@
     "total_relationships": 238,
     "total_routes": 4533,
     "total_schemas": 3982,
-    "total_python_files": 2689,
+    "total_python_files": 2690,
     "frontend_features": 208,
     "frontend_ts_files": 3452,
     "frontend_backend_mapped": 187
