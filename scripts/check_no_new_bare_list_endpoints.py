@@ -108,6 +108,14 @@ CANNOT_TRUNCATE: frozenset[str] = frozenset(
         # returns the whole PROFILES dict, so there is no query, no LIMIT and no
         # state in which it answers with part of the set.
         "einvoice/router.py::list_profiles",
+        # A fixed catalogue of material certificate types (EN 10204 and its
+        # relatives), read once from the JSON files shipped in
+        # procurement/catalogues/ and cached for the process. It gains an
+        # entry when a developer adds a file, never at runtime or per tenant, and
+        # the route returns every type, so no state holds part of the set. A
+        # buyer picking which certificate an order line requires has to see all
+        # of them; a short answer would be a correctness bug, not a page.
+        "procurement/router.py::list_certificate_types",
         # A fixed set of ready-made performance KPIs compiled into
         # bi_dashboards/performance.py as PRESETS. It gains an entry when a
         # developer adds a preset, never at runtime, and the route returns the
