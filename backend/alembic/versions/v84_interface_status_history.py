@@ -17,8 +17,8 @@ reaches this revision and does nothing. Additive only, no data is moved: the
 interfaces that exist before this revision simply start their history at the
 first change made after it.
 
-Revision ID: v83_interface_status_history
-Revises: v82_requisition_item_sources
+Revision ID: v84_interface_status_history
+Revises: v83_requisition_approval_vendor
 Create Date: 2026-10-16
 """
 
@@ -31,8 +31,8 @@ from alembic import op
 
 from app.database import GUID
 
-revision: str = "v83_interface_status_history"
-down_revision: str | Sequence[str] | None = "v82_requisition_item_sources"
+revision: str = "v84_interface_status_history"
+down_revision: str | Sequence[str] | None = "v83_requisition_approval_vendor"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

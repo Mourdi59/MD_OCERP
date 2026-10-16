@@ -12,8 +12,8 @@ Inspector-guarded, so a database whose table ``create_all`` already built with t
 this revision and does nothing. The column is additive and nullable, so the boot-time
 ``postgres_auto_migrate`` adds it on an installation that stamps rather than upgrades.
 
-Revision ID: v83_boq_created_by
-Revises: v82_requisition_item_sources
+Revision ID: v85_boq_created_by
+Revises: v84_interface_status_history
 Create Date: 2026-10-16
 """
 
@@ -24,8 +24,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "v83_boq_created_by"
-down_revision: str | Sequence[str] | None = "v82_requisition_item_sources"
+revision: str = "v85_boq_created_by"
+down_revision: str | Sequence[str] | None = "v84_interface_status_history"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
