@@ -59117,10 +59117,15 @@
           "bases": [
             "RetentionReleasePreviewRequest"
           ],
-          "docstring": "Propose a release. It pays nothing until it is approved and billed on a claim.",
+          "docstring": "Propose a release. It pays nothing until it is approved and billed on a claim.\n\n``period_started_on`` is the day the jurisdiction's lien period runs from\nfor this event, such as the publication of the certificate of substantial\nperformance in Ontario. Where the contract's jurisdiction sets such a\nperiod, a completion release is not approved before it has run.",
           "fields": [
             {
               "name": "released_on",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "period_started_on",
               "type": "date | None",
               "default": "None"
             },
@@ -59139,11 +59144,16 @@
           "bases": [
             "BaseModel"
           ],
-          "docstring": "Approve a proposed release; ``document_ids`` are added to the evidence it carries.",
+          "docstring": "Approve a proposed release; ``document_ids`` are added to the evidence it carries.\n\n``period_started_on`` records or corrects the day the lien period runs from\n(see :class:`RetentionReleaseCreate`).",
           "fields": [
             {
               "name": "document_ids",
               "type": "list[UUID]"
+            },
+            {
+              "name": "period_started_on",
+              "type": "date | None",
+              "default": "None"
             }
           ]
         },
@@ -59228,6 +59238,16 @@
             {
               "name": "required_documents",
               "type": "list[str]"
+            },
+            {
+              "name": "release_period_days",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "release_period_reference",
+              "type": "str | None",
+              "default": "None"
             },
             {
               "name": "bonded",
@@ -115286,6 +115306,8 @@
       "module_category": "core",
       "files": [
         "__init__.py",
+        "account_statement.py",
+        "ageing.py",
         "br_invoice_pdf.py",
         "budget_actuals.py",
         "connector_events.py",
@@ -115313,6 +115335,13 @@
         "invoice_capture_service.py",
         "manifest.py",
         "models.py",
+        "open_items.py",
+        "payee_totals.py",
+        "payment_run_models.py",
+        "payment_run_router.py",
+        "payment_run_schemas.py",
+        "payment_run_service.py",
+        "payment_runs.py",
         "pdf_export.py",
         "pdf_translations.py",
         "permissions.py",
@@ -116118,6 +116147,40 @@
           "handler": "get_retention_ledger",
           "response_model": "RetentionLedgerResponse",
           "request_schema": "None"
+        },
+        {
+          "method": "GET",
+          "path": "/ageing/",
+          "handler": "get_ageing",
+          "response_model": "AgeingResponse",
+          "request_schema": "None"
+        },
+        {
+          "method": "GET",
+          "path": "/statement-of-account/",
+          "handler": "get_account_statement",
+          "response_model": "AccountStatementResponse",
+          "request_schema": "None"
+        },
+        {
+          "method": "GET",
+          "path": "/payee-totals/",
+          "handler": "get_payee_totals",
+          "response_model": "PayeeTotalsResponse",
+          "request_schema": "None"
+        },
+        {
+          "method": "GET",
+          "path": "/open-items/template/",
+          "handler": "get_open_items_template",
+          "request_schema": "None"
+        },
+        {
+          "method": "POST",
+          "path": "/open-items/import/",
+          "handler": "import_open_items",
+          "response_model": "OpenItemsImportResponse",
+          "request_schema": "UploadFile"
         },
         {
           "method": "GET",
@@ -118286,6 +118349,635 @@
             {
               "name": "totals",
               "type": "list[RetentionRollupResponse]"
+            }
+          ]
+        },
+        {
+          "class_name": "AgeingInvoiceLine",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One open invoice inside an ageing line. Money is Decimal-as-string.",
+          "fields": [
+            {
+              "name": "invoice_id",
+              "type": "str"
+            },
+            {
+              "name": "invoice_number",
+              "type": "str"
+            },
+            {
+              "name": "project_id",
+              "type": "str"
+            },
+            {
+              "name": "invoice_date",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "due_date",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "days_past_due",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "bucket",
+              "type": "str",
+              "default": "'current'"
+            },
+            {
+              "name": "total",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "paid",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "due",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "credit",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "retention_held",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "retention_released",
+              "type": "str",
+              "default": "'0'"
+            }
+          ]
+        },
+        {
+          "class_name": "AgeingRollupResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Open balances of one counterparty (a line) or of a whole scope (a total).\n\n``buckets`` maps ``current``, ``1_30``, ``31_60``, ``61_90`` and ``over_90``\nto the amount due in it, and adds up to ``total_due``. Holdback is owed but\nnot due, so it is reported apart: ``retention_held`` until its release\ndate, ``retention_released`` after. ``credit`` is money paid beyond the\ninvoice, to recover or to apply. See :mod:`app.modules.finance.ageing`.",
+          "fields": [
+            {
+              "name": "legal_entity_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "legal_entity_name",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "currency_code",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "direction",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "contact_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "counterparty_name",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "buckets",
+              "type": "dict[str, str]"
+            },
+            {
+              "name": "total_due",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "credit",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "retention_held",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "retention_released",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "invoice_count",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "oldest_days_past_due",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "invoices",
+              "type": "list[AgeingInvoiceLine]"
+            }
+          ]
+        },
+        {
+          "class_name": "AgeingResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "AR / AP ageing as of a date.\n\n``groups`` are counterparty lines and ``totals`` their rollups per (legal\nentity, currency, direction); nothing is blended across those three.\n``drafts_excluded`` counts drafts in scope, which are not yet a claim on\nanyone and are therefore not aged.",
+          "fields": [
+            {
+              "name": "as_of",
+              "type": "str"
+            },
+            {
+              "name": "buckets",
+              "type": "list[str]"
+            },
+            {
+              "name": "groups",
+              "type": "list[AgeingRollupResponse]"
+            },
+            {
+              "name": "totals",
+              "type": "list[AgeingRollupResponse]"
+            },
+            {
+              "name": "drafts_excluded",
+              "type": "int",
+              "default": "0"
+            }
+          ]
+        },
+        {
+          "class_name": "AccountStatementLineResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One movement on a statement of account. Money is Decimal-as-string.",
+          "fields": [
+            {
+              "name": "entry_date",
+              "type": "str"
+            },
+            {
+              "name": "kind",
+              "type": "str"
+            },
+            {
+              "name": "reference",
+              "type": "str"
+            },
+            {
+              "name": "invoice_id",
+              "type": "str"
+            },
+            {
+              "name": "project_id",
+              "type": "str"
+            },
+            {
+              "name": "charge",
+              "type": "str"
+            },
+            {
+              "name": "credit",
+              "type": "str"
+            },
+            {
+              "name": "balance",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "AccountStatementResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Every invoice and payment with one counterparty over a period.\n\n``balance`` is what the counterparty owes us on a receivable statement and\nwhat we owe them on a payable one. ``ageing`` is the ageing of what is open\nat ``date_to``, with retention apart.",
+          "fields": [
+            {
+              "name": "contact_id",
+              "type": "str"
+            },
+            {
+              "name": "counterparty_name",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "direction",
+              "type": "str"
+            },
+            {
+              "name": "currency_code",
+              "type": "str"
+            },
+            {
+              "name": "legal_entity_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "legal_entity_name",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "date_from",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "date_to",
+              "type": "str"
+            },
+            {
+              "name": "opening_balance",
+              "type": "str"
+            },
+            {
+              "name": "closing_balance",
+              "type": "str"
+            },
+            {
+              "name": "total_charged",
+              "type": "str"
+            },
+            {
+              "name": "total_credited",
+              "type": "str"
+            },
+            {
+              "name": "lines",
+              "type": "list[AccountStatementLineResponse]"
+            },
+            {
+              "name": "ageing",
+              "type": "list[AgeingRollupResponse]"
+            }
+          ]
+        },
+        {
+          "class_name": "PayeeTotalResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "What the entity paid one supplier over the period. Money is Decimal-as-string.",
+          "fields": [
+            {
+              "name": "contact_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "payee_name",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "payee_tax_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "payee_address",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "payee_country_code",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "currency_code",
+              "type": "str"
+            },
+            {
+              "name": "total",
+              "type": "str"
+            },
+            {
+              "name": "paid",
+              "type": "str"
+            },
+            {
+              "name": "refunded",
+              "type": "str"
+            },
+            {
+              "name": "payment_count",
+              "type": "int"
+            },
+            {
+              "name": "invoice_count",
+              "type": "int"
+            },
+            {
+              "name": "project_count",
+              "type": "int"
+            },
+            {
+              "name": "below_threshold",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "PayeeReturnInfo",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "The annual payee return the paying entity's country asks for.",
+          "fields": [
+            {
+              "name": "form",
+              "type": "str"
+            },
+            {
+              "name": "name",
+              "type": "str"
+            },
+            {
+              "name": "threshold",
+              "type": "str"
+            },
+            {
+              "name": "currency",
+              "type": "str"
+            },
+            {
+              "name": "reference",
+              "type": "str"
+            },
+            {
+              "name": "due_on",
+              "type": "str"
+            },
+            {
+              "name": "note",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "PayeeTotalsResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Supplier payments of one legal entity over a reporting period.\n\n``payee_return`` names the jurisdiction's return (Canada's T5018) when the\nentity's country has one; ``missing_tax_id`` counts the payees above the\nthreshold whose contact carries no tax number, which the return needs.",
+          "fields": [
+            {
+              "name": "legal_entity_id",
+              "type": "str"
+            },
+            {
+              "name": "legal_entity_name",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "legal_entity_tax_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "country_code",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "date_from",
+              "type": "str"
+            },
+            {
+              "name": "date_to",
+              "type": "str"
+            },
+            {
+              "name": "payee_return",
+              "type": "PayeeReturnInfo | None",
+              "default": "None"
+            },
+            {
+              "name": "items",
+              "type": "list[PayeeTotalResponse]"
+            },
+            {
+              "name": "reportable_count",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "missing_tax_id",
+              "type": "int",
+              "default": "0"
+            }
+          ]
+        },
+        {
+          "class_name": "OpenItemRowResult",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "What happened, or would happen, to one row of an open items file.\n\n``status`` is ``ready`` on a preview, ``imported`` once written, ``exists``\nfor an item an earlier import already carried over, and ``error`` with the\nreason in ``message``.",
+          "fields": [
+            {
+              "name": "row",
+              "type": "int"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "message",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "code",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "params",
+              "type": "dict[str, str]"
+            },
+            {
+              "name": "direction",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "invoice_number",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "counterparty",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "contact_id",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "contact_name",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "invoice_date",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "due_date",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "currency_code",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "total",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "retention_held",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "open",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "paid",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "invoice_id",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "OpenItemControlTotal",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Sum of the importable items per direction and currency.\n\nThe figures to tick against the old system's open item list before\nimporting: a receivable total that does not match means rows went missing.",
+          "fields": [
+            {
+              "name": "direction",
+              "type": "str"
+            },
+            {
+              "name": "currency_code",
+              "type": "str"
+            },
+            {
+              "name": "count",
+              "type": "int"
+            },
+            {
+              "name": "total",
+              "type": "str"
+            },
+            {
+              "name": "retention_held",
+              "type": "str"
+            },
+            {
+              "name": "open",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "OpenItemsImportResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Outcome of an open items import, or of its preview.\n\nThe import is all or nothing: while any row has an error nothing is\nwritten, and ``imported`` stays zero.",
+          "fields": [
+            {
+              "name": "project_id",
+              "type": "str"
+            },
+            {
+              "name": "cutover_date",
+              "type": "str"
+            },
+            {
+              "name": "dry_run",
+              "type": "bool"
+            },
+            {
+              "name": "missing_columns",
+              "type": "list[str]"
+            },
+            {
+              "name": "imported",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "ready",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "exists",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "errors",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "rows",
+              "type": "list[OpenItemRowResult]"
+            },
+            {
+              "name": "control_totals",
+              "type": "list[OpenItemControlTotal]"
             }
           ]
         }
@@ -178218,6 +178910,11 @@
             },
             {
               "name": "parent_project_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "legal_entity_id",
               "type": "UUID | None",
               "default": "None"
             },
@@ -269952,10 +270649,10 @@
     },
     {
       "name": "finance",
-      "ts_files": 38,
+      "ts_files": 47,
       "css_files": 0,
-      "test_files": 16,
-      "total_files": 38
+      "test_files": 20,
+      "total_files": 47
     },
     {
       "name": "forms",
@@ -270372,10 +271069,10 @@
     },
     {
       "name": "property-dev",
-      "ts_files": 55,
+      "ts_files": 56,
       "css_files": 0,
-      "test_files": 14,
-      "total_files": 55
+      "test_files": 15,
+      "total_files": 56
     },
     {
       "name": "punchlist",
@@ -272324,11 +273021,11 @@
     "total_models": 771,
     "total_columns": 8976,
     "total_relationships": 240,
-    "total_routes": 4545,
-    "total_schemas": 4029,
-    "total_python_files": 2700,
+    "total_routes": 4550,
+    "total_schemas": 4040,
+    "total_python_files": 2709,
     "frontend_features": 208,
-    "frontend_ts_files": 3470,
+    "frontend_ts_files": 3480,
     "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
