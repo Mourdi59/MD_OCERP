@@ -56,6 +56,7 @@ const MODULE_LABEL_KEYS: Record<string, string> = {
   meetings: 'meetings.title',
   plan_room: 'plan_room.title',
   portal: 'portal.title',
+  procurement: 'procurement.title',
   punchlist: 'nav.punchlist',
   qms: 'nav.qms',
   // No page and no nav entry of its own - it is the chunked-upload bookkeeping.
