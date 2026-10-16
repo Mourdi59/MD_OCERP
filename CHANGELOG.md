@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
+## [18.6.4] - 2026-10-16
+
+### Added
+
+- AR and AP ageing per legal entity, with buckets by days past due, retention shown apart and a statement of account per customer or supplier that downloads as CSV.
+- Payment runs collect approved supplier invoices that are due, record the payments in one go and hand over a bank file.
+- Supplier payment totals per legal entity and year for annual payee returns, with Canada's T5018 named with its threshold and due date and the payees without a business number flagged.
+- Open receivables and payables can be imported at the cut-over from another system. The file is checked first, every row is matched to a contact by tax number or name, control totals are shown, and the import writes all rows or none.
+- A watermark such as DRAFT or CONFIDENTIAL across every page of forms and reports, set per workspace or per document type.
+- The invoice list filters by legal entity in the API.
+- Completion releases of holdback in Ontario, British Columbia, Alberta and Manitoba wait until the lien period has run.
+
+### Fixed
+
+- A withholding sent to the cash-only payment route is refused instead of silently dropped.
+- A project's legal entity is no longer changed silently by a project edit.
+- Module pages sit at the same distance from the sidebar, and the activity timeline uses the full width with a summary column.
+
 ## [18.6.3] - 2026-10-16
 
 ### Added

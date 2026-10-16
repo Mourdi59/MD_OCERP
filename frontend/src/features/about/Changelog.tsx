@@ -67,6 +67,13 @@ const UNRELEASED: ChangelogEntry | null = null;
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '18.6.4',
+    date: '2026-10-16',
+    tag: 'NEW',
+    summary:
+      'Finance for companies with several legal entities: AR and AP ageing, statements of account, payment runs, supplier payment totals for returns such as the T5018, and an import of open invoices at the cut-over. Forms and reports can carry a watermark, and module pages are evenly spaced.',
+  },
+  {
     version: '18.6.3',
     date: '2026-10-16',
     tag: 'NEW',
