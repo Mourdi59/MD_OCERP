@@ -70,6 +70,11 @@ CANONICAL_RELEASE_EVENTS = ("substantial_completion", "final_completion", "defec
 #: and retention exchanged for a bond.
 OTHER_RELEASE_EVENTS = ("rate_step_down", "security_substituted")
 
+#: Completion events a jurisdiction's lien period runs before. A rate
+#: step-down, a bond substituted for retention and the end of a defects period
+#: are not paid out against liens, so no lien period applies to them.
+LIEN_PERIOD_EVENTS = frozenset({"substantial_completion", "final_completion"})
+
 #: Three vocabularies grew for the same events: the contract schema
 #: (practical_completion, final_account, handover), the old release planner
 #: (substantial_completion, punch_list_complete, defects_liability_end) and the

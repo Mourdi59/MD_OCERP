@@ -87,6 +87,12 @@
       "fail": "Bu iade {amount} geri ödüyor, ancak hâlâ tutulan ve başka bir iadeye ayrılmamış teminat kesintisi yalnızca {available}",
       "suggestion": "Bu iadeyi iptal edip yeniden önerin; böylece şu anda tutulan teminat kesintisine göre boyutlandırılır"
     },
+    "release_period_elapsed": {
+      "fail_no_start": "Bu iade, olaydan sonraki {days} günlük ipotek hakkı süresi dolduktan sonra ödenir ({reference}) ve bu sürenin ne zaman başladığını belirtmiyor",
+      "suggestion_no_start": "Sürenin başladığı günü, örneğin esaslı tamamlama belgesinin yayımlandığı tarihi girin ve iadeyi yeniden onaylayın",
+      "fail_early": "{started} tarihinde başlayan {days} günlük ipotek hakkı süresi {ends} tarihine kadar sürüyor ({reference}), bu nedenle bu iade henüz onaylanamaz",
+      "suggestion_early": "Teminata karşı hiçbir ipotek hakkının korunmadığını kontrol ettikten sonra, süre dolunca iadeyi onaylayın"
+    },
     "document_roles": {
       "certificate_substantial_completion": "geçici kabul tutanağı",
       "acceptance_protocol": "kabul tutanağı",

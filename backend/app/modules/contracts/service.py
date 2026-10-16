@@ -17,7 +17,7 @@ from __future__ import annotations
 import dataclasses
 import logging
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from types import SimpleNamespace
 from typing import Any
@@ -122,6 +122,7 @@ from app.modules.contracts.repository import (
 from app.modules.contracts.retention import (
     CANONICAL_RELEASE_EVENTS,
     CONTRACT_RATE_SOURCE,
+    LIEN_PERIOD_EVENTS,
     OTHER_RELEASE_EVENTS,
     ClaimRetention,
     RetentionPolicy,
@@ -1247,6 +1248,17 @@ def _reconcile_stale(translate: Any, locale: str) -> HTTPException:
             "message": translate("sov_reconcile.errors.preview_stale", locale=locale),
         },
     )
+
+
+def _release_period_meta(event: str, days: int | None, started_on: date | None) -> dict[str, Any]:
+    """What a release row records about its lien period: when it started and when it ends."""
+    if event not in LIEN_PERIOD_EVENTS or days is None:
+        return {}
+    meta: dict[str, Any] = {"release_period_days": days}
+    if started_on is not None:
+        meta["period_started_on"] = started_on.isoformat()
+        meta["earliest_release_on"] = (started_on + timedelta(days=days)).isoformat()
+    return meta
 
 
 class ContractsService:
@@ -6235,6 +6247,7 @@ class ContractsService:
         required = list(
             dict.fromkeys([*plan.required_documents, *(plan.required_documents_when_bonded if bonded else ())])
         )
+        period = await self.release_period(contract) if event in LIEN_PERIOD_EVENTS else None
         return {
             "contract_id": contract.id,
             "event": event,
@@ -6252,6 +6265,8 @@ class ContractsService:
             "statute_reference": plan.statute_reference,
             "required_documents": required,
             "required_documents_when_bonded": list(plan.required_documents_when_bonded),
+            "release_period_days": period["days"] if period else None,
+            "release_period_reference": period["reference"] if period else None,
             "bonded": bonded,
             "already_released": await self._event_already_released(contract, event),
         }
@@ -6353,6 +6368,11 @@ class ContractsService:
                     ],
                     "required_documents_when_bonded": preview["required_documents_when_bonded"],
                     "notes": getattr(data, "notes", None),
+                    **_release_period_meta(
+                        preview["event"],
+                        preview.get("release_period_days"),
+                        getattr(data, "period_started_on", None),
+                    ),
                 },
             )
         )
@@ -6390,13 +6410,33 @@ class ContractsService:
         # This release is in pending already; what it may take is what is
         # free plus its own share.
         own = DEC_ZERO if row.status == "void" else Decimal(str(row.amount or 0))
+        period = await self.release_period(contract)
         return {
             "release": {"id": str(row.id), "event": row.event, "status": row.status, "amount": str(row.amount)},
             "currency": contract.currency or "",
             "available": str(summary["available_for_release"] + own),
             "required_documents": list(dict.fromkeys(required)),
             "documents": documents,
+            "release_period": period,
+            "period_started_on": meta.get("period_started_on"),
+            "today": date.today().isoformat(),
         }
+
+    async def release_period(self, contract: Contract) -> dict[str, Any] | None:
+        """The lien period the contract's jurisdiction runs before a completion release is paid.
+
+        ``{"days": 60, "reference": "..."}`` from the province or state row of
+        the country defaults (Ontario, British Columbia, Alberta, Manitoba),
+        or ``None`` where the jurisdiction sets no such period.
+        """
+        defaults = await self.country_defaults_for_project(
+            contract.project_id, getattr(contract, "counterparty_type", None)
+        )
+        period = defaults.get("release_period") or {}
+        days = period.get("value")
+        if days in (None, ""):
+            return None
+        return {"days": int(days), "reference": str(period.get("reference") or "")}
 
     async def approve_retention_release(
         self,
@@ -6426,6 +6466,14 @@ class ContractsService:
         document_ids = await self._contract_document_ids(
             contract, [*(row.document_ids or []), *(getattr(data, "document_ids", None) or [])]
         )
+        started_on = getattr(data, "period_started_on", None)
+        if started_on is not None:
+            period = await self.release_period(contract)
+            row.metadata_ = {
+                **(row.metadata_ or {}),
+                **_release_period_meta(row.event, period["days"] if period else None, started_on),
+            }
+            await self.release_repo.update_fields(row.id, metadata_=row.metadata_)
         locale = get_locale()
         report = await validation_engine.validate(
             data=await self.retention_release_context(contract, row, document_ids),

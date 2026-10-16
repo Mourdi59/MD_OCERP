@@ -87,6 +87,12 @@
       "fail": "This release pays back {amount}, but only {available} of retention is still held and not committed to another release",
       "suggestion": "Void this release and propose it again, so it is sized on the retention held now"
     },
+    "release_period_elapsed": {
+      "fail_no_start": "This release is paid only once the {days}-day lien period after the event has run ({reference}), and it does not say when that period started",
+      "suggestion_no_start": "Enter the day the period started, such as the publication date of the certificate of substantial performance, and approve the release again",
+      "fail_early": "The {days}-day lien period that started on {started} runs until {ends} ({reference}), so this release cannot be approved yet",
+      "suggestion_early": "Approve the release once the lien period has run, after checking that no lien was preserved against the holdback"
+    },
     "document_roles": {
       "certificate_substantial_completion": "certificate of substantial completion",
       "acceptance_protocol": "acceptance record",

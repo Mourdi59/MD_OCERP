@@ -94,7 +94,7 @@ to check".
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -114,6 +114,7 @@ from app.modules.contracts.payment_plan import (
     check_deposit,
     deposit_limit_for,
 )
+from app.modules.contracts.retention import LIEN_PERIOD_EVENTS
 from app.modules.contracts.signing_bridge import SIGNING_PARTY_ROLES
 
 logger = logging.getLogger(__name__)
@@ -1339,9 +1340,68 @@ class RetentionReleaseWithinAvailableRule(_ReleaseRule):
         ]
 
 
+class RetentionReleasePeriodElapsedRule(_ReleaseRule):
+    """A completion release waits out the jurisdiction's lien period.
+
+    Where the province or state makes the owner hold the money until the lien
+    period after the event has run (60 days after the certificate of
+    substantial performance is published in Ontario), paying it earlier leaves
+    the owner liable to lien claimants for the same money twice. The release
+    has to say when the period started, and is approved from the day it ends.
+    Whether a lien was preserved meanwhile is for the person approving to
+    check; the rule only keeps the date.
+    """
+
+    rule_id = "retention_release.release_period_elapsed"
+    name = "The lien period before the release has run"
+    severity = Severity.ERROR
+    category = RuleCategory.COMPLIANCE
+    description = "A completion release is approved only after the lien period its jurisdiction sets has run"
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        release = _section(context, "release")
+        period = _section(context, "release_period")
+        ref = str(release.get("id", ""))
+        if not release or not period or str(release.get("event") or "") not in LIEN_PERIOD_EVENTS:
+            return []
+        days = int(period.get("days") or 0)
+        reference = str(period.get("reference") or "")
+        started = _iso_day(_data(context).get("period_started_on"))
+        if started is None:
+            return [
+                self._result(
+                    context,
+                    passed=False,
+                    element_ref=ref,
+                    fail_key="retention_release.release_period_elapsed.fail_no_start",
+                    suggestion_key="retention_release.release_period_elapsed.suggestion_no_start",
+                    days=days,
+                    reference=reference,
+                )
+            ]
+        ends = started + timedelta(days=days)
+        today = _iso_day(_data(context).get("today")) or date.today()
+        if today >= ends:
+            return [self._result(context, passed=True, element_ref=ref)]
+        return [
+            self._result(
+                context,
+                passed=False,
+                element_ref=ref,
+                fail_key="retention_release.release_period_elapsed.fail_early",
+                suggestion_key="retention_release.release_period_elapsed.suggestion_early",
+                days=days,
+                reference=reference,
+                started=started.isoformat(),
+                ends=ends.isoformat(),
+            )
+        ]
+
+
 RETENTION_RELEASE_RULES: tuple[type[ValidationRule], ...] = (
     RetentionReleaseDocumentsRule,
     RetentionReleaseWithinAvailableRule,
+    RetentionReleasePeriodElapsedRule,
 )
 
 

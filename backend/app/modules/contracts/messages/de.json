@@ -87,6 +87,12 @@
       "fail": "Diese Freigabe zahlt {amount} aus, es sind aber nur noch {available} einbehalten und keiner anderen Freigabe zugeordnet",
       "suggestion": "Stornieren Sie diese Freigabe und schlagen Sie sie erneut vor, damit sie nach dem jetzt einbehaltenen Betrag bemessen wird"
     },
+    "release_period_elapsed": {
+      "fail_no_start": "Diese Freigabe wird erst gezahlt, wenn die Frist von {days} Tagen für Sicherungsrechte nach dem Ereignis abgelaufen ist ({reference}), und sie nennt nicht, wann diese Frist begann",
+      "suggestion_no_start": "Tragen Sie den Tag ein, an dem die Frist begann, etwa das Datum der Veröffentlichung der Bescheinigung über die wesentliche Fertigstellung, und genehmigen Sie die Freigabe erneut",
+      "fail_early": "Die Frist von {days} Tagen für Sicherungsrechte, die am {started} begann, läuft bis zum {ends} ({reference}), daher kann diese Freigabe noch nicht genehmigt werden",
+      "suggestion_early": "Genehmigen Sie die Freigabe nach Ablauf der Frist, nachdem Sie geprüft haben, dass kein Sicherungsrecht gegen den Einbehalt geltend gemacht wurde"
+    },
     "document_roles": {
       "certificate_substantial_completion": "Bescheinigung der wesentlichen Fertigstellung",
       "acceptance_protocol": "Abnahmeprotokoll",

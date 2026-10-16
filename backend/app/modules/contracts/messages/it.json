@@ -87,6 +87,12 @@
       "fail": "Questo svincolo restituisce {amount}, ma solo {available} di ritenuta sono ancora trattenuti e non impegnati in un altro svincolo",
       "suggestion": "Annullare questo svincolo e riproporlo affinché l'importo sia calcolato sulla ritenuta attualmente trattenuta"
     },
+    "release_period_elapsed": {
+      "fail_no_start": "Questo svincolo si paga solo dopo il periodo di {days} giorni per i privilegi successivo all'evento ({reference}), e non indica quando quel periodo è iniziato",
+      "suggestion_no_start": "Inserisci il giorno in cui il periodo è iniziato, ad esempio la data di pubblicazione del certificato di sostanziale completamento, e approva di nuovo lo svincolo",
+      "fail_early": "Il periodo di {days} giorni per i privilegi iniziato il {started} dura fino al {ends} ({reference}), quindi questo svincolo non può ancora essere approvato",
+      "suggestion_early": "Approva lo svincolo una volta trascorso il periodo, dopo aver verificato che nessun privilegio sia stato fatto valere sulla ritenuta"
+    },
     "document_roles": {
       "certificate_substantial_completion": "certificato di sostanziale completamento",
       "acceptance_protocol": "verbale di accettazione",

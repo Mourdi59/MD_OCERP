@@ -509,17 +509,29 @@ class RetentionReleasePreviewRequest(BaseModel):
 
 
 class RetentionReleaseCreate(RetentionReleasePreviewRequest):
-    """Propose a release. It pays nothing until it is approved and billed on a claim."""
+    """Propose a release. It pays nothing until it is approved and billed on a claim.
+
+    ``period_started_on`` is the day the jurisdiction's lien period runs from
+    for this event, such as the publication of the certificate of substantial
+    performance in Ontario. Where the contract's jurisdiction sets such a
+    period, a completion release is not approved before it has run.
+    """
 
     released_on: date | None = None
+    period_started_on: date | None = None
     document_ids: list[UUID] = Field(default_factory=list)
     notes: str | None = Field(default=None, max_length=2000)
 
 
 class RetentionReleaseApprove(BaseModel):
-    """Approve a proposed release; ``document_ids`` are added to the evidence it carries."""
+    """Approve a proposed release; ``document_ids`` are added to the evidence it carries.
+
+    ``period_started_on`` records or corrects the day the lien period runs from
+    (see :class:`RetentionReleaseCreate`).
+    """
 
     document_ids: list[UUID] = Field(default_factory=list)
+    period_started_on: date | None = None
 
 
 class RetentionReleaseBill(BaseModel):
@@ -550,6 +562,10 @@ class RetentionReleasePreviewResponse(BaseModel):
     rule_source: str
     statute_reference: str | None = None
     required_documents: list[str] = Field(default_factory=list)
+    # Days the jurisdiction's lien period runs after the event before a
+    # completion release may be paid, and the statute; None where it sets none.
+    release_period_days: int | None = None
+    release_period_reference: str | None = None
     bonded: bool
     # A release for this completion event exists already, so a new one is refused.
     already_released: bool
