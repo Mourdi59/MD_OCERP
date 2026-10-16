@@ -8,7 +8,7 @@
  * the page can drop straight onto the API.
  */
 
-import { apiGet, apiPatch, apiPut } from '@/shared/lib/api';
+import { API_BASE, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
 import { downloadRecordPdf } from '@/shared/lib/documentExport';
 
 /* ── Retention / withholding ledger ───────────────────────────────────── */
@@ -350,4 +350,87 @@ export function downloadInvoicePdf(id: string, locale: string, invoiceNumber?: s
 /** Download the printable record of one payment (GET /payments/{id}/export/pdf/). */
 export function downloadPaymentPdf(id: string, locale: string): Promise<void> {
   return downloadRecordPdf(`/v1/finance/payments/${encodeURIComponent(id)}/export/pdf/`, locale, 'payment');
+}
+
+/* ── Payment runs ──────────────────────────────────────────────────────── */
+
+export type PaymentRunStatus = 'draft' | 'approved' | 'executed' | 'cancelled';
+
+/** A finding on a run: errors block approving and paying it, warnings do not. */
+export interface PaymentRunIssue {
+  severity: 'error' | 'warning';
+  code: string;
+  message: string;
+  item_id: string | null;
+  invoice_id: string | null;
+}
+
+export interface PaymentRunItem {
+  id: string;
+  invoice_id: string;
+  invoice_number: string;
+  project_id: string;
+  project_name: string | null;
+  contact_id: string | null;
+  counterparty_name: string | null;
+  due_date: string | null;
+  amount: string;
+  open_at_proposal: string;
+  payment_id: string | null;
+}
+
+/** Mirrors backend PaymentRunResponse. Money is Decimal-as-string. */
+export interface PaymentRun {
+  id: string;
+  run_number: string;
+  legal_entity_id: string | null;
+  legal_entity_name: string | null;
+  currency_code: string;
+  payment_date: string;
+  due_by: string;
+  status: PaymentRunStatus;
+  note: string | null;
+  created_by: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  executed_by: string | null;
+  executed_at: string | null;
+  created_at: string | null;
+  total: string;
+  item_count: number;
+  items: PaymentRunItem[];
+  issues: PaymentRunIssue[];
+}
+
+export interface PaymentRunCreate {
+  legal_entity_id: string | null;
+  currency_code: string;
+  payment_date: string;
+  due_by?: string;
+  note?: string;
+}
+
+const PAYMENT_RUNS = '/v1/finance/payment-runs';
+
+export const paymentRunsApi = {
+  list: () => apiGet<{ items: PaymentRun[]; total: number }>(`${PAYMENT_RUNS}/`),
+  get: (id: string) => apiGet<PaymentRun>(`${PAYMENT_RUNS}/${id}`),
+  create: (body: PaymentRunCreate) => apiPost<PaymentRun, PaymentRunCreate>(`${PAYMENT_RUNS}/`, body),
+  updateItem: (id: string, itemId: string, amount: string) =>
+    apiPatch<PaymentRun, { amount: string }>(`${PAYMENT_RUNS}/${id}/items/${itemId}`, { amount }),
+  removeItem: (id: string, itemId: string) => apiDelete<PaymentRun>(`${PAYMENT_RUNS}/${id}/items/${itemId}`),
+  approve: (id: string) => apiPost<PaymentRun>(`${PAYMENT_RUNS}/${id}/approve/`),
+  execute: (id: string) => apiPost<PaymentRun>(`${PAYMENT_RUNS}/${id}/execute/`),
+  cancel: (id: string) => apiPost<PaymentRun>(`${PAYMENT_RUNS}/${id}/cancel/`),
+  downloadBankFile: (run: Pick<PaymentRun, 'id' | 'run_number'>) =>
+    downloadWithAuth(`${API_BASE}${PAYMENT_RUNS}/${run.id}/bank-file.csv`, `${run.run_number}.csv`),
+};
+
+/** The findings a refused approve or execute carries in its 422 body, if any. */
+export function paymentRunIssuesFrom(body: unknown): PaymentRunIssue[] {
+  if (!body || typeof body !== 'object') return [];
+  const detail = (body as { detail?: unknown }).detail;
+  if (!detail || typeof detail !== 'object') return [];
+  const issues = (detail as { issues?: unknown }).issues;
+  return Array.isArray(issues) ? (issues as PaymentRunIssue[]) : [];
 }

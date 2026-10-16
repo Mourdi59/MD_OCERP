@@ -34,6 +34,7 @@ import {
   Landmark,
   FileCode2,
   Hourglass,
+  Banknote,
 } from 'lucide-react';
 import clsx from 'clsx';
 import {
@@ -92,6 +93,7 @@ import { InvoiceInboxTab } from './InvoiceInboxTab';
 import { StatementsTab } from './StatementsTab';
 import { RetentionLedgerTab } from './RetentionLedgerTab';
 import { AgeingTab } from './AgeingTab';
+import { PaymentRunsTab } from './PaymentRunsTab';
 import { EInvoiceModal } from './EInvoiceModal';
 import { downloadInvoicePdf, downloadPaymentPdf } from './api';
 import { PURCHASING_DOCUMENT_LOCALES } from '@/shared/lib/documentExport';
@@ -990,6 +992,11 @@ export function FinancePage() {
       icon: <CreditCard size={15} />,
     },
     {
+      key: 'payment_runs',
+      label: t('finance.payrun_tab', { defaultValue: 'Payment runs' }),
+      icon: <Banknote size={15} />,
+    },
+    {
       key: 'statements',
       label: t('finance.stmt_tab', { defaultValue: 'Statements' }),
       icon: <Scale size={15} />,
@@ -1134,6 +1141,7 @@ export function FinancePage() {
           {projectId && activeTab === 'inbox' && <InvoiceInboxTab projectId={projectId} />}
           {projectId && activeTab === 'statements' && <StatementsTab projectId={projectId} />}
           {projectId && activeTab === 'ageing' && <AgeingTab projectId={projectId} />}
+          {projectId && activeTab === 'payment_runs' && <PaymentRunsTab projectId={projectId} />}
           {projectId && activeTab === 'retention' && <RetentionLedgerTab projectId={projectId} />}
           {projectId && activeTab === 'payments' && (
             <PaymentsTab
