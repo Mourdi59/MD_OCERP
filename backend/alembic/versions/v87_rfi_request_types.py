@@ -16,8 +16,8 @@ and prefixes are unique per project. Rows cascade with their project.
 Every constraint and index name is written out and matches the models. Every step is inspector-guarded, so a
 database whose tables ``create_all`` already built reaches this revision and does nothing.
 
-Revision ID: v83_rfi_request_types
-Revises: v82_requisition_item_sources
+Revision ID: v87_rfi_request_types
+Revises: v86_bf01_supply_chain
 Create Date: 2026-10-16
 """
 
@@ -30,8 +30,8 @@ from alembic import op
 
 from app.database import GUID
 
-revision: str = "v83_rfi_request_types"
-down_revision: str | Sequence[str] | None = "v82_requisition_item_sources"
+revision: str = "v87_rfi_request_types"
+down_revision: str | Sequence[str] | None = "v86_bf01_supply_chain"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

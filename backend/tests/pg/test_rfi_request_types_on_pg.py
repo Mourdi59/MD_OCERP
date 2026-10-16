@@ -14,7 +14,7 @@ What is proved here and nowhere else:
 * a type's required fields stop the request being issued, never drafted;
 * a type's default approval route is the one ``start_approval`` uses;
 * the HTTP surface: managers edit the catalogue, editors read it, strangers get 404;
-* revision ``v83_rfi_request_types`` backfills every existing row as an RFI
+* revision ``v87_rfi_request_types`` backfills every existing row as an RFI
   without an UPDATE, and goes down and up again.
 """
 
@@ -434,7 +434,7 @@ async def test_http_a_stranger_sees_404_on_another_projects_catalogue(world: Wor
 
 
 def _migration():
-    path = Path(__file__).resolve().parents[2] / "alembic/versions/v83_rfi_request_types.py"
+    path = Path(__file__).resolve().parents[2] / "alembic/versions/v87_rfi_request_types.py"
     spec = importlib.util.spec_from_file_location("rfi_request_types_migration", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
