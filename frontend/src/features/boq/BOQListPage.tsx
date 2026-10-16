@@ -51,6 +51,8 @@ interface BOQ {
   name: string;
   description: string;
   status: string;
+  /** The user who started the bill; null for bills older than the field. */
+  created_by?: string | null;
   created_at: string;
   position_count?: number;
   // Backend v3 §10 contract serializes money as Decimal-as-string. Keep
