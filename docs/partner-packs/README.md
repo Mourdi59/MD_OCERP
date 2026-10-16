@@ -458,6 +458,8 @@ teach identifiers that were never rule sets at all.
 | `procurement` | Purchase orders and reconciliation |
 | `invoice_po_match` | Supplier invoice against its order: net within what is still open, quantity and value within what was received |
 | `procurement_requisition` | Material requisition on submit: positive quantities, line unit equal to its BOQ source unit, needed-by date not past |
+| `goods_receipt` | Goods receipt lines: a certificate is present wherever the order line asks for one, and it names the batch that was delivered |
+| `invoice_payment_release` | Supplier invoice before release: a goods receipt routed for approval has been approved |
 | `rfq_issue` | Enquiry at the point of issue |
 | `rfq_award` | Enquiry at the point of award |
 | `subcontract` | Subcontract packages |

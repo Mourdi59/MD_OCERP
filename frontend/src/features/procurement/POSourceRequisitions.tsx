@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link2 } from 'lucide-react';
 import { tracePurchaseOrder } from './requisitionsApi';
+import { fmtList } from '@/shared/lib/formatters';
 
 /** "ordinal description" of a source position, or its short id when neither is known. */
 export function positionLabel(s: {
@@ -49,7 +50,7 @@ export function POSourceRequisitions({ poId }: { poId: string }) {
         {t('procurement.trace.po_sources_title', { defaultValue: 'Source requisitions' })}
       </h4>
       <p className="mb-2 text-content-secondary">
-        {data.requisitions.map((r) => r.req_number ?? r.id.slice(0, 8)).join(', ')}
+        {fmtList(data.requisitions.map((r) => r.req_number ?? r.id.slice(0, 8)))}
       </p>
       <ul className="space-y-1.5">
         {linked.map((line) => (
@@ -68,7 +69,7 @@ export function POSourceRequisitions({ poId }: { poId: string }) {
               <div className="text-content-tertiary">
                 {t('procurement.trace.boq_sources', {
                   defaultValue: 'BOQ positions: {{positions}}',
-                  positions: line.sources.map((s) => `${positionLabel(s)} (${s.quantity} ${s.unit ?? ''})`).join(', '),
+                  positions: fmtList(line.sources.map((s) => `${positionLabel(s)} (${s.quantity} ${s.unit ?? ''})`)),
                 })}
               </div>
             )}

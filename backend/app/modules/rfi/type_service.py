@@ -48,7 +48,7 @@ def spec_from_row(row: RFIRequestType) -> RequestTypeSpec:
 
 def _unknown_type(code: str) -> HTTPException:
     return HTTPException(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         detail=f"Request type '{code}' is not in this project's catalogue.",
     )
 
@@ -96,7 +96,7 @@ class RequestTypeService:
             if spec.code == code:
                 if not spec.is_active and not allow_inactive:
                     raise HTTPException(
-                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                         detail=f"Request type '{code}' is retired; new requests cannot use it.",
                     )
                 return spec
@@ -122,7 +122,7 @@ class RequestTypeService:
         route = await self.session.get(Route, route_id)
         if route is None or route.target_kind != "rfi" or route.project_id not in (None, project_id):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="The default approval route must be an RFI route of this project.",
             )
 
@@ -135,7 +135,7 @@ class RequestTypeService:
         code = (
             status.HTTP_409_CONFLICT
             if any(p.code in conflict for p in problems)
-            else status.HTTP_422_UNPROCESSABLE_ENTITY
+            else status.HTTP_422_UNPROCESSABLE_CONTENT
         )
         raise HTTPException(status_code=code, detail="; ".join(p.detail for p in problems))
 

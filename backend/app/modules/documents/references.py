@@ -203,6 +203,17 @@ DOCUMENT_REFERENCES: tuple[DocumentReference, ...] = (
         "retains",
         qualifier=("document_type", "document"),
     ),
+    # A material certificate (EN 10204 and the like) uploaded against a goods
+    # receipt. Deleting the file leaves the receipt and its acceptance in place
+    # but takes away the evidence the site confirmed against.
+    DocumentReference(
+        "procurement",
+        "GoodsReceiptCertificate",
+        "oe_procurement_gr_cert",
+        "document_id",
+        "scalar",
+        "unlinks",
+    ),
     DocumentReference("punchlist", "PunchItem", "oe_punchlist_item", "document_id", "scalar", "unlinks"),
     DocumentReference(
         "qms",

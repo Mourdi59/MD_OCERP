@@ -19,6 +19,7 @@ import { WideModal, Button, Badge } from '@/shared/ui';
 import { apiDelete, apiGet, apiPost, getErrorMessage } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { invalidateFinanceFigures } from '@/features/finance/financeQueryKeys';
+import { fmtList } from '@/shared/lib/formatters';
 
 const fieldCls =
   'h-9 w-full rounded-lg border border-border bg-surface-primary px-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -494,7 +495,7 @@ export function ConfirmReceiptDialog({ receipt, projectId, onClose }: Props) {
                 />
                 <span>
                   {t('procurement.gr_create_inspection', { defaultValue: 'Plan the incoming inspection' })}
-                  <span className="block text-xs text-content-tertiary">{data.inspection_lines.join(', ')}</span>
+                  <span className="block text-xs text-content-tertiary">{fmtList(data.inspection_lines)}</span>
                 </span>
               </label>
             )}

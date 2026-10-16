@@ -34,6 +34,7 @@ import {
   type RequestType,
   type RequiredField,
 } from './requestTypes';
+import { fmtList } from '@/shared/lib/formatters';
 
 const inputCls =
   'h-10 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -213,7 +214,7 @@ export function RequestTypesDialog({
       return t('rfi.types.check_missing', {
         defaultValue: '{{number}} is missing: {{fields}}',
         number: d.rfi_number ?? '',
-        fields: (d.missing ?? []).map(fieldLabel).join(', '),
+        fields: fmtList((d.missing ?? []).map(fieldLabel)),
       });
     }
     if (d.problem === 'unknown_type') {
@@ -341,7 +342,7 @@ export function RequestTypesDialog({
                   <td className="py-2 pe-3 tabular-nums">{type.response_days}</td>
                   <td className="py-2 pe-3 text-xs text-content-secondary">
                     {type.required_fields.length > 0
-                      ? type.required_fields.map(fieldLabel).join(', ')
+                      ? fmtList(type.required_fields.map(fieldLabel))
                       : t('rfi.types.none_required', { defaultValue: 'Nothing extra' })}
                   </td>
                   <td className="py-2 pe-3">

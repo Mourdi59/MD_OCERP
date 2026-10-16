@@ -115,7 +115,7 @@ def _refuse_missing_fields(spec: RequestTypeSpec, values: dict[str, Any]) -> Non
     missing = missing_required_fields(spec, values)
     if missing:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
                 "error": "request_type_required_fields",
                 "message": (f"A {spec.code} request cannot be issued without: " + ", ".join(missing) + "."),
@@ -768,7 +768,7 @@ class RFIService:
             )
             if spec.default_route_id is None:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=f"Request type '{spec.code}' has no default approval route; name a route.",
                 )
             route_id = spec.default_route_id

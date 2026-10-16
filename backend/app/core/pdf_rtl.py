@@ -517,5 +517,5 @@ def install_reportlab_rtl(glyph_probe: Callable[[str, str], bool] | None = None)
             logger.debug("PDF RTL: reportlab hooks installed")
         except Exception as exc:  # noqa: BLE001 - degrade, never break PDF output
             _installed = False
-            logger.warning("PDF RTL: could not install the reportlab hooks (%s)", exc)
+            logger.warning("PDF RTL: could not hook reportlab for right-to-left text (%s)", exc)
         return _installed

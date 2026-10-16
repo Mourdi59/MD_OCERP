@@ -126,7 +126,8 @@ for _suffix, _mime in (
 # ``/templates``, which the regional exchange screens link to as "download a
 # sample file to try it". ``.bc3`` was the one missing, so on 9 September that
 # link answered 200 with index.html under a .bc3 name, and the page's own parser
-# read the HTML as a budget and reported positions found in it. Whatever a screen
+# read the HTML as a budget and reported positions found in it. ``.abs`` is the
+# BVBS rebar sample the rebar schedule offers. Whatever a screen
 # offers for download belongs in this set, and
 # ``test_shipped_exchange_samples_are_importable`` is what keeps the two in step.
 SERVED_ROOT_EXTENSIONS: frozenset[str] = frozenset(
@@ -150,6 +151,7 @@ SERVED_ROOT_EXTENSIONS: frozenset[str] = frozenset(
         ".xlsx",
         ".xls",
         ".bc3",
+        ".abs",
         ".js",
         ".mjs",
         ".css",

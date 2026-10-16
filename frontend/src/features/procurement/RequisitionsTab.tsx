@@ -50,6 +50,7 @@ import {
   type RequisitionRuleError,
   type RequisitionStatus,
 } from './requisitionsApi';
+import { fmtList } from '@/shared/lib/formatters';
 
 const fieldCls =
   'h-9 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -294,7 +295,7 @@ export function ConvertToPOModal({ projectId, requisitions, open, onClose, onCon
           {t('procurement.requisitions.convert_summary', {
             defaultValue:
               'Requisitions {{numbers}} become one draft purchase order (order lines: {{lines}}). Each line keeps its quantity, unit and the BOQ positions it came from.',
-            numbers: requisitions.map((r) => r.req_number ?? r.id.slice(0, 8)).join(', '),
+            numbers: fmtList(requisitions.map((r) => r.req_number ?? r.id.slice(0, 8))),
             lines: lineCount,
           })}
         </p>
