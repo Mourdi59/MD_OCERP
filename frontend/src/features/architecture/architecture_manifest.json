@@ -209363,9 +209363,13 @@
         "permissions.py",
         "register_export.py",
         "repository.py",
+        "request_types.py",
         "router.py",
         "schemas.py",
         "service.py",
+        "type_routes.py",
+        "type_service.py",
+        "validators.py",
         "vector_adapter.py"
       ],
       "manifest": {
@@ -209398,6 +209402,12 @@
             },
             {
               "name": "rfi_number",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "request_type",
               "annotation": "Mapped[str]",
               "sql_type": "String",
               "nullable": false
@@ -209533,6 +209543,88 @@
               "annotation": "Mapped[dict]",
               "sql_type": "JSON",
               "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "RFIRequestType",
+          "tablename": "oe_rfi_request_type",
+          "docstring": "One request type in a project's catalogue (see :mod:`app.modules.rfi.request_types`).",
+          "columns": [
+            {
+              "name": "project_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_projects_project.id"
+            },
+            {
+              "name": "code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "name_i18n",
+              "annotation": "Mapped[dict]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "description_i18n",
+              "annotation": "Mapped[dict]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "number_prefix",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "number_digits",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "default_response_days",
+              "annotation": "Mapped[int | None]",
+              "sql_type": "Integer",
+              "nullable": true
+            },
+            {
+              "name": "required_fields",
+              "annotation": "Mapped[list]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "default_route_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "is_active",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "sort_order",
+              "annotation": "Mapped[int]",
+              "sql_type": "Integer",
+              "nullable": false
+            },
+            {
+              "name": "preset_code",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
             }
           ],
           "relationships": []
@@ -209680,6 +209772,11 @@
             {
               "name": "question",
               "type": "str"
+            },
+            {
+              "name": "request_type",
+              "type": "str",
+              "description": "Code of a type in the project's request type catalogue (RFI, TQ, SQ, ...)."
             },
             {
               "name": "raised_by",
@@ -209843,11 +209940,12 @@
           "bases": [
             "BaseModel"
           ],
-          "docstring": "Request body for starting a routed approval workflow (feature 06).",
+          "docstring": "Request body for starting a routed approval workflow (feature 06).\n\n``route_id`` may be left out when the request's type names a default\napproval route; the service then uses that one, and answers 422 when the\ntype has none.",
           "fields": [
             {
               "name": "route_id",
-              "type": "UUID"
+              "type": "UUID | None",
+              "default": "None"
             }
           ]
         },
@@ -209868,6 +209966,10 @@
             },
             {
               "name": "rfi_number",
+              "type": "str"
+            },
+            {
+              "name": "request_type",
               "type": "str"
             },
             {
@@ -210024,6 +210126,40 @@
           ]
         },
         {
+          "class_name": "RFITypeStats",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Counts for one request type inside a project's stats.",
+          "fields": [
+            {
+              "name": "total",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "open",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "overdue",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "answered",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "closed",
+              "type": "int",
+              "default": "0"
+            }
+          ]
+        },
+        {
           "class_name": "RFIStatsResponse",
           "bases": [
             "BaseModel"
@@ -210038,6 +210174,11 @@
             {
               "name": "by_status",
               "type": "dict[str, int]"
+            },
+            {
+              "name": "by_type",
+              "type": "dict[str, RFITypeStats]",
+              "description": "Counts per request type code (RFI, TQ, SQ, ...); a type with no requests is absent."
             },
             {
               "name": "open",
@@ -210213,6 +210354,380 @@
               "name": "limit",
               "type": "int",
               "default": "50"
+            }
+          ]
+        },
+        {
+          "class_name": "RequestTypeCreate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Add one request type to a project's catalogue.",
+          "fields": [
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "code",
+              "type": "str"
+            },
+            {
+              "name": "name_i18n",
+              "type": "dict[str, str]"
+            },
+            {
+              "name": "description_i18n",
+              "type": "dict[str, str]"
+            },
+            {
+              "name": "number_prefix",
+              "type": "str"
+            },
+            {
+              "name": "number_digits",
+              "type": "int"
+            },
+            {
+              "name": "default_response_days",
+              "type": "int | None"
+            },
+            {
+              "name": "required_fields",
+              "type": "list[str]"
+            },
+            {
+              "name": "default_route_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "is_active",
+              "type": "bool",
+              "default": "True"
+            },
+            {
+              "name": "sort_order",
+              "type": "int"
+            }
+          ]
+        },
+        {
+          "class_name": "RequestTypeUpdate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Partial update of a request type.\n\n``code`` and ``number_prefix`` are not editable: requests already store the\ncode and carry the prefix in their number, so renaming either would orphan\nthem. Retire a type with ``is_active = false`` and add a new one instead.",
+          "fields": [
+            {
+              "name": "name_i18n",
+              "type": "dict[str, str] | None",
+              "default": "None"
+            },
+            {
+              "name": "description_i18n",
+              "type": "dict[str, str] | None",
+              "default": "None"
+            },
+            {
+              "name": "number_digits",
+              "type": "int | None"
+            },
+            {
+              "name": "default_response_days",
+              "type": "int | None"
+            },
+            {
+              "name": "required_fields",
+              "type": "list[str] | None",
+              "default": "None"
+            },
+            {
+              "name": "default_route_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "is_active",
+              "type": "bool | None",
+              "default": "None"
+            },
+            {
+              "name": "sort_order",
+              "type": "int | None"
+            }
+          ]
+        },
+        {
+          "class_name": "RequestTypeResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One type of a project's catalogue as the register reads it.\n\n``id`` is ``None`` for the built-in RFI type a project has before it loads\na catalogue: it numbers and behaves like a row but is not one, and it\nbecomes a row the moment a preset with an RFI type is loaded.",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "code",
+              "type": "str"
+            },
+            {
+              "name": "name",
+              "type": "str",
+              "description": "English name, the fallback when the reader's language has none."
+            },
+            {
+              "name": "name_i18n",
+              "type": "dict[str, str]"
+            },
+            {
+              "name": "description_i18n",
+              "type": "dict[str, str]"
+            },
+            {
+              "name": "number_prefix",
+              "type": "str"
+            },
+            {
+              "name": "number_digits",
+              "type": "int"
+            },
+            {
+              "name": "default_response_days",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "response_days",
+              "type": "int",
+              "description": "The SLA applied: the type's own, else the platform default."
+            },
+            {
+              "name": "required_fields",
+              "type": "list[str]"
+            },
+            {
+              "name": "default_route_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "is_active",
+              "type": "bool",
+              "default": "True"
+            },
+            {
+              "name": "is_builtin",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "sort_order",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "preset_code",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "request_count",
+              "type": "int",
+              "default": "0"
+            }
+          ]
+        },
+        {
+          "class_name": "RequestTypeCatalogueResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A project's request types plus the field names a type may require.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[RequestTypeResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "required_field_choices",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "class_name": "RequestTypePresetType",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One type inside a shipped preset.",
+          "fields": [
+            {
+              "name": "code",
+              "type": "str"
+            },
+            {
+              "name": "number_prefix",
+              "type": "str"
+            },
+            {
+              "name": "number_digits",
+              "type": "int"
+            },
+            {
+              "name": "name_i18n",
+              "type": "dict[str, str]"
+            },
+            {
+              "name": "default_response_days",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "required_fields",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "class_name": "RequestTypePresetResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A shipped preset a project can load.",
+          "fields": [
+            {
+              "name": "code",
+              "type": "str"
+            },
+            {
+              "name": "name_i18n",
+              "type": "dict[str, str]"
+            },
+            {
+              "name": "description_i18n",
+              "type": "dict[str, str]"
+            },
+            {
+              "name": "types",
+              "type": "list[RequestTypePresetType]"
+            }
+          ]
+        },
+        {
+          "class_name": "RequestTypePresetListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Every shipped preset; total is the whole set, which is never paged.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[RequestTypePresetResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int",
+              "default": "0"
+            }
+          ]
+        },
+        {
+          "class_name": "RequestTypePresetLoadResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "What loading a preset into a project did.\n\nA type whose code or prefix the project already has is skipped, never\noverwritten: the project's edits to its own catalogue win over the preset.",
+          "fields": [
+            {
+              "name": "preset_code",
+              "type": "str"
+            },
+            {
+              "name": "created",
+              "type": "list[str]"
+            },
+            {
+              "name": "skipped",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "class_name": "RFIValidationResult",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One rule outcome of the register's validation run.",
+          "fields": [
+            {
+              "name": "rule_id",
+              "type": "str"
+            },
+            {
+              "name": "severity",
+              "type": "str"
+            },
+            {
+              "name": "passed",
+              "type": "bool"
+            },
+            {
+              "name": "message",
+              "type": "str"
+            },
+            {
+              "name": "element_ref",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "details",
+              "type": "dict[str, Any]"
+            }
+          ]
+        },
+        {
+          "class_name": "RFIValidationResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Traffic-light result of the ``rfi`` rule set over one project's register.",
+          "fields": [
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "score",
+              "type": "float | None",
+              "default": "None"
+            },
+            {
+              "name": "errors",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "warnings",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "results",
+              "type": "list[RFIValidationResult]"
             }
           ]
         }
@@ -269962,10 +270477,10 @@
     },
     {
       "name": "rfi",
-      "ts_files": 11,
+      "ts_files": 14,
       "css_files": 0,
-      "test_files": 5,
-      "total_files": 11
+      "test_files": 6,
+      "total_files": 14
     },
     {
       "name": "rfq-bidding",
@@ -271806,14 +272321,14 @@
   "statistics": {
     "backend_modules": 211,
     "modules_with_manifests": 209,
-    "total_models": 770,
-    "total_columns": 8963,
+    "total_models": 771,
+    "total_columns": 8976,
     "total_relationships": 240,
     "total_routes": 4545,
-    "total_schemas": 4018,
-    "total_python_files": 2696,
+    "total_schemas": 4029,
+    "total_python_files": 2700,
     "frontend_features": 208,
-    "frontend_ts_files": 3467,
+    "frontend_ts_files": 3470,
     "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
