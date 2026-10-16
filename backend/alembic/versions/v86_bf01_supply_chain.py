@@ -19,8 +19,8 @@ Every constraint and index name is written out, matches the models and stays und
 characters. Every step is inspector-guarded, so a database whose tables ``create_all`` already
 built reaches this revision and does nothing. No data is written.
 
-Revision ID: v83_bf01_supply_chain
-Revises: v82_requisition_item_sources
+Revision ID: v86_bf01_supply_chain
+Revises: v85_boq_created_by
 Create Date: 2026-10-16
 """
 
@@ -33,8 +33,8 @@ from alembic import op
 
 from app.database import GUID
 
-revision: str = "v83_bf01_supply_chain"
-down_revision: str | Sequence[str] | None = "v82_requisition_item_sources"
+revision: str = "v86_bf01_supply_chain"
+down_revision: str | Sequence[str] | None = "v85_boq_created_by"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
