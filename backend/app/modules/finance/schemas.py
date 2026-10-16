@@ -1109,3 +1109,63 @@ class RetentionLedgerResponse(BaseModel):
     as_of: str | None = None
     groups: list[RetentionRollupResponse] = Field(default_factory=list)
     totals: list[RetentionRollupResponse] = Field(default_factory=list)
+
+
+class AgeingInvoiceLine(BaseModel):
+    """One open invoice inside an ageing line. Money is Decimal-as-string."""
+
+    invoice_id: str
+    invoice_number: str
+    project_id: str
+    invoice_date: str | None = None
+    due_date: str | None = None
+    days_past_due: int = 0
+    bucket: str = "current"
+    total: str = "0"
+    paid: str = "0"
+    due: str = "0"
+    credit: str = "0"
+    retention_held: str = "0"
+    retention_released: str = "0"
+
+
+class AgeingRollupResponse(BaseModel):
+    """Open balances of one counterparty (a line) or of a whole scope (a total).
+
+    ``buckets`` maps ``current``, ``1_30``, ``31_60``, ``61_90`` and ``over_90``
+    to the amount due in it, and adds up to ``total_due``. Holdback is owed but
+    not due, so it is reported apart: ``retention_held`` until its release
+    date, ``retention_released`` after. ``credit`` is money paid beyond the
+    invoice, to recover or to apply. See :mod:`app.modules.finance.ageing`.
+    """
+
+    legal_entity_id: str | None = None
+    legal_entity_name: str | None = None
+    currency_code: str = ""
+    direction: str = ""
+    contact_id: str | None = None
+    counterparty_name: str | None = None
+    buckets: dict[str, str] = Field(default_factory=dict)
+    total_due: str = "0"
+    credit: str = "0"
+    retention_held: str = "0"
+    retention_released: str = "0"
+    invoice_count: int = 0
+    oldest_days_past_due: int = 0
+    invoices: list[AgeingInvoiceLine] = Field(default_factory=list)
+
+
+class AgeingResponse(BaseModel):
+    """AR / AP ageing as of a date.
+
+    ``groups`` are counterparty lines and ``totals`` their rollups per (legal
+    entity, currency, direction); nothing is blended across those three.
+    ``drafts_excluded`` counts drafts in scope, which are not yet a claim on
+    anyone and are therefore not aged.
+    """
+
+    as_of: str
+    buckets: list[str] = Field(default_factory=list)
+    groups: list[AgeingRollupResponse] = Field(default_factory=list)
+    totals: list[AgeingRollupResponse] = Field(default_factory=list)
+    drafts_excluded: int = 0

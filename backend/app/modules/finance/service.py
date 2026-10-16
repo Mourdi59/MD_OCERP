@@ -21,6 +21,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.events import event_bus
 from app.core.money import money_quantum
 from app.modules.finance import gaap
+from app.modules.finance.ageing import (
+    POSTED_STATUSES,
+    AgeingInvoice,
+    AgeingPayment,
+    AgeingReport,
+    build_ageing,
+)
 from app.modules.finance.models import (
     EVM_SNAPSHOT_SOURCE_SCHEDULE_PROGRESS,
     EVMSnapshot,
@@ -2945,6 +2952,79 @@ class FinanceService:
         return await self.evm.list(project_id=project_id, project_ids=project_ids)
 
     # ── Dashboard ───────────────────────────────────────────────────────────
+
+    async def get_ageing(
+        self,
+        *,
+        as_of: str | None = None,
+        direction: str | None = None,
+        project_id: uuid.UUID | None = None,
+        project_ids: set[uuid.UUID] | None = None,
+        legal_entity_id: uuid.UUID | None = None,
+    ) -> AgeingReport:
+        """AR / AP ageing across the projects in scope, per legal entity.
+
+        Loads the posted and draft invoices of the scope with their payments and
+        the legal entity of each one's project, then delegates the arithmetic to
+        the pure :func:`app.modules.finance.ageing.build_ageing`.
+
+        ``project_ids`` is the accessible-projects scope the router applies when
+        no ``project_id`` is given (``None`` for an admin, meaning every
+        project). ``legal_entity_id`` narrows to the projects of one entity, and
+        ``direction`` to ``payable`` (AP) or ``receivable`` (AR).
+        """
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+
+        from app.modules.projects.models import Project
+
+        cutoff = as_of or _utcnow_iso()[:10]
+        stmt = (
+            select(Invoice, Project.legal_entity_id)
+            .join(Project, Project.id == Invoice.project_id)
+            .where(Invoice.status.in_((*POSTED_STATUSES, "draft")))
+            .options(selectinload(Invoice.payments))
+            .limit(_RETENTION_LEDGER_INVOICE_CAP)
+        )
+        if project_id is not None:
+            stmt = stmt.where(Invoice.project_id == project_id)
+        elif project_ids is not None:
+            stmt = stmt.where(Invoice.project_id.in_(project_ids))
+        if legal_entity_id is not None:
+            stmt = stmt.where(Project.legal_entity_id == legal_entity_id)
+        if direction:
+            stmt = stmt.where(Invoice.invoice_direction == direction)
+        rows = (await self.session.execute(stmt)).all()
+
+        invoices = [
+            AgeingInvoice(
+                invoice_id=str(inv.id),
+                invoice_number=inv.invoice_number,
+                project_id=str(inv.project_id),
+                legal_entity_id=str(entity_id) if entity_id else None,
+                contact_id=inv.contact_id,
+                direction=inv.invoice_direction or "",
+                status=inv.status,
+                currency_code=inv.currency_code or "",
+                invoice_date=inv.invoice_date,
+                due_date=inv.due_date,
+                amount_total=inv.amount_total,
+                retention_amount=inv.retention_amount,
+                payment_terms_days=inv.payment_terms_days,
+                payments=[
+                    AgeingPayment(
+                        amount=pay.amount,
+                        payment_date=pay.payment_date,
+                        withholding=pay.withholding_amount,
+                        release_date=pay.withholding_release_date,
+                        is_refund=bool(pay.is_refund),
+                    )
+                    for pay in inv.payments
+                ],
+            )
+            for inv, entity_id in rows
+        ]
+        return build_ageing(invoices, as_of=cutoff)
 
     async def get_retention_ledger(
         self,

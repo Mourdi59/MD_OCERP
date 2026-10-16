@@ -69,6 +69,7 @@ from app.dependencies import (
     verify_project_access,
 )
 from app.modules.contacts.models import Contact
+from app.modules.finance.ageing import BUCKETS as AGEING_BUCKETS
 from app.modules.finance.connector_schemas import (
     ConnectorConfigCreate,
     ConnectorConfigListResponse,
@@ -90,6 +91,9 @@ from app.modules.finance.einvoice_tr_schemas import TrEInvoiceFields
 from app.modules.finance.models import EVMSnapshot, Invoice, InvoiceLineItem, Payment, ProjectBudget
 from app.modules.finance.retention_ledger import RetentionRollup
 from app.modules.finance.schemas import (
+    AgeingInvoiceLine,
+    AgeingResponse,
+    AgeingRollupResponse,
     BalanceSheetResponse,
     BudgetCreate,
     BudgetListResponse,
@@ -1482,6 +1486,107 @@ async def get_retention_ledger(
         as_of=ledger.as_of,
         groups=[_retention_rollup_to_response(g, names) for g in ledger.groups],
         totals=[_retention_rollup_to_response(t, names) for t in ledger.totals],
+    )
+
+
+async def _fetch_legal_entity_names(session: AsyncSession, entity_ids: Iterable[str | None]) -> dict[str, str]:
+    """Resolve legal entity ids to "CODE - Name" in one round trip.
+
+    The legal entities module is optional; without it the report still works
+    and simply carries no entity names.
+    """
+    ids = {eid for eid in entity_ids if eid}
+    if not ids:
+        return {}
+    try:
+        from app.modules.legal_entities.models import LegalEntity
+    except ImportError:
+        return {}
+    rows = (await session.execute(select(LegalEntity).where(LegalEntity.id.in_([uuid.UUID(i) for i in ids])))).scalars()
+    return {str(e.id): f"{e.code} - {e.name}" for e in rows}
+
+
+def _ageing_rollup_to_response(
+    rollup: Any, names: dict[str, str], entities: dict[str, str], *, with_invoices: bool
+) -> AgeingRollupResponse:
+    return AgeingRollupResponse(
+        legal_entity_id=rollup.legal_entity_id,
+        legal_entity_name=entities.get(rollup.legal_entity_id or ""),
+        currency_code=rollup.currency_code,
+        direction=rollup.direction,
+        contact_id=rollup.contact_id,
+        counterparty_name=names.get(rollup.contact_id) if rollup.contact_id else None,
+        buckets={key: str(value) for key, value in rollup.buckets.items()},
+        total_due=str(rollup.total_due),
+        credit=str(rollup.credit),
+        retention_held=str(rollup.retention_held),
+        retention_released=str(rollup.retention_released),
+        invoice_count=rollup.invoice_count,
+        oldest_days_past_due=rollup.oldest_days_past_due,
+        invoices=[
+            AgeingInvoiceLine(
+                invoice_id=line.invoice_id,
+                invoice_number=line.invoice_number,
+                project_id=line.project_id,
+                invoice_date=line.invoice_date,
+                due_date=line.effective_due_date,
+                days_past_due=line.days_past_due,
+                bucket=line.bucket,
+                total=str(line.total),
+                paid=str(line.paid),
+                due=str(line.due),
+                credit=str(line.credit),
+                retention_held=str(line.retention_held),
+                retention_released=str(line.retention_released),
+            )
+            for line in rollup.invoices
+        ]
+        if with_invoices
+        else [],
+    )
+
+
+@router.get(
+    "/ageing/",
+    response_model=AgeingResponse,
+    summary="AR / AP ageing per legal entity",
+    description=(
+        "What is owed to and by each counterparty and how late, as of ?as_of "
+        "(default: today), in the buckets current, 1-30, 31-60, 61-90 and over "
+        "90 days past due. Holdback is owed but not due and is reported apart. "
+        "Scoped to the projects the caller can read; narrow it with project_id, "
+        "legal_entity_id and direction (payable = AP, receivable = AR). Nothing "
+        "is blended across legal entity, currency or direction."
+    ),
+)
+async def get_ageing(
+    session: SessionDep,
+    user_id: CurrentUserId,
+    as_of: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    direction: str | None = Query(default=None, pattern=r"^(payable|receivable)$"),
+    project_id: uuid.UUID | None = Query(default=None),
+    legal_entity_id: uuid.UUID | None = Query(default=None),
+    _perm: None = Depends(RequirePermission("finance.read")),
+    service: FinanceService = Depends(_get_service),
+) -> AgeingResponse:
+    """Return the AR / AP ageing of the caller's projects."""
+    await _require_project_access(session, project_id, user_id)
+    scope = None if project_id is not None else await accessible_project_ids(session, user_id)
+    report = await service.get_ageing(
+        as_of=as_of,
+        direction=direction,
+        project_id=project_id,
+        project_ids=scope,
+        legal_entity_id=legal_entity_id,
+    )
+    names = await _fetch_counterparty_names(session, [g.contact_id for g in report.groups])
+    entities = await _fetch_legal_entity_names(session, [t.legal_entity_id for t in report.totals])
+    return AgeingResponse(
+        as_of=report.as_of,
+        buckets=list(AGEING_BUCKETS),
+        groups=[_ageing_rollup_to_response(g, names, entities, with_invoices=True) for g in report.groups],
+        totals=[_ageing_rollup_to_response(t, names, entities, with_invoices=False) for t in report.totals],
+        drafts_excluded=report.drafts_excluded,
     )
 
 

@@ -6,9 +6,9 @@
  * names a real tab without loading the page.
  */
 
-export type FinanceTab = 'budgets' | 'invoices' | 'inbox' | 'payments' | 'statements' | 'retention' | 'evm' | 'connectors';
+export type FinanceTab = 'budgets' | 'invoices' | 'inbox' | 'payments' | 'statements' | 'ageing' | 'retention' | 'evm' | 'connectors';
 
-export const FINANCE_TABS: readonly FinanceTab[] = ['budgets', 'invoices', 'inbox', 'payments', 'statements', 'retention', 'evm', 'connectors'];
+export const FINANCE_TABS: readonly FinanceTab[] = ['budgets', 'invoices', 'inbox', 'payments', 'statements', 'ageing', 'retention', 'evm', 'connectors'];
 
 /** The tab shown for a missing or unknown ?tab= value. */
 export const DEFAULT_FINANCE_TAB: FinanceTab = 'budgets';

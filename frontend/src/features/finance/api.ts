@@ -73,6 +73,83 @@ export function getRetentionLedger(
   return apiGet<RetentionLedger>(`/v1/finance/retention-ledger/?${qs.toString()}`);
 }
 
+/** Ageing bucket keys, in reading order. */
+export type AgeingBucket = 'current' | '1_30' | '31_60' | '61_90' | 'over_90';
+
+export const AGEING_BUCKETS: readonly AgeingBucket[] = ['current', '1_30', '31_60', '61_90', 'over_90'];
+
+/** One open invoice inside an ageing line. Money is Decimal-as-string. */
+export interface AgeingInvoiceLine {
+  invoice_id: string;
+  invoice_number: string;
+  project_id: string;
+  invoice_date: string | null;
+  due_date: string | null;
+  days_past_due: number;
+  bucket: AgeingBucket;
+  total: string;
+  paid: string;
+  due: string;
+  credit: string;
+  retention_held: string;
+  retention_released: string;
+}
+
+/**
+ * Open balances of one counterparty (a line) or a whole scope (a total),
+ * within one legal entity, currency and direction. ``buckets`` adds up to
+ * ``total_due``; holdback is owed but not due and is reported apart.
+ *
+ * Mirrors backend AgeingRollupResponse.
+ */
+export interface AgeingRollup {
+  legal_entity_id: string | null;
+  legal_entity_name: string | null;
+  currency_code: string;
+  direction: string;
+  contact_id: string | null;
+  counterparty_name: string | null;
+  buckets: Record<AgeingBucket, string>;
+  total_due: string;
+  credit: string;
+  retention_held: string;
+  retention_released: string;
+  invoice_count: number;
+  oldest_days_past_due: number;
+  invoices: AgeingInvoiceLine[];
+}
+
+export interface AgeingReport {
+  as_of: string;
+  buckets: AgeingBucket[];
+  groups: AgeingRollup[];
+  totals: AgeingRollup[];
+  drafts_excluded: number;
+}
+
+export interface AgeingQuery {
+  /** Narrow to one project; omitted means every project the reader can open. */
+  projectId?: string;
+  legalEntityId?: string;
+  direction?: 'payable' | 'receivable';
+  asOf?: string;
+}
+
+/**
+ * AR / AP ageing as of a date, per legal entity and counterparty. Requires
+ * the ``finance.read`` permission; the server scopes it to the projects the
+ * reader can open, whatever the filters say.
+ */
+export function getAgeing(query: AgeingQuery = {}): Promise<AgeingReport> {
+  const qs = new URLSearchParams();
+  if (query.projectId) qs.set('project_id', query.projectId);
+  if (query.legalEntityId) qs.set('legal_entity_id', query.legalEntityId);
+  if (query.direction) qs.set('direction', query.direction);
+  if (query.asOf) qs.set('as_of', query.asOf);
+  const suffix = qs.toString();
+  return apiGet<AgeingReport>(`/v1/finance/ageing/${suffix ? `?${suffix}` : ''}`);
+}
+
 /* ── E-invoice export ─────────────────────────────────────────────────── */
 
 /** One entry of the profile registry, as the backend publishes it. */
