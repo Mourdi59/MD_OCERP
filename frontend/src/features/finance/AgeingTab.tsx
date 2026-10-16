@@ -4,7 +4,7 @@ import { Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Hourglass, Lock } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, Hourglass, Lock } from 'lucide-react';
 import clsx from 'clsx';
 import { Card, Badge, EmptyState, RecoveryCard, SkeletonTable } from '@/shared/ui';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
@@ -12,6 +12,7 @@ import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { ApiError } from '@/shared/lib/api';
 import { legalEntitiesApi } from '@/features/legal-entities/api';
 import { AGEING_BUCKETS, getAgeing, type AgeingBucket, type AgeingRollup } from './api';
+import { StatementOfAccountModal } from './StatementOfAccountModal';
 
 const inputCls =
   'h-10 rounded-lg border border-border bg-surface-primary px-3 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -85,6 +86,7 @@ export function AgeingTab({ projectId }: { projectId: string }) {
   const [legalEntityId, setLegalEntityId] = useState('');
   const [asOf, setAsOf] = useState('');
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [statementRow, setStatementRow] = useState<AgeingRollup | null>(null);
 
   const entitiesQ = useQuery({
     queryKey: ['legal-entities', 'list', 'ageing'],
@@ -298,35 +300,51 @@ export function AgeingTab({ projectId }: { projectId: string }) {
                       <Fragment key={key}>
                         <tr className="border-b border-border/60 hover:bg-surface-secondary/50">
                           <td className="px-4 py-2.5">
-                            <button
-                              type="button"
-                              onClick={() => toggle(key)}
-                              aria-expanded={expanded}
-                              className="flex items-start gap-1.5 text-left text-content-primary"
-                            >
-                              {expanded ? (
-                                <ChevronDown size={14} className="mt-0.5 shrink-0" />
-                              ) : (
-                                <ChevronRight size={14} className="mt-0.5 shrink-0" />
-                              )}
-                              <span>
-                                {row.counterparty_name ||
-                                  t('finance.retention_unnamed', { defaultValue: 'Unspecified counterparty' })}
-                                <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-2xs text-content-tertiary">
-                                  <Badge variant={directionVariant(row.direction)} size="sm">
-                                    {directionLabel(t, row.direction)}
-                                  </Badge>
-                                  {multiEntity && <span>{row.legal_entity_name || noEntity}</span>}
-                                  <span className="font-mono">{row.currency_code}</span>
-                                  <span>
-                                    {t('finance.ageing_invoice_count', {
-                                      defaultValue: 'Invoices: {{n}}',
-                                      n: row.invoice_count,
-                                    })}
+                            <div className="flex items-start justify-between gap-2">
+                              <button
+                                type="button"
+                                onClick={() => toggle(key)}
+                                aria-expanded={expanded}
+                                className="flex items-start gap-1.5 text-left text-content-primary"
+                              >
+                                {expanded ? (
+                                  <ChevronDown size={14} className="mt-0.5 shrink-0" />
+                                ) : (
+                                  <ChevronRight size={14} className="mt-0.5 shrink-0" />
+                                )}
+                                <span>
+                                  {row.counterparty_name ||
+                                    t('finance.retention_unnamed', { defaultValue: 'Unspecified counterparty' })}
+                                  <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-2xs text-content-tertiary">
+                                    <Badge variant={directionVariant(row.direction)} size="sm">
+                                      {directionLabel(t, row.direction)}
+                                    </Badge>
+                                    {multiEntity && <span>{row.legal_entity_name || noEntity}</span>}
+                                    <span className="font-mono">{row.currency_code}</span>
+                                    <span>
+                                      {t('finance.ageing_invoice_count', {
+                                        defaultValue: 'Invoices: {{n}}',
+                                        n: row.invoice_count,
+                                      })}
+                                    </span>
                                   </span>
                                 </span>
-                              </span>
-                            </button>
+                              </button>
+                              {row.contact_id && (
+                                <button
+                                  type="button"
+                                  onClick={() => setStatementRow(row)}
+                                  aria-label={t('finance.statement_action_aria', {
+                                    defaultValue: 'Statement of account for {{name}}',
+                                    name: row.counterparty_name ?? '',
+                                  })}
+                                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-2xs font-medium text-oe-blue hover:bg-oe-blue/10"
+                                >
+                                  <FileText size={12} />
+                                  {t('finance.statement_action', { defaultValue: 'Statement' })}
+                                </button>
+                              )}
+                            </div>
                           </td>
                           {AGEING_BUCKETS.map((bucket) => (
                             <td key={bucket} className="px-3 py-2.5 text-right">
@@ -409,6 +427,14 @@ export function AgeingTab({ projectId }: { projectId: string }) {
             </div>
           </Card>
         </>
+      )}
+
+      {statementRow && (
+        <StatementOfAccountModal
+          row={statementRow}
+          asOf={asOf || report?.as_of}
+          onClose={() => setStatementRow(null)}
+        />
       )}
     </div>
   );

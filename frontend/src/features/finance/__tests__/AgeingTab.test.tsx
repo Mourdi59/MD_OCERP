@@ -13,16 +13,18 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { ApiError } from '@/shared/lib/api';
 import { AgeingTab } from '../AgeingTab';
-import type { AgeingReport, AgeingRollup } from '../api';
+import type { AccountStatement, AgeingReport, AgeingRollup } from '../api';
 
 const mocks = vi.hoisted(() => ({
   getAgeing: vi.fn(),
   listEntities: vi.fn(),
+  getAccountStatement: vi.fn(),
+  downloadAccountStatementCsv: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -39,6 +41,8 @@ vi.mock('react-i18next', () => ({
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
   getAgeing: mocks.getAgeing,
+  getAccountStatement: mocks.getAccountStatement,
+  downloadAccountStatementCsv: mocks.downloadAccountStatementCsv,
 }));
 
 vi.mock('@/features/legal-entities/api', () => ({
@@ -116,6 +120,44 @@ const REPORT: AgeingReport = {
   ],
 };
 
+const STATEMENT: AccountStatement = {
+  contact_id: 'c-steel',
+  counterparty_name: 'Lakeshore Steel',
+  direction: 'payable',
+  currency_code: 'CAD',
+  legal_entity_id: 'e-north',
+  legal_entity_name: 'North Developments Inc.',
+  date_from: null,
+  date_to: '2026-10-15',
+  opening_balance: '0.00',
+  closing_balance: '600.00',
+  total_charged: '1000.00',
+  total_credited: '400.00',
+  lines: [
+    {
+      entry_date: '2026-07-31',
+      kind: 'invoice',
+      reference: 'AP-0042',
+      invoice_id: 'inv-1',
+      project_id: 'proj-1',
+      charge: '1000.00',
+      credit: '0.00',
+      balance: '1000.00',
+    },
+    {
+      entry_date: '2026-09-10',
+      kind: 'payment',
+      reference: 'AP-0042',
+      invoice_id: 'inv-1',
+      project_id: 'proj-1',
+      charge: '0.00',
+      credit: '400.00',
+      balance: '600.00',
+    },
+  ],
+  ageing: [],
+};
+
 function renderTab() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -127,6 +169,8 @@ function renderTab() {
 
 beforeEach(() => {
   mocks.getAgeing.mockReset().mockResolvedValue(REPORT);
+  mocks.getAccountStatement.mockReset().mockResolvedValue(STATEMENT);
+  mocks.downloadAccountStatementCsv.mockReset().mockResolvedValue(undefined);
   mocks.listEntities.mockReset().mockResolvedValue({
     items: [
       { id: 'e-north', code: 'TGC', name: 'North Developments Inc.' },
@@ -173,7 +217,7 @@ describe('AgeingTab', () => {
 
   it('opens a counterparty line onto its invoices', async () => {
     renderTab();
-    const line = await screen.findByRole('button', { name: /Lakeshore Steel/ });
+    const line = await screen.findByRole('button', { name: /^Lakeshore Steel/ });
     expect(screen.queryByText('AP-0042')).not.toBeInTheDocument();
     fireEvent.click(line);
     expect(screen.getByText('AP-0042')).toBeInTheDocument();
@@ -191,5 +235,53 @@ describe('AgeingTab', () => {
     renderTab();
     await screen.findByText('Lakeshore Steel');
     expect(screen.queryByDisplayValue('All entities')).not.toBeInTheDocument();
+  });
+
+  it('opens the statement of a counterparty line with its entity, currency and direction', async () => {
+    renderTab();
+    fireEvent.click(await screen.findByRole('button', { name: 'Statement of account for Lakeshore Steel' }));
+    const dialog = await screen.findByTestId('statement-of-account');
+    expect(mocks.getAccountStatement).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        contactId: 'c-steel',
+        currency: 'CAD',
+        direction: 'payable',
+        legalEntityId: 'e-north',
+        dateTo: '2026-10-15',
+      }),
+    );
+    expect(await within(dialog).findByText('Payment')).toBeInTheDocument();
+    expect(within(dialog).getByText('Balance brought forward')).toBeInTheDocument();
+    expect(within(dialog).getByTestId('statement-closing')).toHaveTextContent('Balance carried');
+    expect(within(dialog).getByText(/what we owe them/)).toBeInTheDocument();
+  });
+
+  it('asks the server again for a new period and downloads the same statement as CSV', async () => {
+    renderTab();
+    fireEvent.click(await screen.findByRole('button', { name: 'Statement of account for Lakeshore Steel' }));
+    const dialog = await screen.findByTestId('statement-of-account');
+    await within(dialog).findByText('Payment');
+    fireEvent.change(within(dialog).getAllByDisplayValue('')[0]!, { target: { value: '2026-09-01' } });
+    await waitFor(() =>
+      expect(mocks.getAccountStatement).toHaveBeenLastCalledWith(expect.objectContaining({ dateFrom: '2026-09-01' })),
+    );
+    await within(dialog).findByText('Payment');
+    fireEvent.click(within(dialog).getByRole('button', { name: /Download CSV/ }));
+    await waitFor(() =>
+      expect(mocks.downloadAccountStatementCsv).toHaveBeenCalledWith(
+        expect.objectContaining({ contactId: 'c-steel', dateFrom: '2026-09-01' }),
+        'statement_Lakeshore_Steel_CAD.csv',
+      ),
+    );
+  });
+
+  it('offers no statement for a line without a counterparty', async () => {
+    mocks.getAgeing.mockReset().mockResolvedValue({
+      ...REPORT,
+      groups: [{ ...REPORT.groups[0], contact_id: null, counterparty_name: null }],
+    });
+    renderTab();
+    await screen.findByText('Unspecified counterparty');
+    expect(screen.queryByRole('button', { name: /Statement of account/ })).not.toBeInTheDocument();
   });
 });

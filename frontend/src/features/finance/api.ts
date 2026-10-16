@@ -150,6 +150,75 @@ export function getAgeing(query: AgeingQuery = {}): Promise<AgeingReport> {
   return apiGet<AgeingReport>(`/v1/finance/ageing/${suffix ? `?${suffix}` : ''}`);
 }
 
+/* ── Statement of account ─────────────────────────────────────────────── */
+
+export interface AccountStatementLine {
+  entry_date: string;
+  kind: 'invoice' | 'payment' | 'refund' | string;
+  reference: string;
+  invoice_id: string;
+  project_id: string;
+  /** Raises the balance (an invoice or a refund). Decimal as string. */
+  charge: string;
+  /** Lowers the balance (a payment). Decimal as string. */
+  credit: string;
+  balance: string;
+}
+
+export interface AccountStatement {
+  contact_id: string;
+  counterparty_name: string | null;
+  direction: 'payable' | 'receivable' | string;
+  currency_code: string;
+  legal_entity_id: string | null;
+  legal_entity_name: string | null;
+  date_from: string | null;
+  date_to: string;
+  opening_balance: string;
+  closing_balance: string;
+  total_charged: string;
+  total_credited: string;
+  lines: AccountStatementLine[];
+  ageing: AgeingRollup[];
+}
+
+export interface AccountStatementQuery {
+  contactId: string;
+  currency: string;
+  direction: 'payable' | 'receivable';
+  legalEntityId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+function statementParams(query: AccountStatementQuery): URLSearchParams {
+  const qs = new URLSearchParams({
+    contact_id: query.contactId,
+    currency: query.currency,
+    direction: query.direction,
+  });
+  if (query.legalEntityId) qs.set('legal_entity_id', query.legalEntityId);
+  if (query.dateFrom) qs.set('date_from', query.dateFrom);
+  if (query.dateTo) qs.set('date_to', query.dateTo);
+  return qs;
+}
+
+/**
+ * Every posted invoice and payment with one counterparty over a period, with
+ * a running balance and the balance brought forward. Requires ``finance.read``;
+ * the server reads only the projects the caller can open.
+ */
+export function getAccountStatement(query: AccountStatementQuery): Promise<AccountStatement> {
+  return apiGet<AccountStatement>(`/v1/finance/statement-of-account/?${statementParams(query)}`);
+}
+
+/** The same statement as a CSV file with opening and closing rows. */
+export function downloadAccountStatementCsv(query: AccountStatementQuery, filename: string): Promise<void> {
+  const qs = statementParams(query);
+  qs.set('format', 'csv');
+  return downloadWithAuth(`${API_BASE}/v1/finance/statement-of-account/?${qs}`, filename);
+}
+
 /* ── E-invoice export ─────────────────────────────────────────────────── */
 
 /** One entry of the profile registry, as the backend publishes it. */
