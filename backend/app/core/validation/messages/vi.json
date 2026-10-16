@@ -656,6 +656,22 @@
     "requisition_line_cost_line": {
       "fail": "Dòng {line} chưa liên kết với dòng chi phí nên đơn đặt hàng của nó sẽ không hiện là khoản cam kết so với ngân sách",
       "suggestion": "Tạo dòng từ BOQ, hoặc liên kết nó với một dòng chi phí trước khi đặt hàng"
+    },
+    "receipt_certificate_present": {
+      "fail": "Dòng {line} được đặt với {required}, nhưng đợt giao hàng lại có {delivered}",
+      "suggestion": "Đính kèm chứng chỉ mà đơn đặt hàng yêu cầu, hoặc từ chối dòng này cho đến khi nhà cung cấp gửi chứng chỉ"
+    },
+    "receipt_certificate_batch": {
+      "fail": "Chứng chỉ {certificate} của dòng {line} dành cho lô {certificate_batch}, nhưng lô đã giao là {batch}",
+      "suggestion": "Kiểm tra số lô hoặc số mẻ nấu trên vật tư và yêu cầu nhà cung cấp gửi chứng chỉ của lô đã nhận"
+    },
+    "receipt_route_approved": {
+      "fail": "Phiếu nhập kho {receipt} của đơn đặt hàng {po} đang trong quy trình phê duyệt và chưa được duyệt",
+      "suggestion": "Chờ quy trình phê duyệt phiếu nhập kho hoàn tất trước khi duyệt thanh toán"
+    },
+    "receipt_inspection_closed": {
+      "fail": "Kiểm tra đầu vào của phiếu nhập kho {receipt} thuộc đơn đặt hàng {po} chưa đạt",
+      "suggestion": "Hoàn tất kiểm tra, hoặc ghi lại lý do vật tư có thể được thanh toán trước khi kiểm tra"
     }
   },
   "subcontract": {

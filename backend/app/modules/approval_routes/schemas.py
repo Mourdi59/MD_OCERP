@@ -31,6 +31,7 @@ TargetKindLiteral = Literal[
     "design_release",
     "stakeholder_commitment",
     "interface",
+    "goods_receipt",
 ]
 StepModeLiteral = Literal["all", "any", "majority"]
 InstanceStatusLiteral = Literal["pending", "approved", "rejected", "cancelled"]

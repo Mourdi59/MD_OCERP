@@ -92,6 +92,11 @@ TARGET_KINDS: tuple[str, ...] = (
     # records every step in the interface's status history and moves it to
     # agreed on approval.
     "interface",
+    # Procurement: the site approval of a confirmed goods receipt. The person
+    # confirming the receipt chooses to start it; a payable invoice on the
+    # order is not released while the instance is still open or rejected
+    # (rule ``procurement.receipt_route_approved``).
+    "goods_receipt",
 )
 
 # Target kinds under segregation of duties: the person who started the approval

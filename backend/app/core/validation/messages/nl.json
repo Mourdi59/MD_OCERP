@@ -656,6 +656,22 @@
     "requisition_line_cost_line": {
       "fail": "Regel {line} is niet gekoppeld aan een kostenregel, dus de bestelling verschijnt niet als vastgelegd tegen het budget",
       "suggestion": "Maak de regel aan vanuit de BOQ, of koppel hem vóór het bestellen aan een kostenregel"
+    },
+    "receipt_certificate_present": {
+      "fail": "Regel {line} is besteld met {required}, maar de levering bevat {delivered}",
+      "suggestion": "Voeg het certificaat toe dat de bestelling vraagt, of keur de regel af totdat de leverancier het stuurt"
+    },
+    "receipt_certificate_batch": {
+      "fail": "Certificaat {certificate} bij regel {line} hoort bij partij {certificate_batch}, maar partij {batch} is geleverd",
+      "suggestion": "Controleer het partij- of smeltnummer op het materiaal en vraag de leverancier om het certificaat van de geleverde partij"
+    },
+    "receipt_route_approved": {
+      "fail": "Goederenontvangst {receipt} bij bestelling {po} staat in de goedkeuringsroute en is nog niet goedgekeurd",
+      "suggestion": "Wacht tot de goedkeuringsroute van de goederenontvangst is afgerond voordat u de betaling vrijgeeft"
+    },
+    "receipt_inspection_closed": {
+      "fail": "De inkomende keuring van goederenontvangst {receipt} bij bestelling {po} is nog niet geslaagd",
+      "suggestion": "Rond de keuring af, of leg vast waarom het materiaal al vóór de keuring betaald mag worden"
     }
   },
   "subcontract": {
