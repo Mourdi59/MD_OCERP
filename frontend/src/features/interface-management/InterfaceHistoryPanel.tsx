@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { History, ArrowRight } from 'lucide-react';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { getErrorMessage } from '@/shared/lib/api';
 import { fetchInterfaceHistory, type InterfaceHistoryEntry } from './api';
 
@@ -55,7 +56,7 @@ export function InterfaceHistoryPanel({
       ? t(`interface_management.status_${value}`, { defaultValue: STATUS_LABEL[value] ?? humanize(value) })
       : '';
 
-  const entries: InterfaceHistoryEntry[] = query.data ?? [];
+  const entries: InterfaceHistoryEntry[] = query.data?.items ?? [];
 
   return (
     <div className="rounded-lg border border-border bg-surface-elevated shadow-sm p-3" data-testid="interface-history">
@@ -111,6 +112,7 @@ export function InterfaceHistoryPanel({
           })}
         </ol>
       )}
+      {query.data && <TruncationNotice page={query.data} className="mt-2" />}
     </div>
   );
 }

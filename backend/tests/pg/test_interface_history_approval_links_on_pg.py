@@ -223,7 +223,9 @@ async def test_every_status_change_leaves_a_history_entry_over_http(world: World
         history = await c.get(f"{p}/history")
     assert moved.status_code == 200
     assert untouched.status_code == 200
-    rows = history.json()
+    page = history.json()
+    rows = page["items"]
+    assert page["total"] == len(rows) == 2
     assert [(r["event"], r["from_status"], r["to_status"]) for r in rows] == [
         ("created", None, "identified"),
         ("status_changed", "identified", "in_progress"),

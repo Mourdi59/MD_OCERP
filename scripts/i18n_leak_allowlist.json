@@ -1818,5 +1818,15 @@
     "en_value": "PDF",
     "note": "file format name on an export button, written the same in every locale",
     "reason_category": "product_name"
+  },
+  "interface_management.days_count_one": {
+    "en_value": "{{count}} d",
+    "note": "unit abbreviation for day in the interface register's ageing column; cs den, da/no/sv/nl dag, es dia, pt dia, pl dzien and hr dan all abbreviate it to d, the same convention as submittals.days_short, while de, fr, it and the non-Latin locales write their own abbreviation",
+    "reason_category": "abbreviation"
+  },
+  "interface_management.days_count_other": {
+    "en_value": "{{count}} d",
+    "note": "unit abbreviation for day in the interface register's ageing column; cs den, da/no/sv/nl dag, es dia, pt dia, pl dzien and hr dan all abbreviate it to d, the same convention as submittals.days_short, while de, fr, it and the non-Latin locales write their own abbreviation",
+    "reason_category": "abbreviation"
   }
 }

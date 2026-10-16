@@ -40,6 +40,7 @@ from app.modules.interface_management.schemas import (
     InterfaceActionResponse,
     InterfaceActionUpdate,
     InterfaceCreate,
+    InterfaceHistoryListResponse,
     InterfaceHistoryResponse,
     InterfaceRegisterResponse,
     InterfaceResponse,
@@ -293,7 +294,7 @@ async def get_work_package_health(
 
 @router.get(
     "/projects/{project_id}/interfaces/{interface_id}/history",
-    response_model=list[InterfaceHistoryResponse],
+    response_model=InterfaceHistoryListResponse,
     dependencies=[_READ],
 )
 async def get_interface_history(
@@ -301,11 +302,24 @@ async def get_interface_history(
     interface_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
-) -> list[InterfaceHistoryResponse]:
-    """Full status history of one interface, oldest first: who, when, from, to, comment."""
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=200, ge=1, le=1000),
+) -> InterfaceHistoryListResponse:
+    """Status history of one interface, oldest first: who, when, from, to, comment.
+
+    ``total`` counts every entry the interface has, so a reader holding a
+    shorter page knows the history goes on.
+    """
     await verify_project_access(project_id, user_id, session)
     service = _get_service(session)
-    return await service.list_history(project_id, interface_id)  # type: ignore[return-value]
+    rows = await service.list_history(project_id, interface_id, offset=offset, limit=limit)
+    total = await service.count_history(project_id, interface_id)
+    return InterfaceHistoryListResponse(
+        items=[InterfaceHistoryResponse.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.get(

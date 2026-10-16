@@ -311,6 +311,15 @@ class InterfaceHistoryResponse(BaseModel):
     changed_at: datetime
 
 
+class InterfaceHistoryListResponse(BaseModel):
+    """One page of an interface's status history, with the count of every entry it has."""
+
+    items: list[InterfaceHistoryResponse]
+    total: int
+    offset: int = 0
+    limit: int = 200
+
+
 # -- Validation --------------------------------------------------------------
 
 

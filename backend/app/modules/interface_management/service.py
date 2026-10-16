@@ -34,7 +34,7 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from app.core.audit_log import log_activity
 from app.core.events import publish_after_commit
@@ -439,11 +439,18 @@ class InterfaceManagementService:
 
     # -- Status history -----------------------------------------------------
 
-    async def list_history(self, project_id: uuid.UUID, interface_id: uuid.UUID) -> list[dict[str, Any]]:
+    async def list_history(
+        self,
+        project_id: uuid.UUID,
+        interface_id: uuid.UUID,
+        *,
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
         """An interface's status history, oldest first, with the actor's display name.
 
-        404 when the interface is not in the project, so a foreign interface id
-        never reveals whether it exists.
+        ``limit`` None reads every entry. 404 when the interface is not in the
+        project, so a foreign interface id never reveals whether it exists.
         """
         await self._require_interface_in_project(project_id, interface_id)
         stmt = (
@@ -453,7 +460,10 @@ class InterfaceManagementService:
                 InterfaceHistoryEntry.interface_id == interface_id,
             )
             .order_by(InterfaceHistoryEntry.changed_at.asc(), InterfaceHistoryEntry.created_at.asc())
+            .offset(offset)
         )
+        if limit is not None:
+            stmt = stmt.limit(limit)
         rows = list((await self.session.execute(stmt)).scalars().all())
         names = await self._user_names({r.actor_id for r in rows if r.actor_id is not None})
         return [
@@ -471,6 +481,15 @@ class InterfaceManagementService:
             }
             for r in rows
         ]
+
+    async def count_history(self, project_id: uuid.UUID, interface_id: uuid.UUID) -> int:
+        """How many status history entries one interface has, across every page."""
+        await self._require_interface_in_project(project_id, interface_id)
+        stmt = select(func.count(InterfaceHistoryEntry.id)).where(
+            InterfaceHistoryEntry.project_id == project_id,
+            InterfaceHistoryEntry.interface_id == interface_id,
+        )
+        return int((await self.session.execute(stmt)).scalar_one())
 
     async def _record(
         self,

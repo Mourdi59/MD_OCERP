@@ -137825,7 +137825,7 @@
           "method": "GET",
           "path": "/projects/{project_id}/interfaces/{interface_id}/history",
           "handler": "get_interface_history",
-          "response_model": "list[InterfaceHistoryResponse]"
+          "response_model": "InterfaceHistoryListResponse"
         },
         {
           "method": "GET",
@@ -138568,6 +138568,33 @@
             {
               "name": "changed_at",
               "type": "datetime"
+            }
+          ]
+        },
+        {
+          "class_name": "InterfaceHistoryListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One page of an interface's status history, with the count of every entry it has.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[InterfaceHistoryResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "200"
             }
           ]
         },
@@ -270912,7 +270939,7 @@
     "total_columns": 8947,
     "total_relationships": 238,
     "total_routes": 4535,
-    "total_schemas": 3997,
+    "total_schemas": 3998,
     "total_python_files": 2693,
     "frontend_features": 208,
     "frontend_ts_files": 3462,

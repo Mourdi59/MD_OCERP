@@ -385,8 +385,8 @@ export async function fetchRegister(projectId: string): Promise<InterfaceRegiste
 export async function fetchInterfaceHistory(
   projectId: string,
   interfaceId: string,
-): Promise<InterfaceHistoryEntry[]> {
-  return apiGet<InterfaceHistoryEntry[]>(`${BASE}/${projectId}/interfaces/${interfaceId}/history`);
+): Promise<Page<InterfaceHistoryEntry>> {
+  return apiGet<Page<InterfaceHistoryEntry>>(`${BASE}/${projectId}/interfaces/${interfaceId}/history`);
 }
 
 export async function fetchRegisterValidation(projectId: string): Promise<InterfaceValidationReport> {

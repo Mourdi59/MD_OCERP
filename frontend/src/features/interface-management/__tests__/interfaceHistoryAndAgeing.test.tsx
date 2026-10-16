@@ -46,6 +46,7 @@ const apiMocks = vi.hoisted(() => ({
   apiPatch: vi.fn(),
   apiDelete: vi.fn(),
   getErrorMessage: (e: unknown) => String(e),
+  isTruncated: (page: { items: unknown[]; total: number }) => page.items.length < page.total,
 }));
 vi.mock('@/shared/lib/api', () => apiMocks);
 
@@ -109,7 +110,7 @@ const history: InterfaceHistoryEntry[] = [
 
 describe('InterfaceHistoryPanel', () => {
   it('reads the history endpoint and shows who moved the interface, from where to where, and why', async () => {
-    apiMocks.apiGet.mockResolvedValueOnce(history);
+    apiMocks.apiGet.mockResolvedValueOnce({ items: history, total: history.length, offset: 0, limit: 200 });
     wrap(<InterfaceHistoryPanel projectId="p-1" interfaceId="if-1" />);
 
     expect(await screen.findByText('Kick-off held with both packages')).toBeInTheDocument();
@@ -126,8 +127,23 @@ describe('InterfaceHistoryPanel', () => {
     expect(items[2]).toHaveTextContent('System');
   });
 
+  it('says the history goes on when the page holds fewer entries than the interface has', async () => {
+    apiMocks.apiGet.mockResolvedValueOnce({ items: history, total: 250, offset: 0, limit: 200 });
+    wrap(<InterfaceHistoryPanel projectId="p-1" interfaceId="if-1" />);
+
+    expect(await screen.findByTestId('truncation-notice')).toBeInTheDocument();
+  });
+
+  it('shows no truncation notice when the page holds the whole history', async () => {
+    apiMocks.apiGet.mockResolvedValueOnce({ items: history, total: history.length, offset: 0, limit: 200 });
+    wrap(<InterfaceHistoryPanel projectId="p-1" interfaceId="if-1" />);
+
+    expect(await screen.findByText('Kick-off held with both packages')).toBeInTheDocument();
+    expect(screen.queryByTestId('truncation-notice')).not.toBeInTheDocument();
+  });
+
   it('says so when nothing was recorded yet', async () => {
-    apiMocks.apiGet.mockResolvedValueOnce([]);
+    apiMocks.apiGet.mockResolvedValueOnce({ items: [], total: 0, offset: 0, limit: 200 });
     wrap(<InterfaceHistoryPanel projectId="p-1" interfaceId="if-1" />);
     await waitFor(() => expect(screen.getByText(/No changes recorded yet/)).toBeInTheDocument());
   });
