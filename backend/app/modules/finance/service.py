@@ -8,7 +8,7 @@ Stateless service layer.
 import hashlib
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
@@ -2973,35 +2973,75 @@ class FinanceService:
         project). ``legal_entity_id`` narrows to the projects of one entity, and
         ``direction`` to ``payable`` (AP) or ``receivable`` (AR).
         """
-        from sqlalchemy import select
+        invoices = await self.load_ageing_invoices(
+            statuses=(*POSTED_STATUSES, "draft"),
+            direction=direction,
+            project_id=project_id,
+            project_ids=project_ids,
+            legal_entity_id=legal_entity_id,
+        )
+        return build_ageing(invoices, as_of=as_of or _utcnow_iso()[:10])
+
+    async def load_ageing_invoices(
+        self,
+        *,
+        statuses: Iterable[str] | None = None,
+        direction: str | None = None,
+        project_id: uuid.UUID | None = None,
+        project_ids: set[uuid.UUID] | None = None,
+        legal_entity_id: uuid.UUID | None = None,
+        unassigned_only: bool = False,
+        invoice_ids: Iterable[uuid.UUID] | None = None,
+    ) -> list[AgeingInvoice]:
+        """Invoices with their payments and their project's legal entity, as ageing reads them.
+
+        The one loader behind the ageing report and payment runs, so both read
+        the same open balance. A project that names no legal entity belongs to
+        the default entity when there is one, exactly as the legal entities
+        module answers for it, so filtering by the default entity includes it
+        and its invoices carry that entity. ``unassigned_only`` keeps the
+        projects no entity answers for, for a run on an installation without
+        entities.
+        """
+        from sqlalchemy import or_, select
         from sqlalchemy.orm import selectinload
 
         from app.modules.projects.models import Project
 
-        cutoff = as_of or _utcnow_iso()[:10]
+        default_id = await self._default_legal_entity_id()
+
         stmt = (
             select(Invoice, Project.legal_entity_id)
             .join(Project, Project.id == Invoice.project_id)
-            .where(Invoice.status.in_((*POSTED_STATUSES, "draft")))
             .options(selectinload(Invoice.payments))
             .limit(_RETENTION_LEDGER_INVOICE_CAP)
         )
+        if statuses is not None:
+            stmt = stmt.where(Invoice.status.in_(tuple(statuses)))
+        if invoice_ids is not None:
+            stmt = stmt.where(Invoice.id.in_(list(invoice_ids)))
         if project_id is not None:
             stmt = stmt.where(Invoice.project_id == project_id)
         elif project_ids is not None:
             stmt = stmt.where(Invoice.project_id.in_(project_ids))
-        if legal_entity_id is not None:
+        if legal_entity_id is not None and legal_entity_id == default_id:
+            stmt = stmt.where(or_(Project.legal_entity_id == legal_entity_id, Project.legal_entity_id.is_(None)))
+        elif legal_entity_id is not None:
             stmt = stmt.where(Project.legal_entity_id == legal_entity_id)
+        elif unassigned_only:
+            if default_id is not None:
+                return []  # the default entity answers for every unassigned project
+            stmt = stmt.where(Project.legal_entity_id.is_(None))
         if direction:
             stmt = stmt.where(Invoice.invoice_direction == direction)
         rows = (await self.session.execute(stmt)).all()
 
-        invoices = [
+        return [
             AgeingInvoice(
                 invoice_id=str(inv.id),
                 invoice_number=inv.invoice_number,
                 project_id=str(inv.project_id),
-                legal_entity_id=str(entity_id) if entity_id else None,
+                legal_entity_id=str(entity_id or default_id) if (entity_id or default_id) else None,
                 contact_id=inv.contact_id,
                 direction=inv.invoice_direction or "",
                 status=inv.status,
@@ -3024,7 +3064,17 @@ class FinanceService:
             )
             for inv, entity_id in rows
         ]
-        return build_ageing(invoices, as_of=cutoff)
+
+    async def _default_legal_entity_id(self) -> uuid.UUID | None:
+        """The default legal entity, or None without one or without the module."""
+        try:
+            from app.modules.legal_entities.models import LegalEntity
+        except ImportError:  # pragma: no cover - legal entities is optional for finance
+            return None
+        from sqlalchemy import select
+
+        stmt = select(LegalEntity.id).where(LegalEntity.is_default.is_(True)).limit(1)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
 
     async def get_retention_ledger(
         self,

@@ -8,6 +8,7 @@ Tables:
     oe_finance_payment       - payments against invoices
     oe_finance_budget        - project budgets by WBS/category
     oe_finance_evm_snapshot  - Earned Value Management snapshots
+    oe_finance_payment_run   - batches of payable invoices (payment_run_models)
 """
 
 import uuid
@@ -430,3 +431,8 @@ from app.modules.finance.einvoice_settings_models import EInvoiceSettings  # noq
 # Same rationale: re-exported so ``Base.metadata.create_all`` registers the
 # oe_finance_captured_invoice table via the module's models.py scan.
 from app.modules.finance.invoice_capture_models import CapturedInvoice  # noqa: E402,F401
+
+# ── Payment runs ─────────────────────────────────────────────────────────────
+# Same rationale: re-exported so the module's models.py scan registers
+# oe_finance_payment_run and oe_finance_payment_run_item.
+from app.modules.finance.payment_run_models import PaymentRun, PaymentRunItem  # noqa: E402,F401

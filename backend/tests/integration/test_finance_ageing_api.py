@@ -185,3 +185,64 @@ async def test_a_user_without_access_sees_nothing_even_by_entity(client: AsyncCl
 async def test_a_bad_cutoff_is_refused(client: AsyncClient, admin: dict[str, str]) -> None:
     resp = await client.get("/api/v1/finance/ageing/", params={"as_of": "15/10/2026"}, headers=admin)
     assert resp.status_code == 422
+
+
+async def test_a_project_without_an_entity_ages_under_the_default_one(
+    client: AsyncClient, admin: dict[str, str]
+) -> None:
+    # The legal entities module answers "the default entity" for a project
+    # that names none; ageing and payment runs must read it the same way.
+    listed = (await client.get("/api/v1/legal-entities/entities/", headers=admin)).json()["items"]
+    previous = next((e["id"] for e in listed if e["is_default"]), None)
+    tag = uuid.uuid4().hex[:6].upper()
+    default = await _ok(
+        await client.post(
+            "/api/v1/legal-entities/entities/",
+            json={
+                "code": f"D{tag}",
+                "name": "Default Holdings Inc.",
+                "country_code": "CA",
+                "subdivision_code": "CA-ON",
+                "functional_currency": "CAD",
+                "is_default": True,
+            },
+            headers=admin,
+        ),
+        201,
+    )
+    try:
+        project = await _ok(
+            await client.post(
+                "/api/v1/projects/", json={"name": f"Unassigned {tag}", "currency": "CAD"}, headers=admin
+            ),
+            201,
+        )
+        body = {
+            "project_id": project["id"],
+            "invoice_direction": "payable",
+            "invoice_date": _d(-40),
+            "due_date": _d(-10),
+            "currency_code": "CAD",
+            "amount_subtotal": "250.00",
+            "amount_total": "250.00",
+        }
+        inv = await _ok(await client.post("/api/v1/finance/", json=body, headers=admin), 201)
+        await _ok(await client.post(f"/api/v1/finance/{inv['id']}/approve/", headers=admin))
+
+        report = await _ok(
+            await client.get("/api/v1/finance/ageing/", params={"project_id": project["id"]}, headers=admin)
+        )
+        (total,) = report["totals"]
+        assert total["legal_entity_id"] == default["id"]
+        by_entity = await _ok(
+            await client.get("/api/v1/finance/ageing/", params={"legal_entity_id": default["id"]}, headers=admin)
+        )
+        lines = {line["invoice_id"] for g in by_entity["groups"] for line in g["invoices"]}
+        assert inv["id"] in lines
+    finally:
+        if previous:
+            await client.patch(f"/api/v1/legal-entities/entities/{previous}", json={"is_default": True}, headers=admin)
+        else:
+            await client.patch(
+                f"/api/v1/legal-entities/entities/{default['id']}", json={"is_default": False}, headers=admin
+            )

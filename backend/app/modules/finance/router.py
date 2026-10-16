@@ -2917,3 +2917,9 @@ router.include_router(gaap_router)
 from app.modules.finance.invoice_capture_router import capture_router  # noqa: E402
 
 router.include_router(capture_router)
+
+# Mount the payment run sub-router, at the bottom for the same reason: it
+# imports the counterparty and legal entity name helpers from this module.
+from app.modules.finance.payment_run_router import payment_run_router  # noqa: E402
+
+router.include_router(payment_run_router)
