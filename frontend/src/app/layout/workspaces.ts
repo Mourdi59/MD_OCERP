@@ -34,7 +34,7 @@
 // from `backend/app/core/onboarding_presets.py`. Nothing else changes.
 
 import type { LucideIcon } from 'lucide-react';
-import { Banknote, Clock, FileText, Hourglass, Lock, PiggyBank, Receipt } from 'lucide-react';
+import { Banknote, Clock, FileText, Lock, PiggyBank, Receipt } from 'lucide-react';
 import { CONTRACTS_TABS, DEFAULT_CONTRACTS_TAB } from '@/features/contracts/contractsTabs';
 import { DEFAULT_FINANCE_TAB, FINANCE_TABS } from '@/features/finance/financeTabs';
 import {
@@ -125,8 +125,6 @@ const GENERAL_CONTRACTOR: Workspace = {
       icon: Receipt,
     },
     { to: '/finance?tab=payments', labelKey: 'finance.payments', defaultLabel: 'Payments', icon: Banknote },
-    { to: '/finance?tab=ageing', labelKey: 'finance.ageing_tab', defaultLabel: 'Ageing', icon: Hourglass },
-    { to: '/finance?tab=payment_runs', labelKey: 'finance.payrun_tab', defaultLabel: 'Payment runs', icon: Banknote },
     { to: '/finance?tab=retention', labelKey: 'finance.retention_tab', defaultLabel: 'Retention', icon: Lock },
     { to: '/schedule' },
     { to: '/daily-diary' },
@@ -213,8 +211,6 @@ const MEP_SECTIONS: readonly WorkspaceSection[] = [
       },
       { to: '/finance?tab=invoices', labelKey: 'finance.invoices', defaultLabel: 'Invoices', icon: FileText },
       { to: '/finance?tab=payments', labelKey: 'finance.payments', defaultLabel: 'Payments', icon: Banknote },
-      { to: '/finance?tab=ageing', labelKey: 'finance.ageing_tab', defaultLabel: 'Ageing', icon: Hourglass },
-      { to: '/finance?tab=payment_runs', labelKey: 'finance.payrun_tab', defaultLabel: 'Payment runs', icon: Banknote },
       { to: '/tax-rates' },
     ],
   },

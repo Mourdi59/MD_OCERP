@@ -219,6 +219,78 @@ export function downloadAccountStatementCsv(query: AccountStatementQuery, filena
   return downloadWithAuth(`${API_BASE}/v1/finance/statement-of-account/?${qs}`, filename);
 }
 
+/* ── Supplier payment totals (annual payee returns) ──────────────────── */
+
+export interface PayeeTotal {
+  contact_id: string | null;
+  payee_name: string | null;
+  payee_tax_id: string | null;
+  payee_address: string | null;
+  payee_country_code: string | null;
+  currency_code: string;
+  /** Paid less refunded over the period. Decimal as string. */
+  total: string;
+  paid: string;
+  refunded: string;
+  payment_count: number;
+  invoice_count: number;
+  project_count: number;
+  below_threshold: boolean;
+}
+
+/** The annual return the paying entity's country asks for, such as Canada's T5018. */
+export interface PayeeReturnInfo {
+  form: string;
+  name: string;
+  threshold: string;
+  currency: string;
+  reference: string;
+  due_on: string;
+  note: string;
+}
+
+export interface PayeeTotalsReport {
+  legal_entity_id: string;
+  legal_entity_name: string | null;
+  legal_entity_tax_id: string | null;
+  country_code: string | null;
+  date_from: string;
+  date_to: string;
+  payee_return: PayeeReturnInfo | null;
+  items: PayeeTotal[];
+  reportable_count: number;
+  missing_tax_id: number;
+}
+
+export interface PayeeTotalsQuery {
+  legalEntityId: string;
+  dateFrom: string;
+  dateTo: string;
+}
+
+function payeeParams(query: PayeeTotalsQuery): URLSearchParams {
+  return new URLSearchParams({
+    legal_entity_id: query.legalEntityId,
+    date_from: query.dateFrom,
+    date_to: query.dateTo,
+  });
+}
+
+/**
+ * What one legal entity paid each supplier over a period. Requires
+ * ``finance.read``; the server reads only the projects the caller can open.
+ */
+export function getPayeeTotals(query: PayeeTotalsQuery): Promise<PayeeTotalsReport> {
+  return apiGet<PayeeTotalsReport>(`/v1/finance/payee-totals/?${payeeParams(query)}`);
+}
+
+/** The same totals as CSV, one row per payee and currency. */
+export function downloadPayeeTotalsCsv(query: PayeeTotalsQuery, filename: string): Promise<void> {
+  const qs = payeeParams(query);
+  qs.set('format', 'csv');
+  return downloadWithAuth(`${API_BASE}/v1/finance/payee-totals/?${qs}`, filename);
+}
+
 /* ── E-invoice export ─────────────────────────────────────────────────── */
 
 /** One entry of the profile registry, as the backend publishes it. */

@@ -135,8 +135,6 @@ describe('the general contractor workspace', () => {
       ['/changeorders', 'nav.change_orders'],
       ['/contracts?tab=claims', 'contracts.tab_claims'],
       ['/finance?tab=payments', 'finance.payments'],
-      ['/finance?tab=ageing', 'finance.ageing_tab'],
-      ['/finance?tab=payment_runs', 'finance.payrun_tab'],
       ['/finance?tab=retention', 'finance.retention_tab'],
       ['/schedule', 'schedule.title'],
       ['/daily-diary', 'nav.daily_diary'],

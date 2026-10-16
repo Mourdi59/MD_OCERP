@@ -35,6 +35,7 @@ import {
   FileCode2,
   Hourglass,
   Banknote,
+  ReceiptText,
 } from 'lucide-react';
 import clsx from 'clsx';
 import {
@@ -94,6 +95,7 @@ import { StatementsTab } from './StatementsTab';
 import { RetentionLedgerTab } from './RetentionLedgerTab';
 import { AgeingTab } from './AgeingTab';
 import { PaymentRunsTab } from './PaymentRunsTab';
+import { PayeeTotalsTab } from './PayeeTotalsTab';
 import { EInvoiceModal } from './EInvoiceModal';
 import { downloadInvoicePdf, downloadPaymentPdf } from './api';
 import { PURCHASING_DOCUMENT_LOCALES } from '@/shared/lib/documentExport';
@@ -1007,6 +1009,11 @@ export function FinancePage() {
       icon: <Hourglass size={15} />,
     },
     {
+      key: 'payee_totals',
+      label: t('finance.payee_tab', { defaultValue: 'Supplier payments' }),
+      icon: <ReceiptText size={15} />,
+    },
+    {
       key: 'retention',
       label: t('finance.retention_tab', { defaultValue: 'Retention' }),
       icon: <Landmark size={15} />,
@@ -1142,6 +1149,7 @@ export function FinancePage() {
           {projectId && activeTab === 'statements' && <StatementsTab projectId={projectId} />}
           {projectId && activeTab === 'ageing' && <AgeingTab projectId={projectId} />}
           {projectId && activeTab === 'payment_runs' && <PaymentRunsTab projectId={projectId} />}
+          {projectId && activeTab === 'payee_totals' && <PayeeTotalsTab projectId={projectId} />}
           {projectId && activeTab === 'retention' && <RetentionLedgerTab projectId={projectId} />}
           {projectId && activeTab === 'payments' && (
             <PaymentsTab
