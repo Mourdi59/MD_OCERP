@@ -137437,6 +137437,7 @@
       "module_category": "business",
       "files": [
         "__init__.py",
+        "events.py",
         "manifest.py",
         "models.py",
         "permissions.py",
@@ -137444,7 +137445,8 @@
         "router.py",
         "schemas.py",
         "seed.py",
-        "service.py"
+        "service.py",
+        "validators.py"
       ],
       "manifest": {
         "name": "oe_interface_management",
@@ -137687,6 +137689,72 @@
               "back_populates": "actions"
             }
           ]
+        },
+        {
+          "class_name": "InterfaceHistoryEntry",
+          "tablename": "oe_interface_mgmt_history",
+          "docstring": "One entry in an interface's status history.\n\nWritten by the service in the same transaction as the change it records, so\nan interface can never move without leaving a trace. ``event`` names what\nhappened (``created``, ``status_changed``, ``approval_requested``,\n``approval_approved``, ``approval_rejected``, ``approval_cancelled``);\n``from_status`` / ``to_status`` carry the move (equal when the event did not\nmove the status, e.g. an approval that was requested or rejected).\n``approval_instance_id`` is a soft link to the approval-routes instance the\nentry came from, with no foreign key, like every cross-module link here.\n\nForeign keys are named explicitly: the platform naming convention would spell\nthem out past PostgreSQL's 63-character identifier limit.",
+          "columns": [
+            {
+              "name": "project_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_projects_project.id"
+            },
+            {
+              "name": "interface_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_interface_mgmt_interface.id"
+            },
+            {
+              "name": "event",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "from_status",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "to_status",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "actor_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "comment",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "Text",
+              "nullable": true
+            },
+            {
+              "name": "approval_instance_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "changed_at",
+              "annotation": "Mapped[datetime]",
+              "sql_type": "DateTime",
+              "nullable": false
+            }
+          ],
+          "relationships": []
         }
       ],
       "routes": [
@@ -137752,6 +137820,18 @@
           "path": "/projects/{project_id}/work-package-health",
           "handler": "get_work_package_health",
           "response_model": "WorkPackageHealthReportResponse"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/interfaces/{interface_id}/history",
+          "handler": "get_interface_history",
+          "response_model": "list[InterfaceHistoryResponse]"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/validation",
+          "handler": "get_register_validation",
+          "response_model": "InterfaceValidationResponse"
         }
       ],
       "schemas": [
@@ -137840,7 +137920,8 @@
             },
             {
               "name": "rfi_id",
-              "type": "str | None"
+              "type": "UUID | None",
+              "default": "None"
             },
             {
               "name": "schedule_activity_id",
@@ -137946,7 +138027,8 @@
             },
             {
               "name": "rfi_id",
-              "type": "str | None"
+              "type": "UUID | None",
+              "default": "None"
             },
             {
               "name": "schedule_activity_id",
@@ -137955,6 +138037,10 @@
             },
             {
               "name": "location",
+              "type": "str | None"
+            },
+            {
+              "name": "status_comment",
               "type": "str | None"
             },
             {
@@ -138287,6 +138373,16 @@
               "name": "open_action_count",
               "type": "int",
               "default": "0"
+            },
+            {
+              "name": "age_days",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "days_overdue",
+              "type": "int | None",
+              "default": "None"
             }
           ]
         },
@@ -138384,6 +138480,157 @@
             {
               "name": "work_packages",
               "type": "list[WorkPackageHealthResponse]"
+            },
+            {
+              "name": "open_count",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "overdue_count",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "ageing",
+              "type": "dict[str, int]"
+            },
+            {
+              "name": "overdue_ageing",
+              "type": "dict[str, int]"
+            },
+            {
+              "name": "average_open_age_days",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "oldest_open_age_days",
+              "type": "int | None",
+              "default": "None"
+            },
+            {
+              "name": "max_days_overdue",
+              "type": "int | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "InterfaceHistoryResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One entry in an interface's status history.",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "interface_id",
+              "type": "UUID"
+            },
+            {
+              "name": "event",
+              "type": "str"
+            },
+            {
+              "name": "from_status",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "to_status",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "actor_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "actor_name",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "comment",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "approval_instance_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "changed_at",
+              "type": "datetime"
+            }
+          ]
+        },
+        {
+          "class_name": "InterfaceValidationResult",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One rule outcome from the ``interface_management`` rule set.",
+          "fields": [
+            {
+              "name": "rule_id",
+              "type": "str"
+            },
+            {
+              "name": "severity",
+              "type": "str"
+            },
+            {
+              "name": "passed",
+              "type": "bool"
+            },
+            {
+              "name": "message",
+              "type": "str"
+            },
+            {
+              "name": "element_ref",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "InterfaceValidationResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Traffic-light result of the ``interface_management`` rule set for one project.",
+          "fields": [
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "errors",
+              "type": "int"
+            },
+            {
+              "name": "warnings",
+              "type": "int"
+            },
+            {
+              "name": "passed",
+              "type": "int"
+            },
+            {
+              "name": "results",
+              "type": "list[InterfaceValidationResult]"
             }
           ]
         },
@@ -138426,12 +138673,15 @@
         }
       ],
       "import_dependencies": [
+        "approval_routes",
         "bim_hub",
         "contacts",
         "project_governance",
         "projects",
         "rfi",
-        "subcontractors"
+        "schedule",
+        "subcontractors",
+        "users"
       ]
     },
     {
@@ -165849,6 +166099,12 @@
               "annotation": "Mapped[int]",
               "sql_type": "Integer",
               "nullable": false
+            },
+            {
+              "name": "requisition_item_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
             }
           ],
           "relationships": [
@@ -166065,6 +166321,30 @@
               "name": "approver_id",
               "annotation": "Mapped[str | None]",
               "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "submitted_by",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "decided_at",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "decision_comment",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "Text",
+              "nullable": true
+            },
+            {
+              "name": "vendor_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
               "nullable": true
             },
             {
@@ -166488,6 +166768,11 @@
               "description": "Cost line to commit against. Takes precedence over boq_position_id."
             },
             {
+              "name": "requisition_item_id",
+              "type": "UUID | None",
+              "description": "Requisition line this order line came from. Set by the requisition conversion."
+            },
+            {
               "name": "sort_order",
               "type": "int"
             }
@@ -166748,6 +167033,11 @@
             },
             {
               "name": "boq_position_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "requisition_item_id",
               "type": "UUID | None",
               "default": "None"
             },
@@ -167803,6 +168093,11 @@
               "type": "str | None"
             },
             {
+              "name": "vendor_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
               "name": "items",
               "type": "list[RequisitionItemIn]"
             }
@@ -167833,6 +168128,11 @@
               "type": "str | None"
             },
             {
+              "name": "vendor_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
               "name": "items",
               "type": "list[RequisitionItemIn] | None"
             }
@@ -167848,6 +168148,128 @@
             {
               "name": "reason",
               "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "RequisitionApprove",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "An approval, with an optional note from the approver.",
+          "fields": [
+            {
+              "name": "comment",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "RequisitionReject",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A rejection. The reason is required: the requester has to know what to change.",
+          "fields": [
+            {
+              "name": "comment",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "RequisitionConvert",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Turn approved requisitions of one project into one draft purchase order.\n\n``vendor_id`` names the supplier from the Vendor directory. Left out, the\nsupplier the requisitions agree on is used; requisitions naming different\nsuppliers cannot share an order.",
+          "fields": [
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "requisition_ids",
+              "type": "list[UUID]"
+            },
+            {
+              "name": "vendor_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "delivery_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "RequisitionConvertResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "The draft purchase order a conversion created.",
+          "fields": [
+            {
+              "name": "po_id",
+              "type": "UUID"
+            },
+            {
+              "name": "po_number",
+              "type": "str"
+            },
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "requisition_ids",
+              "type": "list[UUID]"
+            },
+            {
+              "name": "line_count",
+              "type": "int"
+            },
+            {
+              "name": "vendor_warnings",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "class_name": "RequisitionPOItemRef",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One purchase order line that came from a requisition line.",
+          "fields": [
+            {
+              "name": "po_item_id",
+              "type": "UUID"
+            },
+            {
+              "name": "po_id",
+              "type": "UUID"
+            },
+            {
+              "name": "po_number",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "quantity",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "unit",
+              "type": "str | None",
+              "default": "None"
             }
           ]
         },
@@ -167965,6 +168387,10 @@
             {
               "name": "sources",
               "type": "list[RequisitionItemSourceResponse]"
+            },
+            {
+              "name": "po_items",
+              "type": "list[RequisitionPOItemRef]"
             }
           ]
         },
@@ -168023,8 +168449,48 @@
               "default": "None"
             },
             {
+              "name": "approver_name",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "submitted_by",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "decided_at",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "decision_comment",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "vendor_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "vendor_name",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "vendor_status",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
               "name": "po_id",
               "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "po_number",
+              "type": "str | None",
               "default": "None"
             },
             {
@@ -168104,6 +168570,267 @@
               "type": "list[dict[str, Any]]"
             }
           ]
+        },
+        {
+          "class_name": "TracePOLine",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A purchase order line reached from a requisition line.",
+          "fields": [
+            {
+              "name": "po_id",
+              "type": "UUID"
+            },
+            {
+              "name": "po_number",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "po_status",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "po_item_id",
+              "type": "UUID"
+            },
+            {
+              "name": "quantity",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "unit",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "PositionTraceRow",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One requisition line fed by a BOQ position, and the order lines it became.",
+          "fields": [
+            {
+              "name": "requisition_id",
+              "type": "UUID"
+            },
+            {
+              "name": "req_number",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "requisition_status",
+              "type": "str"
+            },
+            {
+              "name": "requisition_item_id",
+              "type": "UUID"
+            },
+            {
+              "name": "description",
+              "type": "str"
+            },
+            {
+              "name": "line_unit",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "quantity_requested",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "quantity_ordered",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "resource_key",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "source_quantity",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "source_unit",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "purchase_orders",
+              "type": "list[TracePOLine]"
+            }
+          ]
+        },
+        {
+          "class_name": "PositionTraceResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Everything procurement holds against one BOQ position.",
+          "fields": [
+            {
+              "name": "boq_position_id",
+              "type": "UUID"
+            },
+            {
+              "name": "items",
+              "type": "list[PositionTraceRow]"
+            }
+          ]
+        },
+        {
+          "class_name": "TraceSource",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A BOQ source behind an order line, read through its requisition line.",
+          "fields": [
+            {
+              "name": "boq_position_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "position_ordinal",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "position_description",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "resource_key",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "quantity",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "unit",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "POTraceLine",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One order line with the requisition line and BOQ sources it came from.",
+          "fields": [
+            {
+              "name": "po_item_id",
+              "type": "UUID"
+            },
+            {
+              "name": "description",
+              "type": "str"
+            },
+            {
+              "name": "quantity",
+              "type": "str",
+              "default": "'0'"
+            },
+            {
+              "name": "unit",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "requisition_item_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "requisition_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "req_number",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "sources",
+              "type": "list[TraceSource]"
+            }
+          ]
+        },
+        {
+          "class_name": "POTraceRequisition",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A requisition converted into the order.",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "req_number",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "title",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "POTraceResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Where the lines of a purchase order came from.",
+          "fields": [
+            {
+              "name": "po_id",
+              "type": "UUID"
+            },
+            {
+              "name": "po_number",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "po_status",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "requisitions",
+              "type": "list[POTraceRequisition]"
+            },
+            {
+              "name": "lines",
+              "type": "list[POTraceLine]"
+            }
+          ]
         }
       ],
       "import_dependencies": [
@@ -168115,6 +168842,7 @@
         "projects",
         "rfq_bidding",
         "subcontractors",
+        "supplier_catalogs",
         "tendering",
         "users"
       ]
@@ -267949,10 +268677,10 @@
     },
     {
       "name": "interface-management",
-      "ts_files": 4,
+      "ts_files": 7,
       "css_files": 0,
-      "test_files": 0,
-      "total_files": 4
+      "test_files": 1,
+      "total_files": 7
     },
     {
       "name": "issues",
@@ -268173,10 +268901,10 @@
     },
     {
       "name": "procurement",
-      "ts_files": 30,
+      "ts_files": 33,
       "css_files": 0,
-      "test_files": 12,
-      "total_files": 30
+      "test_files": 13,
+      "total_files": 33
     },
     {
       "name": "procurement_concept",
@@ -269449,12 +270177,15 @@
       "users"
     ],
     "interface_management": [
+      "approval_routes",
       "bim_hub",
       "contacts",
       "project_governance",
       "projects",
       "rfi",
-      "subcontractors"
+      "schedule",
+      "subcontractors",
+      "users"
     ],
     "jobs": [],
     "labor_rates": [
@@ -269696,6 +270427,7 @@
       "projects",
       "rfq_bidding",
       "subcontractors",
+      "supplier_catalogs",
       "tendering",
       "users"
     ],
@@ -270176,14 +270908,14 @@
   "statistics": {
     "backend_modules": 211,
     "modules_with_manifests": 209,
-    "total_models": 768,
-    "total_columns": 8933,
+    "total_models": 769,
+    "total_columns": 8947,
     "total_relationships": 238,
-    "total_routes": 4533,
-    "total_schemas": 3982,
-    "total_python_files": 2690,
+    "total_routes": 4535,
+    "total_schemas": 3997,
+    "total_python_files": 2693,
     "frontend_features": 208,
-    "frontend_ts_files": 3456,
+    "frontend_ts_files": 3462,
     "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
