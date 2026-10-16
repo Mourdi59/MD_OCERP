@@ -1687,6 +1687,11 @@ class FinanceService:
            must be provided - prevents silent silent currency confusion.
         3. Refund guard: total refunds cannot exceed total forward payments
            (net_paid >= 0).
+        4. Withholding: this path records cash only. A payment that holds back
+           retainage goes through :meth:`record_payment_with_withholding`,
+           which splits and checks it against the invoice, so a withholding or
+           release date here is refused rather than silently dropped. The
+           claim link is taken from the invoice.
 
         ``actor_id`` is optional so the legacy in-process callers
         (event-bus consumers, importers) don't break, but the router
@@ -1699,6 +1704,21 @@ class FinanceService:
                 return existing
 
         invoice = await self.get_invoice(data.invoice_id)  # 404 check
+
+        # ── 4. Withholding belongs to the record-payment path ─────────────────
+        if _safe_decimal(data.withholding_amount) != Decimal("0") or data.withholding_release_date:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=(
+                    "This endpoint records cash only. Record a payment that holds back retainage "
+                    f"with POST /api/v1/finance/invoices/{invoice.id}/record-payment/."
+                ),
+            )
+        if data.source_claim_id is not None and data.source_claim_id != invoice.source_claim_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="source_claim_id does not match the claim this invoice was raised from.",
+            )
 
         # ── 2. Currency normalization ─────────────────────────────────────────
         inv_currency = getattr(invoice, "currency_code", "") or ""
@@ -1740,6 +1760,7 @@ class FinanceService:
             reference=data.reference,
             idempotency_key=data.idempotency_key,
             is_refund=bool(data.is_refund),
+            source_claim_id=invoice.source_claim_id,
             metadata_=data.metadata,
         )
         payment = await self.payments_repo.create(payment)
