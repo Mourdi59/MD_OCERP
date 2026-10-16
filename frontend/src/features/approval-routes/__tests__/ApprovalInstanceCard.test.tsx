@@ -20,7 +20,7 @@
 //      with the right payload (decision:'approved').
 //   4. No instance + no configured route → empty "no workflow" state.
 
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll, beforeEach } from 'vitest';
 import {
   render,
   screen,
@@ -181,6 +181,14 @@ async function importCard() {
   return mod.ApprovalInstanceCard;
 }
 
+// Pay the one-time module transform before any test starts its clock. When
+// full-suite workers saturate the CPU the first import of the card and its
+// dependency tree takes well over the default budget, and charging it to the
+// first test made that test the one that failed.
+beforeAll(async () => {
+  await importCard();
+}, 60000);
+
 beforeEach(() => {
   // Cleanup leftover React trees + reset call history. Test-level
   // ``setupApiGet`` re-installs the GET implementation before mount —
@@ -202,8 +210,8 @@ afterEach(() => {
 /* ── Tests ─────────────────────────────────────────────────────── */
 
 describe('<ApprovalInstanceCard />', () => {
-  // 60s budget: the FIRST test in this file pays the one-time dynamic-import
-  // transform cost, which exceeds 15s when full-suite workers saturate the CPU.
+  // 60s budget: the import is warmed in beforeAll, but the first render in the
+  // file still builds the React tree cold, which is slow on a saturated CPU.
   it('renders the running instance ladder with approve/reject for active assignee', { timeout: 60000 }, async () => {
     setupApiGet({ instances: [runningInstance], route });
     const ApprovalInstanceCard = await importCard();
@@ -215,10 +223,11 @@ describe('<ApprovalInstanceCard />', () => {
       </QueryClientProvider>,
     );
 
-    // Step-1 approve button renders once the instance + route land. We use
-    // ``findByTestId`` (bumped timeout because the first test pays the
-    // one-time module-transform cost).
-    await screen.findByTestId('approval-approve-step-1', {}, { timeout: 4000 });
+    // Step-1 approve button renders once the instance + route land. The wait
+    // resolves as soon as it appears, so a generous ceiling costs nothing on a
+    // fast run and keeps a loaded worker from failing a correct render; 4s
+    // was not enough when the whole frontend suite ran in parallel.
+    await screen.findByTestId('approval-approve-step-1', {}, { timeout: 30000 });
 
     // Approve + Reject only on the active step (step-1, the current user
     // is the named approver). Step-2 must NOT show action buttons.
