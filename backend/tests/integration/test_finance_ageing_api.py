@@ -182,6 +182,34 @@ async def test_a_user_without_access_sees_nothing_even_by_entity(client: AsyncCl
     assert report["groups"] == [] and report["totals"] == []
 
 
+async def test_the_invoice_list_narrows_to_one_legal_entity(
+    client: AsyncClient, admin: dict[str, str], world: dict[str, str]
+) -> None:
+    north = await _ok(
+        await client.get(
+            "/api/v1/finance/", params={"legal_entity_id": world["north_entity"], "limit": 100}, headers=admin
+        )
+    )
+    assert {i["project_id"] for i in north["items"]} == {world["north_project"]}
+    assert north["total"] == 3  # two approved and the draft
+    named = await _ok(
+        await client.get(
+            "/api/v1/finance/",
+            params={"legal_entity_id": world["south_entity"], "project_id": world["north_project"]},
+            headers=admin,
+        )
+    )
+    assert named == {"items": [], "total": 0, "offset": 0, "limit": 50}
+
+
+async def test_the_entity_filter_never_widens_what_a_user_can_see(client: AsyncClient, world: dict[str, str]) -> None:
+    outsider = await _login(client, admin=False)
+    resp = await client.get("/api/v1/finance/", params={"legal_entity_id": world["north_entity"]}, headers=outsider)
+    if resp.status_code == 403:
+        return
+    assert (await _ok(resp))["items"] == []
+
+
 async def test_a_bad_cutoff_is_refused(client: AsyncClient, admin: dict[str, str]) -> None:
     resp = await client.get("/api/v1/finance/ageing/", params={"as_of": "15/10/2026"}, headers=admin)
     assert resp.status_code == 422

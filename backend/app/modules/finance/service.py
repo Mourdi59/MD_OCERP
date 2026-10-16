@@ -870,6 +870,7 @@ class FinanceService:
         project_ids: set[uuid.UUID] | None = None,
         direction: str | None = None,
         invoice_status: str | None = None,
+        legal_entity_id: uuid.UUID | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[Invoice], int]:
@@ -877,8 +878,17 @@ class FinanceService:
 
         ``project_ids`` is the accessible-projects scope applied by the router
         when no explicit ``project_id`` is given, so a non-admin never sees
-        every tenant's invoices.
+        every tenant's invoices. ``legal_entity_id`` narrows to the projects
+        that entity owns, the default entity answering for unassigned ones as
+        in the ageing report; it only ever narrows the scope, never widens it.
         """
+        if legal_entity_id is not None:
+            owned = await self._project_ids_of_entity(legal_entity_id)
+            if project_id is not None:
+                if project_id not in owned:
+                    return [], 0
+            else:
+                project_ids = owned if project_ids is None else project_ids & owned
         return await self.invoices.list(
             project_id=project_id,
             project_ids=project_ids,
@@ -3097,6 +3107,17 @@ class FinanceService:
             currency_code=currency_code,
         )
         return build_statement(invoices, date_from=date_from, date_to=date_to or _utcnow_iso()[:10])
+
+    async def _project_ids_of_entity(self, legal_entity_id: uuid.UUID) -> set[uuid.UUID]:
+        """Projects the legal entity owns, with the unassigned ones when it is the default."""
+        from sqlalchemy import or_, select
+
+        from app.modules.projects.models import Project
+
+        condition = Project.legal_entity_id == legal_entity_id
+        if legal_entity_id == await self._default_legal_entity_id():
+            condition = or_(condition, Project.legal_entity_id.is_(None))
+        return set((await self.session.execute(select(Project.id).where(condition))).scalars().all())
 
     async def _default_legal_entity_id(self) -> uuid.UUID | None:
         """The default legal entity, or None without one or without the module."""

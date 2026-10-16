@@ -397,7 +397,7 @@ async def _require_evm_access(
     response_model=InvoiceListResponse,
     summary="List invoices",
     description="Retrieve a paginated list of invoices with optional filters by project, "
-    "direction (payable/receivable), and status.",
+    "direction (payable/receivable), status and legal entity.",
 )
 async def list_invoices(
     session: SessionDep,
@@ -405,6 +405,7 @@ async def list_invoices(
     project_id: uuid.UUID | None = Query(default=None),
     direction: str | None = Query(default=None),
     status: str | None = Query(default=None),
+    legal_entity_id: uuid.UUID | None = Query(default=None),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
     _perm: None = Depends(RequirePermission("finance.read")),
@@ -421,6 +422,7 @@ async def list_invoices(
         project_ids=scope,
         direction=direction,
         invoice_status=status,
+        legal_entity_id=legal_entity_id,
         offset=offset,
         limit=limit,
     )
@@ -479,6 +481,7 @@ async def list_invoices_alias(
     project_id: uuid.UUID | None = Query(default=None),
     direction: str | None = Query(default=None),
     status: str | None = Query(default=None),
+    legal_entity_id: uuid.UUID | None = Query(default=None),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
     _perm: None = Depends(RequirePermission("finance.read")),
@@ -498,6 +501,7 @@ async def list_invoices_alias(
         project_ids=scope,
         direction=direction,
         invoice_status=status,
+        legal_entity_id=legal_entity_id,
         offset=offset,
         limit=limit,
     )
