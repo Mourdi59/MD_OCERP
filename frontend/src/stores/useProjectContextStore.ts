@@ -83,9 +83,13 @@ export const useProjectContextStore = create<ProjectContextState>((set, get) => 
   pinnedProjectIds: initialPinned,
 
   setActiveProject: (id: string, name: string) => {
-    const ctx: ProjectContext = { id, name, boqId: get().activeBOQId };
+    // A BOQ belongs to one project: switching project must not carry the
+    // previous project's BOQ over to pages that read it (estimate basis,
+    // risk analysis, takeoff...).
+    const boqId = get().activeProjectId === id ? get().activeBOQId : null;
+    const ctx: ProjectContext = { id, name, boqId };
     persist(ctx);
-    set({ activeProjectId: id, activeProjectName: name });
+    set({ activeProjectId: id, activeProjectName: name, activeBOQId: boqId });
   },
 
   setActiveBOQ: (boqId: string | null) => {

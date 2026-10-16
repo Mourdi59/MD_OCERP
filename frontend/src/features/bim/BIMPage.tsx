@@ -2521,6 +2521,32 @@ export function BIMPage() {
   // briefly activates an unrelated model and fires the model-switch reset
   // effect, which wipes a filter/grouping the user just applied.
   const urlModelMissingRef = useRef(false);
+  // Project the auto-detect below switched to, so the project-switch reset
+  // can tell a deep-link resolution from a user pick in the top selector.
+  const autoDetectedProjectRef = useRef<string | null>(null);
+
+  // Project switch: drop the previous project's model. The page is not
+  // remounted when the route changes (/bim/:modelId -> /bim), so without this
+  // activeModelId kept the old model, the URL sync re-added it to the path
+  // and the viewer stayed on a model from another project.
+  const prevProjectIdRef = useRef(projectId);
+  useEffect(() => {
+    const prev = prevProjectIdRef.current;
+    prevProjectIdRef.current = projectId;
+    if (!prev || prev === projectId) return;
+    if (autoDetectedProjectRef.current === projectId) {
+      autoDetectedProjectRef.current = null;
+      return;
+    }
+    autoDetectedRef.current = null;
+    urlModelMissingRef.current = false;
+    setActiveModelId(null);
+    if (urlModelId) {
+      navigate(urlProjectId ? `/projects/${urlProjectId}/bim` : '/bim', { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
   useEffect(() => {
     if (!urlModelId) return;
     if (autoDetectedRef.current === urlModelId) return;
@@ -2535,6 +2561,7 @@ export function BIMPage() {
       autoDetectedRef.current = urlModelId;
       urlModelMissingRef.current = false;
       if (model?.project_id && model.project_id !== projectId) {
+        autoDetectedProjectRef.current = model.project_id;
         setActiveProject(model.project_id, '');
       }
     }).catch(async () => {
@@ -2600,12 +2627,15 @@ export function BIMPage() {
   // Sync URL when active model changes
   useEffect(() => {
     if (!activeModelId) return;
+    // Only a model of the current project goes into the URL - a stale id left
+    // over from a project switch would otherwise be written back.
+    if (!models.some((m) => m.id === activeModelId)) return;
     const basePath = urlProjectId ? `/projects/${urlProjectId}/bim` : '/bim';
     const targetPath = `${basePath}/${activeModelId}`;
     if (!window.location.pathname.endsWith(activeModelId)) {
       navigate(targetPath, { replace: true });
     }
-  }, [activeModelId, urlProjectId, navigate]);
+  }, [activeModelId, models, urlProjectId, navigate]);
 
   // Reset transient viewer state when switching between models - covers the
   // auto-pick + deep-link paths above which only set activeModelId without

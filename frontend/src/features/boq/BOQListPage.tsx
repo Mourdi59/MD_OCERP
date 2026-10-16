@@ -627,6 +627,16 @@ export function BOQListPage() {
     ? projects?.filter((p) => p.id === projectIdFromUrl)
     : projects;
 
+  // The persisted filter can name a project that no longer exists (deleted,
+  // then a demo reinstalled under a new id). It then hid every estimate, and
+  // with a single project left the dropdown that could clear it is not even
+  // rendered. Drop it once the project list is known.
+  const projectFilterIsStale =
+    !!projectFilter && Array.isArray(projects) && !projects.some((p) => p.id === projectFilter);
+  useEffect(() => {
+    if (projectFilterIsStale) setProjectFilter('');
+  }, [projectFilterIsStale]);
+
   const {
     data: boqData,
     isLoading: boqLoading,
@@ -721,7 +731,7 @@ export function BOQListPage() {
     if (statusFilter) {
       list = list.filter((b) => b.status === statusFilter);
     }
-    if (userProjectFilter) {
+    if (userProjectFilter && !projectFilterIsStale) {
       list = list.filter((b) => b.project_id === userProjectFilter);
     }
 
@@ -737,7 +747,7 @@ export function BOQListPage() {
     });
 
     return list;
-  }, [allBoqs, searchQuery, statusFilter, userProjectFilter, sortField, sortAsc, compareNames]);
+  }, [allBoqs, searchQuery, statusFilter, userProjectFilter, projectFilterIsStale, sortField, sortAsc, compareNames]);
 
   const isFiltered = !!(searchQuery || statusFilter || userProjectFilter);
 

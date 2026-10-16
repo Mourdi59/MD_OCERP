@@ -46,6 +46,24 @@ describe('useProjectContextStore', () => {
     expect(useProjectContextStore.getState().activeBOQId).toBeNull();
   });
 
+  it('should drop the BOQ when switching to another project', () => {
+    const { setActiveProject, setActiveBOQ } = useProjectContextStore.getState();
+    setActiveProject('proj-1', 'Test');
+    setActiveBOQ('boq-1');
+    setActiveProject('proj-2', 'Other');
+
+    expect(useProjectContextStore.getState().activeBOQId).toBeNull();
+  });
+
+  it('should keep the BOQ when re-setting the same project', () => {
+    const { setActiveProject, setActiveBOQ } = useProjectContextStore.getState();
+    setActiveProject('proj-1', '');
+    setActiveBOQ('boq-1');
+    setActiveProject('proj-1', 'Test');
+
+    expect(useProjectContextStore.getState().activeBOQId).toBe('boq-1');
+  });
+
   it('should clear all state', () => {
     const { setActiveProject, setActiveBOQ, clearProject } = useProjectContextStore.getState();
     setActiveProject('proj-1', 'Test');

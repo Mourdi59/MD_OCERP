@@ -1673,6 +1673,10 @@ export function QuickEstimatePage() {
   // CAD BOQ creation state
   const globalProjectId = useProjectContextStore((s) => s.activeProjectId);
   const [cadBOQProjectId, setCadBOQProjectId] = useState(globalProjectId || '');
+  // Follow the top-bar project switcher, not just its value at mount.
+  useEffect(() => {
+    if (globalProjectId) setCadBOQProjectId(globalProjectId);
+  }, [globalProjectId]);
   const [cadBOQName, setCadBOQName] = useState('CAD Import');
   const [cadBOQCreating, setCadBOQCreating] = useState(false);
   const [cadExporting, setCadExporting] = useState(false);

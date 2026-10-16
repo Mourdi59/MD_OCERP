@@ -1641,7 +1641,10 @@ export function resolveRouteAfterProjectSwitch(
 ): string | null {
   const projectSub = pathname.match(/^\/projects\/[^/]+(\/.*)?$/);
   if (projectSub) {
-    const suffix = projectSub[1] ?? '';
+    let suffix = projectSub[1] ?? '';
+    // A record of the old project (a model, a claim, a file) does not exist in
+    // the new one: keep only the module, e.g. /bim/<model> -> /bim.
+    if (ENTITY_ID_SEGMENT.test(suffix)) suffix = suffix.split('/').slice(0, 2).join('/');
     return `/projects/${newProjectId}${suffix}`;
   }
   // Module-scoped detail routes.  The list lives at /<module>.
@@ -1662,8 +1665,14 @@ export function resolveRouteAfterProjectSwitch(
   for (const [re, list] of entityRoutes) {
     if (re.test(pathname)) return list;
   }
+  // Any other module detail route keyed by a record id (/accommodation/<id>,
+  // /schedule/<id>/cpm...) falls back to the module's list.
+  if (ENTITY_ID_SEGMENT.test(pathname)) return `/${pathname.split('/')[1]}`;
   return null;
 }
+
+/** A path segment holding a record id (UUID). */
+const ENTITY_ID_SEGMENT = /\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/|$)/i;
 
 function ProjectSwitcher() {
   const { t } = useTranslation();
