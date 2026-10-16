@@ -39,6 +39,7 @@ from app.modules.finance.models import (
     Payment,
     ProjectBudget,
 )
+from app.modules.finance.payee_totals import PayeeTotal, build_payee_totals
 from app.modules.finance.po_link import invoice_po_link
 from app.modules.finance.repository import (
     BudgetRepository,
@@ -3128,6 +3129,33 @@ class FinanceService:
             currency_code=currency_code,
         )
         return build_statement(invoices, date_from=date_from, date_to=date_to or _utcnow_iso()[:10])
+
+    async def get_payee_totals(
+        self,
+        *,
+        legal_entity_id: uuid.UUID,
+        date_from: str,
+        date_to: str,
+        project_ids: set[uuid.UUID] | None = None,
+        threshold: Decimal | None = None,
+        threshold_currency: str | None = None,
+    ) -> list[PayeeTotal]:
+        """What one legal entity paid each supplier between two dates.
+
+        Reads the payable invoices of the entity's projects in every status, a
+        cancelled invoice included, because what counts is money that left the
+        account, and an invoice cancelled after it was paid still paid it.
+        """
+        invoices = await self.load_ageing_invoices(
+            direction="payable", project_ids=project_ids, legal_entity_id=legal_entity_id
+        )
+        return build_payee_totals(
+            invoices,
+            date_from=date_from,
+            date_to=date_to,
+            threshold=threshold,
+            threshold_currency=threshold_currency,
+        )
 
     async def _project_ids_of_entity(self, legal_entity_id: uuid.UUID) -> set[uuid.UUID]:
         """Projects the legal entity owns, with the unassigned ones when it is the default."""

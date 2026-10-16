@@ -119,6 +119,9 @@ from app.modules.finance.schemas import (
     LedgerAccountUpdate,
     LedgerEntryResponse,
     LedgerTransactionResponse,
+    PayeeReturnInfo,
+    PayeeTotalResponse,
+    PayeeTotalsResponse,
     PaymentCreate,
     PaymentListResponse,
     PaymentResponse,
@@ -1685,6 +1688,148 @@ async def get_account_statement(
         content=out.getvalue().encode("utf-8-sig"),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": attachment_disposition(f"Statement {who} {response.date_to}.csv")},
+    )
+
+
+def _months_after(day: str, months: int) -> str:
+    """``day`` moved ``months`` calendar months on, clamped to the end of a shorter month."""
+    import calendar
+    from datetime import date as _date
+
+    start = _date.fromisoformat(day)
+    index = start.month - 1 + months
+    year, month = start.year + index // 12, index % 12 + 1
+    return _date(year, month, min(start.day, calendar.monthrange(year, month)[1])).isoformat()
+
+
+def _address_text(party: dict[str, str]) -> str:
+    return ", ".join(p for p in (party.get("line1"), party.get("postcode"), party.get("city")) if p)
+
+
+@router.get(
+    "/payee-totals/",
+    response_model=PayeeTotalsResponse,
+    summary="What a legal entity paid each supplier over a period",
+    description=(
+        "Payments made by one legal entity to each supplier between date_from and date_to, per currency, "
+        "with the supplier's tax number and address, for an annual payee return such as Canada's T5018. "
+        "When the entity's country has such a return, it is named with its threshold and due date and "
+        "payees below the threshold are marked. Scoped to the projects the caller can read. ?format=csv "
+        "returns the rows as CSV."
+    ),
+)
+async def get_payee_totals(
+    session: SessionDep,
+    user_id: CurrentUserId,
+    legal_entity_id: uuid.UUID = Query(...),
+    date_from: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    date_to: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    format: str = Query(default="json", pattern=r"^(json|csv)$"),  # noqa: A002 - public query parameter name
+    _perm: None = Depends(RequirePermission("finance.read")),
+    service: FinanceService = Depends(_get_service),
+) -> Any:
+    """Return the supplier payment totals, as JSON or CSV."""
+    from app.modules.finance.einvoice_parties import buyer_party_from_contact
+    from app.modules.finance.payee_totals import payee_return_for
+
+    try:
+        from app.modules.legal_entities.models import LegalEntity
+    except ImportError:  # pragma: no cover - legal entities is optional for finance
+        LegalEntity = None  # noqa: N806
+    entity = await session.get(LegalEntity, legal_entity_id) if LegalEntity is not None else None
+    if entity is None:
+        raise HTTPException(status_code=404, detail="Legal entity not found")
+    payee_return = payee_return_for(entity.country_code)
+    try:
+        rows = await service.get_payee_totals(
+            legal_entity_id=legal_entity_id,
+            date_from=date_from,
+            date_to=date_to,
+            project_ids=await accessible_project_ids(session, user_id),
+            threshold=Decimal(payee_return["threshold"]) if payee_return else None,
+            threshold_currency=payee_return["currency"] if payee_return else None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    contact_ids = [r.contact_id for r in rows if r.contact_id]
+    contacts = (
+        {str(c.id): c for c in (await session.execute(select(Contact).where(Contact.id.in_(contact_ids)))).scalars()}
+        if contact_ids
+        else {}
+    )
+    items: list[PayeeTotalResponse] = []
+    for row in rows:
+        contact = contacts.get(row.contact_id or "")
+        party = buyer_party_from_contact(contact) if contact is not None else {}
+        items.append(
+            PayeeTotalResponse(
+                contact_id=row.contact_id,
+                payee_name=party.get("name"),
+                payee_tax_id=party.get("vat_id"),
+                payee_address=_address_text(party) or None,
+                payee_country_code=party.get("country_code"),
+                currency_code=row.currency_code,
+                total=str(row.total),
+                paid=str(row.paid.quantize(Decimal("0.01"))),
+                refunded=str(row.refunded.quantize(Decimal("0.01"))),
+                payment_count=row.payment_count,
+                invoice_count=len(row.invoice_ids),
+                project_count=len(row.project_ids),
+                below_threshold=row.below_threshold,
+            )
+        )
+    reportable = [i for i in items if not i.below_threshold]
+    response = PayeeTotalsResponse(
+        legal_entity_id=str(entity.id),
+        legal_entity_name=f"{entity.code} - {entity.name}",
+        legal_entity_tax_id=entity.tax_id,
+        country_code=entity.country_code,
+        date_from=date_from,
+        date_to=date_to,
+        payee_return=(
+            PayeeReturnInfo(
+                form=payee_return["form"],
+                name=payee_return["name"],
+                threshold=payee_return["threshold"],
+                currency=payee_return["currency"],
+                reference=payee_return["reference"],
+                due_on=_months_after(date_to, int(payee_return["due_months_after_period"])),
+                note=payee_return["note"],
+            )
+            if payee_return
+            else None
+        ),
+        items=items,
+        reportable_count=len(reportable),
+        missing_tax_id=sum(1 for i in reportable if not i.payee_tax_id),
+    )
+    if format == "json":
+        return response
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow(
+        ["payee", "tax_id", "address", "country", "currency", "total", "paid", "refunded", "payments", "reportable"]
+    )
+    for item in items:
+        writer.writerow(
+            [
+                item.payee_name or "",
+                item.payee_tax_id or "",
+                item.payee_address or "",
+                item.payee_country_code or "",
+                item.currency_code,
+                item.total,
+                item.paid,
+                item.refunded,
+                item.payment_count,
+                "no" if item.below_threshold else "yes",
+            ]
+        )
+    form = payee_return["form"] if payee_return else "Payees"
+    return Response(
+        content=out.getvalue().encode("utf-8-sig"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": attachment_disposition(f"{form} {entity.code} {date_from} {date_to}.csv")},
     )
 
 

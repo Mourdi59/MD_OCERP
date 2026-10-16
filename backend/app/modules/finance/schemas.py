@@ -1206,3 +1206,54 @@ class AccountStatementResponse(BaseModel):
     total_credited: str
     lines: list[AccountStatementLineResponse] = Field(default_factory=list)
     ageing: list[AgeingRollupResponse] = Field(default_factory=list)
+
+
+class PayeeTotalResponse(BaseModel):
+    """What the entity paid one supplier over the period. Money is Decimal-as-string."""
+
+    contact_id: str | None = None
+    payee_name: str | None = None
+    #: The tax or business number on the supplier's contact record.
+    payee_tax_id: str | None = None
+    payee_address: str | None = None
+    payee_country_code: str | None = None
+    currency_code: str
+    total: str
+    paid: str
+    refunded: str
+    payment_count: int
+    invoice_count: int
+    project_count: int
+    below_threshold: bool = False
+
+
+class PayeeReturnInfo(BaseModel):
+    """The annual payee return the paying entity's country asks for."""
+
+    form: str
+    name: str
+    threshold: str
+    currency: str
+    reference: str
+    due_on: str
+    note: str
+
+
+class PayeeTotalsResponse(BaseModel):
+    """Supplier payments of one legal entity over a reporting period.
+
+    ``payee_return`` names the jurisdiction's return (Canada's T5018) when the
+    entity's country has one; ``missing_tax_id`` counts the payees above the
+    threshold whose contact carries no tax number, which the return needs.
+    """
+
+    legal_entity_id: str
+    legal_entity_name: str | None = None
+    legal_entity_tax_id: str | None = None
+    country_code: str | None = None
+    date_from: str
+    date_to: str
+    payee_return: PayeeReturnInfo | None = None
+    items: list[PayeeTotalResponse] = Field(default_factory=list)
+    reportable_count: int = 0
+    missing_tax_id: int = 0
