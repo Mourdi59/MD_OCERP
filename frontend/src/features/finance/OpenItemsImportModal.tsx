@@ -9,6 +9,7 @@ import clsx from 'clsx';
 import { Badge, Button, WideModal } from '@/shared/ui';
 import type { BadgeVariant } from '@/shared/ui';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
+import { fmtList } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 import { invalidateFinanceFigures } from './financeQueryKeys';
 import {
@@ -252,7 +253,7 @@ export function OpenItemsImportModal({ projectId, onClose }: { projectId: string
             <span>
               {t('finance.openitems_missing_columns', {
                 defaultValue: 'The file does not name these columns: {{cols}}',
-                cols: result.missing_columns.join(', '),
+                cols: fmtList(result.missing_columns),
               })}
             </span>
           </div>
