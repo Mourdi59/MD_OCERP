@@ -1169,3 +1169,40 @@ class AgeingResponse(BaseModel):
     groups: list[AgeingRollupResponse] = Field(default_factory=list)
     totals: list[AgeingRollupResponse] = Field(default_factory=list)
     drafts_excluded: int = 0
+
+
+class AccountStatementLineResponse(BaseModel):
+    """One movement on a statement of account. Money is Decimal-as-string."""
+
+    entry_date: str
+    kind: str
+    reference: str
+    invoice_id: str
+    project_id: str
+    charge: str
+    credit: str
+    balance: str
+
+
+class AccountStatementResponse(BaseModel):
+    """Every invoice and payment with one counterparty over a period.
+
+    ``balance`` is what the counterparty owes us on a receivable statement and
+    what we owe them on a payable one. ``ageing`` is the ageing of what is open
+    at ``date_to``, with retention apart.
+    """
+
+    contact_id: str
+    counterparty_name: str | None = None
+    direction: str
+    currency_code: str
+    legal_entity_id: str | None = None
+    legal_entity_name: str | None = None
+    date_from: str | None = None
+    date_to: str
+    opening_balance: str
+    closing_balance: str
+    total_charged: str
+    total_credited: str
+    lines: list[AccountStatementLineResponse] = Field(default_factory=list)
+    ageing: list[AgeingRollupResponse] = Field(default_factory=list)

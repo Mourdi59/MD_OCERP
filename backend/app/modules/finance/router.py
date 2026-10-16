@@ -91,6 +91,8 @@ from app.modules.finance.einvoice_tr_schemas import TrEInvoiceFields
 from app.modules.finance.models import EVMSnapshot, Invoice, InvoiceLineItem, Payment, ProjectBudget
 from app.modules.finance.retention_ledger import RetentionRollup
 from app.modules.finance.schemas import (
+    AccountStatementLineResponse,
+    AccountStatementResponse,
     AgeingInvoiceLine,
     AgeingResponse,
     AgeingRollupResponse,
@@ -1587,6 +1589,98 @@ async def get_ageing(
         groups=[_ageing_rollup_to_response(g, names, entities, with_invoices=True) for g in report.groups],
         totals=[_ageing_rollup_to_response(t, names, entities, with_invoices=False) for t in report.totals],
         drafts_excluded=report.drafts_excluded,
+    )
+
+
+@router.get(
+    "/statement-of-account/",
+    response_model=AccountStatementResponse,
+    summary="Statement of account with one counterparty",
+    description=(
+        "Every invoice and payment with the counterparty between date_from and date_to, in date order, "
+        "with a running balance, the balance brought forward and carried, and the ageing of what is open "
+        "at date_to. One currency and one direction (receivable = what they owe us, payable = what we owe "
+        "them); optionally one legal entity. Scoped to the projects the caller can read. ?format=csv "
+        "returns the lines as CSV."
+    ),
+)
+async def get_account_statement(
+    session: SessionDep,
+    user_id: CurrentUserId,
+    contact_id: str = Query(..., min_length=1, max_length=36),
+    currency: str = Query(..., pattern=r"^[A-Za-z]{3}$"),
+    direction: str = Query(default="receivable", pattern=r"^(payable|receivable)$"),
+    date_from: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    date_to: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    legal_entity_id: uuid.UUID | None = Query(default=None),
+    format: str = Query(default="json", pattern=r"^(json|csv)$"),  # noqa: A002 - public query parameter name
+    _perm: None = Depends(RequirePermission("finance.read")),
+    service: FinanceService = Depends(_get_service),
+) -> Any:
+    """Return the statement of account, as JSON or CSV."""
+    statement = await service.get_account_statement(
+        contact_id=contact_id,
+        direction=direction,
+        currency_code=currency.upper(),
+        date_from=date_from,
+        date_to=date_to,
+        project_ids=await accessible_project_ids(session, user_id),
+        legal_entity_id=legal_entity_id,
+    )
+    names = await _fetch_counterparty_names(session, [contact_id])
+    entity_ids = [str(legal_entity_id)] if legal_entity_id else []
+    if statement.ageing is not None:
+        entity_ids += [t.legal_entity_id for t in statement.ageing.totals if t.legal_entity_id]
+    entities = await _fetch_legal_entity_names(session, entity_ids)
+    response = AccountStatementResponse(
+        contact_id=contact_id,
+        counterparty_name=names.get(contact_id),
+        direction=direction,
+        currency_code=currency.upper(),
+        legal_entity_id=str(legal_entity_id) if legal_entity_id else None,
+        legal_entity_name=entities.get(str(legal_entity_id)) if legal_entity_id else None,
+        date_from=statement.date_from,
+        date_to=statement.date_to,
+        opening_balance=str(statement.opening_balance),
+        closing_balance=str(statement.closing_balance),
+        total_charged=str(statement.total_charged),
+        total_credited=str(statement.total_credited),
+        lines=[
+            AccountStatementLineResponse(
+                entry_date=line.entry_date,
+                kind=line.kind,
+                reference=line.reference,
+                invoice_id=line.invoice_id,
+                project_id=line.project_id,
+                charge=str(line.charge),
+                credit=str(line.credit),
+                balance=str(line.balance),
+            )
+            for line in statement.lines
+        ],
+        ageing=[
+            _ageing_rollup_to_response(t, names, entities, with_invoices=False)
+            for t in (statement.ageing.totals if statement.ageing else [])
+        ],
+    )
+    if format == "json":
+        return response
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow(["date", "type", "reference", "charge", "credit", "balance", "currency"])
+    writer.writerow(
+        [response.date_from or "", "opening_balance", "", "", "", response.opening_balance, response.currency_code]
+    )
+    for line in response.lines:
+        writer.writerow(
+            [line.entry_date, line.kind, line.reference, line.charge, line.credit, line.balance, response.currency_code]
+        )
+    writer.writerow([response.date_to, "closing_balance", "", "", "", response.closing_balance, response.currency_code])
+    who = (response.counterparty_name or contact_id).replace("/", "-")
+    return Response(
+        content=out.getvalue().encode("utf-8-sig"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": attachment_disposition(f"Statement {who} {response.date_to}.csv")},
     )
 
 

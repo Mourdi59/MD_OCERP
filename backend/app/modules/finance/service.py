@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.events import event_bus
 from app.core.money import money_quantum
 from app.modules.finance import gaap
+from app.modules.finance.account_statement import STATEMENT_STATUSES, AccountStatement, build_statement
 from app.modules.finance.ageing import (
     POSTED_STATUSES,
     AgeingInvoice,
@@ -2992,6 +2993,8 @@ class FinanceService:
         legal_entity_id: uuid.UUID | None = None,
         unassigned_only: bool = False,
         invoice_ids: Iterable[uuid.UUID] | None = None,
+        contact_id: str | None = None,
+        currency_code: str | None = None,
     ) -> list[AgeingInvoice]:
         """Invoices with their payments and their project's legal entity, as ageing reads them.
 
@@ -3034,6 +3037,10 @@ class FinanceService:
             stmt = stmt.where(Project.legal_entity_id.is_(None))
         if direction:
             stmt = stmt.where(Invoice.invoice_direction == direction)
+        if contact_id:
+            stmt = stmt.where(Invoice.contact_id == contact_id)
+        if currency_code:
+            stmt = stmt.where(Invoice.currency_code == currency_code)
         rows = (await self.session.execute(stmt)).all()
 
         return [
@@ -3064,6 +3071,32 @@ class FinanceService:
             )
             for inv, entity_id in rows
         ]
+
+    async def get_account_statement(
+        self,
+        *,
+        contact_id: str,
+        direction: str,
+        currency_code: str,
+        date_from: str | None,
+        date_to: str | None,
+        project_ids: set[uuid.UUID] | None = None,
+        legal_entity_id: uuid.UUID | None = None,
+    ) -> AccountStatement:
+        """Statement of account with one counterparty, in one currency and direction.
+
+        Reads the same invoices and payments as the ageing report, so the
+        closing balance and the ageing below it agree with the ageing tab.
+        """
+        invoices = await self.load_ageing_invoices(
+            statuses=STATEMENT_STATUSES,
+            direction=direction,
+            project_ids=project_ids,
+            legal_entity_id=legal_entity_id,
+            contact_id=contact_id,
+            currency_code=currency_code,
+        )
+        return build_statement(invoices, date_from=date_from, date_to=date_to or _utcnow_iso()[:10])
 
     async def _default_legal_entity_id(self) -> uuid.UUID | None:
         """The default legal entity, or None without one or without the module."""
