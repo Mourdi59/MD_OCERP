@@ -633,20 +633,18 @@ export interface PaymentRunCreate {
   note?: string;
 }
 
-const PAYMENT_RUNS = '/v1/finance/payment-runs';
-
 export const paymentRunsApi = {
-  list: () => apiGet<{ items: PaymentRun[]; total: number }>(`${PAYMENT_RUNS}/`),
-  get: (id: string) => apiGet<PaymentRun>(`${PAYMENT_RUNS}/${id}`),
-  create: (body: PaymentRunCreate) => apiPost<PaymentRun, PaymentRunCreate>(`${PAYMENT_RUNS}/`, body),
+  list: () => apiGet<{ items: PaymentRun[]; total: number }>(`/v1/finance/payment-runs/`),
+  get: (id: string) => apiGet<PaymentRun>(`/v1/finance/payment-runs/${id}`),
+  create: (body: PaymentRunCreate) => apiPost<PaymentRun, PaymentRunCreate>(`/v1/finance/payment-runs/`, body),
   updateItem: (id: string, itemId: string, amount: string) =>
-    apiPatch<PaymentRun, { amount: string }>(`${PAYMENT_RUNS}/${id}/items/${itemId}`, { amount }),
-  removeItem: (id: string, itemId: string) => apiDelete<PaymentRun>(`${PAYMENT_RUNS}/${id}/items/${itemId}`),
-  approve: (id: string) => apiPost<PaymentRun>(`${PAYMENT_RUNS}/${id}/approve/`),
-  execute: (id: string) => apiPost<PaymentRun>(`${PAYMENT_RUNS}/${id}/execute/`),
-  cancel: (id: string) => apiPost<PaymentRun>(`${PAYMENT_RUNS}/${id}/cancel/`),
+    apiPatch<PaymentRun, { amount: string }>(`/v1/finance/payment-runs/${id}/items/${itemId}`, { amount }),
+  removeItem: (id: string, itemId: string) => apiDelete<PaymentRun>(`/v1/finance/payment-runs/${id}/items/${itemId}`),
+  approve: (id: string) => apiPost<PaymentRun>(`/v1/finance/payment-runs/${id}/approve/`),
+  execute: (id: string) => apiPost<PaymentRun>(`/v1/finance/payment-runs/${id}/execute/`),
+  cancel: (id: string) => apiPost<PaymentRun>(`/v1/finance/payment-runs/${id}/cancel/`),
   downloadBankFile: (run: Pick<PaymentRun, 'id' | 'run_number'>) =>
-    downloadWithAuth(`${API_BASE}${PAYMENT_RUNS}/${run.id}/bank-file.csv`, `${run.run_number}.csv`),
+    downloadWithAuth(`${API_BASE}/v1/finance/payment-runs/${run.id}/bank-file.csv`, `${run.run_number}.csv`),
 };
 
 /** The findings a refused approve or execute carries in its 422 body, if any. */
