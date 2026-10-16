@@ -528,6 +528,10 @@ class ProjectUpdate(BaseModel):
     phase: str | None = Field(default=None, max_length=50)
     client_id: str | None = Field(default=None, max_length=36)
     parent_project_id: UUID | None = None
+    # Declared only so a PATCH that names it is answered rather than silently
+    # dropped. The owning entity is set through the legal entities module,
+    # which checks its own permission; the service refuses a real change here.
+    legal_entity_id: UUID | None = None
     address: dict[str, Any] | None = None
     country_code: str | None = Field(
         default=None,

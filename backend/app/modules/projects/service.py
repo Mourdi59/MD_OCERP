@@ -941,6 +941,19 @@ class ProjectService:
 
         fields = data.model_dump(exclude_unset=True)
 
+        # A client that sends back what it read may carry the owning entity
+        # unchanged, which is harmless. A real change goes through the legal
+        # entities endpoint, which holds the permission to make it; answering
+        # 200 here while dropping the field told callers it had been saved.
+        if "legal_entity_id" in fields and fields.pop("legal_entity_id") != project.legal_entity_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=(
+                    "legal_entity_id cannot be changed here. "
+                    f"Use PUT /api/v1/legal-entities/projects/{project_id}/entity."
+                ),
+            )
+
         # Map schema field 'metadata' to model column 'metadata_'
         if "metadata" in fields:
             fields["metadata_"] = fields.pop("metadata")
