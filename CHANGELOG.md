@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The expected final cost is not typed in. Each line takes its most reliable figure, from the final account, measured work, award plus approved changes, the estimate or the budget, and says which one it took. While less than half of a line is let, the plan stays the forecast, so the first small order does not make the rest of the budget vanish.
 - Contract and order lines that sit on no cost line can be put on one from the cost control page, a whole contract in one step or line by line. The forecast picks them up at once.
 - A line forecast can be overruled with a reason and an optional document. The automatic figure stays visible and the change is kept in the line history together with approved changes.
-- Forecasts can be saved monthly with their stage (budget, estimate, detailed estimate, pre-tender, award, forecast, final account, with the DIN 276, RIBA and AACE names as hints). Saved forecasts are never edited, and a chart shows how the cost moved.
+- Forecasts can be saved monthly with their stage (budget, estimate, detailed estimate, pre-tender, award, forecast, final account, with the DIN 276, RIBA and AACE names as hints). Saved forecasts are never edited, and a chart across the full width shows how the cost moved, with the amount and date at every point.
+- A cost control demo project for training and screen recordings, installed with `python -m app.cli demo-cost-control`. Its figures are tested against the forecast rules, and running it again finds the project instead of creating a second one.
 - Cost control findings from the validation engine: money on no cost line, more certified than awarded, a forecast above plan, a line only partly awarded, changes waiting for a decision, and no forecast saved for over a month.
 
 ### Fixed

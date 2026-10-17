@@ -67029,6 +67029,7 @@
         "contract_exposure.py",
         "cost_control.py",
         "cost_control_data.py",
+        "cost_control_demo.py",
         "cost_control_schemas.py",
         "cost_control_service.py",
         "elemental.py",
@@ -273237,7 +273238,7 @@
     "total_relationships": 240,
     "total_routes": 4560,
     "total_schemas": 4040,
-    "total_python_files": 2714,
+    "total_python_files": 2715,
     "frontend_features": 209,
     "frontend_ts_files": 3490,
     "frontend_backend_mapped": 187

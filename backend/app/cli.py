@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    import uuid
     from collections.abc import Callable
 
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -2097,6 +2098,53 @@ def cmd_promote_admin(args: argparse.Namespace) -> None:
     print(_green(message))
 
 
+async def _cost_control_demo_owner(session: AsyncSession, email: str | None) -> uuid.UUID:
+    """The owner of the cost control demo: the account at ``email``, else the first admin.
+
+    Raises:
+        LookupError: No usable account matches.
+    """
+    from sqlalchemy import func, select
+
+    from app.modules.users.models import User
+
+    stmt = select(User).where(User.deleted_at.is_(None))
+    if email and email.strip():
+        stmt = stmt.where(func.lower(User.email) == email.strip().lower())
+    else:
+        stmt = stmt.where(User.role == "admin", User.is_active.is_(True)).order_by(User.created_at, User.id)
+    user = (await session.execute(stmt.limit(1))).scalar_one_or_none()
+    if user is None:
+        raise LookupError(f"No user with e-mail {email!r}." if email else "No active admin account exists yet.")
+    return user.id
+
+
+def cmd_demo_cost_control(args: argparse.Namespace) -> None:
+    """Install the cost control film demo project and print its id (idempotent)."""
+    data_dir = _data_dir_from_args(args)
+    _setup_env(data_dir, DEFAULT_HOST, DEFAULT_PORT)
+
+    import asyncio
+
+    async def _run() -> uuid.UUID:
+        from app.database import async_session_factory
+        from app.modules.costmodel.cost_control_demo import install_cost_control_demo
+
+        _register_all_module_models()
+        async with async_session_factory() as session:
+            owner_id = await _cost_control_demo_owner(session, args.owner_email)
+            project_id = await install_cost_control_demo(session, owner_id)
+            await session.commit()
+            return project_id
+
+    try:
+        project_id = asyncio.run(_run())
+    except LookupError as exc:
+        print(_red(str(exc)))
+        sys.exit(1)
+    print(project_id)
+
+
 async def run_demo_cleanup(apply: bool, write: Callable[[str], None] = print) -> Any:
     """The demo-cleanup pass itself: find, print and with ``apply`` remove and commit.
 
@@ -2883,6 +2931,18 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     _add_data_dir_arg(demo_cleanup_p)
 
+    # demo-cost-control - the fixed demo project the cost control film is shot on
+    demo_cc_p = subparsers.add_parser(
+        "demo-cost-control",
+        help="Install the cost control demo project and print its id (a second run returns the same project)",
+    )
+    demo_cc_p.add_argument(
+        "--owner-email",
+        default=None,
+        help="E-mail of the account that owns the project. Default: the first admin.",
+    )
+    _add_data_dir_arg(demo_cc_p)
+
     # update-reference-data - shipped countries, calendars and tax rates an older install lacks
     refdata_p = subparsers.add_parser(
         "update-reference-data",
@@ -3009,6 +3069,8 @@ def main() -> None:
         cmd_promote_admin(args)
     elif args.command == "demo-cleanup":
         cmd_demo_cleanup(args)
+    elif args.command == "demo-cost-control":
+        cmd_demo_cost_control(args)
     elif args.command == "update-reference-data":
         cmd_update_reference_data(args)
     elif args.command == "module":

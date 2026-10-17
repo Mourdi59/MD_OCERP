@@ -5,7 +5,7 @@
 // the list underneath with the change from the previous one. This is the part
 // a client asks for in every cost meeting ("it was 1.97 million at the
 // calculation, why is it 2.38 now?"), so it reads without opening anything.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 
@@ -14,32 +14,80 @@ import { fmtCurrency, fmtDate } from '@/shared/lib/formatters';
 import { num, type SnapshotSummary } from './api';
 import { stageLabel } from './labels';
 
-const W = 640;
-const H = 160;
-const PAD = 28;
+const H = 200;
+const PAD_X = 56;
+const PAD_TOP = 30;
+const PAD_BOTTOM = 52;
+/** Below this gap between two points the amounts would overlap, so only the dates are written. */
+const MIN_LABEL_GAP = 96;
+
+/** The drawing is laid out at the width it is shown at, so a wide page gets a wide chart, not a centred strip. */
+function useWidth(fallback: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(fallback);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      const w = Math.round(entry?.contentRect.width ?? 0);
+      if (w > 0) setWidth(w);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, width] as const;
+}
 
 function Chart({ points, currency }: { points: SnapshotSummary[]; currency: string }) {
   const { t } = useTranslation();
+  const [ref, W] = useWidth(640);
   const forecasts = points.map((p) => num(p.totals.forecast));
   const plans = points.map((p) => num(p.totals.planned));
   const all = [...forecasts, ...plans].filter((v) => v > 0);
   if (points.length < 2 || all.length === 0) return null;
   const min = Math.min(...all) * 0.97;
   const max = Math.max(...all) * 1.03;
-  const x = (i: number) => PAD + (i * (W - 2 * PAD)) / (points.length - 1);
-  const y = (v: number) => H - PAD - ((v - min) / (max - min || 1)) * (H - 2 * PAD);
+  const step = (W - 2 * PAD_X) / (points.length - 1);
+  const x = (i: number) => PAD_X + i * step;
+  const y = (v: number) => H - PAD_BOTTOM - ((v - min) / (max - min || 1)) * (H - PAD_TOP - PAD_BOTTOM);
   const line = (values: number[]) => values.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(v)}`).join(' ');
+  const showAmounts = step >= MIN_LABEL_GAP;
   return (
     <figure className="mb-4">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-40 w-full" role="img" aria-label={t('cost_control.chart_label', { defaultValue: 'Forecast over time against the plan' })}>
-        <path d={line(plans)} fill="none" strokeWidth={1.5} strokeDasharray="4 4" className="stroke-content-quaternary" />
-        <path d={line(forecasts)} fill="none" strokeWidth={2.5} className="stroke-oe-blue" />
-        {forecasts.map((v, i) => (
-          <circle key={points[i]!.id} cx={x(i)} cy={y(v)} r={3.5} className="fill-oe-blue">
-            <title>{`${fmtDate(points[i]!.taken_on)}: ${fmtCurrency(v, currency)}`}</title>
-          </circle>
-        ))}
-      </svg>
+      <div ref={ref} className="w-full">
+        <svg
+          width={W}
+          height={H}
+          viewBox={`0 0 ${W} ${H}`}
+          className="block max-w-full"
+          role="img"
+          aria-label={t('cost_control.chart_label', { defaultValue: 'Forecast over time against the plan' })}
+        >
+          <path d={line(plans)} fill="none" strokeWidth={1.5} strokeDasharray="4 4" className="stroke-content-quaternary" />
+          <path d={line(forecasts)} fill="none" strokeWidth={2.5} className="stroke-oe-blue" />
+          {forecasts.map((v, i) => (
+            <g key={points[i]!.id}>
+              <circle cx={x(i)} cy={y(v)} r={4} className="fill-oe-blue">
+                <title>{`${fmtDate(points[i]!.taken_on)}: ${fmtCurrency(v, currency)}`}</title>
+              </circle>
+              {showAmounts && (
+                <text
+                  x={x(i)}
+                  // Below the plan the dashed line runs just above the point, so the amount goes underneath.
+                  y={v < plans[i]! ? y(v) + 18 : y(v) - 10}
+                  textAnchor="middle"
+                  className="fill-content-primary text-[11px] font-semibold tabular-nums"
+                >
+                  {fmtCurrency(v, currency)}
+                </text>
+              )}
+              <text x={x(i)} y={H - 10} textAnchor="middle" className="fill-content-tertiary text-[11px]">
+                {fmtDate(points[i]!.taken_on, { day: '2-digit', month: 'short', year: '2-digit' })}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </div>
       <figcaption className="flex gap-4 text-2xs text-content-tertiary">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-0.5 w-4 bg-oe-blue" />
