@@ -172,6 +172,7 @@ const EXTRA_ROUTE_ICONS: Record<string, LucideIcon> = {
   '/tasks': ClipboardList,
   // ── 7. Cost Control & Risk ────────────────────────────────────────
   '/5d': TrendingUp,
+  '/cost-control': Scale,
   '/progress': Activity,
   '/portfolio/capacity': CalendarRange,
   '/portfolio/leveling': Scale,

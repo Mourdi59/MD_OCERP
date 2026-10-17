@@ -140,6 +140,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Advanced Schedule': 'nav.schedule_advanced',
   'Tasks': 'tasks.title',
   '5D Cost Model': 'nav.5d_cost_model',
+  'Cost control': 'nav.cost_control',
   'Risk Register': 'nav.risk_register',
   // Operations
   'Daily Diary': 'nav.daily_diary',
@@ -1321,6 +1322,7 @@ const ROUTE_COMPONENT_MAP: ReadonlyArray<readonly [string, string]> = [
   ['/dwg-takeoff', 'DWG Takeoff'],
   ['/schedule', 'Schedule'],
   ['/5d', '5D Cost Model'],
+  ['/cost-control', 'Cost control'],
   ['/analytics', 'Analytics'],
   ['/dashboards', 'Dashboards'],
   ['/reporting', 'Reporting'],

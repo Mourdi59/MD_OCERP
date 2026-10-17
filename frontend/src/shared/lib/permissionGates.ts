@@ -64,6 +64,8 @@ export const PERMISSION_MIN_ROLE = {
   'design.manage': 'manager',
   'risk.update': 'editor',
   'rfi.types.manage': 'manager',
+  'costmodel.write': 'editor',
+  'costmodel.manage': 'manager',
 } as const satisfies Record<string, RankedRole>;
 
 export type GatedPermission = keyof typeof PERMISSION_MIN_ROLE;

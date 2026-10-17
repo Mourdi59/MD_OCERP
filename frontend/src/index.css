@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tables sit on the page's dotted backdrop. Give every table the card surface,
+   so rows read on solid ground in every module; a bg-* class on a table still
+   wins, since a class outranks an element selector. */
+@layer base {
+  table {
+    background-color: var(--oe-bg-elevated);
+  }
+}
+
 /* ── OpenEstimate Design System ─────────────────────────────────────────── */
 /* Apple-inspired. Clean, spacious, precise. */
 

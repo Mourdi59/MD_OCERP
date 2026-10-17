@@ -171,17 +171,35 @@ export interface PlanRoomDrawing {
   filename: string;
 }
 
+/** The slice of a documents-list row the drawing filter reads. */
+interface DocumentRow {
+  id: string;
+  filename?: string;
+  name?: string;
+  mime_type?: string | null;
+}
+
 /**
- * List the project documents that can be opened in the Plan Room. Reuses the
- * shared documents list endpoint - the same call the punch pin board makes so
- * the two features offer the identical drawing set.
+ * Whether a project document can be opened as a drawing sheet. The viewer
+ * renders with pdf.js, so only PDFs qualify: a spreadsheet, an IFC model or a
+ * photo in the list would only open to "could not be shown as a drawing".
+ * Rows stored without a MIME type fall back to the file extension.
+ */
+export function isDrawingDocument(row: { filename?: string; name?: string; mime_type?: string | null }): boolean {
+  const mime = (row.mime_type ?? '').trim().toLowerCase();
+  if (mime) return mime === 'application/pdf' || mime === 'application/x-pdf';
+  const name = (row.filename ?? row.name ?? '').trim().toLowerCase();
+  return name.endsWith('.pdf');
+}
+
+/**
+ * List the project documents that can be opened in the Plan Room: the PDFs
+ * among the project documents (see {@link isDrawingDocument}).
  */
 export async function fetchPlanRoomDrawings(projectId: string): Promise<PlanRoomDrawing[]> {
   if (!projectId) return [];
-  const page = await apiGet<Page<{ id: string; filename?: string; name?: string }>>(
-    `/v1/documents/?project_id=${projectId}&limit=500`,
-  );
-  return page.items.map((r) => ({
+  const page = await apiGet<Page<DocumentRow>>(`/v1/documents/?project_id=${projectId}&limit=500`);
+  return page.items.filter(isDrawingDocument).map((r) => ({
     id: r.id,
     filename: r.filename ?? r.name ?? '',
   }));

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
+## [18.7.0] - 2026-10-17
+
+### Added
+
+- Cost control page per project. One table shows for every cost line what was planned, awarded, added by changes, the expected final cost, the difference to plan, and what is certified and paid. The same money can be grouped by cost line or by contract, and money that sits on no cost line shows as its own row instead of disappearing.
+- The expected final cost is not typed in. Each line takes its most reliable figure, from the final account, measured work, award plus approved changes, the estimate or the budget, and says which one it took. While less than half of a line is let, the plan stays the forecast, so the first small order does not make the rest of the budget vanish.
+- Contract and order lines that sit on no cost line can be put on one from the cost control page, a whole contract in one step or line by line. The forecast picks them up at once.
+- A line forecast can be overruled with a reason and an optional document. The automatic figure stays visible and the change is kept in the line history together with approved changes.
+- Forecasts can be saved monthly with their stage (budget, estimate, detailed estimate, pre-tender, award, forecast, final account, with the DIN 276, RIBA and AACE names as hints). Saved forecasts are never edited, and a chart shows how the cost moved.
+- Cost control findings from the validation engine: money on no cost line, more certified than awarded, a forecast above plan, a line only partly awarded, changes waiting for a decision, and no forecast saved for over a month.
+
+### Fixed
+
+- A change order line added to a subcontract schedule now keeps the contract's cost line, so the change shows in the cost breakdown.
+- Tables in every module sit on a solid background instead of showing the page pattern through their rows.
+- The plan room says what it is for in one line and three short steps. A project without drawings offers to upload them instead of pointing at an empty list, only PDF drawings are offered, dropping a pin is the main action, an empty layer links to where its marks are made, and the drawing set check has its own section below the drawing.
+
 ## [18.6.4] - 2026-10-16
 
 ### Added

@@ -11,8 +11,9 @@
  * on mount and the findings can be exported (server-rendered, injection-safe).
  *
  * Surface-agnostic: it takes only a `projectId` (and an optional default index
- * document), so it drops into the Plan Room side column, the Sheets index page
- * or the Validation page unchanged.
+ * document), so it drops into the Plan Room, the Sheets index page or the
+ * Validation page unchanged. `embedded` drops its own card and heading for a
+ * host that already titles the section (the Plan Room disclosure).
  */
 
 import { type ReactNode, useEffect, useState } from 'react';
@@ -36,6 +37,8 @@ interface SheetCompletenessPanelProps {
   projectId: string;
   /** Pre-select this document as the index source (e.g. the open drawing). */
   defaultIndexDocumentId?: string;
+  /** Render without the card and heading, inside a host section that has them. */
+  embedded?: boolean;
 }
 
 interface PanelResult {
@@ -47,7 +50,11 @@ interface PanelResult {
 
 type Mode = 'document' | 'paste';
 
-export function SheetCompletenessPanel({ projectId, defaultIndexDocumentId }: SheetCompletenessPanelProps) {
+export function SheetCompletenessPanel({
+  projectId,
+  defaultIndexDocumentId,
+  embedded = false,
+}: SheetCompletenessPanelProps) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
@@ -162,24 +169,10 @@ export function SheetCompletenessPanel({ projectId, defaultIndexDocumentId }: Sh
     summary.extra.length === 0 &&
     summary.rev_mismatch.length === 0;
 
-  return (
-    <Card padding="md">
-      <div className="flex items-start gap-2">
-        <ClipboardCheck size={16} className="mt-0.5 shrink-0 text-content-tertiary" />
-        <div>
-          <h3 className="text-sm font-semibold text-content-primary">
-            {t('sheetCompleteness.title', { defaultValue: 'Sheet completeness' })}
-          </h3>
-          <p className="mt-0.5 text-2xs text-content-tertiary">
-            {t('sheetCompleteness.subtitle', {
-              defaultValue: 'Reconcile the drawing index / issue register against the uploaded sheets',
-            })}
-          </p>
-        </div>
-      </div>
-
+  const body = (
+    <>
       {/* Index source */}
-      <div className="mt-3 space-y-2">
+      <div className={embedded ? 'max-w-md space-y-2' : 'mt-3 space-y-2'}>
         <div className="flex gap-1.5">
           <Button
             variant={mode === 'document' ? 'secondary' : 'ghost'}
@@ -281,6 +274,27 @@ export function SheetCompletenessPanel({ projectId, defaultIndexDocumentId }: Sh
           />
         )}
       </div>
+    </>
+  );
+
+  if (embedded) return <div>{body}</div>;
+
+  return (
+    <Card padding="md">
+      <div className="flex items-start gap-2">
+        <ClipboardCheck size={16} className="mt-0.5 shrink-0 text-content-tertiary" />
+        <div>
+          <h3 className="text-sm font-semibold text-content-primary">
+            {t('sheetCompleteness.title', { defaultValue: 'Sheet completeness' })}
+          </h3>
+          <p className="mt-0.5 text-2xs text-content-tertiary">
+            {t('sheetCompleteness.subtitle', {
+              defaultValue: 'Reconcile the drawing index / issue register against the uploaded sheets',
+            })}
+          </p>
+        </div>
+      </div>
+      {body}
     </Card>
   );
 }

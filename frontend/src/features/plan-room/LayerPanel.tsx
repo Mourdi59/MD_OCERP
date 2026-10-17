@@ -7,12 +7,26 @@
  * this page and a checkbox that shows / hides that layer on the sheet. This is
  * the control a site engineer reads first - "what is on this drawing, and let
  * me turn the noise off".
+ *
+ * A layer with nothing on this page carries a muted link to the module where
+ * that kind of mark is made, so a zero reads as "none yet, add them there"
+ * rather than as a broken layer. Plan pins have no link: they are dropped
+ * right here with the toolbar button.
  */
 
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Eye, EyeOff, Layers } from 'lucide-react';
 import clsx from 'clsx';
 import { LAYERS, type LayerKey } from './layers';
+
+/** Where each kind of mark is made, for the zero-count hint. */
+const SOURCE_LINKS: Partial<Record<LayerKey, { to: string; labelKey: string; defaultLabel: string }>> = {
+  punch: { to: '/punchlist', labelKey: 'plan_room.layer_add_punch', defaultLabel: 'Add in the punch list' },
+  markups: { to: '/markups', labelKey: 'plan_room.layer_add_markups', defaultLabel: 'Add in Markups' },
+  measurements: { to: '/takeoff', labelKey: 'plan_room.layer_add_measurements', defaultLabel: 'Measure in Takeoff' },
+  photos: { to: '/photos', labelKey: 'plan_room.layer_add_photos', defaultLabel: 'Upload in Photos' },
+};
 
 interface Props {
   visibility: Record<LayerKey, boolean>;
@@ -33,6 +47,7 @@ export function LayerPanel({ visibility, counts, onToggle }: Props) {
         {LAYERS.map((layer) => {
           const on = visibility[layer.key];
           const count = counts[layer.key] ?? 0;
+          const source = count === 0 ? SOURCE_LINKS[layer.key] : undefined;
           return (
             <li key={layer.key}>
               <button
@@ -62,6 +77,14 @@ export function LayerPanel({ visibility, counts, onToggle }: Props) {
                   <EyeOff size={14} className="shrink-0 text-content-quaternary" />
                 )}
               </button>
+              {source && (
+                <Link
+                  to={source.to}
+                  className="block pb-1 pl-7 text-2xs text-content-quaternary underline-offset-2 hover:text-oe-blue hover:underline"
+                >
+                  {t(source.labelKey, { defaultValue: source.defaultLabel })}
+                </Link>
+              )}
             </li>
           );
         })}

@@ -284,6 +284,7 @@ async def post_source_to_sov(
     if unresolved_home is None and allocation.shares:
         unresolved_home = allocation.shares[0]
     measured = is_measured_contract(contract)
+    pooled_cost_line = await _sole_cost_line(session, contract.id)
     adjustments: list[SovAdjustment] = []
     for share in allocation.shares:
         meta: dict[str, Any] = {"allocation": allocation.method, "item_ids": list(share.item_ids)}
@@ -294,6 +295,7 @@ async def post_source_to_sov(
         created = True
         if line is None:
             target = _new_line(contract, key, kind, code, title or code or "", share.delta, next_order)
+            target.cost_line_id = pooled_cost_line
             next_order += 1
             session.add(target)
             meta["placement"] = "new_line"
@@ -305,6 +307,8 @@ async def post_source_to_sov(
                 # turn that line into a roll-up parent nobody can bill.
                 target = _new_line(contract, key, kind, code, title or code or "", share.delta, next_order)
                 target.metadata_ = {ADJUSTS_LINE_META_KEY: str(line.id), "adjusts_line_code": line.code or ""}
+                # The change prices the work of the line it adjusts, so it costs where that line costs.
+                target.cost_line_id = line.cost_line_id
                 next_order += 1
                 session.add(target)
                 meta[ADJUSTS_LINE_META_KEY] = str(line.id)
@@ -335,6 +339,24 @@ async def post_source_to_sov(
         adjustments.append(adjustment)
     await session.flush()
     return adjustments
+
+
+async def _sole_cost_line(session: AsyncSession, contract_id: uuid.UUID) -> uuid.UUID | None:
+    """The cost line every costed schedule line of a contract sits on, if there is exactly one.
+
+    A pooled change line has no line of its own to inherit from. When the whole
+    contract is one cost line (a trade package let against one cost group, the
+    common case), the change belongs there too; otherwise it stays unassigned
+    and the cost control report lists it as money without a cost line.
+    """
+    rows = await session.execute(
+        select(ContractLine.cost_line_id)
+        .where(ContractLine.contract_id == contract_id, ContractLine.cost_line_id.is_not(None))
+        .distinct()
+        .limit(2)
+    )
+    found = [row[0] for row in rows.all()]
+    return found[0] if len(found) == 1 else None
 
 
 def _new_line(

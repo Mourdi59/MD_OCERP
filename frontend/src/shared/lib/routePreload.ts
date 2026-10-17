@@ -29,6 +29,7 @@ const preloaders: Record<string, () => void> = {
   '/costs': () => void import('@/features/costs'),
   '/cost-explorer': () => void import('@/features/cost-explorer'),
   '/5d': () => void import('@/features/costmodel/CostModelPage'),
+  '/cost-control': () => void import('@/features/cost-control/CostControlPage'),
   '/rom-estimate': () => void import('@/features/rom-estimate'),
   '/estimate-basis': () => void import('@/features/estimate-basis'),
   '/estimate-copilot': () => void import('@/features/estimate-copilot'),

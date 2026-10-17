@@ -20,6 +20,16 @@ Endpoints:
     GET    /projects/{project_id}/5d/evm                 - full EVM calculation
     POST   /projects/{project_id}/5d/what-if             - create what-if scenario
     GET    /projects/{project_id}/spine/position-actuals/ - per bill position, money and site record
+    GET    /projects/{project_id}/cost-control/          - forecast per cost line or contract
+    GET    /projects/{project_id}/cost-control/snapshots/ - saved forecasts
+    POST   /projects/{project_id}/cost-control/snapshots/ - save today's forecast
+    GET    /cost-control/snapshots/{snapshot_id}/        - one saved forecast
+    DELETE /cost-control/snapshots/{snapshot_id}/        - remove a saved forecast
+    GET    /projects/{project_id}/cost-control/unassigned/ - lines whose money is on no cost line
+    POST   /projects/{project_id}/cost-control/assign/   - put such lines on a cost line
+    PUT    /cost-control/lines/{line_id}/forecast/       - manual forecast with a reason
+    DELETE /cost-control/lines/{line_id}/forecast/       - back to the automatic forecast
+    GET    /cost-control/lines/{line_id}/history/        - why the forecast is what it is
 """
 
 import uuid
@@ -28,6 +38,20 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
+from app.modules.costmodel.cost_control_schemas import (
+    AssignRequest,
+    AssignResult,
+    CostControlReport,
+    ForecastOverrideInfo,
+    ForecastOverrideRequest,
+    LineHistory,
+    SnapshotCreateRequest,
+    SnapshotDetail,
+    SnapshotPage,
+    SnapshotSummary,
+    UnassignedPage,
+)
+from app.modules.costmodel.cost_control_service import CostControlService
 from app.modules.costmodel.position_actuals import build_position_actuals
 from app.modules.costmodel.schemas import (
     BudgetLineCreate,
@@ -1072,3 +1096,183 @@ async def get_position_actuals(
         totals={k: str(v) for k, v in report.totals.items()},
         positions_off_spine=report.positions_off_spine,
     )
+
+
+# ── Cost control: forecast per cost line, snapshots, manual forecasts ─────────
+
+
+def _get_cost_control_service(session: SessionDep) -> CostControlService:
+    return CostControlService(session)
+
+
+@router.get(
+    "/projects/{project_id}/cost-control/",
+    response_model=CostControlReport,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def get_cost_control_report(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    axis: str = Query(default="cost_line", pattern="^(cost_line|contract)$"),
+    service: CostControlService = Depends(_get_cost_control_service),
+) -> CostControlReport:
+    """Budget, award, changes, certified, paid and forecast, per cost line or per contract."""
+    await verify_project_access(project_id, user_id, session)
+    return await service.report(project_id, axis=axis)
+
+
+@router.get(
+    "/projects/{project_id}/cost-control/unassigned/",
+    response_model=UnassignedPage,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def list_cost_control_unassigned(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=500, ge=1, le=1000),
+    service: CostControlService = Depends(_get_cost_control_service),
+) -> UnassignedPage:
+    """Contract lines and order items whose money sits on no cost line."""
+    await verify_project_access(project_id, user_id, session)
+    return await service.unassigned(project_id, offset=offset, limit=limit)
+
+
+@router.post(
+    "/projects/{project_id}/cost-control/assign/",
+    response_model=AssignResult,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def assign_cost_control_lines(
+    project_id: uuid.UUID,
+    body: AssignRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostControlService = Depends(_get_cost_control_service),
+) -> AssignResult:
+    """Put contract lines and order items on one cost line of the project."""
+    await verify_project_access(project_id, user_id, session)
+    return await service.assign(project_id, body)
+
+
+@router.get(
+    "/projects/{project_id}/cost-control/snapshots/",
+    response_model=SnapshotPage,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def list_cost_control_snapshots(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=500, ge=1, le=1000),
+    service: CostControlService = Depends(_get_cost_control_service),
+) -> SnapshotPage:
+    """Saved forecasts of the project, oldest first."""
+    await verify_project_access(project_id, user_id, session)
+    return await service.list_snapshots(project_id, offset=offset, limit=limit)
+
+
+@router.post(
+    "/projects/{project_id}/cost-control/snapshots/",
+    response_model=SnapshotSummary,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def create_cost_control_snapshot(
+    project_id: uuid.UUID,
+    body: SnapshotCreateRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostControlService = Depends(_get_cost_control_service),
+) -> SnapshotSummary:
+    """Save the report as it stands today, optionally tagged with a cost stage."""
+    await verify_project_access(project_id, user_id, session)
+    return await service.create_snapshot(project_id, body, str(user_id) if user_id else None)
+
+
+@router.get(
+    "/cost-control/snapshots/{snapshot_id}/",
+    response_model=SnapshotDetail,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def get_cost_control_snapshot(
+    snapshot_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostControlService = Depends(_get_cost_control_service),
+) -> SnapshotDetail:
+    """One saved forecast with its rows."""
+    project_id, detail = await service.get_snapshot(snapshot_id)
+    await verify_project_access(project_id, user_id, session)
+    return detail
+
+
+@router.delete(
+    "/cost-control/snapshots/{snapshot_id}/",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(RequirePermission("costmodel.manage"))],
+)
+async def delete_cost_control_snapshot(
+    snapshot_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostControlService = Depends(_get_cost_control_service),
+) -> None:
+    """Remove a saved forecast. Managers only: history is the point of keeping them."""
+    await verify_project_access(await service.snapshot_project(snapshot_id), user_id, session)
+    await service.delete_snapshot(snapshot_id)
+
+
+@router.put(
+    "/cost-control/lines/{line_id}/forecast/",
+    response_model=ForecastOverrideInfo,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def set_cost_line_forecast(
+    line_id: uuid.UUID,
+    body: ForecastOverrideRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostControlService = Depends(_get_cost_control_service),
+) -> ForecastOverrideInfo:
+    """Overrule the automatic forecast of one cost line, with a reason."""
+    line = await service.line_project(line_id)
+    await verify_project_access(line.project_id, user_id, session)
+    return await service.set_override(line, body, str(user_id) if user_id else None)
+
+
+@router.delete(
+    "/cost-control/lines/{line_id}/forecast/",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(RequirePermission("costmodel.write"))],
+)
+async def clear_cost_line_forecast(
+    line_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostControlService = Depends(_get_cost_control_service),
+) -> None:
+    """Go back to the automatic forecast. The manual one stays in the history."""
+    line = await service.line_project(line_id)
+    await verify_project_access(line.project_id, user_id, session)
+    await service.clear_override(line, str(user_id) if user_id else None)
+
+
+@router.get(
+    "/cost-control/lines/{line_id}/history/",
+    response_model=LineHistory,
+    dependencies=[Depends(RequirePermission("costmodel.read"))],
+)
+async def get_cost_line_history(
+    line_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: CostControlService = Depends(_get_cost_control_service),
+) -> LineHistory:
+    """Why the line's forecast is what it is: saved forecasts, approved changes, manual forecasts."""
+    line = await service.line_project(line_id)
+    await verify_project_access(line.project_id, user_id, session)
+    return await service.line_history(line)

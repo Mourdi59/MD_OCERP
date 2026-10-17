@@ -3,9 +3,9 @@
 /**
  * Plan Room page.
  *
- * Opens one drawing sheet and composites every overlay the platform holds for
- * that page - punch pins, plan pins, drawing markups, takeoff measurements and
- * project photos - into a single view with a per-source layer toggle. Write
+ * Opens one drawing sheet and shows every mark the platform holds for that
+ * page - punch pins, plan pins, drawing markups, takeoff measurements and
+ * project photos - in a single view with a per-source layer toggle. Write
  * users can drop their own plan pins straight onto the sheet.
  *
  * The page owns: which document / page is open, the layer visibility, the
@@ -15,19 +15,24 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Camera,
+  ChevronDown,
+  ChevronRight,
+  ClipboardCheck,
   FileWarning,
+  FolderOpen,
   GitBranch,
   Layers as LayersIcon,
   Lock,
   Map as MapIcon,
+  Upload,
 } from 'lucide-react';
 import { ApiError, getErrorMessage } from '@/shared/lib/api';
 import { fetchProjectList } from '@/shared/lib/projectList';
-import { Badge, EmptyState } from '@/shared/ui';
+import { Badge, EmptyState, Skeleton } from '@/shared/ui';
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
@@ -84,6 +89,7 @@ export function PlanRoomPage({ documentId: documentIdProp, initialPage }: PlanRo
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
   const activeProjectName = useProjectContextStore((s) => s.activeProjectName);
@@ -96,14 +102,22 @@ export function PlanRoomPage({ documentId: documentIdProp, initialPage }: PlanRo
     queryFn: () => fetchProjectList<Project[]>(),
     staleTime: 5 * 60_000,
   });
-  const projectId = activeProjectId || projects[0]?.id || '';
+  // No silent fallback to the first project: opening someone else's drawings
+  // because no project was picked reads as a wrong page. The empty state below
+  // sends the reader to the project list instead.
+  const projectId = activeProjectId || '';
+  const projectName =
+    activeProjectName || projects.find((p) => p.id === projectId)?.name || '';
 
-  const { data: drawings = [] } = useQuery({
+  const drawingsQuery = useQuery({
     queryKey: ['plan-room-drawings', projectId],
     queryFn: () => fetchPlanRoomDrawings(projectId),
     enabled: !!projectId,
     staleTime: 60_000,
   });
+  const drawings = useMemo(() => drawingsQuery.data ?? [], [drawingsQuery.data]);
+  const drawingsLoading = !!projectId && drawingsQuery.isLoading;
+  const noDrawings = !!projectId && drawingsQuery.isSuccess && drawings.length === 0;
 
   /* ── Selected document + page ──────────────────────────────────────── */
   const [selectedDocId, setSelectedDocId] = useState(
@@ -147,6 +161,9 @@ export function PlanRoomPage({ documentId: documentIdProp, initialPage }: PlanRo
 
   const totalOverlays =
     counts.punch + counts.plan + counts.markups + counts.measurements + counts.photos;
+
+  /* ── Sheet completeness disclosure (closed until asked for) ─────────── */
+  const [completenessOpen, setCompletenessOpen] = useState(false);
 
   /* ── Drop-pin mode + mutations ─────────────────────────────────────── */
   const [placing, setPlacing] = useState(false);
@@ -238,127 +255,121 @@ export function PlanRoomPage({ documentId: documentIdProp, initialPage }: PlanRo
   /* ── Render ────────────────────────────────────────────────────────── */
   const forbidden = overlaysQuery.error instanceof ApiError && overlaysQuery.error.status === 403;
 
+  // The three steps are what a first-time reader needs, so they stay open while
+  // the project has no drawings and start folded once there is a sheet to look
+  // at. Mounted only after the drawings list settles, because the collapsed
+  // default is read once on mount.
+  const stepsReady = !projectId || drawingsQuery.isSuccess || drawingsQuery.isError;
+
   return (
     <div className="animate-fade-in space-y-5">
       <Breadcrumb
         items={[
-          ...(activeProjectId && activeProjectName
-            ? [{ label: activeProjectName, to: `/projects/${activeProjectId}` }]
-            : []),
+          ...(projectId && projectName ? [{ label: projectName, to: `/projects/${projectId}` }] : []),
           { label: t('plan_room.title', { defaultValue: 'Plan Room' }) },
         ]}
       />
 
       <PageHeader
         srTitle={t('plan_room.title', { defaultValue: 'Plan Room' })}
-        subtitle={t('plan_room.header_subtitle', {
+        subtitle={t('plan_room.page_subtitle', {
           defaultValue:
-            'Every mark on a drawing sheet in one place - pins, markups, measurements and photos as toggleable layers',
+            'Open a drawing and see what is marked on it: punch items, markups, measurements and photos.',
         })}
       />
 
-      {/* The page had no explainer, and it is the page that needs one most.
-          Nearly everything on a sheet here is owned by another module, so a
-          reader who tries to add a markup finds no control and concludes the
-          screen is broken rather than that they are in the wrong room. Saying
-          which module owns what is the whole answer. */}
-      <CollapsibleSection
-        storageKey="plan_room.how"
-        icon={<MapIcon size={15} className="text-oe-blue" />}
-        title={t('plan_room.flow_title', {
-          defaultValue: 'What the Plan Room is, and where each mark comes from',
-        })}
-      >
-        <p className="text-xs text-content-tertiary">
-          {t('plan_room.flow_intro', {
-            defaultValue:
-              'A drawing sheet collects marks from several trades and several weeks, and each kind of mark is made somewhere else in the platform. Nobody wants to open four screens to find out what is on one sheet. This room puts all of them back on the sheet at once, as layers you can switch off one at a time.',
-          })}
-        </p>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-content-tertiary">
-          <li>
-            {t('plan_room.flow_step1', {
-              defaultValue:
-                'Pick a drawing. The list holds the project documents that have a sheet to render, so a project with no drawings uploaded yet has nothing to open here.',
-            })}
-          </li>
-          <li>
-            {t('plan_room.flow_step2', {
-              defaultValue:
-                'Everything already recorded against that page is drawn on it: defect pins from the punch list, markups from the drawing review, measurements from takeoff and site photos. Switch a layer off to read the sheet underneath.',
-            })}
-          </li>
-          <li>
-            {t('plan_room.flow_step3', {
-              defaultValue:
-                'Drop a plan pin to put a note or a photo at an exact spot. This is the one mark that belongs to the Plan Room itself, and the only thing created here.',
-            })}
-          </li>
-          <li>
-            {t('plan_room.flow_step4', {
-              defaultValue:
-                'The other layers are read-only on purpose. A markup is edited where markups are made, a measurement where the takeoff is done, a defect in the punch list. Editing them from here would put the same record in two places with two owners.',
-            })}
-          </li>
-        </ol>
-        <p className="mt-2 text-xs text-content-tertiary">
-          {t('plan_room.flow_empty_note', {
-            defaultValue:
-              'An empty sheet is the ordinary state of a new project rather than a fault. Marks appear here as the work that makes them happens elsewhere.',
-          })}
-        </p>
-      </CollapsibleSection>
+      {stepsReady && (
+        <CollapsibleSection
+          storageKey="plan_room.steps"
+          defaultCollapsed={drawings.length > 0}
+          icon={<MapIcon size={15} className="text-oe-blue" />}
+          title={t('plan_room.steps_title', { defaultValue: 'How it works' })}
+        >
+          <ol className="list-decimal space-y-1 pl-5 text-sm text-content-secondary">
+            <li>{t('plan_room.step_1', { defaultValue: 'Open a drawing from the list.' })}</li>
+            <li>
+              {t('plan_room.step_2', {
+                defaultValue:
+                  'Switch layers on and off to see punch items, markups, measurements and photos on it.',
+              })}
+            </li>
+            <li>
+              {t('plan_room.step_3', {
+                defaultValue: 'Drop a pin to leave a note at a spot on the drawing.',
+              })}
+            </li>
+          </ol>
+        </CollapsibleSection>
+      )}
 
-      {/* Document picker + revision indicator */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <MapIcon size={16} className="shrink-0 text-content-tertiary" />
-          <select
-            value={selectedDocId}
-            onChange={(e) => {
-              setSelectedDocId(e.target.value);
-              setPage(1);
-              setPlacing(false);
-            }}
-            aria-label={t('plan_room.select_drawing', { defaultValue: 'Select drawing' })}
-            className="h-9 max-w-md flex-1 rounded-lg border border-border bg-surface-primary px-2 text-sm focus:border-oe-blue focus:outline-none focus:ring-2 focus:ring-oe-blue/30"
-          >
-            {drawings.length === 0 && (
-              <option value="">
-                {t('plan_room.no_drawings', { defaultValue: 'No drawings available' })}
-              </option>
-            )}
-            {drawings.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.filename || d.id.slice(0, 8)}
-              </option>
-            ))}
-          </select>
+      {/* Drawing picker + revision indicator. Hidden while there is nothing to
+          pick, so an empty dropdown never stands in for the way forward. */}
+      {drawingsLoading ? (
+        <Skeleton className="h-9 w-full max-w-md" />
+      ) : drawings.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <MapIcon size={16} className="shrink-0 text-content-tertiary" />
+            <select
+              value={selectedDocId}
+              onChange={(e) => {
+                setSelectedDocId(e.target.value);
+                setPage(1);
+                setPlacing(false);
+              }}
+              aria-label={t('plan_room.select_drawing', { defaultValue: 'Select drawing' })}
+              className="h-9 max-w-md flex-1 rounded-lg border border-border bg-surface-primary px-2 text-sm focus:border-oe-blue focus:outline-none focus:ring-2 focus:ring-oe-blue/30"
+            >
+              {drawings.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.filename || d.id.slice(0, 8)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {overlays?.version && <RevisionIndicator version={overlays.version} />}
         </div>
-        {overlays?.version && <RevisionIndicator version={overlays.version} />}
-      </div>
+      ) : null}
 
       {/* Body */}
       {!projectId && !selectedDocId ? (
         <EmptyState
-          icon={<MapIcon size={24} />}
+          icon={<FolderOpen size={24} />}
           title={t('plan_room.no_project_title', { defaultValue: 'Pick a project first' })}
           description={t('plan_room.no_project_desc', {
             defaultValue: 'Select an active project to open its drawings in the Plan Room.',
           })}
+          action={{
+            label: t('plan_room.go_projects', { defaultValue: 'Go to projects' }),
+            onClick: () => navigate('/projects'),
+          }}
+        />
+      ) : drawingsLoading && !selectedDocId ? (
+        <Skeleton className="h-96 w-full" />
+      ) : noDrawings && !selectedDocId ? (
+        <EmptyState
+          icon={<Upload size={24} />}
+          title={t('plan_room.no_drawings_title', { defaultValue: 'No drawings in this project yet' })}
+          description={t('plan_room.no_drawings_desc', {
+            defaultValue: 'Upload PDF drawings in Documents. They show up here, ready to open and mark.',
+          })}
+          action={{
+            label: t('plan_room.upload_drawings', { defaultValue: 'Upload drawings' }),
+            onClick: () => navigate('/files'),
+          }}
         />
       ) : forbidden ? (
         <EmptyState
           icon={<Lock size={24} />}
           title={t('plan_room.forbidden_title', { defaultValue: 'No access to this drawing' })}
-          description={t('plan_room.forbidden_desc', {
-            defaultValue: 'You do not have permission to view overlays on this project.',
+          description={t('plan_room.forbidden_drawings_desc', {
+            defaultValue: 'You do not have permission to see the drawings of this project.',
           })}
         />
       ) : overlaysQuery.isError ? (
         <EmptyState
           icon={<FileWarning size={24} />}
-          title={t('plan_room.error_title', { defaultValue: 'Could not load overlays' })}
+          title={t('plan_room.error_marks_title', { defaultValue: 'Could not load the marks on this drawing' })}
           description={getErrorMessage(overlaysQuery.error)}
           action={{
             label: t('common.retry', { defaultValue: 'Retry' }),
@@ -374,55 +385,82 @@ export function PlanRoomPage({ documentId: documentIdProp, initialPage }: PlanRo
           })}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
-          {/* Sheet + overlays */}
-          <PlanRoomViewer
-            documentId={selectedDocId}
-            page={page}
-            onPageChange={(p) => {
-              setPage(p);
-              setPlacing(false);
-            }}
-            overlays={overlays}
-            visibility={visibility}
-            canWrite={canWrite}
-            placing={placing}
-            onStartPlacing={() => setPlacing(true)}
-            onCancelPlacing={() => setPlacing(false)}
-            onCreatePin={(x, y, note) => createMut.mutate({ x, y, note })}
-            onDeletePin={handleDeletePin}
-            isSaving={createMut.isPending}
-          />
+        <>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
+            {/* The sheet with its marks */}
+            <PlanRoomViewer
+              documentId={selectedDocId}
+              page={page}
+              onPageChange={(p) => {
+                setPage(p);
+                setPlacing(false);
+              }}
+              overlays={overlays}
+              visibility={visibility}
+              canWrite={canWrite}
+              placing={placing}
+              onStartPlacing={() => setPlacing(true)}
+              onCancelPlacing={() => setPlacing(false)}
+              onCreatePin={(x, y, note) => createMut.mutate({ x, y, note })}
+              onDeletePin={handleDeletePin}
+              isSaving={createMut.isPending}
+            />
 
-          {/* Side panel: layers + photos */}
-          <div className="space-y-4">
-            <LayerPanel visibility={visibility} counts={counts} onToggle={toggleLayer} />
+            {/* Side panel: layers + photos */}
+            <div className="space-y-4">
+              <LayerPanel visibility={visibility} counts={counts} onToggle={toggleLayer} />
 
-            {/* Sheet completeness: reconcile the set against its drawing index. */}
-            <SheetCompletenessPanel projectId={projectId} defaultIndexDocumentId={selectedDocId} />
+              {/* Nothing on this page yet (the sheet still renders). */}
+              {overlaysQuery.isSuccess && totalOverlays === 0 && (
+                <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-surface-primary px-3 py-4 text-sm text-content-tertiary">
+                  <LayersIcon size={15} className="shrink-0" />
+                  {t('plan_room.nothing_marked', { defaultValue: 'Nothing marked on this page yet.' })}
+                </div>
+              )}
 
-            {/* Empty-overlays hint (the sheet still renders). */}
-            {overlaysQuery.isSuccess && totalOverlays === 0 && (
-              <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-surface-primary px-3 py-4 text-sm text-content-tertiary">
-                <LayersIcon size={15} className="shrink-0" />
-                {t('plan_room.no_overlays', { defaultValue: 'No overlays on this page yet.' })}
-              </div>
-            )}
-
-            {!canWrite && (
-              <p className="px-1 text-2xs text-content-quaternary">
-                {t('plan_room.read_only', {
-                  defaultValue: 'Read-only access - you can view layers but not drop pins.',
-                })}
-              </p>
-            )}
-
-            {/* Photos layer (document-level, so shown as a gallery not on the sheet). */}
-            {visibility.photos && (overlays?.photos?.length ?? 0) > 0 && (
-              <PhotoGallery photos={overlays!.photos} />
-            )}
+              {/* Photos layer (document-level, so shown as a gallery not on the sheet). */}
+              {visibility.photos && (overlays?.photos?.length ?? 0) > 0 && (
+                <PhotoGallery photos={overlays!.photos} />
+              )}
+            </div>
           </div>
-        </div>
+
+          {/* Sheet completeness: a set-level check, so it lives below the
+              sheet in its own section and stays closed until asked for. */}
+          {projectId && (
+            <section className="rounded-xl border border-border-light bg-surface-primary">
+              <button
+                type="button"
+                onClick={() => setCompletenessOpen((v) => !v)}
+                aria-expanded={completenessOpen}
+                className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-surface-secondary/40"
+              >
+                <ClipboardCheck size={16} className="shrink-0 text-content-tertiary" />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-sm font-semibold text-content-primary">
+                    {t('plan_room.completeness_title', { defaultValue: 'Is the drawing set complete?' })}
+                  </span>
+                  <span className="text-xs text-content-tertiary">
+                    {t('plan_room.completeness_desc', {
+                      defaultValue:
+                        'Compare your drawing list with the uploaded drawings to find missing or outdated sheets.',
+                    })}
+                  </span>
+                </span>
+                {completenessOpen ? (
+                  <ChevronDown size={16} className="shrink-0 text-content-tertiary" aria-hidden />
+                ) : (
+                  <ChevronRight size={16} className="shrink-0 text-content-tertiary" aria-hidden />
+                )}
+              </button>
+              {completenessOpen && (
+                <div className="border-t border-border-light p-4">
+                  <SheetCompletenessPanel projectId={projectId} defaultIndexDocumentId={selectedDocId} embedded />
+                </div>
+              )}
+            </section>
+          )}
+        </>
       )}
     </div>
   );
@@ -431,7 +469,7 @@ export function PlanRoomPage({ documentId: documentIdProp, initialPage }: PlanRo
 /* ── Revision indicator ──────────────────────────────────────────────────── */
 
 /**
- * Which drawing revision the overlays were composited against. The Plan Room
+ * Which drawing revision the marks were placed against. The Plan Room
  * backend exposes only the document's current revision (there is no
  * revision-list endpoint yet), so we surface it clearly rather than offering a
  * switcher - switching between revisions is a documented follow-on.
@@ -442,7 +480,7 @@ function RevisionIndicator({ version }: { version: OverlayVersion }) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-content-quaternary">
         <GitBranch size={13} />
-        {t('plan_room.revision_untracked', { defaultValue: 'Revision not tracked' })}
+        {t('plan_room.revision_none', { defaultValue: 'No revision number' })}
       </span>
     );
   }

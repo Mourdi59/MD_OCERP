@@ -457,6 +457,8 @@ export const navGroups: NavGroup[] = [
     defaultOpen: true,
     hideInSimple: true,
     items: [
+      // The forecast question first: what will it cost in the end, and why.
+      { labelKey: 'nav.cost_control', to: '/cost-control', icon: Scale, moduleKey: '5d' },
       { labelKey: 'nav.5d_cost_model', to: '/5d', icon: TrendingUp, moduleKey: '5d', advancedOnly: true },
       { labelKey: 'nav.progress', to: '/progress', icon: Activity, advancedOnly: true },
       { labelKey: 'nav.full_evm', to: '/full-evm', icon: LineChart, advancedOnly: true },

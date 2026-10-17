@@ -255,6 +255,7 @@ const ROUTE_BACKEND_MODULE: Record<string, string | readonly string[]> = {
   '/takt': 'oe_schedule_advanced',
   '/tasks': 'oe_tasks',
   '/5d': 'oe_costmodel',
+  '/cost-control': 'oe_costmodel',
   '/risks': 'oe_risk',
   // Field operations
   '/daily-diary': 'oe_daily_diary',

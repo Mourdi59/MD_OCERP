@@ -5,7 +5,7 @@
  *
  * Renders one document page with pdf.js (self-contained loader kept separate
  * from the markups annotator, exactly like the punch pin board) and paints the
- * composited overlays on top as independent layers:
+ * marks from every source on top as independent layers:
  *
  *   - Pins (punch + plan) - HTML markers positioned by the normalised (0..1)
  *     x/y the payload carries, so they stay correct at any zoom without any
@@ -18,8 +18,10 @@
  *         `viewport.convertToViewportPoint` (matches the markups annotator).
  *
  * Write users get a "Drop a pin" mode: click the sheet to capture a normalised
- * point, type a note, save. The parent owns the mutation and optimistic state;
- * this component only captures the point and the note.
+ * point, type a note, save. It is the one thing created on this page, so it is
+ * the toolbar's primary action with a one-line hint; read-only users see why
+ * it is missing in the same spot. The parent owns the mutation and optimistic
+ * state; this component only captures the point and the note.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -30,6 +32,7 @@ import {
   ChevronRight,
   Crosshair,
   Loader2,
+  Lock,
   MapPin,
   Trash2,
   X,
@@ -328,9 +331,10 @@ export function PlanRoomViewer({
           </button>
         </div>
 
-        {/* Drop-pin control (write users only) */}
-        {canWrite && (
-          <div className="ml-auto flex items-center gap-2">
+        {/* Drop-pin control: the primary action for write users, a visible
+            view-only notice in the same place for everyone else. */}
+        {canWrite ? (
+          <div className="ml-auto flex min-w-0 items-center gap-2">
             {placing ? (
               <span className="inline-flex items-center gap-1.5 rounded-md bg-oe-blue/10 px-2 py-1 text-xs font-medium text-oe-blue">
                 <Crosshair size={13} />
@@ -345,17 +349,31 @@ export function PlanRoomViewer({
                 </button>
               </span>
             ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={<MapPin size={14} />}
-                onClick={onStartPlacing}
-                disabled={!hasDrawing || isLoading}
-              >
-                {t('plan_room.drop_pin', { defaultValue: 'Drop a pin' })}
-              </Button>
+              <>
+                <span className="hidden min-w-0 truncate text-xs text-content-tertiary sm:inline">
+                  {t('plan_room.pin_hint', {
+                    defaultValue: 'A pin marks a spot on the drawing with your note.',
+                  })}
+                </span>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={<MapPin size={14} />}
+                  onClick={onStartPlacing}
+                  disabled={!hasDrawing || isLoading}
+                >
+                  {t('plan_room.drop_pin', { defaultValue: 'Drop a pin' })}
+                </Button>
+              </>
             )}
           </div>
+        ) : (
+          <span className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-surface-secondary px-2 py-1 text-xs text-content-secondary">
+            <Lock size={13} className="shrink-0" />
+            {t('plan_room.view_only', {
+              defaultValue: 'View only. You can look at the drawing but not add pins.',
+            })}
+          </span>
         )}
       </div>
 

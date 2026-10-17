@@ -11,6 +11,10 @@ Tables:
     oe_costmodel_labour_worker_day - one worker-day, claimed by the source that
         costed it first, so a day recorded on a phone and again on the desktop
         timesheet reaches the budget once
+    oe_costmodel_forecast_snapshot - a frozen cost control report, optionally
+        tagged with the cost stage it records (estimate, award, final, ...)
+    oe_costmodel_forecast_override - a person's forecast for one cost line,
+        with the reason; append-only, the newest open row is the one in force
 """
 
 import uuid
@@ -27,9 +31,11 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.db_types import MoneyType
 from app.database import GUID, Base
 
 
@@ -365,3 +371,91 @@ class LabourWorkerDay(Base):
 
     def __repr__(self) -> str:  # pragma: no cover - debug repr
         return f"<LabourWorkerDay {self.work_date} r={self.resource_id} from {self.source_module}>"
+
+
+class CostForecastSnapshot(Base):
+    """A cost control report frozen at a date, never edited afterwards.
+
+    Taken by hand ("save this month's forecast") or tagged with the cost stage
+    it records, so the same table holds the estimate, the award and every
+    monthly forecast in between, and the history of a line is read straight
+    from it. ``rows`` keeps one entry per cost line with the figures and the
+    forecast source as they stood; money is stored as decimal strings.
+    """
+
+    __tablename__ = "oe_costmodel_forecast_snapshot"
+    __table_args__ = (Index("ix_costmodel_forecast_snapshot_proj_date", "project_id", "taken_on"),)
+
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_projects_project.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    taken_on: Mapped[str] = mapped_column(String(10), nullable=False, doc="ISO date the figures stood on")
+    stage: Mapped[str] = mapped_column(String(30), nullable=False, server_default="forecast")
+    label: Mapped[str] = mapped_column(String(200), nullable=False, server_default="")
+    note: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    currency: Mapped[str] = mapped_column(String(10), nullable=False, server_default="")
+    totals: Mapped[dict] = mapped_column(  # type: ignore[assignment]
+        JSON,
+        nullable=False,
+        default=dict,
+        server_default="{}",
+    )
+    rows: Mapped[list] = mapped_column(  # type: ignore[assignment]
+        JSON,
+        nullable=False,
+        default=list,
+        server_default="[]",
+    )
+    created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<CostForecastSnapshot {self.taken_on} {self.stage}>"
+
+
+class CostForecastOverride(Base):
+    """A person's forecast for one cost line, and why.
+
+    Append-only. Setting a new forecast closes the open row (``closed_at``)
+    and adds a new one; clearing closes the open row and adds nothing, so the
+    line goes back to the automatic forecast and the history still shows who
+    said what, when and on which document.
+    """
+
+    __tablename__ = "oe_costmodel_forecast_override"
+    __table_args__ = (
+        Index("ix_costmodel_forecast_override_line_open", "cost_line_id", "closed_at"),
+        # One open manual forecast per line: two concurrent saves cannot both stay open.
+        Index(
+            "uq_costmodel_forecast_override_open",
+            "cost_line_id",
+            unique=True,
+            postgresql_where=text("closed_at IS NULL"),
+            sqlite_where=text("closed_at IS NULL"),
+        ),
+    )
+
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_projects_project.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    cost_line_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_costmodel_cost_line.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    amount: Mapped[Decimal] = mapped_column(MoneyType(), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    document_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    document_ref: Mapped[str] = mapped_column(String(255), nullable=False, server_default="")
+    created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<CostForecastOverride {self.cost_line_id} {self.amount}>"
