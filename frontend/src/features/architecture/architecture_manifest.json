@@ -67027,6 +67027,10 @@
       "files": [
         "__init__.py",
         "contract_exposure.py",
+        "cost_control.py",
+        "cost_control_data.py",
+        "cost_control_schemas.py",
+        "cost_control_service.py",
         "elemental.py",
         "events.py",
         "manifest.py",
@@ -67037,7 +67041,8 @@
         "router.py",
         "schemas.py",
         "seed.py",
-        "service.py"
+        "service.py",
+        "validators.py"
       ],
       "manifest": {
         "name": "oe_costmodel",
@@ -67513,6 +67518,136 @@
             }
           ],
           "relationships": []
+        },
+        {
+          "class_name": "CostForecastSnapshot",
+          "tablename": "oe_costmodel_forecast_snapshot",
+          "docstring": "A cost control report frozen at a date, never edited afterwards.\n\nTaken by hand (\"save this month's forecast\") or tagged with the cost stage\nit records, so the same table holds the estimate, the award and every\nmonthly forecast in between, and the history of a line is read straight\nfrom it. ``rows`` keeps one entry per cost line with the figures and the\nforecast source as they stood; money is stored as decimal strings.",
+          "columns": [
+            {
+              "name": "project_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_projects_project.id"
+            },
+            {
+              "name": "taken_on",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "stage",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "label",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "note",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "currency",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "totals",
+              "annotation": "Mapped[dict]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "rows",
+              "annotation": "Mapped[list]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "CostForecastOverride",
+          "tablename": "oe_costmodel_forecast_override",
+          "docstring": "A person's forecast for one cost line, and why.\n\nAppend-only. Setting a new forecast closes the open row (``closed_at``)\nand adds a new one; clearing closes the open row and adds nothing, so the\nline goes back to the automatic forecast and the history still shows who\nsaid what, when and on which document.",
+          "columns": [
+            {
+              "name": "project_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_projects_project.id"
+            },
+            {
+              "name": "cost_line_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_costmodel_cost_line.id"
+            },
+            {
+              "name": "amount",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "MoneyType",
+              "nullable": false
+            },
+            {
+              "name": "reason",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "document_ref",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "closed_at",
+              "annotation": "Mapped[datetime | None]",
+              "sql_type": "DateTime",
+              "nullable": true
+            },
+            {
+              "name": "closed_by",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            }
+          ],
+          "relationships": []
         }
       ],
       "routes": [
@@ -67740,6 +67875,74 @@
           "path": "/projects/{project_id}/spine/position-actuals/",
           "handler": "get_position_actuals",
           "response_model": "PositionActualsResponse"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/cost-control/",
+          "handler": "get_cost_control_report",
+          "response_model": "CostControlReport",
+          "request_schema": "CostControlService"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/cost-control/unassigned/",
+          "handler": "list_cost_control_unassigned",
+          "response_model": "UnassignedPage",
+          "request_schema": "CostControlService"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/cost-control/assign/",
+          "handler": "assign_cost_control_lines",
+          "response_model": "AssignResult",
+          "request_schema": "AssignRequest"
+        },
+        {
+          "method": "GET",
+          "path": "/projects/{project_id}/cost-control/snapshots/",
+          "handler": "list_cost_control_snapshots",
+          "response_model": "SnapshotPage",
+          "request_schema": "CostControlService"
+        },
+        {
+          "method": "POST",
+          "path": "/projects/{project_id}/cost-control/snapshots/",
+          "handler": "create_cost_control_snapshot",
+          "response_model": "SnapshotSummary",
+          "request_schema": "SnapshotCreateRequest"
+        },
+        {
+          "method": "GET",
+          "path": "/cost-control/snapshots/{snapshot_id}/",
+          "handler": "get_cost_control_snapshot",
+          "response_model": "SnapshotDetail",
+          "request_schema": "CostControlService"
+        },
+        {
+          "method": "DELETE",
+          "path": "/cost-control/snapshots/{snapshot_id}/",
+          "handler": "delete_cost_control_snapshot",
+          "request_schema": "CostControlService"
+        },
+        {
+          "method": "PUT",
+          "path": "/cost-control/lines/{line_id}/forecast/",
+          "handler": "set_cost_line_forecast",
+          "response_model": "ForecastOverrideInfo",
+          "request_schema": "ForecastOverrideRequest"
+        },
+        {
+          "method": "DELETE",
+          "path": "/cost-control/lines/{line_id}/forecast/",
+          "handler": "clear_cost_line_forecast",
+          "request_schema": "CostControlService"
+        },
+        {
+          "method": "GET",
+          "path": "/cost-control/lines/{line_id}/history/",
+          "handler": "get_cost_line_history",
+          "response_model": "LineHistory",
+          "request_schema": "CostControlService"
         }
       ],
       "schemas": [
@@ -69487,6 +69690,7 @@
       ],
       "import_dependencies": [
         "boq",
+        "changeorders",
         "contracts",
         "field_time",
         "notifications",
@@ -69496,7 +69700,8 @@
         "resources",
         "rfq_bidding",
         "schedule",
-        "site_inventory"
+        "site_inventory",
+        "variations"
       ]
     },
     {
@@ -270333,6 +270538,13 @@
       "total_files": 7
     },
     {
+      "name": "cost-control",
+      "ts_files": 9,
+      "css_files": 0,
+      "test_files": 1,
+      "total_files": 9
+    },
+    {
       "name": "cost-explorer",
       "ts_files": 20,
       "css_files": 0,
@@ -270936,10 +271148,10 @@
     },
     {
       "name": "plan-room",
-      "ts_files": 8,
+      "ts_files": 9,
       "css_files": 0,
-      "test_files": 0,
-      "total_files": 8
+      "test_files": 1,
+      "total_files": 9
     },
     {
       "name": "plant_register",
@@ -271890,6 +272102,7 @@
     ],
     "costmodel": [
       "boq",
+      "changeorders",
       "contracts",
       "field_time",
       "notifications",
@@ -271899,7 +272112,8 @@
       "resources",
       "rfq_bidding",
       "schedule",
-      "site_inventory"
+      "site_inventory",
+      "variations"
     ],
     "costs": [
       "bim_hub",
@@ -273018,14 +273232,14 @@
   "statistics": {
     "backend_modules": 211,
     "modules_with_manifests": 209,
-    "total_models": 771,
-    "total_columns": 8976,
+    "total_models": 773,
+    "total_columns": 8994,
     "total_relationships": 240,
-    "total_routes": 4550,
+    "total_routes": 4560,
     "total_schemas": 4040,
-    "total_python_files": 2709,
-    "frontend_features": 208,
-    "frontend_ts_files": 3480,
+    "total_python_files": 2714,
+    "frontend_features": 209,
+    "frontend_ts_files": 3490,
     "frontend_backend_mapped": 187
   },
   "frontend_backend_mapping": {
@@ -273074,6 +273288,7 @@
     "contracts": "contracts",
     "coordination": "coordination_hub",
     "correspondence": "correspondence",
+    "cost-control": null,
     "cost-explorer": "cost_explorer",
     "cost-match": "cost_match",
     "cost-plan": "cost_plan",

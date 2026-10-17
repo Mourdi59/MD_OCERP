@@ -180,24 +180,22 @@ export interface AssignBody {
   items: { kind: AssignKind; id: string }[];
 }
 
-const base = '/v1/costmodel';
-
 export const costControlApi = {
   report: (projectId: string, axis: CostControlAxis) =>
-    apiGet<CostControlReport>(`${base}/projects/${projectId}/cost-control/?axis=${axis}`),
+    apiGet<CostControlReport>(`/v1/costmodel/projects/${projectId}/cost-control/?axis=${axis}`),
   snapshots: (projectId: string) =>
-    apiGet<SnapshotPage>(`${base}/projects/${projectId}/cost-control/snapshots/`),
+    apiGet<SnapshotPage>(`/v1/costmodel/projects/${projectId}/cost-control/snapshots/`),
   createSnapshot: (projectId: string, body: SnapshotCreate) =>
-    apiPost<SnapshotSummary, SnapshotCreate>(`${base}/projects/${projectId}/cost-control/snapshots/`, body),
-  deleteSnapshot: (snapshotId: string) => apiDelete(`${base}/cost-control/snapshots/${snapshotId}/`),
+    apiPost<SnapshotSummary, SnapshotCreate>(`/v1/costmodel/projects/${projectId}/cost-control/snapshots/`, body),
+  deleteSnapshot: (snapshotId: string) => apiDelete(`/v1/costmodel/cost-control/snapshots/${snapshotId}/`),
   setForecast: (lineId: string, body: ForecastOverrideCreate) =>
-    apiPut<ForecastOverride, ForecastOverrideCreate>(`${base}/cost-control/lines/${lineId}/forecast/`, body),
-  clearForecast: (lineId: string) => apiDelete(`${base}/cost-control/lines/${lineId}/forecast/`),
-  lineHistory: (lineId: string) => apiGet<LineHistory>(`${base}/cost-control/lines/${lineId}/history/`),
+    apiPut<ForecastOverride, ForecastOverrideCreate>(`/v1/costmodel/cost-control/lines/${lineId}/forecast/`, body),
+  clearForecast: (lineId: string) => apiDelete(`/v1/costmodel/cost-control/lines/${lineId}/forecast/`),
+  lineHistory: (lineId: string) => apiGet<LineHistory>(`/v1/costmodel/cost-control/lines/${lineId}/history/`),
   unassigned: (projectId: string) =>
-    apiGet<UnassignedPage>(`${base}/projects/${projectId}/cost-control/unassigned/`),
+    apiGet<UnassignedPage>(`/v1/costmodel/projects/${projectId}/cost-control/unassigned/`),
   assign: (projectId: string, body: AssignBody) =>
-    apiPost<{ assigned: number }, AssignBody>(`${base}/projects/${projectId}/cost-control/assign/`, body),
+    apiPost<{ assigned: number }, AssignBody>(`/v1/costmodel/projects/${projectId}/cost-control/assign/`, body),
 };
 
 /** Money string to number for display and geometry only. */
